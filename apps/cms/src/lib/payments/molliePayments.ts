@@ -2,8 +2,11 @@ import "server-only"
 
 import {
   addBillingPeriod,
+  ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE,
   assistedMigrationSupplementalEvidenceSchema,
+  COMMERCIAL_CATALOG_VERSION,
   getCommercialCatalog,
+  LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
   refundDecisionFor,
   type PaymentAttemptState,
   type RefundScenario,
@@ -23,8 +26,10 @@ import {
   ensureChargebackCreditNote,
   ensureInvoiceEvidence,
   ensurePendingCreditNote,
+  ensurePendingPaymentAdjustment,
   ensureRefundCreditNote,
-  issueCreditNote,
+  ensureRefundPaymentAdjustment,
+  issueAccountingDocument,
 } from "@/lib/payments/accountingEvidence"
 import {
   MollieApiError,
@@ -51,6 +56,7 @@ import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { verifyCheckoutEvidence } from "@/lib/legal/checkoutEvidence"
+import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
 
 type CreateCheckoutInput = {
   runId: string | number
@@ -265,6 +271,56 @@ const recurringNetAmount = (order: Order): number => {
   return subscription.netAmountMinor
 }
 
+const assertInitialOrderPaymentPolicy = (order: Order): void => {
+  const catalog = getCommercialCatalog(order.catalogVersion ?? undefined)
+  if (catalog.catalogVersion !== COMMERCIAL_CATALOG_VERSION) return
+  if (order.orderKind !== "initial_subscription") {
+    throw new Error("Current-catalog first payment requires an initial subscription order.")
+  }
+  const evidence = order.quoteEvidence
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    throw new Error("Current-catalog payment requires frozen quote evidence.")
+  }
+  const quote = evidence as Record<string, unknown>
+  const migration = quote.migration
+  if (quote.migrationServiceFeeNetMinor !== 0) {
+    throw new Error("Current-catalog payment cannot contain a migration service fee.")
+  }
+  if (quote.domainMode === "new_registration" && migration != null) {
+    throw new Error("Current-catalog registration payment cannot contain migration evidence.")
+  }
+  if (quote.domainMode === "existing_domain") {
+    if (
+      !migration ||
+      typeof migration !== "object" ||
+      Array.isArray(migration) ||
+      (migration as Record<string, unknown>).classification !== "automatic" ||
+      ![
+        "cloudflare_api_v1",
+        "authorized_axfr_v1",
+        "validated_provider_export_v1",
+      ].includes(String((migration as Record<string, unknown>).sourceMechanism)) ||
+      quote.migrationServiceFeeNetMinor !== 0
+    ) {
+      throw new Error("Current-catalog existing-domain payment requires a zero-fee automatic migration.")
+    }
+  }
+  if (!["new_registration", "existing_domain"].includes(String(quote.domainMode))) {
+    throw new Error("Current-catalog payment requires a supported domain mode.")
+  }
+  if (
+    Array.isArray(order.netLineItems) &&
+    order.netLineItems.some((item) =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      (item as Record<string, unknown>).code ===
+        ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE)
+  ) {
+    throw new Error("Current-catalog payment cannot contain an assisted migration line item.")
+  }
+}
+
 const checkoutProfileForOrder = async (
   payload: Payload,
   order: Order,
@@ -333,9 +389,13 @@ const createOrLoadAttempt = async (
     idempotencyKey: string
     attemptNumber?: number
     now: string
+    initialState?: PaymentAttempt["state"]
+    reconciliationRequired?: boolean
   },
 ): Promise<{ attempt: PaymentAttempt; created: boolean }> => {
   const attemptNumber = input.attemptNumber ?? 1
+  const initialState = input.initialState ?? "created"
+  const reconciliationRequired = input.reconciliationRequired ?? false
   const existingByKey = await findOneDoc(payload, "payment-attempts", {
     idempotencyKey: { equals: input.idempotencyKey },
   })
@@ -365,14 +425,14 @@ const createOrLoadAttempt = async (
         billingAgreement: input.billingAgreement?.id,
         tenant: numericRelationshipId(input.order.tenant),
         attemptNumber,
-        state: "created",
+        state: initialState,
         purpose: input.purpose,
         sequenceType: input.sequenceType,
         provider: "mollie",
         currency: input.order.currency,
         ...amounts,
-        reconciliationRequired: false,
-        stateHistory: stateHistory([], "created", input.now),
+        reconciliationRequired,
+        stateHistory: stateHistory([], initialState, input.now),
         createdAt: input.now,
       },
       depth: 0,
@@ -559,6 +619,7 @@ export async function createMollieCheckoutForGenerationRun(
     orderId: input.orderId,
     customerEmail: email,
   })
+  assertInitialOrderPaymentPolicy(order)
   const clientSlug = input.clientSlug ||
     previewClientSlugFromDomain(tenant.domain, String(tenant.slug ?? tenant.name ?? ""))
   if (!clientSlug) throw new Error("Client preview slug is required for Mollie checkout.")
@@ -779,6 +840,9 @@ export async function createSupplementalMigrationMollieCheckout(
     throw new Error("Supplemental Mollie checkout requires an accepted unpaid migration order.")
   }
   const evidence = assistedMigrationSupplementalEvidenceSchema.parse(order.quoteEvidence)
+  if (evidence.catalogVersion !== LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION) {
+    throw new Error("Supplemental migration payments are retired for this catalog.")
+  }
   if (!sameRelationshipId(order.supplementalForMigration, evidence.migrationId)) {
     throw new Error("Supplemental order migration evidence does not match its relationship.")
   }
@@ -1113,6 +1177,258 @@ export async function createApplicationRecurringMolliePayment(
       context: { legalOrderLifecycleMutation: true },
     })
     return { paymentAttempt: attempt, reused: false }
+  } catch (error) {
+    await markProviderWriteIndeterminate(payload, attempt, error)
+    throw error
+  }
+}
+
+export async function createMandateRecoveryMolliePayment(
+  payload: Payload,
+  input: {
+    billingAgreementId: string | number
+    tenantId: string | number
+  },
+): Promise<{ paymentAttempt: PaymentAttempt; checkoutUrl: string; reused: boolean }> {
+  let agreement = await payload.findByID({
+    collection: "billing-agreements",
+    id: input.billingAgreementId,
+    depth: 0,
+    overrideAccess: true,
+  }) as BillingAgreement
+  if (
+    !sameRelationshipId(agreement.tenant, input.tenantId) ||
+    !["past_due", "suspended", "cancellation_scheduled"].includes(agreement.state) ||
+    !agreement.providerCustomerId ||
+    agreement.reconciliationRequired
+  ) {
+    throw new Error("Billing recovery is not available for this agreement.")
+  }
+  const attemptsResult = await payload.find({
+    collection: "payment-attempts",
+    where: {
+      and: [
+        { billingAgreement: { equals: agreement.id } },
+        { purpose: { in: ["recurring", "first_payment"] } },
+        { state: { in: ["created", "failed", "cancelled", "expired", "chargeback", "pending_provider"] } },
+      ],
+    },
+    sort: "-createdAt",
+    limit: 100,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const attempts = [...attemptsResult.docs as PaymentAttempt[]].sort((left, right) => {
+    const createdDelta =
+      Date.parse(right.createdAt ?? "") - Date.parse(left.createdAt ?? "")
+    return createdDelta || right.attemptNumber - left.attemptNumber
+  })
+  const recoverable = attempts.find((attempt) =>
+    (
+      (
+        attempt.purpose === "recurring" &&
+        ["failed", "cancelled", "expired", "chargeback"].includes(attempt.state)
+      ) ||
+      (attempt.purpose === "first_payment" && attempt.state === "chargeback")
+    ) &&
+    !attempt.reconciliationRequired)
+  const orderId = relationshipId(recoverable?.order)
+  if (!recoverable || !orderId) {
+    throw new Error("Billing recovery requires a reconciled failed or charged-back payment.")
+  }
+  const order = await payload.findByID({
+    collection: "orders",
+    id: orderId,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  const initialChargebackObligation = attempts.some((attempt) =>
+    sameRelationshipId(attempt.order, order.id) &&
+    attempt.purpose === "first_payment" &&
+    attempt.state === "chargeback")
+  const subscriptionCycleAuthority =
+    order.orderKind === "subscription_renewal" &&
+    Boolean(order.servicePeriodStartsAt && order.servicePeriodEndsAt) &&
+    (
+      order.servicePeriodStartsAt === agreement.currentPeriodEndsAt ||
+      order.servicePeriodEndsAt === agreement.currentPeriodEndsAt
+    )
+  if (
+    !sameRelationshipId(order.tenant, agreement.tenant) ||
+    (!subscriptionCycleAuthority && !initialChargebackObligation) ||
+    !["accepted", "fulfillment_pending", "fulfilled"].includes(order.state ?? "") ||
+    !["pending", "open", "failed", "cancelled", "expired", "chargeback"].includes(
+      order.paymentStatus,
+    ) ||
+    order.currency !== agreement.currency
+  ) {
+    throw new Error("Billing recovery order does not match the frozen agreement authority.")
+  }
+  const recoveryIdempotencyKey =
+    `mollie:mandate-recovery:order:${order.id}:obligation-${recoverable.id}`
+  const reusable = attempts.find((attempt) =>
+    attempt.idempotencyKey === recoveryIdempotencyKey &&
+    sameRelationshipId(attempt.order, order.id) &&
+    attempt.sequenceType === "first" &&
+    attempt.purpose === "recurring" &&
+    attempt.state === "pending_provider" &&
+    Boolean(attempt.providerPaymentId && attempt.checkoutUrl) &&
+    !attempt.reconciliationRequired)
+  if (reusable?.checkoutUrl) {
+    return {
+      paymentAttempt: reusable,
+      checkoutUrl: reusable.checkoutUrl,
+      reused: true,
+    }
+  }
+  const highestAttemptNumber = attempts
+    .filter((attempt) => sameRelationshipId(attempt.order, order.id))
+    .reduce((highest, attempt) => Math.max(highest, attempt.attemptNumber), 0)
+  const attemptNumber = highestAttemptNumber + 1
+  const now = new Date().toISOString()
+  const attemptResult = await createOrLoadAttempt(payload, {
+    order,
+    billingAgreement: agreement,
+    purpose: "recurring",
+    sequenceType: "first",
+    idempotencyKey: recoveryIdempotencyKey,
+    attemptNumber,
+    now,
+    initialState: "pending_provider",
+    reconciliationRequired: true,
+  })
+  let attempt = attemptResult.attempt
+  if (attempt.providerPaymentId && attempt.checkoutUrl) {
+    return {
+      paymentAttempt: attempt,
+      checkoutUrl: attempt.checkoutUrl,
+      reused: true,
+    }
+  }
+  const providerAbsenceReconciled =
+    !attemptResult.created &&
+    attempt.state === "pending_provider" &&
+    !attempt.providerPaymentId &&
+    !attempt.reconciliationRequired &&
+    attempt.failureCode === "provider_absence_reconciled"
+  if (!attemptResult.created && !providerAbsenceReconciled) {
+    throw new Error("Billing recovery payment is already claimed or requires reconciliation.")
+  }
+  if (providerAbsenceReconciled) {
+    const retryClaim = await payload.update({
+      collection: "payment-attempts",
+      where: {
+        and: [
+          { id: { equals: attempt.id } },
+          { state: { equals: "pending_provider" } },
+          { providerPaymentId: { exists: false } },
+          { reconciliationRequired: { equals: false } },
+          { failureCode: { equals: "provider_absence_reconciled" } },
+        ],
+      },
+      data: {
+        reconciliationRequired: true,
+        failureCode: null,
+        failureMessage: null,
+        stateHistory: stateHistory(
+          attempt.stateHistory,
+          "pending_provider",
+          now,
+          "mandate_recovery_retry_after_provider_absence",
+        ),
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { paymentAttemptLifecycleMutation: true },
+    })
+    const claimedAttempt = Array.isArray(retryClaim.docs)
+      ? retryClaim.docs[0] as PaymentAttempt | undefined
+      : undefined
+    if (!claimedAttempt) {
+      throw new Error("Recovered billing payment retry is already claimed.")
+    }
+    attempt = claimedAttempt
+  }
+  requireCommerceProviderWritesAllowed("Mollie mandate-recovery payment creation")
+  if (!agreement.updatedAt) {
+    throw new Error("Billing agreement is missing its concurrency version.")
+  }
+  const agreementClaim = await payload.update({
+    collection: "billing-agreements",
+    where: {
+      and: [
+        { id: { equals: agreement.id } },
+        { updatedAt: { equals: agreement.updatedAt } },
+        { state: { equals: agreement.state } },
+      ],
+    },
+    data: {
+      lastPaymentAttemptAt: attempt.createdAt,
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { billingAgreementLifecycleMutation: true },
+  })
+  const claimedAgreement = Array.isArray(agreementClaim.docs)
+    ? agreementClaim.docs[0] as BillingAgreement | undefined
+    : undefined
+  if (!claimedAgreement?.providerCustomerId) {
+    await updateAttempt(payload, attempt, {
+      state: "cancelled",
+      reconciliationRequired: false,
+      failureCode: "billing_recovery_claim_lost",
+      failureMessage: "A concurrent billing transition superseded mandate recovery.",
+      stateHistory: stateHistory(attempt.stateHistory, "cancelled", now),
+    })
+    throw new Error("Billing recovery conflicted with a concurrent agreement transition.")
+  }
+  agreement = claimedAgreement
+  try {
+    const providerCustomerId = agreement.providerCustomerId
+    if (!providerCustomerId) {
+      throw new Error("Billing recovery lost its Mollie customer authority.")
+    }
+    const payment = await createMolliePayment({
+      amount: mollieAmount(attempt.grossAmountMinor, attempt.currency),
+      customerId: providerCustomerId,
+      sequenceType: "first",
+      description: `Site in a Box betalingsherstel ${order.orderNumber}`,
+      redirectUrl: `${publicCmsOrigin()}/settings?billing=return#billing`,
+      webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
+      idempotencyKey: attempt.idempotencyKey,
+      metadata: {
+        paymentAttemptId: attempt.id,
+        billingAgreementId: agreement.id,
+        tenantId: relationshipId(order.tenant),
+        idempotencyKey: attempt.idempotencyKey,
+        mollieCustomerId: providerCustomerId,
+        sequenceType: "first",
+        purpose: attempt.purpose,
+        orderId: order.id,
+      },
+    })
+    const checkoutUrl = payment._links?.checkout?.href
+    if (!payment.id || !checkoutUrl) {
+      throw new Error("Mollie did not return a mandate-recovery payment and checkout URL.")
+    }
+    attempt = await updateAttempt(payload, attempt, {
+      state: "pending_provider",
+      providerPaymentId: payment.id,
+      providerStatus: payment.status,
+      checkoutUrl,
+      reconciliationRequired: false,
+      lastSyncedAt: now,
+      stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now, payment.status),
+    })
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { paymentStatus: "open", providerPaymentId: payment.id },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+    return { paymentAttempt: attempt, checkoutUrl, reused: false }
   } catch (error) {
     await markProviderWriteIndeterminate(payload, attempt, error)
     throw error
@@ -1516,12 +1832,14 @@ const synchronizeBillingAgreement = async (
       return
     }
     const paidAt = payment.paidAt ?? attempt.paidAt ?? now
-    const periodStartsAt = attempt.sequenceType === "first"
+    const initialFirstPayment =
+      attempt.sequenceType === "first" && attempt.purpose === "first_payment"
+    const periodStartsAt = initialFirstPayment
       ? paidAt
-      : order.servicePeriodStartsAt
-    const periodEndsAt = attempt.sequenceType === "first"
+      : order.servicePeriodStartsAt ?? agreement.currentPeriodStartsAt
+    const periodEndsAt = initialFirstPayment
       ? addBillingPeriod(paidAt, agreement.billingPeriod)
-      : order.servicePeriodEndsAt
+      : order.servicePeriodEndsAt ?? agreement.currentPeriodEndsAt
     if (!periodStartsAt || !periodEndsAt) {
       await updateAgreement(payload, agreement, {
         reconciliationRequired: true,
@@ -1540,10 +1858,14 @@ const synchronizeBillingAgreement = async (
       }
       const wasBillingSuspended =
         candidate.serviceSuspensionStatus === "billing_suspended"
-      const state = candidate.state === "cancellation_scheduled"
+      const cancellationMustBePreserved = [
+        "cancellation_scheduled",
+        "cancelled",
+      ].includes(candidate.state)
+      const state = cancellationMustBePreserved
         ? "cancellation_scheduled"
         : "active"
-      const cancellationCancelAt = state === "cancellation_scheduled"
+      const cancellationCancelAt = cancellationMustBePreserved
         ? [candidate.cancelAt, periodEndsAt]
           .filter((value): value is string => Boolean(value))
           .sort()
@@ -1560,6 +1882,7 @@ const synchronizeBillingAgreement = async (
         },
         data: {
           state,
+          ...(cancellationMustBePreserved ? { renewalIntent: false } : {}),
           providerCustomerId: payment.customerId ?? candidate.providerCustomerId,
           providerMandateId: mandateId,
           currentPeriodStartsAt: periodStartsAt,
@@ -1654,14 +1977,18 @@ const synchronizeBillingAgreement = async (
     )
   ) {
     let candidate = agreement
+    let terminalAgreement: BillingAgreement | null = null
     for (let retry = 0; retry < 5; retry += 1) {
       if (!candidate.updatedAt) {
         throw new Error("Billing agreement is missing its concurrency version.")
       }
       const cancellationScheduled = candidate.state === "cancellation_scheduled"
+      const chargeback = attempt.state === "chargeback"
       const state: BillingAgreement["state"] = cancellationScheduled
         ? "cancellation_scheduled"
-        : "past_due"
+        : chargeback
+          ? "suspended"
+          : "past_due"
       const paidCoverageEndsAt =
         attempt.state === "chargeback" &&
         attempt.sequenceType === "recurring"
@@ -1684,7 +2011,13 @@ const synchronizeBillingAgreement = async (
                 cancelAt: paidCoverageEndsAt ?? candidate.cancelAt,
               }
             : {}),
-          reconciliationRequired: attempt.state === "chargeback",
+          ...(chargeback
+            ? {
+                suspendedAt: now,
+                serviceSuspensionStatus: "billing_suspended" as const,
+              }
+            : {}),
+          reconciliationRequired: false,
           failureReason: `Mollie payment state is ${attempt.state}.`,
           lastSyncedAt: now,
           stateHistory: candidate.state === state
@@ -1703,7 +2036,10 @@ const synchronizeBillingAgreement = async (
       const updated = Array.isArray(result.docs)
         ? result.docs[0] as BillingAgreement | undefined
         : undefined
-      if (updated) return
+      if (updated) {
+        terminalAgreement = updated
+        break
+      }
       candidate = await payload.findByID({
         collection: "billing-agreements",
         id: agreement.id,
@@ -1711,7 +2047,81 @@ const synchronizeBillingAgreement = async (
         overrideAccess: true,
       }) as BillingAgreement
     }
-    throw new Error("Terminal payment synchronization lost its concurrency claim.")
+    if (!terminalAgreement) {
+      throw new Error("Terminal payment synchronization lost its concurrency claim.")
+    }
+    if (attempt.state === "chargeback") {
+      const tenantId = relationshipId(terminalAgreement.tenant)
+      if (tenantId) {
+        const tenant = await payload.findByID({
+          collection: "tenants",
+          id: tenantId,
+          depth: 0,
+          overrideAccess: true,
+        }) as Tenant
+        if (tenant.status === "active") {
+          await payload.update({
+            collection: "tenants",
+            id: tenant.id,
+            data: {
+              status: "suspended",
+              billingSuspensionAgreement: Number(terminalAgreement.id),
+              billingSuspendedAt: now,
+            },
+            depth: 0,
+            overrideAccess: true,
+            context: { billingTenantLifecycleMutation: true },
+          })
+        } else if (
+          tenant.status === "suspended" &&
+          !sameRelationshipId(tenant.billingSuspensionAgreement, terminalAgreement.id)
+        ) {
+          await updateAgreement(payload, terminalAgreement, {
+            serviceSuspensionStatus: "restoration_blocked",
+            adminExceptionCode: "tenant_suspension_not_owned_by_billing",
+            adminExceptionAt: now,
+          })
+        }
+        const currentAgreement = await payload.findByID({
+          collection: "billing-agreements",
+          id: terminalAgreement.id,
+          depth: 0,
+          overrideAccess: true,
+        }) as BillingAgreement
+        if (
+          currentAgreement.serviceSuspensionStatus !== "billing_suspended" ||
+          !["suspended", "cancellation_scheduled"].includes(currentAgreement.state)
+        ) {
+          const currentTenant = await payload.findByID({
+            collection: "tenants",
+            id: tenantId,
+            depth: 0,
+            overrideAccess: true,
+          }) as Tenant
+          if (
+            currentTenant.status === "suspended" &&
+            sameRelationshipId(
+              currentTenant.billingSuspensionAgreement,
+              terminalAgreement.id,
+            )
+          ) {
+            await payload.update({
+              collection: "tenants",
+              id: currentTenant.id,
+              data: {
+                status: "active",
+                billingSuspensionAgreement: null,
+                billingSuspendedAt: null,
+              },
+              depth: 0,
+              overrideAccess: true,
+              context: { billingTenantLifecycleMutation: true },
+            })
+          }
+        }
+      }
+    }
+    return
   }
 }
 
@@ -1900,6 +2310,7 @@ const synchronizeAccountingEvidence = async (
   attempt: PaymentAttempt,
   payment: MolliePayment,
   now: string,
+  duplicatePayment = false,
 ): Promise<void> => {
   if (![
     "paid",
@@ -1909,12 +2320,14 @@ const synchronizeAccountingEvidence = async (
     "refund_failed",
     "chargeback",
   ].includes(attempt.state)) return
-  const invoice = await ensureInvoiceEvidence({
-    payload,
-    order,
-    paymentAttempt: attempt,
-    issuedAt: payment.paidAt ?? attempt.paidAt ?? now,
-  })
+  const invoice = duplicatePayment
+    ? null
+    : await ensureInvoiceEvidence({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        issuedAt: payment.paidAt ?? attempt.paidAt ?? now,
+      })
   if (
     (attempt.refundedAmountMinor ?? 0) +
       (attempt.chargebackAmountMinor ?? 0) >
@@ -1933,9 +2346,15 @@ const synchronizeAccountingEvidence = async (
         depth: 0,
         overrideAccess: true,
       }) as AccountingDocument
+      const expectedDocumentType = duplicatePayment
+        ? "payment_adjustment"
+        : "credit_note"
+      const expectedReason = duplicatePayment
+        ? "overpayment_refund"
+        : "refund"
       if (
-        pendingDocument.documentType !== "credit_note" ||
-        pendingDocument.reason !== "refund" ||
+        pendingDocument.documentType !== expectedDocumentType ||
+        pendingDocument.reason !== expectedReason ||
         !sameRelationshipId(pendingDocument.order, order.id) ||
         !sameRelationshipId(pendingDocument.paymentAttempt, attempt.id)
       ) {
@@ -1945,7 +2364,7 @@ const synchronizeAccountingEvidence = async (
           "Mollie refund metadata does not match the pending accounting evidence.",
         )
       }
-      await issueCreditNote({
+      await issueAccountingDocument({
         payload,
         document: pendingDocument,
         providerOperationId: refund.id,
@@ -1954,16 +2373,29 @@ const synchronizeAccountingEvidence = async (
       })
       continue
     }
-    await ensureRefundCreditNote({
-      payload,
-      order,
-      paymentAttempt: attempt,
-      invoice,
-      providerRefundId: refund.id,
-      providerStatus: refund.status,
-      grossAmountMinor,
-      issuedAt: refund.createdAt ?? now,
-    })
+    if (duplicatePayment) {
+      await ensureRefundPaymentAdjustment({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        providerRefundId: refund.id,
+        providerStatus: refund.status,
+        grossAmountMinor,
+        issuedAt: refund.createdAt ?? now,
+      })
+    } else {
+      if (!invoice) throw new Error("Refund credit evidence requires an invoice.")
+      await ensureRefundCreditNote({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        invoice,
+        providerRefundId: refund.id,
+        providerStatus: refund.status,
+        grossAmountMinor,
+        issuedAt: refund.createdAt ?? now,
+      })
+    }
   }
   for (const refund of failedRefunds(payment)) {
     const pendingDocumentId = refund.metadata?.accountingDocumentId
@@ -1974,9 +2406,15 @@ const synchronizeAccountingEvidence = async (
       depth: 0,
       overrideAccess: true,
     }) as AccountingDocument
+    const expectedDocumentType = duplicatePayment
+      ? "payment_adjustment"
+      : "credit_note"
+    const expectedReason = duplicatePayment
+      ? "overpayment_refund"
+      : "refund"
     if (
-      pendingDocument.documentType !== "credit_note" ||
-      pendingDocument.reason !== "refund" ||
+      pendingDocument.documentType !== expectedDocumentType ||
+      pendingDocument.reason !== expectedReason ||
       !sameRelationshipId(pendingDocument.order, order.id) ||
       !sameRelationshipId(pendingDocument.paymentAttempt, attempt.id)
     ) {
@@ -2013,16 +2451,117 @@ const synchronizeAccountingEvidence = async (
   for (const chargeback of payment._embedded?.chargebacks ?? []) {
     const grossAmountMinor = minorAmount(chargeback.amount)
     if (grossAmountMinor == null) continue
-    await ensureChargebackCreditNote({
-      payload,
-      order,
-      paymentAttempt: attempt,
-      invoice,
-      providerChargebackId: chargeback.id,
-      grossAmountMinor,
-      issuedAt: chargeback.createdAt ?? now,
+    if (duplicatePayment) {
+      await ensureRefundPaymentAdjustment({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        providerRefundId: chargeback.id,
+        providerStatus: "chargeback",
+        grossAmountMinor,
+        issuedAt: chargeback.createdAt ?? now,
+      })
+    } else {
+      if (!invoice) throw new Error("Chargeback credit evidence requires an invoice.")
+      await ensureChargebackCreditNote({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        invoice,
+        providerChargebackId: chargeback.id,
+        grossAmountMinor,
+        issuedAt: chargeback.createdAt ?? now,
+      })
+    }
+  }
+}
+
+const authoritativeInvoiceForDuplicatePayment = async (
+  payload: Payload,
+  order: Order,
+  duplicateAttempt: PaymentAttempt,
+  now: string,
+): Promise<AccountingDocument> => {
+  const invoiceResult = await payload.find({
+    collection: "accounting-documents",
+    where: {
+      and: [
+        { order: { equals: order.id } },
+        { documentType: { equals: "invoice" } },
+      ],
+    },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const existingInvoice = invoiceResult.docs[0] as AccountingDocument | undefined
+  if (existingInvoice) return existingInvoice
+  if (!order.providerPaymentId) {
+    throw new Error("Duplicate payment refund requires an authoritative order payment.")
+  }
+  const authoritativeAttempt = await findOneDoc(payload, "payment-attempts", {
+    providerPaymentId: { equals: order.providerPaymentId },
+  })
+  if (
+    !authoritativeAttempt ||
+    String(authoritativeAttempt.id) === String(duplicateAttempt.id)
+  ) {
+    throw new Error("Duplicate payment refund could not resolve the authoritative payment.")
+  }
+  return ensureInvoiceEvidence({
+    payload,
+    order,
+    paymentAttempt: authoritativeAttempt,
+    issuedAt: authoritativeAttempt.paidAt ?? now,
+  })
+}
+
+const ensureDuplicatePaymentRefundQueued = async (
+  payload: Payload,
+  order: Order,
+  attempt: PaymentAttempt,
+  now: string,
+): Promise<AccountingDocument> => {
+  await authoritativeInvoiceForDuplicatePayment(
+    payload,
+    order,
+    attempt,
+    now,
+  )
+  const evidenceKey =
+    `payment-adjustment:payment-attempt:${attempt.id}:duplicate_payment`
+  const existing = await findOneDoc(payload, "accounting-documents", {
+    evidenceKey: { equals: evidenceKey },
+  })
+  const document = existing ?? await ensurePendingPaymentAdjustment({
+    payload,
+    order,
+    paymentAttempt: attempt,
+    grossAmountMinor: attempt.grossAmountMinor,
+    now,
+  })
+  if (
+    document.state === "pending_provider" &&
+    !document.providerOperationId &&
+    document.providerStatus !== "refund_job_queued"
+  ) {
+    await queueMollieRefund(payload, {
+      paymentAttemptId: attempt.id,
+      scenario: "duplicate_payment",
+    })
+    await payload.update({
+      collection: "accounting-documents",
+      id: document.id,
+      data: {
+        providerStatus: "refund_job_queued",
+        lastSyncedAt: now,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { accountingDocumentLifecycleMutation: true },
     })
   }
+  return document
 }
 
 export async function synchronizeMolliePayment(
@@ -2095,23 +2634,37 @@ export async function synchronizeMolliePayment(
   }) as Order
   const ownsSharedProjection = await attemptOwnsSharedProjection(payload, attempt)
   if (!ownsSharedProjection) {
-    if ([
+    const captured = [
       "paid",
       "refund_pending",
       "partially_refunded",
       "refunded",
       "refund_failed",
       "chargeback",
-    ].includes(attempt.state)) {
+    ].includes(attempt.state)
+    if (captured) {
       attempt = await updateAttempt(payload, attempt, {
-        reconciliationRequired: true,
+        reconciliationRequired: false,
         failureCode: "non_authoritative_attempt_captured",
         failureMessage:
-          "A superseded payment attempt has captured provider state and requires reconciliation.",
+          "A superseded payment attempt was captured and its governed refund was queued.",
         lastSyncedAt: now,
       })
+      await ensureDuplicatePaymentRefundQueued(
+        payload,
+        order,
+        attempt,
+        now,
+      )
+      await synchronizeAccountingEvidence(
+        payload,
+        order,
+        attempt,
+        payment,
+        now,
+        true,
+      )
     }
-    await synchronizeAccountingEvidence(payload, order, attempt, payment, now)
     return {
       ok: true,
       paymentAttemptId: attempt.id,
@@ -2182,7 +2735,7 @@ export async function synchronizeMolliePayment(
       now,
     )
   }
-  if (attempt.purpose !== "supplemental") {
+  if (attempt.purpose === "first_payment") {
     await synchronizeGenerationRunProjection(payload, updatedOrder, attempt, payment, now)
   }
   await synchronizeAccountingEvidence(payload, updatedOrder, attempt, payment, now)
@@ -2278,28 +2831,25 @@ export async function requestMollieRefund(
     overrideAccess: true,
   }) as Order
   const now = new Date().toISOString()
-  const invoice = await ensureInvoiceEvidence({
-    payload,
-    order,
-    paymentAttempt: attempt,
-    issuedAt: attempt.paidAt ?? now,
-  })
   const requestedGrossAmountMinor = refundGrossAmount(order, attempt, input.scenario)
-  const requestedEvidenceKey =
-    `credit-note:payment-attempt:${attempt.id}:${input.scenario}`
+  const duplicatePayment = input.scenario === "duplicate_payment"
+  const requestedEvidenceKey = duplicatePayment
+    ? `payment-adjustment:payment-attempt:${attempt.id}:duplicate_payment`
+    : `credit-note:payment-attempt:${attempt.id}:${input.scenario}`
   const reversalDocuments = await payload.find({
     collection: "accounting-documents",
     where: {
-      and: [
-        { paymentAttempt: { equals: attempt.id } },
-        { documentType: { equals: "credit_note" } },
-      ],
+      paymentAttempt: { equals: attempt.id },
     },
     limit: 1_000,
     depth: 0,
     overrideAccess: true,
   })
-  const reversals = reversalDocuments.docs as AccountingDocument[]
+  const reversals = (reversalDocuments.docs as AccountingDocument[]).filter(
+    (entry) =>
+      entry.documentType === "credit_note" ||
+      entry.documentType === "payment_adjustment",
+  )
   const existingDocument = reversals.find((entry) =>
     entry.evidenceKey === requestedEvidenceKey
   )
@@ -2321,15 +2871,37 @@ export async function requestMollieRefund(
   ) {
     throw new Error("The requested refund exceeds the remaining captured amount.")
   }
-  let document = existingDocument ?? await ensurePendingCreditNote({
-    payload,
-    order,
-    paymentAttempt: attempt,
-    invoice,
-    scenario: input.scenario,
-    grossAmountMinor: requestedGrossAmountMinor,
-    now,
-  })
+  const invoice = duplicatePayment
+    ? null
+    : await ensureInvoiceEvidence({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        issuedAt: attempt.paidAt ?? now,
+      })
+  let document = existingDocument
+  if (!document) {
+    if (duplicatePayment) {
+      document = await ensurePendingPaymentAdjustment({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        grossAmountMinor: requestedGrossAmountMinor,
+        now,
+      })
+    } else {
+      if (!invoice) throw new Error("Refund credit evidence requires an invoice.")
+      document = await ensurePendingCreditNote({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        invoice,
+        scenario: input.scenario,
+        grossAmountMinor: requestedGrossAmountMinor,
+        now,
+      })
+    }
+  }
   if (document.providerOperationId) {
     return {
       document,

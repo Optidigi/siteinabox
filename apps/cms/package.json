@@ -16,6 +16,7 @@
     "check:responsive": "node src/scripts/check-responsive.mjs --mode=payload",
     "check:commerce-release": "vitest run tests/unit/commerceReleaseGate.test.ts tests/unit/commerceFailureRehearsals.test.ts tests/unit/commerceProviderReads.test.ts tests/unit/commerceReconciliationTask.test.ts tests/unit/domainOffboarding.test.ts tests/unit/domainRenewal.test.ts",
     "check:commerce-production-readiness": "tsx scripts/check-commerce-production-readiness.ts",
+    "check:commerce-edge-inventory": "tsx scripts/check-commerce-edge-inventory.ts",
     "lint:ui-composition": "node scripts/check-ui-composition.mjs",
     "lint:ui-boundary": "node scripts/check-ui-boundary.mjs",
     "lint:no-css": "node scripts/check-no-css.mjs",

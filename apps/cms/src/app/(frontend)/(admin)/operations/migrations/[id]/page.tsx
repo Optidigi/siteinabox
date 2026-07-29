@@ -15,7 +15,6 @@ import {
   classifySiteinaboxIncidentAction,
   completeMigrationOperatorWorkAction,
   failMigrationOperatorWorkAction,
-  proposeMigrationOperatorWorkAction,
   requestDomainMigrationRollbackAction,
   startMigrationOperatorWorkAction,
 } from "../actions"
@@ -75,9 +74,6 @@ export default async function OperationMigrationDetailPage({
     "awaiting_provider",
     "ready_for_cutover",
   ].includes(migration.state)
-  const canProposeSupplemental = canClassifyIncident &&
-    migration.acceptedClassification === "automatic" &&
-    migration.operatorWorkAuthorizationState === "not_required"
   const canStart = migration.state === "paused_supplemental_order" &&
     ["paid_authorized", "non_billable_incident_authorized"].includes(
       migration.operatorWorkAuthorizationState,
@@ -165,20 +161,6 @@ export default async function OperationMigrationDetailPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
-          {canProposeSupplemental && (
-            <form action={proposeMigrationOperatorWorkAction} className="grid gap-2">
-              <input type="hidden" name="migrationId" value={migration.id} />
-              <Label htmlFor="migration-supplemental-scope">Onverwacht begrensd klantmigratiewerk</Label>
-              <select id="migration-supplemental-scope" name="workScopeCode" required className="h-10 rounded-md border bg-background px-3 text-sm">
-                <option value="verify_customer_zone_export">Volledigheid klant-zone-export verifiëren</option>
-                <option value="resolve_supported_zone_conflict">Ondersteund zoneconflict oplossen</option>
-                <option value="complete_supported_provider_handoff">Ondersteunde provideroverdracht afronden</option>
-              </select>
-              <Button type="submit" variant="outline" className="w-fit">
-                Stel aparte dienst van € 49 excl. btw voor
-              </Button>
-            </form>
-          )}
           {canClassifyIncident && (
             <form action={classifySiteinaboxIncidentAction} className="grid gap-2">
               <input type="hidden" name="migrationId" value={migration.id} />

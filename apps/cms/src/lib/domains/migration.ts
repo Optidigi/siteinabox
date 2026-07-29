@@ -21,16 +21,23 @@ import type {
   DomainMigration,
   ManagedDomain,
   Order,
+  PaymentAttempt,
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
-import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import {
+  recordCommerceAdminException,
+  resolveCommerceAdminException,
+} from "@/lib/commerce/alerts"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
 
 import {
   CloudflareIndeterminateWriteError,
   createOrReuseCloudflareMigrationDnsRecord,
   createOrReuseCloudflareZone,
+  enableCloudflareDnssec,
+  getCloudflareDnssec,
+  getCloudflareDnsRecordUsage,
   getCloudflareSslVerification,
   listCloudflareMigrationDnsRecords,
   listCloudflareZones,
@@ -40,9 +47,21 @@ import {
   sealMigrationSecret,
 } from "@/lib/domains/migrationSecrets"
 import {
+  MigrationSourceChangedError,
+  refreshAutomaticMigrationSource,
+} from "@/lib/domains/migrationSources/refresh"
+import {
   consumeMigrationCheckoutSecret,
+  invalidateAttachedMigrationCheckoutSecret,
   openAttachedMigrationCheckoutSecret,
 } from "@/lib/domains/migrationCheckoutSecret"
+import {
+  MigrationSourceAuthorizationError,
+} from "@/lib/domains/migrationSources/types"
+import {
+  registrarDnskeysForDs,
+  validateSignedDnssecEvidence,
+} from "@/lib/domains/migrationSources/dnssecEvidence"
 import {
   domainMigrationEvidenceHash,
   domainMigrationSourceAuthorityHash,
@@ -58,18 +77,24 @@ import {
   loginOpenProvider,
   normalizeOpenProviderTimestamp,
   transferOpenProviderDomain,
+  updateOpenProviderDomainDnssec,
   updateOpenProviderDomainNameservers,
+  type OpenProviderDnskey,
   type OpenProviderDomainRecord,
 } from "@/lib/domains/openprovider"
 import {
   verifyAuthoritativeDns,
+  verifyDnssecChain,
   verifyHttpsEndpoint,
   verifyParentDsAbsent,
   verifyPreservedDnsRecords,
+  type DnssecChainVerification,
 } from "@/lib/domains/verification"
 import { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
 import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
 import { activateManagedDomainEntitlement } from "@/lib/domains/provisioning"
+import { cloudflareTunnelTarget } from "@/lib/domains/cloudflareTunnels"
+import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
@@ -113,13 +138,18 @@ type MigrationDependencies = {
   createOpenProviderCustomerHandle: typeof createOpenProviderCustomerHandle
   findOpenProviderDomain: typeof findOpenProviderDomain
   transferOpenProviderDomain: typeof transferOpenProviderDomain
+  updateOpenProviderDomainDnssec: typeof updateOpenProviderDomainDnssec
   updateOpenProviderDomainNameservers: typeof updateOpenProviderDomainNameservers
   listCloudflareZones: typeof listCloudflareZones
   createOrReuseCloudflareZone: typeof createOrReuseCloudflareZone
   listCloudflareMigrationDnsRecords: typeof listCloudflareMigrationDnsRecords
   createOrReuseCloudflareMigrationDnsRecord: typeof createOrReuseCloudflareMigrationDnsRecord
+  getCloudflareDnsRecordUsage: typeof getCloudflareDnsRecordUsage
+  getCloudflareDnssec: typeof getCloudflareDnssec
+  enableCloudflareDnssec: typeof enableCloudflareDnssec
   getCloudflareSslVerification: typeof getCloudflareSslVerification
   verifyParentDsAbsent: typeof verifyParentDsAbsent
+  verifyDnssecChain: typeof verifyDnssecChain
   verifyAuthoritativeDns: typeof verifyAuthoritativeDns
   verifyPreservedDnsRecords: typeof verifyPreservedDnsRecords
   verifyHttpsEndpoint: typeof verifyHttpsEndpoint
@@ -137,13 +167,18 @@ const defaultDependencies: MigrationDependencies = {
   createOpenProviderCustomerHandle,
   findOpenProviderDomain,
   transferOpenProviderDomain,
+  updateOpenProviderDomainDnssec,
   updateOpenProviderDomainNameservers,
   listCloudflareZones,
   createOrReuseCloudflareZone,
   listCloudflareMigrationDnsRecords,
   createOrReuseCloudflareMigrationDnsRecord,
+  getCloudflareDnsRecordUsage,
+  getCloudflareDnssec,
+  enableCloudflareDnssec,
   getCloudflareSslVerification,
   verifyParentDsAbsent,
+  verifyDnssecChain,
   verifyAuthoritativeDns,
   verifyPreservedDnsRecords,
   verifyHttpsEndpoint,
@@ -172,12 +207,109 @@ const canonicalNameservers = (value: unknown): string[] =>
       ).map((entry) => entry.trim().toLowerCase().replace(/\.$/, "")))].sort()
     : []
 
+const stringIds = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((entry): entry is string =>
+        typeof entry === "string" && entry.trim().length > 0)
+    : []
+
 const nameserversEqual = (left: unknown, right: unknown): boolean => {
   const leftNames = canonicalNameservers(left)
   const rightNames = canonicalNameservers(right)
   return leftNames.length === rightNames.length &&
     leftNames.every((entry, index) => entry === rightNames[index])
 }
+
+const migrationZoneRecordsForComparison = (
+  records: Awaited<ReturnType<typeof listCloudflareMigrationDnsRecords>>,
+  domain: string,
+): NormalizedCompleteZone["records"] => {
+  let cmsTunnelTarget: string | null = null
+  try {
+    cmsTunnelTarget = cloudflareTunnelTarget("cms")
+  } catch {
+    // Missing routing configuration remains fail-closed in edge reconciliation.
+  }
+  return records
+    .map((entry) => entry.record)
+    .filter((record) =>
+      !(record.type === "NS" && record.name === domain) &&
+      !(
+        cmsTunnelTarget &&
+        record.type === "CNAME" &&
+        record.name === `admin.${domain}` &&
+        record.content === cmsTunnelTarget
+      ))
+}
+
+const canonicalDsRecords = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? [...new Set(value.filter(
+        (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+      ).map((entry) => entry.trim().replace(/\s+/g, " ").toUpperCase()))].sort()
+    : []
+
+const dsRecordsEqual = (left: unknown, right: unknown): boolean => {
+  const leftRecords = canonicalDsRecords(left)
+  const rightRecords = canonicalDsRecords(right)
+  return leftRecords.length === rightRecords.length &&
+    leftRecords.every((entry, index) => entry === rightRecords[index])
+}
+
+const sourceDnskeys = (source: NormalizedCompleteZone): OpenProviderDnskey[] =>
+  registrarDnskeysForDs({
+    domain: source.domain,
+    parentDsRecords: source.dnssec.parentDsRecords,
+    dnsKeys: source.dnssec.dnsKeys,
+  }).map((key) => ({
+    flags: key.flags,
+    protocol: key.protocol,
+    alg: key.algorithm,
+    pub_key: key.publicKey,
+  }))
+
+const frozenSourceDnssecChecks = async (
+  source: NormalizedCompleteZone,
+  deps: Pick<MigrationDependencies, "verifyDnssecChain">,
+): Promise<DnssecChainVerification[]> => {
+  if (source.dnssec.status === "unsigned") return []
+  const keys = sourceDnskeys(source)
+  return Promise.all(keys.map((key) =>
+    deps.verifyDnssecChain(source.domain, {
+      flags: key.flags,
+      protocol: key.protocol,
+      algorithm: key.alg,
+      publicKey: key.pub_key,
+      parentDsRecords: source.dnssec.parentDsRecords,
+    })))
+}
+
+const verifyFrozenSourceDnssec = async (
+  source: NormalizedCompleteZone,
+  deps: Pick<MigrationDependencies, "verifyDnssecChain">,
+): Promise<boolean> => {
+  if (source.dnssec.status === "unsigned") return true
+  const checks = await frozenSourceDnssecChecks(source, deps)
+  return checks.length > 0 && checks.every((check) => check.status === "verified")
+}
+
+const canonicalDnskeys = (value: OpenProviderDnskey[]): string[] =>
+  value.map((key) =>
+    `${key.flags}:${key.protocol}:${key.alg}:${key.pub_key.replace(/\s+/g, "")}`,
+  ).sort()
+
+const dnskeysEqual = (
+  left: OpenProviderDnskey[],
+  right: OpenProviderDnskey[],
+): boolean => {
+  const leftKeys = canonicalDnskeys(left)
+  const rightKeys = canonicalDnskeys(right)
+  return leftKeys.length === rightKeys.length &&
+    leftKeys.every((entry, index) => entry === rightKeys[index])
+}
+
+const dnssecWaitUntil = (now: string, ttlSeconds: number): string =>
+  new Date(Date.parse(now) + ttlSeconds * 1_000).toISOString()
 
 const actionStates = (
   value: unknown,
@@ -309,9 +441,15 @@ async function updateManagedDomain(
 const migrationEvidenceFromOrder = (order: Order) => {
   const quoteEvidence = readObject(order.quoteEvidence)
   const migration = readObject(quoteEvidence.migration)
+  const sourceMechanism = String(migration.sourceMechanism)
   if (
     !["automatic", "assisted_standard"].includes(String(migration.classification)) ||
-    migration.sourceMechanism !== "customer_authorized_provider_export_v1"
+    ![
+      "customer_authorized_provider_export_v1",
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ].includes(sourceMechanism)
   ) {
     throw new Error("Accepted order does not freeze a supported migration source contract.")
   }
@@ -330,6 +468,11 @@ const migrationEvidenceFromOrder = (order: Order) => {
   return {
     capability,
     classification: migration.classification as "automatic" | "assisted_standard",
+    sourceMechanism: sourceMechanism as
+      | "customer_authorized_provider_export_v1"
+      | "cloudflare_api_v1"
+      | "authorized_axfr_v1"
+      | "validated_provider_export_v1",
     sourceZoneHash: typeof migration.sourceZoneHash === "string"
       ? migration.sourceZoneHash
       : null,
@@ -342,13 +485,23 @@ const migrationEvidenceFromOrder = (order: Order) => {
 export const isAutomaticMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return migration.classification === "automatic" &&
-    migration.sourceMechanism === "customer_authorized_provider_export_v1"
+    [
+      "customer_authorized_provider_export_v1",
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ].includes(String(migration.sourceMechanism))
 }
 
 export const isSupportedDomainMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return ["automatic", "assisted_standard"].includes(String(migration.classification)) &&
-    migration.sourceMechanism === "customer_authorized_provider_export_v1"
+    [
+      "customer_authorized_provider_export_v1",
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ].includes(String(migration.sourceMechanism))
 }
 
 async function checkoutProfileForOrder(
@@ -375,6 +528,9 @@ export async function createAutomaticDomainMigration(
   payload: Payload,
   orderId: string | number,
   now = new Date().toISOString(),
+  dependencies: {
+    refreshAutomaticMigrationSource?: typeof refreshAutomaticMigrationSource
+  } = {},
 ): Promise<DomainMigration> {
   const order = await payload.findByID({
     collection: "orders",
@@ -393,6 +549,7 @@ export async function createAutomaticDomainMigration(
   const {
     capability,
     classification,
+    sourceMechanism,
     sourceZoneHash: acceptedSourceZoneHash,
     checkoutSecretKey,
   } = migrationEvidenceFromOrder(order)
@@ -426,8 +583,10 @@ export async function createAutomaticDomainMigration(
         tld: normalized.extension,
         acceptedClassification: classification,
         state: "awaiting_customer",
-        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceMechanism,
         customerActions: actions,
+        dnssecPhase: "source_unsigned",
+        dnssecWriteState: "not_started",
         providerTransferState: "not_started",
         cloudflareZoneState: "not_started",
         cutoverWriteState: "not_started",
@@ -483,16 +642,51 @@ export async function createAutomaticDomainMigration(
       generationRunId,
       domain: normalized.domain,
       sourceZoneHash: acceptedSourceZoneHash,
+      now: new Date(now),
     })
     if (
       checkoutInput.classification !== classification ||
+      checkoutInput.sourceMechanism !== sourceMechanism ||
       checkoutInput.sourceZoneHash !== acceptedSourceZoneHash
     ) {
       throw new Error("Encrypted migration checkout input differs from the accepted order.")
     }
+    let refreshedSource: CompleteZoneExport
+    try {
+      refreshedSource = checkoutInput.schemaVersion === 2
+        ? await (
+            dependencies.refreshAutomaticMigrationSource ??
+            refreshAutomaticMigrationSource
+          )(checkoutInput)
+        : checkoutInput.sourceZone
+    } catch (error) {
+      if (
+        !(error instanceof MigrationSourceChangedError) &&
+        !(error instanceof MigrationSourceAuthorizationError)
+      ) {
+        throw error
+      }
+      await invalidateAttachedMigrationCheckoutSecret(payload, {
+        secretKey: checkoutSecretKey,
+        orderId: order.id,
+        now: new Date(now),
+      })
+      return updateMigration(payload, migration, {
+        state: "awaiting_customer",
+        failureReason: "source_evidence_stale",
+        customerActions: withAction(
+          actionStates(migration.customerActions, now),
+          "upload_complete_zone",
+          "required",
+          now,
+          "automatic_source_reauthorization_required",
+        ),
+        reconciliationRequired: false,
+      }, "automatic_source_reauthorization_required", now)
+    }
     migration = await acquireAutomaticMigrationInputs(payload, {
       migrationId: migration.id,
-      zoneExport: checkoutInput.sourceZone,
+      zoneExport: refreshedSource,
       transferCode: checkoutInput.transferCode,
       now,
       queuePreparation: false,
@@ -668,7 +862,15 @@ export async function acquireAutomaticMigrationInputs(
   ) {
     throw new DomainMigrationCustomerInputError("invalid_input")
   }
-  if (source.dnssec.status !== "unsigned") {
+  if (
+    source.dnssec.status === "signed" &&
+    !validateSignedDnssecEvidence({
+      domain: source.domain,
+      parentDsRecords: source.dnssec.parentDsRecords,
+      parentDsTtl: source.dnssec.parentDsTtl,
+      dnsKeys: source.dnssec.dnsKeys,
+    }).valid
+  ) {
     throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const order = await payload.findByID({
@@ -683,10 +885,10 @@ export async function acquireAutomaticMigrationInputs(
     throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const target = buildAutomaticMigrationTargetZone(source, {
-    rendererTargetHost: input.env?.SIAB_RENDERER_TARGET_HOST ??
-      process.env.SIAB_RENDERER_TARGET_HOST,
-    rendererTargetIp: input.env?.SIAB_RENDERER_TARGET_IP ??
-      process.env.SIAB_RENDERER_TARGET_IP,
+    rendererTargetHost: cloudflareTunnelTarget(
+      "renderer",
+      input.env ?? process.env,
+    ),
   })
   const sourceAuthorityHash = domainMigrationSourceAuthorityHash(source)
   const sourceHash = domainMigrationEvidenceHash(source)
@@ -824,10 +1026,13 @@ async function getOrCreateManagedDomain(
       registrantVerificationStatus: "not_checked",
       authoritativeDnsStatus: "pending",
       httpsStatus: "pending",
+      edgeRoutingStatus: "pending",
+      adminHttpsStatus: "pending",
       entitlementStatus: "pending",
       customerStatus: "provisioning",
       renewalIntent: true,
       providerAutorenew: "unknown",
+      transferOutCodeDeliveryStatus: "not_requested",
       transferOutProviderMissingCount: 0,
       reconciliationRequired: false,
       stateHistory: [{ at: now, state: "transfer_pending", reason: "migration_preparation_started" }],
@@ -847,7 +1052,8 @@ const verificationStatus = (
   providerDomain: OpenProviderDomainRecord,
 ): "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed" => {
   const status = providerDomain.verificationEmailStatus?.trim().toLowerCase() ?? ""
-  if (!status || ["not applicable", "not required", "n/a"].includes(status)) {
+  if (!status) return "pending"
+  if (["not applicable", "not required", "n/a"].includes(status)) {
     return "not_required"
   }
   if (["verified", "completed", "approved"].includes(status)) return "verified"
@@ -917,6 +1123,16 @@ const providerRejectedTransferAuthorization = (
   error.providerCode != null &&
   invalidTransferAuthorizationCodes.has(error.providerCode)
 
+export const transferAutorenewMode = (
+  capability: TldCapability,
+): "on" | "off" =>
+  tldCapabilityOperationFlagEnabled(
+    capability,
+    "renewal_provider_autorenew",
+  )
+    ? "on"
+    : "off"
+
 const PROVIDER_WRITE_CLAIM_LEASE_MS = 5 * 60_000
 const PROVIDER_WRITE_RECONCILIATION_TIMEOUT_MS = 24 * 60 * 60_000
 
@@ -981,6 +1197,596 @@ async function stopMigrationForProviderManualReview(
   }
 }
 
+async function stopUnfulfillableMigrationBeforeRegistrarCommit(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  order: Order,
+  code: string,
+  now: string,
+): Promise<MigrationResult> {
+  migration = await updateMigration(payload, migration, {
+    state: "failed",
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: now,
+    reconciliationRequired: false,
+    failureReason: code,
+  }, code, now)
+  await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    entitlementStatus: "blocked",
+    customerStatus: "manual_review",
+    reconciliationRequired: false,
+    failureReason: code,
+  }, code, now)
+  const attempts = await payload.find({
+    collection: "payment-attempts",
+    where: {
+      and: [
+        { order: { equals: order.id } },
+        { purpose: { equals: "first_payment" } },
+        {
+          state: {
+            in: ["paid", "refund_pending", "partially_refunded", "refunded"],
+          },
+        },
+      ],
+    },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (attempts.docs.length !== 1) {
+    throw new Error("Unfulfillable migration has no unique captured payment authority.")
+  }
+  const attempt = attempts.docs[0] as PaymentAttempt
+  await payload.jobs.queue({
+    task: "request-mollie-refund",
+    input: {
+      paymentAttemptId: String(attempt.id),
+      scenario: "unfulfillable_before_provider_commit",
+    },
+    queue: "default",
+    overrideAccess: true,
+  })
+  if (order.state === "fulfillment_pending") {
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "exception" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+  }
+  return {
+    status: "failed",
+    migrationId: migration.id,
+    message: "Automatic migration is unfulfillable before registrar transfer; a full governed refund was queued.",
+  }
+}
+
+async function stopMigrationForRevokedPaymentBeforeRegistrarCommit(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  order: Order,
+  now: string,
+): Promise<MigrationResult> {
+  migration = await updateMigration(payload, migration, {
+    state: "failed",
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: now,
+    reconciliationRequired: false,
+    failureReason: "payment_authority_revoked_before_registrar_commit",
+  }, "payment_authority_revoked_before_registrar_commit", now)
+  await updateManagedDomain(payload, managedDomain, {
+    state: "failed",
+    entitlementStatus: "blocked",
+    customerStatus: "failed",
+    reconciliationRequired: false,
+    failureReason: "payment_authority_revoked_before_registrar_commit",
+  }, "payment_authority_revoked_before_registrar_commit", now)
+  if (order.state === "fulfillment_pending") {
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "exception" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+  }
+  return {
+    status: "failed",
+    migrationId: migration.id,
+    message: "Payment authority was revoked before registrar transfer; no provider write was sent.",
+  }
+}
+
+async function prepareDnssecForCutover(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  providerDomain: OpenProviderDomainRecord,
+  source: NormalizedCompleteZone,
+  token: string,
+  deps: MigrationDependencies,
+): Promise<{
+  migration: DomainMigration
+  providerDomain: OpenProviderDomainRecord
+  result: MigrationResult | null
+}> {
+  const now = deps.now()
+  const expectedSourceKeys = sourceDnskeys(source)
+
+  if (source.dnssec.status === "unsigned") {
+    const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+    if (parentDs.status !== "absent") {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Unsigned source still has an unsafe parent DS state."),
+      }
+    }
+    if (migration.dnssecPhase !== "unsigned_cutover_ready") {
+      migration = await updateMigration(payload, migration, {
+        dnssecPhase: "unsigned_cutover_ready",
+        dnssecWriteState: "confirmed",
+        dnssecVerification: {
+          checkedAt: now,
+          sourceStatus: "unsigned",
+          parentDs,
+        },
+      }, "unsigned_source_ready_for_cutover", now)
+    }
+    return { migration, providerDomain, result: null }
+  }
+
+  if (migration.dnssecPhase === "source_secure_preserved") {
+    const sourceChainPreserved = providerDomain.dnssecEnabled === true &&
+      dnskeysEqual((providerDomain.dnssecKeys ?? []), expectedSourceKeys)
+    if (!sourceChainPreserved) {
+      if (providerDomain.dnssecEnabled == null) {
+        return {
+          migration,
+          providerDomain,
+          result: waiting(
+            migration,
+            "Openprovider has not returned authoritative DNSSEC state for the transferred domain.",
+          ),
+        }
+      }
+      if (
+        migration.dnssecWriteState === "indeterminate" ||
+        (
+          migration.dnssecWriteState === "prepared" &&
+          !providerWriteClaimLeaseElapsed(migration.dnssecWriteRequestedAt, now)
+        )
+      ) {
+        if (providerWriteReconciliationTimedOut(migration.dnssecWriteRequestedAt, now)) {
+          return {
+            migration,
+            providerDomain,
+            result: await stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "source_dnssec_preservation_outcome_unresolved",
+              now,
+              "Source DNSSEC preservation could not be reconciled safely.",
+            ),
+          }
+        }
+        return {
+          migration,
+          providerDomain,
+          result: waiting(migration, "Source DNSSEC preservation awaits reconciliation."),
+        }
+      }
+      if (!deps.forwardProviderWritesAllowed()) {
+        return {
+          migration,
+          providerDomain,
+          result: waiting(migration, "Source DNSSEC repair is release-blocked."),
+        }
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecWriteState: "prepared",
+        dnssecWriteRequestedAt: now,
+        reconciliationRequired: true,
+      }, "source_dnssec_preservation_write_prepared", now)
+      try {
+        await deps.updateOpenProviderDomainDnssec(
+          providerDomain.id,
+          { enabled: true, keys: expectedSourceKeys },
+          { token },
+        )
+      } catch (error) {
+        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecWriteState: "indeterminate",
+        reconciliationRequired: true,
+      }, "source_dnssec_preservation_write_dispatched", deps.now())
+      providerDomain = await deps.findOpenProviderDomain(
+        migration.domainNameAscii,
+        { token },
+      ) ?? providerDomain
+      if (
+        providerDomain.dnssecEnabled !== true ||
+        !dnskeysEqual((providerDomain.dnssecKeys ?? []), expectedSourceKeys)
+      ) {
+        return {
+          migration,
+          providerDomain,
+          result: waiting(migration, "Source DNSSEC preservation awaits provider confirmation."),
+        }
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "source_ds_removal",
+      dnssecWriteState: "not_started",
+      dnssecWriteRequestedAt: null,
+      reconciliationRequired: false,
+    }, "source_dnssec_chain_preserved", deps.now())
+  }
+
+  if (migration.dnssecPhase === "source_ds_removal") {
+    if (providerDomain.dnssecEnabled !== false) {
+      if (
+        migration.dnssecWriteState === "indeterminate" ||
+        (
+          migration.dnssecWriteState === "prepared" &&
+          !providerWriteClaimLeaseElapsed(migration.dnssecWriteRequestedAt, deps.now())
+        )
+      ) {
+        if (providerWriteReconciliationTimedOut(migration.dnssecWriteRequestedAt, deps.now())) {
+          return {
+            migration,
+            providerDomain,
+            result: await stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "source_ds_removal_outcome_unresolved",
+              deps.now(),
+              "Source DS removal could not be reconciled safely.",
+            ),
+          }
+        }
+        return {
+          migration,
+          providerDomain,
+          result: waiting(migration, "Source DS removal awaits provider reconciliation."),
+        }
+      }
+      if (!deps.forwardProviderWritesAllowed()) {
+        return {
+          migration,
+          providerDomain,
+          result: waiting(migration, "Source DS removal is release-blocked."),
+        }
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecWriteState: "prepared",
+        dnssecWriteRequestedAt: deps.now(),
+        reconciliationRequired: true,
+      }, "source_ds_removal_write_prepared", deps.now())
+      try {
+        await deps.updateOpenProviderDomainDnssec(
+          providerDomain.id,
+          { enabled: false, keys: [] },
+          { token },
+        )
+      } catch (error) {
+        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecWriteState: "indeterminate",
+        reconciliationRequired: true,
+      }, "source_ds_removal_write_dispatched", deps.now())
+      providerDomain = await deps.findOpenProviderDomain(
+        migration.domainNameAscii,
+        { token },
+      ) ?? providerDomain
+      if (providerDomain.dnssecEnabled !== false) {
+        return {
+          migration,
+          providerDomain,
+          result: waiting(migration, "Source DS removal awaits authoritative confirmation."),
+        }
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "source_ds_cache_wait",
+      dnssecWriteState: "confirmed",
+      dnssecWriteRequestedAt: null,
+      reconciliationRequired: true,
+    }, "source_ds_removal_confirmed", deps.now())
+  }
+
+  if (migration.dnssecPhase === "source_ds_cache_wait") {
+    const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+    if (parentDs.status === "indeterminate") {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Parent DS removal cannot yet be verified."),
+      }
+    }
+    if (parentDs.status === "present") {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Parent DS removal is still propagating."),
+      }
+    }
+    const ttl = source.dnssec.parentDsTtl
+    if (ttl == null) throw new Error("Signed source has no frozen parent DS TTL.")
+    const safeAfter = migration.dnssecSafeAfter ?? dnssecWaitUntil(deps.now(), ttl)
+    if (!migration.dnssecSafeAfter) {
+      migration = await updateMigration(payload, migration, {
+        dnssecSafeAfter: safeAfter,
+        dnssecVerification: {
+          checkedAt: deps.now(),
+          sourceDsAbsent: parentDs,
+          safeAfter,
+        },
+      }, "source_ds_cache_safety_window_started", deps.now())
+    }
+    if (Date.parse(deps.now()) < Date.parse(safeAfter)) {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Cached source DS records are still inside the safety window."),
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "unsigned_cutover_ready",
+      dnssecSafeAfter: null,
+      reconciliationRequired: false,
+    }, "source_ds_cache_safety_window_elapsed", deps.now())
+  }
+
+  return { migration, providerDomain, result: null }
+}
+
+async function secureTargetDnssec(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  providerDomain: OpenProviderDomainRecord,
+  zoneId: string,
+  token: string,
+  deps: MigrationDependencies,
+): Promise<{
+  migration: DomainMigration
+  providerDomain: OpenProviderDomainRecord
+  result: MigrationResult | null
+}> {
+  let cloudflareDnssec = await deps.getCloudflareDnssec(zoneId)
+  const cloudflareKeyAvailable =
+    cloudflareDnssec.flags != null &&
+    cloudflareDnssec.algorithm != null &&
+    cloudflareDnssec.publicKey != null &&
+    cloudflareDnssec.ds != null &&
+    cloudflareDnssec.status !== "disabled" &&
+    cloudflareDnssec.status !== "unknown"
+
+  if (!cloudflareKeyAvailable) {
+    if (
+      migration.dnssecPhase === "target_signing" &&
+      (
+        migration.dnssecWriteState === "indeterminate" ||
+        (
+          migration.dnssecWriteState === "prepared" &&
+          !providerWriteClaimLeaseElapsed(migration.dnssecWriteRequestedAt, deps.now())
+        )
+      )
+    ) {
+      if (providerWriteReconciliationTimedOut(migration.dnssecWriteRequestedAt, deps.now())) {
+        return {
+          migration,
+          providerDomain,
+          result: await stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "cloudflare_dnssec_enablement_outcome_unresolved",
+            deps.now(),
+            "Cloudflare DNSSEC enablement could not be reconciled safely.",
+          ),
+        }
+      }
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Cloudflare DNSSEC enablement awaits reconciliation."),
+      }
+    }
+    if (!deps.forwardProviderWritesAllowed()) {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Cloudflare DNSSEC enablement is release-blocked."),
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "target_signing",
+      dnssecWriteState: "prepared",
+      dnssecWriteRequestedAt: deps.now(),
+      reconciliationRequired: true,
+    }, "target_dnssec_signing_write_prepared", deps.now())
+    try {
+      cloudflareDnssec = await deps.enableCloudflareDnssec(zoneId)
+    } catch (error) {
+      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecWriteState: "indeterminate",
+      reconciliationRequired: true,
+    }, "target_dnssec_signing_write_dispatched", deps.now())
+    cloudflareDnssec = await deps.getCloudflareDnssec(zoneId)
+  }
+
+  if (
+    cloudflareDnssec.flags == null ||
+    cloudflareDnssec.algorithm == null ||
+    cloudflareDnssec.publicKey == null ||
+    cloudflareDnssec.ds == null ||
+    ["disabled", "unknown"].includes(cloudflareDnssec.status)
+  ) {
+    return {
+      migration,
+      providerDomain,
+      result: waiting(migration, "Cloudflare has not returned complete target DNSSEC evidence."),
+    }
+  }
+
+  const targetKey: OpenProviderDnskey = {
+    flags: cloudflareDnssec.flags,
+    protocol: 3,
+    alg: cloudflareDnssec.algorithm,
+    pub_key: cloudflareDnssec.publicKey,
+  }
+  const targetDs = canonicalDsRecords([cloudflareDnssec.ds])
+  if (!["target_ds_publication", "target_chain_verifying", "target_secure"]
+    .includes(migration.dnssecPhase)) {
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "target_ds_publication",
+      dnssecWriteState: "not_started",
+      dnssecWriteRequestedAt: null,
+      targetDnssecEvidence: {
+        capturedAt: deps.now(),
+        cloudflareStatus: cloudflareDnssec.status,
+        dnskey: targetKey,
+        parentDsRecords: targetDs,
+      },
+      reconciliationRequired: true,
+    }, "target_dnssec_key_reconciled", deps.now())
+  }
+
+  const providerTargetKeyActive = providerDomain.dnssecEnabled === true &&
+    dnskeysEqual((providerDomain.dnssecKeys ?? []), [targetKey])
+  if (!providerTargetKeyActive) {
+    if (
+      migration.dnssecWriteState === "indeterminate" ||
+      (
+        migration.dnssecWriteState === "prepared" &&
+        !providerWriteClaimLeaseElapsed(migration.dnssecWriteRequestedAt, deps.now())
+      )
+    ) {
+      if (providerWriteReconciliationTimedOut(migration.dnssecWriteRequestedAt, deps.now())) {
+        return {
+          migration,
+          providerDomain,
+          result: await stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "target_ds_publication_outcome_unresolved",
+            deps.now(),
+            "Target DS publication could not be reconciled safely.",
+          ),
+        }
+      }
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Target DS publication awaits provider reconciliation."),
+      }
+    }
+    if (!deps.forwardProviderWritesAllowed()) {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Target DS publication is release-blocked."),
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "target_ds_publication",
+      dnssecWriteState: "prepared",
+      dnssecWriteRequestedAt: deps.now(),
+      reconciliationRequired: true,
+    }, "target_ds_publication_write_prepared", deps.now())
+    try {
+      await deps.updateOpenProviderDomainDnssec(
+        providerDomain.id,
+        { enabled: true, keys: [targetKey] },
+        { token },
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecWriteState: "indeterminate",
+      reconciliationRequired: true,
+    }, "target_ds_publication_write_dispatched", deps.now())
+    providerDomain = await deps.findOpenProviderDomain(
+      migration.domainNameAscii,
+      { token },
+    ) ?? providerDomain
+    if (
+      providerDomain.dnssecEnabled !== true ||
+      !dnskeysEqual((providerDomain.dnssecKeys ?? []), [targetKey])
+    ) {
+      return {
+        migration,
+        providerDomain,
+        result: waiting(migration, "Target DS publication awaits authoritative confirmation."),
+      }
+    }
+  }
+
+  const [parentDs, refreshedCloudflareDnssec, dnssecChain] = await Promise.all([
+    deps.verifyParentDsAbsent(migration.domainNameAscii),
+    deps.getCloudflareDnssec(zoneId),
+    deps.verifyDnssecChain(migration.domainNameAscii, {
+      flags: targetKey.flags,
+      protocol: targetKey.protocol,
+      algorithm: targetKey.alg,
+      publicKey: targetKey.pub_key,
+      parentDsRecords: targetDs,
+    }),
+  ])
+  const targetVerified = parentDs.status === "present" &&
+    dsRecordsEqual(parentDs.records, targetDs) &&
+    parentDs.ttl != null &&
+    refreshedCloudflareDnssec.status === "active" &&
+    refreshedCloudflareDnssec.ds != null &&
+    dsRecordsEqual([refreshedCloudflareDnssec.ds], targetDs) &&
+    dnssecChain.status === "verified"
+  migration = await updateMigration(payload, migration, {
+    dnssecPhase: targetVerified ? "target_secure" : "target_chain_verifying",
+    dnssecWriteState: targetVerified ? "confirmed" : "indeterminate",
+    targetDnssecEvidence: {
+      capturedAt: deps.now(),
+      cloudflareStatus: refreshedCloudflareDnssec.status,
+      dnskey: targetKey,
+      parentDsRecords: targetDs,
+      parentDsTtl: parentDs.ttl ?? null,
+    },
+    dnssecVerification: {
+      checkedAt: deps.now(),
+      parentDs,
+      cloudflareStatus: refreshedCloudflareDnssec.status,
+      dnssecChain,
+      expectedParentDsRecords: targetDs,
+      verified: targetVerified,
+    },
+    reconciliationRequired: !targetVerified,
+  }, targetVerified ? "target_dnssec_chain_verified" : "target_dnssec_chain_pending", deps.now())
+  if (!targetVerified) {
+    return {
+      migration,
+      providerDomain,
+      result: waiting(migration, "Target DNSSEC chain is still propagating."),
+    }
+  }
+  return { migration, providerDomain, result: null }
+}
+
 async function rollbackCutover(
   payload: Payload,
   migration: DomainMigration,
@@ -991,9 +1797,111 @@ async function rollbackCutover(
 ): Promise<MigrationResult> {
   const now = deps.now()
   const rollback = readObject(migration.rollbackEvidence)
+  const source = migrationSource(migration)
   const oldNameservers = canonicalNameservers(rollback.authoritativeNameservers)
   if (oldNameservers.length < 2) {
     throw new Error("Frozen rollback evidence has no complete nameserver set.")
+  }
+  const targetDsMayBePublished = [
+    "target_ds_publication",
+    "target_chain_verifying",
+    "target_secure",
+    "rollback_target_ds_removal",
+    "rollback_target_ds_cache_wait",
+  ].includes(migration.dnssecPhase)
+  if (targetDsMayBePublished) {
+    if (migration.dnssecPhase !== "rollback_target_ds_cache_wait") {
+      if (migration.dnssecPhase !== "rollback_target_ds_removal") {
+        migration = await updateMigration(payload, migration, {
+          dnssecPhase: "rollback_target_ds_removal",
+          dnssecWriteState: "not_started",
+          dnssecWriteRequestedAt: null,
+          dnssecSafeAfter: null,
+          reconciliationRequired: true,
+          failureReason: redactOperationalMessage(reason),
+        }, "rollback_target_ds_removal_started", now)
+      }
+      if (providerDomain.dnssecEnabled !== false) {
+        if (
+          migration.dnssecWriteState === "indeterminate" ||
+          (
+            migration.dnssecWriteState === "prepared" &&
+            !providerWriteClaimLeaseElapsed(migration.dnssecWriteRequestedAt, deps.now())
+          )
+        ) {
+          if (providerWriteReconciliationTimedOut(migration.dnssecWriteRequestedAt, deps.now())) {
+            return stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "rollback_target_ds_removal_unresolved",
+              deps.now(),
+              "Target DS removal could not be reconciled during rollback.",
+            )
+          }
+          return waiting(migration, "Rollback is waiting for target DS removal reconciliation.")
+        }
+        migration = await updateMigration(payload, migration, {
+          dnssecWriteState: "prepared",
+          dnssecWriteRequestedAt: deps.now(),
+          reconciliationRequired: true,
+        }, "rollback_target_ds_removal_write_prepared", deps.now())
+        try {
+          await deps.updateOpenProviderDomainDnssec(
+            providerDomain.id,
+            { enabled: false, keys: [] },
+          )
+        } catch (error) {
+          if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+        }
+        migration = await updateMigration(payload, migration, {
+          dnssecWriteState: "indeterminate",
+          reconciliationRequired: true,
+        }, "rollback_target_ds_removal_write_dispatched", deps.now())
+        providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii) ??
+          providerDomain
+        if (providerDomain.dnssecEnabled !== false) {
+          return waiting(migration, "Rollback target DS removal awaits confirmation.")
+        }
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecPhase: "rollback_target_ds_cache_wait",
+        dnssecWriteState: "confirmed",
+        dnssecWriteRequestedAt: null,
+        reconciliationRequired: true,
+      }, "rollback_target_ds_removal_confirmed", deps.now())
+    }
+    const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+    if (parentDs.status !== "absent") {
+      return waiting(migration, "Rollback is waiting for target DS removal to propagate.")
+    }
+    const targetDnssecEvidence = readObject(migration.targetDnssecEvidence)
+    const capturedTargetDsTtl = Number(targetDnssecEvidence.parentDsTtl)
+    const ttl = Number.isSafeInteger(capturedTargetDsTtl) &&
+      capturedTargetDsTtl > 0 &&
+      capturedTargetDsTtl <= 604_800
+      ? capturedTargetDsTtl
+      : 604_800
+    const safeAfter = migration.dnssecSafeAfter ?? dnssecWaitUntil(deps.now(), ttl)
+    if (!migration.dnssecSafeAfter) {
+      migration = await updateMigration(payload, migration, {
+        dnssecSafeAfter: safeAfter,
+        dnssecVerification: {
+          checkedAt: deps.now(),
+          rollbackTargetDsAbsent: parentDs,
+          safeAfter,
+        },
+      }, "rollback_target_ds_cache_safety_window_started", deps.now())
+    }
+    if (Date.parse(deps.now()) < Date.parse(safeAfter)) {
+      return waiting(migration, "Rollback is waiting for cached target DS records to expire.")
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecPhase: "rollback_old_authority",
+      dnssecWriteState: "not_started",
+      dnssecWriteRequestedAt: null,
+      dnssecSafeAfter: null,
+    }, "rollback_target_ds_cache_safety_window_elapsed", deps.now())
   }
   const oldNameserversVisible = nameserversEqual(
     providerDomain.nameServers,
@@ -1055,6 +1963,7 @@ async function rollbackCutover(
     if (!reconciled || !nameserversEqual(reconciled.nameServers, oldNameservers)) {
       return waiting(migration, "Automatic rollback nameservers are not confirmed yet.")
     }
+    providerDomain = reconciled
   }
   if (!migration.rollbackRequestedAt) {
     migration = await updateMigration(payload, migration, {
@@ -1063,7 +1972,6 @@ async function rollbackCutover(
       reconciliationRequired: true,
     }, "rollback_dns_verification_started", now)
   }
-  const source = migrationSource(migration)
   const [authoritativeDns, preservedDns] = await Promise.all([
     deps.verifyAuthoritativeDns(migration.domainNameAscii, oldNameservers),
     deps.verifyPreservedDnsRecords(source.records, oldNameservers),
@@ -1096,6 +2004,99 @@ async function rollbackCutover(
       migration,
       "Rollback nameservers are confirmed; authoritative and recursive DNS verification is pending.",
     )
+  }
+  if (source.dnssec.status === "signed") {
+    const expectedSourceKeys = sourceDnskeys(source)
+    if (
+      providerDomain.dnssecEnabled !== true ||
+      !dnskeysEqual((providerDomain.dnssecKeys ?? []), expectedSourceKeys)
+    ) {
+      if (migration.dnssecPhase !== "rollback_source_ds_publication") {
+        migration = await updateMigration(payload, migration, {
+          dnssecPhase: "rollback_source_ds_publication",
+          dnssecWriteState: "not_started",
+          dnssecWriteRequestedAt: null,
+          reconciliationRequired: true,
+        }, "rollback_source_ds_publication_started", deps.now())
+      }
+      if (
+        migration.dnssecWriteState === "indeterminate" ||
+        (
+          migration.dnssecWriteState === "prepared" &&
+          !providerWriteClaimLeaseElapsed(migration.dnssecWriteRequestedAt, deps.now())
+        )
+      ) {
+        if (providerWriteReconciliationTimedOut(migration.dnssecWriteRequestedAt, deps.now())) {
+          return stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "rollback_source_ds_publication_unresolved",
+            deps.now(),
+            "Source DNSSEC restoration could not be reconciled during rollback.",
+          )
+        }
+        return waiting(migration, "Rollback source DNSSEC restoration awaits reconciliation.")
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecWriteState: "prepared",
+        dnssecWriteRequestedAt: deps.now(),
+        reconciliationRequired: true,
+      }, "rollback_source_ds_publication_write_prepared", deps.now())
+      try {
+        await deps.updateOpenProviderDomainDnssec(
+          providerDomain.id,
+          { enabled: true, keys: expectedSourceKeys },
+        )
+      } catch (error) {
+        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+      }
+      migration = await updateMigration(payload, migration, {
+        dnssecWriteState: "indeterminate",
+        reconciliationRequired: true,
+      }, "rollback_source_ds_publication_write_dispatched", deps.now())
+      providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii) ??
+        providerDomain
+      if (
+        providerDomain.dnssecEnabled !== true ||
+        !dnskeysEqual((providerDomain.dnssecKeys ?? []), expectedSourceKeys)
+      ) {
+        return waiting(migration, "Rollback source DNSSEC restoration awaits confirmation.")
+      }
+    }
+    const restoredParentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+    if (
+      restoredParentDs.status !== "present" ||
+      !dsRecordsEqual(restoredParentDs.records, source.dnssec.parentDsRecords)
+    ) {
+      return waiting(migration, "Rollback is waiting for the frozen source DNSSEC chain.")
+    }
+    const restoredSourceChain = await frozenSourceDnssecChecks(source, deps)
+    if (
+      restoredSourceChain.length === 0 ||
+      restoredSourceChain.some((check) => check.status !== "verified")
+    ) {
+      migration = await updateMigration(payload, migration, {
+        dnssecVerification: {
+          checkedAt: deps.now(),
+          rollbackSourceDnssecRestored: false,
+          parentDs: restoredParentDs,
+          sourceChain: restoredSourceChain,
+        },
+        reconciliationRequired: true,
+      }, "rollback_source_dnssec_chain_pending", deps.now())
+      return waiting(migration, "Rollback is waiting for the frozen source DNSSEC chain.")
+    }
+    migration = await updateMigration(payload, migration, {
+      dnssecWriteState: "confirmed",
+      dnssecVerification: {
+        checkedAt: deps.now(),
+        rollbackSourceDnssecRestored: true,
+        parentDs: restoredParentDs,
+        sourceChain: restoredSourceChain,
+      },
+      reconciliationRequired: false,
+    }, "rollback_source_dnssec_chain_verified", deps.now())
   }
   const rollbackTenant = readObject(rollback.tenantBeforeCutover)
   const previousDomainVerification = readObject(rollbackTenant.domainVerification)
@@ -1309,34 +2310,67 @@ export async function prepareDomainMigration(
       "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
     )
   }
-  const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
-  if (parentDs.status === "indeterminate") {
-    return waiting(migration, "DNSSEC parent DS state could not be verified.")
-  }
-  const dnssecPlan = buildDnssecPreparationPlan({
-    sourceStatus: source.dnssec.status,
-    parentDsRecords: parentDs.records,
-    checkedAt: deps.now(),
-  })
   let actions = actionStates(migration.customerActions, deps.now())
-  actions = withAction(
-    actions,
-    "remove_dnssec_ds",
-    dnssecPlan.cutoverReady ? "not_required" : "required",
-    deps.now(),
-    parentDs.reason ?? "parent_ds_absent",
-  )
-  migration = await updateMigration(payload, migration, {
-    dnssecPreparation: dnssecPlan,
-    customerActions: actions,
-  }, `dnssec_preparation_${parentDs.status}`, deps.now())
-  if (!dnssecPlan.cutoverReady) {
-    if (migration.state === "preparing") {
-      migration = await updateMigration(payload, migration, {
-        state: "awaiting_customer",
-      }, "dnssec_customer_action_required", deps.now())
+  if (migration.providerTransferState === "not_started") {
+    const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+    if (parentDs.status === "indeterminate") {
+      return waiting(migration, "DNSSEC parent DS state could not be verified.")
     }
-    return waiting(migration, "Parent DS records must be removed before automatic cutover.")
+    const frozenParentDs = source.dnssec.parentDsRecords
+    const parentStateMatchesSource = source.dnssec.status === "signed"
+      ? parentDs.status === "present" &&
+        dsRecordsEqual(parentDs.records, frozenParentDs) &&
+        parentDs.ttl === source.dnssec.parentDsTtl
+      : parentDs.status === "absent"
+    if (!parentStateMatchesSource) {
+      return stopUnfulfillableMigrationBeforeRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        order,
+        "dnssec_parent_state_changed_since_source_capture",
+        deps.now(),
+      )
+    }
+    if (!await verifyFrozenSourceDnssec(source, deps)) {
+      return waiting(
+        migration,
+        "Frozen source DNSSEC chain is not currently authenticated; transfer remains paused.",
+      )
+    }
+    const dnssecPlan = buildDnssecPreparationPlan({
+      sourceStatus: source.dnssec.status,
+      parentDsRecords: frozenParentDs,
+      parentDsTtl: source.dnssec.parentDsTtl,
+      dnsKeys: source.dnssec.dnsKeys,
+      checkedAt: deps.now(),
+    })
+    actions = withAction(
+      actions,
+      "remove_dnssec_ds",
+      "not_required",
+      deps.now(),
+      source.dnssec.status === "signed"
+        ? "automatic_dnssec_transition"
+        : "parent_ds_absent",
+    )
+    migration = await updateMigration(payload, migration, {
+      dnssecPreparation: dnssecPlan,
+      dnssecPhase: source.dnssec.status === "signed"
+        ? "source_secure_preserved"
+        : "source_unsigned",
+      customerActions: actions,
+    }, `dnssec_preparation_${parentDs.status}`, deps.now())
+    if (!dnssecPlan.cutoverReady) {
+      return stopUnfulfillableMigrationBeforeRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        order,
+        "dnssec_source_evidence_incomplete",
+        deps.now(),
+      )
+    }
   }
 
   const visibleZones = await deps.listCloudflareZones(migration.domainNameAscii)
@@ -1397,9 +2431,7 @@ export async function prepareDomainMigration(
   let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   let comparison = semanticZoneComparison(
     target.records,
-    cloudflareRecords
-      .map((entry) => entry.record)
-      .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+    migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
   )
   if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
     if (
@@ -1423,9 +2455,11 @@ export async function prepareDomainMigration(
     )
   }
   if (!comparison.equivalent && cloudflareRecords.length > 0) {
-    const unexpectedExisting = cloudflareRecords.some((entry) =>
-      !(entry.record.type === "NS" && entry.record.name === target.domain) &&
-      semanticZoneComparison(target.records, [entry.record]).unexpected.length > 0)
+    const unexpectedExisting = migrationZoneRecordsForComparison(
+      cloudflareRecords,
+      target.domain,
+    ).some((record) =>
+      semanticZoneComparison(target.records, [record]).unexpected.length > 0)
     if (unexpectedExisting) {
       migration = await updateMigration(payload, migration, {
         state: "failed",
@@ -1439,6 +2473,22 @@ export async function prepareDomainMigration(
         migrationId: migration.id,
         message: "Cloudflare already contains unexpected records; automatic migration stopped.",
       }
+    }
+  }
+  if (!comparison.equivalent) {
+    const usage = await deps.getCloudflareDnsRecordUsage(zone.id)
+    const recordsStillRequired = comparison.missing.filter(
+      (entry) => !entry.endsWith(":ttl"),
+    ).length
+    if (usage.recordUsage + recordsStillRequired > usage.recordQuota) {
+      return stopUnfulfillableMigrationBeforeRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        order,
+        "cloudflare_dns_capacity_insufficient",
+        deps.now(),
+      )
     }
   }
   if (!comparison.equivalent) {
@@ -1465,9 +2515,7 @@ export async function prepareDomainMigration(
     cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
     comparison = semanticZoneComparison(
       target.records,
-      cloudflareRecords
-        .map((entry) => entry.record)
-        .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+      migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
     )
   }
   if (!comparison.equivalent) {
@@ -1481,6 +2529,38 @@ export async function prepareDomainMigration(
     reconciliationRequired: false,
     failureReason: null,
   }, "cloudflare_target_zone_semantically_verified", deps.now())
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    cloudflareZoneId: zone.id,
+    cloudflareNameservers: zone.nameServers,
+    cloudflareZoneStatus: zone.status,
+    cloudflareDnsRecordIds: [...new Set([
+      ...stringIds(managedDomain.cloudflareDnsRecordIds),
+      ...cloudflareRecords
+        .map((entry) => entry.id)
+        .filter((id): id is string => Boolean(id)),
+    ])],
+    reconciliationRequired: managedDomain.edgeRoutingStatus !== "active",
+  }, "migration_edge_zone_linked", deps.now())
+  if (managedDomain.edgeRoutingStatus === "failed") {
+    return stopUnfulfillableMigrationBeforeRegistrarCommit(
+      payload,
+      migration,
+      managedDomain,
+      order,
+      "automatic_edge_routing_conflict",
+      deps.now(),
+    )
+  }
+  if (
+    managedDomain.edgeRoutingStatus !== "configured" &&
+    managedDomain.edgeRoutingStatus !== "active"
+  ) {
+    await queueCommerceReconciliation(payload)
+    return waiting(
+      migration,
+      "Automatic website and administration routing is being prepared before transfer.",
+    )
+  }
   if (
     sourceEvidenceStale &&
     migration.providerTransferState === "not_started"
@@ -1624,6 +2704,65 @@ export async function prepareDomainMigration(
         "Frozen source evidence expired before transfer; reviewed fresh authority is required.",
       )
     }
+    const transferParentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+    if (transferParentDs.status === "indeterminate") {
+      return waiting(migration, "DNSSEC parent state could not be reverified before transfer.")
+    }
+    const transferParentStateMatches = source.dnssec.status === "signed"
+      ? transferParentDs.status === "present" &&
+        dsRecordsEqual(transferParentDs.records, source.dnssec.parentDsRecords) &&
+        transferParentDs.ttl === source.dnssec.parentDsTtl
+      : transferParentDs.status === "absent"
+    if (!transferParentStateMatches) {
+      return stopUnfulfillableMigrationBeforeRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        order,
+        "dnssec_parent_state_changed_before_transfer",
+        deps.now(),
+      )
+    }
+    if (!await verifyFrozenSourceDnssec(source, deps)) {
+      return waiting(
+        migration,
+        "Source DNSSEC chain could not be reauthenticated immediately before transfer.",
+      )
+    }
+    const [currentOrder, capturedPayments] = await Promise.all([
+      payload.findByID({
+        collection: "orders",
+        id: order.id,
+        depth: 0,
+        overrideAccess: true,
+      }) as Promise<Order>,
+      payload.find({
+        collection: "payment-attempts",
+        where: {
+          and: [
+            { order: { equals: order.id } },
+            { purpose: { equals: "first_payment" } },
+            { state: { equals: "paid" } },
+          ],
+        },
+        limit: 2,
+        depth: 0,
+        overrideAccess: true,
+      }),
+    ])
+    if (
+      currentOrder.paymentStatus !== "paid" ||
+      currentOrder.state !== "fulfillment_pending" ||
+      capturedPayments.docs.length !== 1
+    ) {
+      return stopMigrationForRevokedPaymentBeforeRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        currentOrder,
+        deps.now(),
+      )
+    }
     if (!deps.forwardProviderWritesAllowed()) {
       return waiting(
         migration,
@@ -1649,7 +2788,10 @@ export async function prepareDomainMigration(
         authCode: transferCode,
         ownerHandle: customerHandle,
         nameServers: source.authoritativeNameservers.map((name) => ({ name })),
-        autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
+        dnssecKeys: source.dnssec.status === "signed"
+          ? sourceDnskeys(source)
+          : undefined,
+        autorenew: transferAutorenewMode(capability),
         reference: migration.idempotencyKey,
         acceptedCapabilityVersion: capability.capabilityVersion,
       })
@@ -1718,7 +2860,49 @@ export async function prepareDomainMigration(
         state: "awaiting_provider",
       }, "provider_transfer_processing", deps.now())
     }
+    const requestedAt = migration.transferRequestedAt
+      ? new Date(migration.transferRequestedAt).getTime()
+      : Number.NaN
+    const maximumWaitMs =
+      Math.max(1, capability.transfer.maximumExpectedWaitDays) *
+      24 * 60 * 60 * 1_000
+    if (
+      Number.isFinite(requestedAt) &&
+      new Date(deps.now()).getTime() - requestedAt >= maximumWaitMs
+    ) {
+      if (migration.failureReason !== "provider_transfer_sla_exceeded") {
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          failureReason: "provider_transfer_sla_exceeded",
+          reconciliationRequired: true,
+        }, "provider_transfer_sla_exceeded", deps.now())
+      }
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "provider_transfer_sla_exceeded",
+        message:
+          "The registrar transfer exceeded the governed TLD waiting window; automated polling continues without repeating the transfer write.",
+        tenant: managedDomain.tenant,
+        subjectId: migration.id,
+        severity: "error",
+        now: deps.now(),
+      })
+    }
     return waiting(migration, "Openprovider is still processing the domain transfer.")
+  }
+  await resolveCommerceAdminException({
+    payload,
+    source: "domains",
+    code: "provider_transfer_sla_exceeded",
+    subjectId: migration.id,
+    now: deps.now(),
+  })
+  if (migration.failureReason === "provider_transfer_sla_exceeded") {
+    migration = await updateMigration(payload, migration, {
+      failureReason: null,
+      reconciliationRequired: false,
+    }, "provider_transfer_completed_after_sla", deps.now())
   }
   if (providerDomain.ownerHandle !== customerHandle) {
     return stopMigrationForProviderManualReview(
@@ -1827,9 +3011,21 @@ export async function prepareDomainMigration(
       migration,
       registrantVerification === "pending"
         ? "Customer registrant verification is required before cutover."
-        : "Registrant verification still requires customer action; cutover remains paused.",
+      : "Registrant verification still requires customer action; cutover remains paused.",
     )
   }
+  const dnssecCutover = await prepareDnssecForCutover(
+    payload,
+    migration,
+    managedDomain,
+    providerDomain,
+    source,
+    token,
+    deps,
+  )
+  migration = dnssecCutover.migration
+  providerDomain = dnssecCutover.providerDomain
+  if (dnssecCutover.result) return dnssecCutover.result
   if (migration.state === "preparing" || migration.state === "awaiting_provider") {
     migration = await updateMigration(payload, migration, {
       state: "ready_for_cutover",
@@ -1943,9 +3139,7 @@ export async function prepareDomainMigration(
   const postCutoverRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   const postCutoverComparison = semanticZoneComparison(
     target.records,
-    postCutoverRecords
-      .map((entry) => entry.record)
-      .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+    migrationZoneRecordsForComparison(postCutoverRecords, target.domain),
   )
   const authoritativeDns = await deps.verifyAuthoritativeDns(
     migration.domainNameAscii,
@@ -1959,20 +3153,32 @@ export async function prepareDomainMigration(
     preservedRecords,
     zone.nameServers,
   )
-  const ssl = await deps.getCloudflareSslVerification(zone.id)
-  const https = ssl.status === "active"
-    ? await deps.verifyHttpsEndpoint(migration.domainNameAscii)
-    : { status: "pending" as const, httpStatus: null, reason: "cloudflare_ssl_pending" }
+  const edgeReady =
+    managedDomain.edgeRoutingStatus === "active" &&
+    managedDomain.httpsStatus === "verified" &&
+    managedDomain.adminHttpsStatus === "verified"
+  const https = edgeReady
+    ? { status: "verified" as const, httpStatus: 200, reason: null }
+    : {
+        status: "pending" as const,
+        httpStatus: null,
+        reason: "automatic_edge_routing_pending",
+      }
   const verification = {
     checkedAt: deps.now(),
     semanticZone: postCutoverComparison,
     authoritativeDns,
     preservedDns,
     cloudflareSsl: {
-      status: ssl.status,
-      providerStatuses: ssl.providerStatuses,
+      status: edgeReady ? "active" : "pending",
+      providerStatuses: [],
     },
     https,
+    edgeRouting: {
+      status: managedDomain.edgeRoutingStatus,
+      adminHttpsStatus: managedDomain.adminHttpsStatus,
+      checkedAt: managedDomain.edgeRoutingCheckedAt,
+    },
     preservedRecordCount: preservedRecords.length,
   }
   migration = await updateMigration(payload, migration, {
@@ -1981,13 +3187,13 @@ export async function prepareDomainMigration(
   const verified = postCutoverComparison.equivalent &&
     authoritativeDns.status === "verified" &&
     preservedDns.status === "verified" &&
-    ssl.status === "active" &&
-    https.status === "verified"
+    edgeReady
   if (!verified) {
     const deadlineReached = migration.verificationDeadlineAt
       ? new Date(deps.now()).getTime() >= new Date(migration.verificationDeadlineAt).getTime()
       : false
     if (!deadlineReached && postCutoverComparison.equivalent) {
+      await queueCommerceReconciliation(payload)
       return waiting(migration, "Cutover propagation and HTTPS verification are still pending.")
     }
     return rollbackCutover(
@@ -2001,6 +3207,19 @@ export async function prepareDomainMigration(
       deps,
     )
   }
+
+  const targetDnssec = await secureTargetDnssec(
+    payload,
+    migration,
+    managedDomain,
+    providerDomain,
+    zone.id,
+    token,
+    deps,
+  )
+  migration = targetDnssec.migration
+  providerDomain = targetDnssec.providerDomain
+  if (targetDnssec.result) return targetDnssec.result
 
   const tenant = await payload.update({
     collection: "tenants",
@@ -2063,7 +3282,6 @@ export async function prepareDomainMigration(
     httpsEvidence: https,
     cloudflareZoneId: zone.id,
     cloudflareNameservers: zone.nameServers,
-    cloudflareDnsRecordIds: postCutoverRecords.map((entry) => entry.id).filter(Boolean),
     cloudflareZoneStatus: zone.status,
     transferredAt: managedDomain.transferredAt ?? deps.now(),
     reconciliationRequired: false,

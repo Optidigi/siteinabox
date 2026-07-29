@@ -27,7 +27,7 @@ settings as authorization for an unreviewed live provider operation.
   rerun for that environment.
 
 The current evidence version is
-`commerce-production-readiness-2026-07-28.1`. Set
+`commerce-production-readiness-2026-07-29.1`. Set
 `COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=1` only in the separately approved
 release environment. This flag is a deployment interlock, not approval by
 itself.
@@ -54,11 +54,56 @@ Before moving to the next stage:
 7. Review open critical commerce alerts. Production writes must not be enabled
    while payment-duplication, provider-balance, expiry, transfer-out, tenancy,
    or origin-isolation alerts remain unresolved.
-8. On the target release database, run
-   `pnpm --dir apps/cms check:commerce-production-readiness`. This command
-   fails when any runtime interlock is missing or any critical payment/domain
-   alert remains open. It is a required deployment preflight, not a provider
-   write.
+8. From the exact reviewed CMS image, keep the long-lived service in `shadow`
+   and run the read-only inventory gate:
+
+   ```bash
+   docker compose run --rm --no-deps \
+     --entrypoint node \
+     -e COMMERCE_RELEASE_STAGE=production \
+     -e PAYLOAD_DISABLE_JOBS_AUTORUN=1 \
+     siteinabox-cms \
+     /app/dist-runtime/check-commerce-edge-inventory.bundled.mjs
+   ```
+
+9. After explicit approval for the Cloudflare production write, run the
+   narrowly scoped edge bootstrap from that same image. It accepts every
+   production interlock except the origin-isolation flag that this operation
+   exists to establish:
+
+   ```bash
+   docker compose run --rm --no-deps \
+     --entrypoint node \
+     -e COMMERCE_RELEASE_STAGE=production \
+     -e COMMERCE_ORIGIN_ISOLATION_VERIFIED= \
+     -e PAYLOAD_DISABLE_JOBS_AUTORUN=1 \
+     siteinabox-cms \
+     /app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs
+   ```
+
+   This command only reconciles exact customer apex, `www`, and
+   `admin.<domain>` Cloudflare/Tunnel routes. A pending certificate exits
+   non-zero and is rerun; it does not enable unrelated payment, registrar, or
+   renewal writes.
+
+10. Prove Tunnel identity, terminal 404 ingress, direct-origin rejection,
+    apex/`www`/admin HTTPS, unknown/inactive/cross-tenant rejection, and
+    certificate readiness. Only then set
+    `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` in the reviewed deployment
+    environment and run the read-only readiness gate:
+
+   ```bash
+   docker compose run --rm --no-deps \
+     --entrypoint node \
+     -e COMMERCE_RELEASE_STAGE=production \
+     -e PAYLOAD_DISABLE_JOBS_AUTORUN=1 \
+     siteinabox-cms \
+     /app/dist-runtime/check-commerce-production-readiness.bundled.mjs
+   ```
+
+   The readiness command evaluates all production interlocks without changing
+   the running service stage or performing provider writes. It fails when an
+   interlock is missing or a critical payment/domain alert remains open.
 
 Record environment-specific evidence outside the repository. Do not commit
 credentials, customer data, provider responses, transfer codes, operator

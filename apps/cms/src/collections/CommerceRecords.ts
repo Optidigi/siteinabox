@@ -291,6 +291,12 @@ const managedDomainMutableFields = new Set([
   "cloudflareNameservers",
   "cloudflareDnsRecordIds",
   "cloudflareZoneStatus",
+  "edgeRoutingStatus",
+  "edgeRoutingCheckedAt",
+  "edgeRoutingEvidence",
+  "adminHttpsStatus",
+  "adminHttpsCheckedAt",
+  "adminHttpsEvidence",
   "registrantVerificationStatus",
   "registrantVerificationCheckedAt",
   "registrantVerificationDueAt",
@@ -325,6 +331,7 @@ const managedDomainMutableFields = new Set([
   "failureReason",
   "stateHistory",
   "encryptedTransferOutCode",
+  "transferOutCodeDeliveryStatus",
   "transferOutCodeFetchedAt",
   "transferOutCodeLastRevealedAt",
   "transferOutCodeDeletedAt",
@@ -433,11 +440,29 @@ export const validateManagedDomainCustody: CollectionBeforeValidateHook = ({
       throw new Error("Domain offboarding continuity evidence belongs to another domain.")
     }
   }
-  if (
-    ["transfer_code_ready", "transfer_pending"].includes(custodyStatus) &&
-    !current.encryptedTransferOutCode
-  ) {
-    throw new Error("Transfer-out readiness requires an encrypted provider auth code.")
+  if (["transfer_code_ready", "transfer_pending"].includes(custodyStatus)) {
+    const deliveryStatus = current.transferOutCodeDeliveryStatus
+    if (
+      deliveryStatus === "provider_returned" &&
+      !current.encryptedTransferOutCode
+    ) {
+      throw new Error(
+        "Provider-returned transfer-out readiness requires an encrypted auth code.",
+      )
+    }
+    if (
+      deliveryStatus === "registrant_email" &&
+      current.encryptedTransferOutCode
+    ) {
+      throw new Error(
+        "Registrant-delivered transfer-out readiness must not retain an auth code.",
+      )
+    }
+    if (!["provider_returned", "registrant_email"].includes(String(deliveryStatus))) {
+      throw new Error(
+        "Transfer-out readiness requires a verified authorization delivery mechanism.",
+      )
+    }
   }
   if (
     custodyStatus === "transferred_out" &&
@@ -1058,6 +1083,26 @@ export const ManagedDomains: CollectionConfig = {
     { name: "cloudflareDnsRecordIds", type: "json", admin: { readOnly: true } },
     { name: "cloudflareZoneStatus", type: "text", index: true },
     {
+      name: "edgeRoutingStatus",
+      type: "select",
+      required: true,
+      defaultValue: "pending",
+      options: selectOptions(["pending", "configured", "active", "failed"]),
+      index: true,
+    },
+    { name: "edgeRoutingCheckedAt", type: "date", index: true },
+    { name: "edgeRoutingEvidence", type: "json", admin: { readOnly: true } },
+    {
+      name: "adminHttpsStatus",
+      type: "select",
+      required: true,
+      defaultValue: "pending",
+      options: selectOptions(["pending", "verified", "failed"]),
+      index: true,
+    },
+    { name: "adminHttpsCheckedAt", type: "date", index: true },
+    { name: "adminHttpsEvidence", type: "json", admin: { readOnly: true } },
+    {
       name: "registrantVerificationStatus",
       type: "select",
       required: true,
@@ -1156,6 +1201,18 @@ export const ManagedDomains: CollectionConfig = {
       type: "textarea",
       access: { read: () => false },
       admin: { hidden: true },
+    },
+    {
+      name: "transferOutCodeDeliveryStatus",
+      type: "select",
+      required: true,
+      defaultValue: "not_requested",
+      options: selectOptions([
+        "not_requested",
+        "provider_returned",
+        "registrant_email",
+      ]),
+      index: true,
     },
     { name: "transferOutCodeFetchedAt", type: "date" },
     { name: "transferOutCodeLastRevealedAt", type: "date" },
@@ -1448,7 +1505,7 @@ export const AccountingDocuments: CollectionConfig = {
       name: "documentType",
       type: "select",
       required: true,
-      options: selectOptions(["invoice", "credit_note"]),
+      options: selectOptions(["invoice", "credit_note", "payment_adjustment"]),
       index: true,
     },
     {
@@ -1477,7 +1534,12 @@ export const AccountingDocuments: CollectionConfig = {
       name: "reason",
       type: "select",
       required: true,
-      options: selectOptions(["payment_collected", "refund", "chargeback"]),
+      options: selectOptions([
+        "payment_collected",
+        "refund",
+        "chargeback",
+        "overpayment_refund",
+      ]),
       index: true,
     },
     {

@@ -57,7 +57,16 @@ export type OpenProviderTransferRequest = {
   autorenew: "on" | "off" | "default"
   ns_group?: string
   name_servers?: Array<{ name: string }>
+  is_dnssec_enabled?: boolean
+  dnssec_keys?: OpenProviderDnskey[]
   comments?: string
+}
+
+export type OpenProviderDnskey = {
+  flags: number
+  protocol: 3
+  alg: number
+  pub_key: string
 }
 
 export type OpenProviderTransferResult = {
@@ -85,6 +94,8 @@ export type OpenProviderDomainRecord = {
   ownerHandle: string | null
   adminHandle: string | null
   nameServers: string[]
+  dnssecEnabled?: boolean | null
+  dnssecKeys?: OpenProviderDnskey[]
   renewalDate: string | null
   registryExpiryDate?: string | null
   autorenew: "on" | "off" | "default" | "unknown"
@@ -664,6 +675,7 @@ export function buildOpenProviderDomainRegistrationRequest(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    dnssecKeys?: OpenProviderDnskey[]
     acceptedCapabilityVersion?: string
   },
 ): OpenProviderRegistrationRequest {
@@ -707,6 +719,7 @@ export function buildOpenProviderDomainTransferRequest(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    dnssecKeys?: OpenProviderDnskey[]
     acceptedCapabilityVersion?: string
   },
 ): OpenProviderTransferRequest {
@@ -740,6 +753,11 @@ export function buildOpenProviderDomainTransferRequest(
       capability.renewal.executionMode === "provider_autorenew" ? "on" : "off"
     ),
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
+    ...(input.dnssecKeys && input.dnssecKeys.length > 0
+      ? {
+          dnssec_keys: input.dnssecKeys,
+        }
+      : {}),
     ...(cleanEnv(input.reference) ? { comments: cleanEnv(input.reference) as string } : {}),
   }
 }
@@ -850,6 +868,35 @@ const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord
     ownerHandle: typeof source.owner_handle === "string" ? source.owner_handle : null,
     adminHandle: typeof source.admin_handle === "string" ? source.admin_handle : null,
     nameServers,
+    dnssecEnabled: typeof source.dnssec === "boolean"
+      ? source.dnssec
+      : typeof source.dnssec === "string" &&
+          ["signed", "unsigned"].includes(source.dnssec.trim().toLowerCase())
+        ? source.dnssec.trim().toLowerCase() === "signed"
+      : typeof source.is_dnssec_enabled === "boolean"
+        ? source.is_dnssec_enabled
+        : null,
+    dnssecKeys: Array.isArray(source.dnssec_keys)
+      ? source.dnssec_keys.flatMap((entry) => {
+          const key = readObject(entry)
+          const flags = Number(key.flags)
+          const protocol = Number(key.protocol)
+          const alg = Number(key.alg)
+          const pubKey = typeof key.pub_key === "string" ? key.pub_key.trim() : ""
+          return (
+            Number.isInteger(flags) &&
+            flags >= 0 &&
+            flags <= 65_535 &&
+            protocol === 3 &&
+            Number.isInteger(alg) &&
+            alg > 0 &&
+            alg <= 255 &&
+            pubKey
+          )
+            ? [{ flags, protocol: 3 as const, alg, pub_key: pubKey }]
+            : []
+        })
+      : [],
     renewalDate: typeof source.renewal_date === "string" && source.renewal_date.trim()
       ? source.renewal_date
       : null,
@@ -1080,7 +1127,10 @@ export async function getOpenProviderResellerBalance(
 export async function getOpenProviderDomainAuthCode(
   domainId: string | number,
   options?: OpenProviderOptions,
-): Promise<string> {
+): Promise<
+  | { delivery: "provider_returned"; authCode: string }
+  | { delivery: "registrant_email" }
+> {
   const normalizedId = String(domainId).trim()
   if (!normalizedId) throw new Error("OpenProvider domain id is required.")
   const env = options?.env ?? process.env
@@ -1099,10 +1149,13 @@ export async function getOpenProviderDomainAuthCode(
   const authCode = typeof data.auth_code === "string"
     ? data.auth_code.trim()
     : ""
-  if (!authCode) {
-    throw new Error("OpenProvider did not return an external domain auth code.")
+  if (authCode) {
+    return { delivery: "provider_returned", authCode }
   }
-  return authCode
+  if (data.success === true) {
+    return { delivery: "registrant_email" }
+  }
+  throw new Error("OpenProvider did not return an external domain auth code.")
 }
 
 export async function registerOpenProviderDomain(
@@ -1180,6 +1233,7 @@ export async function transferOpenProviderDomain(
     autorenew?: "on" | "off" | "default"
     nameServers: Array<{ name: string }>
     reference: string
+    dnssecKeys?: OpenProviderDnskey[]
     acceptedCapabilityVersion?: string
   },
 ): Promise<OpenProviderTransferResult> {
@@ -1194,6 +1248,7 @@ export async function transferOpenProviderDomain(
     nameServers: options.nameServers,
     nsGroup: null,
     reference: options.reference,
+    dnssecKeys: options.dnssecKeys,
     acceptedCapabilityVersion: options.acceptedCapabilityVersion,
   })
   let response: Response
@@ -1286,6 +1341,52 @@ export async function updateOpenProviderDomainNameservers(
   const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : domainId
   return {
     id,
+    status: typeof data.status === "string" ? data.status : null,
+    raw: payload,
+  }
+}
+
+export async function updateOpenProviderDomainDnssec(
+  domainId: string | number,
+  input: { enabled: boolean; keys: OpenProviderDnskey[] },
+  options?: OpenProviderOptions,
+): Promise<OpenProviderNameserverUpdateResult> {
+  const normalizedId = String(domainId).trim()
+  if (!normalizedId) throw new Error("OpenProvider domain id is required.")
+  if (input.enabled && input.keys.length === 0) {
+    throw new Error("OpenProvider DNSSEC enablement requires at least one DNSKEY.")
+  }
+  if (input.keys.length > 4) throw new Error("OpenProvider DNSSEC accepts at most four DNSKEYs.")
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
+      method: "PUT",
+      headers: jsonHeaders(token),
+      body: JSON.stringify({
+        is_dnssec_enabled: input.enabled,
+        dnssec_keys: input.enabled ? input.keys : [],
+      }),
+    })
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain DNSSEC update", error)
+  }
+  if (!response.ok) {
+    if (response.status >= 500 || response.status === 408 || response.status === 429) {
+      throw new OpenProviderIndeterminateWriteError("OpenProvider domain DNSSEC update")
+    }
+    throw new OpenProviderApiError("OpenProvider domain DNSSEC update", response.status)
+  }
+  let payload: unknown
+  try {
+    payload = await json(response)
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain DNSSEC update", error)
+  }
+  const data = dataObject(payload)
+  return {
+    id: typeof data.id === "string" || typeof data.id === "number" ? data.id : domainId,
     status: typeof data.status === "string" ? data.status : null,
     raw: payload,
   }

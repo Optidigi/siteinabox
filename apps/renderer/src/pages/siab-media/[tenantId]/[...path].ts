@@ -79,10 +79,16 @@ async function resolveMediaResponse({ params, request, includeBody }: Parameters
   try {
     const fileStat = await stat(filePath)
     if (!fileStat.isFile()) return notFound()
-    const headers = {
+    const contentType = mediaContentType(filePath)
+    const headers: Record<string, string> = {
       "cache-control": "public, max-age=3600",
       "content-length": String(fileStat.size),
-      "content-type": mediaContentType(filePath),
+      "content-type": contentType,
+      "x-content-type-options": "nosniff",
+    }
+    if (contentType === "image/svg+xml") {
+      headers["content-security-policy"] =
+        "default-src 'none'; script-src 'none'; sandbox"
     }
     if (!includeBody) return new Response(null, { status: 200, headers })
     return new Response(await readFile(filePath), { status: 200, headers })

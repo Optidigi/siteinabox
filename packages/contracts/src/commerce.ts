@@ -1,6 +1,7 @@
 import { z } from "zod"
 
-export const COMMERCIAL_CATALOG_VERSION = "2026-07-26.1" as const
+export const LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION = "2026-07-26.1" as const
+export const COMMERCIAL_CATALOG_VERSION = "2026-07-29.1" as const
 export const COMMERCIAL_CATALOG_CURRENCY = "EUR" as const
 export const DUTCH_VAT_RATE_BASIS_POINTS = 2_100 as const
 export const BILLING_GRACE_DAYS = 14 as const
@@ -45,21 +46,20 @@ export type CommercialCatalog = {
     }
     readonly assisted_standard: {
       readonly netAmountMinor: number
-      readonly checkout: "ordinary"
+      readonly checkout: "ordinary" | "historical_only"
       readonly expectedOperatorTechnicalAction: true
       readonly unit: "per_domain"
     }
     readonly complex: {
       readonly netAmountMinor: null
-      readonly checkout: "custom_quote_only"
+      readonly checkout: "custom_quote_only" | "unavailable"
       readonly expectedOperatorTechnicalAction: true
     }
   }
 }
 
-export const COMMERCIAL_CATALOG = Object.freeze({
+const catalogBase = {
   schemaVersion: 1,
-  catalogVersion: COMMERCIAL_CATALOG_VERSION,
   audience: "business_professional_only",
   currency: COMMERCIAL_CATALOG_CURRENCY,
   vat: Object.freeze({
@@ -85,6 +85,11 @@ export const COMMERCIAL_CATALOG = Object.freeze({
     includedAllowanceNetMinor: 1_000,
     surchargeFormula: "max(provider_operation_price_net_minor - included_allowance_net_minor, 0)",
   }),
+} as const
+
+export const LEGACY_ASSISTED_MIGRATION_CATALOG = Object.freeze({
+  ...catalogBase,
+  catalogVersion: LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
   migrations: Object.freeze({
     automatic: Object.freeze({
       netAmountMinor: 0,
@@ -105,7 +110,33 @@ export const COMMERCIAL_CATALOG = Object.freeze({
   }),
 }) satisfies CommercialCatalog
 
-export const COMMERCIAL_CATALOGS = Object.freeze([COMMERCIAL_CATALOG])
+export const COMMERCIAL_CATALOG = Object.freeze({
+  ...catalogBase,
+  catalogVersion: COMMERCIAL_CATALOG_VERSION,
+  migrations: Object.freeze({
+    automatic: Object.freeze({
+      netAmountMinor: 0,
+      checkout: "ordinary",
+      expectedOperatorTechnicalAction: false,
+    }),
+    assisted_standard: Object.freeze({
+      netAmountMinor: 0,
+      checkout: "historical_only",
+      expectedOperatorTechnicalAction: true,
+      unit: "per_domain",
+    }),
+    complex: Object.freeze({
+      netAmountMinor: null,
+      checkout: "unavailable",
+      expectedOperatorTechnicalAction: true,
+    }),
+  }),
+}) satisfies CommercialCatalog
+
+export const COMMERCIAL_CATALOGS = Object.freeze([
+  LEGACY_ASSISTED_MIGRATION_CATALOG,
+  COMMERCIAL_CATALOG,
+])
 
 export function getCommercialCatalog(
   version: string = COMMERCIAL_CATALOG_VERSION,
@@ -366,6 +397,14 @@ export const migrationClassifications = [
 export const migrationClassificationSchema = z.enum(migrationClassifications)
 export type MigrationClassification = z.infer<typeof migrationClassificationSchema>
 
+export function migrationClassificationAvailableForCheckout(
+  classification: MigrationClassification,
+  catalogVersion: string = COMMERCIAL_CATALOG_VERSION,
+): boolean {
+  const migration = getCommercialCatalog(catalogVersion).migrations[classification]
+  return migration.checkout === "ordinary"
+}
+
 export const migrationCustomerActions = [
   "provide_epp_code",
   "authorize_provider",
@@ -471,6 +510,17 @@ export const assistedMigrationSupplementalEvidenceSchema = z.object({
     })
     return
   }
+  if (
+    evidence.catalogVersion !== LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION ||
+    catalog.migrations.assisted_standard.checkout !== "ordinary"
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["catalogVersion"],
+      message: "Supplemental assisted-migration evidence is historical-only.",
+    })
+    return
+  }
   const expected = commercialAmountFromNet(
     catalog.migrations.assisted_standard.netAmountMinor,
   )
@@ -495,15 +545,23 @@ export type AssistedMigrationSupplementalEvidence = z.infer<
 export function migrationChargeNetMinor(
   classification: MigrationClassification,
   cause: MigrationWorkCause = "customer_migration",
+  catalogVersion: string = COMMERCIAL_CATALOG_VERSION,
 ): number | null {
   if (cause === "siteinabox_incident_recovery") return 0
-  return COMMERCIAL_CATALOG.migrations[classification].netAmountMinor
+  const catalog = getCommercialCatalog(catalogVersion)
+  if (
+    classification === "assisted_standard" &&
+    catalog.migrations.assisted_standard.checkout !== "ordinary"
+  ) {
+    return null
+  }
+  return catalog.migrations[classification].netAmountMinor
 }
 
 export type MigrationScopeDecision =
   | "proceed_accepted_scope"
   | "proceed_non_billable_incident_recovery"
-  | "pause_for_supplemental_order"
+  | "stop_for_automated_recovery"
   | "stop_for_custom_quote"
 
 export function decideMigrationScope(input: {
@@ -516,7 +574,7 @@ export function decideMigrationScope(input: {
   if (input.workCause === "siteinabox_incident_recovery") {
     return "proceed_non_billable_incident_recovery"
   }
-  if (input.acceptedClassification === "automatic") return "pause_for_supplemental_order"
+  if (input.acceptedClassification === "automatic") return "stop_for_automated_recovery"
   return "proceed_accepted_scope"
 }
 
@@ -590,7 +648,7 @@ export const billingAgreementStateTransitions = {
   past_due: ["active", "suspended", "cancellation_scheduled", "cancelled"],
   suspended: ["active", "cancellation_scheduled", "cancelled"],
   cancellation_scheduled: ["active", "past_due", "cancelled"],
-  cancelled: [],
+  cancelled: ["cancellation_scheduled"],
 } as const satisfies TransitionMap<BillingAgreementState>
 
 export const managedDomainStates = [
@@ -690,7 +748,7 @@ export const commerceReleaseStageSchema = z.enum(commerceReleaseStages)
 export type CommerceReleaseStage = z.infer<typeof commerceReleaseStageSchema>
 
 export const COMMERCE_RELEASE_EVIDENCE_VERSION =
-  "commerce-production-readiness-2026-07-28.1" as const
+  "commerce-production-readiness-2026-07-29.1" as const
 
 export type CommerceReleaseGateDecision = {
   providerReadsAllowed: boolean
@@ -986,12 +1044,12 @@ export const REFUND_DECISION_MATRIX = Object.freeze({
   }),
   automatic_migration_scope_increase: Object.freeze({
     scenario: "automatic_migration_scope_increase",
-    refundScope: "none",
+    refundScope: "full_captured_payment",
     automatic: true,
     acceptedOrderMutation: "forbidden",
-    domainDisposition: "customer_retains",
+    domainDisposition: "unchanged",
     committedProviderOperation: "not_applicable",
-    nextAction: "pause_for_supplemental_order",
+    nextAction: "issue_refund",
   }),
   complex_migration: Object.freeze({
     scenario: "complex_migration",

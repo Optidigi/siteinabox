@@ -100,7 +100,6 @@ APPLE_CLIENT_ID=
 APPLE_CLIENT_SECRET=
 DATA_HOST_PATH=/srv/data/saas/siab-payload
 SUPER_ADMIN_DOMAIN=siteinabox.nl
-VPS_IP=<your-vps-ip>
 CLOUDFLARE_EMAIL_SMTP_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
 SIAB_EMAIL_PREFERENCE_SECRET=<dedicated-random-hmac-secret>
@@ -116,6 +115,9 @@ COMMERCE_RELEASE_EVIDENCE_VERSION=
 COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=
 COMMERCE_ORIGIN_ISOLATION_VERIFIED=
 COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=
+COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED=
+COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED=
+COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED=
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
@@ -126,14 +128,17 @@ OPENPROVIDER_NS_GROUP=
 OPENPROVIDER_NAMESERVERS=
 OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT=10.00
 OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY=EUR
-OPENPROVIDER_MIN_BALANCE_EUR=100
+OPENPROVIDER_MIN_BALANCE_EUR=0
 OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT=
 OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY=EUR
 CLOUDFLARE_API_TOKEN=
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_API_BASE_URL=
-SIAB_RENDERER_TARGET_HOST=
-SIAB_RENDERER_TARGET_IP=
+CLOUDFLARE_RENDERER_TUNNEL_ID=
+CLOUDFLARE_RENDERER_TUNNEL_NAME=siteinabox-renderer
+CLOUDFLARE_CMS_TUNNEL_ID=
+CLOUDFLARE_CMS_TUNNEL_NAME=siteinabox-cms
+CLOUDFLARE_CMS_TUNNEL_TOKEN_FILE=/srv/saas/secrets/siteinabox-cms-tunnel-token
 DOMAIN_MIGRATION_ENCRYPTION_KEY=<base64-encoded-32-byte-key>
 HOSTNAME=0.0.0.0
 SITE_URL=https://admin.siteinabox.nl
@@ -241,10 +246,11 @@ payment completion never publishes or activates a site by itself. The checkout
 collects customer holder details and creates OpenProvider owner/admin contact
 handles per customer; deployment env only supplies the SIAB/Optidigi
 technical/billing contact handles.
-Cloudflare DNS automation requires an account id, API token, and either
-`SIAB_RENDERER_TARGET_HOST` for proxied CNAME records or
-`SIAB_RENDERER_TARGET_IP` for proxied A records. The same account/token must be
-allowed to manage the customer zone and Cloudflare Email Sending subdomains.
+Cloudflare edge automation requires an account id, API token, and the two
+dedicated Tunnel UUIDs. The token needs Tunnel Edit, Zone Read/Edit, DNS Edit,
+and SSL/Certificates Read. The CMS job derives each
+`<UUID>.cfargotunnel.com` target, owns exact apex/`www`/`admin` ingress and DNS,
+and fails closed on unowned record conflicts.
 `RESEND_API_KEY` is obsolete after the Cloudflare Email Sending mail-path change and
 should not be carried forward into the production `.env`.
 
@@ -257,7 +263,6 @@ Current production environment requirements:
 | CMS image | Set `SIAB_CMS_IMAGE_DIGEST=sha256:<digest>` from the successful CMS image workflow; never deploy a mutable tag. |
 | Data path | Keep `DATA_HOST_PATH=/srv/data/saas/siab-payload`. |
 | Super admin | Keep `SUPER_ADMIN_DOMAIN=siteinabox.nl`. |
-| VPS IP | Keep the current `VPS_IP` value for onboarding/DNS guidance. |
 | PostHog | Keep existing `POSTHOG_*` values; fill missing project token/id/API key only when analytics/admin sync needs them. |
 | Better Auth | Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_PREVIEW_SECRET`; `BETTER_AUTH_API_KEY` remains optional Infrastructure dashboard/audit integration. |
 | CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
@@ -267,7 +272,7 @@ Current production environment requirements:
 | Mollie | Set `MOLLIE_API_KEY` and the webhook base URL. The classic webhook accepts Mollie's form-encoded payment ID and always retrieves authoritative state through the API; accepted order/payment-attempt amounts are the only monetary authority. |
 | Commerce release | Keep `COMMERCE_RELEASE_STAGE=disabled` until the evidence and staged enablement procedure in [commerce-release.md](commerce-release.md) is complete. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
-| Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |
+| Cloudflare DNS/Tunnel/Email API | Set the scoped automation token, account id, renderer/CMS Tunnel UUIDs, and separate mode-0600 runtime token files before enabling domain provisioning. |
 | Transfer-code encryption | Set one stable, backed-up `DOMAIN_MIGRATION_ENCRYPTION_KEY`; rotating it without re-encrypting active secrets makes transfer codes unreadable. |
 | Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN` and `ENABLE_GRAPHQL_PLAYGROUND` unset unless there is a temporary operator-approved reason. |
 
@@ -409,14 +414,15 @@ labels:
   - traefik.http.services.siteinabox-intake.loadbalancer.server.port=80
 ```
 
-Confirm the `siteinabox-cms` service has Traefik labels for each admin and
-preview hostname and for the public CMS API paths:
+Confirm the `siteinabox-cms` service keeps Traefik only for the platform admin,
+preview hostname, and public CMS API paths. Customer `admin.<domain>` hosts
+belong to the private CMS Tunnel:
 
 ```yaml
 labels:
   - traefik.enable=true
   - traefik.docker.network=proxy
-  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`) || Host(`preview.siteinabox.nl`)
+  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`preview.siteinabox.nl`)
   - traefik.http.routers.siteinabox-cms.entrypoints=websecure
   - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
   - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
@@ -428,11 +434,9 @@ labels:
   - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
 ```
 
-The renderer catch-all in `apps/renderer/compose.yml` intentionally stays low
-priority. It must not win for `siteinabox.nl` or `www.siteinabox.nl`.
-
-DNS for `admin.<your-domain>` and all public hosts must already resolve to the
-VPS or Let's Encrypt issuance will fail.
+There is no renderer or customer-admin Traefik catch-all. The exclusive
+commerce reconciler installs exact Cloudflare Tunnel routes and blocks handoff
+until DNS, certificate coverage, Tunnel health, and service identity verify.
 
 ## Step 7 — Verify health
 
@@ -667,7 +671,7 @@ SIAB_RENDERER_FIXTURE_MODE=
   valid production inputs.
 - The value stored at `SIAB_RENDERER_API_TOKEN_FILE` must match the CMS
   `SIAB_RENDERER_API_TOKEN`.
-- The three `*_FILE` values are host paths to mode-`0600` files. Compose mounts
+- The secret `*_FILE` values are host paths to mode-`0600` files. Compose mounts
   them as container secrets; none of their contents belongs in the environment
   or repository.
 - `DATA_DIR` is the tenant data root mounted read-only. Public snapshot media is

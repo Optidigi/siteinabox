@@ -108,19 +108,75 @@ describe("legal record collections", () => {
     expect(LegalRequirements.access?.update?.(accessArgs({ req: {} }))).toBe(false)
   })
 
-  it("requires frozen catalog and relationship evidence for supplemental migration orders", () => {
+  it("rejects every new supplemental migration order after retirement", () => {
     expect(() => validateOrderCommercialShape(hookArgsFor(
       validateOrderCommercialShape,
       {
         operation: "create",
         data: {
           orderKind: "migration_supplemental",
-          quoteEvidence: {},
+          catalogVersion: "2026-07-26.1",
+          quoteEvidence: {
+            catalogVersion: "2026-07-26.1",
+          },
         },
         req: {},
         collection: {},
         context: {},
       },
     ))).toThrow()
+  })
+
+  it("enforces the automatic-only current catalog at the collection boundary", () => {
+    const currentRegistration = {
+      orderKind: "initial_subscription",
+      catalogVersion: "2026-07-29.1",
+      quoteEvidence: {
+        domainMode: "new_registration",
+        migrationServiceFeeNetMinor: 0,
+      },
+      netLineItems: [{ code: "siteinabox-monthly", netAmountMinor: 1_900 }],
+      lineItems: [{ code: "siteinabox-monthly", netAmountMinor: 1_900 }],
+    }
+    expect(validateOrderCommercialShape(hookArgsFor(
+      validateOrderCommercialShape,
+      {
+        operation: "create",
+        data: currentRegistration,
+        req: {},
+        collection: {},
+        context: {},
+      },
+    ))).toEqual(currentRegistration)
+    expect(() => validateOrderCommercialShape(hookArgsFor(
+      validateOrderCommercialShape,
+      {
+        operation: "create",
+        data: {
+          ...currentRegistration,
+          quoteEvidence: {
+            domainMode: "new_registration",
+            migrationServiceFeeNetMinor: 0,
+            migration: { classification: "assisted_standard" },
+          },
+        },
+        req: {},
+        collection: {},
+        context: {},
+      },
+    ))).toThrow("automatic-only")
+    expect(() => validateOrderCommercialShape(hookArgsFor(
+      validateOrderCommercialShape,
+      {
+        operation: "create",
+        data: {
+          ...currentRegistration,
+          catalogVersion: "2026-07-26.1",
+        },
+        req: {},
+        collection: {},
+        context: {},
+      },
+    ))).toThrow("current commercial catalog")
   })
 })

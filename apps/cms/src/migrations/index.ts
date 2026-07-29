@@ -85,6 +85,11 @@ import * as migration_20260728_130835_commerce_existing_domain_safety from './20
 import * as migration_20260728_162517_migration_checkout_secret_nullable_run from './20260728_162517_migration_checkout_secret_nullable_run';
 import * as migration_20260729_134424_checkout_lifecycle_notifications from './20260729_134424_checkout_lifecycle_notifications';
 import * as migration_20260729_135247_durable_live_handoff_delivery from './20260729_135247_durable_live_handoff_delivery';
+import * as migration_20260729_164603_automatic_migration_sources from './20260729_164603_automatic_migration_sources';
+import * as migration_20260729_180259_automatic_dnssec_migration from './20260729_180259_automatic_dnssec_migration';
+import * as migration_20260729_185555_automatic_edge_routing from './20260729_185555_automatic_edge_routing';
+import * as migration_20260729_195522_automatic_transfer_code_delivery from './20260729_195522_automatic_transfer_code_delivery';
+import * as migration_20260729_203217 from './20260729_203217';
 
 export const migrations = [
   {
@@ -520,6 +525,31 @@ export const migrations = [
   {
     up: migration_20260729_135247_durable_live_handoff_delivery.up,
     down: migration_20260729_135247_durable_live_handoff_delivery.down,
-    name: '20260729_135247_durable_live_handoff_delivery'
+    name: '20260729_135247_durable_live_handoff_delivery',
+  },
+  {
+    up: migration_20260729_164603_automatic_migration_sources.up,
+    down: migration_20260729_164603_automatic_migration_sources.down,
+    name: '20260729_164603_automatic_migration_sources',
+  },
+  {
+    up: migration_20260729_180259_automatic_dnssec_migration.up,
+    down: migration_20260729_180259_automatic_dnssec_migration.down,
+    name: '20260729_180259_automatic_dnssec_migration',
+  },
+  {
+    up: migration_20260729_185555_automatic_edge_routing.up,
+    down: migration_20260729_185555_automatic_edge_routing.down,
+    name: '20260729_185555_automatic_edge_routing',
+  },
+  {
+    up: migration_20260729_195522_automatic_transfer_code_delivery.up,
+    down: migration_20260729_195522_automatic_transfer_code_delivery.down,
+    name: '20260729_195522_automatic_transfer_code_delivery',
+  },
+  {
+    up: migration_20260729_203217.up,
+    down: migration_20260729_203217.down,
+    name: '20260729_203217'
   },
 ];

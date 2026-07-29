@@ -5,7 +5,7 @@ import {
   contractingPartyTypeSchema,
 } from "./commerce"
 
-export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-29.1" as const
+export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-29.3" as const
 
 export const INTENDED_TLD_CATALOG = Object.freeze([
   "nl",
@@ -107,17 +107,42 @@ export const tldCapabilitySchema = z.object({
       max: z.number().int().positive(),
     }).strict(),
     idn: z.boolean(),
+    eligibility: z.enum(["none", "eu_eea_establishment_residence_or_citizenship"])
+      .default("none"),
+    preconfiguredAuthoritativeDns: z.boolean().default(false),
+    registryValidationProfile: z.enum(["generic", "nl", "be", "eu", "de"])
+      .default("generic"),
     confirmation: providerConfirmationSchema,
   }).strict(),
   transfer: z.object({
     supported: z.literal(true),
     authorization: z.literal("required"),
-    authorizationFormat: z.enum(["opaque", "dns_belgium_5x3"]),
+    authorizationFormat: z.enum([
+      "opaque",
+      "dns_belgium_5x3",
+      "eurid_tac_4x4",
+      "denic_authinfo_8_16",
+    ]),
     authorizationValidityDays: z.number().int().positive().nullable(),
-    completion: z.literal("realtime"),
+    completion: z.enum(["realtime", "pending_confirmation"]),
+    maximumExpectedWaitDays: z.number().int().nonnegative().default(0),
+    customerConfirmation: z.enum(["none", "registrant_email"]).default("none"),
     confirmation: providerConfirmationSchema,
     validRegistrantPhoneRequired: z.boolean(),
     renewalEffect: transferRenewalEffectSchema,
+    outgoing: z.object({
+      supported: z.boolean(),
+      mechanism: z.enum([
+        "openprovider_external_auth_code",
+        "openprovider_registrant_delivery",
+        "unsupported",
+      ]),
+      providerEvidenceUrl: z.url().nullable(),
+    }).strict().default({
+      supported: false,
+      mechanism: "unsupported",
+      providerEvidenceUrl: null,
+    }),
   }).strict(),
   verification: z.object({
     requirement: z.enum(["provider_reported", "conditional_registry_risk_check"]),
@@ -134,6 +159,8 @@ export const tldCapabilitySchema = z.object({
     supported: z.literal(true),
     providerWindowDays: z.number().int().positive().nullable(),
     registryQuarantineDays: z.number().int().positive().nullable(),
+    redemptionPeriodDays: z.number().int().positive().nullable().default(null),
+    pendingDeleteDays: z.number().int().positive().nullable().default(null),
     mode: z.enum(["provider_restore", "provider_determined"]),
     ordinaryCheckout: z.literal(false),
   }).strict(),
@@ -603,10 +630,11 @@ const catalogHistoryInput = [
 ] as const
 
 const REGISTRATION_PRODUCTION_EFFECTIVE_FROM = "2026-07-29T12:00:00.000Z"
+const CONTRACT_CORRECTION_EFFECTIVE_FROM = "2026-07-29T17:20:00.000Z"
 
 const catalogHistory = tldCapabilityCatalogSchema.parse(catalogHistoryInput)
 
-const catalogInput: TldCapability[] = catalogHistory.flatMap((capability) => {
+const registrationCatalogInput: TldCapability[] = catalogHistory.flatMap((capability) => {
   if (capability.effectiveUntil !== null) return [capability]
 
   return [
@@ -625,6 +653,182 @@ const catalogInput: TldCapability[] = catalogHistory.flatMap((capability) => {
         reviewedAt: REGISTRATION_PRODUCTION_EFFECTIVE_FROM,
       },
     },
+  ]
+})
+
+const CURRENT_TLD_CONTRACTS = {
+  nl: {
+    labelMin: 2,
+    authorizationFormat: "opaque",
+    authorizationValidityDays: null,
+    completion: "realtime",
+    maximumExpectedWaitDays: 0,
+    customerConfirmation: "none",
+    renewalEffect: "unchanged",
+    validationProfile: "nl",
+    eligibility: "none",
+    preconfiguredAuthoritativeDns: false,
+    providerWindowDays: 38,
+    registryQuarantineDays: 40,
+    redemptionPeriodDays: null,
+    pendingDeleteDays: null,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000756488--nl",
+    registryPolicyUrl: "https://www.sidn.nl/en/nl-domain-name/undoing-the-cancellation-of-a-domain-name",
+  },
+  be: {
+    labelMin: 2,
+    authorizationFormat: "dns_belgium_5x3",
+    authorizationValidityDays: 7,
+    completion: "realtime",
+    maximumExpectedWaitDays: 0,
+    customerConfirmation: "none",
+    renewalEffect: "restarts_from_transfer_date",
+    validationProfile: "be",
+    eligibility: "none",
+    preconfiguredAuthoritativeDns: false,
+    providerWindowDays: 38,
+    registryQuarantineDays: 40,
+    redemptionPeriodDays: null,
+    pendingDeleteDays: null,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000752768--be",
+    registryPolicyUrl: "https://docs.dnsbelgium.be/be/general/domainnamelifecycle.html",
+  },
+  eu: {
+    labelMin: 2,
+    authorizationFormat: "eurid_tac_4x4",
+    authorizationValidityDays: 40,
+    completion: "realtime",
+    maximumExpectedWaitDays: 0,
+    customerConfirmation: "none",
+    renewalEffect: "extends_one_year",
+    validationProfile: "eu",
+    eligibility: "eu_eea_establishment_residence_or_citizenship",
+    preconfiguredAuthoritativeDns: false,
+    providerWindowDays: 38,
+    registryQuarantineDays: 40,
+    redemptionPeriodDays: null,
+    pendingDeleteDays: null,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000737427--eu",
+    registryPolicyUrl: "https://eurid.eu/en/knowledge-centre/rules-for-eu-domains/",
+  },
+  de: {
+    labelMin: 1,
+    authorizationFormat: "denic_authinfo_8_16",
+    authorizationValidityDays: 30,
+    completion: "realtime",
+    maximumExpectedWaitDays: 0,
+    customerConfirmation: "none",
+    renewalEffect: "restarts_from_transfer_date",
+    validationProfile: "de",
+    eligibility: "none",
+    preconfiguredAuthoritativeDns: true,
+    providerWindowDays: 29,
+    registryQuarantineDays: 30,
+    redemptionPeriodDays: 30,
+    pendingDeleteDays: null,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000754208--de",
+    registryPolicyUrl: "https://www.denic.de/en/products/de-domains/provider-transfer/",
+  },
+  com: {
+    labelMin: 2,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000736847--com",
+  },
+  net: {
+    labelMin: 2,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000739127--net",
+  },
+  org: {
+    labelMin: 3,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000739287--org",
+  },
+  info: {
+    labelMin: 3,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360037512014--info",
+  },
+  online: {
+    labelMin: 3,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360001582147--online",
+  },
+  shop: {
+    labelMin: 2,
+    providerPolicyUrl: "https://support.openprovider.eu/hc/en-us/articles/360000740067--shop",
+  },
+} as const
+
+const GTLD_REGISTRY_POLICY =
+  "https://www.icann.org/en/contracted-parties/accredited-registrars/resources/domain-name-transfers/policy"
+
+const correctedCapability = (capability: TldCapability): TldCapability => {
+  const configured = CURRENT_TLD_CONTRACTS[
+    capability.tld as keyof typeof CURRENT_TLD_CONTRACTS
+  ]
+  if (!configured) throw new Error(`Missing current TLD contract for .${capability.tld}.`)
+  const gtld = ["com", "net", "org", "info", "online", "shop"].includes(capability.tld)
+  const configuredRecord = configured as Record<string, unknown>
+  return tldCapabilitySchema.parse({
+    ...capability,
+    capabilityVersion: `tld-${capability.tld}-2026-07-29.3`,
+    production: PRODUCTION_DISABLED,
+    effectiveFrom: CONTRACT_CORRECTION_EFFECTIVE_FROM,
+    effectiveUntil: null,
+    registration: {
+      ...capability.registration,
+      labelLength: {
+        ...capability.registration.labelLength,
+        min: configured.labelMin,
+      },
+      eligibility: configuredRecord.eligibility ?? "none",
+      preconfiguredAuthoritativeDns:
+        configuredRecord.preconfiguredAuthoritativeDns ?? false,
+      registryValidationProfile: configuredRecord.validationProfile ?? "generic",
+    },
+    transfer: {
+      ...capability.transfer,
+      authorizationFormat: configuredRecord.authorizationFormat ?? "opaque",
+      authorizationValidityDays:
+        configuredRecord.authorizationValidityDays ?? null,
+      completion: configuredRecord.completion ??
+        (gtld ? "pending_confirmation" : "realtime"),
+      maximumExpectedWaitDays: configuredRecord.maximumExpectedWaitDays ??
+        (gtld ? 6 : 0),
+      customerConfirmation: configuredRecord.customerConfirmation ??
+        (gtld ? "registrant_email" : "none"),
+      renewalEffect: configuredRecord.renewalEffect ??
+        (gtld ? "provider_determined" : capability.transfer.renewalEffect),
+      outgoing: {
+        supported: true,
+        mechanism: ["be", "eu"].includes(capability.tld)
+          ? "openprovider_registrant_delivery"
+          : "openprovider_external_auth_code",
+        providerEvidenceUrl: "https://docs.openprovider.com/doc/all#tag/AuthCode",
+      },
+    },
+    restoration: {
+      ...capability.restoration,
+      providerWindowDays: configuredRecord.providerWindowDays ?? (gtld ? 40 : null),
+      registryQuarantineDays:
+        configuredRecord.registryQuarantineDays ?? (gtld ? 40 : null),
+      redemptionPeriodDays:
+        configuredRecord.redemptionPeriodDays ?? (gtld ? 30 : null),
+      pendingDeleteDays: configuredRecord.pendingDeleteDays ?? (gtld ? 5 : null),
+      mode: "provider_restore",
+    },
+    evidence: {
+      reviewedAt: CONTRACT_CORRECTION_EFFECTIVE_FROM,
+      providerPolicyUrl: configured.providerPolicyUrl,
+      registryPolicyUrl: configuredRecord.registryPolicyUrl ?? GTLD_REGISTRY_POLICY,
+    },
+  })
+}
+
+const catalogInput: TldCapability[] = registrationCatalogInput.flatMap((capability) => {
+  if (capability.effectiveUntil !== null) return [capability]
+  return [
+    {
+      ...capability,
+      effectiveUntil: CONTRACT_CORRECTION_EFFECTIVE_FROM,
+    },
+    correctedCapability(capability),
   ]
 })
 
@@ -750,7 +954,60 @@ export function validateTldTransferAuthorization(
   if (capability.transfer.authorizationFormat === "dns_belgium_5x3") {
     return /^\d{3}(?:-\d{3}){4}$/.test(value)
   }
+  if (capability.transfer.authorizationFormat === "eurid_tac_4x4") {
+    return /^[A-Za-z0-9]{4}(?:-[A-Za-z0-9]{4}){3}$/.test(value)
+  }
+  if (capability.transfer.authorizationFormat === "denic_authinfo_8_16") {
+    return /^[\x21-\x7E]{8,16}$/.test(value)
+  }
   return value.length <= 255
+}
+
+export function validateTldRegistrantPrerequisites(
+  capability: TldCapability,
+  registrant: {
+    street: string
+    zipcode: string
+    country: string
+    phoneCountryCode: string
+    phoneAreaCode: string
+    phoneSubscriberNumber: string
+    euEligibilityBasis?: "establishment" | "residence" | "citizenship"
+    euEligibilityCountry?: string
+    registryPrevalidationReference?: string
+  },
+): { valid: true } | { valid: false; reason: string } {
+  const phone = [
+    registrant.phoneCountryCode,
+    registrant.phoneAreaCode,
+    registrant.phoneSubscriberNumber,
+  ].join("")
+  if (!/^\+?\d{7,20}$/.test(phone.replace(/[\s().-]/g, ""))) {
+    return { valid: false, reason: "registrant_phone_invalid" }
+  }
+  if (
+    capability.registration.registryValidationProfile === "nl" &&
+    /^(?:postbus|p\.?\s*o\.?\s*box)\b/i.test(registrant.street.trim())
+  ) {
+    return { valid: false, reason: "nl_postal_box_not_allowed" }
+  }
+  if (
+    capability.registration.registryValidationProfile === "be" &&
+    !registrant.registryPrevalidationReference?.trim()
+  ) {
+    return { valid: false, reason: "be_registry_prevalidation_missing" }
+  }
+  if (
+    capability.registration.eligibility ===
+      "eu_eea_establishment_residence_or_citizenship" &&
+    (
+      !registrant.euEligibilityBasis ||
+      !registrant.euEligibilityCountry?.trim()
+    )
+  ) {
+    return { valid: false, reason: "eu_eligibility_not_evidenced" }
+  }
+  return { valid: true }
 }
 
 export function validateTldRegistrationLabel(
@@ -763,6 +1020,14 @@ export function validateTldRegistrationLabel(
     normalized.length > capability.registration.labelLength.max ||
     normalized.includes(".") ||
     !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(normalized)
+  ) {
+    return false
+  }
+  if (
+    normalized.length >= 4 &&
+    normalized[2] === "-" &&
+    normalized[3] === "-" &&
+    !normalized.startsWith("xn--")
   ) {
     return false
   }

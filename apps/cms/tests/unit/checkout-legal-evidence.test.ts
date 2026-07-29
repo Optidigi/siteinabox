@@ -9,6 +9,25 @@ import type { CheckoutProfile } from "@/payload-types"
 
 import { asGenerationRun, asTenant, cast } from "../_helpers/cast"
 import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockWhere } from "../_helpers/mockPayload"
+
+const completeRegistrant = {
+  companyName: "Demo B.V.",
+  firstName: "Client",
+  lastName: "Name",
+  email: "client@example.com",
+  street: "Markt",
+  number: "1",
+  suffix: null,
+  zipcode: "6041AA",
+  city: "Roermond",
+  country: "NL",
+  state: null,
+  phoneCountryCode: "+31",
+  phoneAreaCode: "475",
+  phoneSubscriberNumber: "123456",
+  locale: "nl_NL",
+}
+
 const createPayload = () => {
   let id = 100
   const stores: Record<string, Array<Record<string, unknown>>> = {
@@ -118,7 +137,7 @@ describe("checkout legal evidence", () => {
         draftVersion: "draft-30",
         now: new Date("2026-07-27T11:56:00.000Z"),
       }),
-      domainRegistrant: { email: "client@example.com" },
+      domainRegistrant: completeRegistrant,
       domain: "demo.nl",
       requestId: "req-1",
       now: new Date("2026-07-27T12:00:00.000Z"),
@@ -151,7 +170,7 @@ describe("checkout legal evidence", () => {
         draftVersion: "draft-30",
         now: new Date("2026-07-27T11:56:01.000Z"),
       }),
-      domainRegistrant: { email: "client@example.com" },
+      domainRegistrant: completeRegistrant,
       domain: "demo.nl",
       requestId: "req-2",
       now: new Date("2026-07-27T12:00:00.000Z"),
@@ -166,7 +185,7 @@ describe("checkout legal evidence", () => {
     expect(first.order).toMatchObject({
       state: "accepted",
       checkoutProfileKey: "run:30:checkout-profile:1",
-      catalogVersion: "2026-07-26.1",
+      catalogVersion: "2026-07-29.1",
       subtotalNetMinor: 19_000,
       vatAmountMinor: 3_990,
       totalGrossMinor: 22_990,
@@ -248,7 +267,11 @@ describe("checkout legal evidence", () => {
       approval: approval.approval,
       checkoutProfile,
       quote,
-      domainRegistrant: { email: "client@example.com", firstName: "Maria", lastName: "de la Cruz" },
+      domainRegistrant: {
+        ...completeRegistrant,
+        firstName: "Maria",
+        lastName: "de la Cruz",
+      },
       domain: "demo.nl",
       now: new Date("2026-07-28T12:00:00.000Z"),
     }
@@ -279,5 +302,70 @@ describe("checkout legal evidence", () => {
 
     expect(stores.orders).toHaveLength(1)
     expect(stores["agreement-acceptances"]).toHaveLength(1)
+  })
+
+  it("rejects a forged assisted charge before creating current-catalog evidence", async () => {
+    const { payload, stores } = createPayload()
+    const run = asGenerationRun({ id: 32, specHash: "spec", updatedAt: "draft-32" })
+    const tenant = asTenant({ id: 10, name: "Demo" })
+    const approval = await createSiteApprovalEvidence({
+      payload,
+      run,
+      tenant,
+      pages: [],
+      domain: "demo.nl",
+      actorEmail: "client@example.com",
+      requestId: "req-approval",
+    })
+    const profile = cast<CheckoutProfile>({
+      id: 52,
+      profileKey: "run:32:checkout-profile:1",
+      profileVersion: 1,
+      generationRun: 32,
+      customerName: "Client Name",
+      customerEmail: "client@example.com",
+      partyType: "registered_business",
+      contractingPartyName: "Demo B.V.",
+      kvkNumber: "12345678",
+      domainRegistrantSource: "contracting_party",
+      billingAddress: { city: "Utrecht" },
+      createdAt: "2026-07-29T10:00:00.000Z",
+    })
+    const quote = buildCheckoutQuote({
+      billingPeriod: "monthly",
+      providerOperationPriceNetMinor: 1_000,
+      selectedDomain: "demo.nl",
+      providerQuotedAt: "2026-07-29T12:55:00.000Z",
+      profileVersion: 1,
+      draftVersion: "draft-32",
+      now: new Date("2026-07-29T12:56:00.000Z"),
+    })
+
+    await expect(createOrderAndAcceptanceEvidence({
+      payload,
+      run,
+      tenant,
+      approval: approval.approval,
+      checkoutProfile: profile,
+      quote: {
+        ...quote,
+        migrationClassification: "assisted_standard",
+        migrationServiceFeeNetMinor: 4_900,
+        lineItems: [
+          ...quote.lineItems,
+          {
+            code: "migration-assisted-standard-per-domain",
+            description: "Retired",
+            quantity: 1,
+            netAmountMinor: 4_900,
+          },
+        ],
+      },
+      domainRegistrant: completeRegistrant,
+      domain: "demo.nl",
+      requestId: "req-forged",
+      now: new Date("2026-07-29T13:00:00.000Z"),
+    })).rejects.toThrow("assisted migration charges")
+    expect(stores.orders).toHaveLength(0)
   })
 })

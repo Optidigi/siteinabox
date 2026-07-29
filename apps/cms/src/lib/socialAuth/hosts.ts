@@ -156,7 +156,7 @@ export async function isAllowedSocialAuthHost(request: Request): Promise<boolean
     overrideAccess: true,
   })
   const tenant = tenants.docs[0]
-  return Boolean(tenant && tenant.status !== "suspended" && tenant.status !== "archived")
+  return Boolean(tenant && tenant.status !== "archived")
 }
 
 export async function getTrustedSocialAuthOrigins(request?: Request): Promise<string[]> {

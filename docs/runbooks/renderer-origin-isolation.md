@@ -1,16 +1,41 @@
 # Renderer origin isolation
 
+## Existing-domain rollout gate
+
+Deploy the exact reviewed CMS image in `shadow`, then run its bundled
+`/app/dist-runtime/check-commerce-edge-inventory.bundled.mjs` command against
+the target database using the one-off command in
+[Commerce release](commerce-release.md). It is read-only and fails when an
+active tenant does not have exactly one active managed-domain row with a
+Cloudflare zone. Do not advance beyond `shadow` while it fails.
+
+After the additive migration and both application/Tunnel services are running,
+use the explicitly approved, bundled
+`reconcile-commerce-edge-routing.bundled.mjs` command to establish exact
+routes. Repeat it while certificate state is legitimately pending, run the
+black-box origin/host probes, and only then set the origin-isolation evidence
+flag and run the bundled read-only production-readiness gate. If reconciliation
+cannot complete, restore the previous application images; the additive
+migration is compatible and must remain in place while the evidence issue is
+corrected.
+
 Status: code-controlled topology is implemented; production Cloudflare and
 network evidence remains approval-gated. Do not set
 `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` from repository tests alone.
 
 ## Security contract
 
-Cloudflare terminates customer TLS. A dedicated remotely managed Cloudflare
-Tunnel makes an outbound connection to Cloudflare and forwards traffic to
-`http://siteinabox-renderer:4321` on the private `renderer-origin` container
-network. The renderer has no published port, public Traefik route, or
-customer-host certificate resolver.
+Cloudflare terminates customer TLS. Two dedicated remotely managed Cloudflare
+Tunnels make outbound connections:
+
+- `siteinabox-renderer` forwards exact approved apex and `www` hosts to
+  `http://siteinabox-renderer:4321` on `renderer-origin`.
+- `siteinabox-cms` forwards exact approved `admin.<domain>` hosts to
+  `http://siteinabox-cms:3000` on `cms-origin`.
+
+Both remote ingress configurations end with `http_status:404`. Neither uses a
+wildcard, `httpHostHeader`, public origin port, or customer-host Traefik
+certificate router.
 
 `SIAB_RENDERER_ORIGIN_TRUST_MODE=cloudflare_tunnel` makes the private Tunnel
 the explicit origin boundary. The renderer has no published listener or public
@@ -35,33 +60,44 @@ require an approved production change. Record redacted object names, timestamps,
 configuration hashes, and probe results in the release dossier; never record
 tokens or the origin-secret value.
 
-1. Inventory current tunnels, renderer listeners, DNS records, zone rulesets,
+1. Inventory current tunnels, renderer/CMS listeners, DNS records, zone rulesets,
    Universal SSL state, and firewall exposure read-only. Confirm there is no
    existing suitable Siteinabox renderer tunnel before creating one. Do not
    repurpose an unrelated tunnel.
-2. Create one remotely managed tunnel dedicated to the Siteinabox renderer.
-   Its only HTTP origin is `http://siteinabox-renderer:4321`. Do not configure
-   an origin `Host` override.
-3. Store the tunnel token in
-   `/srv/saas/secrets/siteinabox-renderer-tunnel-token` and a separately
+2. Create or reuse exactly two remotely managed tunnels named
+   `siteinabox-renderer` and `siteinabox-cms`. Persist their UUIDs as
+   `CLOUDFLARE_RENDERER_TUNNEL_ID` and `CLOUDFLARE_CMS_TUNNEL_ID`. Do not
+   configure an origin `Host` override. The CMS reconciliation job owns the
+   complete deterministic ingress arrays.
+3. Store the runtime tokens in
+   `/srv/saas/secrets/siteinabox-renderer-tunnel-token` and
+   `/srv/saas/secrets/siteinabox-cms-tunnel-token`, and a separately
    generated renderer/CMS bearer value in
    `/srv/saas/secrets/siteinabox-renderer-api-token`. Files must be owned by
    numeric UID/GID `1000:1000` and mode `0600`, matching both explicitly
    unprivileged compose services. If the host deployment account uses another
    UID, install the files with `1000:1000` ownership rather than weakening
    their mode.
-4. Create proxied CNAME records for each approved apex and explicit `www`
-   hostname to `<TUNNEL_UUID>.cfargotunnel.com`. Cloudflare CNAME flattening
-   handles an apex. Do not route a hostname until CMS domain ownership,
-   entitlement, DNS, and publication prerequisites are satisfied.
+4. Give the CMS automation token Account `Cloudflare Tunnel: Edit`, Zone
+   `Zone: Read/Edit`, Zone `DNS: Edit`, and Zone `SSL and Certificates: Read`
+   for the Siteinabox account and managed zones. The runtime Tunnel tokens are
+   separate credentials. The exclusive `reconcile-commerce` job installs
+   proxied CNAMEs for apex, `www`, and `admin`, verifies config after writes,
+   and refuses to overwrite an unowned A/AAAA/CNAME collision.
+   The repository reserves 100 of Cloudflare's 1,000 Tunnel ingress rules;
+   this topology therefore supports at most 300 three-host tenants per Tunnel
+   pair before reconciliation fails closed and raises a critical capacity
+   alert. Provision another reviewed Tunnel pair before reaching that limit.
 5. Record the currently deployed renderer digest for rollback. Set
    `SIAB_RENDERER_IMAGE_DIGEST` to the digest emitted by the successful image
    workflow, then deploy `apps/renderer/compose.yml`. Confirm both container
    health checks pass and the tunnel reports connected. Confirm the host
    firewall, container runtime, and any upstream load balancer expose no route
    to renderer port `4321`.
-6. Wait for Universal SSL on each hostname. Persist certificate-pending as an
-   expected waiting state; do not publish merely because DNS resolves.
+6. Wait for Universal SSL on each hostname. The job requires Universal SSL,
+   an active certificate pack covering the hostname, a healthy Tunnel
+   connection, and the expected renderer/CMS service identity response.
+   Certificate-pending is an expected persisted state.
 
 ## Required proving probes
 
@@ -70,6 +106,7 @@ network or Tunnel change:
 
 - An active apex through Cloudflare returns its own snapshot over valid HTTPS.
 - Its explicitly active `www` hostname returns the same tenant.
+- Its `admin` hostname reaches the CMS login for that tenant and not another.
 - An active hostname on every enabled TLD follows the same path.
 - A dedicated proxied probe hostname routed to the Tunnel but absent from CMS
   returns the neutral `404`, with no tenant content or analytics configuration.
@@ -87,6 +124,8 @@ network or Tunnel change:
   without activating an unknown host.
 - A certificate-pending hostname remains unpublished until an HTTPS probe
   validates the final customer hostname.
+- Both remotely managed ingress arrays contain only exact active hosts plus a
+  terminal `http_status:404`, and a spoofed/unknown admin host is rejected.
 
 Only after all probes pass, set `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1`, run the
 commerce release-gate check again, and enable only the TLD/domain capabilities
@@ -94,8 +133,9 @@ whose separate evidence matrices also pass.
 
 ## Secret rotation
 
-Revoke or rotate the Tunnel token through Cloudflare only during an approved
-change, then replace the token file and restart only the Tunnel container.
+Revoke or rotate one Tunnel token through Cloudflare only during an approved
+change, then replace only its token file and restart only that Tunnel
+container. Never place a runtime Tunnel token in Payload or application env.
 
 ## Rollback
 

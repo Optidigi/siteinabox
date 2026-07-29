@@ -16,11 +16,16 @@ import {
   BUSINESS_USE_DECLARATION_TEXT_NL,
   BUSINESS_USE_DECLARATION_VERSION,
 } from "@siteinabox/legal-content"
-import { businessUseDeclarationAcceptanceSchema } from "@siteinabox/contracts/commerce"
+import {
+  businessUseDeclarationAcceptanceSchema,
+  COMMERCIAL_CATALOG_VERSION,
+} from "@siteinabox/contracts/commerce"
 import {
   getTldCapabilityForProductionOperation,
+  validateTldRegistrantPrerequisites,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutQuote } from "@/lib/checkout/checkoutQuote"
+import { normalizeDomainRegistrantDetails } from "@/lib/domains/orderState"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { legalStatements } from "@/lib/legal/statements"
@@ -184,6 +189,20 @@ export async function createOrderAndAcceptanceEvidence(input: {
   if (!tldCapability) {
     throw new Error(`TLD .${tld} is not enabled for accepted-order evidence.`)
   }
+  const normalizedRegistrant = normalizeDomainRegistrantDetails(input.domainRegistrant)
+  if (!normalizedRegistrant) {
+    throw new Error("Accepted checkout requires complete registrant evidence.")
+  }
+  const registrantPrerequisites = validateTldRegistrantPrerequisites(
+    tldCapability,
+    normalizedRegistrant,
+  )
+  if (!registrantPrerequisites.valid) {
+    throw new Error(
+      `Registrant evidence does not satisfy .${tld} requirements: ` +
+      registrantPrerequisites.reason,
+    )
+  }
   const initialAuthority = {
     schemaVersion: 1,
     generationRunId: String(input.run.id),
@@ -223,6 +242,42 @@ export async function createOrderAndAcceptanceEvidence(input: {
     `SIAB-${input.run.id}-${sha256(initialOrderClaim(input.run.id)).slice(0, 12).toUpperCase()}`
   let order = await findOneDoc(input.payload, "orders", { orderNumber: { equals: orderNumber } })
   if (!order) {
+    if (input.quote.catalogVersion !== COMMERCIAL_CATALOG_VERSION) {
+      throw new Error("New accepted orders require the current commercial catalog.")
+    }
+    if (
+      input.quote.migrationServiceFeeNetMinor !== 0 ||
+      input.quote.lineItems.some(
+        (item) => item.code === "migration-assisted-standard-per-domain",
+      )
+    ) {
+      throw new Error("New accepted orders cannot contain assisted migration charges.")
+    }
+    if (
+      input.quote.domainMode === "new_registration" &&
+      (
+        input.quote.migrationClassification !== null ||
+        input.quote.migrationSourceMechanism !== null ||
+        input.quote.migrationSourceZoneHash !== null ||
+        input.quote.migrationInputEnvelope !== null ||
+        input.quote.migrationSecretKey !== null
+      )
+    ) {
+      throw new Error("New-domain orders cannot contain migration evidence.")
+    }
+    if (
+      input.quote.domainMode === "existing_domain" &&
+      (
+        input.quote.migrationClassification !== "automatic" ||
+        !input.quote.migrationSourceMechanism ||
+        input.quote.migrationSourceMechanism ===
+          "customer_authorized_provider_export_v1" ||
+        !input.quote.migrationSourceZoneHash ||
+        !input.quote.migrationSecretKey
+      )
+    ) {
+      throw new Error("New existing-domain orders require an automatic migration.")
+    }
     try {
       order = await input.payload.create({
         collection: "orders",
@@ -275,7 +330,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
             ? {
                 migration: {
                   classification: input.quote.migrationClassification,
-                  sourceMechanism: "customer_authorized_provider_export_v1",
+                  sourceMechanism: input.quote.migrationSourceMechanism,
                   sourceZoneHash: input.quote.migrationSourceZoneHash,
                   checkoutSecretKey: input.quote.migrationSecretKey,
                   expectedOperatorTechnicalAction:

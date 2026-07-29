@@ -33,6 +33,7 @@ export const reconcileCommerceTask: TaskConfig<{
       { processBillingAgreement },
       { queueDueCommerceNotifications },
       { recordCommerceAdminException, resolveCommerceAdminException },
+      { reconcileCommerceEdgeRouting },
       {
         alertOnStaleMollieSynchronization,
         recoverMissingMolliePaymentReferences,
@@ -46,9 +47,50 @@ export const reconcileCommerceTask: TaskConfig<{
       import("@/lib/billing/billingLifecycle"),
       import("@/lib/commerce/notifications"),
       import("@/lib/commerce/alerts"),
+      import("@/lib/domains/edgeRouting"),
       import("@/lib/commerce/reconciliation"),
     ])
     const now = new Date()
+    const providerWritesAllowed = commerceProviderWritesAllowed()
+    const edgeRoutingResult = providerWritesAllowed
+      ? await reconcileCommerceEdgeRouting(req.payload)
+      : null
+    if (!providerWritesAllowed) {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "release_gate_blocked_edge_routing",
+        subjectId: "cloudflare-edge-routing",
+        now: now.toISOString(),
+      })
+    } else {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "release_gate_blocked_edge_routing",
+        subjectId: "cloudflare-edge-routing",
+        now: now.toISOString(),
+      })
+    }
+    if (edgeRoutingResult && edgeRoutingResult.failed > 0) {
+      await recordCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "edge_routing_blocked",
+        message: "Automatic customer edge routing is blocked by configuration, permissions, capacity, or conflicting DNS.",
+        subjectId: "cloudflare-edge-routing",
+        severity: "critical",
+        now: now.toISOString(),
+      })
+    } else if (edgeRoutingResult) {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "edge_routing_blocked",
+        subjectId: "cloudflare-edge-routing",
+        now: now.toISOString(),
+      })
+    }
     const paymentResult = await req.payload.find({
       collection: "payment-attempts",
       where: {
@@ -110,10 +152,15 @@ export const reconcileCommerceTask: TaskConfig<{
       collection: "accounting-documents",
       where: {
         and: [
-          { documentType: { equals: "credit_note" } },
+          {
+            documentType: {
+              in: ["credit_note", "payment_adjustment"],
+            },
+          },
           { state: { equals: "pending_provider" } },
           { refundScenario: { exists: true } },
           { providerOperationId: { exists: false } },
+          { providerStatus: { not_equals: "refund_job_queued" } },
           { reconciliationRequired: { equals: false } },
         ],
       },
@@ -379,7 +426,8 @@ export const reconcileCommerceTask: TaskConfig<{
           pendingRefundResult.docs.length +
           expiryResult.examined +
           transferOutResult.examined +
-          expiredMigrationSecrets,
+          expiredMigrationSecrets +
+          (edgeRoutingResult?.examined ?? 0),
         queued,
       },
     }

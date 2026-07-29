@@ -586,4 +586,124 @@ describe("application-created recurring billing", () => {
       cancelAt: "2026-09-01T10:00:00.000Z",
     })
   })
+
+  it("does not regress a concurrently paid agreement back to past due", async () => {
+    const store = createStore({
+      beforeAgreementConditionalUpdate: ({ agreement }) => {
+        Object.assign(agreement, {
+          state: "active",
+          nextChargeAt: "2026-09-01T10:00:00.000Z",
+          currentPeriodStartsAt: "2026-08-01T10:00:00.000Z",
+          currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
+          graceStartedAt: null,
+          graceEndsAt: null,
+          failureReason: null,
+          updatedAt: "2026-08-01T10:00:01.000Z",
+        })
+      },
+    })
+
+    const result = await processBillingAgreement({
+      payload: store.payload,
+      agreement: store.agreement as never,
+      now: new Date("2026-08-01T10:00:00.000Z"),
+    })
+
+    expect(result).toEqual({
+      status: "concurrent_update",
+      paymentRequested: false,
+    })
+    expect(store.agreement).toMatchObject({
+      state: "active",
+      nextChargeAt: "2026-09-01T10:00:00.000Z",
+      graceStartedAt: null,
+      graceEndsAt: null,
+    })
+    expect(createApplicationRecurringMolliePayment).not.toHaveBeenCalled()
+  })
+
+  it("does not suspend a tenant after a concurrent paid synchronization", async () => {
+    const store = createStore({
+      agreement: {
+        state: "past_due",
+        graceStartedAt: "2026-08-01T10:00:00.000Z",
+        graceEndsAt: "2026-08-15T10:00:00.000Z",
+      },
+      beforeAgreementConditionalUpdate: ({ agreement }) => {
+        Object.assign(agreement, {
+          state: "active",
+          nextChargeAt: "2026-09-01T10:00:00.000Z",
+          currentPeriodStartsAt: "2026-08-01T10:00:00.000Z",
+          currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
+          graceStartedAt: null,
+          graceEndsAt: null,
+          serviceSuspensionStatus: "none",
+          updatedAt: "2026-08-15T10:00:01.000Z",
+        })
+      },
+    })
+
+    const result = await processBillingAgreement({
+      payload: store.payload,
+      agreement: store.agreement as never,
+      now: new Date("2026-08-15T10:00:00.000Z"),
+    })
+
+    expect(result).toEqual({ status: "active", paymentRequested: false })
+    expect(store.tenant).toMatchObject({ status: "active" })
+    expect(store.agreement).toMatchObject({
+      state: "active",
+      serviceSuspensionStatus: "none",
+    })
+    expect(ensureCommerceNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "service_suspended_14d" }),
+    )
+  })
+
+  it("extends cancellation through a provider-committed in-flight renewal", async () => {
+    const renewalOrder = {
+      ...baseOrigin,
+      id: 601,
+      billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
+      billingAgreement: 900,
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+      state: "accepted",
+      paymentStatus: "open",
+    }
+    const store = createStore({
+      agreement: {
+        state: "cancellation_scheduled",
+        renewalIntent: false,
+        cancelAt: "2026-08-01T10:00:00.000Z",
+      },
+      orders: [renewalOrder],
+      attempts: [{
+        id: 700,
+        order: 601,
+        purpose: "recurring",
+        attemptNumber: 1,
+        state: "pending_provider",
+        providerPaymentId: "tr_in_flight",
+        reconciliationRequired: false,
+      }],
+    })
+
+    const result = await processBillingAgreement({
+      payload: store.payload,
+      agreement: store.agreement as never,
+      now: new Date("2026-08-01T10:00:00.000Z"),
+    })
+
+    expect(result).toEqual({
+      status: "cancellation_scheduled",
+      paymentRequested: false,
+    })
+    expect(store.agreement).toMatchObject({
+      state: "cancellation_scheduled",
+      cancelAt: "2026-09-01T10:00:00.000Z",
+    })
+    expect(store.tenant).toMatchObject({ status: "active" })
+  })
 })

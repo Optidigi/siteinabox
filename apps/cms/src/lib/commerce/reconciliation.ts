@@ -29,7 +29,7 @@ import { relationshipId } from "@/lib/relationshipId"
 
 const MINIMUM_PAYMENT_RECOVERY_AGE_MS = 2 * 60_000
 const STALE_WEBHOOK_ALERT_AGE_MS = 30 * 60_000
-const DEFAULT_OPENPROVIDER_BALANCE_THRESHOLD_EUR = 100
+const DEFAULT_OPENPROVIDER_BALANCE_THRESHOLD_EUR = 0
 const DAY_MS = 24 * 60 * 60_000
 
 type ReconciliationDependencies = {
@@ -427,8 +427,14 @@ export async function recoverMissingMolliePaymentReferences(
       recoveredPaymentIds.push(match.id)
       continue
     }
+    const isRecurringCollection =
+      attempt.sequenceType === "recurring" && attempt.purpose === "recurring"
+    const isMandateRecovery =
+      attempt.sequenceType === "first" &&
+      attempt.purpose === "recurring" &&
+      attempt.idempotencyKey.startsWith("mollie:mandate-recovery:")
     if (
-      attempt.sequenceType === "recurring" &&
+      (isRecurringCollection || isMandateRecovery) &&
       attempt.state === "pending_provider"
     ) {
       const agreementId = relationshipId(attempt.billingAgreement)
@@ -505,8 +511,9 @@ export async function recoverMissingMolliePaymentReferences(
             : {
                 reconciliationRequired: false,
                 failureCode: "provider_absence_reconciled",
-                failureMessage:
-                  "No Mollie payment matched the durable recurring-payment authority.",
+                failureMessage: isMandateRecovery
+                  ? "No Mollie payment matched the durable mandate-recovery authority."
+                  : "No Mollie payment matched the durable recurring-payment authority.",
                 lastSyncedAt: nowDate.toISOString(),
                 stateHistory: [
                   ...(Array.isArray(attempt.stateHistory)

@@ -4,7 +4,10 @@ import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 
-import { cancelBillingAgreementAction } from "@/app/(frontend)/(admin)/settings/actions"
+import {
+  cancelBillingAgreementAction,
+  recoverBillingAgreementAction,
+} from "@/app/(frontend)/(admin)/settings/actions"
 
 export type BillingAgreementView = {
   id: string
@@ -13,6 +16,8 @@ export type BillingAgreementView = {
   currentPeriodEndsAt?: string | null
   nextChargeAt?: string | null
   cancelAt?: string | null
+  serviceSuspensionStatus?: string | null
+  failureReason?: string | null
 }
 
 const formatDate = (value: string, locale: string) => new Intl.DateTimeFormat(locale, {
@@ -33,6 +38,15 @@ export function BillingAgreementSection({
   const cancellationScheduled = agreement.state === "cancellation_scheduled"
   const cancelled = agreement.state === "cancelled"
   const canCancel = ["active", "past_due", "suspended"].includes(agreement.state)
+  const hasRecoverableFailure =
+    agreement.failureReason?.startsWith("Mollie mandate status is ") === true ||
+    agreement.failureReason?.startsWith("Mollie payment state is ") === true
+  const canRecover = ["past_due", "suspended", "cancellation_scheduled"].includes(
+    agreement.state,
+  ) && (
+    agreement.serviceSuspensionStatus === "billing_suspended" ||
+    hasRecoverableFailure
+  )
   const periodLabel = agreement.billingPeriod === "annual"
     ? english ? "Annual" : "Jaarlijks"
     : english ? "Monthly" : "Maandelijks"
@@ -68,6 +82,28 @@ export function BillingAgreementSection({
             </AlertDescription>
           </Alert>
         )}
+        {result === "recovery-failed" && (
+          <Alert variant="destructive">
+            <AlertTitle>
+              {english ? "Payment recovery could not start" : "Betalingsherstel kon niet starten"}
+            </AlertTitle>
+            <AlertDescription>
+              {english
+                ? "No new payment was created. Refresh the page and try again."
+                : "Er is geen nieuwe betaling aangemaakt. Vernieuw de pagina en probeer opnieuw."}
+            </AlertDescription>
+          </Alert>
+        )}
+        {result === "return" && (
+          <Alert>
+            <AlertTitle>{english ? "Payment is being verified" : "Betaling wordt gecontroleerd"}</AlertTitle>
+            <AlertDescription>
+              {english
+                ? "Service is restored automatically after Mollie confirms the payment and replacement mandate."
+                : "De dienst wordt automatisch hersteld zodra Mollie de betaling en de nieuwe machtiging bevestigt."}
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-4">
           <div className="grid gap-1">
             <p className="font-medium">{periodLabel}</p>
@@ -85,6 +121,19 @@ export function BillingAgreementSection({
           </div>
           <Badge variant="outline">{agreement.state}</Badge>
         </div>
+        {canRecover && (
+          <form action={recoverBillingAgreementAction} className="grid gap-3 border-t pt-4">
+            <input type="hidden" name="billingAgreementId" value={agreement.id} />
+            <p className="text-sm text-muted-foreground">
+              {english
+                ? "Complete the outstanding frozen payment in Mollie to replace the payment mandate. Domain ownership and DNS remain unchanged."
+                : "Voldoe de openstaande, vastgelegde betaling in Mollie om de betaalmachtiging te vervangen. Domeineigendom en DNS blijven ongewijzigd."}
+            </p>
+            <Button type="submit" className="w-fit">
+              {english ? "Restore payment and service" : "Betaling en dienst herstellen"}
+            </Button>
+          </form>
+        )}
         {canCancel && (
           <form action={cancelBillingAgreementAction} className="grid gap-3 border-t pt-4">
             <input type="hidden" name="billingAgreementId" value={agreement.id} />

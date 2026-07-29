@@ -73,6 +73,33 @@ const updateAgreement = (
   context: { billingAgreementLifecycleMutation: true },
 }) as Promise<BillingAgreement>
 
+const claimAgreementUpdate = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  data: Partial<BillingAgreement>,
+): Promise<BillingAgreement | null> => {
+  if (!agreement.updatedAt) {
+    throw new Error("Billing agreement is missing its concurrency version.")
+  }
+  const result = await payload.update({
+    collection: "billing-agreements",
+    where: {
+      and: [
+        { id: { equals: agreement.id } },
+        { updatedAt: { equals: agreement.updatedAt } },
+        { state: { equals: agreement.state } },
+      ],
+    },
+    data,
+    depth: 0,
+    overrideAccess: true,
+    context: { billingAgreementLifecycleMutation: true },
+  })
+  return Array.isArray(result.docs)
+    ? (result.docs[0] as BillingAgreement | undefined) ?? null
+    : null
+}
+
 const loadOriginatingOrder = async (
   payload: Payload,
   agreement: BillingAgreement,
@@ -364,6 +391,20 @@ async function suspendForNonPayment(input: {
   order: Order
   now: string
 }): Promise<BillingAgreement> {
+  const claimedAgreement = await claimAgreementUpdate(input.payload, input.agreement, {
+    state: "suspended",
+    suspendedAt: input.now,
+    serviceSuspensionStatus: "billing_suspended",
+    stateHistory: agreementHistory(input.agreement, "suspended", input.now, "grace_expired"),
+  })
+  if (!claimedAgreement) {
+    return input.payload.findByID({
+      collection: "billing-agreements",
+      id: input.agreement.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<BillingAgreement>
+  }
   const tenantId = relationshipId(input.agreement.tenant)
   if (!tenantId) throw new Error("Billing agreement is missing a tenant.")
   const tenant = await input.payload.findByID({
@@ -382,9 +423,10 @@ async function suspendForNonPayment(input: {
       subjectId: input.agreement.id,
       now: input.now,
     })
-    return updateAgreement(input.payload, input.agreement, {
+    return updateAgreement(input.payload, claimedAgreement, {
       adminExceptionCode: "billing_suspension_tenant_archived",
       adminExceptionAt: input.now,
+      serviceSuspensionStatus: "restoration_blocked",
     })
   }
   if (
@@ -400,13 +442,10 @@ async function suspendForNonPayment(input: {
       subjectId: input.agreement.id,
       now: input.now,
     })
-    return updateAgreement(input.payload, input.agreement, {
-      state: "suspended",
-      suspendedAt: input.now,
+    return updateAgreement(input.payload, claimedAgreement, {
       serviceSuspensionStatus: "restoration_blocked",
       adminExceptionCode: "tenant_already_operator_suspended",
       adminExceptionAt: input.now,
-      stateHistory: agreementHistory(input.agreement, "suspended", input.now, "grace_expired"),
     })
   }
   if (tenant.status !== "suspended") {
@@ -423,20 +462,49 @@ async function suspendForNonPayment(input: {
       context: { billingTenantLifecycleMutation: true },
     })
   }
-  const agreement = await updateAgreement(input.payload, input.agreement, {
-    state: "suspended",
-    suspendedAt: input.now,
-    serviceSuspensionStatus: "billing_suspended",
-    stateHistory: agreementHistory(input.agreement, "suspended", input.now, "grace_expired"),
-  })
+  const currentAgreement = await input.payload.findByID({
+    collection: "billing-agreements",
+    id: claimedAgreement.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as BillingAgreement
+  if (
+    currentAgreement.state !== "suspended" ||
+    currentAgreement.serviceSuspensionStatus !== "billing_suspended"
+  ) {
+    const currentTenant = await input.payload.findByID({
+      collection: "tenants",
+      id: tenant.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as Tenant
+    if (
+      currentTenant.status === "suspended" &&
+      sameRelationshipId(currentTenant.billingSuspensionAgreement, claimedAgreement.id)
+    ) {
+      await input.payload.update({
+        collection: "tenants",
+        id: currentTenant.id,
+        data: {
+          status: "active",
+          billingSuspensionAgreement: null,
+          billingSuspendedAt: null,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingTenantLifecycleMutation: true },
+      })
+    }
+    return currentAgreement
+  }
   await ensureBillingNotification({
     payload: input.payload,
-    agreement,
+    agreement: claimedAgreement,
     order: input.order,
     kind: "service_suspended_14d",
     eventAt: input.now,
   })
-  return agreement
+  return claimedAgreement
 }
 
 export async function processBillingAgreement(input: {
@@ -455,6 +523,22 @@ export async function processBillingAgreement(input: {
   if (agreement.state === "cancellation_scheduled") {
     if (!agreement.cancelAt || new Date(agreement.cancelAt) > nowDate) {
       return { status: "cancellation_scheduled", paymentRequested: false }
+    }
+    const committedCoverageEnd = await pendingCommittedCoverageEnd(
+      input.payload,
+      agreement,
+    )
+    if (
+      committedCoverageEnd &&
+      new Date(committedCoverageEnd) > new Date(agreement.cancelAt)
+    ) {
+      const extended = await claimAgreementUpdate(input.payload, agreement, {
+        cancelAt: committedCoverageEnd,
+      })
+      return {
+        status: extended ? "cancellation_scheduled" : "concurrent_update",
+        paymentRequested: false,
+      }
     }
     agreement = await finalizeCancellation({
       payload: input.payload,
@@ -480,7 +564,7 @@ export async function processBillingAgreement(input: {
       subjectId: agreement.id,
       now,
     })
-    await updateAgreement(input.payload, agreement, {
+    await claimAgreementUpdate(input.payload, agreement, {
       reconciliationRequired: true,
       adminExceptionCode: "billing_next_charge_missing",
       adminExceptionAt: now,
@@ -545,7 +629,7 @@ export async function processBillingAgreement(input: {
     return { status: agreement.state, paymentRequested: false }
   }
   if (!agreement.graceStartedAt || !agreement.graceEndsAt) {
-    agreement = await updateAgreement(input.payload, agreement, {
+    const claimedAgreement = await claimAgreementUpdate(input.payload, agreement, {
       state: "past_due",
       graceStartedAt: graceAnchor,
       graceEndsAt: billingGraceEndsAt(graceAnchor),
@@ -554,6 +638,10 @@ export async function processBillingAgreement(input: {
         ? agreement.stateHistory
         : agreementHistory(agreement, "past_due", now, "payment_due"),
     })
+    if (!claimedAgreement) {
+      return { status: "concurrent_update", paymentRequested: false }
+    }
+    agreement = claimedAgreement
   }
   const attemptNumber = dunningAttemptNumber(stage)
   await ensureRecurringAttempt({
@@ -790,6 +878,21 @@ async function finalizeCancellation(input: {
   origin: Order
   now: string
 }): Promise<BillingAgreement> {
+  const agreement = await claimAgreementUpdate(input.payload, input.agreement, {
+    state: "cancelled",
+    renewalIntent: false,
+    cancelledAt: input.now,
+    endedAt: input.now,
+    stateHistory: agreementHistory(input.agreement, "cancelled", input.now, "period_end"),
+  })
+  if (!agreement) {
+    return input.payload.findByID({
+      collection: "billing-agreements",
+      id: input.agreement.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<BillingAgreement>
+  }
   const tenantId = relationshipId(input.agreement.tenant)
   if (tenantId) {
     const tenant = await input.payload.findByID({
@@ -813,13 +916,6 @@ async function finalizeCancellation(input: {
       })
     }
   }
-  const agreement = await updateAgreement(input.payload, input.agreement, {
-    state: "cancelled",
-    renewalIntent: false,
-    cancelledAt: input.now,
-    endedAt: input.now,
-    stateHistory: agreementHistory(input.agreement, "cancelled", input.now, "period_end"),
-  })
   await cancelUncoveredRenewals(input.payload, agreement, input.now)
   await ensureBillingNotification({
     payload: input.payload,

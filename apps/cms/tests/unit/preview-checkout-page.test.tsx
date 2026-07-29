@@ -273,6 +273,7 @@ describe("preview checkout page domain initialization", () => {
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_250,
       migrationClassification: "automatic",
+      migrationSourceMechanism: "validated_provider_export_v1",
       migrationSourceZoneHash: "a".repeat(64),
       migrationInputEnvelope: "v1.encrypted",
       selectedDomain: "existing.nl",

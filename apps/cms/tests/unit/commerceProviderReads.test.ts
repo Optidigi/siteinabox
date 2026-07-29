@@ -47,12 +47,28 @@ describe("Phase 11 provider read contracts", () => {
     }
 
     await expect(getOpenProviderDomainAuthCode("9001", options))
-      .resolves.toBe("epp-code")
+      .resolves.toEqual({
+        delivery: "provider_returned",
+        authCode: "epp-code",
+      })
     await expect(getOpenProviderResellerBalance(options)).resolves.toEqual({
       availableAmount: 125.5,
       reservedAmount: 20,
       currency: "EUR",
     })
+  })
+
+  it("persists the provider signal when the registry sends the auth code to the registrant", async () => {
+    const fetchImpl = vi.fn(async () => Response.json({
+      data: { auth_code: "", type: "external", success: true },
+    }))
+    await expect(getOpenProviderDomainAuthCode("9002", {
+      token: "test-token",
+      fetchImpl,
+      env: {
+        OPENPROVIDER_API_BASE_URL: "https://openprovider.sandbox.test/v1beta",
+      } as unknown as NodeJS.ProcessEnv,
+    })).resolves.toEqual({ delivery: "registrant_email" })
   })
 
   it("lists recent Mollie payments for indeterminate-write recovery", async () => {

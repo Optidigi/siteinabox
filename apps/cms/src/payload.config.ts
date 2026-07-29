@@ -75,11 +75,18 @@ if (!DATABASE_URI) {
 // The adapter is lazy: Cloudflare REST/SMTP provider construction happens only
 // when Payload actually sends mail, not during boot, migrations, or health checks.
 
-// TODO(phase-1.3): add `cors` + `csrf` allowlists if API-key clients become
-// non-same-origin callers, or confirm same-origin and document.
-
 export default buildConfig({
   secret: PAYLOAD_SECRET,
+  // Operational one-off containers must terminate deterministically, and the
+  // CMS must not emit anonymous deployment metadata to a third party.
+  telemetry: false,
+  // Browser writes are same-origin only. `src/proxy.ts` validates Origin
+  // against the externally forwarded host for every unsafe method, which also
+  // supports exact per-customer admin hosts without a wildcard cookie origin.
+  // Machine/provider requests without Origin continue through their explicit
+  // provider or API-key authentication contracts.
+  cors: [],
+  csrf: [],
   email: payloadEmailAdapter,
   i18n: {
     fallbackLanguage: "nl",

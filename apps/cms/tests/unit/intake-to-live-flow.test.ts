@@ -4,6 +4,7 @@ import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrd
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
 import { fulfillPaidOrder } from "@/lib/payments/fulfillOrder"
 import { deliverCommerceNotification } from "@/lib/commerce/notifications"
+import { reconcileCommerceEdgeRouting } from "@/lib/domains/edgeRouting"
 import { POST as intakePOST } from "@/app/(payload)/api/intake/route"
 
 import { asNextRequest, asGenerationRun, asMockDoc } from "../_helpers/cast"
@@ -25,6 +26,10 @@ vi.mock("@/payload.config", () => ({
 }))
 
 vi.mock("@/lib/domains/verification", () => ({
+  verifyDnssecChain: vi.fn(async () => ({
+    status: "verified",
+    reason: null,
+  })),
   verifyParentDsAbsent: vi.fn(async () => ({
     status: "absent",
     records: [],
@@ -242,6 +247,15 @@ const matchesWhere = (doc: MockDoc, where: MockWhere | undefined): boolean => {
     if (condition && typeof condition === "object" && "in" in condition) {
       return Array.isArray(asMockDoc(condition).in) && (asMockDoc(condition).in as unknown[]).map(String).includes(String(value))
     }
+    if (condition && typeof condition === "object" && "not_in" in condition) {
+      return Array.isArray(asMockDoc(condition).not_in) &&
+        !(asMockDoc(condition).not_in as unknown[]).map(String).includes(String(value))
+    }
+    if (condition && typeof condition === "object" && "exists" in condition) {
+      return asMockDoc(condition).exists === true
+        ? value != null
+        : value == null
+    }
     return value === condition
   })
 }
@@ -276,7 +290,8 @@ const createPayloadStub = () => {
     }),
     create: vi.fn(async (args: MockCreateArgs) => {
       const now = new Date().toISOString()
-      const doc = storedValue({ ...args.data, id: nextId++, createdAt: now, updatedAt: now })
+      const data = args.data
+      const doc = storedValue({ ...data, id: nextId++, createdAt: now, updatedAt: now })
       const docs = store[args.collection as CollectionName]
       docs.unshift(doc as MockDoc)
       return doc
@@ -460,7 +475,7 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
     vi.stubEnv(
       "COMMERCE_RELEASE_EVIDENCE_VERSION",
-      "commerce-production-readiness-2026-07-28.1",
+      "commerce-production-readiness-2026-07-29.1",
     )
     vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
     vi.stubEnv("COMMERCE_ORIGIN_ISOLATION_VERIFIED", "1")
@@ -478,7 +493,14 @@ describe("intake-to-live mocked flow", () => {
       "DOMAIN_MIGRATION_ENCRYPTION_KEY",
       Buffer.alloc(32, 1).toString("base64"),
     )
-    vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
+    vi.stubEnv(
+      "CLOUDFLARE_RENDERER_TUNNEL_ID",
+      "11111111-1111-4111-8111-111111111111",
+    )
+    vi.stubEnv(
+      "CLOUDFLARE_CMS_TUNNEL_ID",
+      "22222222-2222-4222-8222-222222222222",
+    )
     mocks.sendEmail.mockResolvedValue({ provider: "test" })
     mocks.signInMagicLink.mockResolvedValue({ ok: true })
     installProviderFetch()
@@ -667,6 +689,81 @@ describe("intake-to-live mocked flow", () => {
       },
     }))
     expect(synchronized.fulfillmentRequired).toBe(true)
+    const initialFulfillment = await fulfillPaidOrder(payload, {
+      orderId: synchronized.orderId,
+      paymentAttemptId: synchronized.paymentAttemptId,
+    })
+    expect(initialFulfillment.status).toBe("waiting")
+    expect(store["managed-domains"][0]).toMatchObject({
+      edgeRoutingStatus: "pending",
+      httpsStatus: "pending",
+      adminHttpsStatus: "pending",
+    })
+
+    const tunnel = (kind: "renderer" | "cms") => ({
+      tunnel: {
+        id: kind === "renderer"
+          ? "11111111-1111-4111-8111-111111111111"
+          : "22222222-2222-4222-8222-222222222222",
+        name: `siteinabox-${kind}`,
+        status: "healthy" as const,
+        remotelyManaged: true,
+        raw: null,
+      },
+      ingress: [{ service: "http_status:404" as const }],
+      configurationVersion: 1,
+      connected: true,
+      changed: true,
+    })
+    await expect(reconcileCommerceEdgeRouting(payload, {
+      now: () => "2026-07-02T09:06:00.000Z",
+      reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
+      buildDnsRecords: vi.fn(() => [
+        {
+          type: "CNAME" as const,
+          name: "flow-live.nl",
+          content: "11111111-1111-4111-8111-111111111111.cfargotunnel.com",
+          ttl: 1,
+          proxied: true,
+        },
+        {
+          type: "CNAME" as const,
+          name: "www.flow-live.nl",
+          content: "11111111-1111-4111-8111-111111111111.cfargotunnel.com",
+          ttl: 1,
+          proxied: true,
+        },
+        {
+          type: "CNAME" as const,
+          name: "admin.flow-live.nl",
+          content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
+          ttl: 1,
+          proxied: true,
+        },
+      ]),
+      assertDnsRecordsReconciliable: vi.fn(async () => ({
+        unownedMatchingRecordIds: [],
+      })),
+      reconcileDnsRecord: vi.fn(async (_zoneId, record) => ({
+        id: `edge-${record.name}`,
+        ...record,
+        raw: null,
+        ownershipDisposition: "created" as const,
+      })),
+      getHostnameCertificate: vi.fn(async (_zoneId, hostname) => ({
+        hostname,
+        universalSslEnabled: true,
+        covered: true,
+        certificateStatuses: ["active"],
+        raw: null,
+      })),
+      verifyHttps: vi.fn(async () => ({
+        status: "verified" as const,
+        httpStatus: 200,
+        reason: null,
+      })),
+    })).resolves.toMatchObject({ active: 1 })
+
     const fulfillment = await fulfillPaidOrder(payload, {
       orderId: synchronized.orderId,
       paymentAttemptId: synchronized.paymentAttemptId,

@@ -45,6 +45,9 @@ export async function GET() {
       db: dbOk ? "connected" : "down",
       dataDir: dirOk ? "writable" : "unwritable"
     },
-    { status: ok ? 200 : 503 }
+    {
+      status: ok ? 200 : 503,
+      headers: { "x-siab-service": "cms" },
+    }
   )
 }

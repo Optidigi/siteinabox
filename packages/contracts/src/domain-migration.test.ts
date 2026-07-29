@@ -93,7 +93,7 @@ describe("automatic existing-domain zone contracts", () => {
       expect.objectContaining({
         type: "CNAME",
         name: "www.example.nl",
-        content: "example.nl",
+        content: "renderer.siteinabox.nl",
         proxied: true,
       }),
       expect.objectContaining({ type: "MX", priority: 10, target: "mail.example.net" }),
@@ -196,7 +196,7 @@ describe("automatic existing-domain zone contracts", () => {
     }).success).toBe(true)
   })
 
-  it("freezes an unsigned DNSSEC plan and blocks cutover while a parent DS remains", () => {
+  it("freezes fail-closed DNSSEC preparation for automatic target signing", () => {
     expect(buildDnssecPreparationPlan({
       sourceStatus: "unsigned",
       parentDsRecords: [],
@@ -205,7 +205,7 @@ describe("automatic existing-domain zone contracts", () => {
       sourceStatus: "unsigned",
       preCutoverAction: "verify_parent_ds_absent",
       cutoverReady: true,
-      targetMode: "remain_unsigned",
+      targetMode: "enable_after_cutover",
     })
     expect(buildDnssecPreparationPlan({
       sourceStatus: "unsigned",
@@ -213,7 +213,23 @@ describe("automatic existing-domain zone contracts", () => {
       checkedAt: "2026-07-28T08:05:00.000Z",
     })).toMatchObject({
       cutoverReady: false,
-      customerAction: "remove_dnssec_ds",
+      customerAction: null,
+    })
+    expect(buildDnssecPreparationPlan({
+      sourceStatus: "signed",
+      parentDsRecords: ["12345 13 2 ABCD"],
+      parentDsTtl: 3600,
+      dnsKeys: [{
+        flags: 257,
+        protocol: 3,
+        algorithm: 13,
+        publicKey: "AQID",
+      }],
+      checkedAt: "2026-07-28T08:05:00.000Z",
+    })).toMatchObject({
+      cutoverReady: true,
+      preCutoverAction: "remove_parent_ds",
+      targetMode: "enable_after_cutover",
     })
   })
 })

@@ -5,9 +5,12 @@ import {
   calculateDutchVatMinor,
   commercialAmountFromNet,
   getCommercialCatalog,
+  LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
+  migrationClassificationAvailableForCheckout,
   type CommercialAmount,
   type MigrationClassification,
 } from "@siteinabox/contracts/commerce"
+import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
 
 export type CheckoutBillingPeriod = "monthly" | "annual"
 
@@ -29,6 +32,7 @@ export type CheckoutQuote = CommercialAmount & {
   domainSurchargeNetMinor: number
   migrationServiceFeeNetMinor: number
   migrationClassification: Exclude<MigrationClassification, "complex"> | null
+  migrationSourceMechanism: MigrationSourceMechanism | null
   migrationSourceZoneHash: string | null
   migrationInputEnvelope: string | null
   migrationSecretKey: string | null
@@ -61,6 +65,7 @@ export function buildCheckoutQuote(input: {
   billingPeriod: CheckoutBillingPeriod
   providerOperationPriceNetMinor: number
   migrationClassification?: MigrationClassification | null
+  migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationSourceZoneHash?: string | null
   migrationInputEnvelope?: string | null
   migrationSecretKey?: string | null
@@ -72,14 +77,31 @@ export function buildCheckoutQuote(input: {
   now?: Date
 }): CheckoutQuote {
   const catalog = getCommercialCatalog(input.catalogVersion)
-  if (input.migrationClassification === "complex") {
-    throw new Error("Complex migrations require a custom quote and cannot enter ordinary checkout.")
+  if (
+    input.migrationClassification &&
+    !migrationClassificationAvailableForCheckout(
+      input.migrationClassification,
+      catalog.catalogVersion,
+    )
+  ) {
+    throw new Error("This migration classification is unavailable in ordinary checkout.")
   }
+  if (input.migrationClassification === "complex") {
+    throw new Error("Complex migrations are unavailable in ordinary checkout.")
+  }
+  const migrationSourceMechanism = input.migrationSourceMechanism ??
+    (
+      catalog.catalogVersion === LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION &&
+        input.migrationClassification
+        ? "customer_authorized_provider_export_v1"
+        : null
+    )
   const domainMode = input.domainMode ?? "new_registration"
   if (
     domainMode === "existing_domain" &&
     (
       !input.migrationClassification ||
+      !migrationSourceMechanism ||
       !/^[a-f0-9]{64}$/.test(input.migrationSourceZoneHash ?? "") ||
       (
         !input.migrationInputEnvelope &&
@@ -93,6 +115,7 @@ export function buildCheckoutQuote(input: {
     domainMode === "new_registration" &&
     (
       input.migrationClassification ||
+      migrationSourceMechanism ||
       input.migrationSourceZoneHash ||
       input.migrationInputEnvelope ||
       input.migrationSecretKey
@@ -148,6 +171,7 @@ export function buildCheckoutQuote(input: {
       ? catalog.migrations.assisted_standard.netAmountMinor
       : 0,
     migrationClassification: input.migrationClassification ?? null,
+    migrationSourceMechanism,
     migrationSourceZoneHash: input.migrationSourceZoneHash ?? null,
     migrationInputEnvelope: input.migrationInputEnvelope ?? null,
     migrationSecretKey: input.migrationSecretKey ?? null,
@@ -213,6 +237,7 @@ export function openCheckoutQuote(
     parsed.domainMode === "existing_domain" &&
     (
       !parsed.migrationClassification ||
+      !parsed.migrationSourceMechanism ||
       !/^[a-f0-9]{64}$/.test(parsed.migrationSourceZoneHash ?? "") ||
       (
         !parsed.migrationInputEnvelope &&
@@ -244,6 +269,7 @@ export function sameCommercialCheckoutQuote(
     "domainSurchargeNetMinor",
     "migrationServiceFeeNetMinor",
     "migrationClassification",
+    "migrationSourceMechanism",
     "migrationSourceZoneHash",
     "migrationSecretKey",
     "netAmountMinor",

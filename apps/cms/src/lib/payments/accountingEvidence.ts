@@ -85,6 +85,20 @@ const findAccountingDocument = (
 ): Promise<AccountingDocument | null> =>
   findOneDoc(payload, "accounting-documents", { evidenceKey: { equals: evidenceKey } })
 
+const createOrReloadAccountingDocument = async (
+  payload: Payload,
+  evidenceKey: string,
+  create: () => Promise<AccountingDocument>,
+): Promise<AccountingDocument> => {
+  try {
+    return await create()
+  } catch (error) {
+    const raced = await findAccountingDocument(payload, evidenceKey)
+    if (raced) return raced
+    throw error
+  }
+}
+
 export async function ensureInvoiceEvidence(input: {
   payload: Payload
   order: Order
@@ -95,7 +109,8 @@ export async function ensureInvoiceEvidence(input: {
   const existing = await findAccountingDocument(input.payload, evidenceKey)
   if (existing) return existing
   const amounts = orderAmounts(input.order)
-  return input.payload.create({
+  return createOrReloadAccountingDocument(input.payload, evidenceKey, () =>
+    input.payload.create({
     collection: "accounting-documents",
     data: {
       evidenceKey,
@@ -120,7 +135,8 @@ export async function ensureInvoiceEvidence(input: {
     },
     depth: 0,
     overrideAccess: true,
-  }) as Promise<AccountingDocument>
+    }) as Promise<AccountingDocument>,
+  )
 }
 
 export async function ensurePendingCreditNote(input: {
@@ -136,7 +152,8 @@ export async function ensurePendingCreditNote(input: {
   const existing = await findAccountingDocument(input.payload, evidenceKey)
   if (existing) return existing
   const amounts = allocateCreditAmounts(input.order, input.grossAmountMinor)
-  return input.payload.create({
+  return createOrReloadAccountingDocument(input.payload, evidenceKey, () =>
+    input.payload.create({
     collection: "accounting-documents",
     data: {
       evidenceKey,
@@ -164,10 +181,62 @@ export async function ensurePendingCreditNote(input: {
     },
     depth: 0,
     overrideAccess: true,
-  }) as Promise<AccountingDocument>
+    }) as Promise<AccountingDocument>,
+  )
 }
 
-export async function issueCreditNote(input: {
+export async function ensurePendingPaymentAdjustment(input: {
+  payload: Payload
+  order: Order
+  paymentAttempt: PaymentAttempt
+  grossAmountMinor: number
+  now: string
+}): Promise<AccountingDocument> {
+  if (
+    !Number.isSafeInteger(input.grossAmountMinor) ||
+    input.grossAmountMinor <= 0
+  ) {
+    throw new Error("Payment adjustment requires a positive captured amount.")
+  }
+  const evidenceKey =
+    `payment-adjustment:payment-attempt:${input.paymentAttempt.id}:duplicate_payment`
+  const existing = await findAccountingDocument(input.payload, evidenceKey)
+  if (existing) return existing
+  return createOrReloadAccountingDocument(input.payload, evidenceKey, () =>
+    input.payload.create({
+      collection: "accounting-documents",
+      data: {
+        evidenceKey,
+        documentNumber: `PA-${input.order.orderNumber}-${input.paymentAttempt.id}`,
+        documentType: "payment_adjustment",
+        state: "pending_provider",
+        order: input.order.id,
+        paymentAttempt: input.paymentAttempt.id,
+        tenant: numericRelationshipId(input.order.tenant),
+        reason: "overpayment_refund",
+        refundScenario: "duplicate_payment",
+        currency: input.order.currency,
+        netAmountMinor: 0,
+        vatAmountMinor: 0,
+        grossAmountMinor: input.grossAmountMinor,
+        lineItems: [{
+          code: "duplicate-payment-adjustment",
+          description: "Duplicate payment captured for refund",
+          quantity: 1,
+          netAmountMinor: 0,
+        }],
+        customerSnapshot: customerSnapshot(input.order),
+        reconciliationRequired: false,
+        stateHistory: stateEntry("pending_provider", input.now),
+        createdAt: input.now,
+      },
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<AccountingDocument>,
+  )
+}
+
+export async function issueAccountingDocument(input: {
   payload: Payload
   document: AccountingDocument
   providerOperationId: string
@@ -194,6 +263,58 @@ export async function issueCreditNote(input: {
     overrideAccess: true,
     context: { accountingDocumentLifecycleMutation: true },
   }) as Promise<AccountingDocument>
+}
+
+export const issueCreditNote = issueAccountingDocument
+
+export async function ensureRefundPaymentAdjustment(input: {
+  payload: Payload
+  order: Order
+  paymentAttempt: PaymentAttempt
+  providerRefundId: string
+  providerStatus: string
+  grossAmountMinor: number
+  issuedAt: string
+}): Promise<AccountingDocument> {
+  const byProviderReference = await findOneDoc(input.payload, "accounting-documents", {
+    providerOperationId: { equals: input.providerRefundId },
+  })
+  if (byProviderReference) {
+    return issueAccountingDocument({
+      payload: input.payload,
+      document: byProviderReference,
+      providerOperationId: input.providerRefundId,
+      providerStatus: input.providerStatus,
+      issuedAt: input.issuedAt,
+    })
+  }
+  const pending = await findAccountingDocument(
+    input.payload,
+    `payment-adjustment:payment-attempt:${input.paymentAttempt.id}:duplicate_payment`,
+  )
+  if (pending) {
+    return issueAccountingDocument({
+      payload: input.payload,
+      document: pending,
+      providerOperationId: input.providerRefundId,
+      providerStatus: input.providerStatus,
+      issuedAt: input.issuedAt,
+    })
+  }
+  const document = await ensurePendingPaymentAdjustment({
+    payload: input.payload,
+    order: input.order,
+    paymentAttempt: input.paymentAttempt,
+    grossAmountMinor: input.grossAmountMinor,
+    now: input.issuedAt,
+  })
+  return issueAccountingDocument({
+    payload: input.payload,
+    document,
+    providerOperationId: input.providerRefundId,
+    providerStatus: input.providerStatus,
+    issuedAt: input.issuedAt,
+  })
 }
 
 export async function ensureRefundCreditNote(input: {
@@ -223,7 +344,8 @@ export async function ensureRefundCreditNote(input: {
   const existing = await findAccountingDocument(input.payload, evidenceKey)
   if (existing) return existing
   const amounts = allocateCreditAmounts(input.order, input.grossAmountMinor)
-  return input.payload.create({
+  return createOrReloadAccountingDocument(input.payload, evidenceKey, () =>
+    input.payload.create({
     collection: "accounting-documents",
     data: {
       evidenceKey,
@@ -255,7 +377,8 @@ export async function ensureRefundCreditNote(input: {
     },
     depth: 0,
     overrideAccess: true,
-  }) as Promise<AccountingDocument>
+    }) as Promise<AccountingDocument>,
+  )
 }
 
 export async function ensureChargebackCreditNote(input: {
@@ -271,7 +394,8 @@ export async function ensureChargebackCreditNote(input: {
   const existing = await findAccountingDocument(input.payload, evidenceKey)
   if (existing) return existing
   const amounts = allocateCreditAmounts(input.order, input.grossAmountMinor)
-  return input.payload.create({
+  return createOrReloadAccountingDocument(input.payload, evidenceKey, () =>
+    input.payload.create({
     collection: "accounting-documents",
     data: {
       evidenceKey,
@@ -302,5 +426,6 @@ export async function ensureChargebackCreditNote(input: {
     },
     depth: 0,
     overrideAccess: true,
-  }) as Promise<AccountingDocument>
+    }) as Promise<AccountingDocument>,
+  )
 }

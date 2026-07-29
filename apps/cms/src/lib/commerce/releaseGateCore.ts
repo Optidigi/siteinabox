@@ -4,6 +4,7 @@ import {
   type CommerceReleaseGateDecision,
 } from "@siteinabox/contracts/commerce"
 import type { Payload } from "payload"
+import type { Tenant } from "@/payload-types"
 
 const clean = (value: string | undefined): string | null => {
   const normalized = value?.trim()
@@ -86,7 +87,58 @@ export async function commerceProductionReadinessBlockers(
   if (criticalAlerts.totalDocs > 0 || criticalAlerts.docs.length > 0) {
     blockers.push("production_has_open_critical_commerce_alerts")
   }
+  blockers.push(...await commerceEdgeInventoryBlockers(payload, true))
   return [...new Set(blockers)]
+}
+
+export async function commerceEdgeInventoryBlockers(
+  payload: Payload,
+  requireActiveRouting = false,
+): Promise<string[]> {
+  const blockers: string[] = []
+  const liveTenants = await payload.find({
+    collection: "tenants",
+    where: { status: { equals: "active" } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  for (const tenant of liveTenants.docs as Tenant[]) {
+    const domain = tenant.domain?.trim().toLowerCase().replace(/\.$/, "")
+    if (!domain) {
+      blockers.push("active_tenant_missing_canonical_domain")
+      continue
+    }
+    const managedDomains = await payload.find({
+      collection: "managed-domains",
+      where: {
+        and: [
+          { tenant: { equals: tenant.id } },
+          { domainNameAscii: { equals: domain } },
+          { state: { equals: "active" } },
+          { cloudflareZoneId: { exists: true } },
+          ...(requireActiveRouting
+            ? [
+                { edgeRoutingStatus: { equals: "active" } },
+                { adminHttpsStatus: { equals: "verified" } },
+                { httpsStatus: { equals: "verified" } },
+              ]
+            : []),
+        ],
+      },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (managedDomains.docs.length !== 1) {
+      blockers.push(
+        requireActiveRouting
+          ? `active_tenant_edge_routing_unready:${tenant.id}`
+          : `active_tenant_managed_domain_inventory_invalid:${tenant.id}`,
+      )
+    }
+  }
+  return blockers
 }
 
 export function commerceProviderReadsAllowed(
@@ -99,6 +151,44 @@ export function commerceProviderWritesAllowed(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   return commerceReleaseGate(env).providerWritesAllowed
+}
+
+/**
+ * Narrow bootstrap gate for the one operation that establishes the
+ * Cloudflare-to-origin path whose live proof is required by the global
+ * production gate. It accepts only the origin-isolation blocker; every other
+ * production prerequisite and the explicit write acknowledgement must pass.
+ */
+export function commerceEdgeBootstrapWritesAllowed(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (clean(env.COMMERCE_RELEASE_STAGE) !== "production") return false
+  const blockers = commerceReleaseGate(env).blockers
+  return blockers.length === 1 &&
+    blockers[0] === "production_origin_isolation_not_verified"
+}
+
+export async function commerceEdgeBootstrapBlockers(
+  payload: Payload,
+): Promise<string[]> {
+  const blockers = await commerceEdgeInventoryBlockers(payload, false)
+  const criticalAlerts = await payload.find({
+    collection: "operational-alerts",
+    where: {
+      and: [
+        { status: { equals: "open" } },
+        { severity: { equals: "critical" } },
+        { source: { in: ["payments", "domains"] } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (criticalAlerts.totalDocs > 0 || criticalAlerts.docs.length > 0) {
+    blockers.push("edge_bootstrap_has_open_critical_commerce_alerts")
+  }
+  return [...new Set(blockers)]
 }
 
 export function requireCommerceProviderWritesAllowed(

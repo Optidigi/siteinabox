@@ -157,6 +157,47 @@ describe("migration checkout secret lifecycle", () => {
     })).not.toContain("secret-epp")
   })
 
+  it("limits automatic source credentials to the 24-hour source-evidence window", async () => {
+    const store = buildStore()
+    const automaticZone = {
+      ...zone,
+      authority: {
+        mechanism: "validated_provider_export" as const,
+        provider: "legacy-provider",
+        complete: true as const,
+      },
+    }
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(automaticZone),
+    )
+    const encryptedInput = sealCheckoutMigrationInput({
+      schemaVersion: 2,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic",
+      sourceMechanism: "validated_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: automaticZone,
+      sourceRefreshCredential: {
+        kind: "provider_export",
+        sourceSoaSerial: 2026072901,
+      },
+      transferCode: "secret-epp",
+      transferAuthorizationAccepted: true,
+    })
+    await persistMigrationCheckoutSecret(store.payload, {
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      encryptedInput,
+      now: new Date("2026-07-29T10:00:00.000Z"),
+    })
+
+    expect(store.read()).toMatchObject({
+      expiresAt: "2026-07-30T10:00:00.000Z",
+    })
+  })
+
   it("rejects cross-order access and expires ciphertext fail-closed", async () => {
     const store = buildStore()
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
@@ -343,5 +384,62 @@ describe("migration checkout secret lifecycle", () => {
     ])
     expect(first.secretKey).toBe(second.secretKey)
     expect(create).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not coalesce concurrent automatic inputs with different refresh credentials", async () => {
+    const automaticZone = {
+      ...zone,
+      authority: {
+        mechanism: "validated_provider_export" as const,
+        provider: "fixture",
+        complete: true as const,
+      },
+    }
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(automaticZone),
+    )
+    const envelope = (sourceSoaSerial: number) => sealCheckoutMigrationInput({
+      schemaVersion: 2,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic",
+      sourceMechanism: "validated_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: automaticZone,
+      sourceRefreshCredential: {
+        kind: "provider_export",
+        sourceSoaSerial,
+      },
+      transferCode: "same-secret-epp",
+      transferAuthorizationAccepted: true,
+    })
+    let record: Record<string, unknown> | null = null
+    let findCalls = 0
+    const find = vi.fn(async () => {
+      findCalls += 1
+      if (findCalls <= 2) return { docs: [], totalDocs: 0 }
+      return { docs: record ? [record] : [], totalDocs: record ? 1 : 0 }
+    })
+    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+      if (record) throw new Error("duplicate key value violates unique constraint")
+      record = { id: 1, ...data }
+      return record
+    })
+    const payload = asPayload({ find, create })
+    const persist = (encryptedInput: string) =>
+      persistMigrationCheckoutSecret(payload, {
+        generationRunId: 500,
+        domain: "example.nl",
+        sourceZoneHash,
+        encryptedInput,
+        now: new Date("2026-07-28T10:00:00.000Z"),
+      })
+
+    const results = await Promise.allSettled([
+      persist(envelope(2026072901)),
+      persist(envelope(2026072902)),
+    ])
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
   })
 })

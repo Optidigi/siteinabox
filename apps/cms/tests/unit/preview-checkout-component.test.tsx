@@ -61,6 +61,7 @@ const quote = (billingPeriod: "monthly" | "annual") => {
       domainSurchargeNetMinor: 0,
       migrationServiceFeeNetMinor: 0,
       migrationClassification: null,
+      migrationSourceMechanism: null,
       migrationSourceZoneHash: null,
       migrationInputEnvelope: null,
       migrationSecretKey: null,
@@ -131,7 +132,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
           domainIncludedAllowanceNetMinor: 1_000,
           migrations: {
             automaticNetAmountMinor: 0,
-            assistedStandardNetAmountMinor: 4_900,
           },
         }}
         paymentStatus="not_started"
@@ -208,24 +208,40 @@ describe("PreviewCheckout Phase 3 flow", () => {
   })
 
   it("keeps existing-domain migration fail-closed and exposes its authorized source inputs only when enabled", async () => {
-    const checkDomainAction = vi.fn().mockResolvedValue({
-      ok: true,
-      status: "preflight_complete" as const,
-      domain: "example.nl",
-      domainMode: "existing_domain" as const,
-      migrationReadiness: "unsupported" as const,
-      migrationClassification: null,
-      migrationPreflightOnly: true,
-      migrationPublicEvidence: {
-        checkedAt: "2026-07-29T12:00:00.000Z",
-        authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
-        dnssecDsPresent: true,
-        probableDnsProvider: "Example DNS",
-        registrar: "Example Registrar",
-        supplementalOnly: true as const,
+    const migrationPublicEvidence = {
+      checkedAt: "2026-07-29T12:00:00.000Z",
+      authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
+      dnssecDsPresent: true,
+      dnssecDsRecords: ["12345 13 2 " + "AB".repeat(32)],
+      dnssecDsTtl: 3600,
+      probableDnsProvider: "Example DNS",
+      registrar: "Example Registrar",
+      supplementalOnly: true as const,
+    }
+    const checkDomainAction = vi.fn().mockImplementation(
+      async (_state: unknown, formData: FormData) => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+        const sourceMethod = String(formData.get("migrationSourceMethod") ?? "")
+        return {
+          ok: sourceMethod === "",
+          status: sourceMethod === "" ? "preflight_complete" as const : "invalid" as const,
+          domain: "example.nl",
+          domainMode: "existing_domain" as const,
+          migrationReadiness: "unsupported" as const,
+          migrationClassification: null,
+          migrationSourceMechanism: sourceMethod || undefined,
+          migrationPreflightOnly: true,
+          migrationPublicEvidence,
+          message: sourceMethod === ""
+            ? "Nothing has been transferred or ordered."
+            : "Correct the transfer authorization and try again.",
+          requestToken:
+            document.querySelector<HTMLInputElement>(
+              '#checkout-domain-form input[name="requestToken"]',
+            )?.value ?? String(formData.get("requestToken") ?? ""),
+        }
       },
-      message: "Nothing has been transferred or ordered.",
-    })
+    )
     const commonProps = {
       customerEmail: "owner@example.test",
       currentDomain: null,
@@ -233,6 +249,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
       initialProfile: profile,
       initialDetails: profile,
       initialQuotes: null,
+      enabledMigrationSourceMethods: [
+        "cloudflare_api_v1" as const,
+        "authorized_axfr_v1" as const,
+        "validated_provider_export_v1" as const,
+      ],
       catalog: {
         version: "2026-07-26.1",
         currency: "EUR" as const,
@@ -297,7 +318,17 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
     expect((existingMode as HTMLInputElement).disabled).toBe(false)
     fireEvent.click(existingMode)
-
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+    await screen.findByText("checkoutMigrationSourceLegend")
+    expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
+    fireEvent.click(screen.getByRole("radio", {
+      name: "checkoutMigrationSourceExport",
+    }))
     expect((screen.getByLabelText(
       "checkoutMigrationZoneExportLabel",
     ) as HTMLInputElement).type).toBe("file")
@@ -307,11 +338,17 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(screen.queryByRole("radio", {
       name: "checkoutMigrationAutomaticChoice",
     })).toBeNull()
-    expect((screen.getByRole("radio", {
+    expect(screen.queryByRole("radio", {
       name: "checkoutMigrationAssistedChoice",
-    }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText("checkoutMigrationAssistedChoice")).toBeTruthy()
+    })).toBeNull()
+    expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
     expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(3))
+    expect(screen.getByLabelText("checkoutMigrationZoneExportLabel")).toBeTruthy()
+    expect(screen.getByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
     expect(
       container.querySelector<HTMLInputElement>(
         '#checkout-domain-form input[name="domainMode"]',

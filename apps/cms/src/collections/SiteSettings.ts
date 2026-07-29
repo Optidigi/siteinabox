@@ -311,6 +311,10 @@ export const SiteSettings: CollectionConfig = {
     { name: "language", type: "text", defaultValue: "nl",
       admin: { description: adminText("ISO 639-1 language code, used in <html lang>. Default: 'nl'.", "ISO 639-1-taalcode, gebruikt in <html lang>. Standaard: 'nl'.") } },
     { name: "aliases", type: "array",
+      access: {
+        create: ({ req }) => req.user?.role === "super-admin",
+        update: ({ req }) => req.user?.role === "super-admin",
+      },
       admin: { description: adminText("Alternative domains that should serve the same site (e.g. www.foo.com aliased to foo.com).", "Alternatieve domeinen die dezelfde site moeten aanbieden (bijv. www.foo.com als alias van foo.com).") },
       fields: [
         { name: "host", type: "text", required: true }

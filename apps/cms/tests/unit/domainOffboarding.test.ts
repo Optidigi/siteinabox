@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   captureDomainOffboardingContinuityEvidence,
   confirmDomainTransferCompletedByCustomer,
+  exportDomainDnsPortability,
   markDomainTransferOutStarted,
   prepareDomainTransferOutCode,
   reconcileDomainTransferOut,
@@ -66,6 +67,7 @@ const createStore = (domainOverrides: MockDoc = {}) => {
     customerStatus: "active",
     renewalIntent: true,
     providerAutorenew: "on",
+    providerRenewalDate: "2027-07-29T00:00:00.000Z",
     reconciliationRequired: false,
     transferOutProviderMissingCount: 0,
     stateHistory: [],
@@ -102,6 +104,84 @@ const createStore = (domainOverrides: MockDoc = {}) => {
 }
 
 describe("domain offboarding and transfer-out rehearsal", () => {
+  it("exports the complete current authoritative zone to the contracting customer", async () => {
+    const store = createStore({
+      state: "provider_hold",
+      authoritativeDnsStatus: "failed",
+    })
+    const records = [
+      {
+        id: "mx",
+        record: {
+          type: "MX" as const,
+          name: "example.nl",
+          ttl: 3_600,
+          priority: 10,
+          target: "mail.example.net",
+          proxied: false,
+        },
+        raw: {},
+      },
+      {
+        id: "dkim",
+        record: {
+          type: "TXT" as const,
+          name: "selector._domainkey.example.nl",
+          ttl: 300,
+          content: "v=DKIM1; p=public-key",
+          proxied: false,
+        },
+        raw: {},
+      },
+    ]
+
+    await expect(exportDomainDnsPortability(store.payload, {
+      managedDomainId: 10,
+      actor: ACTOR,
+      now: "2026-07-29T18:00:00.000Z",
+    }, {
+      providerReadsAllowed: () => true,
+      listCloudflareMigrationDnsRecords: vi.fn(async () => records),
+      verifyParentDsAbsent: vi.fn(async () => ({
+        status: "present" as const,
+        records: ["12345 13 2 ABCD"],
+        ttl: 3_600,
+        reason: "parent_ds_present",
+      })),
+    })).resolves.toMatchObject({
+      format: "siteinabox-dns-portability-v2",
+      domain: "example.nl",
+      complete: true,
+      dnssec: {
+        parentStatus: "present",
+        parentDsRecords: ["12345 13 2 ABCD"],
+      },
+      records: expect.arrayContaining([
+        expect.objectContaining({ type: "MX", target: "mail.example.net" }),
+        expect.objectContaining({
+          type: "TXT",
+          name: "selector._domainkey.example.nl",
+        }),
+      ]),
+    })
+  })
+
+  it("allows an unexpired provider-held domain to start transfer-out", async () => {
+    const store = createStore({ state: "provider_hold" })
+
+    await expect(requestDomainOffboarding(store.payload, {
+      managedDomainId: 10,
+      actor: ACTOR,
+      requestId: "provider-hold-transfer",
+      reason: "Customer is moving registrar custody.",
+      continuityEvidence: EVIDENCE,
+      now: "2026-07-29T18:00:00.000Z",
+    })).resolves.toMatchObject({
+      custodyStatus: "offboarding_requested",
+      state: "provider_hold",
+    })
+  })
+
   it("freezes hashes from the complete authoritative provider zone", async () => {
     const store = createStore()
     const listRecords = vi.fn(async () => [
@@ -210,10 +290,11 @@ describe("domain offboarding and transfer-out rehearsal", () => {
       requestId: "offboarding-request-1",
       reason: "Customer is moving registrar custody.",
       continuityEvidence: EVIDENCE,
-      now: "2026-07-28T10:00:00.000Z",
+      now: "2026-07-29T18:00:00.000Z",
     })
     await prepareDomainTransferOutCode(store.payload, 10, {
       providerReadsAllowed: () => true,
+      providerWritesAllowed: () => true,
       loginOpenProvider: vi.fn(async () => "token"),
       findOpenProviderDomain: vi.fn(async () => ({
         id: "9001",
@@ -228,10 +309,13 @@ describe("domain offboarding and transfer-out rehearsal", () => {
         verificationEmailDescription: null,
         raw: {},
       })),
-      getOpenProviderDomainAuthCode: vi.fn(async () => "sensitive-epp-code"),
+      getOpenProviderDomainAuthCode: vi.fn(async () => ({
+        delivery: "provider_returned" as const,
+        authCode: "sensitive-epp-code",
+      })),
       sealSecret: (value, binding) =>
         sealMigrationSecret(value, binding, ENCRYPTION_ENV),
-    }, "2026-07-28T10:01:00.000Z")
+    }, "2026-07-29T18:01:00.000Z")
 
     expect(store.domain.encryptedTransferOutCode).not.toContain(
       "sensitive-epp-code",
@@ -239,7 +323,7 @@ describe("domain offboarding and transfer-out rehearsal", () => {
     const revealed = await revealDomainTransferOutCode(store.payload, {
       managedDomainId: 10,
       actor: ACTOR,
-      now: "2026-07-28T10:02:00.000Z",
+      now: "2026-07-29T18:02:00.000Z",
     }, {
       openSecret: (value, binding) =>
         openMigrationSecret(value, binding, ENCRYPTION_ENV),
@@ -248,14 +332,14 @@ describe("domain offboarding and transfer-out rehearsal", () => {
     await markDomainTransferOutStarted(store.payload, {
       managedDomainId: 10,
       actor: ACTOR,
-      now: "2026-07-28T10:03:00.000Z",
+      now: "2026-07-29T18:03:00.000Z",
     })
     const findOpenProviderDomain = vi.fn(async () => null)
     const first = await reconcileDomainTransferOut(store.payload, 10, {
       providerReadsAllowed: () => true,
       loginOpenProvider: vi.fn(async () => "token"),
       findOpenProviderDomain,
-    }, new Date("2026-07-28T10:04:00.000Z"))
+    }, new Date("2026-07-29T18:04:00.000Z"))
     expect(first.status).toBe("pending")
     expect(store.domain.custodyStatus).toBe("transfer_pending")
 
@@ -263,27 +347,27 @@ describe("domain offboarding and transfer-out rehearsal", () => {
       providerReadsAllowed: () => true,
       loginOpenProvider: vi.fn(async () => "token"),
       findOpenProviderDomain,
-    }, new Date("2026-07-28T10:20:00.000Z"))
+    }, new Date("2026-07-29T18:20:00.000Z"))
     expect(withoutCustomerConfirmation.status).toBe("pending")
     expect(store.domain.custodyStatus).toBe("transfer_pending")
 
     await confirmDomainTransferCompletedByCustomer(store.payload, {
       managedDomainId: 10,
       actor: ACTOR,
-      now: "2026-07-28T10:21:00.000Z",
+      now: "2026-07-29T18:21:00.000Z",
     })
     const confirmed = await reconcileDomainTransferOut(store.payload, 10, {
       providerReadsAllowed: () => true,
       loginOpenProvider: vi.fn(async () => "token"),
       findOpenProviderDomain,
-    }, new Date("2026-07-28T10:22:00.000Z"))
+    }, new Date("2026-07-29T18:22:00.000Z"))
     expect(confirmed.status).toBe("transferred_out")
     expect(store.domain).toMatchObject({
       ...originalService,
       custodyStatus: "transferred_out",
       encryptedTransferOutCode: null,
-      transferOutCodeDeletedAt: "2026-07-28T10:22:00.000Z",
-      transferOutCustomerConfirmedAt: "2026-07-28T10:21:00.000Z",
+      transferOutCodeDeletedAt: "2026-07-29T18:22:00.000Z",
+      transferOutCustomerConfirmedAt: "2026-07-29T18:21:00.000Z",
       renewalIntent: false,
       providerAutorenew: "unknown",
     })
@@ -308,7 +392,7 @@ describe("domain offboarding and transfer-out rehearsal", () => {
       requestId: "cancelled-website-transfer-out",
       reason: "Customer cancelled website service and is moving the domain.",
       continuityEvidence: EVIDENCE,
-      now: "2026-07-28T11:00:00.000Z",
+      now: "2026-07-29T19:00:00.000Z",
     })
 
     expect(store.domain).toMatchObject({
@@ -361,9 +445,9 @@ describe("domain offboarding and transfer-out rehearsal", () => {
 
   it("rejects unsupported TLDs before creating partial offboarding state", async () => {
     const store = createStore()
-    store.domain.tld = "be"
-    store.domain.domainNameAscii = "example.be"
-    store.order.domain = "example.be"
+    store.domain.tld = "xyz"
+    store.domain.domainNameAscii = "example.xyz"
+    store.order.domain = "example.xyz"
 
     await expect(requestDomainOffboarding(store.payload, {
       managedDomainId: 10,
@@ -372,9 +456,101 @@ describe("domain offboarding and transfer-out rehearsal", () => {
       reason: "Customer is moving registrar custody.",
       continuityEvidence: {
         ...EVIDENCE,
+        domain: "example.xyz",
+      },
+    })).rejects.toThrow("not contract-enabled for .xyz")
+    expect(store.update).not.toHaveBeenCalled()
+  })
+
+  it("uses the provider-backed outgoing transfer contract for non-.nl TLDs", async () => {
+    const store = createStore({
+      tld: "be",
+      domainNameAscii: "example.be",
+    })
+    store.order.domain = "example.be"
+
+    await requestDomainOffboarding(store.payload, {
+      managedDomainId: 10,
+      actor: ACTOR,
+      requestId: "be-transfer-out",
+      reason: "Customer is moving registrar custody.",
+      continuityEvidence: {
+        ...EVIDENCE,
         domain: "example.be",
       },
-    })).rejects.toThrow("currently supports only .nl")
-    expect(store.update).not.toHaveBeenCalled()
+      now: "2026-07-29T18:00:00.000Z",
+    })
+    await prepareDomainTransferOutCode(store.payload, 10, {
+      providerReadsAllowed: () => true,
+      providerWritesAllowed: () => true,
+      loginOpenProvider: vi.fn(async () => "token"),
+      findOpenProviderDomain: vi.fn(async () => ({
+        id: "9001",
+        domain: "example.be",
+        status: "ACT",
+        ownerHandle: null,
+        adminHandle: null,
+        nameServers: [],
+        renewalDate: "2027-07-29T00:00:00.000Z",
+        autorenew: "on" as const,
+        verificationEmailStatus: null,
+        verificationEmailDescription: null,
+        raw: {},
+      })),
+      getOpenProviderDomainAuthCode: vi.fn(async () => ({
+        delivery: "registrant_email" as const,
+      })),
+      sealSecret: (value, binding) =>
+        sealMigrationSecret(value, binding, ENCRYPTION_ENV),
+    }, "2026-07-29T18:01:00.000Z")
+
+    expect(store.domain).toMatchObject({
+      custodyStatus: "transfer_code_ready",
+      tld: "be",
+    })
+    expect(store.domain).toMatchObject({
+      transferOutCodeDeliveryStatus: "registrant_email",
+      encryptedTransferOutCode: null,
+    })
+  })
+
+  it("does not trigger registrant-email auth-code delivery while provider writes are disabled", async () => {
+    const store = createStore({
+      tld: "be",
+      domainNameAscii: "example.be",
+    })
+    store.order.domain = "example.be"
+    const getOpenProviderDomainAuthCode = vi.fn()
+    await requestDomainOffboarding(store.payload, {
+      managedDomainId: 10,
+      actor: ACTOR,
+      requestId: "be-write-gate",
+      reason: "Customer is moving registrar custody.",
+      continuityEvidence: { ...EVIDENCE, domain: "example.be" },
+      now: "2026-07-29T18:00:00.000Z",
+    })
+
+    await expect(prepareDomainTransferOutCode(store.payload, 10, {
+      providerReadsAllowed: () => true,
+      providerWritesAllowed: () => false,
+      loginOpenProvider: vi.fn(async () => "token"),
+      findOpenProviderDomain: vi.fn(async () => ({
+        id: "9001",
+        domain: "example.be",
+        status: "ACT",
+        ownerHandle: null,
+        adminHandle: null,
+        nameServers: [],
+        renewalDate: "2027-07-29T00:00:00.000Z",
+        autorenew: "on" as const,
+        verificationEmailStatus: null,
+        verificationEmailDescription: null,
+        raw: {},
+      })),
+      getOpenProviderDomainAuthCode,
+    }, "2026-07-29T18:01:00.000Z")).rejects.toThrow(
+      "does not allow provider-delivered transfer codes",
+    )
+    expect(getOpenProviderDomainAuthCode).not.toHaveBeenCalled()
   })
 })

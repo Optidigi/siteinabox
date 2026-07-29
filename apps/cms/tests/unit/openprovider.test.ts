@@ -19,6 +19,7 @@ import {
   setOpenProviderDomainAutorenew,
   suggestOpenProviderDomains,
   transferOpenProviderDomain,
+  updateOpenProviderDomainDnssec,
   updateOpenProviderDomainNameservers,
 } from "@/lib/domains/openprovider"
 
@@ -92,7 +93,10 @@ describe("OpenProvider adapter", () => {
   it.each(["nl", "be"] as const)(
     "checks .%s availability and exposes provider registration price details",
     async (tld) => {
-    const fetchMock = vi.fn(async () => Response.json({
+    const fetchMock = vi.fn(async (
+      _input: string | URL | Request,
+      _init?: RequestInit,
+    ) => Response.json({
       data: {
         results: [{
           domain: `example.${tld}`,
@@ -757,6 +761,13 @@ describe("OpenProvider adapter", () => {
             { name: "ada.ns.cloudflare.com" },
             { name: "bob.ns.cloudflare.com" },
           ],
+          dnssec: "signed",
+          dnssec_keys: [{
+            flags: 257,
+            protocol: 3,
+            alg: 13,
+            pub_key: "AQID",
+          }],
           renewal_date: "2027-07-26 00:00:00",
           registry_expiration_date: "2027-08-01 00:00:00",
           autorenew: "on",
@@ -778,6 +789,13 @@ describe("OpenProvider adapter", () => {
       ownerHandle: "OWNER-CLIENT",
       adminHandle: "ADMIN",
       nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      dnssecEnabled: true,
+      dnssecKeys: [{
+        flags: 257,
+        protocol: 3,
+        alg: 13,
+        pub_key: "AQID",
+      }],
       renewalDate: "2027-07-26 00:00:00",
       registryExpiryDate: "2027-08-01 00:00:00",
       autorenew: "on",
@@ -950,6 +968,12 @@ describe("OpenProvider adapter", () => {
         { name: "ns2.legacy.example" },
       ],
       autorenew: "on",
+      dnssecKeys: [{
+        flags: 257,
+        protocol: 3,
+        alg: 13,
+        pub_key: "AQID",
+      }],
       reference: "domain-migration:order:700:v1",
       acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).resolves.toMatchObject({
@@ -973,7 +997,54 @@ describe("OpenProvider adapter", () => {
         { name: "ns1.legacy.example" },
         { name: "ns2.legacy.example" },
       ],
+      dnssec_keys: [{
+        flags: 257,
+        protocol: 3,
+        alg: 13,
+        pub_key: "AQID",
+      }],
     })
+  })
+
+  it("updates registrar DNSSEC with an explicit bounded key set", async () => {
+    const fetchMock = vi.fn(async (
+      _input: string | URL | Request,
+      _init?: RequestInit,
+    ) => Response.json({
+      code: 0,
+      data: { id: 9010, status: "ACT" },
+    }))
+    await expect(updateOpenProviderDomainDnssec(9010, {
+      enabled: true,
+      keys: [{
+        flags: 257,
+        protocol: 3,
+        alg: 13,
+        pub_key: "AQID",
+      }],
+    }, {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ id: 9010, status: "ACT" })
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(request?.body))).toEqual({
+      is_dnssec_enabled: true,
+      dnssec_keys: [{
+        flags: 257,
+        protocol: 3,
+        alg: 13,
+        pub_key: "AQID",
+      }],
+    })
+    await expect(updateOpenProviderDomainDnssec(9010, {
+      enabled: true,
+      keys: [],
+    }, {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toThrow("requires at least one DNSKEY")
   })
 
   it("retains only a bounded provider error code for transfer classification", async () => {

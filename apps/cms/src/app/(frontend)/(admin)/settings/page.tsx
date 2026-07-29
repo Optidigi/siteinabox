@@ -115,6 +115,9 @@ export default async function TenantSettingsPage({
                 currentPeriodEndsAt: billingAgreements.docs[0].currentPeriodEndsAt,
                 nextChargeAt: billingAgreements.docs[0].nextChargeAt,
                 cancelAt: billingAgreements.docs[0].cancelAt,
+                serviceSuspensionStatus:
+                  billingAgreements.docs[0].serviceSuspensionStatus,
+                failureReason: billingAgreements.docs[0].failureReason,
               }
             : null}
           locale={resolveLocale(user.language)}
@@ -128,6 +131,11 @@ export default async function TenantSettingsPage({
             id: String(domain.id),
             domainName: domain.domainNameAscii,
             custodyStatus: domain.custodyStatus,
+            transferOutCodeDeliveryStatus:
+              domain.transferOutCodeDeliveryStatus === "not_requested" &&
+                domain.encryptedTransferOutCode
+                ? "provider_returned"
+                : domain.transferOutCodeDeliveryStatus,
           }}
           result={index === 0 ? query.domainTransfer : undefined}
           sectionId={index === 0 ? "domain-transfer" : `domain-transfer-${domain.id}`}

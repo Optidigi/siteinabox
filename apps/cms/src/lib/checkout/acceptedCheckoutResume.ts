@@ -86,6 +86,13 @@ const resumeQuote = (
   const migrationSourceZoneHash = typeof migration?.sourceZoneHash === "string"
     ? migration.sourceZoneHash
     : null
+  const migrationSourceMechanism =
+    migration?.sourceMechanism === "customer_authorized_provider_export_v1" ||
+      migration?.sourceMechanism === "cloudflare_api_v1" ||
+      migration?.sourceMechanism === "authorized_axfr_v1" ||
+      migration?.sourceMechanism === "validated_provider_export_v1"
+      ? migration.sourceMechanism
+      : null
   const migrationInputEnvelope = null
   const storedLineItems = Array.isArray(order.netLineItems)
     ? order.netLineItems
@@ -124,6 +131,7 @@ const resumeQuote = (
     migrationServiceFeeNetMinor:
       integer(evidence, "migrationServiceFeeNetMinor"),
     migrationClassification,
+    migrationSourceMechanism,
     migrationSourceZoneHash,
     migrationInputEnvelope,
     migrationSecretKey: typeof migration?.checkoutSecretKey === "string"
@@ -155,6 +163,7 @@ const resumeQuote = (
     billingPeriod: quote.billingPeriod,
     providerOperationPriceNetMinor: quote.providerOperationPriceNetMinor,
     migrationClassification: quote.migrationClassification,
+    migrationSourceMechanism: quote.migrationSourceMechanism,
     migrationSourceZoneHash: quote.migrationSourceZoneHash,
     migrationInputEnvelope: quote.migrationInputEnvelope,
     migrationSecretKey: quote.migrationSecretKey,

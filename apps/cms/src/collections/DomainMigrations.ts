@@ -15,6 +15,21 @@ import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 
 const selectOptions = (values: readonly string[]) => values.map(adminEnumOption)
+const dnssecMigrationPhases = [
+  "source_unsigned",
+  "source_secure_preserved",
+  "source_ds_removal",
+  "source_ds_cache_wait",
+  "unsigned_cutover_ready",
+  "target_signing",
+  "target_ds_publication",
+  "target_chain_verifying",
+  "target_secure",
+  "rollback_target_ds_removal",
+  "rollback_target_ds_cache_wait",
+  "rollback_old_authority",
+  "rollback_source_ds_publication",
+] as const
 
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)
@@ -61,6 +76,12 @@ const mutableLifecycleFields = new Set([
   "managedDomain",
   "customerActions",
   "dnssecPreparation",
+  "dnssecPhase",
+  "dnssecWriteState",
+  "dnssecWriteRequestedAt",
+  "dnssecSafeAfter",
+  "targetDnssecEvidence",
+  "dnssecVerification",
   "operatorWorkAuthorizationState",
   "semanticComparison",
   "encryptedTransferCode",
@@ -271,7 +292,12 @@ export const DomainMigrations: CollectionConfig = {
       type: "select",
       required: true,
       defaultValue: "customer_authorized_provider_export_v1",
-      options: selectOptions(["customer_authorized_provider_export_v1"]),
+      options: selectOptions([
+        "customer_authorized_provider_export_v1",
+        "cloudflare_api_v1",
+        "authorized_axfr_v1",
+        "validated_provider_export_v1",
+      ]),
     },
     { name: "sourceZoneHash", type: "text", unique: true, index: true },
     {
@@ -355,6 +381,26 @@ export const DomainMigrations: CollectionConfig = {
     { name: "automationResumedAt", type: "date", index: true },
     { name: "semanticComparison", type: "json", admin: { readOnly: true } },
     { name: "dnssecPreparation", type: "json", admin: { readOnly: true } },
+    {
+      name: "dnssecPhase",
+      type: "select",
+      required: true,
+      defaultValue: "source_unsigned",
+      options: selectOptions(dnssecMigrationPhases),
+      index: true,
+    },
+    {
+      name: "dnssecWriteState",
+      type: "select",
+      required: true,
+      defaultValue: "not_started",
+      options: selectOptions(["not_started", "prepared", "indeterminate", "confirmed"]),
+      index: true,
+    },
+    { name: "dnssecWriteRequestedAt", type: "date" },
+    { name: "dnssecSafeAfter", type: "date", index: true },
+    { name: "targetDnssecEvidence", type: "json", admin: { readOnly: true } },
+    { name: "dnssecVerification", type: "json", admin: { readOnly: true } },
     {
       name: "customerActions",
       type: "json",

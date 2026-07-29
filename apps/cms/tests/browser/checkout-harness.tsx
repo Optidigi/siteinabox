@@ -58,6 +58,7 @@ const quote = (
       domainSurchargeNetMinor: 0,
       migrationServiceFeeNetMinor: 0,
       migrationClassification: null,
+      migrationSourceMechanism: null,
       migrationSourceZoneHash: null,
       migrationInputEnvelope: null,
       migrationSecretKey: null,
@@ -129,7 +130,6 @@ createRoot(document.getElementById("root")!).render(
         domainIncludedAllowanceNetMinor: 1_000,
         migrations: {
           automaticNetAmountMinor: 0,
-          assistedStandardNetAmountMinor: 4_900,
         },
       }}
       paymentStatus={pending ? "pending_provider" : "not_started"}

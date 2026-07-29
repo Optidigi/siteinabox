@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   verifyAuthoritativeDns,
+  verifyDnssecChain,
   verifyHttpsEndpoint,
   verifyParentDsAbsent,
   verifyPreservedDnsRecords,
@@ -9,6 +10,61 @@ import {
 import type { NormalizedMigrationDnsRecord } from "@siteinabox/contracts/domain-migration"
 
 describe("enabled-TLD domain verification", () => {
+  it("requires an authenticated DNSKEY and covering RRSIG from a validating resolver", async () => {
+    const key = {
+      flags: 257,
+      protocol: 3 as const,
+      algorithm: 13,
+      publicKey: "AQID",
+    }
+    const parentDs = `12345 13 2 ${"AB".repeat(32)}`
+    const fetchImpl = vi.fn(async (input: string | URL | Request) =>
+      Response.json(new URL(String(input)).searchParams.get("type") === "DS"
+        ? {
+            Status: 0,
+            AD: true,
+            Answer: [{ type: 43, TTL: 3600, data: parentDs }],
+          }
+        : {
+            Status: 0,
+            AD: true,
+            Answer: [
+              { type: 48, data: "257 3 13 AQID" },
+              { type: 46, data: "48 13 2 3600 20300101000000 20260101000000 1 example.nl. signature" },
+            ],
+          }))
+    await expect(verifyDnssecChain("example.nl", {
+      ...key,
+      parentDsRecords: [parentDs],
+    }, {
+      fetchImpl: fetchImpl as typeof fetch,
+      resolverUrl: "https://resolver.test/dns-query",
+    })).resolves.toEqual({
+      status: "verified",
+      authenticatedData: true,
+      dnskeyMatched: true,
+      rrsigPresent: true,
+      parentDsMatched: true,
+      parentDsTtl: 3600,
+      reason: null,
+    })
+    await expect(verifyDnssecChain("example.nl", {
+      ...key,
+      parentDsRecords: [parentDs],
+    }, {
+      fetchImpl: vi.fn(async () => Response.json({
+        Status: 0,
+        AD: false,
+        Answer: [{ type: 48, data: "257 3 13 AQID" }],
+      })) as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "pending",
+      authenticatedData: false,
+      rrsigPresent: false,
+      parentDsMatched: false,
+    })
+  })
+
   it("treats parent DS lookup only as DNSSEC preparation, never as zone acquisition", async () => {
     await expect(verifyParentDsAbsent("example.nl", {
       resolveDsImpl: vi.fn(async () => []),
@@ -28,6 +84,51 @@ describe("enabled-TLD domain verification", () => {
       status: "present",
       records: ["12345 13 2 ABCD"],
       reason: "parent_ds_present",
+    })
+  })
+
+  it("requires matching DS evidence from every parent authority and recursion", async () => {
+    const ds = [{
+      keyTag: 12_345,
+      algorithm: 13,
+      digestType: 2,
+      digest: "abcd",
+    }]
+    const authoritativeResolve = vi.fn(async () => ds)
+    await expect(verifyParentDsAbsent("example.nl", {
+      resolveParentNsImpl: vi.fn(async () => [
+        "ns1.nic.nl",
+        "ns2.nic.nl",
+      ]),
+      authoritativeDsLookupImpl: async () => ({
+        records: await authoritativeResolve(),
+        ttl: 86_400,
+      }),
+      resolveRecursiveDsImpl: vi.fn(async () => ds),
+    })).resolves.toEqual({
+      status: "present",
+      records: ["12345 13 2 ABCD"],
+      ttl: 86_400,
+      reason: "parent_ds_present",
+    })
+    expect(authoritativeResolve).toHaveBeenCalledTimes(2)
+
+    authoritativeResolve
+      .mockResolvedValueOnce(ds)
+      .mockResolvedValueOnce([])
+    await expect(verifyParentDsAbsent("example.nl", {
+      resolveParentNsImpl: vi.fn(async () => [
+        "ns1.nic.nl",
+        "ns2.nic.nl",
+      ]),
+      authoritativeDsLookupImpl: async () => ({
+        records: await authoritativeResolve(),
+        ttl: 86_400,
+      }),
+      resolveRecursiveDsImpl: vi.fn(async () => ds),
+    })).resolves.toMatchObject({
+      status: "indeterminate",
+      reason: "parent_ds_authoritative_mismatch",
     })
   })
 
@@ -121,17 +222,24 @@ describe("enabled-TLD domain verification", () => {
   })
 
   it.each(["example.nl", "example.be"])(
-    "treats a neutral renderer 404 as successful HTTPS transport evidence for %s",
+    "requires the renderer identity response for %s",
     async (domain) => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }))
+    const fetchImpl = vi.fn(async () => new Response(null, {
+      status: 200,
+      headers: {
+        "x-siab-service": "renderer",
+        "x-siab-domain": domain,
+      },
+    }))
     await expect(verifyHttpsEndpoint(domain, {
       fetchImpl: fetchImpl as typeof fetch,
+      expectedDomain: domain,
     })).resolves.toEqual({
       status: "verified",
-      httpStatus: 404,
+      httpStatus: 200,
       reason: null,
     })
-    expect(fetchImpl).toHaveBeenCalledWith(`https://${domain}/`, expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith(`https://${domain}/__siab/edge-check`, expect.objectContaining({
       method: "HEAD",
       redirect: "manual",
     }))

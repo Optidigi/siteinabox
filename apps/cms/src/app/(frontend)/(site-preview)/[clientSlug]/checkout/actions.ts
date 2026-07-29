@@ -9,7 +9,10 @@ import {
   BUSINESS_USE_DECLARATION_VERSION,
   getCurrentLegalDocument,
 } from "@siteinabox/legal-content"
-import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
+import {
+  COMMERCIAL_CATALOG,
+  COMMERCIAL_CATALOG_VERSION,
+} from "@siteinabox/contracts/commerce"
 import type { CheckoutProfile } from "@/payload-types"
 import {
   checkoutProfileDraftFromFormData,
@@ -35,6 +38,7 @@ import {
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import {
   assessExistingDomainMigrationInput,
+  automaticMigrationSourceEnabled,
   existingDomainMigrationCheckoutEnabled,
   inspectExistingDomainPublicEvidence,
   type ExistingDomainPublicEvidence,
@@ -42,6 +46,12 @@ import {
 import {
   getOpenProviderDomainTransferPrice,
 } from "@/lib/domains/openprovider"
+import { acquireAuthorizedAxfr } from "@/lib/domains/migrationSources/axfr"
+import { acquireCloudflareSource } from "@/lib/domains/migrationSources/cloudflare"
+import {
+  acquireValidatedProviderExport,
+} from "@/lib/domains/migrationSources/providerExport"
+import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
 import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
 import {
   attachMigrationCheckoutSecret,
@@ -59,12 +69,10 @@ import { normalizeDomain } from "@/lib/domains/normalize"
 import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/lib/legal/checkoutEvidence"
 import { satisfyRequirementsFromTransaction } from "@/lib/legal/customerRequirements"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
-import { createSupplementalMigrationMollieCheckout } from "@/lib/payments/molliePayments"
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { normalizeGenerationRunPaymentState } from "@/lib/payments/generationRunPayment"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
-import { requestMigrationOperatorWork } from "@/lib/domains/assistedMigration"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
@@ -98,8 +106,9 @@ export type PreviewCheckoutActionState = {
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
   domainMode?: "new_registration" | "existing_domain"
-  migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
+  migrationReadiness?: "ready_automatic" | "ready_assisted" | "unsupported"
   migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationPublicEvidence?: ExistingDomainPublicEvidence | null
   migrationPreflightOnly?: boolean
 }
@@ -152,6 +161,7 @@ const issueCheckoutQuoteSet = (input: {
   draftVersion: string
   domainMode?: "new_registration" | "existing_domain"
   migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationSourceZoneHash?: string | null
   migrationInputEnvelope?: string | null
   migrationSecretKey?: string | null
@@ -168,6 +178,7 @@ const issueCheckoutQuoteSet = (input: {
       draftVersion: input.draftVersion,
       domainMode: input.domainMode,
       migrationClassification: input.migrationClassification,
+      migrationSourceMechanism: input.migrationSourceMechanism,
       migrationSourceZoneHash: input.migrationSourceZoneHash,
       migrationInputEnvelope: input.migrationInputEnvelope,
       migrationSecretKey: input.migrationSecretKey,
@@ -231,6 +242,49 @@ const readCompleteZoneExport = async (formData: FormData): Promise<unknown> => {
   return JSON.parse(text)
 }
 
+const acquireAutomaticMigrationSourceFromForm = async (
+  domain: string,
+  sourceMethod: MigrationSourceMechanism,
+  formData: FormData,
+  publicEvidence: Awaited<
+    ReturnType<typeof inspectExistingDomainPublicEvidence>
+  >,
+) => {
+  if (sourceMethod === "cloudflare_api_v1") {
+    return acquireCloudflareSource({
+      domain,
+      token: String(formData.get("cloudflareSourceToken") ?? ""),
+      publicEvidence,
+    })
+  }
+  if (sourceMethod === "authorized_axfr_v1") {
+    return acquireAuthorizedAxfr({
+      domain,
+      nameserver: String(formData.get("axfrNameserver") ?? ""),
+      tsigName: String(formData.get("axfrTsigName") ?? "") || null,
+      tsigSecret: String(formData.get("axfrTsigSecret") ?? "") || null,
+      publicEvidence,
+    })
+  }
+  if (sourceMethod === "validated_provider_export_v1") {
+    const upload = formData.get("zoneExport")
+    if (
+      !(upload instanceof File) ||
+      upload.size <= 0 ||
+      upload.size > 256 * 1_024
+    ) {
+      throw new Error("A bounded BIND zone export is required.")
+    }
+    return acquireValidatedProviderExport({
+      domain,
+      provider: String(formData.get("sourceProviderName") ?? ""),
+      bindText: await upload.text(),
+      publicEvidence,
+    })
+  }
+  throw new Error("The selected automatic DNS source is unsupported.")
+}
+
 async function checkExistingDomainMigration(
   context: Awaited<ReturnType<typeof requirePreviewCheckoutContext>>,
   domain: string,
@@ -252,7 +306,8 @@ async function checkExistingDomainMigration(
 
   const migrationCheckoutEnabled =
     existingDomainMigrationCheckoutEnabled() && commerceProviderReadsAllowed()
-  if (!migrationCheckoutEnabled) {
+  const sourceMethod = String(formData.get("migrationSourceMethod") ?? "").trim()
+  if (!migrationCheckoutEnabled || !sourceMethod) {
     try {
       const publicEvidence = await inspectExistingDomainPublicEvidence(
         normalized.domain,
@@ -267,7 +322,9 @@ async function checkExistingDomainMigration(
         migrationPublicEvidence: publicEvidence,
         migrationPreflightOnly: true,
         message:
-          "De openbare voorcontrole is afgerond. Er is nog niets verhuisd of besteld. We vragen pas om autorisatie en volledige DNS-brongegevens zodra deze route veilig kan worden uitgevoerd.",
+          migrationCheckoutEnabled
+            ? "De openbare voorcontrole is afgerond. Kies nu een volledige DNS-bron; er is nog niets verhuisd of besteld."
+            : "De openbare voorcontrole is afgerond. Er is nog niets verhuisd of besteld. De automatische bronroute is nog niet vrijgegeven.",
         requestToken,
       }
     } catch {
@@ -284,22 +341,64 @@ async function checkExistingDomainMigration(
       }
     }
   }
+  let publicEvidence: Awaited<
+    ReturnType<typeof inspectExistingDomainPublicEvidence>
+  >
   try {
-    const [zoneExport, publicEvidence] = await Promise.all([
-      readCompleteZoneExport(formData),
-      inspectExistingDomainPublicEvidence(domain),
-    ])
+    publicEvidence = await inspectExistingDomainPublicEvidence(domain)
+  } catch {
+    return {
+      ok: false,
+      status: "service_error",
+      domain: normalized.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationPreflightOnly: true,
+      message: "De openbare domeingegevens konden nu niet opnieuw worden bevestigd.",
+      requestToken,
+    }
+  }
+  try {
+    if (
+      ![
+        "cloudflare_api_v1",
+        "authorized_axfr_v1",
+        "validated_provider_export_v1",
+      ].includes(sourceMethod) ||
+      !automaticMigrationSourceEnabled(sourceMethod as MigrationSourceMechanism)
+    ) {
+      return {
+        ok: false,
+        status: "invalid",
+        domain: normalized.domain,
+        domainMode: "existing_domain",
+        migrationReadiness: "unsupported",
+        migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
+        migrationPublicEvidence: publicEvidence,
+        migrationPreflightOnly: true,
+        message: "Kies een ondersteunde volledige DNS-bron.",
+        requestToken,
+      }
+    }
+    const acquiredSource = await acquireAutomaticMigrationSourceFromForm(
+      domain,
+      sourceMethod as Exclude<
+        MigrationSourceMechanism,
+        "customer_authorized_provider_export_v1"
+      >,
+      formData,
+      publicEvidence,
+    )
     const assessment = assessExistingDomainMigrationInput({
       generationRunId: context.run.id,
       domain,
-      zoneExport: zoneExport as Parameters<
-        typeof assessExistingDomainMigrationInput
-      >[0]["zoneExport"],
+      zoneExport: acquiredSource.zone,
       transferCode: String(formData.get("transferCode") ?? ""),
       transferAuthorizationAccepted:
         formData.get("transferAuthorization") === "accepted",
-      requestedAssistance: formData.get("migrationAssistance") === "assisted_standard",
+      requestedAssistance: false,
       publicEvidence,
+      acquiredSource,
     })
     if (
       !assessment.classification ||
@@ -308,14 +407,14 @@ async function checkExistingDomainMigration(
     ) {
       return {
         ok: false,
-        status: assessment.readiness === "custom_quote"
-          ? "service_error"
-          : "invalid",
+        status: "invalid",
         domain: assessment.domain,
         domainMode: "existing_domain",
         migrationReadiness: assessment.readiness,
         migrationClassification: null,
+        migrationSourceMechanism: acquiredSource.mechanism,
         migrationPublicEvidence: assessment.publicEvidence,
+        migrationPreflightOnly: true,
         message: assessment.message,
         requestToken,
       }
@@ -328,7 +427,9 @@ async function checkExistingDomainMigration(
         domain: assessment.domain,
         domainMode: "existing_domain",
         migrationReadiness: "unsupported",
+        migrationSourceMechanism: acquiredSource.mechanism,
         migrationPublicEvidence: assessment.publicEvidence,
+        migrationPreflightOnly: true,
         message: "Deze verhuizing heeft geen deterministische ondersteunde providerprijs.",
         requestToken,
       }
@@ -342,6 +443,7 @@ async function checkExistingDomainMigration(
       draftVersion: String(context.run.updatedAt ?? ""),
       domainMode: "existing_domain",
       migrationClassification: assessment.classification,
+      migrationSourceMechanism: acquiredSource.mechanism,
       migrationSourceZoneHash: assessment.sourceZoneHash,
       migrationInputEnvelope: assessment.encryptedInput,
       migrationSecretKey: migrationCheckoutSecretKey(
@@ -357,6 +459,7 @@ async function checkExistingDomainMigration(
       domainMode: "existing_domain",
       migrationReadiness: assessment.readiness,
       migrationClassification: assessment.classification,
+      migrationSourceMechanism: acquiredSource.mechanism,
       migrationPublicEvidence: assessment.publicEvidence,
       message: assessment.message,
       included: providerPrice.netAmountMinor <=
@@ -374,7 +477,12 @@ async function checkExistingDomainMigration(
       domain: normalized.domain,
       domainMode: "existing_domain",
       migrationReadiness: "unsupported",
-      message: "De bestaande-domeincontrole kon veilig niet worden afgerond.",
+      migrationClassification: null,
+      migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
+      migrationPreflightOnly: true,
+      migrationPublicEvidence: publicEvidence,
+      message:
+        "De volledige DNS-bron kon niet veilig worden bevestigd. Controleer de gekozen brongegevens en probeer opnieuw; er is niets besteld of verhuisd.",
       requestToken,
     }
   }
@@ -561,116 +669,6 @@ const translateDomainMigrationInputFailure = (error: unknown): never => {
   throw new MigrationCustomerActionError("retryable_service_error")
 }
 
-async function acceptMigrationSupplementalOrder(
-  clientSlug: string,
-  formData: FormData,
-): Promise<string> {
-  const context = await requirePreviewCheckoutContext(clientSlug)
-  const migrationId = String(formData.get("migrationId") ?? "").trim()
-  const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
-  if (!/^\d+$/.test(migrationId) || !expectedVersion) {
-    throw new MigrationCustomerActionError("invalid_input")
-  }
-  const migration = await context.payload.findByID({
-    collection: "domain-migrations",
-    id: migrationId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const originatingOrderId = relationshipId(migration.originatingOrder)
-  if (
-    migration.updatedAt !== expectedVersion ||
-    !["awaiting_customer_acceptance", "awaiting_payment"].includes(
-      migration.operatorWorkAuthorizationState,
-    ) ||
-    migration.operatorWorkCause !== "customer_migration" ||
-    !migration.operatorWorkScope ||
-    !originatingOrderId
-  ) {
-    throw new MigrationCustomerActionError("refresh_required")
-  }
-  const order = await context.payload.findByID({
-    collection: "orders",
-    id: originatingOrderId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  if (
-    !sameRelationshipId(order.generationRun, context.run.id) ||
-    !sameRelationshipId(order.tenant, context.tenant.id) ||
-    order.customerEmail.trim().toLowerCase() !==
-      context.customerEmail.trim().toLowerCase()
-  ) {
-    throw new Error("Supplemental migration proposal belongs to another customer.")
-  }
-  let supplementalOrder
-  if (migration.operatorWorkAuthorizationState === "awaiting_payment") {
-    const supplementalOrderId = relationshipId(migration.supplementalOrder)
-    if (!supplementalOrderId) {
-      throw new Error("Supplemental migration payment has no immutable order.")
-    }
-    supplementalOrder = await context.payload.findByID({
-      collection: "orders",
-      id: supplementalOrderId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    if (
-      supplementalOrder.orderKind !== "migration_supplemental" ||
-      !sameRelationshipId(supplementalOrder.parentOrder, order.id) ||
-      !sameRelationshipId(supplementalOrder.tenant, context.tenant.id) ||
-      supplementalOrder.customerEmail.trim().toLowerCase() !==
-        context.customerEmail.trim().toLowerCase()
-    ) {
-      throw new Error("Supplemental migration payment belongs to another authority.")
-    }
-  } else {
-    const audit = await requestAudit()
-    const acceptedAt = new Date().toISOString()
-    const result = await requestMigrationOperatorWork(context.payload, {
-      migrationId: migration.id,
-      requestedClassification: "assisted_standard",
-      workCause: "customer_migration",
-      workScope: migration.operatorWorkScope,
-      supplementalAcceptance: {
-        actorEmail: context.customerEmail,
-        acceptedAt,
-        ipAddress: audit.ipAddress,
-        userAgent: audit.userAgent,
-      },
-      now: acceptedAt,
-    })
-    if (!result.supplementalOrder) {
-      throw new Error("Supplemental migration order was not created.")
-    }
-    supplementalOrder = result.supplementalOrder
-  }
-  const checkout = await createSupplementalMigrationMollieCheckout(
-    context.payload,
-    {
-      orderId: supplementalOrder.id,
-      redirectUrl:
-        `https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return&migration=supplemental`,
-    },
-  ).catch(() => {
-    throw new MigrationCustomerActionError("retryable_service_error")
-  })
-  return checkout.checkoutUrl
-}
-
-export async function acceptMigrationSupplementalOrderAction(
-  clientSlug: string,
-  formData: FormData,
-): Promise<MigrationCustomerActionState> {
-  let checkoutUrl: string
-  try {
-    checkoutUrl = await acceptMigrationSupplementalOrder(clientSlug, formData)
-  } catch (error) {
-    return migrationCustomerActionFailure(error)
-  }
-  redirect(checkoutUrl)
-}
-
 async function recollectAcceptedMigrationInput(
   clientSlug: string,
   formData: FormData,
@@ -694,17 +692,34 @@ async function recollectAcceptedMigrationInput(
     throw new MigrationCustomerActionError("refresh_required")
   }
   const quote = resume.quotes[resume.billingPeriod].quote
-  let zoneExport
-  try {
-    zoneExport = await readCompleteZoneExport(formData)
-  } catch {
-    throw new MigrationCustomerActionError("invalid_input")
-  }
   const publicEvidence = await inspectExistingDomainPublicEvidence(
     quote.selectedDomain,
   ).catch(() => {
     throw new MigrationCustomerActionError("retryable_service_error")
   })
+  const currentAutomaticSource =
+    quote.migrationSourceMechanism &&
+    quote.migrationSourceMechanism !==
+      "customer_authorized_provider_export_v1"
+      ? await acquireAutomaticMigrationSourceFromForm(
+          quote.selectedDomain,
+          quote.migrationSourceMechanism,
+          formData,
+          publicEvidence,
+        ).catch(() => {
+          throw new MigrationCustomerActionError("invalid_input")
+        })
+      : null
+  let zoneExport: unknown
+  if (currentAutomaticSource) {
+    zoneExport = currentAutomaticSource.zone
+  } else {
+    try {
+      zoneExport = await readCompleteZoneExport(formData)
+    } catch {
+      throw new MigrationCustomerActionError("invalid_input")
+    }
+  }
   const assessment = assessExistingDomainMigrationInput({
     generationRunId: context.run.id,
     domain: quote.selectedDomain,
@@ -717,13 +732,18 @@ async function recollectAcceptedMigrationInput(
     requestedAssistance:
       quote.migrationClassification === "assisted_standard",
     publicEvidence,
-    acceptedOrderRecollection: true,
+    acceptedOrderRecollection: !currentAutomaticSource,
     acceptedCapabilityVersion: resume.tldCapabilityVersion ?? undefined,
+    acquiredSource: currentAutomaticSource ?? undefined,
   })
   if (
     !assessment.encryptedInput ||
     assessment.classification !== quote.migrationClassification ||
-    assessment.sourceZoneHash !== quote.migrationSourceZoneHash
+    assessment.sourceZoneHash !== quote.migrationSourceZoneHash ||
+    (
+      currentAutomaticSource &&
+      currentAutomaticSource.mechanism !== quote.migrationSourceMechanism
+    )
   ) {
     throw new MigrationCustomerActionError("invalid_input")
   }
@@ -793,11 +813,38 @@ async function submitMigrationTransferCode(
     ) {
       throw new MigrationCustomerActionError("refresh_required")
     }
-    let zoneExport
-    try {
-      zoneExport = await readCompleteZoneExport(formData)
-    } catch {
-      throw new MigrationCustomerActionError("invalid_input")
+    const sourceMechanism = migration.sourceMechanism
+    let zoneExport: unknown
+    if (
+      sourceMechanism &&
+      sourceMechanism !== "customer_authorized_provider_export_v1"
+    ) {
+      if (!automaticMigrationSourceEnabled(sourceMechanism)) {
+        throw new MigrationCustomerActionError("retryable_service_error")
+      }
+      const publicEvidence = await inspectExistingDomainPublicEvidence(
+        migration.domainNameAscii,
+      ).catch(() => {
+        throw new MigrationCustomerActionError("retryable_service_error")
+      })
+      const acquiredSource = await acquireAutomaticMigrationSourceFromForm(
+        migration.domainNameAscii,
+        sourceMechanism,
+        formData,
+        publicEvidence,
+      ).catch(() => {
+        throw new MigrationCustomerActionError("invalid_input")
+      })
+      if (acquiredSource.mechanism !== sourceMechanism) {
+        throw new MigrationCustomerActionError("invalid_input")
+      }
+      zoneExport = acquiredSource.zone
+    } else {
+      try {
+        zoneExport = await readCompleteZoneExport(formData)
+      } catch {
+        throw new MigrationCustomerActionError("invalid_input")
+      }
     }
     try {
       await acquireAutomaticMigrationInputs(context.payload, {
@@ -914,6 +961,7 @@ export async function savePreviewCheckoutProfileAction(
         draftVersion: String(context.run.updatedAt ?? ""),
         domainMode,
         migrationClassification: priorQuote.migrationClassification,
+        migrationSourceMechanism: priorQuote.migrationSourceMechanism,
         migrationSourceZoneHash: priorQuote.migrationSourceZoneHash,
         migrationInputEnvelope: priorQuote.migrationInputEnvelope,
         migrationSecretKey: priorQuote.migrationSecretKey,
@@ -1125,6 +1173,15 @@ export async function startPreviewCheckoutPaymentAction(
   if (
     acceptedQuote.billingPeriod !== billingPeriod ||
     acceptedQuote.selectedDomain !== domain ||
+    (
+      !resumesAcceptedOrder &&
+      acceptedQuote.catalogVersion !== COMMERCIAL_CATALOG_VERSION
+    ) ||
+    (
+      !resumesAcceptedOrder &&
+      acceptedQuote.domainMode === "existing_domain" &&
+      acceptedQuote.migrationClassification !== "automatic"
+    ) ||
     !["new_registration", "existing_domain"].includes(acceptedQuote.domainMode) ||
     (
       acceptedQuote.draftVersion !== String(context.run.updatedAt ?? "") &&
@@ -1169,6 +1226,10 @@ export async function startPreviewCheckoutPaymentAction(
       if (
         !existingDomainMigrationCheckoutEnabled() ||
         !acceptedQuote.migrationClassification ||
+        !acceptedQuote.migrationSourceMechanism ||
+        !automaticMigrationSourceEnabled(
+          acceptedQuote.migrationSourceMechanism,
+        ) ||
         !acceptedQuote.migrationSourceZoneHash ||
         !acceptedQuote.migrationSecretKey ||
         (
@@ -1190,6 +1251,8 @@ export async function startPreviewCheckoutPaymentAction(
         )
         if (
           migrationInput.classification !== acceptedQuote.migrationClassification ||
+          migrationInput.sourceMechanism !==
+            acceptedQuote.migrationSourceMechanism ||
           migrationInput.sourceZoneHash !== acceptedQuote.migrationSourceZoneHash
         ) {
           return {
@@ -1216,6 +1279,7 @@ export async function startPreviewCheckoutPaymentAction(
         selectedDomain: domain,
         domainMode: "existing_domain",
         migrationClassification: acceptedQuote.migrationClassification,
+        migrationSourceMechanism: acceptedQuote.migrationSourceMechanism,
         migrationSourceZoneHash: acceptedQuote.migrationSourceZoneHash,
         migrationInputEnvelope: acceptedQuote.migrationInputEnvelope,
         migrationSecretKey: acceptedQuote.migrationSecretKey,
@@ -1271,6 +1335,7 @@ export async function startPreviewCheckoutPaymentAction(
           draftVersion: currentQuote.draftVersion,
           domainMode: currentQuote.domainMode,
           migrationClassification: currentQuote.migrationClassification,
+          migrationSourceMechanism: currentQuote.migrationSourceMechanism,
           migrationSourceZoneHash: currentQuote.migrationSourceZoneHash,
           migrationInputEnvelope: currentQuote.migrationInputEnvelope,
           migrationSecretKey: currentQuote.migrationSecretKey,

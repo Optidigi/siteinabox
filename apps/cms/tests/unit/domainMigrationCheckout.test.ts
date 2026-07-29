@@ -4,8 +4,10 @@ import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 
 import {
   assessExistingDomainMigrationInput,
+  automaticMigrationSourceEnabled,
   type ExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
+import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
 import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64")
@@ -48,12 +50,36 @@ const zoneExport = (overrides: Partial<CompleteZoneExport> = {}): CompleteZoneEx
   ...overrides,
 })
 
+describe("automatic migration source gates", () => {
+  it("fails closed independently for each source mechanism", () => {
+    const sourceEnv = {
+      COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED: "1",
+      COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED: "0",
+      COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED: "",
+    } as unknown as NodeJS.ProcessEnv
+    expect(automaticMigrationSourceEnabled(
+      "cloudflare_api_v1",
+      sourceEnv,
+    )).toBe(true)
+    expect(automaticMigrationSourceEnabled(
+      "authorized_axfr_v1",
+      sourceEnv,
+    )).toBe(false)
+    expect(automaticMigrationSourceEnabled(
+      "validated_provider_export_v1",
+      sourceEnv,
+    )).toBe(false)
+  })
+})
+
 const publicEvidence = (
   overrides: Partial<ExistingDomainPublicEvidence> = {},
 ): ExistingDomainPublicEvidence => ({
   checkedAt: "2026-07-28T10:00:00.000Z",
   authoritativeNameservers: ["ns1.legacy.example", "ns2.legacy.example"],
   dnssecDsPresent: false,
+  dnssecDsRecords: [],
+  dnssecDsTtl: null,
   probableDnsProvider: "legacy-provider",
   registrar: "Example Registrar",
   supplementalOnly: true,
@@ -78,7 +104,59 @@ const assess = (
 })
 
 describe("existing-domain checkout preflight", () => {
-  it("requires assisted review for a customer-asserted complete source", () => {
+  it("issues automatic encrypted evidence only from a validated source adapter", () => {
+    const acquiredZone = zoneExport({
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-provider",
+        complete: true,
+      },
+    })
+    const acquiredSource = {
+      mechanism: "validated_provider_export_v1" as const,
+      zone: acquiredZone,
+      refreshCredential: {
+        kind: "provider_export" as const,
+        sourceSoaSerial: 2026072901,
+      },
+    }
+    const result = assess({
+      generationRunId: 500,
+      domain: "example.nl",
+      zoneExport: acquiredZone,
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      requestedAssistance: false,
+      publicEvidence: publicEvidence(),
+      acquiredSource,
+      env,
+      now: new Date("2026-07-28T10:00:00.000Z"),
+    })
+
+    expect(result).toMatchObject({
+      readiness: "ready_automatic",
+      classification: "automatic",
+      sourceZoneHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      encryptedInput: expect.stringMatching(/^v1\./),
+    })
+    const opened = openCheckoutMigrationInput(
+      result.encryptedInput!,
+      500,
+      "example.nl",
+      env,
+    )
+    expect(opened).toMatchObject({
+      schemaVersion: 2,
+      sourceMechanism: "validated_provider_export_v1",
+      sourceRefreshCredential: {
+        kind: "provider_export",
+        sourceSoaSerial: 2026072901,
+      },
+      transferCode: "opaque-transfer-code",
+    })
+  })
+
+  it("stops a customer-asserted source before payment", () => {
     const result = assess({
       generationRunId: 500,
       domain: "example.nl",
@@ -92,20 +170,13 @@ describe("existing-domain checkout preflight", () => {
     })
 
     expect(result).toMatchObject({
-      readiness: "ready_assisted",
+      readiness: "unsupported",
       domain: "example.nl",
-      classification: "assisted_standard",
+      classification: null,
       sourceZoneHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      encryptedInput: null,
     })
-    expect(result.encryptedInput).not.toContain("opaque-transfer-code")
-    const opened = openCheckoutMigrationInput(
-      result.encryptedInput!,
-      500,
-      "example.nl",
-      env,
-    )
-    expect(opened.transferCode).toBe("opaque-transfer-code")
-    expect(opened.normalizedSourceZone.records).toEqual(expect.arrayContaining([
+    expect(result.sourceZone?.records).toEqual(expect.arrayContaining([
       expect.objectContaining({
         type: "TLSA",
         certificateAssociationData: "aa".repeat(32),
@@ -114,7 +185,7 @@ describe("existing-domain checkout preflight", () => {
     ]))
   })
 
-  it("freezes the EUR 49 assisted classification separately", () => {
+  it("does not revive assisted checkout when the browser requests it", () => {
     const result = assess({
       generationRunId: 500,
       domain: "example.nl",
@@ -128,8 +199,9 @@ describe("existing-domain checkout preflight", () => {
     })
 
     expect(result).toMatchObject({
-      readiness: "ready_assisted",
-      classification: "assisted_standard",
+      readiness: "unsupported",
+      classification: null,
+      encryptedInput: null,
     })
   })
 
@@ -160,6 +232,113 @@ describe("existing-domain checkout preflight", () => {
       publicEvidence: publicEvidence({ dnssecDsPresent: true }),
       env,
       now: new Date("2026-07-28T10:00:00.000Z"),
-    }).readiness).toBe("custom_quote")
+    }).readiness).toBe("unsupported")
+  })
+
+  it("accepts a complete cryptographically bound signed source for automation", () => {
+    const key = {
+      flags: 257,
+      protocol: 3 as const,
+      algorithm: 13,
+      publicKey: "BAUG",
+    }
+    const ds = dnskeyDsRecord("example.nl", key, 2)
+    const dsRecord = [
+      ds.keyTag,
+      ds.algorithm,
+      ds.digestType,
+      ds.digest,
+    ].join(" ")
+    const signedZone = zoneExport({
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-provider",
+        complete: true,
+      },
+      dnssec: {
+        status: "signed",
+        parentDsRecords: [dsRecord],
+        parentDsTtl: 3600,
+        dnsKeys: [key],
+      },
+    })
+    expect(assess({
+      generationRunId: 500,
+      domain: "example.nl",
+      zoneExport: signedZone,
+      acquiredSource: {
+        mechanism: "validated_provider_export_v1",
+        zone: signedZone,
+        refreshCredential: {
+          kind: "provider_export",
+          sourceSoaSerial: 2026072901,
+        },
+      },
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      requestedAssistance: false,
+      publicEvidence: publicEvidence({
+        dnssecDsPresent: true,
+        dnssecDsRecords: [dsRecord],
+        dnssecDsTtl: 3600,
+      }),
+      env,
+      now: new Date("2026-07-28T10:00:00.000Z"),
+    })).toMatchObject({
+      readiness: "ready_automatic",
+      classification: "automatic",
+      encryptedInput: expect.any(String),
+    })
+  })
+
+  it("stops zones that cannot fit the guaranteed destination quota before payment", () => {
+    const acquiredZoneWith = (count: number) => zoneExport({
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-provider",
+        complete: true,
+      },
+      records: Array.from({ length: count }, (_, index) => ({
+        type: "A" as const,
+        name: `host-${index}.example.nl`,
+        ttl: 300,
+        content: "192.0.2.10",
+      })),
+    })
+    const assessZone = (count: number) => {
+      const acquiredZone = acquiredZoneWith(count)
+      return assess({
+        generationRunId: 500,
+        domain: "example.nl",
+        zoneExport: acquiredZone,
+        transferCode: "opaque-transfer-code",
+        transferAuthorizationAccepted: true,
+        requestedAssistance: false,
+        publicEvidence: publicEvidence(),
+        acquiredSource: {
+          mechanism: "validated_provider_export_v1",
+          zone: acquiredZone,
+          refreshCredential: {
+            kind: "provider_export",
+            sourceSoaSerial: 2026072901,
+          },
+        },
+        env,
+        now: new Date("2026-07-28T10:00:00.000Z"),
+      })
+    }
+    expect(assessZone(198)).toMatchObject({
+      readiness: "ready_automatic",
+      classification: "automatic",
+      encryptedInput: expect.any(String),
+    })
+    const result = assessZone(199)
+
+    expect(result).toMatchObject({
+      readiness: "unsupported",
+      classification: null,
+      encryptedInput: null,
+    })
+    expect(result.message).toContain("te veel records")
   })
 })

@@ -35,6 +35,10 @@ try {
   await chmod(dataDir, 0o755)
   await mkdir(join(dataDir, "tenants", "tenant-ami-care", "media"), { recursive: true })
   await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "bedroom.jpg"), "stub media")
+  await writeFile(
+    join(dataDir, "tenants", "tenant-ami-care", "media", "favicon.svg"),
+    "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",
+  )
 
   await docker([
     "run",

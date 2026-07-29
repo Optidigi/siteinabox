@@ -41,7 +41,7 @@ export function CheckoutStepper<T extends string = string>({
             aria-label={entry.label}
             aria-current={active ? "step" : undefined}
             className={cn(
-              "flex h-10 min-w-0 items-center justify-center gap-2 rounded-full px-1 text-sm font-medium text-muted-foreground sm:px-3",
+              "flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full px-1 py-1 text-sm font-medium text-muted-foreground sm:gap-2 sm:px-3",
               (active || complete) && "bg-primary text-primary-foreground",
               complete && index + 1 === activeIndex && "rounded-r-none",
               active && index > 0 && "rounded-l-none",
@@ -55,12 +55,16 @@ export function CheckoutStepper<T extends string = string>({
                 onClick={() => onStepSelect(entry.id)}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />
-                <span className="truncate text-xs sm:text-sm">{entry.label}</span>
+                <span className="whitespace-normal text-center text-xs leading-tight sm:text-sm">
+                  {entry.label}
+                </span>
               </Button>
             ) : (
               <>
                 <Icon className="size-4 shrink-0" aria-hidden />
-                <span className="truncate text-xs sm:text-sm">{entry.label}</span>
+                <span className="whitespace-normal text-center text-xs leading-tight sm:text-sm">
+                  {entry.label}
+                </span>
               </>
             )}
           </li>

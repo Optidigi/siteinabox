@@ -87,7 +87,9 @@ export async function fulfillPaidOrder(
   try {
     if (isSupportedDomainMigrationOrder(order)) {
       const migration = await createDomainMigration(payload, order.id)
-      await queueDomainMigrationPreparation(payload, migration.id)
+      if (migration.state !== "awaiting_customer") {
+        await queueDomainMigrationPreparation(payload, migration.id)
+      }
       return {
         status: "waiting",
         orderId: order.id,

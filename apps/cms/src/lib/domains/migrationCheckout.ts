@@ -1,9 +1,10 @@
 import "server-only"
 
-import { resolve, resolveNs } from "node:dns/promises"
+import { resolveNs } from "node:dns/promises"
 import {
   normalizeCompleteZone,
   type CompleteZoneExport,
+  type MigrationSourceMechanism,
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
 import {
@@ -20,21 +21,32 @@ import {
   type CheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
 import { normalizeDomain } from "@/lib/domains/normalize"
+import {
+  sourceAuthorityMechanism,
+  type AcquiredMigrationSource,
+} from "@/lib/domains/migrationSources/types"
+import { validateSignedDnssecEvidence } from "@/lib/domains/migrationSources/dnssecEvidence"
+import { verifyParentDsAbsent } from "@/lib/domains/verification"
 
 const MAX_ZONE_EXPORT_BYTES = 256 * 1_024
 const MAX_ZONE_EXPORT_AGE_MS = 24 * 60 * 60_000
 const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60_000
+// New Cloudflare Free zones have a 200-record quota. Reserve two records for
+// the managed apex and www routes so checkout cannot accept an unimportable
+// source before the destination zone exists and exposes its exact quota.
+const MAX_AUTOMATIC_SOURCE_RECORDS = 198
 
 type MigrationReadiness =
   | "ready_automatic"
   | "ready_assisted"
-  | "custom_quote"
   | "unsupported"
 
 export type ExistingDomainPublicEvidence = {
   checkedAt: string
   authoritativeNameservers: string[]
   dnssecDsPresent: boolean
+  dnssecDsRecords: string[]
+  dnssecDsTtl: number | null
   probableDnsProvider: string | null
   registrar: string | null
   supplementalOnly: true
@@ -122,22 +134,58 @@ export async function inspectExistingDomainPublicEvidence(
   } = {},
 ): Promise<ExistingDomainPublicEvidence> {
   const resolveNsImpl = input.resolveNsImpl ?? resolveNs
-  const resolveDsImpl = input.resolveDsImpl ??
-    ((hostname: string) => resolve(hostname, "DS") as Promise<unknown[]>)
   const fetchImpl = input.fetchImpl ?? fetch
-  const [nameservers, dsResult, registrar] = await Promise.all([
+  const dsEvidencePromise = input.resolveDsImpl
+    ? timeout(input.resolveDsImpl(domain).then((records) => ({
+        records: records.flatMap((record) => {
+          const value = record as {
+            keyTag?: unknown
+            algorithm?: unknown
+            digestType?: unknown
+            digest?: unknown
+          }
+          return (
+            Number.isInteger(value.keyTag) &&
+            Number.isInteger(value.algorithm) &&
+            Number.isInteger(value.digestType) &&
+            typeof value.digest === "string"
+          )
+            ? [[
+                value.keyTag,
+                value.algorithm,
+                value.digestType,
+                value.digest.toUpperCase(),
+              ].join(" ")]
+            : []
+        }),
+        ttl: null,
+      })).catch((error: NodeJS.ErrnoException) => {
+        if (["ENODATA", "ENOTFOUND"].includes(error.code ?? "")) {
+          return { records: [], ttl: null }
+        }
+        throw error
+      }), 3_000)
+    : timeout(verifyParentDsAbsent(domain).then((evidence) => {
+        if (evidence.status === "indeterminate") {
+          throw new Error("Parent DS inspection failed.")
+        }
+        return {
+          records: evidence.records,
+          ttl: evidence.ttl ?? null,
+        }
+      }), 20_000)
+  const [nameservers, dsEvidence, registrar] = await Promise.all([
     timeout(resolveNsImpl(domain), 3_000),
-    timeout(resolveDsImpl(domain).catch((error: NodeJS.ErrnoException) => {
-      if (["ENODATA", "ENOTFOUND"].includes(error.code ?? "")) return []
-      throw error
-    }), 3_000),
+    dsEvidencePromise,
     rdapRegistrar(domain, fetchImpl).catch(() => null),
   ])
   const normalizedNameservers = canonicalNames(nameservers)
   return {
     checkedAt: (input.now ?? new Date()).toISOString(),
     authoritativeNameservers: normalizedNameservers,
-    dnssecDsPresent: dsResult.length > 0,
+    dnssecDsPresent: dsEvidence.records.length > 0,
+    dnssecDsRecords: dsEvidence.records,
+    dnssecDsTtl: dsEvidence.ttl,
     probableDnsProvider: probableDnsProvider(normalizedNameservers),
     registrar,
     supplementalOnly: true,
@@ -150,6 +198,22 @@ export function existingDomainMigrationCheckoutEnabled(
   return env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED?.trim() === "1"
 }
 
+export function automaticMigrationSourceEnabled(
+  mechanism: MigrationSourceMechanism,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (mechanism === "cloudflare_api_v1") {
+    return env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED?.trim() === "1"
+  }
+  if (mechanism === "authorized_axfr_v1") {
+    return env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED?.trim() === "1"
+  }
+  if (mechanism === "validated_provider_export_v1") {
+    return env.COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED?.trim() === "1"
+  }
+  return false
+}
+
 export function assessExistingDomainMigrationInput(input: {
   generationRunId: string | number
   domain: string
@@ -160,6 +224,7 @@ export function assessExistingDomainMigrationInput(input: {
   publicEvidence: ExistingDomainPublicEvidence
   acceptedOrderRecollection?: boolean
   acceptedCapabilityVersion?: string
+  acquiredSource?: AcquiredMigrationSource
   env?: NodeJS.ProcessEnv
   now?: Date
 }, dependencies: {
@@ -183,8 +248,7 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  const acceptedCapability = input.acceptedOrderRecollection &&
-      input.acceptedCapabilityVersion
+  const acceptedCapability = input.acceptedCapabilityVersion
     ? getTldCapabilityByVersion(input.acceptedCapabilityVersion)
     : null
   const capability = (
@@ -263,19 +327,47 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  if (
-    sourceZone.dnssec.status === "signed" ||
-    input.publicEvidence.dnssecDsPresent
-  ) {
+  if (sourceZone.records.length > MAX_AUTOMATIC_SOURCE_RECORDS) {
     return {
-      readiness: "custom_quote",
+      readiness: "unsupported",
       domain: normalizedDomain.domain,
       classification: null,
-      message: "DNSSEC-migratie is nog niet vrijgegeven voor de standaardcheckout.",
+      message:
+        "Deze zone bevat te veel records voor de gegarandeerde automatische doelcapaciteit. Er wordt niets besteld of betaald.",
       sourceZone,
       sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
       encryptedInput: null,
       publicEvidence: input.publicEvidence,
+    }
+  }
+  if (
+    sourceZone.dnssec.status === "signed" ||
+    input.publicEvidence.dnssecDsPresent
+  ) {
+    const dnssecEvidence = sourceZone.dnssec.status === "signed" &&
+      input.publicEvidence.dnssecDsPresent &&
+      [...sourceZone.dnssec.parentDsRecords].sort().join("\n") ===
+        [...input.publicEvidence.dnssecDsRecords].sort().join("\n") &&
+      sourceZone.dnssec.parentDsTtl === input.publicEvidence.dnssecDsTtl
+      ? validateSignedDnssecEvidence({
+          domain: normalizedDomain.domain,
+          parentDsRecords: sourceZone.dnssec.parentDsRecords,
+          parentDsTtl: sourceZone.dnssec.parentDsTtl,
+          dnsKeys: sourceZone.dnssec.dnsKeys,
+        })
+      : { valid: false as const, reason: "signed_dnssec_state_mismatch" }
+    if (!dnssecEvidence.valid) {
+      return {
+        readiness: "unsupported",
+        domain: normalizedDomain.domain,
+        classification: null,
+        message:
+          "De DNSSEC-bronketen is niet volledig of cryptografisch aantoonbaar. Er wordt niets besteld of betaald.",
+        sourceZone,
+        sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
+        encryptedInput: null,
+        publicEvidence: input.publicEvidence,
+      }
     }
   }
   if (
@@ -309,32 +401,83 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  // A customer upload can be structurally complete, but the customer's own
-  // `complete: true` assertion is not provider provenance. Until an
-  // authenticated connector, authorized AXFR/IXFR, or reviewed provider-native
-  // parser supplies completeness evidence, operator verification is required.
-  const classification = "assisted_standard"
   const sourceZoneHash = domainMigrationSourceAuthorityHash(sourceZone)
-  const checkoutInput: CheckoutMigrationInput = {
-    schemaVersion: 1,
-    generationRunId: String(input.generationRunId),
-    domain: normalizedDomain.domain,
-    classification,
-    sourceMechanism: "customer_authorized_provider_export_v1",
-    sourceZoneHash,
-    sourceZone: input.zoneExport,
-    transferCode: input.transferCode,
-    transferAuthorizationAccepted: true,
+  if (input.acquiredSource) {
+    if (
+      input.acquiredSource.zone !== input.zoneExport ||
+      sourceZone.authority.mechanism !==
+        sourceAuthorityMechanism(input.acquiredSource.mechanism)
+    ) {
+      return {
+        readiness: "unsupported",
+        domain: normalizedDomain.domain,
+        classification: null,
+        message: "De automatische bronautoriteit komt niet overeen met de gevalideerde zone.",
+        sourceZone,
+        sourceZoneHash,
+        encryptedInput: null,
+        publicEvidence: input.publicEvidence,
+      }
+    }
+    const checkoutInput: CheckoutMigrationInput = {
+      schemaVersion: 2,
+      generationRunId: String(input.generationRunId),
+      domain: normalizedDomain.domain,
+      classification: "automatic",
+      sourceMechanism: input.acquiredSource.mechanism,
+      sourceZoneHash,
+      sourceZone: input.acquiredSource.zone,
+      sourceRefreshCredential: input.acquiredSource.refreshCredential,
+      transferCode: input.transferCode,
+      transferAuthorizationAccepted: true,
+    }
+    return {
+      readiness: "ready_automatic",
+      domain: normalizedDomain.domain,
+      classification: "automatic",
+      message: "De volledige DNS-bron en verhuisvereisten zijn automatisch gevalideerd.",
+      sourceZone,
+      sourceZoneHash,
+      encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
+      publicEvidence: input.publicEvidence,
+    }
   }
+  if (input.acceptedOrderRecollection) {
+    const checkoutInput: CheckoutMigrationInput = {
+      schemaVersion: 1,
+      generationRunId: String(input.generationRunId),
+      domain: normalizedDomain.domain,
+      classification: "assisted_standard",
+      sourceMechanism: "customer_authorized_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: input.zoneExport,
+      transferCode: input.transferCode,
+      transferAuthorizationAccepted: true,
+    }
+    return {
+      readiness: "ready_assisted",
+      domain: normalizedDomain.domain,
+      classification: "assisted_standard",
+      message: "De bestaande geaccepteerde migratiegegevens zijn veilig vernieuwd.",
+      sourceZone,
+      sourceZoneHash,
+      encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
+      publicEvidence: input.publicEvidence,
+    }
+  }
+  // A customer assertion can be structurally valid without proving that the
+  // export is authoritative and complete. The retired assisted product may not
+  // turn that assertion into a payable order. Automatic source acquisition
+  // must establish provenance before ordinary checkout becomes available.
   return {
-    readiness: "ready_assisted",
+    readiness: "unsupported",
     domain: normalizedDomain.domain,
-    classification,
+    classification: null,
     message:
-      "De DNS-export is technisch gevalideerd; controle door een operator is vereist voor begeleide migratie à € 49,00 excl. btw.",
+      "Deze export is technisch geldig, maar de volledigheid kan nog niet automatisch worden bewezen. Er wordt niets besteld of betaald.",
     sourceZone,
     sourceZoneHash,
-    encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
+    encryptedInput: null,
     publicEvidence: input.publicEvidence,
   }
 }

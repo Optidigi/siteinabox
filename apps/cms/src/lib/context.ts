@@ -17,7 +17,7 @@ export type SiabContext =
  *   - super-admin host  -> { mode: "super-admin", tenant: null }
  *   - tenant host with active record -> { mode: "tenant", tenant }
  *   - tenant host with no record     -> 404 (notFound)
- *   - tenant host with suspended record -> Response 503
+ *   - tenant host with suspended record -> authenticated control plane remains available
  *   - tenant host with archived record  -> Response 410 (Gone)
  *
  * Throws when middleware didn't run (most common cause: caller is in a route
@@ -52,9 +52,6 @@ export const getSiabContext = async (): Promise<SiabContext> => {
 
   if (!tenant) {
     notFound() // throws — Next renders the closest not-found.tsx
-  }
-  if (tenant.status === "suspended") {
-    throw new Response("Site temporarily unavailable", { status: 503 })
   }
   if (tenant.status === "archived") {
     throw new Response("Gone", { status: 410 })

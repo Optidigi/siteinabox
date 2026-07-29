@@ -4,11 +4,20 @@ import type { DomainMigration } from "@/payload-types"
 export const migrationRequiresSafetyContinuation = (
   migration: Pick<
     DomainMigration,
-    "cutoverWriteState" | "rollbackWriteState"
+    | "cloudflareZoneState"
+    | "providerTransferState"
+    | "cutoverWriteState"
+    | "rollbackWriteState"
+    | "dnssecPhase"
+    | "dnssecWriteState"
   >,
 ): boolean =>
+  migration.cloudflareZoneState !== "not_started" ||
+  migration.providerTransferState !== "not_started" ||
   migration.cutoverWriteState !== "not_started" ||
-  migration.rollbackWriteState !== "not_started"
+  migration.rollbackWriteState !== "not_started" ||
+  migration.dnssecWriteState !== "not_started" ||
+  !["source_unsigned", "source_secure_preserved"].includes(migration.dnssecPhase)
 
 export const queueDomainMigrationPreparation = (
   payload: Payload,

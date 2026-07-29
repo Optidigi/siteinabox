@@ -17,7 +17,16 @@ const targetNameSchema = z.string().trim().min(1).max(255).refine(
 const commonRecordFields = {
   name: recordNameSchema,
   ttl: ttlSchema,
+  proxied: z.boolean().optional(),
 }
+
+export const migrationDnskeySchema = z.object({
+  flags: z.number().int().min(0).max(65_535),
+  protocol: z.literal(3),
+  algorithm: z.number().int().min(1).max(255),
+  publicKey: z.string().trim().regex(/^[A-Za-z0-9+/]+={0,2}$/).max(4_096),
+}).strict()
+export type MigrationDnskey = z.infer<typeof migrationDnskeySchema>
 
 const aRecordSchema = z.object({
   ...commonRecordFields,
@@ -89,13 +98,28 @@ export const migrationDnsRecordSchema = z.discriminatedUnion("type", [
 
 export type MigrationDnsRecord = z.infer<typeof migrationDnsRecordSchema>
 
+export const migrationSourceMechanisms = [
+  "customer_authorized_provider_export_v1",
+  "cloudflare_api_v1",
+  "authorized_axfr_v1",
+  "validated_provider_export_v1",
+] as const
+
+export const migrationSourceMechanismSchema = z.enum(migrationSourceMechanisms)
+export type MigrationSourceMechanism = z.infer<typeof migrationSourceMechanismSchema>
+
 export const completeZoneExportSchema = z.object({
   schemaVersion: z.literal(1),
   format: z.literal("siab-complete-zone-v1"),
   domain: z.string().trim().toLowerCase().regex(DOMAIN_PATTERN),
   acquiredAt: z.iso.datetime(),
   authority: z.object({
-    mechanism: z.literal("customer_authorized_provider_export"),
+    mechanism: z.enum([
+      "customer_authorized_provider_export",
+      "cloudflare_api",
+      "authorized_axfr",
+      "validated_provider_export",
+    ]),
     provider: z.string().trim().min(1).max(100),
     complete: z.literal(true),
   }).strict(),
@@ -103,6 +127,8 @@ export const completeZoneExportSchema = z.object({
   dnssec: z.object({
     status: z.enum(["unsigned", "signed"]),
     parentDsRecords: z.array(z.string().trim().min(1).max(1_024)).max(20),
+    parentDsTtl: z.number().int().min(1).max(604_800).nullable().default(null),
+    dnsKeys: z.array(migrationDnskeySchema).max(4).default([]),
   }).strict(),
   records: z.array(migrationDnsRecordSchema).min(1).max(500),
 }).strict().superRefine((zone, ctx) => {
@@ -179,14 +205,15 @@ export const completeZoneExportSchema = z.object({
   }
 })
 
-export type CompleteZoneExport = z.infer<typeof completeZoneExportSchema>
+export type CompleteZoneExport = z.input<typeof completeZoneExportSchema>
+type ParsedCompleteZoneExport = z.output<typeof completeZoneExportSchema>
 
 export type NormalizedMigrationDnsRecord = MigrationDnsRecord & {
   proxied: boolean
 }
 
 export type NormalizedCompleteZone = Omit<
-  CompleteZoneExport,
+  ParsedCompleteZoneExport,
   "authoritativeNameservers" | "records"
 > & {
   authoritativeNameservers: string[]
@@ -214,33 +241,34 @@ const normalizeRecord = (
   domain: string,
 ): NormalizedMigrationDnsRecord => {
   const name = record.name === "@" ? domain : canonicalName(record.name)
+  const proxied = record.proxied ?? false
   if (record.type === "CNAME" || record.type === "NS") {
-    return { ...record, name, content: canonicalName(record.content), proxied: false }
+    return { ...record, name, content: canonicalName(record.content), proxied }
   }
   if (record.type === "MX") {
-    return { ...record, name, target: canonicalName(record.target), proxied: false }
+    return { ...record, name, target: canonicalName(record.target), proxied }
   }
   if (record.type === "SRV") {
-    return { ...record, name, target: canonicalName(record.target), proxied: false }
+    return { ...record, name, target: canonicalName(record.target), proxied }
   }
   if (record.type === "CAA") {
-    return { ...record, name, tag: record.tag.toLowerCase(), proxied: false }
+    return { ...record, name, tag: record.tag.toLowerCase(), proxied }
   }
   if (record.type === "AAAA") {
-    return { ...record, name, content: record.content.toLowerCase(), proxied: false }
+    return { ...record, name, content: record.content.toLowerCase(), proxied }
   }
   if (record.type === "TXT") {
-    return { ...record, name, content: normalizeTxtContent(record.content), proxied: false }
+    return { ...record, name, content: normalizeTxtContent(record.content), proxied }
   }
   if (record.type === "TLSA") {
     return {
       ...record,
       name,
       certificateAssociationData: record.certificateAssociationData.toLowerCase(),
-      proxied: false,
+      proxied,
     }
   }
-  return { ...record, name, proxied: false }
+  return { ...record, name, proxied }
 }
 
 const semanticRecordKey = (record: NormalizedMigrationDnsRecord): string => {
@@ -344,14 +372,16 @@ export function buildAutomaticMigrationTargetZone(
           type: "CNAME",
           name: `www.${source.domain}`,
           ttl: 300,
-          content: source.domain,
+          content: rendererTargetHost as string,
           proxied: true,
         },
       ]
   return {
     ...source,
     records: uniqueSortedRecords([
-      ...source.records.filter((record) => !isWebsiteAddressRecord(record, source.domain)),
+      ...source.records
+        .filter((record) => !isWebsiteAddressRecord(record, source.domain))
+        .map((record) => ({ ...record, proxied: false })),
       ...websiteRecords,
     ]),
   }
@@ -406,27 +436,42 @@ export type DnssecPreparationPlan = {
   preCutoverAction: "verify_parent_ds_absent" | "remove_parent_ds"
   parentDsRecords: string[]
   checkedAt: string
+  parentDsTtl: number | null
+  dnsKeys: MigrationDnskey[]
   cutoverReady: boolean
-  customerAction: "remove_dnssec_ds" | null
-  targetMode: "remain_unsigned"
+  customerAction: null
+  targetMode: "enable_after_cutover"
 }
 
 export function buildDnssecPreparationPlan(input: {
   sourceStatus: "unsigned" | "signed"
   parentDsRecords: string[]
+  parentDsTtl?: number | null
+  dnsKeys?: MigrationDnskey[]
   checkedAt: string
 }): DnssecPreparationPlan {
   const parentDsRecords = [...new Set(input.parentDsRecords.map((record) => record.trim()))]
     .filter(Boolean)
     .sort()
-  const cutoverReady = input.sourceStatus === "unsigned" && parentDsRecords.length === 0
+  const dnsKeys = input.dnsKeys ?? []
+  const signedEvidenceComplete = input.sourceStatus === "signed" &&
+    parentDsRecords.length > 0 &&
+    input.parentDsTtl != null &&
+    dnsKeys.length > 0
+  const cutoverReady = (
+    input.sourceStatus === "unsigned" && parentDsRecords.length === 0
+  ) || signedEvidenceComplete
   return {
     sourceStatus: input.sourceStatus,
-    preCutoverAction: cutoverReady ? "verify_parent_ds_absent" : "remove_parent_ds",
+    preCutoverAction: input.sourceStatus === "signed"
+      ? "remove_parent_ds"
+      : "verify_parent_ds_absent",
     parentDsRecords,
+    parentDsTtl: input.parentDsTtl ?? null,
+    dnsKeys,
     checkedAt: input.checkedAt,
     cutoverReady,
-    customerAction: cutoverReady ? null : "remove_dnssec_ds",
-    targetMode: "remain_unsigned",
+    customerAction: null,
+    targetMode: "enable_after_cutover",
   }
 }

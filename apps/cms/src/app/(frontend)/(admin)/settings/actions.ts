@@ -18,6 +18,7 @@ import {
   type TenantNotificationCategories,
 } from "@/lib/legal/communicationPreferences"
 import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
+import { createMandateRecoveryMolliePayment } from "@/lib/payments/molliePayments"
 import {
   captureDomainOffboardingContinuityEvidence,
   confirmDomainTransferCompletedByCustomer,
@@ -182,6 +183,25 @@ export async function cancelBillingAgreementAction(formData: FormData) {
   redirect("/settings?billing=cancelled#billing")
 }
 
+export async function recoverBillingAgreementAction(formData: FormData) {
+  const { payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") redirect("/?error=forbidden")
+  const billingAgreementId = String(formData.get("billingAgreementId") ?? "").trim()
+  if (!billingAgreementId) redirect("/settings?billing=recovery-failed#billing")
+  let checkoutUrl: string
+  try {
+    const result = await createMandateRecoveryMolliePayment(payload, {
+      billingAgreementId,
+      tenantId,
+    })
+    checkoutUrl = result.checkoutUrl
+  } catch {
+    console.error("Billing recovery checkout failed")
+    redirect("/settings?billing=recovery-failed#billing")
+  }
+  redirect(checkoutUrl)
+}
+
 const domainActor = (email: string, tenantId: string) => ({ email, tenantId })
 
 export async function requestDomainTransferOutAction(formData: FormData) {
@@ -213,8 +233,8 @@ export async function requestDomainTransferOutAction(formData: FormData) {
       now,
     })
     await queueDomainTransferOutPreparation(payload, domain.id)
-  } catch (error) {
-    console.error("Domain transfer-out request failed", error)
+  } catch {
+    console.error("Domain transfer-out request failed")
     redirect("/settings?domainTransfer=failed#domain-transfer")
   }
   revalidatePath("/settings")
@@ -254,8 +274,8 @@ export async function markDomainTransferOutStartedAction(formData: FormData) {
       managedDomainId,
       actor: domainActor(user.email, tenantId),
     })
-  } catch (error) {
-    console.error("Domain transfer-out start confirmation failed", error)
+  } catch {
+    console.error("Domain transfer-out start confirmation failed")
     redirect("/settings?domainTransfer=failed#domain-transfer")
   }
   revalidatePath("/settings")
@@ -274,8 +294,8 @@ export async function confirmDomainTransferCompletedAction(formData: FormData) {
       managedDomainId,
       actor: domainActor(user.email, tenantId),
     })
-  } catch (error) {
-    console.error("Domain transfer-out completion confirmation failed", error)
+  } catch {
+    console.error("Domain transfer-out completion confirmation failed")
     redirect("/settings?domainTransfer=failed#domain-transfer")
   }
   revalidatePath("/settings")
