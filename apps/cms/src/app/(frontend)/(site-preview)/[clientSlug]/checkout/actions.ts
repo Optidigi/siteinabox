@@ -9,7 +9,10 @@ import {
   BUSINESS_USE_DECLARATION_VERSION,
   getCurrentLegalDocument,
 } from "@siteinabox/legal-content"
-import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
+import {
+  COMMERCIAL_CATALOG,
+  COMMERCIAL_CATALOG_VERSION,
+} from "@siteinabox/contracts/commerce"
 import type { CheckoutProfile } from "@/payload-types"
 import {
   checkoutProfileDraftFromFormData,
@@ -98,7 +101,7 @@ export type PreviewCheckoutActionState = {
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
   domainMode?: "new_registration" | "existing_domain"
-  migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
+  migrationReadiness?: "ready_automatic" | "ready_assisted" | "unsupported"
   migrationClassification?: "automatic" | "assisted_standard" | null
   migrationPublicEvidence?: ExistingDomainPublicEvidence | null
   migrationPreflightOnly?: boolean
@@ -308,9 +311,7 @@ async function checkExistingDomainMigration(
     ) {
       return {
         ok: false,
-        status: assessment.readiness === "custom_quote"
-          ? "service_error"
-          : "invalid",
+        status: "invalid",
         domain: assessment.domain,
         domainMode: "existing_domain",
         migrationReadiness: assessment.readiness,
@@ -1125,6 +1126,15 @@ export async function startPreviewCheckoutPaymentAction(
   if (
     acceptedQuote.billingPeriod !== billingPeriod ||
     acceptedQuote.selectedDomain !== domain ||
+    (
+      !resumesAcceptedOrder &&
+      acceptedQuote.catalogVersion !== COMMERCIAL_CATALOG_VERSION
+    ) ||
+    (
+      !resumesAcceptedOrder &&
+      acceptedQuote.domainMode === "existing_domain" &&
+      acceptedQuote.migrationClassification !== "automatic"
+    ) ||
     !["new_registration", "existing_domain"].includes(acceptedQuote.domainMode) ||
     (
       acceptedQuote.draftVersion !== String(context.run.updatedAt ?? "") &&

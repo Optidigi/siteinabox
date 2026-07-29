@@ -745,6 +745,40 @@ describe("Mollie payment flow", () => {
     })
   })
 
+  it("rejects malformed current-catalog migration charges before provider work", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      order,
+      billingAgreements,
+      paymentAttempts,
+    } = createPayloadStub()
+    Object.assign(order, {
+      orderKind: "initial_subscription",
+      catalogVersion: "2026-07-29.1",
+      quoteEvidence: {
+        domainMode: "new_registration",
+        migrationServiceFeeNetMinor: 4_900,
+        migration: { classification: "assisted_standard" },
+      },
+      netLineItems: [{
+        code: "migration-assisted-standard-per-domain",
+        quantity: 1,
+        netAmountMinor: 4_900,
+      }],
+    })
+
+    await expect(createMollieCheckoutForGenerationRun(payload, {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    })).rejects.toThrow("migration service fee")
+    expect(billingAgreements).toHaveLength(0)
+    expect(paymentAttempts).toHaveLength(0)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("allows only one provider payment write when first-payment schedulers race", async () => {
     enableSandboxCommerceRelease()
     const { payload, paymentAttempts, billingAgreements } = createPayloadStub()

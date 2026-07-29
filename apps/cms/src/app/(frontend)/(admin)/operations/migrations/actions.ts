@@ -9,7 +9,6 @@ import type { User } from "@/payload-types"
 import {
   completeMigrationOperatorWork,
   failMigrationOperatorWork,
-  proposeMigrationOperatorWork,
   requestDomainMigrationRollback,
   requestMigrationOperatorWork,
   startMigrationOperatorWork,
@@ -49,30 +48,6 @@ const completionCodes = {
   operator_step_completed: "operator_step_completed",
   incident_recovery_completed: "incident_recovery_completed",
 } as const
-
-const supplementalScopes = {
-  verify_customer_zone_export: "verify_customer_zone_export",
-  resolve_supported_zone_conflict: "resolve_supported_zone_conflict",
-  complete_supported_provider_handoff: "complete_supported_provider_handoff",
-} as const
-
-export async function proposeMigrationOperatorWorkAction(formData: FormData) {
-  const id = migrationId(formData)
-  const scopeCode = String(formData.get("workScopeCode") ?? "")
-  const scope = supplementalScopes[scopeCode as keyof typeof supplementalScopes]
-  if (!scope) redirect(completedPath(id, "invalid-supplemental-scope"))
-  try {
-    const { payload } = await authenticatedOperator()
-    await proposeMigrationOperatorWork(payload, {
-      migrationId: id,
-      workScope: scope,
-    })
-  } catch {
-    redirect(completedPath(id, "supplemental-proposal-failed"))
-  }
-  revalidatePath(`/operations/migrations/${id}`)
-  redirect(completedPath(id, "supplemental-proposed"))
-}
 
 export async function classifySiteinaboxIncidentAction(formData: FormData) {
   const id = migrationId(formData)

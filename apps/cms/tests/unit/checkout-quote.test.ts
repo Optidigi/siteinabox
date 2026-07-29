@@ -21,7 +21,7 @@ describe("Phase 3 checkout quote", () => {
       providerOperationPriceNetMinor: 1_000,
       ...quoteContext,
     })).toMatchObject({
-      catalogVersion: "2026-07-26.1",
+      catalogVersion: "2026-07-29.1",
       packageCode: "siteinabox-monthly",
       netAmountMinor: 1_900,
       vatAmountMinor: 399,
@@ -55,8 +55,18 @@ describe("Phase 3 checkout quote", () => {
     })
   })
 
-  it("adds one assisted-standard fee per domain and stops complex checkout", () => {
+  it("retires assisted checkout while preserving explicit historical reconstruction", () => {
+    expect(() => buildCheckoutQuote({
+      billingPeriod: "monthly",
+      providerOperationPriceNetMinor: 1_000,
+      migrationClassification: "assisted_standard",
+      migrationSourceZoneHash: "a".repeat(64),
+      migrationInputEnvelope: "encrypted-migration-input",
+      domainMode: "existing_domain",
+      ...quoteContext,
+    })).toThrow("unavailable")
     expect(buildCheckoutQuote({
+      catalogVersion: "2026-07-26.1",
       billingPeriod: "monthly",
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "assisted_standard",
@@ -65,6 +75,7 @@ describe("Phase 3 checkout quote", () => {
       domainMode: "existing_domain",
       ...quoteContext,
     })).toMatchObject({
+      catalogVersion: "2026-07-26.1",
       migrationClassification: "assisted_standard",
       netAmountMinor: 6_800,
       vatAmountMinor: 1_428,
@@ -84,7 +95,7 @@ describe("Phase 3 checkout quote", () => {
       migrationClassification: "complex",
       domainMode: "existing_domain",
       ...quoteContext,
-    })).toThrow("custom quote")
+    })).toThrow("unavailable")
   })
 
   it("requires and compares frozen migration evidence for an existing domain", () => {

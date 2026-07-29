@@ -5,6 +5,7 @@ import {
   calculateDutchVatMinor,
   commercialAmountFromNet,
   getCommercialCatalog,
+  migrationClassificationAvailableForCheckout,
   type CommercialAmount,
   type MigrationClassification,
 } from "@siteinabox/contracts/commerce"
@@ -72,8 +73,17 @@ export function buildCheckoutQuote(input: {
   now?: Date
 }): CheckoutQuote {
   const catalog = getCommercialCatalog(input.catalogVersion)
+  if (
+    input.migrationClassification &&
+    !migrationClassificationAvailableForCheckout(
+      input.migrationClassification,
+      catalog.catalogVersion,
+    )
+  ) {
+    throw new Error("This migration classification is unavailable in ordinary checkout.")
+  }
   if (input.migrationClassification === "complex") {
-    throw new Error("Complex migrations require a custom quote and cannot enter ordinary checkout.")
+    throw new Error("Complex migrations are unavailable in ordinary checkout.")
   }
   const domainMode = input.domainMode ?? "new_registration"
   if (

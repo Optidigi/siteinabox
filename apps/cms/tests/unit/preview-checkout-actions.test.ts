@@ -916,6 +916,7 @@ describe("preview checkout domain suggestion action", () => {
       throw new Error("Expected accepted-order recollection assessment.")
     }
     const quote = buildCheckoutQuote({
+      catalogVersion: "2026-07-26.1",
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_250,
       selectedDomain: "ami-care.nl",
@@ -1095,6 +1096,7 @@ describe("preview checkout domain suggestion action", () => {
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
       requestedAssistance: true,
+      acceptedOrderRecollection: true,
       publicEvidence: await mocks.inspectExistingDomainPublicEvidence(),
       now: new Date(),
     }, {
@@ -1115,6 +1117,7 @@ describe("preview checkout domain suggestion action", () => {
       throw new Error("Expected a test-only verified migration assessment.")
     }
     const acceptedQuote = buildCheckoutQuote({
+      catalogVersion: "2026-07-26.1",
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_250,
       selectedDomain: "ami-care.nl",
@@ -1151,15 +1154,8 @@ describe("preview checkout domain suggestion action", () => {
     expect(result).toMatchObject({
       ok: false,
       status: "version_conflict",
-      quotes: {
-        annual: {
-          quote: {
-            providerOperationPriceNetMinor: 1_500,
-            domainMode: "existing_domain",
-          },
-        },
-      },
     })
+    expect(result.quotes).toBeUndefined()
     expect(mocks.createSiteApprovalEvidence).not.toHaveBeenCalled()
     expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()

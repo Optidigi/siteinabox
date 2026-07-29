@@ -1239,7 +1239,7 @@
     "checkoutMigrationAutomaticDescription": "{price} excl. btw. Geen verwachte technische handeling door een Siteinabox-medewerker.",
     "checkoutMigrationAssistedTitle": "Standaard begeleide migratie",
     "checkoutMigrationAssistedDescription": "{price} excl. btw per domein wanneer een technische handeling door een Siteinabox-medewerker wordt verwacht.",
-    "checkoutMigrationCustomerActions": "Een EPP-code, providerautorisatie, volledige zone-export, transferbevestiging of registrantverificatie door jou maakt een migratie niet betaald begeleid.",
+    "checkoutMigrationCustomerActions": "De automatische migratie kost € 0. Een EPP-code, providerautorisatie, volledige zone-export, transferbevestiging of registrantverificatie kan wel als klantactie nodig zijn.",
     "checkoutMigrationLaterPhaseNotice": "Complexe of nog niet ondersteunde situaties stoppen altijd vóór betaling.",
     "checkoutMigrationZoneExportLabel": "Volledige gevalideerde zone-export (JSON)",
     "checkoutMigrationZoneExportHelp": "Maximaal 256 KiB en 24 uur oud. Publieke DNS-scans gelden alleen als aanvullende controle.",

@@ -1,9 +1,5 @@
 import "server-only"
 
-import {
-  commercialAmountFromNet,
-  getCommercialCatalog,
-} from "@siteinabox/contracts/commerce"
 import type { Payload } from "payload"
 import type { DomainMigration, ManagedDomain, Order } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
@@ -144,26 +140,20 @@ export async function loadCustomerMigrationStatus(
     loadedSupplementalOrder.customerEmail.trim().toLowerCase() === customerEmail
     ? loadedSupplementalOrder
     : null
-  const catalog = order.catalogVersion
-    ? getCommercialCatalog(order.catalogVersion)
-    : null
-  const supplementalAmount = catalog
-    ? commercialAmountFromNet(catalog.migrations.assisted_standard.netAmountMinor)
-    : null
   const supplementalProposal =
-    ["awaiting_customer_acceptance", "awaiting_payment"].includes(
-      migration.operatorWorkAuthorizationState,
-    ) &&
+    migration.operatorWorkAuthorizationState === "awaiting_payment" &&
     migration.operatorWorkScope &&
-    supplementalAmount &&
-    (
-      migration.operatorWorkAuthorizationState === "awaiting_customer_acceptance" ||
-      supplementalOrder
-    )
+    supplementalOrder?.currency === "EUR" &&
+    Number.isSafeInteger(supplementalOrder.subtotalNetMinor) &&
+    Number.isSafeInteger(supplementalOrder.vatAmountMinor) &&
+    Number.isSafeInteger(supplementalOrder.totalGrossMinor)
       ? {
           workScopeCode: migration.operatorWorkScope,
-          ...supplementalAmount,
-          paymentStatus: supplementalOrder?.paymentStatus ?? null,
+          currency: "EUR" as const,
+          netAmountMinor: supplementalOrder.subtotalNetMinor as number,
+          vatAmountMinor: supplementalOrder.vatAmountMinor as number,
+          grossAmountMinor: supplementalOrder.totalGrossMinor as number,
+          paymentStatus: supplementalOrder.paymentStatus,
         }
       : null
   return {

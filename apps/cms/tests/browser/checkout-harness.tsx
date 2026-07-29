@@ -129,7 +129,6 @@ createRoot(document.getElementById("root")!).render(
         domainIncludedAllowanceNetMinor: 1_000,
         migrations: {
           automaticNetAmountMinor: 0,
-          assistedStandardNetAmountMinor: 4_900,
         },
       }}
       paymentStatus={pending ? "pending_provider" : "not_started"}

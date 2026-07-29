@@ -105,6 +105,15 @@ const orderCatalog = (order: Order) => {
   return getCommercialCatalog(order.catalogVersion)
 }
 
+const requireLegacyAssistedCatalog = (order: Order): void => {
+  const catalog = orderCatalog(order)
+  if (catalog.migrations.assisted_standard.checkout !== "ordinary") {
+    throw new Error(
+      "Assisted and supplemental migration work is retired for this commercial catalog.",
+    )
+  }
+}
+
 const lineItemHasAssistedFee = (order: Order): boolean => {
   const catalog = orderCatalog(order)
   const expected = catalog.migrations.assisted_standard.netAmountMinor
@@ -179,6 +188,7 @@ const createSupplementalOrder = async (
   now: string,
 ): Promise<Order> => {
   const origin = await originatingOrder(payload, migration)
+  requireLegacyAssistedCatalog(origin)
   const normalizedActor = acceptance.actorEmail.trim().toLowerCase()
   if (!normalizedActor || normalizedActor !== origin.customerEmail.trim().toLowerCase()) {
     throw new Error("Supplemental order acceptance must come from the contracting customer.")
@@ -295,6 +305,7 @@ export async function pauseAcceptedAssistedMigration(
   if (migration.acceptedClassification !== "assisted_standard") return migration
   if (migration.operatorWorkAuthorizationState === "paid_authorized") return migration
   const order = await originatingOrder(payload, migration)
+  requireLegacyAssistedCatalog(order)
   if (!lineItemHasAssistedFee(order)) {
     throw new Error("Accepted assisted migration order does not freeze the catalog service fee.")
   }
@@ -314,45 +325,16 @@ export async function pauseAcceptedAssistedMigration(
 }
 
 export async function proposeMigrationOperatorWork(
-  payload: Payload,
-  input: {
+  _payload: Payload,
+  _input: {
     migrationId: string | number
     workScope: string
     now?: string
   },
 ): Promise<DomainMigration> {
-  const now = input.now ?? new Date().toISOString()
-  const workScope = input.workScope.trim()
-  if (![
-    "verify_customer_zone_export",
-    "resolve_supported_zone_conflict",
-    "complete_supported_provider_handoff",
-  ].includes(workScope)) {
-    throw new Error("Unexpected operator work requires a bounded approved scope.")
-  }
-  const migration = await payload.findByID({
-    collection: "domain-migrations",
-    id: input.migrationId,
-    depth: 0,
-    overrideAccess: true,
-  }) as DomainMigration
-  if (
-    migration.acceptedClassification !== "automatic" ||
-    !["ready_to_prepare", "preparing", "awaiting_provider", "ready_for_cutover"].includes(
-      migration.state,
-    )
-  ) {
-    throw new Error("Only an accepted automatic migration may receive a supplemental proposal.")
-  }
-  return updateMigration(payload, migration, {
-    state: "paused_supplemental_order",
-    operatorWorkClassification: "assisted_standard",
-    operatorWorkCause: "customer_migration",
-    operatorWorkScope: workScope,
-    operatorWorkAuthorizationState: "awaiting_customer_acceptance",
-    reconciliationRequired: false,
-    failureReason: "supplemental_customer_acceptance_required",
-  }, "unexpected_operator_work_proposed_to_customer", now)
+  throw new Error(
+    "Customer-billable migration work is retired; use automated recovery or rollback.",
+  )
 }
 
 export async function requestMigrationOperatorWork(
@@ -369,12 +351,19 @@ export async function requestMigrationOperatorWork(
   const now = input.now ?? new Date().toISOString()
   const workScope = input.workScope.trim()
   if (!workScope) throw new Error("Operator work requires a bounded scope.")
+  if (input.workCause === "customer_migration") {
+    throw new Error(
+      "Customer-billable migration work is retired; use automated recovery or rollback.",
+    )
+  }
   let migration = await payload.findByID({
     collection: "domain-migrations",
     id: input.migrationId,
     depth: 0,
     overrideAccess: true,
   }) as DomainMigration
+  const origin = await originatingOrder(payload, migration)
+  void orderCatalog(origin)
   if (![
     "ready_to_prepare",
     "preparing",

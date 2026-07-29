@@ -142,6 +142,10 @@ describe("customer migration status projection", () => {
       tenant: 1,
       customerEmail: "customer@example.com",
       paymentStatus: "open",
+      currency: "EUR",
+      subtotalNetMinor: 4_900,
+      vatAmountMinor: 1_029,
+      totalGrossMinor: 5_929,
     }))
 
     await expect(loadCustomerMigrationStatus(asPayload({ find, findByID }), {

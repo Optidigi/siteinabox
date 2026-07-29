@@ -6,7 +6,6 @@ import {
   assessExistingDomainMigrationInput,
   type ExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
-import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64")
 const env = {
@@ -78,7 +77,7 @@ const assess = (
 })
 
 describe("existing-domain checkout preflight", () => {
-  it("requires assisted review for a customer-asserted complete source", () => {
+  it("stops a customer-asserted source before payment", () => {
     const result = assess({
       generationRunId: 500,
       domain: "example.nl",
@@ -92,20 +91,13 @@ describe("existing-domain checkout preflight", () => {
     })
 
     expect(result).toMatchObject({
-      readiness: "ready_assisted",
+      readiness: "unsupported",
       domain: "example.nl",
-      classification: "assisted_standard",
+      classification: null,
       sourceZoneHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      encryptedInput: null,
     })
-    expect(result.encryptedInput).not.toContain("opaque-transfer-code")
-    const opened = openCheckoutMigrationInput(
-      result.encryptedInput!,
-      500,
-      "example.nl",
-      env,
-    )
-    expect(opened.transferCode).toBe("opaque-transfer-code")
-    expect(opened.normalizedSourceZone.records).toEqual(expect.arrayContaining([
+    expect(result.sourceZone?.records).toEqual(expect.arrayContaining([
       expect.objectContaining({
         type: "TLSA",
         certificateAssociationData: "aa".repeat(32),
@@ -114,7 +106,7 @@ describe("existing-domain checkout preflight", () => {
     ]))
   })
 
-  it("freezes the EUR 49 assisted classification separately", () => {
+  it("does not revive assisted checkout when the browser requests it", () => {
     const result = assess({
       generationRunId: 500,
       domain: "example.nl",
@@ -128,8 +120,9 @@ describe("existing-domain checkout preflight", () => {
     })
 
     expect(result).toMatchObject({
-      readiness: "ready_assisted",
-      classification: "assisted_standard",
+      readiness: "unsupported",
+      classification: null,
+      encryptedInput: null,
     })
   })
 
@@ -160,6 +153,6 @@ describe("existing-domain checkout preflight", () => {
       publicEvidence: publicEvidence({ dnssecDsPresent: true }),
       env,
       now: new Date("2026-07-28T10:00:00.000Z"),
-    }).readiness).toBe("custom_quote")
+    }).readiness).toBe("unsupported")
   })
 })

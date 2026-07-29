@@ -2,8 +2,11 @@ import "server-only"
 
 import {
   addBillingPeriod,
+  ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE,
   assistedMigrationSupplementalEvidenceSchema,
+  COMMERCIAL_CATALOG_VERSION,
   getCommercialCatalog,
+  LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
   refundDecisionFor,
   type PaymentAttemptState,
   type RefundScenario,
@@ -263,6 +266,51 @@ const recurringNetAmount = (order: Order): number => {
     throw new Error("Order package does not match its frozen commercial catalog.")
   }
   return subscription.netAmountMinor
+}
+
+const assertInitialOrderPaymentPolicy = (order: Order): void => {
+  const catalog = getCommercialCatalog(order.catalogVersion ?? undefined)
+  if (catalog.catalogVersion !== COMMERCIAL_CATALOG_VERSION) return
+  if (order.orderKind !== "initial_subscription") {
+    throw new Error("Current-catalog first payment requires an initial subscription order.")
+  }
+  const evidence = order.quoteEvidence
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    throw new Error("Current-catalog payment requires frozen quote evidence.")
+  }
+  const quote = evidence as Record<string, unknown>
+  const migration = quote.migration
+  if (quote.migrationServiceFeeNetMinor !== 0) {
+    throw new Error("Current-catalog payment cannot contain a migration service fee.")
+  }
+  if (quote.domainMode === "new_registration" && migration != null) {
+    throw new Error("Current-catalog registration payment cannot contain migration evidence.")
+  }
+  if (quote.domainMode === "existing_domain") {
+    if (
+      !migration ||
+      typeof migration !== "object" ||
+      Array.isArray(migration) ||
+      (migration as Record<string, unknown>).classification !== "automatic" ||
+      quote.migrationServiceFeeNetMinor !== 0
+    ) {
+      throw new Error("Current-catalog existing-domain payment requires a zero-fee automatic migration.")
+    }
+  }
+  if (!["new_registration", "existing_domain"].includes(String(quote.domainMode))) {
+    throw new Error("Current-catalog payment requires a supported domain mode.")
+  }
+  if (
+    Array.isArray(order.netLineItems) &&
+    order.netLineItems.some((item) =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      (item as Record<string, unknown>).code ===
+        ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE)
+  ) {
+    throw new Error("Current-catalog payment cannot contain an assisted migration line item.")
+  }
 }
 
 const checkoutProfileForOrder = async (
@@ -559,6 +607,7 @@ export async function createMollieCheckoutForGenerationRun(
     orderId: input.orderId,
     customerEmail: email,
   })
+  assertInitialOrderPaymentPolicy(order)
   const clientSlug = input.clientSlug ||
     previewClientSlugFromDomain(tenant.domain, String(tenant.slug ?? tenant.name ?? ""))
   if (!clientSlug) throw new Error("Client preview slug is required for Mollie checkout.")
@@ -779,6 +828,9 @@ export async function createSupplementalMigrationMollieCheckout(
     throw new Error("Supplemental Mollie checkout requires an accepted unpaid migration order.")
   }
   const evidence = assistedMigrationSupplementalEvidenceSchema.parse(order.quoteEvidence)
+  if (evidence.catalogVersion !== LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION) {
+    throw new Error("Supplemental migration payments are retired for this catalog.")
+  }
   if (!sameRelationshipId(order.supplementalForMigration, evidence.migrationId)) {
     throw new Error("Supplemental order migration evidence does not match its relationship.")
   }

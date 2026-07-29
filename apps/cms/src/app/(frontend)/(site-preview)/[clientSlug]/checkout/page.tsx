@@ -174,8 +174,6 @@ export default async function PreviewCheckoutPage({
           migrations: {
             automaticNetAmountMinor:
               COMMERCIAL_CATALOG.migrations.automatic.netAmountMinor,
-            assistedStandardNetAmountMinor:
-              COMMERCIAL_CATALOG.migrations.assisted_standard.netAmountMinor,
           },
         }}
         paymentStatus={payment?.status ?? "not_started"}

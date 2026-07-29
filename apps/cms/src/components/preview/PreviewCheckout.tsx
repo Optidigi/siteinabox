@@ -5,7 +5,6 @@ import { useActionState } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
-  Building2,
   Check,
   CheckCircle2,
   CircleAlert,
@@ -61,7 +60,7 @@ export type PreviewCheckoutActionState = {
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
   domainMode?: "new_registration" | "existing_domain"
-  migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
+  migrationReadiness?: "ready_automatic" | "ready_assisted" | "unsupported"
   migrationClassification?: "automatic" | "assisted_standard" | null
   migrationPreflightOnly?: boolean
   migrationPublicEvidence?: {
@@ -129,7 +128,6 @@ export type PreviewCheckoutCatalog = {
   domainIncludedAllowanceNetMinor: number
   migrations: {
     automaticNetAmountMinor: number
-    assistedStandardNetAmountMinor: number
   }
 }
 
@@ -894,9 +892,7 @@ export function PreviewCheckout({
                     ))}
                 </ul>
               )}
-              {["awaiting_customer_acceptance", "awaiting_payment"].includes(
-                migrationStatus.operatorAuthorization,
-              ) &&
+              {migrationStatus.operatorAuthorization === "awaiting_payment" &&
                 migrationStatus.supplementalProposal &&
                 acceptMigrationSupplementalOrderAction && (
                   <form
@@ -942,9 +938,7 @@ export function PreviewCheckout({
                       {supplementalPending && (
                         <Loader2 className="size-4 animate-spin" aria-hidden />
                       )}
-                      {migrationStatus.operatorAuthorization === "awaiting_payment"
-                        ? t("checkoutMigrationSupplementalRetry")
-                        : t("checkoutMigrationSupplementalAccept")}
+                      {t("checkoutMigrationSupplementalRetry")}
                     </Button>
                     {supplementalState.message && (
                       <p
@@ -1150,21 +1144,6 @@ export function PreviewCheckout({
                       autoComplete="off"
                       required
                     />
-                    <fieldset className="grid gap-2">
-                      <legend className="font-medium">
-                        {t("checkoutMigrationAssistanceLegend")}
-                      </legend>
-                      <label className="flex items-start gap-3">
-                        <input
-                          type="radio"
-                          name="migrationAssistance"
-                          value="assisted_standard"
-                          defaultChecked
-                          className="mt-1"
-                        />
-                        <span>{t("checkoutMigrationAssistedChoice")}</span>
-                      </label>
-                    </fieldset>
                     <label className="flex items-start gap-3 text-sm leading-6">
                       <Checkbox
                         name="transferAuthorization"
@@ -1218,9 +1197,7 @@ export function PreviewCheckout({
                       ? t("checkoutMigrationReadyAutomatic")
                       : checkState.migrationReadiness === "ready_assisted"
                         ? t("checkoutMigrationReadyAssisted")
-                        : checkState.migrationReadiness === "custom_quote"
-                          ? t("checkoutMigrationCustomQuote")
-                          : t("checkoutMigrationUnsupported")}
+                        : t("checkoutMigrationUnsupported")}
                   </AlertTitle>
                   <AlertDescription>
                     {checkState.message}
@@ -2267,7 +2244,7 @@ function ExistingDomainMigrationInfo({
         <p className="text-sm text-muted-foreground">
           {t("checkoutExistingDomainDescription")}
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3">
           <div className="rounded-md border bg-background p-3">
             <div className="flex items-center gap-2 font-medium">
               <Globe2 className="size-4" aria-hidden />
@@ -2278,21 +2255,6 @@ function ExistingDomainMigrationInfo({
                 price: money(
                   locale,
                   catalog.migrations.automaticNetAmountMinor,
-                  catalog.currency,
-                ),
-              })}
-            </p>
-          </div>
-          <div className="rounded-md border bg-background p-3">
-            <div className="flex items-center gap-2 font-medium">
-              <Building2 className="size-4" aria-hidden />
-              {t("checkoutMigrationAssistedTitle")}
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("checkoutMigrationAssistedDescription", {
-                price: money(
-                  locale,
-                  catalog.migrations.assistedStandardNetAmountMinor,
                   catalog.currency,
                 ),
               })}

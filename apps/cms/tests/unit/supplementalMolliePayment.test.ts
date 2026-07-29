@@ -28,6 +28,7 @@ import { createSupplementalMigrationMollieCheckout } from "@/lib/payments/mollie
 
 describe("supplemental assisted-migration Mollie payment", () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.stubEnv("NODE_ENV", "test")
     vi.stubEnv("MOLLIE_API_KEY", "test_xxx")
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
@@ -186,5 +187,48 @@ describe("supplemental assisted-migration Mollie payment", () => {
     })
     expect(collections["payment-attempts"]).toHaveLength(2)
     expect(createMolliePayment).toHaveBeenCalledTimes(2)
+  })
+
+  it("rejects current-catalog supplemental evidence before creating an attempt", async () => {
+    const order = {
+      id: 71,
+      state: "accepted",
+      orderKind: "migration_supplemental",
+      supplementalForMigration: 10,
+      quoteEvidence: {
+        schemaVersion: 1,
+        kind: "migration_assisted_standard_supplemental",
+        migrationId: 10,
+        originatingOrderId: 20,
+        catalogVersion: "2026-07-29.1",
+        classification: "assisted_standard",
+        workCause: "customer_migration",
+        workScope: "Retired",
+        domain: "example.nl",
+        unit: "per_domain",
+        quantity: 1,
+        lineItemCode: "migration-assisted-standard-per-domain",
+        amount: {
+          currency: "EUR",
+          netAmountMinor: 0,
+          vatAmountMinor: 0,
+          grossAmountMinor: 0,
+        },
+        acceptedAt: "2026-07-29T10:00:00.000Z",
+      },
+      paymentStatus: "pending",
+    }
+    const create = vi.fn()
+    const payload = asPayload({
+      findByID: vi.fn(async () => order),
+      create,
+    })
+
+    await expect(createSupplementalMigrationMollieCheckout(payload, {
+      orderId: 71,
+      redirectUrl: "https://cms.siteinabox.nl/migrations/10",
+    })).rejects.toThrow("historical-only")
+    expect(create).not.toHaveBeenCalled()
+    expect(createMolliePayment).not.toHaveBeenCalled()
   })
 })

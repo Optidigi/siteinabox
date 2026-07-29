@@ -11,9 +11,11 @@ import {
   legalDocumentTypes,
 } from "@siteinabox/contracts/legal"
 import {
+  ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE,
+  COMMERCIAL_CATALOG_VERSION,
+  getCommercialCatalog,
   orderStates,
   orderStateTransitions,
-  assistedMigrationSupplementalEvidenceSchema,
   type OrderState,
 } from "@siteinabox/contracts/commerce"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
@@ -228,40 +230,55 @@ export const validateOrderCommercialShape: CollectionBeforeValidateHook = ({
   data,
   operation,
 }) => {
-  if (operation !== "create" || data?.orderKind !== "migration_supplemental") {
+  if (operation !== "create") {
     return data
   }
-  const evidence = assistedMigrationSupplementalEvidenceSchema.parse(data.quoteEvidence)
-  const lineItems = Array.isArray(data.netLineItems) ? data.netLineItems : []
-  const legacyLineItems = Array.isArray(data.lineItems) ? data.lineItems : []
-  const expectedLineItem = {
-    code: evidence.lineItemCode,
-    quantity: 1,
-    netAmountMinor: evidence.amount.netAmountMinor,
-  }
-  const hasExactLineItem = (items: unknown[]): boolean =>
-    items.length === 1 &&
-    Boolean(items[0]) &&
-    typeof items[0] === "object" &&
-    !Array.isArray(items[0]) &&
-    Object.entries(expectedLineItem).every(
-      ([key, value]) => (items[0] as Record<string, unknown>)[key] === value,
-    )
-  if (
-    !data.parentOrder ||
-    !data.supplementalForMigration ||
-    data.billingPeriod !== "one_time" ||
-    data.packageCode !== evidence.lineItemCode ||
-    data.subtotalNetMinor !== evidence.amount.netAmountMinor ||
-    data.vatAmountMinor !== evidence.amount.vatAmountMinor ||
-    data.totalGrossMinor !== evidence.amount.grossAmountMinor ||
-    data.currency !== evidence.amount.currency ||
-    !hasExactLineItem(lineItems) ||
-    !hasExactLineItem(legacyLineItems)
-  ) {
+  if (data?.orderKind === "migration_supplemental") {
     throw new Error(
-      "Migration supplemental orders require complete frozen relationship and catalog evidence.",
+      "New supplemental migration orders are retired; historical records remain immutable.",
     )
+  }
+  if (data?.orderKind !== "initial_subscription") return data
+  const catalog = getCommercialCatalog(String(data.catalogVersion ?? ""))
+  if (catalog.catalogVersion !== COMMERCIAL_CATALOG_VERSION) {
+    throw new Error("New initial orders require the current commercial catalog.")
+  }
+  const evidence =
+    data.quoteEvidence &&
+    typeof data.quoteEvidence === "object" &&
+    !Array.isArray(data.quoteEvidence)
+      ? data.quoteEvidence as Record<string, unknown>
+      : null
+  const migration =
+    evidence?.migration &&
+    typeof evidence.migration === "object" &&
+    !Array.isArray(evidence.migration)
+      ? evidence.migration as Record<string, unknown>
+      : null
+  const hasAssistedLine = (items: unknown): boolean =>
+    Array.isArray(items) &&
+    items.some((item) =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      (item as Record<string, unknown>).code ===
+        ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE)
+  if (
+    !evidence ||
+    evidence.migrationServiceFeeNetMinor !== 0 ||
+    hasAssistedLine(data.netLineItems) ||
+    hasAssistedLine(data.lineItems) ||
+    (
+      evidence.domainMode === "new_registration" &&
+      migration !== null
+    ) ||
+    (
+      evidence.domainMode === "existing_domain" &&
+      migration?.classification !== "automatic"
+    ) ||
+    !["new_registration", "existing_domain"].includes(String(evidence.domainMode))
+  ) {
+    throw new Error("New initial order does not match the automatic-only catalog.")
   }
   return data
 }

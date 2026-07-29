@@ -131,7 +131,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
           domainIncludedAllowanceNetMinor: 1_000,
           migrations: {
             automaticNetAmountMinor: 0,
-            assistedStandardNetAmountMinor: 4_900,
           },
         }}
         paymentStatus="not_started"
@@ -307,10 +306,10 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(screen.queryByRole("radio", {
       name: "checkoutMigrationAutomaticChoice",
     })).toBeNull()
-    expect((screen.getByRole("radio", {
+    expect(screen.queryByRole("radio", {
       name: "checkoutMigrationAssistedChoice",
-    }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText("checkoutMigrationAssistedChoice")).toBeTruthy()
+    })).toBeNull()
+    expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
     expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
     expect(
       container.querySelector<HTMLInputElement>(

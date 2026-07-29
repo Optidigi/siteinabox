@@ -180,14 +180,14 @@ const createStore = (
 }
 
 describe("assisted migration operator authorization", () => {
-  it("creates an immutable supplemental order and blocks work until its exact payment", async () => {
+  it("rejects new customer-billable proposals and supplemental orders", async () => {
     const store = createStore()
-    await proposeMigrationOperatorWork(store.payload, {
+    await expect(proposeMigrationOperatorWork(store.payload, {
       migrationId: 10,
       workScope: "verify_customer_zone_export",
       now: "2026-07-28T09:55:00.000Z",
-    })
-    const requested = await requestMigrationOperatorWork(store.payload, {
+    })).rejects.toThrow("retired")
+    await expect(requestMigrationOperatorWork(store.payload, {
       migrationId: 10,
       requestedClassification: "assisted_standard",
       workCause: "customer_migration",
@@ -199,85 +199,8 @@ describe("assisted migration operator authorization", () => {
         userAgent: "test",
       },
       now: NOW,
-    })
-
-    expect(requested.supplementalOrder).toMatchObject({
-      orderKind: "migration_supplemental",
-      parentOrder: 20,
-      supplementalForMigration: 10,
-      subtotalNetMinor: 4_900,
-      vatAmountMinor: 1_029,
-      totalGrossMinor: 5_929,
-      state: "accepted",
-      paymentStatus: "pending",
-    })
-    expect(requested.migration).toMatchObject({
-      state: "paused_supplemental_order",
-      operatorWorkAuthorizationState: "awaiting_payment",
-    })
-    await expect(startMigrationOperatorWork(store.payload, {
-      migrationId: 10,
-      actor: OPERATOR,
-      now: NOW,
-    })).rejects.toThrow("cannot start")
-
-    Object.assign(requested.supplementalOrder!, {
-      state: "fulfillment_pending",
-      paymentStatus: "paid",
-      paidAt: NOW,
-    })
-    const attempt = {
-      id: 101,
-      order: requested.supplementalOrder!.id,
-      purpose: "supplemental",
-      state: "paid",
-      paidAt: NOW,
-      netAmountMinor: 4_900,
-      vatAmountMinor: 1_029,
-      grossAmountMinor: 5_929,
-    }
-    store.collections["payment-attempts"]!.push(attempt)
-    await authorizeMigrationOperatorWorkFromPayment(
-      store.payload,
-      requested.supplementalOrder as never,
-      attempt as never,
-      NOW,
-    )
-    await expect(startMigrationOperatorWork(store.payload, {
-      migrationId: 10,
-      actor: {
-        id: 98,
-        email: "customer@example.com",
-        role: "owner",
-      },
-      now: "2026-07-28T10:04:00.000Z",
-    })).rejects.toThrow("authenticated super-admin")
-    await startMigrationOperatorWork(store.payload, {
-      migrationId: 10,
-      actor: OPERATOR,
-      now: "2026-07-28T10:05:00.000Z",
-    })
-    const completed = await completeMigrationOperatorWork(store.payload, {
-      migrationId: 10,
-      actor: OPERATOR,
-      completionNotes: "Provider export imported and validated.",
-      now: "2026-07-28T10:20:00.000Z",
-    })
-
-    expect(completed).toMatchObject({
-      state: "preparing",
-      operatorWorkAuthorizationState: "paid_authorized",
-      operatorWorkStartedByEmail: "operator@siteinabox.nl",
-      operatorWorkCompletedByEmail: "operator@siteinabox.nl",
-      automationResumedAt: "2026-07-28T10:20:00.000Z",
-    })
-    expect(requested.supplementalOrder).toMatchObject({ state: "fulfilled" })
-    expect(store.payload.jobs.queue).toHaveBeenCalledWith({
-      task: "prepare-domain-migration",
-      input: { migrationId: "10" },
-      queue: "default",
-      overrideAccess: true,
-    })
+    })).rejects.toThrow("retired")
+    expect(store.collections.orders).toHaveLength(1)
   })
 
   it("authorizes incident recovery without billing and never creates an order", async () => {
@@ -438,24 +361,15 @@ describe("assisted migration operator authorization", () => {
     })
   })
 
-  it("stops complex work before payment and deletes the retained transfer code", async () => {
+  it("rejects complex customer work instead of creating a custom quote", async () => {
     const store = createStore()
-    const result = await requestMigrationOperatorWork(store.payload, {
+    await expect(requestMigrationOperatorWork(store.payload, {
       migrationId: 10,
       requestedClassification: "complex",
       workCause: "customer_migration",
       workScope: "Unsupported bespoke DNS topology.",
       now: NOW,
-    })
-
-    expect(result.supplementalOrder).toBeNull()
-    expect(result.migration).toMatchObject({
-      state: "custom_quote_required",
-      operatorWorkClassification: "complex",
-      operatorWorkAuthorizationState: "custom_quote_required",
-      encryptedTransferCode: null,
-      transferCodeDeletedAt: NOW,
-    })
+    })).rejects.toThrow("retired")
     expect(store.collections.orders).toHaveLength(1)
   })
 

@@ -16,7 +16,10 @@ import {
   BUSINESS_USE_DECLARATION_TEXT_NL,
   BUSINESS_USE_DECLARATION_VERSION,
 } from "@siteinabox/legal-content"
-import { businessUseDeclarationAcceptanceSchema } from "@siteinabox/contracts/commerce"
+import {
+  businessUseDeclarationAcceptanceSchema,
+  COMMERCIAL_CATALOG_VERSION,
+} from "@siteinabox/contracts/commerce"
 import {
   getTldCapabilityForProductionOperation,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -223,6 +226,38 @@ export async function createOrderAndAcceptanceEvidence(input: {
     `SIAB-${input.run.id}-${sha256(initialOrderClaim(input.run.id)).slice(0, 12).toUpperCase()}`
   let order = await findOneDoc(input.payload, "orders", { orderNumber: { equals: orderNumber } })
   if (!order) {
+    if (input.quote.catalogVersion !== COMMERCIAL_CATALOG_VERSION) {
+      throw new Error("New accepted orders require the current commercial catalog.")
+    }
+    if (
+      input.quote.migrationServiceFeeNetMinor !== 0 ||
+      input.quote.lineItems.some(
+        (item) => item.code === "migration-assisted-standard-per-domain",
+      )
+    ) {
+      throw new Error("New accepted orders cannot contain assisted migration charges.")
+    }
+    if (
+      input.quote.domainMode === "new_registration" &&
+      (
+        input.quote.migrationClassification !== null ||
+        input.quote.migrationSourceZoneHash !== null ||
+        input.quote.migrationInputEnvelope !== null ||
+        input.quote.migrationSecretKey !== null
+      )
+    ) {
+      throw new Error("New-domain orders cannot contain migration evidence.")
+    }
+    if (
+      input.quote.domainMode === "existing_domain" &&
+      (
+        input.quote.migrationClassification !== "automatic" ||
+        !input.quote.migrationSourceZoneHash ||
+        !input.quote.migrationSecretKey
+      )
+    ) {
+      throw new Error("New existing-domain orders require an automatic migration.")
+    }
     try {
       order = await input.payload.create({
         collection: "orders",

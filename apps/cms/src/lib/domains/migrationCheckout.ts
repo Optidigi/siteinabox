@@ -28,7 +28,6 @@ const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60_000
 type MigrationReadiness =
   | "ready_automatic"
   | "ready_assisted"
-  | "custom_quote"
   | "unsupported"
 
 export type ExistingDomainPublicEvidence = {
@@ -268,10 +267,11 @@ export function assessExistingDomainMigrationInput(input: {
     input.publicEvidence.dnssecDsPresent
   ) {
     return {
-      readiness: "custom_quote",
+      readiness: "unsupported",
       domain: normalizedDomain.domain,
       classification: null,
-      message: "DNSSEC-migratie is nog niet vrijgegeven voor de standaardcheckout.",
+      message:
+        "Deze DNSSEC-overgang kan nog niet volledig automatisch worden uitgevoerd. Er wordt niets besteld of betaald.",
       sourceZone,
       sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
       encryptedInput: null,
@@ -309,32 +309,43 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  // A customer upload can be structurally complete, but the customer's own
-  // `complete: true` assertion is not provider provenance. Until an
-  // authenticated connector, authorized AXFR/IXFR, or reviewed provider-native
-  // parser supplies completeness evidence, operator verification is required.
-  const classification = "assisted_standard"
   const sourceZoneHash = domainMigrationSourceAuthorityHash(sourceZone)
-  const checkoutInput: CheckoutMigrationInput = {
-    schemaVersion: 1,
-    generationRunId: String(input.generationRunId),
-    domain: normalizedDomain.domain,
-    classification,
-    sourceMechanism: "customer_authorized_provider_export_v1",
-    sourceZoneHash,
-    sourceZone: input.zoneExport,
-    transferCode: input.transferCode,
-    transferAuthorizationAccepted: true,
+  if (input.acceptedOrderRecollection) {
+    const checkoutInput: CheckoutMigrationInput = {
+      schemaVersion: 1,
+      generationRunId: String(input.generationRunId),
+      domain: normalizedDomain.domain,
+      classification: "assisted_standard",
+      sourceMechanism: "customer_authorized_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: input.zoneExport,
+      transferCode: input.transferCode,
+      transferAuthorizationAccepted: true,
+    }
+    return {
+      readiness: "ready_assisted",
+      domain: normalizedDomain.domain,
+      classification: "assisted_standard",
+      message: "De bestaande geaccepteerde migratiegegevens zijn veilig vernieuwd.",
+      sourceZone,
+      sourceZoneHash,
+      encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
+      publicEvidence: input.publicEvidence,
+    }
   }
+  // A customer assertion can be structurally valid without proving that the
+  // export is authoritative and complete. The retired assisted product may not
+  // turn that assertion into a payable order. Automatic source acquisition
+  // must establish provenance before ordinary checkout becomes available.
   return {
-    readiness: "ready_assisted",
+    readiness: "unsupported",
     domain: normalizedDomain.domain,
-    classification,
+    classification: null,
     message:
-      "De DNS-export is technisch gevalideerd; controle door een operator is vereist voor begeleide migratie à € 49,00 excl. btw.",
+      "Deze export is technisch geldig, maar de volledigheid kan nog niet automatisch worden bewezen. Er wordt niets besteld of betaald.",
     sourceZone,
     sourceZoneHash,
-    encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
+    encryptedInput: null,
     publicEvidence: input.publicEvidence,
   }
 }

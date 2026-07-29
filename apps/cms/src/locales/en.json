@@ -1239,7 +1239,7 @@
     "checkoutMigrationAutomaticDescription": "{price} excl. VAT. No Siteinabox operator technical action is expected.",
     "checkoutMigrationAssistedTitle": "Standard assisted migration",
     "checkoutMigrationAssistedDescription": "{price} excl. VAT per domain when a Siteinabox operator technical action is expected.",
-    "checkoutMigrationCustomerActions": "Providing an EPP code, provider authorization, complete zone export, transfer confirmation, or registrant verification does not make a migration billable assistance.",
+    "checkoutMigrationCustomerActions": "Automatic migration costs €0. An EPP code, provider authorization, complete zone export, transfer confirmation, or registrant verification may still be required as a customer action.",
     "checkoutMigrationLaterPhaseNotice": "Complex or unsupported situations always stop before payment.",
     "checkoutMigrationZoneExportLabel": "Complete validated zone export (JSON)",
     "checkoutMigrationZoneExportHelp": "Maximum 256 KiB and 24 hours old. Public DNS scans are supplemental checks only.",

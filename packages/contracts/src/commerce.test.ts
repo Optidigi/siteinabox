@@ -6,6 +6,8 @@ import {
   BILLING_UPCOMING_CHARGE_REMINDER_DAYS,
   COMMERCIAL_CATALOG,
   COMMERCIAL_CATALOG_VERSION,
+  LEGACY_ASSISTED_MIGRATION_CATALOG,
+  LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
   ACCEPTED_ORDER_EVIDENCE_POLICY,
   ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE,
   DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS,
@@ -64,11 +66,19 @@ describe("versioned commercial catalog", () => {
       },
       migrations: {
         automatic: { netAmountMinor: 0, checkout: "ordinary" },
-        assisted_standard: { netAmountMinor: 4_900, checkout: "ordinary", unit: "per_domain" },
-        complex: { netAmountMinor: null, checkout: "custom_quote_only" },
+        assisted_standard: { netAmountMinor: 0, checkout: "historical_only", unit: "per_domain" },
+        complex: { netAmountMinor: null, checkout: "unavailable" },
       },
     })
     expect(getCommercialCatalog()).toBe(COMMERCIAL_CATALOG)
+    expect(getCommercialCatalog(LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION)).toBe(
+      LEGACY_ASSISTED_MIGRATION_CATALOG,
+    )
+    expect(LEGACY_ASSISTED_MIGRATION_CATALOG.migrations).toMatchObject({
+      automatic: { netAmountMinor: 0, checkout: "ordinary" },
+      assisted_standard: { netAmountMinor: 4_900, checkout: "ordinary" },
+      complex: { netAmountMinor: null, checkout: "custom_quote_only" },
+    })
     expect(() => getCommercialCatalog("2099-01-01.1")).toThrow("Unknown commercial catalog")
   })
 
@@ -220,7 +230,12 @@ describe("migration classification and billing", () => {
     ])
     expect(Object.values(MIGRATION_CUSTOMER_ACTION_FEES_NET_MINOR)).toEqual([0, 0, 0, 0, 0, 0])
     expect(migrationChargeNetMinor("automatic")).toBe(0)
-    expect(migrationChargeNetMinor("assisted_standard")).toBe(4_900)
+    expect(migrationChargeNetMinor("assisted_standard")).toBeNull()
+    expect(migrationChargeNetMinor(
+      "assisted_standard",
+      "customer_migration",
+      LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
+    )).toBe(4_900)
     expect(migrationChargeNetMinor("complex")).toBeNull()
     expect(migrationChargeNetMinor("assisted_standard", "siteinabox_incident_recovery")).toBe(0)
   })
@@ -230,7 +245,7 @@ describe("migration classification and billing", () => {
       acceptedClassification: "automatic",
       unexpectedOperatorTechnicalAction: true,
       workCause: "customer_migration",
-    })).toBe("pause_for_supplemental_order")
+    })).toBe("stop_for_automated_recovery")
     expect(decideMigrationScope({
       acceptedClassification: "automatic",
       unexpectedOperatorTechnicalAction: true,
@@ -277,7 +292,7 @@ describe("migration classification and billing", () => {
       kind: "migration_assisted_standard_supplemental",
       migrationId: 10,
       originatingOrderId: 20,
-      catalogVersion: COMMERCIAL_CATALOG_VERSION,
+      catalogVersion: LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
       classification: "assisted_standard",
       workCause: "customer_migration",
       workScope: "Import the provider zone export.",
@@ -301,6 +316,11 @@ describe("migration classification and billing", () => {
     expect(assistedMigrationSupplementalEvidenceSchema.safeParse({
       ...evidence,
       workCause: "siteinabox_incident_recovery",
+    }).success).toBe(false)
+    expect(assistedMigrationSupplementalEvidenceSchema.safeParse({
+      ...evidence,
+      catalogVersion: COMMERCIAL_CATALOG_VERSION,
+      amount: commercialAmountFromNet(0),
     }).success).toBe(false)
   })
 })
@@ -609,8 +629,8 @@ describe("refund decision matrix", () => {
       nextAction: "issue_refund",
     })
     expect(refundDecisionFor("automatic_migration_scope_increase")).toMatchObject({
-      refundScope: "none",
-      nextAction: "pause_for_supplemental_order",
+      refundScope: "full_captured_payment",
+      nextAction: "issue_refund",
     })
     expect(refundDecisionFor("complex_migration")).toMatchObject({
       refundScope: "none",
