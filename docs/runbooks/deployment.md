@@ -383,7 +383,9 @@ platform-owned public apps have exact host routers with priorities above the
 generic renderer catch-all.
 
 Marketing routes belong to `apps/landing/compose.yml` and must serve both the
-apex and `www` host:
+apex and `www` host. Set `SIAB_SITE_IMAGE_DIGEST=sha256:<digest>` to the
+verified digest emitted by the successful `build-site-image` workflow; never
+deploy a mutable tag:
 
 ```yaml
 labels:
@@ -399,7 +401,9 @@ labels:
 ```
 
 Public intake belongs to `apps/intake/compose.yml` and must outrank landing for
-`/intake` on both apex and `www`:
+`/intake` on both apex and `www`. Set
+`SIAB_INTAKE_IMAGE_DIGEST=sha256:<digest>` to the verified digest emitted by
+the successful `build-intake-image` workflow; never deploy a mutable tag:
 
 ```yaml
 labels:

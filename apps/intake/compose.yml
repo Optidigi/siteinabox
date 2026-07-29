@@ -4,7 +4,7 @@ name: siteinabox-intake
 
 services:
   siteinabox-intake:
-    image: ghcr.io/optidigi/siteinabox-intake:latest
+    image: ghcr.io/optidigi/siteinabox-intake@${SIAB_INTAKE_IMAGE_DIGEST:?required}
     pull_policy: always
     container_name: siteinabox-intake
     restart: unless-stopped

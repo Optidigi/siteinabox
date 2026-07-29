@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest"
 import type { Field } from "payload"
-import { SiteSettings, enforceChromeCapabilities, enforceTenantExclusiveChromeVariants, filterChromeVariantOptions } from "@/collections/SiteSettings"
+import {
+  SiteSettings,
+  enforceChromeCapabilities,
+  enforceTenantExclusiveChromeVariants,
+  filterChromeVariantOptions,
+  normalizeSiteSettingsAliases,
+} from "@/collections/SiteSettings"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
 import { expectNamedField, findNamedSubField, fieldOptionValues, fieldOptions, fieldRequired, fieldValidator } from "../_helpers/payloadFields"
@@ -62,6 +68,28 @@ describe("SiteSettings collection config", () => {
     expect(f.access.update({
       req: { user: { role: "super-admin" } },
     } as never)).toBe(true)
+  })
+
+  it("normalizes alias hosts and rejects normalized duplicates", async () => {
+    const normalized = await normalizeSiteSettingsAliases({
+      collection: { slug: "site-settings" },
+      data: {
+        aliases: [{ host: " WWW.Example.NL.:443 " }],
+      },
+      req: { i18n: { language: "en" } },
+    } as never)
+    expect(normalized?.aliases).toEqual([{ host: "www.example.nl" }])
+
+    expect(() => normalizeSiteSettingsAliases({
+      collection: { slug: "site-settings" },
+      data: {
+        aliases: [
+          { host: "www.example.nl" },
+          { host: "WWW.EXAMPLE.NL." },
+        ],
+      },
+      req: { i18n: { language: "en" } },
+    } as never)).toThrow()
   })
 
   it("adds nap group with the expected sub-fields", () => {

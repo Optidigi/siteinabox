@@ -1,7 +1,8 @@
 import "server-only"
 import crypto from "node:crypto"
-import type { Payload, PayloadRequest } from "payload"
+import type { Payload, PayloadRequest, Where } from "payload"
 import {
+  isLegacyRendererDomainAdoptionHost,
   normalizePublicDomainHost,
   validateProviderBlockInstance,
   type Page as ContractPage,
@@ -22,6 +23,7 @@ import type {
   Page,
   ManagedDomain,
   PublishedSiteSnapshot as PublishedSiteSnapshotDoc,
+  SiteSetting,
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
@@ -590,15 +592,16 @@ type TenantHostResolution = {
 async function tenantDomainIsActive(
   payload: Payload,
   tenant: Tenant,
+  requestedHost: string,
 ): Promise<boolean> {
   const canonicalHost = normalizeRequestHost(tenant.domain)
-
-  const managedDomains = await payload.find({
+  const findActiveManagedDomain = async (domainNameAscii: string) =>
+    payload.find({
     collection: "managed-domains",
     where: {
       and: [
         { tenant: { equals: tenant.id } },
-        { domainNameAscii: { equals: canonicalHost } },
+          { domainNameAscii: { equals: domainNameAscii } },
         { state: { equals: "active" } },
         { authoritativeDnsStatus: { equals: "verified" } },
         { httpsStatus: { equals: "verified" } },
@@ -611,21 +614,77 @@ async function tenantDomainIsActive(
     depth: 0,
     overrideAccess: true,
   })
-  return Boolean((managedDomains.docs[0] as ManagedDomain | undefined)?.id)
+
+  const canonicalManagedDomain = await findActiveManagedDomain(canonicalHost)
+  let canonicalActive = Boolean(
+    (canonicalManagedDomain.docs[0] as ManagedDomain | undefined)?.id,
+  )
+
+  if (!canonicalActive) {
+    const anyManagedDomain = await payload.find({
+      collection: "managed-domains",
+      where: { domainNameAscii: { equals: canonicalHost } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (anyManagedDomain.docs.length > 0) return false
+
+    // Existing audited tenants predate commerce-owned managed-domain records.
+    // Once any canonical row exists, its stricter lifecycle is authoritative.
+    canonicalActive =
+      isLegacyRendererDomainAdoptionHost(canonicalHost) &&
+      tenant.domainVerification?.status === "verified"
+  }
+  if (!canonicalActive) return false
+
+  if (
+    requestedHost === canonicalHost ||
+    requestedHost === `www.${canonicalHost}`
+  ) {
+    return true
+  }
+
+  // Every other alias additionally requires its own active lifecycle.
+  const aliasManagedDomain = await findActiveManagedDomain(requestedHost)
+  return Boolean(
+    (aliasManagedDomain.docs[0] as ManagedDomain | undefined)?.id,
+  )
 }
 
-const activeHostsForTenant = (tenant: Tenant): string[] => {
+const activeHostsFromSettings = (
+  tenant: Tenant,
+  settings: SiteSetting[],
+): string[] => {
   const canonicalHost = normalizeRequestHost(tenant.domain)
-  return canonicalHost
-    ? [canonicalHost, `www.${canonicalHost}`]
-    : []
+  const aliases = settings
+    .filter((setting) =>
+      String(relationshipId(setting.tenant)) === String(tenant.id),
+    )
+    .flatMap((setting) => setting.aliases ?? [])
+    .map(({ host }) => normalizeRequestHost(host))
+    .filter((host): host is string => Boolean(host))
+  return [...new Set([canonicalHost, ...aliases].filter(Boolean))]
+}
+
+async function settingsForTenant(
+  payload: Payload,
+  tenant: Tenant,
+): Promise<SiteSetting[]> {
+  const result = await payload.find({
+    collection: "site-settings",
+    where: { tenant: { equals: tenant.id } },
+    limit: 10,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return result.docs as SiteSetting[]
 }
 
 async function tenantForHost(payload: Payload, host: string): Promise<TenantHostResolution | null> {
-  const canonicalHost = host.startsWith("www.") ? host.slice(4) : host
   const direct = await payload.find({
     collection: "tenants",
-    where: { domain: { equals: canonicalHost } },
+    where: { domain: { equals: host } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
@@ -634,10 +693,60 @@ async function tenantForHost(payload: Payload, host: string): Promise<TenantHost
     const tenant = direct.docs[0] as Tenant
     return {
       tenant,
-      activeHosts: activeHostsForTenant(tenant),
+      activeHosts: activeHostsFromSettings(
+        tenant,
+        await settingsForTenant(payload, tenant),
+      ),
     }
   }
-  return null
+
+  const settings = await payload.find({
+    collection: "site-settings",
+    where: {
+      "aliases.host": { equals: host },
+    } as unknown as Where,
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const matches = (settings.docs as SiteSetting[]).filter((setting) =>
+    (setting.aliases ?? []).some(
+      ({ host: alias }) => normalizeRequestHost(alias) === host,
+    ),
+  )
+  const tenantIds = [
+    ...new Set(
+      matches
+        .map((setting) => relationshipId(setting.tenant))
+        .filter((id) => id != null)
+        .map(String),
+    ),
+  ]
+  if (tenantIds.length !== 1) return null
+
+  const canonicalOwnerHost = host.startsWith("www.") ? host.slice(4) : null
+  if (canonicalOwnerHost) {
+    const canonicalOwner = await payload.find({
+      collection: "tenants",
+      where: { domain: { equals: canonicalOwnerHost } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (
+      canonicalOwner.docs.some((candidate) =>
+        !sameRelationshipId((candidate as Tenant).id, tenantIds[0]!),
+      )
+    ) {
+      return null
+    }
+  }
+
+  const tenant = await getTenant(payload, tenantIds[0]!)
+  return {
+    tenant,
+    activeHosts: activeHostsFromSettings(tenant, matches),
+  }
 }
 
 async function activeSnapshotForTenant(payload: Payload, tenant: Tenant): Promise<PublishedSiteSnapshotDoc | null> {
@@ -672,8 +781,8 @@ export async function resolvePublishedSnapshotByHost(
   const resolution = await tenantForHost(payload, host)
   const tenant = resolution?.tenant
   if (!tenant || tenant.status !== "active") return null
-  if (!(await tenantDomainIsActive(payload, tenant))) return null
   if (!resolution.activeHosts.includes(host)) return null
+  if (!(await tenantDomainIsActive(payload, tenant, host))) return null
 
   const activeSnapshot = await activeSnapshotForTenant(payload, tenant)
   if (!activeSnapshot || activeSnapshot.status !== "active") return null
@@ -689,6 +798,15 @@ export async function resolvePublishedSnapshotByHost(
   const snapshot = parsedSnapshot.data
   validatePublishedPageBlockVariants(snapshot.pages, tenant.slug)
   if (normalizeRequestHost(snapshot.domain) !== normalizeRequestHost(tenant.domain)) return null
+  const canonicalHost = normalizeRequestHost(tenant.domain)
+  const explicitWwwHost = `www.${canonicalHost}`
+  const activeHosts = [
+    canonicalHost,
+    ...(resolution.activeHosts.includes(explicitWwwHost)
+      ? [explicitWwwHost]
+      : []),
+    ...(host !== canonicalHost && host !== explicitWwwHost ? [host] : []),
+  ]
 
   return {
     tenant: {
@@ -700,8 +818,8 @@ export async function resolvePublishedSnapshotByHost(
     routing: {
       version: 1,
       requestedHost: host,
-      canonicalHost: normalizeRequestHost(tenant.domain),
-      activeHosts: resolution.activeHosts,
+      canonicalHost,
+      activeHosts: [...new Set(activeHosts)],
     },
     snapshot,
     snapshotId: activeSnapshot.id,
