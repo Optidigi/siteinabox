@@ -256,6 +256,7 @@ const acquireAutomaticMigrationSourceFromForm = async (
     return acquireCloudflareSource({
       domain,
       token: String(formData.get("cloudflareSourceToken") ?? ""),
+      publicEvidence,
     })
   }
   if (sourceMethod === "authorized_axfr_v1") {

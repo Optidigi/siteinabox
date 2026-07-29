@@ -3,6 +3,7 @@ import {
   semanticZoneComparison,
   type NormalizedMigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
+import { parseCloudflareDnssec } from "@/lib/domains/dnssecProviderContracts"
 import { splitDomain } from "@/lib/domains/normalize"
 
 export type CloudflareZoneResult = {
@@ -55,6 +56,16 @@ export type CloudflareEmailSendingSubdomainResult = {
 export type CloudflareSslVerificationResult = {
   status: "active" | "pending" | "failed"
   providerStatuses: string[]
+  raw: unknown
+}
+
+export type CloudflareDnssecResult = {
+  status: "disabled" | "pending" | "active" | "unknown"
+  flags: number | null
+  algorithm: number | null
+  publicKey: string | null
+  ds: string | null
+  dsTtl: number | null
   raw: unknown
 }
 
@@ -765,6 +776,48 @@ export async function getCloudflareSslVerification(
       ? "failed"
       : "pending"
   return { status, providerStatuses: statuses, raw: payload }
+}
+
+export async function getCloudflareDnssec(
+  zoneId: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareDnssecResult> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dnssec`,
+    { method: "GET", headers: headers(token) },
+  )
+  const payload = await json(response)
+  assertCloudflareOk("Cloudflare DNSSEC read", response, payload)
+  return { ...parseCloudflareDnssec(resultObject(payload)), raw: payload }
+}
+
+export async function enableCloudflareDnssec(
+  zoneId: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareDnssecResult> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  let response: Response
+  try {
+    response = await fetcher(options)(
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dnssec`,
+      {
+        method: "PATCH",
+        headers: headers(token),
+        body: JSON.stringify({ status: "active" }),
+      },
+    )
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare DNSSEC enablement", error)
+  }
+  const payload = await readCloudflareWritePayload(
+    "Cloudflare DNSSEC enablement",
+    response,
+  )
+  assertCloudflareOk("Cloudflare DNSSEC enablement", response, payload)
+  return { ...parseCloudflareDnssec(resultObject(payload)), raw: payload }
 }
 
 export async function listCloudflareEmailSendingSubdomains(

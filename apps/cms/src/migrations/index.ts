@@ -86,6 +86,7 @@ import * as migration_20260728_162517_migration_checkout_secret_nullable_run fro
 import * as migration_20260729_134424_checkout_lifecycle_notifications from './20260729_134424_checkout_lifecycle_notifications';
 import * as migration_20260729_135247_durable_live_handoff_delivery from './20260729_135247_durable_live_handoff_delivery';
 import * as migration_20260729_164603_automatic_migration_sources from './20260729_164603_automatic_migration_sources';
+import * as migration_20260729_180259_automatic_dnssec_migration from './20260729_180259_automatic_dnssec_migration';
 
 export const migrations = [
   {
@@ -526,6 +527,11 @@ export const migrations = [
   {
     up: migration_20260729_164603_automatic_migration_sources.up,
     down: migration_20260729_164603_automatic_migration_sources.down,
-    name: '20260729_164603_automatic_migration_sources'
+    name: '20260729_164603_automatic_migration_sources',
+  },
+  {
+    up: migration_20260729_180259_automatic_dnssec_migration.up,
+    down: migration_20260729_180259_automatic_dnssec_migration.down,
+    name: '20260729_180259_automatic_dnssec_migration'
   },
 ];

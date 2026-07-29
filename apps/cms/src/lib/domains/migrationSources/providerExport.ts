@@ -8,6 +8,7 @@ import { promisify } from "node:util"
 import {
   completeZoneExportSchema,
   type CompleteZoneExport,
+  type MigrationDnskey,
   type MigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
 import { splitDomain } from "@/lib/domains/normalize"
@@ -33,6 +34,11 @@ const supportedTypes = new Set([
   "CAA",
   "SRV",
   "TLSA",
+  "DNSKEY",
+  "RRSIG",
+  "NSEC",
+  "NSEC3",
+  "NSEC3PARAM",
   "SOA",
 ])
 
@@ -259,6 +265,7 @@ export type ParsedBindZone = {
   records: MigrationDnsRecord[]
   authoritativeNameservers: string[]
   soaSerial: number
+  dnsKeys: MigrationDnskey[]
 }
 
 export function parseBindZone(
@@ -277,6 +284,7 @@ export function parseBindZone(
   let defaultTtl = 3_600
   let priorOwner = domain
   const records: MigrationDnsRecord[] = []
+  const dnsKeys: MigrationDnskey[] = []
   const apexNameservers = new Set<string>()
   const soaSerials: number[] = []
   const recordTypes: string[] = []
@@ -339,6 +347,23 @@ export function parseBindZone(
       soaSerials.push(integer(data[2], "SOA serial", 4_294_967_295))
       continue
     }
+    if (["RRSIG", "NSEC", "NSEC3", "NSEC3PARAM"].includes(type)) continue
+    if (type === "DNSKEY") {
+      if (owner !== domain || data.length < 4) {
+        throw new Error("Zone export DNSKEY record is invalid.")
+      }
+      const key = {
+        flags: integer(data[0], "DNSKEY flags"),
+        protocol: integer(data[1], "DNSKEY protocol", 255),
+        algorithm: integer(data[2], "DNSKEY algorithm", 255),
+        publicKey: data.slice(3).join(""),
+      }
+      if (key.protocol !== 3 || !/^[A-Za-z0-9+/]+={0,2}$/.test(key.publicKey)) {
+        throw new Error("Zone export DNSKEY record is invalid.")
+      }
+      dnsKeys.push({ ...key, protocol: 3 })
+      continue
+    }
     const record = parseRecord(type, owner, ttl, data, domain)
     if (!record) continue
     if (record.type === "NS" && owner === domain) {
@@ -372,6 +397,7 @@ export function parseBindZone(
     records,
     authoritativeNameservers: [...apexNameservers].sort(),
     soaSerial: soaSerials[0]!,
+    dnsKeys,
   }
 }
 
@@ -466,7 +492,9 @@ export async function acquireValidatedProviderExport(input: {
     authoritativeNameservers: parsed.authoritativeNameservers,
     dnssec: {
       status: input.publicEvidence.dnssecDsPresent ? "signed" : "unsigned",
-      parentDsRecords: [],
+      parentDsRecords: input.publicEvidence.dnssecDsRecords ?? [],
+      parentDsTtl: input.publicEvidence.dnssecDsTtl ?? null,
+      dnsKeys: parsed.dnsKeys,
     },
     records: parsed.records,
   } satisfies CompleteZoneExport)

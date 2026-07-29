@@ -69,6 +69,8 @@ export type PreviewCheckoutActionState = {
     checkedAt: string
     authoritativeNameservers: string[]
     dnssecDsPresent: boolean
+    dnssecDsRecords: string[]
+    dnssecDsTtl: number | null
     probableDnsProvider: string | null
     registrar: string | null
     supplementalOnly: true

@@ -220,6 +220,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
         checkedAt: "2026-07-29T12:00:00.000Z",
         authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
         dnssecDsPresent: true,
+        dnssecDsRecords: ["12345 13 2 " + "AB".repeat(32)],
+        dnssecDsTtl: 3600,
         probableDnsProvider: "Example DNS",
         registrar: "Example Registrar",
         supplementalOnly: true as const,

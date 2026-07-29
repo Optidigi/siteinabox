@@ -29,6 +29,8 @@ export type AcquiredMigrationSource = {
 export type MigrationSourcePublicEvidence = {
   authoritativeNameservers: string[]
   dnssecDsPresent: boolean
+  dnssecDsRecords?: string[]
+  dnssecDsTtl?: number | null
 }
 
 export const sourceAuthorityMechanism = (

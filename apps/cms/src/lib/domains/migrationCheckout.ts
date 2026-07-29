@@ -1,6 +1,6 @@
 import "server-only"
 
-import { resolve, resolveNs } from "node:dns/promises"
+import { resolveNs } from "node:dns/promises"
 import {
   normalizeCompleteZone,
   type CompleteZoneExport,
@@ -25,6 +25,8 @@ import {
   sourceAuthorityMechanism,
   type AcquiredMigrationSource,
 } from "@/lib/domains/migrationSources/types"
+import { validateSignedDnssecEvidence } from "@/lib/domains/migrationSources/dnssecEvidence"
+import { verifyParentDsAbsent } from "@/lib/domains/verification"
 
 const MAX_ZONE_EXPORT_BYTES = 256 * 1_024
 const MAX_ZONE_EXPORT_AGE_MS = 24 * 60 * 60_000
@@ -43,6 +45,8 @@ export type ExistingDomainPublicEvidence = {
   checkedAt: string
   authoritativeNameservers: string[]
   dnssecDsPresent: boolean
+  dnssecDsRecords: string[]
+  dnssecDsTtl: number | null
   probableDnsProvider: string | null
   registrar: string | null
   supplementalOnly: true
@@ -130,22 +134,58 @@ export async function inspectExistingDomainPublicEvidence(
   } = {},
 ): Promise<ExistingDomainPublicEvidence> {
   const resolveNsImpl = input.resolveNsImpl ?? resolveNs
-  const resolveDsImpl = input.resolveDsImpl ??
-    ((hostname: string) => resolve(hostname, "DS") as Promise<unknown[]>)
   const fetchImpl = input.fetchImpl ?? fetch
-  const [nameservers, dsResult, registrar] = await Promise.all([
+  const dsEvidencePromise = input.resolveDsImpl
+    ? timeout(input.resolveDsImpl(domain).then((records) => ({
+        records: records.flatMap((record) => {
+          const value = record as {
+            keyTag?: unknown
+            algorithm?: unknown
+            digestType?: unknown
+            digest?: unknown
+          }
+          return (
+            Number.isInteger(value.keyTag) &&
+            Number.isInteger(value.algorithm) &&
+            Number.isInteger(value.digestType) &&
+            typeof value.digest === "string"
+          )
+            ? [[
+                value.keyTag,
+                value.algorithm,
+                value.digestType,
+                value.digest.toUpperCase(),
+              ].join(" ")]
+            : []
+        }),
+        ttl: null,
+      })).catch((error: NodeJS.ErrnoException) => {
+        if (["ENODATA", "ENOTFOUND"].includes(error.code ?? "")) {
+          return { records: [], ttl: null }
+        }
+        throw error
+      }), 3_000)
+    : timeout(verifyParentDsAbsent(domain).then((evidence) => {
+        if (evidence.status === "indeterminate") {
+          throw new Error("Parent DS inspection failed.")
+        }
+        return {
+          records: evidence.records,
+          ttl: evidence.ttl ?? null,
+        }
+      }), 20_000)
+  const [nameservers, dsEvidence, registrar] = await Promise.all([
     timeout(resolveNsImpl(domain), 3_000),
-    timeout(resolveDsImpl(domain).catch((error: NodeJS.ErrnoException) => {
-      if (["ENODATA", "ENOTFOUND"].includes(error.code ?? "")) return []
-      throw error
-    }), 3_000),
+    dsEvidencePromise,
     rdapRegistrar(domain, fetchImpl).catch(() => null),
   ])
   const normalizedNameservers = canonicalNames(nameservers)
   return {
     checkedAt: (input.now ?? new Date()).toISOString(),
     authoritativeNameservers: normalizedNameservers,
-    dnssecDsPresent: dsResult.length > 0,
+    dnssecDsPresent: dsEvidence.records.length > 0,
+    dnssecDsRecords: dsEvidence.records,
+    dnssecDsTtl: dsEvidence.ttl,
     probableDnsProvider: probableDnsProvider(normalizedNameservers),
     registrar,
     supplementalOnly: true,
@@ -304,16 +344,30 @@ export function assessExistingDomainMigrationInput(input: {
     sourceZone.dnssec.status === "signed" ||
     input.publicEvidence.dnssecDsPresent
   ) {
-    return {
-      readiness: "unsupported",
-      domain: normalizedDomain.domain,
-      classification: null,
-      message:
-        "Deze DNSSEC-overgang kan nog niet volledig automatisch worden uitgevoerd. Er wordt niets besteld of betaald.",
-      sourceZone,
-      sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
-      encryptedInput: null,
-      publicEvidence: input.publicEvidence,
+    const dnssecEvidence = sourceZone.dnssec.status === "signed" &&
+      input.publicEvidence.dnssecDsPresent &&
+      [...sourceZone.dnssec.parentDsRecords].sort().join("\n") ===
+        [...input.publicEvidence.dnssecDsRecords].sort().join("\n") &&
+      sourceZone.dnssec.parentDsTtl === input.publicEvidence.dnssecDsTtl
+      ? validateSignedDnssecEvidence({
+          domain: normalizedDomain.domain,
+          parentDsRecords: sourceZone.dnssec.parentDsRecords,
+          parentDsTtl: sourceZone.dnssec.parentDsTtl,
+          dnsKeys: sourceZone.dnssec.dnsKeys,
+        })
+      : { valid: false as const, reason: "signed_dnssec_state_mismatch" }
+    if (!dnssecEvidence.valid) {
+      return {
+        readiness: "unsupported",
+        domain: normalizedDomain.domain,
+        classification: null,
+        message:
+          "De DNSSEC-bronketen is niet volledig of cryptografisch aantoonbaar. Er wordt niets besteld of betaald.",
+        sourceZone,
+        sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
+        encryptedInput: null,
+        publicEvidence: input.publicEvidence,
+      }
     }
   }
   if (

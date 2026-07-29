@@ -7,6 +7,7 @@ import {
   automaticMigrationSourceEnabled,
   type ExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
+import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
 import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64")
@@ -77,6 +78,8 @@ const publicEvidence = (
   checkedAt: "2026-07-28T10:00:00.000Z",
   authoritativeNameservers: ["ns1.legacy.example", "ns2.legacy.example"],
   dnssecDsPresent: false,
+  dnssecDsRecords: [],
+  dnssecDsTtl: null,
   probableDnsProvider: "legacy-provider",
   registrar: "Example Registrar",
   supplementalOnly: true,
@@ -230,6 +233,62 @@ describe("existing-domain checkout preflight", () => {
       env,
       now: new Date("2026-07-28T10:00:00.000Z"),
     }).readiness).toBe("unsupported")
+  })
+
+  it("accepts a complete cryptographically bound signed source for automation", () => {
+    const key = {
+      flags: 257,
+      protocol: 3 as const,
+      algorithm: 13,
+      publicKey: "BAUG",
+    }
+    const ds = dnskeyDsRecord("example.nl", key, 2)
+    const dsRecord = [
+      ds.keyTag,
+      ds.algorithm,
+      ds.digestType,
+      ds.digest,
+    ].join(" ")
+    const signedZone = zoneExport({
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-provider",
+        complete: true,
+      },
+      dnssec: {
+        status: "signed",
+        parentDsRecords: [dsRecord],
+        parentDsTtl: 3600,
+        dnsKeys: [key],
+      },
+    })
+    expect(assess({
+      generationRunId: 500,
+      domain: "example.nl",
+      zoneExport: signedZone,
+      acquiredSource: {
+        mechanism: "validated_provider_export_v1",
+        zone: signedZone,
+        refreshCredential: {
+          kind: "provider_export",
+          sourceSoaSerial: 2026072901,
+        },
+      },
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      requestedAssistance: false,
+      publicEvidence: publicEvidence({
+        dnssecDsPresent: true,
+        dnssecDsRecords: [dsRecord],
+        dnssecDsTtl: 3600,
+      }),
+      env,
+      now: new Date("2026-07-28T10:00:00.000Z"),
+    })).toMatchObject({
+      readiness: "ready_automatic",
+      classification: "automatic",
+      encryptedInput: expect.any(String),
+    })
   })
 
   it("stops zones that cannot fit the guaranteed destination quota before payment", () => {

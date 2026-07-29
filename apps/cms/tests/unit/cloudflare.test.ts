@@ -8,10 +8,12 @@ import {
   createOrReuseCloudflareZone,
   createCloudflareZone,
   createCloudflareZoneDnsRecords,
+  enableCloudflareDnssec,
   createCloudflareMigrationDnsRecord,
   createOrReuseCloudflareEmailSendingSubdomain,
   getCloudflareEmailSendingSubdomain,
   getCloudflareDnsRecordUsage,
+  getCloudflareDnssec,
   getCloudflareSslVerification,
   listCloudflareEmailSendingSubdomains,
   listCloudflareMigrationDnsRecords,
@@ -32,6 +34,41 @@ const env = {
 } as unknown as NodeJS.ProcessEnv
 
 describe("Cloudflare domain adapter", () => {
+  it("reads and enables zone DNSSEC without inventing a separate permission", async () => {
+    const fetchMock = vi.fn(async (
+      _input: string | URL | Request,
+      init?: RequestInit,
+    ) => Response.json({
+      success: true,
+      result: {
+        status: init?.method === "PATCH" ? "pending" : "active",
+        flags: 257,
+        algorithm: "13",
+        public_key: "AQID",
+        ds: `example.nl. 86400 IN DS 12345 13 2 ${"AB".repeat(32)}`,
+      },
+    }))
+    await expect(getCloudflareDnssec("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "active",
+      flags: 257,
+      algorithm: 13,
+      publicKey: "AQID",
+      ds: `12345 13 2 ${"AB".repeat(32)}`,
+      dsTtl: 86400,
+    })
+    await expect(enableCloudflareDnssec("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ status: "pending" })
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: "PATCH",
+      body: JSON.stringify({ status: "active" }),
+    })
+  })
+
   it("reads and validates the destination DNS record quota", async () => {
     const fetchMock = vi.fn(async () => Response.json({
       success: true,

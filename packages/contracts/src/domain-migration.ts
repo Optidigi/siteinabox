@@ -20,6 +20,14 @@ const commonRecordFields = {
   proxied: z.boolean().optional(),
 }
 
+export const migrationDnskeySchema = z.object({
+  flags: z.number().int().min(0).max(65_535),
+  protocol: z.literal(3),
+  algorithm: z.number().int().min(1).max(255),
+  publicKey: z.string().trim().regex(/^[A-Za-z0-9+/]+={0,2}$/).max(4_096),
+}).strict()
+export type MigrationDnskey = z.infer<typeof migrationDnskeySchema>
+
 const aRecordSchema = z.object({
   ...commonRecordFields,
   type: z.literal("A"),
@@ -119,6 +127,8 @@ export const completeZoneExportSchema = z.object({
   dnssec: z.object({
     status: z.enum(["unsigned", "signed"]),
     parentDsRecords: z.array(z.string().trim().min(1).max(1_024)).max(20),
+    parentDsTtl: z.number().int().min(1).max(604_800).nullable().default(null),
+    dnsKeys: z.array(migrationDnskeySchema).max(4).default([]),
   }).strict(),
   records: z.array(migrationDnsRecordSchema).min(1).max(500),
 }).strict().superRefine((zone, ctx) => {
@@ -195,14 +205,15 @@ export const completeZoneExportSchema = z.object({
   }
 })
 
-export type CompleteZoneExport = z.infer<typeof completeZoneExportSchema>
+export type CompleteZoneExport = z.input<typeof completeZoneExportSchema>
+type ParsedCompleteZoneExport = z.output<typeof completeZoneExportSchema>
 
 export type NormalizedMigrationDnsRecord = MigrationDnsRecord & {
   proxied: boolean
 }
 
 export type NormalizedCompleteZone = Omit<
-  CompleteZoneExport,
+  ParsedCompleteZoneExport,
   "authoritativeNameservers" | "records"
 > & {
   authoritativeNameservers: string[]
@@ -425,27 +436,42 @@ export type DnssecPreparationPlan = {
   preCutoverAction: "verify_parent_ds_absent" | "remove_parent_ds"
   parentDsRecords: string[]
   checkedAt: string
+  parentDsTtl: number | null
+  dnsKeys: MigrationDnskey[]
   cutoverReady: boolean
-  customerAction: "remove_dnssec_ds" | null
-  targetMode: "remain_unsigned"
+  customerAction: null
+  targetMode: "enable_after_cutover"
 }
 
 export function buildDnssecPreparationPlan(input: {
   sourceStatus: "unsigned" | "signed"
   parentDsRecords: string[]
+  parentDsTtl?: number | null
+  dnsKeys?: MigrationDnskey[]
   checkedAt: string
 }): DnssecPreparationPlan {
   const parentDsRecords = [...new Set(input.parentDsRecords.map((record) => record.trim()))]
     .filter(Boolean)
     .sort()
-  const cutoverReady = input.sourceStatus === "unsigned" && parentDsRecords.length === 0
+  const dnsKeys = input.dnsKeys ?? []
+  const signedEvidenceComplete = input.sourceStatus === "signed" &&
+    parentDsRecords.length > 0 &&
+    input.parentDsTtl != null &&
+    dnsKeys.length > 0
+  const cutoverReady = (
+    input.sourceStatus === "unsigned" && parentDsRecords.length === 0
+  ) || signedEvidenceComplete
   return {
     sourceStatus: input.sourceStatus,
-    preCutoverAction: cutoverReady ? "verify_parent_ds_absent" : "remove_parent_ds",
+    preCutoverAction: input.sourceStatus === "signed"
+      ? "remove_parent_ds"
+      : "verify_parent_ds_absent",
     parentDsRecords,
+    parentDsTtl: input.parentDsTtl ?? null,
+    dnsKeys,
     checkedAt: input.checkedAt,
     cutoverReady,
-    customerAction: cutoverReady ? null : "remove_dnssec_ds",
-    targetMode: "remain_unsigned",
+    customerAction: null,
+    targetMode: "enable_after_cutover",
   }
 }

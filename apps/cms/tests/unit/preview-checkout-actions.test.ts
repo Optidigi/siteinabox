@@ -309,6 +309,8 @@ describe("preview checkout domain suggestion action", () => {
       checkedAt: new Date().toISOString(),
       authoritativeNameservers: ["ns1.legacy.example", "ns2.legacy.example"],
       dnssecDsPresent: false,
+      dnssecDsRecords: [],
+      dnssecDsTtl: null,
       probableDnsProvider: "legacy-provider",
       registrar: "Legacy Registrar",
       supplementalOnly: true,
@@ -1228,6 +1230,8 @@ describe("preview checkout domain suggestion action", () => {
       checkedAt: new Date().toISOString(),
       authoritativeNameservers: ["ns1.legacy.example", "ns2.legacy.example"],
       dnssecDsPresent: true,
+      dnssecDsRecords: ["12345 13 2 " + "AB".repeat(32)],
+      dnssecDsTtl: 3600,
       probableDnsProvider: "legacy-provider",
       registrar: "Legacy Registrar",
       supplementalOnly: true,
@@ -1403,6 +1407,11 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.acquireCloudflareSource).toHaveBeenCalledWith({
       domain: "ami-care.nl",
       token: "customer-read-token",
+      publicEvidence: expect.objectContaining({
+        dnssecDsPresent: false,
+        dnssecDsRecords: [],
+        dnssecDsTtl: null,
+      }),
     })
     expect(mocks.acquireAutomaticMigrationInputs).toHaveBeenCalledWith(
       context.payload,

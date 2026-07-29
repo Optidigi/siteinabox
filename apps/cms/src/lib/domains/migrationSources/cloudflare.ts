@@ -7,10 +7,12 @@ import {
   type MigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
 import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
+import { parseCloudflareDnssec } from "@/lib/domains/dnssecProviderContracts"
 import { splitDomain } from "@/lib/domains/normalize"
 import {
   MigrationSourceAuthorizationError,
   type AcquiredMigrationSource,
+  type MigrationSourcePublicEvidence,
 } from "./types"
 
 type FetchLike = typeof fetch
@@ -170,6 +172,7 @@ const recordFromCloudflare = (
 const capture = async (
   domain: string,
   token: string,
+  publicEvidence: MigrationSourcePublicEvidence,
   options?: CloudflareSourceOptions,
 ): Promise<{ zoneId: string; zone: CompleteZoneExport }> => {
   const fetchImpl = options?.fetchImpl ?? globalThis.fetch
@@ -245,10 +248,19 @@ const capture = async (
     readRequest(token, options),
   )
   const dnssecPayload = await readPayload(dnssecResponse)
-  const dnssec = readObject(dnssecPayload.result)
+  const dnssec = parseCloudflareDnssec(dnssecPayload.result)
   const signed = dnssec.status === "active"
-  const ds = typeof dnssec.ds === "string" && dnssec.ds.trim()
-    ? [dnssec.ds.trim()]
+  const ds = dnssec.ds ? [dnssec.ds] : []
+  const dnsKeys = signed &&
+    dnssec.flags != null &&
+    dnssec.algorithm != null &&
+    dnssec.publicKey != null
+    ? [{
+        flags: dnssec.flags,
+        protocol: 3 as const,
+        algorithm: dnssec.algorithm,
+        publicKey: dnssec.publicKey,
+      }]
     : []
   const records = rawRecords.flatMap((record) => {
     const parsed = recordFromCloudflare(record, domain)
@@ -267,7 +279,13 @@ const capture = async (
     authoritativeNameservers: nameservers,
     dnssec: {
       status: signed ? "signed" : "unsigned",
-      parentDsRecords: signed ? ds : [],
+      parentDsRecords: signed
+        ? publicEvidence.dnssecDsRecords ?? ds
+        : [],
+      parentDsTtl: signed
+        ? publicEvidence.dnssecDsTtl ?? dnssec.dsTtl
+        : null,
+      dnsKeys,
     },
     records,
   } satisfies CompleteZoneExport)
@@ -277,13 +295,18 @@ const capture = async (
 export async function acquireCloudflareSource(input: {
   domain: string
   token: string
+  publicEvidence?: MigrationSourcePublicEvidence
   options?: CloudflareSourceOptions
 }): Promise<AcquiredMigrationSource> {
   const domain = splitDomain(input.domain).domain
   const token = input.token.trim()
   if (!token) throw new Error("A scoped Cloudflare source token is required.")
-  const first = await capture(domain, token, input.options)
-  const second = await capture(domain, token, input.options)
+  const publicEvidence = input.publicEvidence ?? {
+    authoritativeNameservers: [],
+    dnssecDsPresent: false,
+  }
+  const first = await capture(domain, token, publicEvidence, input.options)
+  const second = await capture(domain, token, publicEvidence, input.options)
   if (
     first.zoneId !== second.zoneId ||
     domainMigrationSourceAuthorityHash(normalizeCompleteZone(first.zone)) !==

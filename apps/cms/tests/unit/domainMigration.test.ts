@@ -24,6 +24,7 @@ import {
   sealCheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
 import { MigrationSourceChangedError } from "@/lib/domains/migrationSources/refresh"
+import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
 import {
   attachMigrationCheckoutSecret,
   migrationCheckoutSecretKey,
@@ -66,6 +67,29 @@ const zoneExport: CompleteZoneExport = {
     },
     { type: "NS", name: "shop.example.nl", ttl: 3600, content: "ns1.shop-host.example" },
   ],
+}
+
+const sourceDnskey = {
+  flags: 257,
+  protocol: 3 as const,
+  algorithm: 13,
+  publicKey: "BAUG",
+}
+const sourceDs = dnskeyDsRecord("example.nl", sourceDnskey, 2)
+const sourceDsRecord = [
+  sourceDs.keyTag,
+  sourceDs.algorithm,
+  sourceDs.digestType,
+  sourceDs.digest,
+].join(" ")
+const signedZoneExport: CompleteZoneExport = {
+  ...zoneExport,
+  dnssec: {
+    status: "signed",
+    parentDsRecords: [sourceDsRecord],
+    parentDsTtl: 3600,
+    dnsKeys: [sourceDnskey],
+  },
 }
 
 const createStore = () => {
@@ -266,11 +290,14 @@ const createStore = () => {
   }
 }
 
-const preparedMigration = async (store: ReturnType<typeof createStore>) => {
+const preparedMigration = async (
+  store: ReturnType<typeof createStore>,
+  sourceZone: CompleteZoneExport = zoneExport,
+) => {
   const migration = await createAutomaticDomainMigration(store.payload, 600)
   const prepared = await acquireAutomaticMigrationInputs(store.payload, {
     migrationId: migration.id,
-    zoneExport,
+    zoneExport: sourceZone,
     transferCode: "opaque-nl-transfer-code",
     env: {
       DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
@@ -288,12 +315,13 @@ const preparedMigration = async (store: ReturnType<typeof createStore>) => {
 }
 
 const workflowDependencies = (input?: {
-  now?: string
+  now?: string | (() => string)
   authoritativeStatus?: "verified" | "pending"
   preservedStatus?: "verified" | "pending"
   rollbackAuthoritativeStatus?: "verified" | "pending"
   rollbackPreservedStatus?: "verified" | "pending"
   verificationStatus?: string
+  sourceParentDsRecords?: string[]
 }) => {
   let providerDomain: {
     id: number
@@ -302,6 +330,13 @@ const workflowDependencies = (input?: {
     ownerHandle: string
     adminHandle: null
     nameServers: string[]
+    dnssecEnabled: boolean | null
+    dnssecKeys: Array<{
+      flags: number
+      protocol: 3
+      alg: number
+      pub_key: string
+    }>
     renewalDate: string
     autorenew: "on"
     verificationEmailStatus: string
@@ -309,10 +344,21 @@ const workflowDependencies = (input?: {
     verificationEmailDescription: string
     raw: Record<string, never>
   } | null = null
+  const targetDnskey = {
+    flags: 257,
+    protocol: 3 as const,
+    alg: 13,
+    pub_key: "AQID",
+  }
+  const targetDs = "12345 13 2 " + "AB".repeat(32)
+  let targetDsVisible = true
   const records: Array<{ id: string; record: NormalizedMigrationDnsRecord; raw: unknown }> = []
   let recordId = 1
+  let currentNow = typeof input?.now === "string"
+    ? input.now
+    : "2026-07-28T09:00:00.000Z"
   const dependencies = {
-    now: () => input?.now ?? "2026-07-28T09:00:00.000Z",
+    now: () => typeof input?.now === "function" ? input.now() : currentNow,
     forwardProviderWritesAllowed: vi.fn(() => true),
     transferContractEvidenceAllowed: vi.fn(() => true),
     loginOpenProvider: vi.fn(async () => "token"),
@@ -329,7 +375,15 @@ const workflowDependencies = (input?: {
     findOpenProviderDomain: vi.fn(async () => providerDomain),
     transferOpenProviderDomain: vi.fn(async (
       domain: string,
-      options: { nameServers: Array<{ name: string }> },
+      options: {
+        nameServers: Array<{ name: string }>
+        dnssecKeys?: Array<{
+          flags: number
+          protocol: 3
+          alg: number
+          pub_key: string
+        }>
+      },
     ) => {
       providerDomain = {
         id: 9001,
@@ -338,6 +392,8 @@ const workflowDependencies = (input?: {
         ownerHandle: "OWNER-CLIENT",
         adminHandle: null,
         nameServers: options.nameServers.map((entry) => entry.name),
+        dnssecEnabled: Boolean(options.dnssecKeys?.length),
+        dnssecKeys: options.dnssecKeys ?? [],
         renewalDate: "2027-07-28T00:00:00.000Z",
         autorenew: "on",
         verificationEmailStatus: input?.verificationStatus ?? "verified",
@@ -355,6 +411,23 @@ const workflowDependencies = (input?: {
       providerDomain.nameServers = nameservers.map((entry) => entry.name)
       return { id, status: "ACT", raw: {} }
     }),
+    updateOpenProviderDomainDnssec: vi.fn(async (
+      id: string | number,
+      input: {
+        enabled: boolean
+        keys: Array<{
+          flags: number
+          protocol: 3
+          alg: number
+          pub_key: string
+        }>
+      },
+    ) => {
+      if (!providerDomain) throw new Error("provider domain missing")
+      providerDomain.dnssecEnabled = input.enabled
+      providerDomain.dnssecKeys = input.enabled ? input.keys : []
+      return { id, status: "ACT", raw: {} }
+    }),
     listCloudflareZones: vi.fn(async () => [{
       id: "zone-1",
       name: "example.nl",
@@ -367,6 +440,24 @@ const workflowDependencies = (input?: {
     getCloudflareDnsRecordUsage: vi.fn(async () => ({
       recordQuota: 200,
       recordUsage: records.length,
+    })),
+    getCloudflareDnssec: vi.fn(async () => ({
+      status: providerDomain?.dnssecEnabled && targetDsVisible
+        ? "active" as const
+        : "pending" as const,
+      flags: targetDnskey.flags,
+      algorithm: targetDnskey.alg,
+      publicKey: targetDnskey.pub_key,
+      ds: targetDs,
+      raw: {},
+    })),
+    enableCloudflareDnssec: vi.fn(async () => ({
+      status: "pending" as const,
+      flags: targetDnskey.flags,
+      algorithm: targetDnskey.alg,
+      publicKey: targetDnskey.pub_key,
+      ds: targetDs,
+      raw: {},
     })),
     createOrReuseCloudflareMigrationDnsRecord: vi.fn(async (
       _zoneId: string,
@@ -381,10 +472,36 @@ const workflowDependencies = (input?: {
       providerStatuses: ["active"],
       raw: {},
     })),
-    verifyParentDsAbsent: vi.fn(async (): Promise<ParentDsVerification> => ({
-      status: "absent" as const,
-      records: [],
-      reason: null,
+    verifyParentDsAbsent: vi.fn(async (): Promise<ParentDsVerification> => {
+      const providerKey = providerDomain?.dnssecKeys[0]
+      const parentRecords = providerDomain == null
+        ? input?.sourceParentDsRecords ?? []
+        : providerDomain.dnssecEnabled
+          ? providerKey?.pub_key === targetDnskey.pub_key
+            ? targetDsVisible ? [targetDs] : []
+            : input?.sourceParentDsRecords ?? []
+          : []
+      return parentRecords.length > 0
+        ? {
+            status: "present" as const,
+            records: parentRecords,
+            ttl: 3600,
+            reason: "parent_ds_present",
+          }
+        : {
+            status: "absent" as const,
+            records: [],
+            reason: null,
+          }
+    }),
+    verifyDnssecChain: vi.fn(async () => ({
+      status: targetDsVisible ? "verified" as const : "pending" as const,
+      authenticatedData: targetDsVisible,
+      dnskeyMatched: true,
+      rrsigPresent: true,
+      parentDsMatched: targetDsVisible,
+      parentDsTtl: 3600,
+      reason: targetDsVisible ? null : "dnssec_chain_not_authenticated",
     })),
     verifyAuthoritativeDns: vi.fn(async (
       _domain: string,
@@ -448,7 +565,17 @@ const workflowDependencies = (input?: {
       context: { managedDomainLifecycleMutation: true },
     })),
   }
-  return { dependencies, getProviderDomain: () => providerDomain, records }
+  return {
+    dependencies,
+    getProviderDomain: () => providerDomain,
+    records,
+    setNow: (value: string) => {
+      currentNow = value
+    },
+    setTargetDsVisible: (value: boolean) => {
+      targetDsVisible = value
+    },
+  }
 }
 
 const asMigrationDependencies = (
@@ -792,7 +919,178 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
-  it("waits for customer DS removal before any provider write", async () => {
+  it("automates a signed source through safe DS rollover before publication", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store, signedZoneExport)
+    const fixture = workflowDependencies({
+      sourceParentDsRecords: [sourceDsRecord],
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledWith(
+      "example.nl",
+      expect.objectContaining({
+        nameServers: OLD_NAMESERVERS.map((name) => ({ name })),
+        dnssecKeys: [{
+          flags: sourceDnskey.flags,
+          protocol: sourceDnskey.protocol,
+          alg: sourceDnskey.algorithm,
+          pub_key: sourceDnskey.publicKey,
+        }],
+      }),
+    )
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenNthCalledWith(
+        1,
+        9001,
+        { enabled: false, keys: [] },
+        { token: "token" },
+      )
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      dnssecPhase: "source_ds_cache_wait",
+      dnssecSafeAfter: "2026-07-28T10:00:00.000Z",
+    })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .not.toHaveBeenCalled()
+
+    fixture.setNow("2026-07-28T10:00:01.000Z")
+    const completion = await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    expect(completion).toMatchObject({ status: "completed" })
+
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenNthCalledWith(
+        2,
+        9001,
+        {
+          enabled: true,
+          keys: [{
+            flags: 257,
+            protocol: 3,
+            alg: 13,
+            pub_key: "AQID",
+          }],
+        },
+        { token: "token" },
+      )
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      dnssecPhase: "target_secure",
+      dnssecWriteState: "confirmed",
+      dnssecVerification: {
+        verified: true,
+      },
+    })
+  })
+
+  it("removes and waits out target DS before restoring a signed source", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store, signedZoneExport)
+    const fixture = workflowDependencies({
+      sourceParentDsRecords: [sourceDsRecord],
+    })
+
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    fixture.setNow("2026-07-28T10:00:01.000Z")
+    fixture.setTargetDsVisible(false)
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_chain_verifying",
+    })
+
+    Object.assign(store.collections["domain-migrations"]![0]!, {
+      rollbackRequestedAt: "2026-07-28T10:00:01.000Z",
+      failureReason: "operator_requested_rollback",
+    })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      dnssecPhase: "rollback_target_ds_cache_wait",
+      dnssecSafeAfter: "2026-08-04T10:00:01.000Z",
+    })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+
+    fixture.setNow("2026-08-04T10:00:02.000Z")
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      dnssecPhase: "rollback_source_ds_publication",
+      dnssecVerification: {
+        rollbackSourceDnssecRestored: false,
+      },
+    })
+    const nameserverWrites = fixture.dependencies.updateOpenProviderDomainNameservers.mock.calls.length
+    const dnssecWrites = fixture.dependencies.updateOpenProviderDomainDnssec.mock.calls.length
+
+    fixture.dependencies.verifyDnssecChain.mockResolvedValueOnce({
+      status: "verified",
+      authenticatedData: true,
+      dnskeyMatched: true,
+      rrsigPresent: true,
+      parentDsMatched: true,
+      parentDsTtl: 3600,
+      reason: null,
+    })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "rolled_back" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(nameserverWrites)
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(dnssecWrites)
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenLastCalledWith(
+        9001,
+        OLD_NAMESERVERS.map((name) => ({ name })),
+      )
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenLastCalledWith(
+        9001,
+        {
+          enabled: true,
+          keys: [{
+            flags: sourceDnskey.flags,
+            protocol: sourceDnskey.protocol,
+            alg: sourceDnskey.algorithm,
+            pub_key: sourceDnskey.publicKey,
+          }],
+        },
+      )
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "rolled_back",
+      dnssecVerification: {
+        rollbackSourceDnssecRestored: true,
+      },
+    })
+  })
+
+  it("fails closed when parent DNSSEC state changes after accepted source capture", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
@@ -808,16 +1106,42 @@ describe("automatic existing-domain migration", () => {
       asMigrationDependencies(fixture.dependencies),
     )
 
-    expect(result).toMatchObject({ status: "waiting" })
+    expect(result).toMatchObject({ status: "failed" })
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
-      state: "awaiting_customer",
-      customerActions: {
-        remove_dnssec_ds: { status: "required" },
-      },
+      state: "failed",
+      failureReason: "dnssec_parent_state_changed_since_source_capture",
     })
+    expect(store.payload.jobs.queue).toHaveBeenCalledWith(expect.objectContaining({
+      task: "request-mollie-refund",
+    }))
     expect(fixture.dependencies.listCloudflareZones).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
   })
+
+  it.each(["refunded", "chargeback"] as const)(
+    "does not transfer after the captured payment becomes %s",
+    async (paymentState) => {
+      const store = createStore()
+      const migration = await preparedMigration(store)
+      store.collections["payment-attempts"]![0]!.state = paymentState
+      const fixture = workflowDependencies()
+
+      await expect(prepareDomainMigration(
+        store.payload,
+        migration.id,
+        asMigrationDependencies(fixture.dependencies),
+      )).resolves.toMatchObject({
+        status: "failed",
+        message: expect.stringContaining("no provider write was sent"),
+      })
+      expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+      expect(store.collections["domain-migrations"]![0]).toMatchObject({
+        state: "failed",
+        failureReason: "payment_authority_revoked_before_registrar_commit",
+        encryptedTransferCode: null,
+      })
+    },
+  )
 
   it("requires fresh source evidence before the first provider write", async () => {
     const store = createStore()

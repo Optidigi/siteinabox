@@ -55,6 +55,8 @@ const publicEvidence = {
     "ns2.provider.example",
   ],
   dnssecDsPresent: false,
+  dnssecDsRecords: [],
+  dnssecDsTtl: null,
   probableDnsProvider: "example",
   registrar: "Example Registrar",
   supplementalOnly: true as const,
@@ -89,6 +91,24 @@ const checkoutInput = async (
 }
 
 describe("complete migration source acquisition", () => {
+  it("extracts apex DNSKEY evidence without importing DNSSEC proof records", () => {
+    const parsed = parseBindZone(
+      `${BIND_ZONE}
+@ 3600 IN DNSKEY 257 3 13 BAUG
+@ 3600 IN RRSIG DNSKEY 13 2 3600 20300101000000 20260101000000 1 example.nl. signature
+`,
+      "example.nl",
+    )
+    expect(parsed.dnsKeys).toEqual([{
+      flags: 257,
+      protocol: 3,
+      algorithm: 13,
+      publicKey: "BAUG",
+    }])
+    expect(parsed.records.some((record) =>
+      ["DNSKEY", "RRSIG"].includes(record.type))).toBe(false)
+  })
+
   it("parses a complete BIND export and preserves service records semantically", () => {
     const result = parseBindZone(BIND_ZONE, "example.nl")
 
