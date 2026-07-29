@@ -37,6 +37,9 @@ const mocks = vi.hoisted(() => ({
   openAttachedMigrationCheckoutSecret: vi.fn(),
   replaceExpiredAttachedMigrationCheckoutSecret: vi.fn(),
   replaceMigrationTransferAuthorization: vi.fn(),
+  acquireAutomaticMigrationInputs: vi.fn(),
+  acquireCloudflareSource: vi.fn(),
+  acquireValidatedProviderExport: vi.fn(),
 }))
 
 vi.mock("next/headers", () => ({
@@ -108,6 +111,8 @@ vi.mock("@/lib/domains/migration", async (importOriginal) => {
     ...original,
     replaceMigrationTransferAuthorization:
       mocks.replaceMigrationTransferAuthorization,
+    acquireAutomaticMigrationInputs:
+      mocks.acquireAutomaticMigrationInputs,
   }
 })
 
@@ -133,6 +138,14 @@ vi.mock("@/lib/domains/previewDomainOrder", () => ({
   checkAndRecordPreviewDomainOrder: mocks.checkAndRecordPreviewDomainOrder,
   requireReadyPreviewDomainOrder: mocks.requireReadyPreviewDomainOrder,
   suggestAvailablePreviewDomainBatch: mocks.suggestAvailablePreviewDomainBatch,
+}))
+
+vi.mock("@/lib/domains/migrationSources/providerExport", () => ({
+  acquireValidatedProviderExport: mocks.acquireValidatedProviderExport,
+}))
+
+vi.mock("@/lib/domains/migrationSources/cloudflare", () => ({
+  acquireCloudflareSource: mocks.acquireCloudflareSource,
 }))
 
 vi.mock("@/lib/payments/molliePayments", () => ({
@@ -240,7 +253,11 @@ const validExistingDomainForm = () => {
   const formData = new FormData()
   formData.set("domain", "ami-care.nl")
   formData.set("domainMode", "existing_domain")
-  formData.set("zoneExport", JSON.stringify(completeExistingDomainZone()))
+  formData.set("migrationSourceMethod", "validated_provider_export_v1")
+  formData.set("sourceProviderName", "legacy-provider")
+  formData.set("zoneExport", new File(["complete bind export"], "zone.bind", {
+    type: "text/plain",
+  }))
   formData.set("transferCode", "opaque-transfer-code")
   formData.set("transferAuthorization", "accepted")
   formData.set("migrationAssistance", "automatic")
@@ -267,6 +284,9 @@ describe("preview checkout domain suggestion action", () => {
     vi.stubEnv("PAYLOAD_SECRET", "checkout-test-secret")
     vi.stubEnv("DOMAIN_MIGRATION_ENCRYPTION_KEY", Buffer.alloc(32, 9).toString("base64"))
     vi.stubEnv("COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED", "1")
+    vi.stubEnv("COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED", "1")
+    vi.stubEnv("COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED", "1")
+    vi.stubEnv("COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED", "1")
     mocks.checkAndRecordPreviewDomainOrder.mockResolvedValue({
       run: { id: 500 },
       messageKey: "checkoutDomainAvailable",
@@ -293,6 +313,25 @@ describe("preview checkout domain suggestion action", () => {
       registrar: "Legacy Registrar",
       supplementalOnly: true,
     })
+    mocks.acquireValidatedProviderExport.mockImplementation(() => {
+      const zone = {
+        ...completeExistingDomainZone(),
+        authority: {
+          mechanism: "validated_provider_export",
+          provider: "legacy-provider",
+          complete: true,
+        },
+      }
+      return {
+        mechanism: "validated_provider_export_v1",
+        zone,
+        refreshCredential: {
+          kind: "provider_export",
+          sourceSoaSerial: 2026072901,
+        },
+      }
+    })
+    mocks.acquireAutomaticMigrationInputs.mockResolvedValue({ id: 100 })
     mocks.loadAcceptedCheckoutResume.mockResolvedValue(null)
     mocks.suggestAvailablePreviewDomainBatch.mockResolvedValue({
       suggestions: [{
@@ -1166,11 +1205,23 @@ describe("preview checkout domain suggestion action", () => {
       "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
     )
     const formData = validExistingDomainForm()
-    formData.set("zoneExport", JSON.stringify({
-      ...completeExistingDomainZone(),
-      dnssec: {
-        status: "signed",
-        parentDsRecords: ["12345 13 2 AABBCCDD"],
+    mocks.acquireValidatedProviderExport.mockImplementationOnce(() => ({
+      mechanism: "validated_provider_export_v1",
+      zone: {
+        ...completeExistingDomainZone(),
+        authority: {
+          mechanism: "validated_provider_export",
+          provider: "legacy-provider",
+          complete: true,
+        },
+        dnssec: {
+          status: "signed",
+          parentDsRecords: ["12345 13 2 AABBCCDD"],
+        },
+      },
+      refreshCredential: {
+        kind: "provider_export",
+        sourceSoaSerial: 2026072901,
       },
     }))
     mocks.inspectExistingDomainPublicEvidence.mockResolvedValue({
@@ -1194,6 +1245,26 @@ describe("preview checkout domain suggestion action", () => {
       migrationReadiness: "unsupported",
     })
     expect(result.quotes).toBeUndefined()
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("keeps an independently disabled source adapter out of payable checkout", async () => {
+    vi.stubEnv("COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED", "0")
+    const { checkPreviewCheckoutDomainAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      validExistingDomainForm(),
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "invalid",
+      migrationReadiness: "unsupported",
+    })
+    expect(mocks.acquireValidatedProviderExport).not.toHaveBeenCalled()
     expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
@@ -1279,6 +1350,113 @@ describe("preview checkout domain suggestion action", () => {
         transferCode: "replacement-secret",
       },
     )
+  })
+
+  it("reacquires the accepted Cloudflare source after payment and resumes safely", async () => {
+    const context = await mocks.loadPreviewGrantContext()
+    context.payload.findByID = vi.fn()
+      .mockResolvedValueOnce({
+        id: 100,
+        originatingOrder: 90,
+        domainNameAscii: "ami-care.nl",
+        sourceMechanism: "cloudflare_api_v1",
+        state: "awaiting_customer",
+        failureReason: "source_evidence_stale",
+        updatedAt: "migration-version-1",
+      })
+      .mockResolvedValueOnce({
+        id: 90,
+        generationRun: 500,
+        tenant: 12,
+        customerEmail: "customer@example.com",
+      })
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    const reacquiredZone = {
+      ...completeExistingDomainZone(),
+      authority: {
+        mechanism: "cloudflare_api" as const,
+        provider: "cloudflare",
+        complete: true as const,
+      },
+    }
+    mocks.acquireCloudflareSource.mockResolvedValueOnce({
+      mechanism: "cloudflare_api_v1",
+      zone: reacquiredZone,
+      refreshCredential: {
+        kind: "cloudflare_api_token",
+        token: "customer-read-token",
+        zoneId: "a".repeat(32),
+      },
+    })
+    const { submitMigrationTransferCodeAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("migrationId", "100")
+    formData.set("expectedMigrationVersion", "migration-version-1")
+    formData.set("cloudflareSourceToken", "customer-read-token")
+    formData.set("transferCode", "replacement-secret")
+
+    await expect(
+      submitMigrationTransferCodeAction("ami-care", formData),
+    ).resolves.toMatchObject({ ok: true, status: "saved" })
+    expect(mocks.acquireCloudflareSource).toHaveBeenCalledWith({
+      domain: "ami-care.nl",
+      token: "customer-read-token",
+    })
+    expect(mocks.acquireAutomaticMigrationInputs).toHaveBeenCalledWith(
+      context.payload,
+      {
+        migrationId: 100,
+        zoneExport: reacquiredZone,
+        transferCode: "replacement-secret",
+        expectedUpdatedAt: "migration-version-1",
+      },
+    )
+    expect(mocks.replaceMigrationTransferAuthorization).not.toHaveBeenCalled()
+  })
+
+  it("does not reauthorize a paid migration through a disabled source adapter", async () => {
+    vi.stubEnv("COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED", "0")
+    const context = await mocks.loadPreviewGrantContext()
+    context.payload.jobs = { queue: vi.fn() }
+    context.payload.findByID = vi.fn()
+      .mockResolvedValueOnce({
+        id: 100,
+        originatingOrder: 90,
+        domainNameAscii: "ami-care.nl",
+        sourceMechanism: "validated_provider_export_v1",
+        state: "awaiting_customer",
+        failureReason: "source_evidence_stale",
+        updatedAt: "migration-version-1",
+      })
+      .mockResolvedValueOnce({
+        id: 90,
+        generationRun: 500,
+        tenant: 12,
+        customerEmail: "customer@example.com",
+      })
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    const { submitMigrationTransferCodeAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("migrationId", "100")
+    formData.set("expectedMigrationVersion", "migration-version-1")
+    formData.set("sourceProviderName", "legacy-provider")
+    formData.set("zoneExport", new File(["zone"], "zone.bind"))
+    formData.set("transferCode", "replacement-secret")
+
+    await expect(
+      submitMigrationTransferCodeAction("ami-care", formData),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "retryable_service_error",
+    })
+    expect(mocks.acquireValidatedProviderExport).not.toHaveBeenCalled()
+    expect(mocks.acquireAutomaticMigrationInputs).not.toHaveBeenCalled()
+    expect(context.payload.update).not.toHaveBeenCalled()
+    expect(context.payload.jobs.queue).not.toHaveBeenCalled()
   })
 
   it("rejects cross-tenant transfer-code correction without exposing the code", async () => {

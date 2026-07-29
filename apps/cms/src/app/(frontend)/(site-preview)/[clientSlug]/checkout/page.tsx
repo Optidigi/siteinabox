@@ -37,7 +37,10 @@ import {
   startPreviewCheckoutPaymentAction,
   submitMigrationTransferCodeAction,
 } from "./actions"
-import { existingDomainMigrationCheckoutEnabled } from "@/lib/domains/migrationCheckout"
+import {
+  automaticMigrationSourceEnabled,
+  existingDomainMigrationCheckoutEnabled,
+} from "@/lib/domains/migrationCheckout"
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 
@@ -149,6 +152,12 @@ export default async function PreviewCheckoutPage({
         }
         paymentReturn={paymentReturn}
         existingDomainMigrationEnabled={existingDomainMigrationCheckoutEnabled()}
+        enabledMigrationSourceMethods={([
+          "cloudflare_api_v1",
+          "authorized_axfr_v1",
+          "validated_provider_export_v1",
+        ] as const).filter((mechanism) =>
+          automaticMigrationSourceEnabled(mechanism))}
         migrationStatus={migrationStatus}
         provisioningStatus={provisioningStatus}
         acceptedOrderId={acceptedResume?.orderId ?? null}

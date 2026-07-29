@@ -17,6 +17,7 @@ const targetNameSchema = z.string().trim().min(1).max(255).refine(
 const commonRecordFields = {
   name: recordNameSchema,
   ttl: ttlSchema,
+  proxied: z.boolean().optional(),
 }
 
 const aRecordSchema = z.object({
@@ -89,13 +90,28 @@ export const migrationDnsRecordSchema = z.discriminatedUnion("type", [
 
 export type MigrationDnsRecord = z.infer<typeof migrationDnsRecordSchema>
 
+export const migrationSourceMechanisms = [
+  "customer_authorized_provider_export_v1",
+  "cloudflare_api_v1",
+  "authorized_axfr_v1",
+  "validated_provider_export_v1",
+] as const
+
+export const migrationSourceMechanismSchema = z.enum(migrationSourceMechanisms)
+export type MigrationSourceMechanism = z.infer<typeof migrationSourceMechanismSchema>
+
 export const completeZoneExportSchema = z.object({
   schemaVersion: z.literal(1),
   format: z.literal("siab-complete-zone-v1"),
   domain: z.string().trim().toLowerCase().regex(DOMAIN_PATTERN),
   acquiredAt: z.iso.datetime(),
   authority: z.object({
-    mechanism: z.literal("customer_authorized_provider_export"),
+    mechanism: z.enum([
+      "customer_authorized_provider_export",
+      "cloudflare_api",
+      "authorized_axfr",
+      "validated_provider_export",
+    ]),
     provider: z.string().trim().min(1).max(100),
     complete: z.literal(true),
   }).strict(),
@@ -214,33 +230,34 @@ const normalizeRecord = (
   domain: string,
 ): NormalizedMigrationDnsRecord => {
   const name = record.name === "@" ? domain : canonicalName(record.name)
+  const proxied = record.proxied ?? false
   if (record.type === "CNAME" || record.type === "NS") {
-    return { ...record, name, content: canonicalName(record.content), proxied: false }
+    return { ...record, name, content: canonicalName(record.content), proxied }
   }
   if (record.type === "MX") {
-    return { ...record, name, target: canonicalName(record.target), proxied: false }
+    return { ...record, name, target: canonicalName(record.target), proxied }
   }
   if (record.type === "SRV") {
-    return { ...record, name, target: canonicalName(record.target), proxied: false }
+    return { ...record, name, target: canonicalName(record.target), proxied }
   }
   if (record.type === "CAA") {
-    return { ...record, name, tag: record.tag.toLowerCase(), proxied: false }
+    return { ...record, name, tag: record.tag.toLowerCase(), proxied }
   }
   if (record.type === "AAAA") {
-    return { ...record, name, content: record.content.toLowerCase(), proxied: false }
+    return { ...record, name, content: record.content.toLowerCase(), proxied }
   }
   if (record.type === "TXT") {
-    return { ...record, name, content: normalizeTxtContent(record.content), proxied: false }
+    return { ...record, name, content: normalizeTxtContent(record.content), proxied }
   }
   if (record.type === "TLSA") {
     return {
       ...record,
       name,
       certificateAssociationData: record.certificateAssociationData.toLowerCase(),
-      proxied: false,
+      proxied,
     }
   }
-  return { ...record, name, proxied: false }
+  return { ...record, name, proxied }
 }
 
 const semanticRecordKey = (record: NormalizedMigrationDnsRecord): string => {
@@ -351,7 +368,9 @@ export function buildAutomaticMigrationTargetZone(
   return {
     ...source,
     records: uniqueSortedRecords([
-      ...source.records.filter((record) => !isWebsiteAddressRecord(record, source.domain)),
+      ...source.records
+        .filter((record) => !isWebsiteAddressRecord(record, source.domain))
+        .map((record) => ({ ...record, proxied: false })),
       ...websiteRecords,
     ]),
   }

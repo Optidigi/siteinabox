@@ -4,6 +4,7 @@ import { resolve, resolveNs } from "node:dns/promises"
 import {
   normalizeCompleteZone,
   type CompleteZoneExport,
+  type MigrationSourceMechanism,
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
 import {
@@ -20,10 +21,18 @@ import {
   type CheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
 import { normalizeDomain } from "@/lib/domains/normalize"
+import {
+  sourceAuthorityMechanism,
+  type AcquiredMigrationSource,
+} from "@/lib/domains/migrationSources/types"
 
 const MAX_ZONE_EXPORT_BYTES = 256 * 1_024
 const MAX_ZONE_EXPORT_AGE_MS = 24 * 60 * 60_000
 const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60_000
+// New Cloudflare Free zones have a 200-record quota. Reserve two records for
+// the managed apex and www routes so checkout cannot accept an unimportable
+// source before the destination zone exists and exposes its exact quota.
+const MAX_AUTOMATIC_SOURCE_RECORDS = 198
 
 type MigrationReadiness =
   | "ready_automatic"
@@ -149,6 +158,22 @@ export function existingDomainMigrationCheckoutEnabled(
   return env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED?.trim() === "1"
 }
 
+export function automaticMigrationSourceEnabled(
+  mechanism: MigrationSourceMechanism,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (mechanism === "cloudflare_api_v1") {
+    return env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED?.trim() === "1"
+  }
+  if (mechanism === "authorized_axfr_v1") {
+    return env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED?.trim() === "1"
+  }
+  if (mechanism === "validated_provider_export_v1") {
+    return env.COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED?.trim() === "1"
+  }
+  return false
+}
+
 export function assessExistingDomainMigrationInput(input: {
   generationRunId: string | number
   domain: string
@@ -159,6 +184,7 @@ export function assessExistingDomainMigrationInput(input: {
   publicEvidence: ExistingDomainPublicEvidence
   acceptedOrderRecollection?: boolean
   acceptedCapabilityVersion?: string
+  acquiredSource?: AcquiredMigrationSource
   env?: NodeJS.ProcessEnv
   now?: Date
 }, dependencies: {
@@ -182,8 +208,7 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  const acceptedCapability = input.acceptedOrderRecollection &&
-      input.acceptedCapabilityVersion
+  const acceptedCapability = input.acceptedCapabilityVersion
     ? getTldCapabilityByVersion(input.acceptedCapabilityVersion)
     : null
   const capability = (
@@ -262,6 +287,19 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
+  if (sourceZone.records.length > MAX_AUTOMATIC_SOURCE_RECORDS) {
+    return {
+      readiness: "unsupported",
+      domain: normalizedDomain.domain,
+      classification: null,
+      message:
+        "Deze zone bevat te veel records voor de gegarandeerde automatische doelcapaciteit. Er wordt niets besteld of betaald.",
+      sourceZone,
+      sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
+      encryptedInput: null,
+      publicEvidence: input.publicEvidence,
+    }
+  }
   if (
     sourceZone.dnssec.status === "signed" ||
     input.publicEvidence.dnssecDsPresent
@@ -310,6 +348,46 @@ export function assessExistingDomainMigrationInput(input: {
     }
   }
   const sourceZoneHash = domainMigrationSourceAuthorityHash(sourceZone)
+  if (input.acquiredSource) {
+    if (
+      input.acquiredSource.zone !== input.zoneExport ||
+      sourceZone.authority.mechanism !==
+        sourceAuthorityMechanism(input.acquiredSource.mechanism)
+    ) {
+      return {
+        readiness: "unsupported",
+        domain: normalizedDomain.domain,
+        classification: null,
+        message: "De automatische bronautoriteit komt niet overeen met de gevalideerde zone.",
+        sourceZone,
+        sourceZoneHash,
+        encryptedInput: null,
+        publicEvidence: input.publicEvidence,
+      }
+    }
+    const checkoutInput: CheckoutMigrationInput = {
+      schemaVersion: 2,
+      generationRunId: String(input.generationRunId),
+      domain: normalizedDomain.domain,
+      classification: "automatic",
+      sourceMechanism: input.acquiredSource.mechanism,
+      sourceZoneHash,
+      sourceZone: input.acquiredSource.zone,
+      sourceRefreshCredential: input.acquiredSource.refreshCredential,
+      transferCode: input.transferCode,
+      transferAuthorizationAccepted: true,
+    }
+    return {
+      readiness: "ready_automatic",
+      domain: normalizedDomain.domain,
+      classification: "automatic",
+      message: "De volledige DNS-bron en verhuisvereisten zijn automatisch gevalideerd.",
+      sourceZone,
+      sourceZoneHash,
+      encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
+      publicEvidence: input.publicEvidence,
+    }
+  }
   if (input.acceptedOrderRecollection) {
     const checkoutInput: CheckoutMigrationInput = {
       schemaVersion: 1,

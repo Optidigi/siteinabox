@@ -23,6 +23,7 @@ import {
   openMigrationSecret,
   sealCheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
+import { MigrationSourceChangedError } from "@/lib/domains/migrationSources/refresh"
 import {
   attachMigrationCheckoutSecret,
   migrationCheckoutSecretKey,
@@ -153,6 +154,13 @@ const createStore = () => {
         externalReference: "tr_paid",
         selectedDomain: "example.nl",
       },
+    }],
+    "payment-attempts": [{
+      id: 700,
+      order: 600,
+      purpose: "first_payment",
+      state: "paid",
+      providerPaymentId: "tr_paid",
     }],
     "domain-migrations": [],
     "managed-domains": [],
@@ -356,6 +364,10 @@ const workflowDependencies = (input?: {
     }]),
     createOrReuseCloudflareZone: vi.fn(),
     listCloudflareMigrationDnsRecords: vi.fn(async () => records),
+    getCloudflareDnsRecordUsage: vi.fn(async () => ({
+      recordQuota: 200,
+      recordUsage: records.length,
+    })),
     createOrReuseCloudflareMigrationDnsRecord: vi.fn(async (
       _zoneId: string,
       record: NormalizedMigrationDnsRecord,
@@ -462,6 +474,166 @@ describe("automatic existing-domain migration", () => {
 
     expect(second.id).toBe(first.id)
     expect(store.collections["domain-migrations"]).toHaveLength(1)
+  })
+
+  it("refreshes a current automatic source before persisting or writing providers", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...zoneExport,
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-dns",
+        complete: true,
+      },
+    }
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(automaticZone),
+    )
+    const secretKey = migrationCheckoutSecretKey(
+      500,
+      "example.nl",
+      sourceZoneHash,
+    )
+    const encryptedInput = sealCheckoutMigrationInput({
+      schemaVersion: 2,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic",
+      sourceMechanism: "validated_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: automaticZone,
+      sourceRefreshCredential: {
+        kind: "provider_export",
+        sourceSoaSerial: 2026072901,
+      },
+      transferCode: "opaque-nl-transfer-code",
+      transferAuthorizationAccepted: true,
+    })
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "validated_provider_export_v1",
+        sourceZoneHash,
+        checkoutSecretKey: secretKey,
+      },
+    }
+    const now = new Date("2026-07-28T08:00:00.000Z")
+    await persistMigrationCheckoutSecret(store.payload, {
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      encryptedInput,
+      now,
+    })
+    await attachMigrationCheckoutSecret(store.payload, {
+      secretKey,
+      orderId: 600,
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      now,
+    })
+    const refresh = vi.fn(async () => automaticZone)
+
+    await expect(createAutomaticDomainMigration(
+      store.payload,
+      600,
+      now.toISOString(),
+      { refreshAutomaticMigrationSource: refresh },
+    )).resolves.toMatchObject({
+      sourceMechanism: "validated_provider_export_v1",
+      sourceZoneSnapshot: expect.any(Object),
+      state: "ready_to_prepare",
+    })
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(store.collections["migration-checkout-secrets"]![0]).toMatchObject({
+      state: "consumed",
+      encryptedInput: null,
+    })
+  })
+
+  it("turns a changed paid source into resumable reauthorization before provider writes", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...zoneExport,
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-dns",
+        complete: true,
+      },
+    }
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(automaticZone),
+    )
+    const secretKey = migrationCheckoutSecretKey(
+      500,
+      "example.nl",
+      sourceZoneHash,
+    )
+    const encryptedInput = sealCheckoutMigrationInput({
+      schemaVersion: 2,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic",
+      sourceMechanism: "validated_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: automaticZone,
+      sourceRefreshCredential: {
+        kind: "provider_export",
+        sourceSoaSerial: 2026072901,
+      },
+      transferCode: "opaque-nl-transfer-code",
+      transferAuthorizationAccepted: true,
+    })
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "validated_provider_export_v1",
+        sourceZoneHash,
+        checkoutSecretKey: secretKey,
+      },
+    }
+    const now = new Date("2026-07-28T08:00:00.000Z")
+    await persistMigrationCheckoutSecret(store.payload, {
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      encryptedInput,
+      now,
+    })
+    await attachMigrationCheckoutSecret(store.payload, {
+      secretKey,
+      orderId: 600,
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      now,
+    })
+
+    await expect(createAutomaticDomainMigration(
+      store.payload,
+      600,
+      now.toISOString(),
+      {
+        refreshAutomaticMigrationSource: vi.fn(async () => {
+          throw new MigrationSourceChangedError()
+        }),
+      },
+    )).resolves.toMatchObject({
+      state: "awaiting_customer",
+      failureReason: "source_evidence_stale",
+    })
+    expect(store.collections["domain-migrations"]![0])
+      .not.toHaveProperty("sourceZoneSnapshot")
+    expect(store.collections["migration-checkout-secrets"]![0]).toMatchObject({
+      state: "expired",
+      encryptedInput: null,
+    })
+    expect(store.payload.jobs.queue).not.toHaveBeenCalled()
   })
 
   it("preserves an accepted assisted-standard classification in the migration authority", async () => {
@@ -754,6 +926,42 @@ describe("automatic existing-domain migration", () => {
       state: "failed",
       failureReason: "source_evidence_stale_before_provider_write",
       reconciliationRequired: true,
+    })
+  })
+
+  it("queues a full refund before registrar transfer when destination DNS capacity is insufficient", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.getCloudflareDnsRecordUsage.mockResolvedValue({
+      recordQuota: 200,
+      recordUsage: 199,
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("refund"),
+    })
+
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.payload.jobs.queue).toHaveBeenCalledWith({
+      task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: "700",
+        scenario: "unfulfillable_before_provider_commit",
+      },
+      queue: "default",
+      overrideAccess: true,
+    })
+    expect(store.collections.orders?.[0]).toMatchObject({ state: "exception" })
+    expect(store.collections["domain-migrations"]?.[0]).toMatchObject({
+      state: "failed",
+      failureReason: "cloudflare_dns_capacity_insufficient",
+      encryptedTransferCode: null,
     })
   })
 

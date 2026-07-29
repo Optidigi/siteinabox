@@ -15,6 +15,7 @@ export type CustomerMigrationStatus = {
   domain: string
   state: DomainMigration["state"]
   classification: DomainMigration["acceptedClassification"]
+  sourceMechanism: DomainMigration["sourceMechanism"]
   operatorAuthorization:
     | "not_required"
     | "awaiting_customer_acceptance"
@@ -161,6 +162,7 @@ export async function loadCustomerMigrationStatus(
     domain: migration.domainNameAscii,
     state: migration.state,
     classification: migration.acceptedClassification,
+    sourceMechanism: migration.sourceMechanism,
     operatorAuthorization: migration.operatorWorkAuthorizationState,
     actions,
     supplementalProposal,

@@ -274,7 +274,14 @@ export const validateOrderCommercialShape: CollectionBeforeValidateHook = ({
     ) ||
     (
       evidence.domainMode === "existing_domain" &&
-      migration?.classification !== "automatic"
+      (
+        migration?.classification !== "automatic" ||
+        ![
+          "cloudflare_api_v1",
+          "authorized_axfr_v1",
+          "validated_provider_export_v1",
+        ].includes(String(migration.sourceMechanism))
+      )
     ) ||
     !["new_registration", "existing_domain"].includes(String(evidence.domainMode))
   ) {

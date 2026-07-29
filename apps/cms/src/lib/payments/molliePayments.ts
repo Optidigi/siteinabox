@@ -292,6 +292,11 @@ const assertInitialOrderPaymentPolicy = (order: Order): void => {
       typeof migration !== "object" ||
       Array.isArray(migration) ||
       (migration as Record<string, unknown>).classification !== "automatic" ||
+      ![
+        "cloudflare_api_v1",
+        "authorized_axfr_v1",
+        "validated_provider_export_v1",
+      ].includes(String((migration as Record<string, unknown>).sourceMechanism)) ||
       quote.migrationServiceFeeNetMinor !== 0
     ) {
       throw new Error("Current-catalog existing-domain payment requires a zero-fee automatic migration.")

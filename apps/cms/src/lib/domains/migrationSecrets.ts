@@ -7,8 +7,10 @@ import {
 } from "node:crypto"
 import {
   completeZoneExportSchema,
+  migrationSourceMechanismSchema,
   normalizeCompleteZone,
   type CompleteZoneExport,
+  type MigrationSourceMechanism,
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
 import type { MigrationClassification } from "@siteinabox/contracts/commerce"
@@ -81,7 +83,7 @@ export function openMigrationSecret(
   ]).toString("utf8")
 }
 
-export type CheckoutMigrationInput = {
+type LegacyCheckoutMigrationInput = {
   schemaVersion: 1
   generationRunId: string
   domain: string
@@ -93,13 +95,109 @@ export type CheckoutMigrationInput = {
   transferAuthorizationAccepted: true
 }
 
-export type OpenedCheckoutMigrationInput = Omit<
-  CheckoutMigrationInput,
-  "sourceZone"
-> & {
+export type AutomaticSourceRefreshCredential =
+  | {
+      kind: "cloudflare_api_token"
+      token: string
+      zoneId: string
+    }
+  | {
+      kind: "authorized_axfr"
+      nameserver: string
+      tsigName: string | null
+      tsigSecret: string | null
+    }
+  | {
+      kind: "provider_export"
+      sourceSoaSerial: number
+    }
+
+export type AutomaticCheckoutMigrationInput = {
+  schemaVersion: 2
+  generationRunId: string
+  domain: string
+  classification: "automatic"
+  sourceMechanism: Exclude<
+    MigrationSourceMechanism,
+    "customer_authorized_provider_export_v1"
+  >
+  sourceZoneHash: string
   sourceZone: CompleteZoneExport
-  normalizedSourceZone: NormalizedCompleteZone
+  sourceRefreshCredential: AutomaticSourceRefreshCredential
+  transferCode: string
+  transferAuthorizationAccepted: true
 }
+
+export type CheckoutMigrationInput =
+  | LegacyCheckoutMigrationInput
+  | AutomaticCheckoutMigrationInput
+
+const automaticRefreshCredentialValid = (
+  sourceMechanism: AutomaticCheckoutMigrationInput["sourceMechanism"],
+  value: unknown,
+): value is AutomaticSourceRefreshCredential => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const credential = value as Record<string, unknown>
+  if (sourceMechanism === "cloudflare_api_v1") {
+    return credential.kind === "cloudflare_api_token" &&
+      typeof credential.token === "string" &&
+      credential.token.trim().length >= 20 &&
+      credential.token.length <= 512 &&
+      typeof credential.zoneId === "string" &&
+      /^[a-f0-9]{32}$/i.test(credential.zoneId)
+  }
+  if (sourceMechanism === "authorized_axfr_v1") {
+    const tsigName = credential.tsigName
+    const tsigSecret = credential.tsigSecret
+    const tsigAbsent = tsigName === null && tsigSecret === null
+    const tsigPresent =
+      typeof tsigName === "string" &&
+      /^[A-Za-z0-9._-]{1,255}$/.test(tsigName) &&
+      typeof tsigSecret === "string" &&
+      /^[A-Za-z0-9+/=_-]{16,512}$/.test(tsigSecret)
+    return credential.kind === "authorized_axfr" &&
+      typeof credential.nameserver === "string" &&
+      credential.nameserver.trim().length > 0 &&
+      credential.nameserver.length <= 255 &&
+      (tsigAbsent || tsigPresent)
+  }
+  return credential.kind === "provider_export" &&
+    Number.isSafeInteger(credential.sourceSoaSerial) &&
+    Number(credential.sourceSoaSerial) >= 0 &&
+    Number(credential.sourceSoaSerial) <= 4_294_967_295
+}
+
+const automaticSourceAuthorityMatches = (
+  sourceMechanism: AutomaticCheckoutMigrationInput["sourceMechanism"],
+  sourceZone: NormalizedCompleteZone,
+): boolean => ({
+  cloudflare_api_v1: "cloudflare_api",
+  authorized_axfr_v1: "authorized_axfr",
+  validated_provider_export_v1: "validated_provider_export",
+})[sourceMechanism] === sourceZone.authority.mechanism
+
+type SerializedCheckoutMigrationInput = {
+  schemaVersion?: 1 | 2
+  generationRunId?: string
+  domain?: string
+  classification?: "automatic" | "assisted_standard"
+  sourceMechanism?: MigrationSourceMechanism
+  sourceZoneHash?: string
+  sourceZone?: unknown
+  sourceRefreshCredential?: AutomaticSourceRefreshCredential
+  transferCode?: string
+  transferAuthorizationAccepted?: true
+}
+
+export type OpenedCheckoutMigrationInput =
+  CheckoutMigrationInput extends infer Input
+    ? Input extends CheckoutMigrationInput
+      ? Omit<Input, "sourceZone"> & {
+          sourceZone: CompleteZoneExport
+          normalizedSourceZone: NormalizedCompleteZone
+        }
+      : never
+    : never
 
 export const checkoutMigrationBinding = (
   generationRunId: string | number,
@@ -111,13 +209,24 @@ export function sealCheckoutMigrationInput(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const sourceZone = normalizeCompleteZone(input.sourceZone)
+  const automaticInputValid =
+    input.schemaVersion === 2 &&
+    input.classification === "automatic" &&
+    migrationSourceMechanismSchema.safeParse(input.sourceMechanism).success &&
+    automaticRefreshCredentialValid(
+      input.sourceMechanism,
+      input.sourceRefreshCredential,
+    ) &&
+    automaticSourceAuthorityMatches(input.sourceMechanism, sourceZone)
+  const legacyInputValid =
+    input.schemaVersion === 1 &&
+    ["automatic", "assisted_standard"].includes(input.classification) &&
+    input.sourceMechanism === "customer_authorized_provider_export_v1"
   if (
-    input.schemaVersion !== 1 ||
+    (!legacyInputValid && !automaticInputValid) ||
     input.generationRunId.trim().length === 0 ||
     sourceZone.domain !== input.domain.trim().toLowerCase() ||
     input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
-    !["automatic", "assisted_standard"].includes(input.classification) ||
-    input.sourceMechanism !== "customer_authorized_provider_export_v1" ||
     input.transferAuthorizationAccepted !== true
   ) {
     throw new Error("Checkout migration input is invalid.")
@@ -140,18 +249,33 @@ export function openCheckoutMigrationInput(
     checkoutMigrationBinding(generationRunId, domain),
     env,
   )
-  const input = JSON.parse(plaintext) as Partial<CheckoutMigrationInput>
+  const input = JSON.parse(plaintext) as SerializedCheckoutMigrationInput
   const sourceZoneInput = completeZoneExportSchema.parse(input.sourceZone)
   const sourceZone = normalizeCompleteZone(sourceZoneInput)
   const normalizedDomain = domain.trim().toLowerCase()
+  const sourceMechanism = migrationSourceMechanismSchema.safeParse(
+    input.sourceMechanism,
+  )
+  const legacyInputValid =
+    input.schemaVersion === 1 &&
+    input.sourceMechanism === "customer_authorized_provider_export_v1" &&
+    ["automatic", "assisted_standard"].includes(input.classification ?? "")
+  const automaticInputValid =
+    input.schemaVersion === 2 &&
+    input.classification === "automatic" &&
+    sourceMechanism.success &&
+    sourceMechanism.data !== "customer_authorized_provider_export_v1" &&
+    automaticRefreshCredentialValid(
+      sourceMechanism.data,
+      input.sourceRefreshCredential,
+    ) &&
+    automaticSourceAuthorityMatches(sourceMechanism.data, sourceZone)
   if (
-    input.schemaVersion !== 1 ||
+    (!legacyInputValid && !automaticInputValid) ||
     input.generationRunId !== String(generationRunId) ||
     input.domain !== normalizedDomain ||
     sourceZone.domain !== normalizedDomain ||
     input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
-    !["automatic", "assisted_standard"].includes(input.classification ?? "") ||
-    input.sourceMechanism !== "customer_authorized_provider_export_v1" ||
     input.transferAuthorizationAccepted !== true ||
     typeof input.transferCode !== "string" ||
     !input.transferCode.trim()
@@ -160,15 +284,17 @@ export function openCheckoutMigrationInput(
   }
   return {
     ...input,
-    schemaVersion: 1,
+    schemaVersion: input.schemaVersion,
     generationRunId: String(generationRunId),
     domain: normalizedDomain,
     classification: input.classification as "automatic" | "assisted_standard",
-    sourceMechanism: "customer_authorized_provider_export_v1",
+    sourceMechanism: sourceMechanism.success
+      ? sourceMechanism.data
+      : "customer_authorized_provider_export_v1",
     sourceZoneHash: input.sourceZoneHash,
     sourceZone: sourceZoneInput,
     normalizedSourceZone: sourceZone,
     transferCode: input.transferCode,
     transferAuthorizationAccepted: true,
-  }
+  } as OpenedCheckoutMigrationInput
 }

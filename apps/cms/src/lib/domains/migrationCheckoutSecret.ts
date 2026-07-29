@@ -11,7 +11,11 @@ import { relationshipId } from "@/lib/relationshipId"
 
 type SecretRecord = MigrationCheckoutSecret
 
-const activeLifetimeMs = 30 * 24 * 60 * 60_000
+const activeLifetimeMs = (
+  input: Pick<OpenedCheckoutMigrationInput, "schemaVersion">,
+): number => input.schemaVersion === 2
+  ? 24 * 60 * 60_000
+  : 30 * 24 * 60 * 60_000
 
 const numericId = (value: string | number, label: string): number => {
   const numeric = Number(value)
@@ -111,6 +115,15 @@ const sameOpenedInput = (
   left.classification === right.classification &&
   left.sourceMechanism === right.sourceMechanism &&
   left.sourceZoneHash === right.sourceZoneHash &&
+  JSON.stringify(
+    "sourceRefreshCredential" in left
+      ? left.sourceRefreshCredential
+      : null,
+  ) === JSON.stringify(
+    "sourceRefreshCredential" in right
+      ? right.sourceRefreshCredential
+      : null,
+  ) &&
   left.transferCode === right.transferCode &&
   left.transferAuthorizationAccepted === right.transferAuthorizationAccepted &&
   JSON.stringify(left.normalizedSourceZone) ===
@@ -160,7 +173,9 @@ export async function persistMigrationCheckoutSecret(
     input.sourceZoneHash,
   )
   const existing = await findSecret(payload, secretKey)
-  const expiresAt = new Date(now.getTime() + activeLifetimeMs).toISOString()
+  const expiresAt = new Date(
+    now.getTime() + activeLifetimeMs(opened),
+  ).toISOString()
   if (existing) {
     validateAuthority(existing, input)
     if (existing.state !== "pending_order") {
@@ -318,6 +333,47 @@ export async function consumeMigrationCheckoutSecret(
   throw new Error("Migration checkout secret consumption changed concurrently.")
 }
 
+export async function invalidateAttachedMigrationCheckoutSecret(
+  payload: Payload,
+  input: {
+    secretKey: string
+    orderId: string | number
+    now?: Date
+  },
+): Promise<void> {
+  const secret = await findSecret(payload, input.secretKey)
+  if (!secret) throw new Error("Migration checkout secret is unavailable.")
+  if (
+    secret.state === "expired" &&
+    relationshipId(secret.order) === String(input.orderId) &&
+    !secret.encryptedInput
+  ) {
+    return
+  }
+  if (
+    secret.state !== "attached" ||
+    relationshipId(secret.order) !== String(input.orderId)
+  ) {
+    throw new Error("Migration checkout secret is not active for this order.")
+  }
+  const now = input.now ?? new Date()
+  const updated = await updateSecretClaim(payload, secret, {
+    encryptedInput: null,
+    state: "expired",
+    updatedAt: now.toISOString(),
+  })
+  if (updated) return
+  const winner = await findSecret(payload, input.secretKey)
+  if (
+    winner?.state === "expired" &&
+    relationshipId(winner.order) === String(input.orderId) &&
+    !winner.encryptedInput
+  ) {
+    return
+  }
+  throw new Error("Migration checkout secret invalidation changed concurrently.")
+}
+
 export async function replaceExpiredAttachedMigrationCheckoutSecret(
   payload: Payload,
   input: {
@@ -351,7 +407,9 @@ export async function replaceExpiredAttachedMigrationCheckoutSecret(
   const updated = await updateSecretClaim(payload, secret, {
       encryptedInput: input.encryptedInput,
       state: "attached",
-      expiresAt: new Date(now.getTime() + activeLifetimeMs).toISOString(),
+      expiresAt: new Date(
+        now.getTime() + activeLifetimeMs(opened),
+      ).toISOString(),
       updatedAt: now.toISOString(),
   })
   if (updated) return updated

@@ -24,6 +24,7 @@ import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { cn } from "@siteinabox/ui/lib/utils"
+import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
 
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
 import type {
@@ -62,6 +63,7 @@ export type PreviewCheckoutActionState = {
   domainMode?: "new_registration" | "existing_domain"
   migrationReadiness?: "ready_automatic" | "ready_assisted" | "unsupported"
   migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationPreflightOnly?: boolean
   migrationPublicEvidence?: {
     checkedAt: string
@@ -115,6 +117,10 @@ type PreviewCheckoutProfileAction = (
 
 type CheckoutStep = "domain" | "details" | "overview"
 type BillingPeriod = "monthly" | "annual"
+type AutomaticMigrationSourceMethod =
+  | "cloudflare_api_v1"
+  | "authorized_axfr_v1"
+  | "validated_provider_export_v1"
 const checkoutStepOrder: CheckoutStep[] = ["domain", "details", "overview"]
 
 export type PreviewCheckoutCatalog = {
@@ -141,6 +147,7 @@ type PreviewCheckoutProps = {
   initialStep?: CheckoutStep
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
+  enabledMigrationSourceMethods?: AutomaticMigrationSourceMethod[]
   migrationStatus?: CustomerMigrationStatus | null
   provisioningStatus?: CustomerProvisioningStatus | null
   acceptedOrderId?: string | number | null
@@ -230,6 +237,7 @@ export function PreviewCheckout({
   initialStep = "domain",
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
+  enabledMigrationSourceMethods = [],
   migrationStatus = null,
   provisioningStatus = null,
   acceptedOrderId = null,
@@ -313,6 +321,13 @@ export function PreviewCheckout({
   const [domainMode, setDomainMode] = React.useState<
     "new_registration" | "existing_domain"
   >(initialQuotes?.annual.quote.domainMode ?? "new_registration")
+  const [migrationSourceMethod, setMigrationSourceMethod] =
+    React.useState<AutomaticMigrationSourceMethod | "">(() => {
+      const source = initialQuotes?.annual.quote.migrationSourceMechanism
+      return source && source !== "customer_authorized_provider_export_v1"
+        ? source
+        : ""
+    })
   const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
   const [suggestionsState, setSuggestionsState] =
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
@@ -338,8 +353,13 @@ export function PreviewCheckout({
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const checkTokenIsCurrent = !checkState.requestToken ||
     checkState.requestToken === latestDomainRequestTokenRef.current
+  const checkMechanismIsCurrent =
+    domainMode !== "existing_domain" ||
+    checkState.status === "preflight_complete" ||
+    checkState.migrationSourceMechanism === migrationSourceMethod
   const checkAppliesToCurrentInput = Boolean(
     checkTokenIsCurrent &&
+    checkMechanismIsCurrent &&
     checkState.domain &&
     checkState.domain === normalizedDomainValue &&
     (checkState.domainMode ?? "new_registration") === domainMode,
@@ -372,7 +392,13 @@ export function PreviewCheckout({
       setDomainValue(checkState.domain)
       setQuotes(checkState.quotes ?? null)
     }
-  }, [checkState, checkTokenIsCurrent, domainMode, normalizedDomainValue])
+  }, [
+    checkState,
+    checkMechanismIsCurrent,
+    checkTokenIsCurrent,
+    domainMode,
+    normalizedDomainValue,
+  ])
 
   React.useEffect(() => {
     if (step !== "domain" || domainMode !== "new_registration") return
@@ -640,6 +666,7 @@ export function PreviewCheckout({
     if (value.trim().toLowerCase() !== checkedDomain) {
       setCheckedDomain(null)
       setQuotes(null)
+      setMigrationSourceMethod("")
       if (step !== "domain") setStep("domain")
     }
   }
@@ -650,8 +677,19 @@ export function PreviewCheckout({
     setDomainMode(mode)
     setCheckedDomain(null)
     setQuotes(null)
+    setMigrationSourceMethod("")
     setDomainValue("")
     lastSubmittedDomainRef.current = null
+  }
+
+  const updateMigrationSourceMethod = (
+    method: AutomaticMigrationSourceMethod,
+  ) => {
+    if (method === migrationSourceMethod) return
+    latestDomainRequestTokenRef.current = null
+    setMigrationSourceMethod(method)
+    setCheckedDomain(null)
+    setQuotes(null)
   }
 
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
@@ -803,16 +841,90 @@ export function PreviewCheckout({
                     name="acceptedOrderId"
                     value={acceptedOrderId}
                   />
-                  <Label htmlFor="accepted-migration-zone-export">
-                    {t("checkoutMigrationZoneExportLabel")}
-                  </Label>
-                  <Input
-                    id="accepted-migration-zone-export"
-                    name="zoneExport"
-                    type="file"
-                    accept="application/json,.json"
-                    required
-                  />
+                  {migrationSourceMethod && (
+                    <input
+                      type="hidden"
+                      name="migrationSourceMethod"
+                      value={migrationSourceMethod}
+                    />
+                  )}
+                  {migrationSourceMethod === "cloudflare_api_v1" && (
+                    <CheckoutTextField
+                      id="accepted-cloudflare-source-token"
+                      name="cloudflareSourceToken"
+                      type="password"
+                      label={t("checkoutMigrationCloudflareTokenLabel")}
+                      description={t("checkoutMigrationCloudflareTokenHelp")}
+                      value={undefined}
+                      autoComplete="off"
+                      required
+                    />
+                  )}
+                  {migrationSourceMethod === "authorized_axfr_v1" && (
+                    <>
+                      <CheckoutTextField
+                        id="accepted-axfr-nameserver"
+                        name="axfrNameserver"
+                        label={t("checkoutMigrationAxfrNameserverLabel")}
+                        description={t("checkoutMigrationAxfrNameserverHelp")}
+                        value={undefined}
+                        autoComplete="off"
+                        required
+                      />
+                      <CheckoutTextField
+                        id="accepted-axfr-tsig-name"
+                        name="axfrTsigName"
+                        label={t("checkoutMigrationAxfrTsigNameLabel")}
+                        description={t("checkoutMigrationAxfrTsigHelp")}
+                        value={undefined}
+                        autoComplete="off"
+                      />
+                      <CheckoutTextField
+                        id="accepted-axfr-tsig-secret"
+                        name="axfrTsigSecret"
+                        type="password"
+                        label={t("checkoutMigrationAxfrTsigSecretLabel")}
+                        value={undefined}
+                        autoComplete="off"
+                      />
+                    </>
+                  )}
+                  {migrationSourceMethod === "validated_provider_export_v1" && (
+                    <>
+                      <CheckoutTextField
+                        id="accepted-source-provider"
+                        name="sourceProviderName"
+                        label={t("checkoutMigrationSourceProviderLabel")}
+                        description={t("checkoutMigrationSourceProviderHelp")}
+                        value={undefined}
+                        required
+                      />
+                      <Label htmlFor="accepted-migration-zone-export">
+                        {t("checkoutMigrationZoneExportLabel")}
+                      </Label>
+                      <Input
+                        id="accepted-migration-zone-export"
+                        name="zoneExport"
+                        type="file"
+                        accept="text/plain,.zone,.bind,.txt"
+                        required
+                      />
+                    </>
+                  )}
+                  {!migrationSourceMethod && (
+                    <>
+                      <Label htmlFor="accepted-migration-zone-export">
+                        {t("checkoutMigrationLegacyZoneExportLabel")}
+                      </Label>
+                      <Input
+                        id="accepted-migration-zone-export"
+                        name="zoneExport"
+                        type="file"
+                        accept="application/json,.json"
+                        required
+                      />
+                    </>
+                  )}
                   <Label htmlFor="accepted-migration-transfer-code">
                     {t("checkoutMigrationTransferCodeLabel")}
                   </Label>
@@ -974,16 +1086,87 @@ export function PreviewCheckout({
                       action.action === "upload_complete_zone" &&
                       ["required", "failed"].includes(action.status)) && (
                         <>
-                          <Label htmlFor="migration-replacement-zone-export">
-                            {t("checkoutMigrationZoneExportLabel")}
-                          </Label>
-                          <Input
-                            id="migration-replacement-zone-export"
-                            name="zoneExport"
-                            type="file"
-                            accept="application/json,.json"
-                            required
-                          />
+                          {migrationStatus.sourceMechanism ===
+                            "cloudflare_api_v1" && (
+                              <CheckoutTextField
+                                id="migration-replacement-cloudflare-token"
+                                name="cloudflareSourceToken"
+                                type="password"
+                                label={t("checkoutMigrationCloudflareTokenLabel")}
+                                description={t("checkoutMigrationCloudflareTokenHelp")}
+                                value={undefined}
+                                autoComplete="off"
+                                required
+                              />
+                            )}
+                          {migrationStatus.sourceMechanism ===
+                            "authorized_axfr_v1" && (
+                              <>
+                                <CheckoutTextField
+                                  id="migration-replacement-axfr-nameserver"
+                                  name="axfrNameserver"
+                                  label={t("checkoutMigrationAxfrNameserverLabel")}
+                                  description={t("checkoutMigrationAxfrNameserverHelp")}
+                                  value={undefined}
+                                  autoComplete="off"
+                                  required
+                                />
+                                <CheckoutTextField
+                                  id="migration-replacement-axfr-tsig-name"
+                                  name="axfrTsigName"
+                                  label={t("checkoutMigrationAxfrTsigNameLabel")}
+                                  description={t("checkoutMigrationAxfrTsigHelp")}
+                                  value={undefined}
+                                  autoComplete="off"
+                                />
+                                <CheckoutTextField
+                                  id="migration-replacement-axfr-tsig-secret"
+                                  name="axfrTsigSecret"
+                                  type="password"
+                                  label={t("checkoutMigrationAxfrTsigSecretLabel")}
+                                  value={undefined}
+                                  autoComplete="off"
+                                />
+                              </>
+                            )}
+                          {migrationStatus.sourceMechanism ===
+                            "validated_provider_export_v1" && (
+                              <>
+                                <CheckoutTextField
+                                  id="migration-replacement-source-provider"
+                                  name="sourceProviderName"
+                                  label={t("checkoutMigrationSourceProviderLabel")}
+                                  description={t("checkoutMigrationSourceProviderHelp")}
+                                  value={undefined}
+                                  required
+                                />
+                                <Label htmlFor="migration-replacement-zone-export">
+                                  {t("checkoutMigrationZoneExportLabel")}
+                                </Label>
+                                <Input
+                                  id="migration-replacement-zone-export"
+                                  name="zoneExport"
+                                  type="file"
+                                  accept="text/plain,.zone,.bind,.txt"
+                                  required
+                                />
+                              </>
+                            )}
+                          {migrationStatus.sourceMechanism ===
+                            "customer_authorized_provider_export_v1" && (
+                              <>
+                                <Label htmlFor="migration-replacement-zone-export">
+                                  {t("checkoutMigrationLegacyZoneExportLabel")}
+                                </Label>
+                                <Input
+                                  id="migration-replacement-zone-export"
+                                  name="zoneExport"
+                                  type="file"
+                                  accept="application/json,.json"
+                                  required
+                                />
+                              </>
+                            )}
                         </>
                       )}
                     <Label htmlFor="migration-replacement-transfer-code">
@@ -1089,6 +1272,13 @@ export function PreviewCheckout({
                 <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
                 <input ref={domainRequestTokenRef} type="hidden" name="requestToken" />
                 <input type="hidden" name="domainMode" value={domainMode} />
+                {migrationSourceMethod && (
+                  <input
+                    type="hidden"
+                    name="migrationSourceMethod"
+                    value={migrationSourceMethod}
+                  />
+                )}
                 <div className="relative">
                   <Input
                     id="checkout-domain"
@@ -1117,23 +1307,115 @@ export function PreviewCheckout({
                     ) : null}
                   </div>
                 </div>
-                {domainMode === "existing_domain" && existingDomainMigrationEnabled && (
+                {domainMode === "existing_domain" &&
+                  existingDomainMigrationEnabled &&
+                  checkState.migrationPreflightOnly &&
+                  checkAppliesToCurrentInput && (
                   <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="checkout-zone-export">
-                        {t("checkoutMigrationZoneExportLabel")}
-                      </Label>
-                      <Input
-                        id="checkout-zone-export"
-                        name="zoneExport"
-                        type="file"
-                        accept="application/json,.json"
+                    <fieldset className="grid gap-3">
+                      <legend className="font-medium">
+                        {t("checkoutMigrationSourceLegend")}
+                      </legend>
+                      <p className="text-sm text-muted-foreground">
+                        {t("checkoutMigrationSourceHelp")}
+                      </p>
+                      {([
+                        ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
+                        ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
+                        ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
+                      ] as const)
+                        .filter(([value]) =>
+                          enabledMigrationSourceMethods.includes(value))
+                        .map(([value, label]) => (
+                        <label
+                          key={value}
+                          className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3"
+                        >
+                          <input
+                            type="radio"
+                            name="checkout-migration-source"
+                            value={value}
+                            checked={migrationSourceMethod === value}
+                            onChange={() => updateMigrationSourceMethod(value)}
+                            className="mt-1"
+                          />
+                          <span>{t(label)}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                    {migrationSourceMethod === "cloudflare_api_v1" && (
+                      <CheckoutTextField
+                        id="checkout-cloudflare-source-token"
+                        name="cloudflareSourceToken"
+                        type="password"
+                        label={t("checkoutMigrationCloudflareTokenLabel")}
+                        description={t("checkoutMigrationCloudflareTokenHelp")}
+                        value={undefined}
+                        autoComplete="off"
                         required
                       />
-                      <p className="text-sm text-muted-foreground">
-                        {t("checkoutMigrationZoneExportHelp")}
-                      </p>
-                    </div>
+                    )}
+                    {migrationSourceMethod === "authorized_axfr_v1" && (
+                      <>
+                        <CheckoutTextField
+                          id="checkout-axfr-nameserver"
+                          name="axfrNameserver"
+                          label={t("checkoutMigrationAxfrNameserverLabel")}
+                          description={t("checkoutMigrationAxfrNameserverHelp")}
+                          value={undefined}
+                          defaultValue={
+                            checkState.migrationPublicEvidence
+                              ?.authoritativeNameservers[0]
+                          }
+                          autoComplete="off"
+                          required
+                        />
+                        <CheckoutTextField
+                          id="checkout-axfr-tsig-name"
+                          name="axfrTsigName"
+                          label={t("checkoutMigrationAxfrTsigNameLabel")}
+                          description={t("checkoutMigrationAxfrTsigHelp")}
+                          value={undefined}
+                          autoComplete="off"
+                        />
+                        <CheckoutTextField
+                          id="checkout-axfr-tsig-secret"
+                          name="axfrTsigSecret"
+                          type="password"
+                          label={t("checkoutMigrationAxfrTsigSecretLabel")}
+                          value={undefined}
+                          autoComplete="off"
+                        />
+                      </>
+                    )}
+                    {migrationSourceMethod === "validated_provider_export_v1" && (
+                      <>
+                        <CheckoutTextField
+                          id="checkout-source-provider"
+                          name="sourceProviderName"
+                          label={t("checkoutMigrationSourceProviderLabel")}
+                          description={t("checkoutMigrationSourceProviderHelp")}
+                          value={undefined}
+                          autoComplete="organization"
+                          required
+                        />
+                        <div className="grid gap-2">
+                          <Label htmlFor="checkout-zone-export">
+                            {t("checkoutMigrationZoneExportLabel")}
+                          </Label>
+                          <Input
+                            id="checkout-zone-export"
+                            name="zoneExport"
+                            type="file"
+                            accept="text/plain,.zone,.bind,.txt"
+                            required
+                          />
+                          <p className="text-sm text-muted-foreground">
+                            {t("checkoutMigrationZoneExportHelp")}
+                          </p>
+                        </div>
+                      </>
+                    )}
                     <CheckoutTextField
                       id="checkout-transfer-code"
                       name="transferCode"
@@ -1846,8 +2128,14 @@ export function PreviewCheckout({
         domainResultKind={domainResultKind}
         preflightComplete={
           checkState.status === "preflight_complete" &&
-          checkAppliesToCurrentInput
+          checkAppliesToCurrentInput &&
+          !migrationSourceMethod
         }
+        sourceAcquisitionReady={Boolean(
+          checkState.status === "preflight_complete" &&
+          checkAppliesToCurrentInput &&
+          migrationSourceMethod,
+        )}
         paymentStatus={
           paymentState.status === "payment_pending"
             ? "pending_provider"
@@ -2008,6 +2296,7 @@ function CheckoutActionBar({
   paymentBlocked,
   domainResultKind,
   preflightComplete,
+  sourceAcquisitionReady,
   paymentStatus,
   navigationLocked,
   legalAccepted,
@@ -2029,6 +2318,7 @@ function CheckoutActionBar({
   paymentBlocked: boolean
   domainResultKind: "loading" | "info" | "success" | "unavailable" | "error" | null
   preflightComplete: boolean
+  sourceAcquisitionReady: boolean
   paymentStatus: string
   navigationLocked: boolean
   legalAccepted: boolean
@@ -2093,6 +2383,8 @@ function CheckoutActionBar({
         {checkPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Globe2 className="size-4" aria-hidden />}
         {checkPending
           ? t("checkoutDomainCheckingShort")
+          : sourceAcquisitionReady
+            ? t("checkoutMigrationVerifySource")
           : unavailable
             ? t("checkoutDomainOccupied")
             : domainResultKind === "error"

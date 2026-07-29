@@ -36,6 +36,7 @@ const acceptedOrder = () => {
     billingPeriod: "annual",
     providerOperationPriceNetMinor: 1_250,
     migrationClassification: "automatic",
+    migrationSourceMechanism: "validated_provider_export_v1",
     migrationSourceZoneHash: "a".repeat(64),
     migrationInputEnvelope: "v1.encrypted-authority",
     migrationSecretKey: "migration-secret:accepted",
@@ -89,6 +90,7 @@ const acceptedOrder = () => {
         },
         migration: {
           classification: quote.migrationClassification,
+          sourceMechanism: quote.migrationSourceMechanism,
           sourceZoneHash: quote.migrationSourceZoneHash,
           checkoutSecretKey: quote.migrationSecretKey,
         },

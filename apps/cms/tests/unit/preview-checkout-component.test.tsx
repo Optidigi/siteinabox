@@ -61,6 +61,7 @@ const quote = (billingPeriod: "monthly" | "annual") => {
       domainSurchargeNetMinor: 0,
       migrationServiceFeeNetMinor: 0,
       migrationClassification: null,
+      migrationSourceMechanism: null,
       migrationSourceZoneHash: null,
       migrationInputEnvelope: null,
       migrationSecretKey: null,
@@ -232,6 +233,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
       initialProfile: profile,
       initialDetails: profile,
       initialQuotes: null,
+      enabledMigrationSourceMethods: [
+        "cloudflare_api_v1" as const,
+        "authorized_axfr_v1" as const,
+        "validated_provider_export_v1" as const,
+      ],
       catalog: {
         version: "2026-07-26.1",
         currency: "EUR" as const,
@@ -296,7 +302,17 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
     expect((existingMode as HTMLInputElement).disabled).toBe(false)
     fireEvent.click(existingMode)
-
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+    await screen.findByText("checkoutMigrationSourceLegend")
+    expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
+    fireEvent.click(screen.getByRole("radio", {
+      name: "checkoutMigrationSourceExport",
+    }))
     expect((screen.getByLabelText(
       "checkoutMigrationZoneExportLabel",
     ) as HTMLInputElement).type).toBe("file")

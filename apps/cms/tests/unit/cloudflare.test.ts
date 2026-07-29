@@ -11,6 +11,7 @@ import {
   createCloudflareMigrationDnsRecord,
   createOrReuseCloudflareEmailSendingSubdomain,
   getCloudflareEmailSendingSubdomain,
+  getCloudflareDnsRecordUsage,
   getCloudflareSslVerification,
   listCloudflareEmailSendingSubdomains,
   listCloudflareMigrationDnsRecords,
@@ -31,6 +32,21 @@ const env = {
 } as unknown as NodeJS.ProcessEnv
 
 describe("Cloudflare domain adapter", () => {
+  it("reads and validates the destination DNS record quota", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: true,
+      result: { record_quota: 200, record_usage: 2 },
+    }))
+    await expect(getCloudflareDnsRecordUsage("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual({ recordQuota: 200, recordUsage: 2 })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://cloudflare.test/client/v4/zones/zone-123/dns_records/usage",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
+
   it("creates a full zone and returns Cloudflare nameservers", async () => {
     const fetchMock = vi.fn(async () => Response.json({
       success: true,

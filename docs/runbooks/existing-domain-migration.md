@@ -13,8 +13,22 @@ available registrar evidence. It never requests a transfer code, treats public
 DNS as complete-source evidence, issues a payable quote, or starts a transfer.
 
 `COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=1` exposes the subsequent
-authorized source-upload and payable migration journey only when the commerce
-release gate also permits provider reads. Keep the flag unset in production
+authorized-source and payable migration journey only when the commerce release
+gate also permits provider reads. Each source is independently fail-closed:
+
+- `COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED=1` enables a customer-scoped
+  Cloudflare API connector. The token needs only Zone Read and DNS Read for the
+  selected zone. It is encrypted, expires after 24 hours, and is never replaced
+  with the Siteinabox destination token.
+- `COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED=1` enables authorized AXFR from a
+  currently authoritative public nameserver, optionally with an encrypted TSIG
+  secret. The server pins the resolved public address, requires matching
+  opening/closing SOAs, validates the zone with BIND, and captures twice.
+- `COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED=1` is reserved for
+  reviewed provider-export contracts. Keep it disabled for generic uploads:
+  a syntactically valid but partial file cannot prove completeness.
+
+Keep both the global flag and the relevant source flag unset in production
 until every gate below has current environment-specific evidence:
 
 1. incoming transfer is enabled in the effective TLD capability;
@@ -23,30 +37,31 @@ until every gate below has current environment-specific evidence:
    been verified against current provider/registry documentation;
 4. `DOMAIN_MIGRATION_ENCRYPTION_KEY` is a stable, backed-up 32-byte key stored
    outside Git;
-5. the Cloudflare zone, record-count, and import limits have been rehearsed;
-6. authoritative and recursive DNS, preserved mail/service records, renderer
+5. BIND validation is installed in the CMS image and the selected source
+   adapter has passed complete/truncated/stale evidence tests;
+6. the Cloudflare zone, record-count, and import limits have been rehearsed;
+7. authoritative and recursive DNS, preserved mail/service records, renderer
    routing, HTTPS readiness, and rollback have passed in the approved
    environment;
-7. provider-write and edge/origin release gates are separately approved.
+8. provider-write and edge/origin release gates are separately approved.
 
-The gated checkout path currently accepts a fresh, structurally valid
-`siab-complete-zone-v1` JSON upload only for **assisted** migration. A
-customer-supplied `complete: true` assertion is not proof of completeness, so
-an operator must verify the source before any migration provider write.
-Automatic migration remains disabled until an authenticated connector,
-authorized AXFR/IXFR capture, or reviewed provider-native parser provides
-complete-source provenance. Public DNS/RDAP discovery is supplemental evidence
-and never a complete source. Signed DNSSEC, a parent DS, stale or changed
-nameservers, unsupported record behavior, an unsupported TLD, and
-nondeterministic provider pricing stop before payment.
+The Cloudflare connector and AXFR path are automatic. Both perform two stable
+captures, freeze the exact source authority hash before payment, and reacquire
+the same source after payment before any destination or registrar write.
+Changed or revoked evidence returns to a method-specific customer
+reauthorization form; the accepted source mechanism and hash cannot change.
+Public DNS/RDAP discovery remains supplemental evidence and is never treated
+as a complete source. Unsupported records, stale or changed authority,
+unsupported TLD behavior, nondeterministic pricing, and any source over the
+effective destination capacity stop before payment.
 
-The next automation increment should be an authenticated Cloudflare source
-connector with a customer-scoped, DNS-read-only token and explicit zone
-selection. Snapshot the complete paginated record set and DNSSEC metadata,
-validate it semantically, then discard the source credential. Cloudflare
-Secondary DNS/AXFR is not a generic fallback because its availability depends
-on the customer's plan and source-provider transfer support. Customer uploads
-remain assisted until their completeness provenance can be verified.
+The current pre-payment capacity policy is effective-dated with this release:
+new Cloudflare Free zones guarantee 200 DNS records, so checkout accepts at
+most 198 source records and reserves two managed website routes. After the
+destination zone exists, the worker reads
+`GET /zones/{zone_id}/dns_records/usage` and stops before registrar transfer if
+the exact quota is insufficient. That exceptional path queues the existing
+idempotent full-refund workflow.
 
 Primary contracts:
 
@@ -61,7 +76,7 @@ Before redirecting to Mollie, checkout freezes:
 
 - selected domain and TLD capability version;
 - current provider transfer price and quote timestamp;
-- assisted-standard classification for customer uploads;
+- automatic classification and exact source mechanism;
 - the semantic source-zone hash;
 - an opaque reference to the dedicated encrypted checkout-secret record;
 - plan, domain allowance/surcharge, migration fee, VAT, and gross amount;
@@ -76,7 +91,7 @@ price produces a new quote requiring explicit acceptance. A cancelled payment
 return reissues a short-lived signature over the exact accepted nonvolatile
 authority; it never asks the browser to reconstruct the zone or transfer code.
 
-## Customer and operator states
+## Customer states
 
 The preview checkout shows a redacted status projection bound to the
 authenticated preview grant, generation run, and customer email. It contains
@@ -96,21 +111,10 @@ be a separately reviewed retention change that preserves immutable hashes,
 legal/accounting evidence, and transfer-out obligations; there is currently no
 automatic snapshot purge.
 
-Super-admins use `/operations/migrations`. The operator view is deliberately
-limited:
-
-- preclassified assisted work starts only after the paid originating-order
-  evidence is rechecked;
-- unexpected customer migration work requires a separate paid supplemental
-  order before start;
-- Siteinabox incident recovery may be explicitly classified as non-billable;
-- completion requires an audit note and queues the existing migration worker;
-- failure uses a bounded code and does not resume automation;
-- rollback can be queued only during cutover/verifying and uses the frozen old
-  nameservers through the existing idempotent rollback workflow.
-
-Never enter credentials, transfer codes, full PII, or raw provider payloads in
-operator notes.
+There is no new assisted-migration sale or EUR 49 operator step. A source that
+cannot be proven and executed automatically is rejected before payment.
+Historical assisted orders remain immutable and visible for audit, but they do
+not create a new checkout path.
 
 ## Rollback and recovery
 

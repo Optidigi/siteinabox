@@ -58,6 +58,7 @@ const quote = (
       domainSurchargeNetMinor: 0,
       migrationServiceFeeNetMinor: 0,
       migrationClassification: null,
+      migrationSourceMechanism: null,
       migrationSourceZoneHash: null,
       migrationInputEnvelope: null,
       migrationSecretKey: null,

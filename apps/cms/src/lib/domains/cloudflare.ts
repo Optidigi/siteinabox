@@ -38,6 +38,11 @@ export type CloudflareMigrationDnsRecordResult = {
   raw: unknown
 }
 
+export type CloudflareDnsRecordUsage = {
+  recordQuota: number
+  recordUsage: number
+}
+
 export type CloudflareEmailSendingSubdomainResult = {
   id: string
   name: string
@@ -649,6 +654,36 @@ export async function listCloudflareMigrationDnsRecords(
   return parsed.filter(
     (entry): entry is CloudflareMigrationDnsRecordResult => entry !== null,
   )
+}
+
+export async function getCloudflareDnsRecordUsage(
+  zoneId: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareDnsRecordUsage> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/usage`,
+    { method: "GET", headers: headers(token) },
+  )
+  const payload = await json(response)
+  assertCloudflareOk("Cloudflare DNS record usage", response, payload)
+  const result = resultObject(payload)
+  const recordQuota = result.record_quota
+  const recordUsage = result.record_usage
+  if (
+    !Number.isSafeInteger(recordQuota) ||
+    Number(recordQuota) < 0 ||
+    !Number.isSafeInteger(recordUsage) ||
+    Number(recordUsage) < 0 ||
+    Number(recordUsage) > Number(recordQuota)
+  ) {
+    throw new Error("Cloudflare DNS record usage response is invalid.")
+  }
+  return {
+    recordQuota: Number(recordQuota),
+    recordUsage: Number(recordUsage),
+  }
 }
 
 export async function createCloudflareMigrationDnsRecord(

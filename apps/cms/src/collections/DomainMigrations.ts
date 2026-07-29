@@ -271,7 +271,12 @@ export const DomainMigrations: CollectionConfig = {
       type: "select",
       required: true,
       defaultValue: "customer_authorized_provider_export_v1",
-      options: selectOptions(["customer_authorized_provider_export_v1"]),
+      options: selectOptions([
+        "customer_authorized_provider_export_v1",
+        "cloudflare_api_v1",
+        "authorized_axfr_v1",
+        "validated_provider_export_v1",
+      ]),
     },
     { name: "sourceZoneHash", type: "text", unique: true, index: true },
     {

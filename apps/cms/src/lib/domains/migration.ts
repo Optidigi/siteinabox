@@ -21,6 +21,7 @@ import type {
   DomainMigration,
   ManagedDomain,
   Order,
+  PaymentAttempt,
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
@@ -31,6 +32,7 @@ import {
   CloudflareIndeterminateWriteError,
   createOrReuseCloudflareMigrationDnsRecord,
   createOrReuseCloudflareZone,
+  getCloudflareDnsRecordUsage,
   getCloudflareSslVerification,
   listCloudflareMigrationDnsRecords,
   listCloudflareZones,
@@ -40,9 +42,17 @@ import {
   sealMigrationSecret,
 } from "@/lib/domains/migrationSecrets"
 import {
+  MigrationSourceChangedError,
+  refreshAutomaticMigrationSource,
+} from "@/lib/domains/migrationSources/refresh"
+import {
   consumeMigrationCheckoutSecret,
+  invalidateAttachedMigrationCheckoutSecret,
   openAttachedMigrationCheckoutSecret,
 } from "@/lib/domains/migrationCheckoutSecret"
+import {
+  MigrationSourceAuthorizationError,
+} from "@/lib/domains/migrationSources/types"
 import {
   domainMigrationEvidenceHash,
   domainMigrationSourceAuthorityHash,
@@ -118,6 +128,7 @@ type MigrationDependencies = {
   createOrReuseCloudflareZone: typeof createOrReuseCloudflareZone
   listCloudflareMigrationDnsRecords: typeof listCloudflareMigrationDnsRecords
   createOrReuseCloudflareMigrationDnsRecord: typeof createOrReuseCloudflareMigrationDnsRecord
+  getCloudflareDnsRecordUsage: typeof getCloudflareDnsRecordUsage
   getCloudflareSslVerification: typeof getCloudflareSslVerification
   verifyParentDsAbsent: typeof verifyParentDsAbsent
   verifyAuthoritativeDns: typeof verifyAuthoritativeDns
@@ -142,6 +153,7 @@ const defaultDependencies: MigrationDependencies = {
   createOrReuseCloudflareZone,
   listCloudflareMigrationDnsRecords,
   createOrReuseCloudflareMigrationDnsRecord,
+  getCloudflareDnsRecordUsage,
   getCloudflareSslVerification,
   verifyParentDsAbsent,
   verifyAuthoritativeDns,
@@ -309,9 +321,15 @@ async function updateManagedDomain(
 const migrationEvidenceFromOrder = (order: Order) => {
   const quoteEvidence = readObject(order.quoteEvidence)
   const migration = readObject(quoteEvidence.migration)
+  const sourceMechanism = String(migration.sourceMechanism)
   if (
     !["automatic", "assisted_standard"].includes(String(migration.classification)) ||
-    migration.sourceMechanism !== "customer_authorized_provider_export_v1"
+    ![
+      "customer_authorized_provider_export_v1",
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ].includes(sourceMechanism)
   ) {
     throw new Error("Accepted order does not freeze a supported migration source contract.")
   }
@@ -330,6 +348,11 @@ const migrationEvidenceFromOrder = (order: Order) => {
   return {
     capability,
     classification: migration.classification as "automatic" | "assisted_standard",
+    sourceMechanism: sourceMechanism as
+      | "customer_authorized_provider_export_v1"
+      | "cloudflare_api_v1"
+      | "authorized_axfr_v1"
+      | "validated_provider_export_v1",
     sourceZoneHash: typeof migration.sourceZoneHash === "string"
       ? migration.sourceZoneHash
       : null,
@@ -342,13 +365,23 @@ const migrationEvidenceFromOrder = (order: Order) => {
 export const isAutomaticMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return migration.classification === "automatic" &&
-    migration.sourceMechanism === "customer_authorized_provider_export_v1"
+    [
+      "customer_authorized_provider_export_v1",
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ].includes(String(migration.sourceMechanism))
 }
 
 export const isSupportedDomainMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return ["automatic", "assisted_standard"].includes(String(migration.classification)) &&
-    migration.sourceMechanism === "customer_authorized_provider_export_v1"
+    [
+      "customer_authorized_provider_export_v1",
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ].includes(String(migration.sourceMechanism))
 }
 
 async function checkoutProfileForOrder(
@@ -375,6 +408,9 @@ export async function createAutomaticDomainMigration(
   payload: Payload,
   orderId: string | number,
   now = new Date().toISOString(),
+  dependencies: {
+    refreshAutomaticMigrationSource?: typeof refreshAutomaticMigrationSource
+  } = {},
 ): Promise<DomainMigration> {
   const order = await payload.findByID({
     collection: "orders",
@@ -393,6 +429,7 @@ export async function createAutomaticDomainMigration(
   const {
     capability,
     classification,
+    sourceMechanism,
     sourceZoneHash: acceptedSourceZoneHash,
     checkoutSecretKey,
   } = migrationEvidenceFromOrder(order)
@@ -426,7 +463,7 @@ export async function createAutomaticDomainMigration(
         tld: normalized.extension,
         acceptedClassification: classification,
         state: "awaiting_customer",
-        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceMechanism,
         customerActions: actions,
         providerTransferState: "not_started",
         cloudflareZoneState: "not_started",
@@ -483,16 +520,51 @@ export async function createAutomaticDomainMigration(
       generationRunId,
       domain: normalized.domain,
       sourceZoneHash: acceptedSourceZoneHash,
+      now: new Date(now),
     })
     if (
       checkoutInput.classification !== classification ||
+      checkoutInput.sourceMechanism !== sourceMechanism ||
       checkoutInput.sourceZoneHash !== acceptedSourceZoneHash
     ) {
       throw new Error("Encrypted migration checkout input differs from the accepted order.")
     }
+    let refreshedSource: CompleteZoneExport
+    try {
+      refreshedSource = checkoutInput.schemaVersion === 2
+        ? await (
+            dependencies.refreshAutomaticMigrationSource ??
+            refreshAutomaticMigrationSource
+          )(checkoutInput)
+        : checkoutInput.sourceZone
+    } catch (error) {
+      if (
+        !(error instanceof MigrationSourceChangedError) &&
+        !(error instanceof MigrationSourceAuthorizationError)
+      ) {
+        throw error
+      }
+      await invalidateAttachedMigrationCheckoutSecret(payload, {
+        secretKey: checkoutSecretKey,
+        orderId: order.id,
+        now: new Date(now),
+      })
+      return updateMigration(payload, migration, {
+        state: "awaiting_customer",
+        failureReason: "source_evidence_stale",
+        customerActions: withAction(
+          actionStates(migration.customerActions, now),
+          "upload_complete_zone",
+          "required",
+          now,
+          "automatic_source_reauthorization_required",
+        ),
+        reconciliationRequired: false,
+      }, "automatic_source_reauthorization_required", now)
+    }
     migration = await acquireAutomaticMigrationInputs(payload, {
       migrationId: migration.id,
-      zoneExport: checkoutInput.sourceZone,
+      zoneExport: refreshedSource,
       transferCode: checkoutInput.transferCode,
       now,
       queuePreparation: false,
@@ -981,6 +1053,75 @@ async function stopMigrationForProviderManualReview(
   }
 }
 
+async function stopUnfulfillableMigrationBeforeRegistrarCommit(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  order: Order,
+  code: string,
+  now: string,
+): Promise<MigrationResult> {
+  migration = await updateMigration(payload, migration, {
+    state: "failed",
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: now,
+    reconciliationRequired: false,
+    failureReason: code,
+  }, code, now)
+  await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    entitlementStatus: "blocked",
+    customerStatus: "manual_review",
+    reconciliationRequired: false,
+    failureReason: code,
+  }, code, now)
+  const attempts = await payload.find({
+    collection: "payment-attempts",
+    where: {
+      and: [
+        { order: { equals: order.id } },
+        { purpose: { equals: "first_payment" } },
+        {
+          state: {
+            in: ["paid", "refund_pending", "partially_refunded", "refunded"],
+          },
+        },
+      ],
+    },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (attempts.docs.length !== 1) {
+    throw new Error("Unfulfillable migration has no unique captured payment authority.")
+  }
+  const attempt = attempts.docs[0] as PaymentAttempt
+  await payload.jobs.queue({
+    task: "request-mollie-refund",
+    input: {
+      paymentAttemptId: String(attempt.id),
+      scenario: "unfulfillable_before_provider_commit",
+    },
+    queue: "default",
+    overrideAccess: true,
+  })
+  if (order.state === "fulfillment_pending") {
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "exception" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+  }
+  return {
+    status: "failed",
+    migrationId: migration.id,
+    message: "Automatic migration is unfulfillable before registrar transfer; a full governed refund was queued.",
+  }
+}
+
 async function rollbackCutover(
   payload: Payload,
   migration: DomainMigration,
@@ -1439,6 +1580,22 @@ export async function prepareDomainMigration(
         migrationId: migration.id,
         message: "Cloudflare already contains unexpected records; automatic migration stopped.",
       }
+    }
+  }
+  if (!comparison.equivalent) {
+    const usage = await deps.getCloudflareDnsRecordUsage(zone.id)
+    const recordsStillRequired = comparison.missing.filter(
+      (entry) => !entry.endsWith(":ttl"),
+    ).length
+    if (usage.recordUsage + recordsStillRequired > usage.recordQuota) {
+      return stopUnfulfillableMigrationBeforeRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        order,
+        "cloudflare_dns_capacity_insufficient",
+        deps.now(),
+      )
     }
   }
   if (!comparison.equivalent) {

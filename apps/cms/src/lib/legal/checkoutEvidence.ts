@@ -241,6 +241,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
       input.quote.domainMode === "new_registration" &&
       (
         input.quote.migrationClassification !== null ||
+        input.quote.migrationSourceMechanism !== null ||
         input.quote.migrationSourceZoneHash !== null ||
         input.quote.migrationInputEnvelope !== null ||
         input.quote.migrationSecretKey !== null
@@ -252,6 +253,9 @@ export async function createOrderAndAcceptanceEvidence(input: {
       input.quote.domainMode === "existing_domain" &&
       (
         input.quote.migrationClassification !== "automatic" ||
+        !input.quote.migrationSourceMechanism ||
+        input.quote.migrationSourceMechanism ===
+          "customer_authorized_provider_export_v1" ||
         !input.quote.migrationSourceZoneHash ||
         !input.quote.migrationSecretKey
       )
@@ -310,7 +314,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
             ? {
                 migration: {
                   classification: input.quote.migrationClassification,
-                  sourceMechanism: "customer_authorized_provider_export_v1",
+                  sourceMechanism: input.quote.migrationSourceMechanism,
                   sourceZoneHash: input.quote.migrationSourceZoneHash,
                   checkoutSecretKey: input.quote.migrationSecretKey,
                   expectedOperatorTechnicalAction:
