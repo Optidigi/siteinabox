@@ -15,6 +15,7 @@ import {
 
 const PHASE_8_EFFECTIVE_AT = "2026-07-28T00:00:00.000Z"
 const PRODUCTION_READINESS_EFFECTIVE_AT = "2026-07-28T15:00:00.000Z"
+const REGISTRATION_PRODUCTION_EFFECTIVE_AT = "2026-07-29T12:00:00.000Z"
 
 describe("effective-dated TLD capability catalog", () => {
   it("contains only schema-valid, non-overlapping capability records", () => {
@@ -31,7 +32,7 @@ describe("effective-dated TLD capability catalog", () => {
     }
   })
 
-  it("models the intended catalogue and fails every current production operation closed", () => {
+  it("models the intended catalogue and preserves the fail-closed period", () => {
     expect(
       productionTldCapabilitiesAt(
         "registration",
@@ -60,10 +61,38 @@ describe("effective-dated TLD capability catalog", () => {
     ).toEqual([...INTENDED_TLD_CATALOG].sort())
   })
 
-  it.each(["nl"] as const)(
+  it("enables only registration and its required verification for every intended TLD", () => {
+    expect(
+      productionTldCapabilitiesAt(
+        "registration",
+        REGISTRATION_PRODUCTION_EFFECTIVE_AT,
+      ).map((entry) => entry.tld),
+    ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    expect(
+      productionTldCapabilitiesAt(
+        "registrant_verification",
+        REGISTRATION_PRODUCTION_EFFECTIVE_AT,
+      ).map((entry) => entry.tld),
+    ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    for (const operation of [
+      "incoming_transfer",
+      "renewal_provider_autorenew",
+      "renewal_explicit",
+      "restoration",
+    ] as const) {
+      expect(
+        productionTldCapabilitiesAt(
+          operation,
+          REGISTRATION_PRODUCTION_EFFECTIVE_AT,
+        ),
+      ).toEqual([])
+    }
+  })
+
+  it.each(INTENDED_TLD_CATALOG)(
     "has a complete provider, lifecycle, pricing, and renderer/TLS contract for .%s",
     (tld) => {
-      const capability = tldCapabilityAt(tld, PRODUCTION_READINESS_EFFECTIVE_AT)
+      const capability = tldCapabilityAt(tld, REGISTRATION_PRODUCTION_EFFECTIVE_AT)
       expect(capability).not.toBeNull()
       expect(capability).toMatchObject({
         provider: "openprovider",

@@ -9,24 +9,27 @@ responses, payment identifiers, or personal workstation paths in this
 repository. Store environment-specific evidence in the approved operational
 system and link it from the release change record.
 
-## Current fail-closed matrix
+## Current staged matrix
 
-The effective TLD catalogue models the intended contract surface, but its
-operation-specific production flags remain disabled until each row has its own
-approved evidence. A modeled capability is not production enablement.
+The effective TLD catalogue enables new registration and the registrant
+verification needed to complete it for the intended catalogue. The global
+commerce stage remains the final provider-write boundary: keep it at `shadow`
+until the controlled live checkout canary has reconciled payment, registration,
+DNS, HTTPS, and publication. Transfers, renewals, and restorations remain
+operation-specific fail-closed capabilities.
 
 | TLD | Registration | Incoming transfer | Renewal | Registrant verification | Restoration |
 | --- | --- | --- | --- | --- | --- |
-| `.nl` | disabled | disabled | disabled | disabled | disabled |
-| `.be` | disabled | disabled | disabled | disabled | disabled |
-| `.com` | disabled | disabled | disabled | disabled | disabled |
-| `.eu` | disabled | disabled | disabled | disabled | disabled |
-| `.org` | disabled | disabled | disabled | disabled | disabled |
-| `.net` | disabled | disabled | disabled | disabled | disabled |
-| `.de` | disabled | disabled | disabled | disabled | disabled |
-| `.info` | disabled | disabled | disabled | disabled | disabled |
-| `.online` | disabled | disabled | disabled | disabled | disabled |
-| `.shop` | disabled | disabled | disabled | disabled | disabled |
+| `.nl` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.be` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.com` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.eu` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.org` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.net` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.de` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.info` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.online` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.shop` | staged enabled | disabled | disabled | staged enabled | disabled |
 
 Global production evidence also remains disabled:
 
@@ -142,8 +145,9 @@ These steps require a separate approved production change:
 4. Deploy with `COMMERCE_RELEASE_STAGE=shadow`; verify read-only reconciliation.
 5. Establish and verify private/authenticated Cloudflare-to-origin routing.
 6. Rehearse the approved provider scenarios and record redacted evidence.
-7. Enable one operation for one TLD in the effective capability catalogue,
-   review and deploy that code change, then perform a controlled canary.
+7. Enable only the reviewed operation/TLD set in the effective capability
+   catalogue, review and deploy that code change, then perform a controlled
+   canary before advancing the global stage.
 8. Enable the matching global feature and production stage only after its
    evidence row passes.
 9. Monitor reconciliation, renewal dates, certificate readiness, alerts, and

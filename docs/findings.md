@@ -66,9 +66,11 @@ observations before acting on them.
   Cloudflare, DNSSEC, or mail behavior.
 - **Next:** Run an explicitly approved disposable-domain rehearsal and capture
   provider identifiers, DNS, sender, snapshot, response, and mail evidence.
-  Keep every TLD production operation disabled until its row in
+  New registration is staged for the intended catalogue behind the global
+  `shadow` provider-write boundary. Keep transfer, renewal, restoration, and
+  final global production activation disabled until their rows in
   [Commerce production evidence](runbooks/commerce-production-evidence.md)
-  passes.
+  pass.
 
 ## SIAB-007 — Bot protection is outside the CMS surface
 
