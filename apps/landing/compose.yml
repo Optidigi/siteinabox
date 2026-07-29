@@ -4,7 +4,7 @@ name: siteinabox-landing
 
 services:
   siteinabox-site:
-    image: ghcr.io/optidigi/siteinabox-site:latest
+    image: ghcr.io/optidigi/siteinabox-site@${SIAB_SITE_IMAGE_DIGEST:?required}
     pull_policy: always
     container_name: siteinabox-site
     restart: unless-stopped

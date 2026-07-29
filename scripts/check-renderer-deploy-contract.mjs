@@ -10,6 +10,8 @@ const rendererComposePath = resolve(repoRoot, "apps/renderer/compose.yml")
 const rendererDockerfilePath = resolve(repoRoot, "apps/renderer/Dockerfile")
 const rendererPackagePath = resolve(repoRoot, "apps/renderer/package.json")
 const cmsComposePath = resolve(repoRoot, "apps/cms/docker-compose.yml")
+const landingComposePath = resolve(repoRoot, "apps/landing/compose.yml")
+const intakeComposePath = resolve(repoRoot, "apps/intake/compose.yml")
 const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-renderer-image.yml")
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 
@@ -128,6 +130,27 @@ for (const forbiddenFragment of [
 ]) {
   if (cmsCompose.includes(forbiddenFragment)) {
     errors.push(`${formatPath(cmsComposePath)} exposes a customer-specific or weak CMS origin route: ${forbiddenFragment}`)
+  }
+}
+
+for (const [composePath, requiredImage] of [
+  [
+    landingComposePath,
+    "image: ghcr.io/optidigi/siteinabox-site@${SIAB_SITE_IMAGE_DIGEST:?required}",
+  ],
+  [
+    intakeComposePath,
+    "image: ghcr.io/optidigi/siteinabox-intake@${SIAB_INTAKE_IMAGE_DIGEST:?required}",
+  ],
+]) {
+  const compose = await readFile(composePath, "utf8")
+  if (!compose.includes(requiredImage)) {
+    errors.push(
+      `${formatPath(composePath)} must deploy its successful workflow output by immutable digest`,
+    )
+  }
+  if (/image:\s+\S+:(?:latest|main)\s*$/m.test(compose)) {
+    errors.push(`${formatPath(composePath)} must not deploy a mutable production image tag`)
   }
 }
 
