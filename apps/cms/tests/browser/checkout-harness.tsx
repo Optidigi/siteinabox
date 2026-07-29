@@ -34,7 +34,10 @@ const profile = {
   createdAt: "2026-07-28T10:00:00.000Z",
 }
 
-const quote = (billingPeriod: "monthly" | "annual") => {
+const quote = (
+  billingPeriod: "monthly" | "annual",
+  selectedDomain = "analytical-engines.nl",
+) => {
   const planPriceNetMinor = billingPeriod === "annual" ? 19_000 : 1_900
   const vatAmountMinor = billingPeriod === "annual" ? 3_990 : 399
   return {
@@ -63,7 +66,7 @@ const quote = (billingPeriod: "monthly" | "annual") => {
       futureSubscriptionNetMinor: planPriceNetMinor,
       futureSubscriptionVatMinor: vatAmountMinor,
       futureSubscriptionGrossMinor: planPriceNetMinor + vatAmountMinor,
-      selectedDomain: "analytical-engines.nl",
+      selectedDomain,
       domainMode: "new_registration" as const,
       providerQuotedAt: "2026-07-28T10:00:00.000Z",
       quoteIssuedAt: "2026-07-28T10:00:00.000Z",
@@ -98,16 +101,22 @@ const saveProfileAction = async (_previous: unknown, formData: FormData) => {
 }
 
 const pending = new URLSearchParams(window.location.search).get("payment") === "pending"
+const initialDomain = pending ? "analytical-engines.nl" : null
 
 createRoot(document.getElementById("root")!).render(
   <NextIntlClientProvider locale="en" messages={{ preview: messages.preview }}>
     <PreviewCheckout
       customerEmail="owner@example.test"
-      currentDomain="analytical-engines.nl"
-      domainReady
+      currentDomain={initialDomain}
+      domainReady={Boolean(initialDomain)}
       initialProfile={profile}
       initialDetails={profile}
-      initialQuotes={{ monthly: quote("monthly"), annual: quote("annual") }}
+      initialQuotes={initialDomain
+        ? {
+            monthly: quote("monthly", initialDomain),
+            annual: quote("annual", initialDomain),
+          }
+        : null}
       initialStep={pending ? "overview" : "domain"}
       catalog={{
         version: "2026-07-26.1",
@@ -127,7 +136,32 @@ createRoot(document.getElementById("root")!).render(
       previewHref="/preview"
       prewarmHref="/prewarm"
       suggestionsHref="/suggestions"
-      checkDomainAction={async () => ({ ok: false, message: "" })}
+      checkDomainAction={async (_previous, formData) => {
+        const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
+        if (domain === "service-error.nl") {
+          return {
+            ok: false,
+            status: "service_error",
+            domain,
+            domainMode: "new_registration",
+            message: "The live domain check is temporarily unavailable.",
+          }
+        }
+        return {
+          ok: true,
+          status: "available",
+          domain,
+          domainMode: "new_registration",
+          included: true,
+          extraFeeAmount: null,
+          extraFeeCurrency: null,
+          message: `${domain} is available.`,
+          quotes: {
+            monthly: quote("monthly", domain),
+            annual: quote("annual", domain),
+          },
+        }
+      }}
       saveProfileAction={saveProfileAction}
       startPaymentAction={async () => ({
         ok: false,

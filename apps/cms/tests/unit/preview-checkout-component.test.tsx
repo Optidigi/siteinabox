@@ -167,7 +167,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.submit(profileForm!)
     await waitFor(() => expect(saveProfileAction).toHaveBeenCalledTimes(1))
     const errorSummary = await screen.findByLabelText("checkoutErrorSummaryLabel")
-    expect(document.activeElement).toBe(errorSummary)
+    await waitFor(() => expect(document.activeElement).toBe(errorSummary))
     const firstError = screen.getByRole("link", { name: "First name is required" })
     fireEvent.click(firstError)
     await waitFor(() => expect(document.activeElement).toBe(
@@ -207,7 +207,25 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )
   })
 
-  it("keeps existing-domain migration fail-closed and exposes its authorized source inputs only when enabled", () => {
+  it("keeps existing-domain migration fail-closed and exposes its authorized source inputs only when enabled", async () => {
+    const checkDomainAction = vi.fn().mockResolvedValue({
+      ok: true,
+      status: "preflight_complete" as const,
+      domain: "example.nl",
+      domainMode: "existing_domain" as const,
+      migrationReadiness: "unsupported" as const,
+      migrationClassification: null,
+      migrationPreflightOnly: true,
+      migrationPublicEvidence: {
+        checkedAt: "2026-07-29T12:00:00.000Z",
+        authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
+        dnssecDsPresent: true,
+        probableDnsProvider: "Example DNS",
+        registrar: "Example Registrar",
+        supplementalOnly: true as const,
+      },
+      message: "Nothing has been transferred or ordered.",
+    })
     const commonProps = {
       customerEmail: "owner@example.test",
       currentDomain: null,
@@ -233,7 +251,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       previewHref: "/ami-care",
       prewarmHref: "/ami-care/checkout/prewarm",
       suggestionsHref: "/ami-care/checkout/suggestions",
-      checkDomainAction: vi.fn(),
+      checkDomainAction,
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),
       termsHref: "https://www.siteinabox.nl/voorwaarden",
@@ -244,11 +262,32 @@ describe("PreviewCheckout Phase 3 flow", () => {
       businessUseDeclarationText: "Ik sluit deze overeenkomst uitsluitend zakelijk.",
       locale: "nl-NL",
     }
-    const disabled = render(<PreviewCheckout {...commonProps} />)
-    expect((screen.getByRole("radio", {
+    const preflightOnly = render(<PreviewCheckout {...commonProps} />)
+    const preflightMode = screen.getByRole("radio", {
       name: /checkoutDomainModeExisting/,
-    }) as HTMLInputElement).disabled).toBe(true)
-    disabled.unmount()
+    }) as HTMLInputElement
+    expect(preflightMode.disabled).toBe(false)
+    fireEvent.click(preflightMode)
+    expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
+    expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeNull()
+    expect(screen.getByText("checkoutDomainModeExistingPreflight")).toBeTruthy()
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.nl" },
+    })
+    fireEvent.submit(
+      document.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(1))
+    expect((await screen.findByRole("status")).textContent).toContain(
+      "ns1.example.test, ns2.example.test",
+    )
+    expect(
+      (screen.getByText("checkoutMigrationPreflightNoOrder") as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+    expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
+    expect(screen.queryByText("checkoutDomainAvailableDetail")).toBeNull()
+    preflightOnly.unmount()
 
     const { container } = render(
       <PreviewCheckout {...commonProps} existingDomainMigrationEnabled />,

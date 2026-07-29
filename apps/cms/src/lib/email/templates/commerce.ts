@@ -1,8 +1,11 @@
 import { renderEmailLayout } from "@/lib/email/emailLayout"
 
-export const COMMERCE_NOTIFICATION_TEMPLATE_VERSION = "commerce-2026-07-28.2"
+export const COMMERCE_NOTIFICATION_TEMPLATE_VERSION = "commerce-2026-07-29.1"
 
 export type CommerceNotificationKind =
+  | "payment_received"
+  | "domain_verification_required"
+  | "site_live_handoff"
   | "upcoming_charge_7d"
   | "payment_failed_0d"
   | "payment_overdue_3d"
@@ -45,6 +48,20 @@ const billingCopy = (
   kind: CommerceNotificationKind,
   eventAt: string,
 ): { subject: string; title: string; message: string } => {
+  if (kind === "payment_received") {
+    return {
+      subject: "Betaling ontvangen voor Site in a Box",
+      title: "Betaling ontvangen",
+      message: "Je betaling is door Mollie bevestigd. De domeinregistratie en technische controles worden nu automatisch uitgevoerd. Je kunt de voortgang in de checkout volgen.",
+    }
+  }
+  if (kind === "domain_verification_required") {
+    return {
+      subject: "Actie vereist: verifieer de domeinhouder",
+      title: "Domeinhouderverificatie vereist",
+      message: `Open de verificatie-e-mail van de registrar en rond de controle af. Zonder deze bevestiging activeren we de website niet. De actuele voortgang staat in de checkout.`,
+    }
+  }
   if (kind === "upcoming_charge_7d") {
     return {
       subject: "Je volgende Site in a Box-betaling",

@@ -2186,6 +2186,23 @@ export async function synchronizeMolliePayment(
     await synchronizeGenerationRunProjection(payload, updatedOrder, attempt, payment, now)
   }
   await synchronizeAccountingEvidence(payload, updatedOrder, attempt, payment, now)
+  if (
+    attempt.purpose === "first_payment" &&
+    ["paid", "refund_pending", "partially_refunded"].includes(attempt.state)
+  ) {
+    const tenantId = relationshipId(updatedOrder.tenant)
+    const billingAgreementId = relationshipId(attempt.billingAgreement)
+    if (tenantId && billingAgreementId) {
+      await ensureCommerceNotification({
+        payload,
+        kind: "payment_received",
+        tenantId,
+        recipient: updatedOrder.customerEmail,
+        eventAt: attempt.paidAt ?? now,
+        billingAgreementId,
+      })
+    }
+  }
   const fulfillmentRequired =
     orderProjection.fulfillmentClaimed &&
     ["paid", "refund_pending", "partially_refunded"].includes(attempt.state) &&

@@ -25,8 +25,6 @@ describe("preview domain order", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-07-28T14:59:59.999Z"))
     vi.clearAllMocks()
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "10.00")
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT", "10.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT", "25.00")
@@ -83,6 +81,45 @@ describe("preview domain order", () => {
       maxProviderPriceCurrency: "EUR",
       maxOfferPriceAmount: null,
       maxOfferPriceCurrency: null,
+    })
+  })
+
+  it("uses provider evidence without requiring a global fixed checkout amount", async () => {
+    const run = {
+      id: 124,
+      domainOrder: null,
+    }
+    const payload = {
+      update: vi.fn(async ({ data }: MockCreateArgs) => {
+        Object.assign(run, data)
+        return { ...run }
+      }),
+    }
+    vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
+      status: "available",
+      domain: "acme.nl",
+      available: true,
+      premium: false,
+      price: { amount: "6.50", currency: "EUR" },
+      internalReason: null,
+    })
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>(run),
+      "acme.nl",
+      null,
+      { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
+    )).resolves.toMatchObject({
+      messageKey: "checkoutDomainAvailable",
+      domain: "acme.nl",
+      providerPriceAmount: "6.50",
+    })
+    expect(run.domainOrder).toMatchObject({
+      fixedPriceAmount: null,
+      fixedPriceCurrency: null,
+      providerPriceAmount: "6.50",
+      providerPriceCurrency: "EUR",
     })
   })
 

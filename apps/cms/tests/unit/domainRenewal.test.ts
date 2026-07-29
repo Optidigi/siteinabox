@@ -444,6 +444,36 @@ describe("Openprovider renewal_date cycles", () => {
     })
   })
 
+  it("plans the renewal obligation frozen into a current registration order", async () => {
+    const store = createStore()
+    store.orders[0]!.quoteEvidence = {
+      tldCapability: {
+        tld: "nl",
+        capabilityVersion: "tld-nl-2026-07-29.1",
+      },
+    }
+    const fixture = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      productionOperationAllowed: false,
+      provider: { autorenew: "off" },
+    })
+
+    const result = await reconcileManagedDomainRenewal(
+      store.payload,
+      950,
+      fixture.deps,
+    )
+
+    expect(result.status).toBe("payment_committed")
+    expect(store.cycles[0]).toMatchObject({
+      providerRenewalMode: "provider_autorenew",
+      pricingEvidence: {
+        tld: "nl",
+        tldCapabilityVersion: "tld-nl-2026-07-29.1",
+      },
+    })
+  })
+
   it("keeps an accepted historical capability authoritative after a newer version is enabled", async () => {
     const store = createStore()
     store.orders[0]!.quoteEvidence = {

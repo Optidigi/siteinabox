@@ -33,6 +33,7 @@ import type {
 } from "@/lib/checkout/checkoutProfile"
 import type { CheckoutQuoteSet } from "@/lib/checkout/checkoutQuote"
 import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
+import type { CustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
 export type PreviewCheckoutDomainOption = {
@@ -46,7 +47,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "preflight_complete" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -62,6 +63,7 @@ export type PreviewCheckoutActionState = {
   domainMode?: "new_registration" | "existing_domain"
   migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
   migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationPreflightOnly?: boolean
   migrationPublicEvidence?: {
     checkedAt: string
     authoritativeNameservers: string[]
@@ -142,6 +144,7 @@ type PreviewCheckoutProps = {
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
   migrationStatus?: CustomerMigrationStatus | null
+  provisioningStatus?: CustomerProvisioningStatus | null
   acceptedOrderId?: string | number | null
   requiresMigrationRecollection?: boolean
   catalog: PreviewCheckoutCatalog
@@ -230,6 +233,7 @@ export function PreviewCheckout({
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
   migrationStatus = null,
+  provisioningStatus = null,
   acceptedOrderId = null,
   requiresMigrationRecollection = false,
   catalog,
@@ -599,6 +603,8 @@ export function PreviewCheckout({
   )
   const domainResultKind = checkPending
     ? "loading"
+    : checkState.status === "preflight_complete" && checkAppliesToCurrentInput
+      ? "info"
     : domainIsReady
       ? "success"
       : checkState.message && checkAppliesToCurrentInput
@@ -723,6 +729,59 @@ export function PreviewCheckout({
                   : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatus)
                     ? t("checkoutPaymentReturnFailed")
                     : t("checkoutPaymentReturnUnknown")}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {provisioningStatus && (
+          <Alert role="status" aria-live="polite">
+            <Globe2 className="size-4" aria-hidden />
+            <AlertTitle>
+              {t("checkoutProvisioningStatusTitle", {
+                domain: provisioningStatus.domain,
+              })}
+            </AlertTitle>
+            <AlertDescription>
+              <ol className="mt-2 grid gap-2 sm:grid-cols-2">
+                {provisioningStatus.stages.map((stage) => (
+                  <li
+                    key={stage.code}
+                    className="flex items-center gap-2 rounded-md border bg-background p-3"
+                  >
+                    {stage.status === "complete"
+                      ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
+                      : stage.status === "action_required"
+                        ? <CircleAlert className="size-4 shrink-0 text-warning" aria-hidden />
+                        : stage.status === "review"
+                          ? <CircleAlert className="size-4 shrink-0 text-destructive" aria-hidden />
+                          : <Loader2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+                    <span>
+                      <span className="block font-medium">
+                        {provisioningStageLabel(stage.code, t)}
+                      </span>
+                      <span className="block text-sm text-muted-foreground">
+                        {provisioningStageStatusLabel(stage.status, t)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              {provisioningStatus.stages.some((stage) =>
+                stage.code === "registrant_verification" &&
+                stage.status === "action_required") && (
+                <p className="mt-3 font-medium">
+                  {provisioningStatus.registrantVerificationDueAt
+                    ? t("checkoutProvisioningVerificationRequiredBy", {
+                        deadline: new Intl.DateTimeFormat(locale, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        }).format(new Date(
+                          provisioningStatus.registrantVerificationDueAt,
+                        )),
+                      })
+                    : t("checkoutProvisioningVerificationRequired")}
+                </p>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -999,19 +1058,13 @@ export function PreviewCheckout({
                   </span>
                 </label>
                 <label
-                  className={cn(
-                    "flex items-start gap-3 rounded-md border p-4",
-                    existingDomainMigrationEnabled
-                      ? "cursor-pointer"
-                      : "cursor-not-allowed opacity-70",
-                  )}
+                  className="flex cursor-pointer items-start gap-3 rounded-md border p-4"
                 >
                   <input
                     type="radio"
                     name="checkout-domain-mode"
                     value="existing_domain"
                     checked={domainMode === "existing_domain"}
-                    disabled={!existingDomainMigrationEnabled}
                     onChange={() => updateDomainMode("existing_domain")}
                     className="mt-1"
                   />
@@ -1020,7 +1073,7 @@ export function PreviewCheckout({
                     <span className="block text-sm text-muted-foreground">
                       {existingDomainMigrationEnabled
                         ? t("checkoutDomainModeExistingHelp")
-                        : t("checkoutDomainModeExistingDisabled")}
+                        : t("checkoutDomainModeExistingPreflight")}
                     </span>
                   </span>
                 </label>
@@ -1070,7 +1123,7 @@ export function PreviewCheckout({
                     ) : null}
                   </div>
                 </div>
-                {domainMode === "existing_domain" && (
+                {domainMode === "existing_domain" && existingDomainMigrationEnabled && (
                   <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
                     <div className="grid gap-2">
                       <Label htmlFor="checkout-zone-export">
@@ -1129,9 +1182,16 @@ export function PreviewCheckout({
                       {t("checkoutDomainUnavailableTitle")}
                     </p>
                   )}
-                  {domainInputState === "success" && (
+                  {domainInputState === "success" && domainMode === "new_registration" && (
                     <p id="checkout-domain-available" className="text-sm font-medium text-success">
-                      {t("checkoutDomainAvailableTitle")}
+                      {t("checkoutDomainAvailableDetail", {
+                        domain: checkState.domain ?? normalizedDomainValue,
+                      })}
+                      {checkState.extraFeeLabel
+                        ? ` ${t("checkoutDomainSurchargeDetail", {
+                            amount: checkState.extraFeeLabel,
+                          })}`
+                        : ""}
                     </p>
                   )}
                 </div>
@@ -1152,7 +1212,9 @@ export function PreviewCheckout({
                 >
                   <Info className="size-4" aria-hidden />
                   <AlertTitle>
-                    {checkState.migrationReadiness === "ready_automatic"
+                    {checkState.migrationPreflightOnly
+                      ? t("checkoutMigrationPreflightComplete")
+                      : checkState.migrationReadiness === "ready_automatic"
                       ? t("checkoutMigrationReadyAutomatic")
                       : checkState.migrationReadiness === "ready_assisted"
                         ? t("checkoutMigrationReadyAssisted")
@@ -1169,6 +1231,12 @@ export function PreviewCheckout({
                           provider:
                             checkState.migrationPublicEvidence.probableDnsProvider ??
                             "onbekend",
+                          nameservers:
+                            checkState.migrationPublicEvidence.authoritativeNameservers.join(", ") ||
+                            "onbekend",
+                          dnssec: checkState.migrationPublicEvidence.dnssecDsPresent
+                            ? t("checkoutMigrationDnssecPresent")
+                            : t("checkoutMigrationDnssecAbsent"),
                         })}
                       </span>
                     )}
@@ -1799,6 +1867,10 @@ export function PreviewCheckout({
         paymentPending={paymentPending}
         paymentBlocked={requiresMigrationRecollection}
         domainResultKind={domainResultKind}
+        preflightComplete={
+          checkState.status === "preflight_complete" &&
+          checkAppliesToCurrentInput
+        }
         paymentStatus={
           paymentState.status === "payment_pending"
             ? "pending_provider"
@@ -1837,6 +1909,34 @@ const migrationCustomerActionLabel = (
   } as const
   const key = keys[action as keyof typeof keys]
   return key ? t(key) : t("checkoutMigrationActionUnknown")
+}
+
+const provisioningStageLabel = (
+  stage: CustomerProvisioningStatus["stages"][number]["code"],
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    payment: "checkoutProvisioningStage_payment",
+    registration: "checkoutProvisioningStage_registration",
+    registrant_verification: "checkoutProvisioningStage_registrant_verification",
+    dns: "checkoutProvisioningStage_dns",
+    https: "checkoutProvisioningStage_https",
+    activation: "checkoutProvisioningStage_activation",
+  } as const
+  return t(keys[stage])
+}
+
+const provisioningStageStatusLabel = (
+  status: CustomerProvisioningStatus["stages"][number]["status"],
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    pending: "checkoutProvisioningStageStatus_pending",
+    action_required: "checkoutProvisioningStageStatus_action_required",
+    complete: "checkoutProvisioningStageStatus_complete",
+    review: "checkoutProvisioningStageStatus_review",
+  } as const
+  return t(keys[status])
 }
 
 const migrationCustomerActionStatusLabel = (
@@ -1930,6 +2030,7 @@ function CheckoutActionBar({
   paymentPending,
   paymentBlocked,
   domainResultKind,
+  preflightComplete,
   paymentStatus,
   navigationLocked,
   legalAccepted,
@@ -1949,7 +2050,8 @@ function CheckoutActionBar({
   profilePending: boolean
   paymentPending: boolean
   paymentBlocked: boolean
-  domainResultKind: "loading" | "success" | "unavailable" | "error" | null
+  domainResultKind: "loading" | "info" | "success" | "unavailable" | "error" | null
+  preflightComplete: boolean
   paymentStatus: string
   navigationLocked: boolean
   legalAccepted: boolean
@@ -1991,7 +2093,18 @@ function CheckoutActionBar({
     )
   } else if (step === "domain") {
     const unavailable = domainResultKind === "unavailable"
-    primary = (
+    primary = preflightComplete ? (
+      <Button
+        key="domain-preflight-complete"
+        type="button"
+        variant="outline"
+        className="min-w-0 flex-1 md:flex-none"
+        disabled
+      >
+        <Info className="size-4" aria-hidden />
+        {t("checkoutMigrationPreflightNoOrder")}
+      </Button>
+    ) : (
       <Button
         key="domain-check"
         form="checkout-domain-form"

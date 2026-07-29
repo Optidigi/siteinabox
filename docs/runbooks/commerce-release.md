@@ -73,6 +73,56 @@ Every TLD operation is independently fail-closed in the effective capability
 catalogue. Advancing the global stage does not enable registration, incoming
 transfer, renewal, registrant verification, or restoration for any TLD.
 
+## Paid checkout canary: expected customer and operator flow
+
+For a new-domain canary, the expected sequence is:
+
+1. Checkout shows one server-issued quote. Mollie receives exactly its gross
+   amount; returning from Mollie does not fulfill the order.
+2. The classic Mollie webhook schedules authoritative synchronization. Once
+   Mollie reports the payment paid, the customer sees a six-stage status
+   timeline in checkout and an idempotent **Betaling ontvangen** email is
+   queued.
+3. Openprovider registration starts only after that paid state. A successful
+   registration POST is followed by an authoritative domain read. The workflow
+   does not advance on the POST response alone. New registrations keep provider
+   autorenew off until the accepted renewal obligation has financial coverage;
+   the renewal planner retains that obligation even when new renewal
+   commitments are feature-gated.
+4. If Openprovider reports registrant verification, checkout shows
+   **Actie van jou vereist**, including the deadline when available, and a
+   durable verification-action email is queued. The customer follows the
+   registrar email; Siteinabox never asks for that verification secret.
+5. After verified/not-required status, the worker creates or reconciles the
+   Cloudflare zone, apex and `www` records, preserves the customer as
+   registrant, verifies authoritative DNS and edge HTTPS, and updates the site
+   settings with the canonical apex plus explicit `www` alias.
+6. Publication occurs only after those checks and entitlement activation. The
+   final tenant-admin magic link is recorded as a
+   `site_live_handoff` commerce delivery and retried by the existing delivery
+   queue on transient failure. Its admin link uses
+   `https://admin.<customer-domain>` so the existing host-based tenant gate
+   can authorize the owner. DNS, edge TLS, and the CMS route for that exact
+   hostname must be active before the paid canary; a tenant owner is
+   intentionally rejected on the central super-admin host.
+
+Customer-visible status never contains provider IDs, raw provider payloads,
+failure details, transfer codes, or full DNS evidence. Operators inspect:
+
+- `/admin/collections/orders` for accepted/payment/fulfillment state;
+- `/admin/collections/payment-attempts` for Mollie synchronization;
+- `/admin/collections/managed-domains` for registrar, verification, DNS,
+  HTTPS, and entitlement state;
+- `/admin/collections/commerce-notification-deliveries` for queued, sent, or
+  retrying customer mail;
+- operational alerts for manual-review or reconciliation exceptions.
+
+Before the live canary, confirm the production SMTP token and sender work with
+a non-customer transactional mail, the delivery worker is running, the
+provider balance/readiness check passes, and the chosen domain is deliberately
+approved for purchase. Do not use an availability check alone as authorization
+to register a real domain.
+
 ## Rollback
 
 Move the release stage to `shadow` to stop new provider writes while retaining

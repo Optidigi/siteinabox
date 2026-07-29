@@ -251,7 +251,10 @@ describe("CMS live handoff email", () => {
   it("keeps activation non-blocking after requesting the live handoff magic-login email", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
 
-    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 })).resolves.toMatchObject({
+    await expect(activatePublishedSnapshot(payload, {
+      snapshotId: 10,
+      manualActivation: true,
+    })).resolves.toMatchObject({
       id: 10,
       status: "active",
     })

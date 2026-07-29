@@ -54,6 +54,21 @@ try {
     "Checkout overflows a 390px viewport.",
   )
 
+  const domainInput = page.getByLabel("Domain name")
+  await domainInput.fill("service-error.nl")
+  await page.getByRole("button", { name: "Check domain" }).click()
+  await page.getByRole("alert").filter({
+    hasText: "The live domain check is temporarily unavailable.",
+  }).waitFor()
+  assert.equal(
+    await page.getByRole("button", { name: "Check again" }).isVisible(),
+    true,
+  )
+
+  await domainInput.fill("analytical-engines.nl")
+  await page.getByRole("button", { name: /Check domain|Check again/ }).click()
+  await page.getByText("analytical-engines.nl is available.").waitFor()
+
   const continueButton = page.getByRole("button", { name: "Continue" })
   await continueButton.focus()
   await page.keyboard.press("Enter")
