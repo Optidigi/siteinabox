@@ -435,7 +435,7 @@ describe("published snapshot theme serving", () => {
     expect(result?.snapshot.theme).toEqual(amicarePublishedSiteSnapshot.theme)
   })
 
-  it("resolves www only from the canonical tenant domain and ignores hostile settings aliases", async () => {
+  it("does not infer www or accept an alias owned by another tenant", async () => {
     const victim = {
       id: 2,
       slug: amicarePublishedSiteSnapshot.tenantSlug,
@@ -448,8 +448,9 @@ describe("published snapshot theme serving", () => {
       ...amicarePublishedSiteSnapshot,
       domain: victim.domain,
     }
-    const find = vi.fn(async ({ collection }: MockFindArgs) => ({
-      docs: collection === "tenants"
+    const find = vi.fn(async ({ collection, where }: MockFindArgs) => ({
+      docs: collection === "tenants" &&
+        JSON.stringify(where).includes('"victim.nl"')
         ? [victim]
         : collection === "managed-domains"
           ? [{
@@ -474,6 +475,16 @@ describe("published snapshot theme serving", () => {
     const payload = {
       find,
       findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (collection === "tenants" && String(id) === "1") {
+          return {
+            id: 1,
+            slug: "attacker",
+            domain: "attacker.nl",
+            status: "active",
+            activeSnapshot: 11,
+            siteManifest: null,
+          }
+        }
         if (collection === "published-site-snapshots" && String(id) === "22") {
           return { id: 22, status: "active", snapshot }
         }
@@ -486,9 +497,364 @@ describe("published snapshot theme serving", () => {
       "www.victim.nl",
     )
 
-    expect(result?.tenant.id).toBe(victim.id)
-    expect(find).not.toHaveBeenCalledWith(expect.objectContaining({
+    expect(result).toBeNull()
+    expect(find).toHaveBeenCalledWith(expect.objectContaining({
       collection: "site-settings",
     }))
+  })
+
+  it("resolves an explicitly modeled www alias for the same tenant", async () => {
+    const tenant = {
+      id: 3,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: "explicit.nl",
+      status: "active",
+      activeSnapshot: 33,
+      siteManifest: null,
+    }
+    const snapshot = {
+      ...amicarePublishedSiteSnapshot,
+      domain: tenant.domain,
+      settings: {
+        ...amicarePublishedSiteSnapshot.settings,
+        aliases: [{ host: "www.explicit.nl" }],
+      },
+    }
+    const settings = {
+      id: 100,
+      tenant: tenant.id,
+      aliases: [{ host: "www.explicit.nl" }],
+    }
+    const managedDomain = {
+      id: 34,
+      tenant: tenant.id,
+      domainNameAscii: tenant.domain,
+      state: "active",
+      authoritativeDnsStatus: "verified",
+      httpsStatus: "verified",
+      edgeRoutingStatus: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? []
+          : collection === "site-settings"
+            ? [settings]
+            : collection === "managed-domains" && where
+              ? [managedDomain]
+              : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (collection === "tenants" && String(id) === String(tenant.id)) {
+          return tenant
+        }
+        if (
+          collection === "published-site-snapshots" &&
+          String(id) === String(tenant.activeSnapshot)
+        ) {
+          return { id: tenant.activeSnapshot, status: "active", snapshot }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    const result = await resolvePublishedSnapshotByHost(
+      asPayload(payload),
+      "www.explicit.nl",
+    )
+
+    expect(result?.tenant.id).toBe(tenant.id)
+    expect(result?.routing.activeHosts).toEqual([
+      "explicit.nl",
+      "www.explicit.nl",
+    ])
+  })
+
+  it("keeps an audited verified pre-commerce tenant active until managed-domain adoption", async () => {
+    const tenant = {
+      id: 4,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 44,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+    }
+    const settings = {
+      id: 101,
+      tenant: tenant.id,
+      aliases: [{ host: `www.${tenant.domain}` }],
+    }
+    const payload = {
+      find: vi.fn(async ({ collection }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? [tenant]
+          : collection === "site-settings"
+            ? [settings]
+            : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (
+          collection === "published-site-snapshots" &&
+          String(id) === String(tenant.activeSnapshot)
+        ) {
+          return {
+            id: tenant.activeSnapshot,
+            status: "active",
+            snapshot: amicarePublishedSiteSnapshot,
+          }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain),
+    ).resolves.toMatchObject({
+      tenant: { id: tenant.id },
+      routing: {
+        activeHosts: [tenant.domain, `www.${tenant.domain}`],
+      },
+    })
+  })
+
+  it("blocks an unverified pre-commerce tenant without managed-domain evidence", async () => {
+    const tenant = {
+      id: 5,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 55,
+      siteManifest: null,
+      domainVerification: { status: "pending" },
+    }
+    const payload = {
+      find: vi.fn(async ({ collection }: MockFindArgs) => ({
+        docs: collection === "tenants" ? [tenant] : [],
+      })),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain),
+    ).resolves.toBeNull()
+  })
+
+  it("does not treat a newly verified tenant as a legacy commerce bypass", async () => {
+    const tenant = {
+      id: 6,
+      slug: "new-tenant",
+      domain: "new-tenant.nl",
+      status: "active",
+      activeSnapshot: 66,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+    }
+    const payload = {
+      find: vi.fn(async ({ collection }: MockFindArgs) => ({
+        docs: collection === "tenants" ? [tenant] : [],
+      })),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain),
+    ).resolves.toBeNull()
+  })
+
+  it("requires separate active lifecycle evidence for a non-www alias", async () => {
+    const tenant = {
+      id: 7,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 77,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+    }
+    const alias = "shop.ami-care.nl"
+    const settings = {
+      id: 102,
+      tenant: tenant.id,
+      aliases: [{ host: alias }],
+    }
+    const canonicalDomain = {
+      id: 78,
+      tenant: tenant.id,
+      domainNameAscii: tenant.domain,
+      state: "active",
+      authoritativeDnsStatus: "verified",
+      httpsStatus: "verified",
+      edgeRoutingStatus: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? []
+          : collection === "site-settings"
+            ? [settings]
+            : collection === "managed-domains" &&
+                JSON.stringify(where).includes(`"${tenant.domain}"`)
+              ? [canonicalDomain]
+            : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (collection === "tenants" && String(id) === String(tenant.id)) {
+          return tenant
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), alias),
+    ).resolves.toBeNull()
+  })
+
+  it("accepts a non-www alias only with its own active managed-domain lifecycle", async () => {
+    const tenant = {
+      id: 8,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 88,
+      siteManifest: null,
+    }
+    const alias = "shop.ami-care.nl"
+    const snapshot = {
+      ...amicarePublishedSiteSnapshot,
+      settings: {
+        ...amicarePublishedSiteSnapshot.settings,
+        aliases: [{ host: alias }],
+      },
+    }
+    const settings = {
+      id: 103,
+      tenant: tenant.id,
+      aliases: [{ host: alias }],
+    }
+    const aliasDomain = {
+      id: 89,
+      tenant: tenant.id,
+      domainNameAscii: alias,
+      state: "active",
+      authoritativeDnsStatus: "verified",
+      httpsStatus: "verified",
+      edgeRoutingStatus: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    }
+    const canonicalDomain = {
+      ...aliasDomain,
+      id: 90,
+      domainNameAscii: tenant.domain,
+    }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? []
+          : collection === "site-settings"
+            ? [settings]
+            : collection === "managed-domains"
+              ? JSON.stringify(where).includes(`"${tenant.domain}"`)
+                ? [canonicalDomain]
+                : JSON.stringify(where).includes(`"${alias}"`)
+                  ? [aliasDomain]
+                  : []
+              : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (collection === "tenants" && String(id) === String(tenant.id)) {
+          return tenant
+        }
+        if (
+          collection === "published-site-snapshots" &&
+          String(id) === String(tenant.activeSnapshot)
+        ) {
+          return { id: tenant.activeSnapshot, status: "active", snapshot }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), alias),
+    ).resolves.toMatchObject({ tenant: { id: tenant.id } })
+  })
+
+  it("does not let an active alias override an inactive canonical domain", async () => {
+    const tenant = {
+      id: 10,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 110,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+    }
+    const alias = "shop.ami-care.nl"
+    const settings = {
+      id: 105,
+      tenant: tenant.id,
+      aliases: [{ host: alias }],
+    }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? []
+          : collection === "site-settings"
+            ? [settings]
+            : collection === "managed-domains" &&
+                !JSON.stringify(where).includes('"state"')
+              ? [{
+                  id: 111,
+                  tenant: tenant.id,
+                  domainNameAscii: tenant.domain,
+                  state: "suspended",
+                }]
+              : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (collection === "tenants" && String(id) === String(tenant.id)) {
+          return tenant
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), alias),
+    ).resolves.toBeNull()
+  })
+
+  it("lets any canonical managed-domain row suppress the legacy fallback", async () => {
+    const tenant = {
+      id: 9,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 99,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+    }
+    const settings = { id: 104, tenant: tenant.id, aliases: [] }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? [tenant]
+          : collection === "site-settings"
+            ? [settings]
+            : collection === "managed-domains" &&
+                !JSON.stringify(where).includes('"state"')
+              ? [{ id: 100, tenant: 999, domainNameAscii: tenant.domain }]
+              : [],
+      })),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain),
+    ).resolves.toBeNull()
   })
 })

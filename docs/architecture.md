@@ -47,13 +47,18 @@ Ami Care uses the same validated provider-block, chrome, theme, media, preview,
 and published-snapshot path as every generated tenant. Tenant identity affects
 content and routing only; it never selects a source-code renderer.
 
-Public renderer routing is TLD-neutral but not open-ended. Except for reviewed
-legacy deploy targets awaiting a managed-domain backfill, a canonical domain is
-eligible only when its managed-domain record has active entitlement plus
-verified authoritative DNS and HTTPS. The CMS snapshot endpoint returns that
-eligible canonical domain and its explicit active alias allowlist; the renderer
-validates the routing envelope before serving tenant content. Apex and `www`
-are independent entries—`www` is not inferred.
+Public renderer routing is TLD-neutral but not open-ended. A canonical domain
+is eligible only when its managed-domain record has active entitlement plus
+verified authoritative DNS, HTTPS, and edge state. A host in the audited,
+temporary legacy-adoption list with no managed-domain row remains eligible
+only while its CMS domain verification is `verified`; the presence of any
+managed-domain row for that canonical hostname permanently switches it to the
+stricter lifecycle authority. Its explicitly configured `www` mapping shares
+the canonical apex evidence. Every other alias requires its own active
+managed-domain lifecycle. The CMS snapshot endpoint returns that eligible
+canonical domain and its explicit active alias allowlist; the renderer validates
+the routing envelope before serving tenant content. Apex and `www` are
+independent entries—`www` is not inferred.
 Production origin requests arrive only through the outbound-only Cloudflare
 Tunnel. The renderer has no published host port and is not attached to the
 public Traefik network. `SIAB_RENDERER_ORIGIN_TRUST_MODE=cloudflare_tunnel`

@@ -3,7 +3,10 @@ import type { CollectionBeforeValidateHook, CollectionConfig, Option, PayloadReq
 import { ValidationError } from "payload"
 import { SITE_CHROME_CATALOG, validateSiteChromeCapabilities } from "@siteinabox/contracts/block-catalog"
 import type { SiteSettings as SiteSettingsContract } from "@siteinabox/contracts/site"
-import { SHADCNUI_SYSTEM_TEMPLATES } from "@siteinabox/contracts"
+import {
+  normalizePublicDomainHost,
+  SHADCNUI_SYSTEM_TEMPLATES,
+} from "@siteinabox/contracts"
 import type { SiteSetting } from "@/payload-types"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
@@ -169,6 +172,56 @@ export const enforceChromeCapabilities: CollectionBeforeValidateHook = ({ collec
   if (maintenance?.enabled && !nonEmpty(maintenance.message)) errors.push({ path: "maintenance.message", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires a message.", "Ingeschakelde onderhoudsmodus vereist een bericht.") })
   if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors })
   return data
+}
+
+export const normalizeSiteSettingsAliases: CollectionBeforeValidateHook = ({
+  collection,
+  data,
+  req,
+}) => {
+  if (!Array.isArray(data?.aliases)) return data
+
+  const seen = new Set<string>()
+  const errors: Array<{ path: string; message: string }> = []
+  const aliases = data.aliases.map((value, index) => {
+    const entry = value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {}
+    const host = normalizePublicDomainHost(
+      typeof entry.host === "string" ? entry.host : null,
+    )
+    if (!host) {
+      errors.push({
+        path: `aliases.${index}.host`,
+        message: adminValidationText(
+          req.i18n?.language,
+          "Use a valid public hostname.",
+          "Gebruik een geldige publieke hostnaam.",
+        ),
+      })
+      return entry
+    }
+    if (seen.has(host)) {
+      errors.push({
+        path: `aliases.${index}.host`,
+        message: adminValidationText(
+          req.i18n?.language,
+          "Each alias hostname may occur only once.",
+          "Elke aliashostnaam mag maar één keer voorkomen.",
+        ),
+      })
+    }
+    seen.add(host)
+    return { ...entry, host }
+  })
+
+  if (errors.length > 0) {
+    throw new ValidationError({
+      collection: collection?.slug ?? "site-settings",
+      errors,
+    })
+  }
+  return { ...data, aliases }
 }
 
 const linkRefFields = () => [
@@ -455,7 +508,12 @@ export const SiteSettings: CollectionConfig = {
       admin: { description: adminText("Footer navigation. Entries render in order; drag to reorder.", "Voettekstnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } }
   ],
   hooks: {
-    beforeValidate: [validateTenantExists, enforceTenantExclusiveChromeVariants, enforceChromeCapabilities],
+    beforeValidate: [
+      validateTenantExists,
+      normalizeSiteSettingsAliases,
+      enforceTenantExclusiveChromeVariants,
+      enforceChromeCapabilities,
+    ],
     afterChange: [projectSettingsToDisk]
   }
 }
