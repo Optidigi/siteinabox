@@ -55,6 +55,7 @@ import {
   normalizeDomainOrderState,
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
+import { normalizeDomain } from "@/lib/domains/normalize"
 import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/lib/legal/checkoutEvidence"
 import { satisfyRequirementsFromTransaction } from "@/lib/legal/customerRequirements"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
@@ -83,7 +84,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "preflight_complete" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -100,6 +101,7 @@ export type PreviewCheckoutActionState = {
   migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
   migrationClassification?: "automatic" | "assisted_standard" | null
   migrationPublicEvidence?: ExistingDomainPublicEvidence | null
+  migrationPreflightOnly?: boolean
 }
 
 export type PreviewCheckoutProfileActionState = {
@@ -235,18 +237,51 @@ async function checkExistingDomainMigration(
   formData: FormData,
   requestToken: string | undefined,
 ): Promise<PreviewCheckoutActionState> {
-  if (
-    !existingDomainMigrationCheckoutEnabled() ||
-    !commerceProviderReadsAllowed()
-  ) {
+  const normalized = normalizeDomain(domain)
+  if (!normalized.ok) {
     return {
       ok: false,
-      status: "service_error",
+      status: "invalid",
       domain,
       domainMode: "existing_domain",
       migrationReadiness: "unsupported",
-      message: "Bestaande-domeinmigratie is nog niet vrijgegeven voor productie.",
+      message: "Vul een geldige bestaande domeinnaam in.",
       requestToken,
+    }
+  }
+
+  const migrationCheckoutEnabled =
+    existingDomainMigrationCheckoutEnabled() && commerceProviderReadsAllowed()
+  if (!migrationCheckoutEnabled) {
+    try {
+      const publicEvidence = await inspectExistingDomainPublicEvidence(
+        normalized.domain,
+      )
+      return {
+        ok: true,
+        status: "preflight_complete",
+        domain: normalized.domain,
+        domainMode: "existing_domain",
+        migrationReadiness: "unsupported",
+        migrationClassification: null,
+        migrationPublicEvidence: publicEvidence,
+        migrationPreflightOnly: true,
+        message:
+          "De openbare voorcontrole is afgerond. Er is nog niets verhuisd of besteld. We vragen pas om autorisatie en volledige DNS-brongegevens zodra deze route veilig kan worden uitgevoerd.",
+        requestToken,
+      }
+    } catch {
+      return {
+        ok: false,
+        status: "service_error",
+        domain: normalized.domain,
+        domainMode: "existing_domain",
+        migrationReadiness: "unsupported",
+        migrationPreflightOnly: true,
+        message:
+          "De openbare voorcontrole kon nu niet worden afgerond. Er is niets verhuisd of besteld.",
+        requestToken,
+      }
     }
   }
   try {
@@ -336,7 +371,7 @@ async function checkExistingDomainMigration(
     return {
       ok: false,
       status: "service_error",
-      domain,
+      domain: normalized.domain,
       domainMode: "existing_domain",
       migrationReadiness: "unsupported",
       message: "De bestaande-domeincontrole kon veilig niet worden afgerond.",
@@ -358,10 +393,19 @@ export async function checkPreviewCheckoutDomainAction(
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   const requestToken = String(formData.get("requestToken") ?? "").trim() || undefined
-  if (!domain) return { ok: false, message: t("checkoutDomainRequired"), requestToken }
   const domainMode = formData.get("domainMode") === "existing_domain"
     ? "existing_domain"
     : "new_registration"
+  if (!domain) {
+    return {
+      ok: false,
+      status: "invalid",
+      domain,
+      domainMode,
+      message: t("checkoutDomainRequired"),
+      requestToken,
+    }
+  }
   if (domainMode === "existing_domain") {
     return checkExistingDomainMigration(context, domain, formData, requestToken)
   }
@@ -444,6 +488,8 @@ export async function checkPreviewCheckoutDomainAction(
       ok: false,
       status: domainErrorStatus(error),
       message: safeCheckoutErrorMessage(error, t, domain),
+      domain,
+      domainMode,
       requestToken,
     }
   }

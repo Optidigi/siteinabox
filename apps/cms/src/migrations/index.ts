@@ -83,6 +83,8 @@ import * as migration_20260728_112901_renewal_dossier_evidence from './20260728_
 import * as migration_20260728_113932_provider_write_failure_state from './20260728_113932_provider_write_failure_state';
 import * as migration_20260728_130835_commerce_existing_domain_safety from './20260728_130835_commerce_existing_domain_safety';
 import * as migration_20260728_162517_migration_checkout_secret_nullable_run from './20260728_162517_migration_checkout_secret_nullable_run';
+import * as migration_20260729_134424_checkout_lifecycle_notifications from './20260729_134424_checkout_lifecycle_notifications';
+import * as migration_20260729_135247_durable_live_handoff_delivery from './20260729_135247_durable_live_handoff_delivery';
 
 export const migrations = [
   {
@@ -508,6 +510,16 @@ export const migrations = [
   {
     up: migration_20260728_162517_migration_checkout_secret_nullable_run.up,
     down: migration_20260728_162517_migration_checkout_secret_nullable_run.down,
-    name: '20260728_162517_migration_checkout_secret_nullable_run'
+    name: '20260728_162517_migration_checkout_secret_nullable_run',
+  },
+  {
+    up: migration_20260729_134424_checkout_lifecycle_notifications.up,
+    down: migration_20260729_134424_checkout_lifecycle_notifications.down,
+    name: '20260729_134424_checkout_lifecycle_notifications',
+  },
+  {
+    up: migration_20260729_135247_durable_live_handoff_delivery.up,
+    down: migration_20260729_135247_durable_live_handoff_delivery.down,
+    name: '20260729_135247_durable_live_handoff_delivery'
   },
 ];

@@ -12,7 +12,6 @@ import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
   tldCapabilityAt,
-  tldCapabilityOperationFlagEnabled,
   type TldCapability,
   type TldProductionOperation,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -276,13 +275,7 @@ async function renewalCapabilityForManagedDomain(
     if (
       acceptedCapability &&
       acceptedCapability.tld === domain.tld &&
-      tldEvidence.tld === domain.tld &&
-      tldCapabilityOperationFlagEnabled(
-        acceptedCapability,
-        acceptedCapability.renewal.executionMode === "provider_autorenew"
-          ? "renewal_provider_autorenew"
-          : "renewal_explicit",
-      )
+      tldEvidence.tld === domain.tld
     ) {
       return {
         capability: acceptedCapability,

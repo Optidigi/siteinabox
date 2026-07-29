@@ -6,7 +6,6 @@ import {
   domainExtraFeeForProviderPrice,
   maxDomainProviderPriceFromEnv,
   providerPriceWithinCap,
-  fixedDomainOrderPriceFromEnv,
   normalizeDomainOrderState,
 } from "@/lib/domains/orderState"
 
@@ -56,13 +55,6 @@ describe("domain order state", () => {
       fixedPriceAmount: null,
       providerPriceAmount: null,
     })
-  })
-
-  it("requires a configured fixed customer price", () => {
-    expect(() => fixedDomainOrderPriceFromEnv({} as unknown as NodeJS.ProcessEnv)).toThrow("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT")
-    expect(fixedDomainOrderPriceFromEnv({
-      OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT: "19.00",
-    } as unknown as NodeJS.ProcessEnv)).toEqual({ amount: "19.00", currency: "EUR" })
   })
 
   it("defaults to a low provider cost cap and rejects domains above it", () => {

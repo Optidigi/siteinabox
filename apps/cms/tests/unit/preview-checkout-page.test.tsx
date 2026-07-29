@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   loadPreviewGrantContext: vi.fn(),
   loadLatestCheckoutProfile: vi.fn(),
   loadCustomerMigrationStatus: vi.fn(),
+  loadCustomerProvisioningStatus: vi.fn(),
   loadAcceptedCheckoutResume: vi.fn(),
   checkDomainAction: vi.fn(),
   saveProfileAction: vi.fn(),
@@ -80,6 +81,10 @@ vi.mock("@/lib/domains/migrationStatus", () => ({
   loadCustomerMigrationStatus: mocks.loadCustomerMigrationStatus,
 }))
 
+vi.mock("@/lib/domains/provisioningStatus", () => ({
+  loadCustomerProvisioningStatus: mocks.loadCustomerProvisioningStatus,
+}))
+
 vi.mock("@/lib/checkout/acceptedCheckoutResume", () => ({
   loadAcceptedCheckoutResume: mocks.loadAcceptedCheckoutResume,
 }))
@@ -116,6 +121,7 @@ async function renderCheckoutProps(
   mocks.loadPreviewGrantContext.mockResolvedValue(baseContext(overrides))
   mocks.loadLatestCheckoutProfile.mockResolvedValue(profile)
   mocks.loadCustomerMigrationStatus.mockResolvedValue(null)
+  mocks.loadCustomerProvisioningStatus.mockResolvedValue(null)
   mocks.loadAcceptedCheckoutResume.mockResolvedValue(acceptedResume)
 
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")

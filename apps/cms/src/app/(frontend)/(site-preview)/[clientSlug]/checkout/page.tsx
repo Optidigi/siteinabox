@@ -39,6 +39,7 @@ import {
 } from "./actions"
 import { existingDomainMigrationCheckoutEnabled } from "@/lib/domains/migrationCheckout"
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
+import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("preview")
@@ -109,10 +110,16 @@ export default async function PreviewCheckoutPage({
     const selectedDomain = acceptedResume?.domain ??
       (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
     const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
-    const migrationStatus = await loadCustomerMigrationStatus(context.payload, {
-      generationRunId: context.run.id,
-      customerEmail: context.customerEmail,
-    })
+    const [migrationStatus, provisioningStatus] = await Promise.all([
+      loadCustomerMigrationStatus(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerProvisioningStatus(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+    ])
     const initialDetails = initialProfile ?? deriveCheckoutDetails({
       run: context.run,
       registrant,
@@ -143,6 +150,7 @@ export default async function PreviewCheckoutPage({
         paymentReturn={paymentReturn}
         existingDomainMigrationEnabled={existingDomainMigrationCheckoutEnabled()}
         migrationStatus={migrationStatus}
+        provisioningStatus={provisioningStatus}
         acceptedOrderId={acceptedResume?.orderId ?? null}
         requiresMigrationRecollection={
           acceptedResume?.requiresMigrationRecollection ?? false

@@ -1374,6 +1374,9 @@ export const CommerceNotificationDeliveries: CollectionConfig = {
       type: "select",
       required: true,
       options: selectOptions([
+        "payment_received",
+        "domain_verification_required",
+        "site_live_handoff",
         "upcoming_charge_7d",
         "payment_failed_0d",
         "payment_overdue_3d",

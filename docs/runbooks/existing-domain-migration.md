@@ -6,10 +6,16 @@ must not delete, appropriate, or prematurely expire the customer domain.
 
 ## Release boundary
 
-`COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=1` exposes the customer journey
-only when the commerce release gate also permits provider reads. Keep the flag
-unset in production until every gate below has current environment-specific
-evidence:
+The checkout always lets a customer select **Ik heb al een domein** and run a
+read-only public preflight. That preflight normalizes the domain and reports
+authoritative nameservers, DNSSEC presence, probable DNS provider, and
+available registrar evidence. It never requests a transfer code, treats public
+DNS as complete-source evidence, issues a payable quote, or starts a transfer.
+
+`COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=1` exposes the subsequent
+authorized source-upload and payable migration journey only when the commerce
+release gate also permits provider reads. Keep the flag unset in production
+until every gate below has current environment-specific evidence:
 
 1. incoming transfer is enabled in the effective TLD capability;
 2. Openprovider returns deterministic transfer pricing for that TLD;
@@ -23,7 +29,7 @@ evidence:
    environment;
 7. provider-write and edge/origin release gates are separately approved.
 
-The currently implemented checkout path accepts a fresh, structurally valid
+The gated checkout path currently accepts a fresh, structurally valid
 `siab-complete-zone-v1` JSON upload only for **assisted** migration. A
 customer-supplied `complete: true` assertion is not proof of completeness, so
 an operator must verify the source before any migration provider write.
@@ -33,6 +39,14 @@ complete-source provenance. Public DNS/RDAP discovery is supplemental evidence
 and never a complete source. Signed DNSSEC, a parent DS, stale or changed
 nameservers, unsupported record behavior, an unsupported TLD, and
 nondeterministic provider pricing stop before payment.
+
+The next automation increment should be an authenticated Cloudflare source
+connector with a customer-scoped, DNS-read-only token and explicit zone
+selection. Snapshot the complete paginated record set and DNSSEC metadata,
+validate it semantically, then discard the source credential. Cloudflare
+Secondary DNS/AXFR is not a generic fallback because its availability depends
+on the customer's plan and source-provider transfer support. Customer uploads
+remain assisted until their completeness provenance can be verified.
 
 Primary contracts:
 

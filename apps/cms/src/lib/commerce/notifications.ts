@@ -42,6 +42,7 @@ export async function ensureCommerceNotification(input: {
   tenantId: string | number
   recipient: string
   eventAt: string
+  businessEventKey?: string
   billingAgreementId?: string | number | null
   renewalCycleId?: string | number | null
 }): Promise<CommerceNotificationDelivery> {
@@ -51,13 +52,29 @@ export async function ensureCommerceNotification(input: {
   const notificationKey = [
     subject,
     input.kind,
-    input.eventAt,
+    input.businessEventKey ?? input.eventAt,
     COMMERCE_NOTIFICATION_TEMPLATE_VERSION,
   ].join(":")
   const existing = await findOneDoc(input.payload, "commerce-notification-deliveries", {
     notificationKey: { equals: notificationKey },
   })
-  if (existing) return existing
+  if (existing) {
+    if (
+      input.businessEventKey &&
+      existing.eventAt !== input.eventAt &&
+      !["sent", "cancelled"].includes(existing.status)
+    ) {
+      return await input.payload.update({
+        collection: "commerce-notification-deliveries",
+        id: existing.id,
+        data: { eventAt: input.eventAt },
+        depth: 0,
+        overrideAccess: true,
+        context: { commerceNotificationLifecycleMutation: true },
+      }) as CommerceNotificationDelivery
+    }
+    return existing
+  }
   try {
     return await input.payload.create({
       collection: "commerce-notification-deliveries",
@@ -172,6 +189,35 @@ export async function deliverCommerceNotification(input: {
   }) as Tenant
   let domainName: string | null = null
   let renewalCycle: DomainRenewalCycle | null = null
+  const agreementId = relationshipId(claimed.billingAgreement)
+  if (
+    agreementId &&
+    [
+      "payment_received",
+      "domain_verification_required",
+      "site_live_handoff",
+    ].includes(claimed.kind)
+  ) {
+    const agreement = await input.payload.findByID({
+      collection: "billing-agreements",
+      id: agreementId,
+      depth: 0,
+      overrideAccess: true,
+    }) as BillingAgreement
+    const orderId = relationshipId(agreement.originatingOrder)
+    if (orderId) {
+      const managedDomains = await input.payload.find({
+        collection: "managed-domains",
+        where: { originatingOrder: { equals: orderId } },
+        limit: 2,
+        depth: 0,
+        overrideAccess: true,
+      })
+      if (managedDomains.docs.length === 1) {
+        domainName = (managedDomains.docs[0] as ManagedDomain).domainNameAscii
+      }
+    }
+  }
   const cycleId = relationshipId(claimed.renewalCycle)
   if (cycleId) {
     renewalCycle = await input.payload.findByID({
@@ -213,29 +259,59 @@ export async function deliverCommerceNotification(input: {
       domainName = managedDomain.domainNameAscii
     }
   }
-  const template = commerceNotificationTemplate({
-    kind: claimed.kind as CommerceNotificationKind,
-    eventAt: claimed.eventAt,
-    tenantName: tenant.name,
-    domainName,
-    currency: renewalCycle?.currency,
-    providerOperationPriceNetMinor: renewalCycle?.providerOperationPriceNetMinor,
-    includedAllowanceNetMinor: renewalCycle?.includedAllowanceNetMinor,
-    surchargeNetMinor: renewalCycle?.surchargeNetMinor,
-    vatAmountMinor: renewalCycle?.vatAmountMinor,
-    grossAmountMinor: renewalCycle?.grossAmountMinor,
-    financialCoverageState: renewalCycle?.financialCoverageState,
-    providerRenewalMode: renewalCycle?.providerRenewalMode,
-    providerAutorenew: renewalCycle?.providerAutorenew,
-    registrarSafeCutoffAt: renewalCycle?.registrarSafeCutoffAt,
-    paymentChargeAt: renewalCycle?.paymentChargeAt,
-    providerBalanceAvailableMinor: renewalCycle?.providerBalanceAvailableMinor,
-    providerBalanceReservedMinor: renewalCycle?.providerBalanceReservedMinor,
-    providerBalanceCurrency: renewalCycle?.providerBalanceCurrency,
-    providerBalanceCheckedAt: renewalCycle?.providerBalanceCheckedAt,
-    adminExceptionCode: renewalCycle?.adminExceptionCode,
-  })
   try {
+    if (claimed.kind === "site_live_handoff") {
+      if (!agreementId) {
+        throw new Error("Live handoff delivery is missing its billing agreement.")
+      }
+      const { retryLiveHandoffForBillingAgreement } = await import(
+        "@/lib/publish/liveHandoffEmail"
+      )
+      const result = await retryLiveHandoffForBillingAgreement(
+        input.payload,
+        agreementId,
+      )
+      if (result !== "sent") {
+        throw new Error("Live handoff delivery could not be completed.")
+      }
+      await input.payload.update({
+        collection: "commerce-notification-deliveries",
+        id: claimed.id,
+        data: {
+          status: "sent",
+          sentAt: now.toISOString(),
+          leaseUntil: null,
+          nextAttemptAt: null,
+          lastError: null,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { commerceNotificationLifecycleMutation: true },
+      })
+      return "sent"
+    }
+    const template = commerceNotificationTemplate({
+      kind: claimed.kind as CommerceNotificationKind,
+      eventAt: claimed.eventAt,
+      tenantName: tenant.name,
+      domainName,
+      currency: renewalCycle?.currency,
+      providerOperationPriceNetMinor: renewalCycle?.providerOperationPriceNetMinor,
+      includedAllowanceNetMinor: renewalCycle?.includedAllowanceNetMinor,
+      surchargeNetMinor: renewalCycle?.surchargeNetMinor,
+      vatAmountMinor: renewalCycle?.vatAmountMinor,
+      grossAmountMinor: renewalCycle?.grossAmountMinor,
+      financialCoverageState: renewalCycle?.financialCoverageState,
+      providerRenewalMode: renewalCycle?.providerRenewalMode,
+      providerAutorenew: renewalCycle?.providerAutorenew,
+      registrarSafeCutoffAt: renewalCycle?.registrarSafeCutoffAt,
+      paymentChargeAt: renewalCycle?.paymentChargeAt,
+      providerBalanceAvailableMinor: renewalCycle?.providerBalanceAvailableMinor,
+      providerBalanceReservedMinor: renewalCycle?.providerBalanceReservedMinor,
+      providerBalanceCurrency: renewalCycle?.providerBalanceCurrency,
+      providerBalanceCheckedAt: renewalCycle?.providerBalanceCheckedAt,
+      adminExceptionCode: renewalCycle?.adminExceptionCode,
+    })
     await sendEmail({
       to: claimed.recipient,
       subject: template.subject,
@@ -262,7 +338,9 @@ export async function deliverCommerceNotification(input: {
     })
     return "sent"
   } catch (error) {
-    const retryable = error instanceof MailSendError && error.normalized.retryState === "retryable"
+    const retryable = claimed.kind === "site_live_handoff" ||
+      error instanceof MailSendError &&
+        error.normalized.retryState === "retryable"
     await input.payload.update({
       collection: "commerce-notification-deliveries",
       id: claimed.id,

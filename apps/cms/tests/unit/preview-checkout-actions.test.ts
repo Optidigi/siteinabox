@@ -262,8 +262,6 @@ describe("preview checkout domain suggestion action", () => {
       customerEmail: "customer@example.com",
       clientSlug: "ami-care",
     })
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "10.00")
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT", "10.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("PAYLOAD_SECRET", "checkout-test-secret")
@@ -795,6 +793,65 @@ describe("preview checkout domain suggestion action", () => {
       },
     )
     expect(context.payload.update).not.toHaveBeenCalled()
+  })
+
+  it("returns domain identity with a safe visible error", async () => {
+    mocks.checkAndRecordPreviewDomainOrder.mockRejectedValueOnce(
+      new Error("provider detail must not be exposed"),
+    )
+    const { checkPreviewCheckoutDomainAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("domainMode", "new_registration")
+    formData.set("requestToken", "domain-check-1")
+
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "service_error",
+      domain: "ami-care.nl",
+      domainMode: "new_registration",
+      requestToken: "domain-check-1",
+      message: "checkoutDomainServiceUnavailable",
+    })
+  })
+
+  it("offers a read-only existing-domain preflight while paid migration stays disabled", async () => {
+    vi.stubEnv("COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED", "0")
+    const { checkPreviewCheckoutDomainAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("domainMode", "existing_domain")
+    formData.set("requestToken", "existing-preflight-1")
+
+    const result = await checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )
+    expect(result).toMatchObject({
+      ok: true,
+      domain: "ami-care.nl",
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationPreflightOnly: true,
+      status: "preflight_complete",
+      requestToken: "existing-preflight-1",
+    })
+    expect(result.quotes).toBeUndefined()
+    expect(mocks.inspectExistingDomainPublicEvidence).toHaveBeenCalledWith(
+      "ami-care.nl",
+    )
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
+    expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
   it("keeps existing-domain payment disabled without complete DNSSEC evidence", async () => {

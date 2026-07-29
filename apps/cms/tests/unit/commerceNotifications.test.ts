@@ -49,11 +49,13 @@ const createPayload = (cycle: MockDoc = {}) => {
     ...cycle,
   }
   const managedDomain = { id: 30, domainNameAscii: "example.nl" }
+  const billingAgreement = { id: 900, originatingOrder: 600 }
   let nextId = 10
   const find = vi.fn(async ({ collection, where }: {
     collection: string
     where?: Record<string, { equals?: unknown }>
   }) => {
+    if (collection === "managed-domains") return { docs: [managedDomain] }
     if (collection !== "commerce-notification-deliveries") return { docs: [] }
     const key = where?.notificationKey?.equals
     return {
@@ -79,6 +81,7 @@ const createPayload = (cycle: MockDoc = {}) => {
   }) => {
     if (collection === "tenants") return tenant
     if (collection === "domain-renewal-cycles") return renewedCycle
+    if (collection === "billing-agreements") return billingAgreement
     if (collection === "managed-domains") return managedDomain
     if (collection === "commerce-notification-deliveries") {
       const delivery = deliveries.find((entry) => String(entry.id) === String(id))
@@ -150,6 +153,33 @@ describe("commerce notification delivery evidence", () => {
     })
   })
 
+  it("keeps one delivery for a stable business event when provider timing changes", async () => {
+    const store = createPayload()
+    const base = {
+      payload: store.payload,
+      kind: "domain_verification_required" as const,
+      tenantId: 1,
+      recipient: "client@example.com",
+      businessEventKey: "registration:30",
+      billingAgreementId: 900,
+    }
+    const first = await ensureCommerceNotification({
+      ...base,
+      eventAt: "2026-08-01T10:00:00.000Z",
+    })
+    const second = await ensureCommerceNotification({
+      ...base,
+      eventAt: "2026-08-02T10:00:00.000Z",
+    })
+
+    expect(second.id).toBe(first.id)
+    expect(store.create).toHaveBeenCalledOnce()
+    expect(store.deliveries[0]).toMatchObject({
+      eventAt: "2026-08-02T10:00:00.000Z",
+      notificationKey: expect.stringContaining("registration:30"),
+    })
+  })
+
   it("claims once, sends transactionally, and skips duplicate workers after success", async () => {
     const store = createPayload()
     const delivery = await ensureCommerceNotification({
@@ -178,6 +208,30 @@ describe("commerce notification delivery evidence", () => {
       attemptCount: 1,
       sentAt: "2026-08-01T10:00:00.000Z",
     })
+  })
+
+  it("delivers the durable first-payment confirmation", async () => {
+    const store = createPayload()
+    const delivery = await ensureCommerceNotification({
+      payload: store.payload,
+      kind: "payment_received",
+      tenantId: 1,
+      recipient: "client@example.com",
+      eventAt: "2026-08-01T10:00:00.000Z",
+      billingAgreementId: 900,
+    })
+
+    await expect(deliverCommerceNotification({
+      payload: store.payload,
+      deliveryId: delivery.id,
+      now: new Date("2026-08-01T10:00:01.000Z"),
+    })).resolves.toBe("sent")
+
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: "client@example.com",
+      subject: "Betaling ontvangen voor Site in a Box",
+      text: expect.stringContaining("De domeinregistratie"),
+    }))
   })
 
   it("persists a retry lease after a transient mail failure", async () => {

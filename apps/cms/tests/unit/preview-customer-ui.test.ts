@@ -150,7 +150,7 @@ describe("customer preview UI", () => {
     expect(checkout).toContain("checkout-domain-unavailable")
     expect(checkout).toContain("checkout-domain-available")
     expect(checkout).toContain("checkoutDomainUnavailableTitle")
-    expect(checkout).toContain("checkoutDomainAvailableTitle")
+    expect(checkout).toContain("checkoutDomainAvailableDetail")
     expect(checkout).toContain("text-warning")
     expect(checkout).toContain("text-success")
     expect(checkout).toContain("const domainDescriptionId = domainInputState === \"success\"")

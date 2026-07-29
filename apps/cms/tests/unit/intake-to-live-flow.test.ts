@@ -3,6 +3,7 @@ import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
 import { fulfillPaidOrder } from "@/lib/payments/fulfillOrder"
+import { deliverCommerceNotification } from "@/lib/commerce/notifications"
 import { POST as intakePOST } from "@/app/(payload)/api/intake/route"
 
 import { asNextRequest, asGenerationRun, asMockDoc } from "../_helpers/cast"
@@ -79,6 +80,7 @@ type CollectionName =
   | "billing-agreements"
   | "accounting-documents"
   | "managed-domains"
+  | "commerce-notification-deliveries"
   | "communication-preferences"
   | "communication-preference-events"
   | "users"
@@ -260,6 +262,7 @@ const createPayloadStub = () => {
     "billing-agreements": [],
     "accounting-documents": [],
     "managed-domains": [],
+    "commerce-notification-deliveries": [],
     "communication-preferences": [],
     "communication-preference-events": [],
     users: [],
@@ -298,6 +301,7 @@ const createPayloadStub = () => {
       docs[index] = storedValue({ ...existing, ...args.data, id: existing.id, updatedAt: new Date().toISOString() }) as MockDoc
       return docs[index]
     }),
+    jobs: { queue: vi.fn(async () => ({ id: 1 })) },
     logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
   }
   return { payload: asPayload(payload), store }
@@ -305,6 +309,7 @@ const createPayloadStub = () => {
 
 const installProviderFetch = () => {
   let cloudflareZoneCreated = false
+  let openproviderDomainRegistered = false
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     if (
       url.startsWith("https://www.siteinabox.nl/theme/images/")
@@ -357,8 +362,26 @@ const installProviderFetch = () => {
     }
     if (url.includes("api.openprovider.eu/v1beta/domains")) {
       if (init?.method === "GET") {
-        return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+        return new Response(JSON.stringify({
+          data: {
+            results: openproviderDomainRegistered
+              ? [{
+                  id: 9100,
+                  domain: { name: "flow-live", extension: "nl" },
+                  status: "ACT",
+                  owner_handle: "OWNER-FLOW",
+                  name_servers: [
+                    { name: "ada.ns.cloudflare.com" },
+                    { name: "bob.ns.cloudflare.com" },
+                  ],
+                  autorenew: "on",
+                  verification_email_status: "not applicable",
+                }]
+              : [],
+          },
+        }), { status: 200 })
       }
+      openproviderDomainRegistered = true
       return new Response(JSON.stringify({ code: 0, data: { id: 9100, status: "ACT" } }), { status: 200 })
     }
     if (url.includes("dns_records")) {
@@ -443,8 +466,6 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("COMMERCE_ORIGIN_ISOLATION_VERIFIED", "1")
     vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
     vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "10.00")
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY", "EUR")
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
@@ -553,6 +574,7 @@ describe("intake-to-live mocked flow", () => {
       orderNumber: "SIAB-FLOW-001",
       generationRun: run.id,
       tenant: tenants[0]!.id,
+      orderKind: "initial_subscription",
       state: "accepted",
       checkoutProfileKey: asMockDoc(checkoutProfile).profileKey,
       catalogVersion: "2026-07-26.1",
@@ -650,6 +672,18 @@ describe("intake-to-live mocked flow", () => {
       paymentAttemptId: synchronized.paymentAttemptId,
     })
     expect(fulfillment.status).toBe("fulfilled")
+    const handoffDelivery = store["commerce-notification-deliveries"].find(
+      (delivery) => delivery.kind === "site_live_handoff",
+    )
+    expect(handoffDelivery).toMatchObject({
+      recipient: "demo@example.com",
+      status: "queued",
+    })
+    expect(mocks.signInMagicLink).not.toHaveBeenCalled()
+    await expect(deliverCommerceNotification({
+      payload,
+      deliveryId: handoffDelivery!.id as string | number,
+    })).resolves.toBe("sent")
 
     const tenant = tenants[0]!
     const finalRun = runs[0]!

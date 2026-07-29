@@ -33,7 +33,6 @@ afterEach(() => {
 
 describe("effective TLD allowlist integration", () => {
   it("rejects an unsupported TLD before provider availability or checkout state writes", async () => {
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
     openProviderMocks.checkAvailability.mockResolvedValue({
       status: "available",
       domain: "example.com",
@@ -68,7 +67,6 @@ describe("effective TLD allowlist integration", () => {
     expect(openProviderMocks.checkAvailabilityBatch).not.toHaveBeenCalled()
     expect(openProviderMocks.suggestions).not.toHaveBeenCalled()
 
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
     await expect(checkAndRecordPreviewDomainOrder(
       asPayload({ update: vi.fn() }),
       run,
@@ -80,7 +78,6 @@ describe("effective TLD allowlist integration", () => {
   })
 
   it("keeps a modeled .be capability away from provider reads before activation", async () => {
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
     openProviderMocks.checkAvailability.mockResolvedValue({
       status: "available",
       domain: "example.be",
@@ -103,7 +100,6 @@ describe("effective TLD allowlist integration", () => {
   })
 
   it("allows historically enabled .nl through provider-backed pricing", async () => {
-    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
     openProviderMocks.checkAvailability.mockResolvedValue({
       status: "available",
       domain: "example.nl",
@@ -130,7 +126,6 @@ describe("effective TLD allowlist integration", () => {
   it.each(["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"])(
     "allows current .%s registration through provider-backed pricing",
     async (tld) => {
-      vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
       openProviderMocks.checkAvailability.mockResolvedValue({
         status: "available",
         domain: `example.${tld}`,

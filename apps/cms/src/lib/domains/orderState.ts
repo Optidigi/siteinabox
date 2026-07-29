@@ -181,16 +181,6 @@ export function normalizeDomainRegistrantDetails(value: unknown): DomainRegistra
   }
 }
 
-export function fixedDomainOrderPriceFromEnv(env: NodeJS.ProcessEnv = process.env): FixedDomainOrderPrice {
-  const amount = cleanText(env.OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT)
-  const currency = cleanText(env.OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY) ?? "EUR"
-  if (!amount) throw new Error("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT is required for fixed-price domain checks.")
-  if (!/^\d+\.\d{2}$/.test(amount)) {
-    throw new Error("Domain order price must use decimal format, for example 228.00.")
-  }
-  return { amount, currency }
-}
-
 export function normalizeDomainOrderState(value: unknown): DomainOrderState {
   const source = value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>

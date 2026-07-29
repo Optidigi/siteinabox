@@ -1,11 +1,16 @@
 import "server-only"
 import type { Payload } from "payload"
-import type { Order, SiteGenerationRun, Tenant } from "@/payload-types"
+import type {
+  Order,
+  PaymentAttempt,
+  SiteGenerationRun,
+  Tenant,
+} from "@/payload-types"
 import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
 import {
   mollieDomainProvisioningEnabled,
 } from "@/lib/payments/mollieAdapter"
-import { relationshipId } from "@/lib/relationshipId"
+import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
   activatePublishedSnapshot,
   canActivatePublishedSnapshot,
@@ -214,6 +219,44 @@ async function retryDomainProvisioning(payload: Payload, run: SiteGenerationRun)
         status: "blocked",
         step: "domain_provisioning",
         message: "Domain provisioning retry requires one authoritative fulfillment order.",
+      }))
+    }
+    if (order.paymentStatus !== "paid") {
+      return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
+        status: "blocked",
+        step: "domain_provisioning",
+        message: "Domain provisioning retry requires a financially secured order.",
+      }))
+    }
+    const paymentAttempts = await payload.find({
+      collection: "payment-attempts",
+      where: {
+        and: [
+          { order: { equals: order.id } },
+          { purpose: { equals: "first_payment" } },
+        ],
+      },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const securedAttempts = paymentAttempts.docs.filter(
+      (attempt) => (attempt as PaymentAttempt).state === "paid",
+    ) as PaymentAttempt[]
+    const securedAttempt = securedAttempts[0]
+    if (
+      securedAttempts.length !== 1 ||
+      !securedAttempt ||
+      !sameRelationshipId(securedAttempt.order, order.id) ||
+      !securedAttempt.providerPaymentId ||
+      payment.status !== "completed" ||
+      payment.externalReference !== securedAttempt.providerPaymentId
+    ) {
+      return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
+        status: "blocked",
+        step: "domain_provisioning",
+        message:
+          "Domain provisioning retry requires one paid order-bound payment attempt.",
       }))
     }
     const result = await provisionPaidDomainOrder(payload, run, {

@@ -9,7 +9,6 @@ import {
   compareMoney,
   createDomainOrderState,
   domainExtraFeeForProviderPrice,
-  fixedDomainOrderPriceFromEnv,
   maxDomainProviderPriceFromEnv,
   normalizeDomainOrderState,
   providerPriceWithinCap,
@@ -204,7 +203,6 @@ export async function checkAndRecordPreviewDomainOrder(
     throw new Error(`Domain label is not supported for .${normalized.extension}.`)
   }
 
-  const fixedPrice = fixedDomainOrderPriceFromEnv()
   const includedProviderPrice =
     options?.includedProviderPrice ?? maxDomainProviderPriceFromEnv()
   const availability = await checkOpenProviderDomainAvailability(normalized.domain)
@@ -225,7 +223,10 @@ export async function checkAndRecordPreviewDomainOrder(
   const domainOrder = createDomainOrderState({
     status,
     domain: normalized.domain,
-    fixedPrice,
+    // The accepted server quote is the sole customer-price authority. Domain
+    // order state retains provider evidence only; it must not depend on a
+    // process-wide fixed checkout amount.
+    fixedPrice: null,
     providerPrice,
     maxProviderPrice: includedProviderPrice,
     registrant: registrant ?? normalizeDomainOrderState(run.domainOrder).registrant,

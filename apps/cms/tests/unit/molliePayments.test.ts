@@ -175,9 +175,21 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   }
   const orderDomain = (overrides.domainOrder as { domain?: string } | undefined)?.domain ?? tenant.domain
   const orderTld = orderDomain.split(".").at(-1)
-  const tldCapabilityVersion = orderTld === "be"
-    ? "tld-be-2026-07-27.1"
-    : orderTld === "nl" ? "tld-nl-2026-07-26.1" : null
+  const intendedTlds = new Set([
+    "nl",
+    "com",
+    "eu",
+    "org",
+    "net",
+    "be",
+    "de",
+    "info",
+    "online",
+    "shop",
+  ])
+  const tldCapabilityVersion = orderTld && intendedTlds.has(orderTld)
+    ? `tld-${orderTld}-2026-07-29.1`
+    : null
   const providerPrice = Number((overrides.domainOrder as { providerPriceAmount?: string } | undefined)?.providerPriceAmount ?? "10.00")
   const grossAmountMinor = providerPrice > 10
     ? 49_900 + Math.round((providerPrice - 10) * 100)
@@ -224,9 +236,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         tldCapability: {
           tld: orderTld,
           capabilityVersion: tldCapabilityVersion,
-          effectiveFrom: orderTld === "be"
-            ? "2026-07-27T00:00:00.000Z"
-            : "2026-01-01T00:00:00.000Z",
+          effectiveFrom: "2026-07-29T12:00:00.000Z",
         },
       },
     } : {}),
@@ -361,6 +371,10 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     }
     if (collection === "site-generation-runs") Object.assign(run, data)
     if (collection === "tenants") Object.assign(tenant, data)
+    if (collection === "site-settings") {
+      Object.assign(settings, data)
+      return { ...settings }
+    }
     if (collection === "orders") {
       if (where) {
         const docs = matchesWhere(order, where) ? [order] : []
@@ -429,6 +443,9 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       throw new Error(`Missing ${collection} ${id}`)
     }),
     find: vi.fn(async ({ collection, where }: MockFindArgs) => {
+      if (collection === "orders") {
+        return { docs: matchesWhere(order, where) ? [order] : [] }
+      }
       if (collection === "published-site-snapshots") {
         if (where?.and) {
           return { docs: snapshots.filter((snapshot) => matchesWhere(snapshot, where)) }
@@ -519,6 +536,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     payload: asPayload(payload),
     run,
     tenant,
+    settings,
     order,
     update,
     snapshots,
@@ -526,6 +544,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     paymentAttempts,
     accountingDocuments,
     managedDomains,
+    commerceNotifications,
     queue: payload.jobs.queue,
   }
 }
@@ -2534,7 +2553,18 @@ describe("Mollie payment flow", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it.each(["nl"] as const)(
+  it.each([
+    "nl",
+    "com",
+    "eu",
+    "org",
+    "net",
+    "be",
+    "de",
+    "info",
+    "online",
+    "shop",
+  ] as const)(
     "starts .%s domain provisioning after a live paid checkout",
     async (tld) => {
     const selectedDomain = `clientsite.${tld}`
@@ -2548,7 +2578,15 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
     vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
-    const { payload, run, tenant, snapshots, managedDomains } = createPayloadStub({
+    const {
+      payload,
+      run,
+      tenant,
+      settings,
+      snapshots,
+      managedDomains,
+      commerceNotifications,
+    } = createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
@@ -2564,6 +2602,7 @@ describe("Mollie payment flow", () => {
       },
     })
     let cloudflareZoneCreated = false
+    let openproviderDomainRegistered = false
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/email/sending/subdomains")) {
         if (url.endsWith("/email/sending/subdomains/subdomain_123")) {
@@ -2639,8 +2678,26 @@ describe("Mollie payment flow", () => {
       }
       if (url.includes("api.openprovider.eu/v1beta/domains")) {
         if (init?.method === "GET") {
-          return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+          return new Response(JSON.stringify({
+            data: {
+              results: openproviderDomainRegistered
+                ? [{
+                    id: 9001,
+                    domain: { name: "clientsite", extension: tld },
+                    status: "ACT",
+                    owner_handle: "OWNER-CLIENT",
+                    name_servers: [
+                      { name: "ada.ns.cloudflare.com" },
+                      { name: "bob.ns.cloudflare.com" },
+                    ],
+                    autorenew: "off",
+                    verification_email_status: "not applicable",
+                  }]
+                : [],
+            },
+          }), { status: 200 })
         }
+        openproviderDomainRegistered = true
         return new Response(JSON.stringify({ code: 0, data: { id: 9001, status: "ACT" } }), { status: 200 })
       }
       if (url.includes("dns_records")) {
@@ -2680,7 +2737,7 @@ describe("Mollie payment flow", () => {
       orderId: result.orderId,
       paymentAttemptId: result.paymentAttemptId,
     })
-    expect(fulfillment.status).toBe("fulfilled")
+    expect(fulfillment.status, JSON.stringify(fulfillment)).toBe("fulfilled")
     expect(mollieApiKeyMode()).toBe("live")
     expect(mollieDomainProvisioningEnabled()).toBe(true)
     expect(run.payment).toMatchObject({
@@ -2735,6 +2792,10 @@ describe("Mollie payment flow", () => {
         lastError: null,
       }),
     })
+    expect(settings).toMatchObject({
+      siteUrl: `https://${selectedDomain}`,
+      aliases: [{ host: `www.${selectedDomain}` }],
+    })
     expect(snapshots[0]).toMatchObject({
       id: 10,
       status: "active",
@@ -2754,6 +2815,11 @@ describe("Mollie payment flow", () => {
       entitlementStatus: "active",
       customerStatus: "active",
     }))
+    expect(commerceNotifications).toContainEqual(expect.objectContaining({
+      kind: "payment_received",
+      recipient: "client@example.com",
+      status: "queued",
+    }))
     const subscriptionCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/subscriptions"))
     expect(subscriptionCall).toBeUndefined()
     await expect(fulfillPaidOrder(payload, {
@@ -2769,9 +2835,116 @@ describe("Mollie payment flow", () => {
       admin_handle: "ADMIN-NL",
       tech_handle: "TECH-NL",
       billing_handle: "BILL-NL",
+      autorenew: "off",
     })
     },
   )
+
+  it("waits when authoritative registrant verification status is absent", async () => {
+    const {
+      payload,
+      run,
+      order,
+      managedDomains,
+      commerceNotifications,
+      queue,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_paid_verification_pending",
+        selectedDomain: "clientsite.nl",
+        mollieCustomerId: "cst_test_123",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    const providerDomain = {
+      id: 9001,
+      domain: "clientsite.nl",
+      status: "ACT",
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: "ADMIN-NL",
+      nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      renewalDate: "2027-07-29",
+      registryExpiryDate: null,
+      autorenew: "off" as const,
+      verificationEmailStatus: null,
+      verificationEmailExpiresAt: "2026-08-12T12:00:00.000Z",
+      verificationEmailDescription: "Registrant must verify the provider email.",
+      raw: {},
+    }
+    const findDomain = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(providerDomain)
+    const createDns = vi.fn()
+    const dependencies = {
+      now: () => "2026-07-29T12:00:00.000Z",
+      loginOpenProvider: vi.fn(async () => "op-token"),
+      findOpenProviderDomain: findDomain,
+      checkOpenProviderDomainAvailability: vi.fn(async () => ({
+        status: "available" as const,
+        domain: "clientsite.nl",
+        available: true,
+        premium: false,
+        price: null,
+        internalReason: null,
+      })),
+      findOpenProviderCustomerByReference: vi.fn(async () => ({
+        handle: "OWNER-CLIENT",
+        comments: "domain-registration:order:600:v1",
+        raw: {},
+      })),
+      createOpenProviderCustomerHandle: vi.fn(),
+      listCloudflareZones: vi.fn(async () => [{
+        id: "zone_123",
+        name: "clientsite.nl",
+        status: "active" as const,
+        nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+        raw: {},
+      }]),
+      createOrReuseCloudflareZone: vi.fn(),
+      registerOpenProviderDomain: vi.fn(async () => ({
+        id: 9001,
+        domain: "clientsite.nl",
+        status: "registered" as const,
+        raw: {},
+      })),
+      createCloudflareZoneDnsRecords: createDns,
+    }
+
+    await expect(provisionPaidDomainOrder(payload, cast(run), {
+      order: cast(order),
+      selectedDomain: "clientsite.nl",
+      dependencies,
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("verification is required"),
+    })
+    expect(findDomain).toHaveBeenCalledTimes(2)
+    expect(createDns).not.toHaveBeenCalled()
+    expect(managedDomains[0]).toMatchObject({
+      providerRegistrationState: "confirmed",
+      registrantVerificationStatus: "pending",
+      registrantVerificationDueAt: "2026-08-12T12:00:00.000Z",
+      customerStatus: "verification_required",
+      reconciliationRequired: true,
+      failureReason: "registrant_verification_pending",
+    })
+    expect(commerceNotifications).toContainEqual(expect.objectContaining({
+      kind: "domain_verification_required",
+      recipient: "client@example.com",
+      status: "queued",
+    }))
+    expect(queue).toHaveBeenCalledWith(expect.objectContaining({
+      task: "deliver-commerce-notification",
+    }))
+  })
 
   it("queues the governed full refund when a paid .nl domain loses the availability race", async () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
@@ -3060,6 +3233,92 @@ describe("Mollie payment flow", () => {
         step: "mollie_subscription",
         message: "Long-lived Mollie subscription creation is disabled.",
       },
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("blocks a domain-provisioning retry without an order-bound paid attempt", async () => {
+    vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    enableProductionCommerceRelease()
+    const { payload, run, order } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        selectedDomain: "clientsite.nl",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    Object.assign(order, {
+      state: "exception",
+      paymentStatus: "paid",
+    })
+
+    const result = await retryPostPaymentAutomation(
+      payload,
+      500,
+      "domain_provisioning",
+    )
+
+    expect(result).toEqual({
+      status: "blocked",
+      message:
+        "Domain provisioning retry requires one paid order-bound payment attempt.",
+    })
+    expect(run.errors).toMatchObject({
+      postPaymentAutomation: {
+        status: "blocked",
+        step: "domain_provisioning",
+      },
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("blocks a domain-provisioning retry after a refund enters progress", async () => {
+    vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    enableProductionCommerceRelease()
+    const {
+      payload,
+      order,
+      paymentAttempts,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_refund_pending",
+        selectedDomain: "clientsite.nl",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    Object.assign(order, {
+      state: "exception",
+      paymentStatus: "paid",
+    })
+    Object.assign(paymentAttempts[0]!, {
+      state: "refund_pending",
+    })
+
+    const result = await retryPostPaymentAutomation(
+      payload,
+      500,
+      "domain_provisioning",
+    )
+
+    expect(result).toEqual({
+      status: "blocked",
+      message:
+        "Domain provisioning retry requires one paid order-bound payment attempt.",
     })
     expect(fetch).not.toHaveBeenCalled()
   })

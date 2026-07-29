@@ -17,6 +17,10 @@ import type {
 } from "@/payload-types"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
 import {
+  ensureCommerceNotification,
+  queueCommerceNotification,
+} from "@/lib/commerce/notifications"
+import {
   buildCloudflareDnsRecordRequests,
   createCloudflareZoneDnsRecords,
   createOrReuseCloudflareEmailSendingSubdomain,
@@ -351,8 +355,15 @@ const registrantVerification = (
 } => {
   const status = record?.verificationEmailStatus?.trim().toLowerCase() ?? ""
   const description = record?.verificationEmailDescription?.trim() ||
-    `Provider reports no registrant verification requirement for .${capability.tld}.`
-  if (!status || ["not applicable", "not required", "n/a"].includes(status)) {
+    (
+      status
+        ? `Provider reports no registrant verification requirement for .${capability.tld}.`
+        : `Provider registrant verification status is not available yet for .${capability.tld}.`
+    )
+  if (!status) {
+    return { status: "pending", description }
+  }
+  if (["not applicable", "not required", "n/a"].includes(status)) {
     return { status: "not_required", description }
   }
   if (["verified", "valid", "completed"].includes(status)) {
@@ -699,7 +710,14 @@ export async function provisionPaidDomainOrder(
         nameServers: zone.nameServers.map((name) => ({ name })),
         nsGroup: null,
         period: capability.registration.periodYears,
-        autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
+        autorenew:
+          capability.renewal.executionMode === "provider_autorenew" &&
+          tldCapabilityOperationFlagEnabled(
+            capability,
+            "renewal_provider_autorenew",
+          )
+            ? "on"
+            : "off",
         reference: managedDomain.provisioningIdempotencyKey,
         acceptedCapabilityVersion: capability.capabilityVersion,
       })
@@ -714,22 +732,13 @@ export async function provisionPaidDomainOrder(
         reconciliationRequired: registration.status !== "registered",
         failureReason: null,
       }, `provider_registration_${registration.status}`, dependencies.now())
-      providerDomain = registration.status === "registered" && registration.id != null
-        ? {
-            id: registration.id,
-            domain: normalized.domain,
-            status: "ACT",
-            ownerHandle: customerHandle,
-            adminHandle: null,
-            nameServers: zone.nameServers,
-            renewalDate: null,
-            autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
-            verificationEmailStatus: null,
-            verificationEmailExpiresAt: null,
-            verificationEmailDescription: null,
-            raw: registration.raw,
-          }
-        : null
+      // A successful POST is not registrant-verification evidence. Always
+      // reconcile through OpenProvider's authoritative domain read before DNS
+      // or publication may advance.
+      providerDomain = await dependencies.findOpenProviderDomain(
+        normalized.domain,
+        { token },
+      )
     } catch (error) {
       let reconciled: OpenProviderDomainRecord | null = null
       try {
@@ -840,6 +849,28 @@ export async function provisionPaidDomainOrder(
     })
   }
   if (verificationActionRequired) {
+    const agreements = await payload.find({
+      collection: "billing-agreements",
+      where: { originatingOrder: { equals: input.order.id } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (agreements.docs.length === 1) {
+      const delivery = await ensureCommerceNotification({
+        payload,
+        kind: "domain_verification_required",
+        tenantId,
+        recipient: input.order.customerEmail,
+        businessEventKey: `registration:${managedDomain.id}`,
+        eventAt:
+          managedDomain.registrantVerificationDueAt ??
+          managedDomain.registrationRequestedAt ??
+          managedDomain.createdAt,
+        billingAgreementId: agreements.docs[0]!.id,
+      })
+      await queueCommerceNotification(payload, delivery.id)
+    }
     return waiting(
       normalized.domain,
       run,
@@ -1006,6 +1037,44 @@ export async function provisionPaidDomainOrder(
     depth: 0,
     overrideAccess: true,
   }) as Tenant
+
+  const settingsResult = await payload.find({
+    collection: "site-settings",
+    where: { tenant: { equals: tenantId } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (settingsResult.docs.length !== 1) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      reconciliationRequired: true,
+      failureReason: "site_settings_not_unique",
+    }, "site_settings_not_unique", dependencies.now())
+    return waiting(
+      normalized.domain,
+      run,
+      managedDomain,
+      "Exactly one tenant site-settings record is required before publication.",
+    )
+  }
+  const siteSettings = settingsResult.docs[0]!
+  const wwwHost = `www.${normalized.domain}`
+  const existingAliases = (siteSettings.aliases ?? [])
+    .map((alias) => alias?.host?.trim().toLowerCase())
+    .filter((host): host is string => Boolean(host))
+  await payload.update({
+    collection: "site-settings",
+    id: siteSettings.id,
+    data: {
+      siteUrl: `https://${normalized.domain}`,
+      aliases: [...new Set([...existingAliases, wwwHost])].map((host) => ({
+        host,
+      })),
+    },
+    depth: 0,
+    overrideAccess: true,
+  })
+
   if (tenant.emailSending?.status !== "verified") {
     managedDomain = await updateManagedDomain(payload, managedDomain, {
       reconciliationRequired: true,

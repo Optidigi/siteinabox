@@ -40,7 +40,7 @@ import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSend
 import type { PublicAnalyticsConfigInput } from "@/lib/analytics/config"
 import type { PageAnalyticsProjectionContext } from "@/lib/projection/pageToJson"
 import type { SettingsAnalyticsProjectionContext } from "@/lib/projection/settingsToJson"
-import { sendLiveHandoffEmailAfterActivation } from "@/lib/publish/liveHandoffEmail"
+import { queueLiveHandoffAfterActivation } from "@/lib/publish/liveHandoffEmail"
 
 const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: true } as const
 const PUBLISHED_SNAPSHOT_RETENTION_LIMIT = 10
@@ -520,11 +520,13 @@ export async function activatePublishedSnapshot(
     ...payloadRequestArgs(options.req),
   })
 
-  await sendLiveHandoffEmailAfterActivation(payload, {
+  await queueLiveHandoffAfterActivation(payload, {
     tenant,
     run,
     snapshotDoc: handoffSnapshotDoc,
     rollback: options.rollback,
+    allowDirectFallback: options.manualActivation === true,
+    eventAt: now,
   })
 
   await prunePublishedSnapshotsForTenant(payload, tenantId, { keepSnapshotId: snapshotDoc.id, req: options.req })

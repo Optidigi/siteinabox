@@ -2,11 +2,22 @@ import "server-only"
 
 import crypto from "node:crypto"
 import type { Payload } from "payload"
-import type { SiteGenerationRun, Tenant, User } from "@/payload-types"
+import type {
+  BillingAgreement,
+  Order,
+  SiteGenerationRun,
+  Tenant,
+  User,
+} from "@/payload-types"
 import { auth } from "@/lib/betterAuth"
 import { relationshipId } from "@/lib/relationshipId"
 import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
 import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
+import {
+  ensureCommerceNotification,
+  queueCommerceNotification,
+} from "@/lib/commerce/notifications"
+import { recordCommerceAdminException } from "@/lib/commerce/alerts"
 
 import type { PublishedSiteSnapshot as PublishedSiteSnapshotDoc } from "@/payload-types"
 
@@ -26,6 +37,34 @@ const cleanEmail = (value: unknown): string | null => {
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null
+
+async function recordLiveHandoffException(
+  payload: Payload,
+  input: {
+    code: string
+    message: string
+    tenantId: string | number
+    snapshotId: string | number
+  },
+): Promise<void> {
+  try {
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: input.code,
+      message: input.message,
+      tenant: input.tenantId,
+      subjectId: input.snapshotId,
+    })
+  } catch (error) {
+    payload.logger.error({
+      code: input.code,
+      tenant: input.tenantId,
+      snapshot: input.snapshotId,
+      error: error instanceof Error ? error.message : "unknown",
+    }, "[publish] durable live handoff alert failed")
+  }
+}
 
 const normalizeHandoffHost = (host: string | null | undefined): string =>
   (host ?? "")
@@ -236,9 +275,17 @@ export async function sendLiveHandoffEmailAfterActivation(
     run: SiteGenerationRun | null
     snapshotDoc: Pick<PublishedSiteSnapshotDoc, "id" | "status" | "domain" | "snapshot">
     rollback?: boolean
+    retry?: boolean
   },
 ): Promise<"sent" | "skipped" | "failed"> {
-  if (!input.run || input.rollback || input.snapshotDoc.status !== "drafted") return "skipped"
+  if (
+    !input.run ||
+    input.rollback ||
+    (
+      input.snapshotDoc.status !== "drafted" &&
+      !(input.retry && input.snapshotDoc.status === "active")
+    )
+  ) return "skipped"
 
   const recipient = await resolveLiveHandoffRecipient(payload, input.run)
   if (!recipient) {
@@ -308,4 +355,139 @@ export async function sendLiveHandoffEmailAfterActivation(
     }, "[publish] live handoff email failed after activation")
     return "failed"
   }
+}
+
+export async function queueLiveHandoffAfterActivation(
+  payload: Payload,
+  input: {
+    tenant: Pick<Tenant, "id" | "domain">
+    run: SiteGenerationRun | null
+    snapshotDoc: Pick<PublishedSiteSnapshotDoc, "id" | "status" | "domain" | "snapshot">
+    rollback?: boolean
+    allowDirectFallback?: boolean
+    eventAt: string
+  },
+): Promise<"queued" | "sent" | "skipped" | "failed"> {
+  if (!input.run || input.rollback) return "skipped"
+  const recipient = await resolveLiveHandoffRecipient(payload, input.run)
+  if (!recipient) {
+    if (input.allowDirectFallback) {
+      return sendLiveHandoffEmailAfterActivation(payload, input)
+    }
+    await recordLiveHandoffException(payload, {
+      code: "live_handoff_missing_recipient",
+      message: "Activated site has no unique customer recipient for durable handoff.",
+      tenantId: input.tenant.id,
+      snapshotId: input.snapshotDoc.id,
+    })
+    return "failed"
+  }
+  const orders = await payload.find({
+    collection: "orders",
+    where: {
+      and: [
+        { generationRun: { equals: input.run.id } },
+        { orderKind: { equals: "initial_subscription" } },
+        { customerEmail: { equals: recipient } },
+      ],
+    },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (orders.docs.length !== 1) {
+    if (input.allowDirectFallback) {
+      return sendLiveHandoffEmailAfterActivation(payload, input)
+    }
+    await recordLiveHandoffException(payload, {
+      code: "live_handoff_order_resolution_failed",
+      message: "Activated site could not resolve exactly one accepted initial order.",
+      tenantId: input.tenant.id,
+      snapshotId: input.snapshotDoc.id,
+    })
+    return "failed"
+  }
+  const order = orders.docs[0] as Order
+  const agreements = await payload.find({
+    collection: "billing-agreements",
+    where: { originatingOrder: { equals: order.id } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (agreements.docs.length !== 1) {
+    if (input.allowDirectFallback) {
+      return sendLiveHandoffEmailAfterActivation(payload, input)
+    }
+    await recordLiveHandoffException(payload, {
+      code: "live_handoff_agreement_resolution_failed",
+      message: "Activated site could not resolve exactly one billing agreement.",
+      tenantId: input.tenant.id,
+      snapshotId: input.snapshotDoc.id,
+    })
+    return "failed"
+  }
+  const agreement = agreements.docs[0] as BillingAgreement
+  const delivery = await ensureCommerceNotification({
+    payload,
+    kind: "site_live_handoff",
+    tenantId: input.tenant.id,
+    recipient,
+    eventAt: input.eventAt,
+    businessEventKey: `snapshot:${input.snapshotDoc.id}`,
+    billingAgreementId: agreement.id,
+  })
+  await queueCommerceNotification(payload, delivery.id)
+  return "queued"
+}
+
+export async function retryLiveHandoffForBillingAgreement(
+  payload: Payload,
+  billingAgreementId: string | number,
+): Promise<"sent" | "skipped" | "failed"> {
+  const agreement = await payload.findByID({
+    collection: "billing-agreements",
+    id: billingAgreementId,
+    depth: 0,
+    overrideAccess: true,
+  }) as BillingAgreement
+  const orderId = relationshipId(agreement.originatingOrder)
+  if (!orderId) return "failed"
+  const order = await payload.findByID({
+    collection: "orders",
+    id: orderId,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  const runId = relationshipId(order.generationRun)
+  const tenantId = relationshipId(order.tenant)
+  if (!runId || !tenantId) return "failed"
+  const [run, tenant] = await Promise.all([
+    payload.findByID({
+      collection: "site-generation-runs",
+      id: runId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<SiteGenerationRun>,
+    payload.findByID({
+      collection: "tenants",
+      id: tenantId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<Tenant>,
+  ])
+  const snapshotId = relationshipId(tenant.activeSnapshot)
+  if (!snapshotId) return "failed"
+  const snapshotDoc = await payload.findByID({
+    collection: "published-site-snapshots",
+    id: snapshotId,
+    depth: 0,
+    overrideAccess: true,
+  }) as PublishedSiteSnapshotDoc
+  return sendLiveHandoffEmailAfterActivation(payload, {
+    tenant,
+    run,
+    snapshotDoc,
+    retry: true,
+  })
 }
