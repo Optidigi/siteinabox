@@ -5,6 +5,7 @@ import {
 } from "@siteinabox/contracts/commerce"
 import type { Payload } from "payload"
 import type { Tenant } from "@/payload-types"
+import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
 
 const clean = (value: string | undefined): string | null => {
   const normalized = value?.trim()
@@ -131,6 +132,23 @@ export async function commerceEdgeInventoryBlockers(
       overrideAccess: true,
     })
     if (managedDomains.docs.length !== 1) {
+      const anyManagedDomain = await payload.find({
+        collection: "managed-domains",
+        where: { domainNameAscii: { equals: domain } },
+        limit: 2,
+        pagination: false,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const adoption = anyManagedDomain.docs.length === 0
+        ? await resolveLegacyEdgeAdoption(payload, domain)
+        : null
+      const auditedLegacyBridge = adoption?.tenantId === String(tenant.id) &&
+        (!requireActiveRouting ||
+          (adoption.rendererApexReady &&
+            adoption.rendererWwwReady &&
+            adoption.cmsAdminReady))
+      if (auditedLegacyBridge) continue
       blockers.push(
         requireActiveRouting
           ? `active_tenant_edge_routing_unready:${tenant.id}`

@@ -33,6 +33,79 @@ const taskPayload = asPayload({
   })),
 })
 
+const legacyEdgeInventoryPayload = (
+  options: {
+    activeSnapshot?: boolean
+    snapshotStatus?: "active" | "superseded"
+    snapshotTenant?: number
+    snapshotDomain?: string
+    wwwSettingsCount?: number
+    wwwAliasCount?: number
+    duplicateTenant?: boolean
+    foreignWwwAlias?: boolean
+    wwwCanonicalConflict?: boolean
+  } = {},
+) => {
+  const tenant = {
+    id: 1,
+    status: "active",
+    domain: "ami-care.nl",
+    domainVerification: { status: "verified" },
+    activeSnapshot: options.activeSnapshot === false ? null : 154,
+  }
+  return asPayload({
+    find: vi.fn(async ({
+      collection,
+      where,
+    }: {
+      collection: string
+      where?: unknown
+    }) => {
+      if (collection === "tenants") {
+        const serializedWhere = JSON.stringify(where)
+        const domainLookup = serializedWhere.includes('"domain"')
+        const wwwLookup = serializedWhere.includes("www.ami-care.nl")
+        return {
+          docs: wwwLookup
+            ? options.wwwCanonicalConflict
+              ? [{ id: 2, status: "active", domain: "www.ami-care.nl" }]
+              : []
+            : domainLookup && options.duplicateTenant
+              ? [tenant, { ...tenant, id: 2 }]
+              : [tenant],
+          totalDocs: wwwLookup
+            ? options.wwwCanonicalConflict ? 1 : 0
+            : domainLookup && options.duplicateTenant ? 2 : 1,
+        }
+      }
+      if (collection === "site-settings") {
+        const count = options.wwwSettingsCount ?? 1
+        return {
+          docs: Array.from({ length: count }, (_, index) => ({
+            id: index + 1,
+            tenant: options.foreignWwwAlias ? 2 : tenant.id,
+            aliases: Array.from(
+              { length: options.wwwAliasCount ?? 1 },
+              (_, aliasIndex) => ({
+                id: `alias-${index}-${aliasIndex}`,
+                host: "www.ami-care.nl",
+              }),
+            ),
+          })),
+          totalDocs: count,
+        }
+      }
+      return { docs: [], totalDocs: 0 }
+    }),
+    findByID: vi.fn(async () => ({
+      id: 154,
+      tenant: options.snapshotTenant ?? tenant.id,
+      domain: options.snapshotDomain ?? tenant.domain,
+      status: options.snapshotStatus ?? "active",
+    })),
+  })
+}
+
 describe("staged commerce release runtime gate", () => {
   afterEach(() => vi.unstubAllEnvs())
 
@@ -186,6 +259,32 @@ describe("staged commerce release runtime gate", () => {
     await expect(commerceEdgeInventoryBlockers(readinessPayload)).resolves.toEqual([
       "active_tenant_managed_domain_inventory_invalid:12",
     ])
+  })
+
+  it("accepts only the audited verified legacy domain in edge inventory", async () => {
+    await expect(
+      commerceEdgeInventoryBlockers(legacyEdgeInventoryPayload(), true),
+    ).resolves.toEqual([])
+  })
+
+  it.each([
+    ["missing snapshot", { activeSnapshot: false }],
+    ["inactive snapshot", { snapshotStatus: "superseded" }],
+    ["snapshot owner mismatch", { snapshotTenant: 2 }],
+    ["snapshot domain mismatch", { snapshotDomain: "other.nl" }],
+    ["missing www alias", { wwwAliasCount: 0 }],
+    ["duplicate www alias", { wwwAliasCount: 2 }],
+    ["ambiguous site settings", { wwwSettingsCount: 2 }],
+    ["duplicate tenant", { duplicateTenant: true }],
+    ["foreign www alias owner", { foreignWwwAlias: true }],
+    ["canonical www owner", { wwwCanonicalConflict: true }],
+  ] as const)("blocks the audited legacy inventory with %s", async (_label, options) => {
+    await expect(
+      commerceEdgeInventoryBlockers(
+        legacyEdgeInventoryPayload(options),
+        true,
+      ),
+    ).resolves.toEqual(["active_tenant_edge_routing_unready:1"])
   })
 
   it("blocks scoped edge bootstrap on invalid inventory or critical commerce alerts", async () => {
