@@ -919,7 +919,8 @@ const verificationStatus = (
   providerDomain: OpenProviderDomainRecord,
 ): "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed" => {
   const status = providerDomain.verificationEmailStatus?.trim().toLowerCase() ?? ""
-  if (!status || ["not applicable", "not required", "n/a"].includes(status)) {
+  if (!status) return "pending"
+  if (["not applicable", "not required", "n/a"].includes(status)) {
     return "not_required"
   }
   if (["verified", "completed", "approved"].includes(status)) return "verified"

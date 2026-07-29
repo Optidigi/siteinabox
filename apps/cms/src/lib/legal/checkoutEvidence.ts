@@ -22,8 +22,10 @@ import {
 } from "@siteinabox/contracts/commerce"
 import {
   getTldCapabilityForProductionOperation,
+  validateTldRegistrantPrerequisites,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutQuote } from "@/lib/checkout/checkoutQuote"
+import { normalizeDomainRegistrantDetails } from "@/lib/domains/orderState"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { legalStatements } from "@/lib/legal/statements"
@@ -186,6 +188,20 @@ export async function createOrderAndAcceptanceEvidence(input: {
   const tldCapability = getTldCapabilityForProductionOperation(tld, operation, now)
   if (!tldCapability) {
     throw new Error(`TLD .${tld} is not enabled for accepted-order evidence.`)
+  }
+  const normalizedRegistrant = normalizeDomainRegistrantDetails(input.domainRegistrant)
+  if (!normalizedRegistrant) {
+    throw new Error("Accepted checkout requires complete registrant evidence.")
+  }
+  const registrantPrerequisites = validateTldRegistrantPrerequisites(
+    tldCapability,
+    normalizedRegistrant,
+  )
+  if (!registrantPrerequisites.valid) {
+    throw new Error(
+      `Registrant evidence does not satisfy .${tld} requirements: ` +
+      registrantPrerequisites.reason,
+    )
   }
   const initialAuthority = {
     schemaVersion: 1,

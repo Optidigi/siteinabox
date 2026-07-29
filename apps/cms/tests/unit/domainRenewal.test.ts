@@ -243,6 +243,7 @@ type SetAutorenew = (
   id: number | string,
   autorenew: "on" | "off",
 ) => Promise<OpenProviderAutorenewResult>
+type FindProviderDomain = () => Promise<ReturnType<typeof providerRecord> | null>
 
 const dependencies = (input: {
   now: string
@@ -252,9 +253,12 @@ const dependencies = (input: {
   provider?: Record<string, unknown>
   priceNetMinor?: number
   balanceAvailableAmount?: number
+  providerWriteApplied?: boolean
+  findProviderDomain?: ReturnType<typeof vi.fn<FindProviderDomain>>
   setAutorenew?: ReturnType<typeof vi.fn<SetAutorenew>>
 }) => {
-  const setAutorenew = input.setAutorenew ?? vi.fn<SetAutorenew>(
+  let providerAutorenew = (input.provider?.autorenew ?? "on") as "on" | "off"
+  const providerWrite = input.setAutorenew ?? vi.fn<SetAutorenew>(
     async (id, autorenew) => ({
       id,
       autorenew,
@@ -262,6 +266,11 @@ const dependencies = (input: {
       raw: {},
     }),
   )
+  const setAutorenew = vi.fn<SetAutorenew>(async (id, autorenew) => {
+    const result = await providerWrite(id, autorenew)
+    if (input.providerWriteApplied !== false) providerAutorenew = result.autorenew
+    return result
+  })
   return {
     deps: {
       now: () => new Date(input.now),
@@ -269,7 +278,10 @@ const dependencies = (input: {
       providerReadsAllowed: () => input.providerReadsAllowed ?? true,
       providerWritesAllowed: () => input.providerWritesAllowed ?? true,
       loginOpenProvider: vi.fn(async () => "token"),
-      findOpenProviderDomain: vi.fn(async () => providerRecord(input.provider)),
+      findOpenProviderDomain: input.findProviderDomain ?? vi.fn(async () => providerRecord({
+          ...input.provider,
+          autorenew: providerAutorenew,
+        })),
       getOpenProviderDomainRenewalPrice: vi.fn(async () => ({
         domain: "example.nl",
         operation: "renew" as const,
@@ -444,7 +456,7 @@ describe("Openprovider renewal_date cycles", () => {
     })
   })
 
-  it("plans the renewal obligation frozen into a current registration order", async () => {
+  it("does not let a registration-only capability create a renewal commitment", async () => {
     const store = createStore()
     store.orders[0]!.quoteEvidence = {
       tldCapability: {
@@ -464,14 +476,9 @@ describe("Openprovider renewal_date cycles", () => {
       fixture.deps,
     )
 
-    expect(result.status).toBe("payment_committed")
-    expect(store.cycles[0]).toMatchObject({
-      providerRenewalMode: "provider_autorenew",
-      pricingEvidence: {
-        tld: "nl",
-        tldCapabilityVersion: "tld-nl-2026-07-29.1",
-      },
-    })
+    expect(result.status).toBe("not_applicable")
+    expect(store.cycles).toHaveLength(0)
+    expect(fixture.deps.loginOpenProvider).not.toHaveBeenCalled()
   })
 
   it("keeps an accepted historical capability authoritative after a newer version is enabled", async () => {
@@ -760,6 +767,71 @@ describe("Openprovider renewal_date cycles", () => {
       providerWriteState: "confirmed",
       providerAutorenew: "off",
     })
+  })
+
+  it("does not commit an autorenew change until an authoritative provider read proves it", async () => {
+    const store = createStore({
+      domain: { renewalIntent: false },
+      agreement: { state: "cancellation_scheduled", renewalIntent: false },
+    })
+    const unconfirmed = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      providerWriteApplied: false,
+    })
+
+    const result = await reconcileManagedDomainRenewal(store.payload, 950, unconfirmed.deps)
+
+    expect(result.status).toBe("waiting")
+    expect(unconfirmed.setAutorenew).toHaveBeenCalledOnce()
+    expect(unconfirmed.deps.findOpenProviderDomain).toHaveBeenCalledTimes(2)
+    expect(store.cycles[0]).toMatchObject({
+      providerAutorenew: "on",
+      providerWriteState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_autorenew_write_unconfirmed",
+    })
+
+    const reconciled = dependencies({
+      now: "2027-06-26T00:15:00.000Z",
+      provider: { autorenew: "off" },
+    })
+    await expect(reconcileManagedDomainRenewal(store.payload, 950, reconciled.deps))
+      .resolves.toMatchObject({ status: "cancelled" })
+    expect(reconciled.setAutorenew).not.toHaveBeenCalled()
+    expect(store.cycles[0]).toMatchObject({
+      providerAutorenew: "off",
+      providerWriteState: "confirmed",
+      reconciliationRequired: false,
+      failureReason: null,
+    })
+  })
+
+  it("treats a failed read after a successful autorenew write as indeterminate", async () => {
+    const store = createStore({
+      domain: { renewalIntent: false },
+      agreement: { state: "cancellation_scheduled", renewalIntent: false },
+    })
+    const findProviderDomain = vi.fn<FindProviderDomain>()
+      .mockResolvedValueOnce(providerRecord({ autorenew: "on" }))
+      .mockRejectedValueOnce(new Error("provider read unavailable"))
+    const fixture = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      findProviderDomain,
+    })
+
+    await expect(reconcileManagedDomainRenewal(store.payload, 950, fixture.deps))
+      .resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.setAutorenew).toHaveBeenCalledOnce()
+    expect(findProviderDomain).toHaveBeenCalledTimes(2)
+    expect(store.cycles[0]).toMatchObject({
+      providerWriteState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_autorenew_write_unconfirmed",
+    })
+    expect(recordCommerceAdminException).not.toHaveBeenCalledWith(
+      expect.objectContaining({ code: "openprovider_autorenew_write_rejected" }),
+    )
   })
 
   it("records a definitive autorenew rejection and reconciles without a permanent prepared claim", async () => {

@@ -11,25 +11,24 @@ system and link it from the release change record.
 
 ## Current staged matrix
 
-The effective TLD catalogue enables new registration and the registrant
-verification needed to complete it for the intended catalogue. The global
-commerce stage remains the final provider-write boundary: keep it at `shadow`
-until the controlled live checkout canary has reconciled payment, registration,
-DNS, HTTPS, and publication. Transfers, renewals, and restorations remain
-operation-specific fail-closed capabilities.
+The effective TLD catalogue models the intended catalogue, but its current
+operation flags are fail-closed. Primary provider and registry documentation
+is recorded in the catalogue; that contract evidence does not replace a
+controlled per-TLD provider rehearsal. Do not enable an operation until its
+row below has reconciled the provider write and resulting public state.
 
 | TLD | Registration | Incoming transfer | Renewal | Registrant verification | Restoration |
 | --- | --- | --- | --- | --- | --- |
-| `.nl` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.be` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.com` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.eu` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.org` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.net` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.de` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.info` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.online` | staged enabled | disabled | disabled | staged enabled | disabled |
-| `.shop` | staged enabled | disabled | disabled | staged enabled | disabled |
+| `.nl` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.be` | disabled — registry prevalidation/rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.com` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.eu` | disabled — eligibility evidence/rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.org` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.net` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.de` | disabled — authoritative DNS/risk flow | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.info` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.online` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.shop` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
 
 Global production evidence also remains disabled:
 

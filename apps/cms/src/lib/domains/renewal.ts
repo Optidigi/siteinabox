@@ -12,6 +12,7 @@ import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
   tldCapabilityAt,
+  tldCapabilityOperationFlagEnabled,
   type TldCapability,
   type TldProductionOperation,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -279,7 +280,10 @@ async function renewalCapabilityForManagedDomain(
     ) {
       return {
         capability: acceptedCapability,
-        acceptedObligation: true,
+        acceptedObligation: tldCapabilityOperationFlagEnabled(
+          acceptedCapability,
+          renewalProductionOperation(acceptedCapability),
+        ),
       }
     }
     if (hasAcceptedCapabilityEvidence) return null
@@ -740,6 +744,7 @@ async function setAutorenew(input: {
       providerAutorenew: input.desired,
       providerWriteState: "confirmed",
       reconciliationRequired: false,
+      failureReason: null,
       lastSyncedAt: input.now,
     })
   }
@@ -825,26 +830,13 @@ async function setAutorenew(input: {
     }) as Promise<DomainRenewalCycle>
   }
   cycle = claimedCycle
+  let result: OpenProviderAutorenewResult
   try {
-    const result: OpenProviderAutorenewResult = await input.dependencies.setOpenProviderDomainAutorenew(
+    result = await input.dependencies.setOpenProviderDomainAutorenew(
       input.providerDomain.id,
       input.desired,
       { token: input.token },
     )
-    cycle = await updateCycle(input.payload, cycle, {
-      providerStatus: result.status ?? input.providerDomain.status,
-      providerAutorenew: input.desired,
-      providerWriteState: "confirmed",
-      reconciliationRequired: false,
-      lastSyncedAt: input.now,
-      stateHistory: cycleHistory(cycle, cycle.state, input.now, `provider_autorenew_${input.desired}`),
-    })
-    await updateManagedDomain(input.payload, input.domain, {
-      providerAutorenew: input.desired,
-      providerAutorenewCheckedAt: input.now,
-      lastSyncedAt: input.now,
-    })
-    return cycle
   } catch (error) {
     if (error instanceof OpenProviderIndeterminateWriteError) {
       return updateCycle(input.payload, cycle, {
@@ -874,6 +866,62 @@ async function setAutorenew(input: {
     })
     throw error
   }
+  let reconciled: OpenProviderDomainRecord | null
+  try {
+    reconciled = await input.dependencies.findOpenProviderDomain(
+      input.domain.domainNameAscii,
+      { token: input.token },
+    )
+  } catch {
+    return updateCycle(input.payload, cycle, {
+      providerStatus: result.status ?? input.providerDomain.status,
+      providerAutorenew: input.providerDomain.autorenew,
+      providerWriteState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_autorenew_write_unconfirmed",
+      lastSyncedAt: input.now,
+      stateHistory: cycleHistory(
+        cycle,
+        cycle.state,
+        input.now,
+        "provider_autorenew_write_requires_authoritative_reconciliation",
+      ),
+    })
+  }
+  if (
+    !reconciled ||
+    String(reconciled.id) !== String(input.providerDomain.id) ||
+    reconciled.autorenew !== input.desired
+  ) {
+    return updateCycle(input.payload, cycle, {
+      providerStatus: reconciled?.status ?? result.status ?? input.providerDomain.status,
+      providerAutorenew: reconciled?.autorenew ?? input.providerDomain.autorenew,
+      providerWriteState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_autorenew_write_unconfirmed",
+      lastSyncedAt: input.now,
+      stateHistory: cycleHistory(
+        cycle,
+        cycle.state,
+        input.now,
+        "provider_autorenew_write_requires_authoritative_reconciliation",
+      ),
+    })
+  }
+  cycle = await updateCycle(input.payload, cycle, {
+    providerStatus: reconciled.status,
+    providerAutorenew: reconciled.autorenew,
+    providerWriteState: "confirmed",
+    reconciliationRequired: false,
+    lastSyncedAt: input.now,
+    stateHistory: cycleHistory(cycle, cycle.state, input.now, `provider_autorenew_${input.desired}`),
+  })
+  await updateManagedDomain(input.payload, input.domain, {
+    providerAutorenew: input.desired,
+    providerAutorenewCheckedAt: input.now,
+    lastSyncedAt: input.now,
+  })
+  return cycle
 }
 
 async function completeAdvancedCycle(input: {

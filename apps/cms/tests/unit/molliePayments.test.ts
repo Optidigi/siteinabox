@@ -2587,19 +2587,56 @@ describe("Mollie payment flow", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it("terminally rejects an unsafe historical TLD order without provider writes", async () => {
+    const { payload, run, order, update, managedDomains } = createPayloadStub({
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.de",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    const input = {
+      order: cast(order) as Parameters<typeof provisionPaidDomainOrder>[2]["order"],
+      selectedDomain: "clientsite.de",
+      dependencies: {
+        now: () => "2026-07-29T17:30:00.000Z",
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(payload, cast(run), input))
+      .resolves.toMatchObject({ status: "unfulfillable" })
+    const lifecycleUpdatesAfterFirst = update.mock.calls.filter(
+      ([args]) => args.collection === "managed-domains",
+    ).length
+    await expect(provisionPaidDomainOrder(payload, cast(run), input))
+      .resolves.toMatchObject({
+        status: "unfulfillable",
+        message: expect.stringContaining("terminal manual review"),
+      })
+
+    expect(update.mock.calls.filter(
+      ([args]) => args.collection === "managed-domains",
+    )).toHaveLength(lifecycleUpdatesAfterFirst)
+    expect(managedDomains[0]).toMatchObject({
+      state: "manual_review",
+      failureReason:
+        "current_tld_safety_contract_unmet:preconfigured_authoritative_dns_not_proven",
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it.each([
     "nl",
     "com",
-    "eu",
     "org",
     "net",
-    "be",
-    "de",
     "info",
     "online",
     "shop",
   ] as const)(
-    "starts .%s domain provisioning after a live paid checkout",
+    "honors a previously accepted safe .%s order after live payment",
     async (tld) => {
     const selectedDomain = `clientsite.${tld}`
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")

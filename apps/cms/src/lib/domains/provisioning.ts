@@ -3,9 +3,11 @@ import "server-only"
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  tldCapabilityAt,
   tldCapabilityOperationFlagEnabled,
   type TldCapability,
   validateTldRegistrationLabel,
+  validateTldRegistrantPrerequisites,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type {
@@ -459,6 +461,11 @@ export async function provisionPaidDomainOrder(
     throw new Error(`Authoritative registrant field companyName is required for .${capability.tld}.`)
   }
   const now = dependencies.now()
+  const currentSafetyCapability = tldCapabilityAt(capability.tld, now) ?? capability
+  const registrantPrerequisites = validateTldRegistrantPrerequisites(
+    currentSafetyCapability,
+    registrant,
+  )
   let managedDomain = await getOrCreateManagedDomain(payload, {
     order: input.order,
     profile,
@@ -482,10 +489,13 @@ export async function provisionPaidDomainOrder(
   const initialFailureReason = managedDomain.failureReason
   if (
     managedDomain.state === "manual_review" &&
-    [
-      "paid_domain_became_unavailable_before_provider_commit",
-      "provider_domain_owner_mismatch",
-    ].includes(initialFailureReason ?? "")
+    (
+      [
+        "paid_domain_became_unavailable_before_provider_commit",
+        "provider_domain_owner_mismatch",
+      ].includes(initialFailureReason ?? "") ||
+      initialFailureReason?.startsWith("current_tld_safety_contract_unmet:") === true
+    )
   ) {
     run = await compatibilityProjection(
       payload,
@@ -501,6 +511,39 @@ export async function provisionPaidDomainOrder(
       run,
       managedDomain,
       message: "The managed domain remains in terminal manual review.",
+    }
+  }
+  const currentSafetyFailure = !validateTldRegistrationLabel(
+    currentSafetyCapability,
+    normalized.name,
+  )
+    ? "current_tld_label_contract_unmet"
+    : !registrantPrerequisites.valid
+      ? registrantPrerequisites.reason
+      : currentSafetyCapability.registration.preconfiguredAuthoritativeDns
+        ? "preconfigured_authoritative_dns_not_proven"
+        : null
+  if (currentSafetyFailure) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      state: "manual_review",
+      customerStatus: "manual_review",
+      reconciliationRequired: false,
+      failureReason: `current_tld_safety_contract_unmet:${currentSafetyFailure}`,
+    }, "current_tld_safety_contract_unmet", now)
+    run = await compatibilityProjection(
+      payload,
+      run,
+      managedDomain,
+      "failed",
+      currentSafetyFailure,
+      registrant,
+    )
+    return {
+      status: "unfulfillable",
+      domain: normalized.domain,
+      run,
+      managedDomain,
+      message: "The accepted order no longer satisfies the current registry safety contract.",
     }
   }
   if (managedDomain.state === "active" && managedDomain.entitlementStatus === "active") {

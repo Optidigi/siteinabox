@@ -29,7 +29,7 @@ import { relationshipId } from "@/lib/relationshipId"
 
 const MINIMUM_PAYMENT_RECOVERY_AGE_MS = 2 * 60_000
 const STALE_WEBHOOK_ALERT_AGE_MS = 30 * 60_000
-const DEFAULT_OPENPROVIDER_BALANCE_THRESHOLD_EUR = 100
+const DEFAULT_OPENPROVIDER_BALANCE_THRESHOLD_EUR = 0
 const DAY_MS = 24 * 60 * 60_000
 
 type ReconciliationDependencies = {

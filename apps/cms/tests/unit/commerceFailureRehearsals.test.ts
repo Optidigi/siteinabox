@@ -393,6 +393,22 @@ describe("Phase 11 commerce failure rehearsals", () => {
     })
   })
 
+  it("uses zero as the default operational balance alert threshold", async () => {
+    const store = createPayloadStore()
+
+    await expect(reconcileOpenProviderBalanceAlert(store.payload, {
+      providerReadsAllowed: () => true,
+      loginOpenProvider: vi.fn(async () => "token"),
+      getOpenProviderResellerBalance: vi.fn(async () => ({
+        availableAmount: 0,
+        reservedAmount: 0,
+        currency: "EUR",
+      })),
+    }, {} as NodeJS.ProcessEnv, NOW.toISOString())).resolves.toBe("healthy")
+
+    expect(store.collections["operational-alerts"]).toHaveLength(0)
+  })
+
   it("coalesces a concurrent alert-create race on the unique dedupe key", async () => {
     const alert: MockDoc = {
       id: 90,

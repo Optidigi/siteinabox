@@ -66,9 +66,10 @@ observations before acting on them.
   Cloudflare, DNSSEC, or mail behavior.
 - **Next:** Run an explicitly approved disposable-domain rehearsal and capture
   provider identifiers, DNS, sender, snapshot, response, and mail evidence.
-  New registration is staged for the intended catalogue behind the global
-  `shadow` provider-write boundary. Keep transfer, renewal, restoration, and
-  final global production activation disabled until their rows in
+  The intended catalogue is modeled, while every current operation remains
+  fail-closed pending its per-TLD provider rehearsal. Keep registration,
+  transfer, renewal, restoration, and final global production activation
+  disabled until their rows in
   [Commerce production evidence](runbooks/commerce-production-evidence.md)
   pass.
 
