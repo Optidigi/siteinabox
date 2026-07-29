@@ -4,6 +4,7 @@ import {
   type NormalizedMigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
 import { parseCloudflareDnssec } from "@/lib/domains/dnssecProviderContracts"
+import { cloudflareTunnelTarget } from "@/lib/domains/cloudflareTunnels"
 import { splitDomain } from "@/lib/domains/normalize"
 
 export type CloudflareZoneResult = {
@@ -15,6 +16,7 @@ export type CloudflareZoneResult = {
 }
 
 export type CloudflareDnsRecordType = "A" | "CNAME"
+export type CloudflareDnsRecordReadableType = CloudflareDnsRecordType | "AAAA"
 
 export type CloudflareDnsRecordRequest = {
   type: CloudflareDnsRecordType
@@ -26,12 +28,17 @@ export type CloudflareDnsRecordRequest = {
 
 export type CloudflareDnsRecordResult = {
   id: string | null
-  type: CloudflareDnsRecordType
+  type: CloudflareDnsRecordReadableType
   name: string
   content: string
   proxied: boolean
   raw: unknown
 }
+
+export type CloudflareOwnedDnsReconciliationResult =
+  CloudflareDnsRecordResult & {
+    ownershipDisposition: "owned" | "created" | "unowned_reused"
+  }
 
 export type CloudflareMigrationDnsRecordResult = {
   id: string | null
@@ -42,6 +49,10 @@ export type CloudflareMigrationDnsRecordResult = {
 export type CloudflareDnsRecordUsage = {
   recordQuota: number
   recordUsage: number
+}
+
+export type CloudflareEdgeDnsPreflight = {
+  unownedMatchingRecordIds: string[]
 }
 
 export type CloudflareEmailSendingSubdomainResult = {
@@ -56,6 +67,14 @@ export type CloudflareEmailSendingSubdomainResult = {
 export type CloudflareSslVerificationResult = {
   status: "active" | "pending" | "failed"
   providerStatuses: string[]
+  raw: unknown
+}
+
+export type CloudflareHostnameCertificateResult = {
+  hostname: string
+  universalSslEnabled: boolean
+  covered: boolean
+  certificateStatuses: string[]
   raw: unknown
 }
 
@@ -97,6 +116,13 @@ export class CloudflareIndeterminateWriteError extends Error {
     super(`${operation} has an indeterminate provider outcome.`)
     this.name = "CloudflareIndeterminateWriteError"
     this.operation = operation
+  }
+}
+
+export class CloudflareDnsRecordConflictError extends Error {
+  constructor(readonly hostname: string) {
+    super(`Cloudflare already contains an unowned conflicting address record for ${hostname}.`)
+    this.name = "CloudflareDnsRecordConflictError"
   }
 }
 
@@ -303,6 +329,38 @@ export function buildCloudflareDnsRecordRequests(
   ]
 }
 
+export function buildCloudflareEdgeDnsRecordRequests(
+  domainInput: string,
+  env: NodeJS.ProcessEnv = process.env,
+): CloudflareDnsRecordRequest[] {
+  const domain = splitDomain(domainInput).domain
+  const rendererTarget = cloudflareTunnelTarget("renderer", env)
+  const cmsTarget = cloudflareTunnelTarget("cms", env)
+  return [
+    {
+      type: "CNAME",
+      name: domain,
+      content: rendererTarget,
+      ttl: 1,
+      proxied: true,
+    },
+    {
+      type: "CNAME",
+      name: `www.${domain}`,
+      content: rendererTarget,
+      ttl: 1,
+      proxied: true,
+    },
+    {
+      type: "CNAME",
+      name: `admin.${domain}`,
+      content: cmsTarget,
+      ttl: 1,
+      proxied: true,
+    },
+  ]
+}
+
 export async function createCloudflareDnsRecord(
   zoneId: string,
   record: CloudflareDnsRecordRequest,
@@ -343,14 +401,80 @@ export async function listCloudflareDnsRecords(
 ): Promise<CloudflareDnsRecordResult[]> {
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(
-    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500`,
-    { method: "GET", headers: headers(token) },
-  )
-  const payload = await json(response)
-  assertCloudflareOk("Cloudflare DNS record list", response, payload)
-  return resultArray(payload).flatMap((result) => {
-    const type = result.type === "A" || result.type === "CNAME" ? result.type : null
+  const records: Record<string, unknown>[] = []
+  let page = 1
+  let expectedTotalPages: number | null = null
+  let expectedTotalCount: number | null = null
+  const maximumPages = 10_000
+  while (true) {
+    if (page > maximumPages) {
+      throw new Error("Cloudflare DNS record pagination exceeded its safety bound.")
+    }
+    const response = await fetcher(options)(
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500&page=${page}`,
+      { method: "GET", headers: headers(token) },
+    )
+    const payload = await json(response)
+    assertCloudflareOk("Cloudflare DNS record list", response, payload)
+    const pageRecords = resultArray(payload)
+    records.push(...pageRecords)
+    const resultInfo = readObject(readObject(payload).result_info)
+    const responsePage = Number.isSafeInteger(resultInfo.page)
+      ? Number(resultInfo.page)
+      : null
+    const responsePerPage = Number.isSafeInteger(resultInfo.per_page)
+      ? Number(resultInfo.per_page)
+      : null
+    const totalPages = Number.isSafeInteger(resultInfo.total_pages)
+      ? Number(resultInfo.total_pages)
+      : null
+    const totalCount = Number.isSafeInteger(resultInfo.total_count)
+      ? Number(resultInfo.total_count)
+      : null
+    const count = Number.isSafeInteger(resultInfo.count)
+      ? Number(resultInfo.count)
+      : null
+    if (
+      (responsePage != null && responsePage !== page) ||
+      (responsePerPage != null && responsePerPage !== 500) ||
+      (count != null && count !== pageRecords.length) ||
+      (totalPages != null && (totalPages < 1 || totalPages > maximumPages)) ||
+      (totalCount != null && totalCount < records.length)
+    ) {
+      throw new Error("Cloudflare DNS record pagination metadata is invalid.")
+    }
+    if (expectedTotalPages == null) expectedTotalPages = totalPages
+    if (expectedTotalCount == null) expectedTotalCount = totalCount
+    if (
+      totalPages != null &&
+      expectedTotalPages != null &&
+      totalPages !== expectedTotalPages
+    ) {
+      throw new Error("Cloudflare DNS record pagination changed during read.")
+    }
+    if (
+      totalCount != null &&
+      expectedTotalCount != null &&
+      totalCount !== expectedTotalCount
+    ) {
+      throw new Error("Cloudflare DNS record count changed during read.")
+    }
+    const more = totalPages != null
+      ? page < totalPages
+      : pageRecords.length === 500
+    if (!more) break
+    page += 1
+  }
+  if (expectedTotalCount != null && records.length !== expectedTotalCount) {
+    throw new Error("Cloudflare DNS record pagination returned an incomplete result.")
+  }
+  return records.flatMap((result) => {
+    const type =
+      result.type === "A" ||
+      result.type === "AAAA" ||
+      result.type === "CNAME"
+        ? result.type
+        : null
     const name = typeof result.name === "string" ? result.name : null
     const content = typeof result.content === "string" ? result.content : null
     if (!type || !name || !content) return []
@@ -363,6 +487,36 @@ export async function listCloudflareDnsRecords(
       raw: result,
     }]
   })
+}
+
+export async function assertCloudflareEdgeDnsRecordsReconciliable(
+  zoneId: string,
+  records: CloudflareDnsRecordRequest[],
+  ownedRecordIds: string[],
+  options?: CloudflareOptions,
+): Promise<CloudflareEdgeDnsPreflight> {
+  const existing = await listCloudflareDnsRecords(zoneId, options)
+  const unownedMatchingRecordIds: string[] = []
+  for (const requested of records) {
+    const normalizedName = requested.name.toLowerCase().replace(/\.$/, "")
+    const candidates = existing.filter((candidate) =>
+      candidate.name.toLowerCase().replace(/\.$/, "") === normalizedName)
+    const matching = candidates.find((candidate) =>
+      sameCloudflareRecord(candidate, requested))
+    if (matching) {
+      if (matching.id && !ownedRecordIds.includes(matching.id)) {
+        unownedMatchingRecordIds.push(matching.id)
+      }
+      continue
+    }
+    if (candidates.length === 0) continue
+    const owned = candidates.filter((candidate) =>
+      candidate.id != null && ownedRecordIds.includes(candidate.id))
+    if (candidates.length !== 1 || owned.length !== 1) {
+      throw new CloudflareDnsRecordConflictError(requested.name)
+    }
+  }
+  return { unownedMatchingRecordIds: [...new Set(unownedMatchingRecordIds)] }
 }
 
 const sameCloudflareRecord = (
@@ -392,6 +546,116 @@ export async function createOrReuseCloudflareDnsRecord(
       if (reconciled) return reconciled
     } catch {
       // Preserve the original write outcome classification.
+    }
+    throw error
+  }
+}
+
+async function updateCloudflareDnsRecord(
+  zoneId: string,
+  recordId: string,
+  record: CloudflareDnsRecordRequest,
+  options?: CloudflareOptions,
+): Promise<CloudflareDnsRecordResult> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  let response: Response
+  try {
+    response = await fetcher(options)(
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/${encodeURIComponent(recordId)}`,
+      {
+        method: "PUT",
+        headers: headers(token),
+        body: JSON.stringify(record),
+      },
+    )
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare DNS record update", error)
+  }
+  const payload = await readCloudflareWritePayload("Cloudflare DNS record update", response)
+  assertCloudflareOk("Cloudflare DNS record update", response, payload)
+  const result = resultObject(payload)
+  const id = typeof result.id === "string" ? result.id : recordId
+  return {
+    id,
+    type: result.type === "A" || result.type === "CNAME" ? result.type : record.type,
+    name: typeof result.name === "string" ? result.name : record.name,
+    content: typeof result.content === "string" ? result.content : record.content,
+    proxied: typeof result.proxied === "boolean" ? result.proxied : record.proxied,
+    raw: payload,
+  }
+}
+
+export async function reconcileOwnedCloudflareDnsRecord(
+  zoneId: string,
+  record: CloudflareDnsRecordRequest,
+  ownedRecordIds: string[],
+  options?: CloudflareOptions,
+): Promise<CloudflareOwnedDnsReconciliationResult> {
+  const normalizedName = record.name.toLowerCase().replace(/\.$/, "")
+  const readCandidates = async () => (await listCloudflareDnsRecords(zoneId, options))
+    .filter((candidate) =>
+      candidate.name.toLowerCase().replace(/\.$/, "") === normalizedName)
+  let candidates = await readCandidates()
+  const matching = candidates.find((candidate) => sameCloudflareRecord(candidate, record))
+  if (matching) {
+    return {
+      ...matching,
+      ownershipDisposition:
+        matching.id && ownedRecordIds.includes(matching.id)
+          ? "owned"
+          : "unowned_reused",
+    }
+  }
+  if (candidates.length === 0) {
+    try {
+      return {
+        ...await createCloudflareDnsRecord(zoneId, record, options),
+        ownershipDisposition: "created",
+      }
+    } catch (error) {
+      candidates = await readCandidates()
+      const reconciled = candidates.find((candidate) =>
+        sameCloudflareRecord(candidate, record))
+      if (reconciled) {
+        return {
+          ...reconciled,
+          ownershipDisposition:
+            reconciled.id && ownedRecordIds.includes(reconciled.id)
+              ? "owned"
+              : "unowned_reused",
+        }
+      }
+      throw error
+    }
+  }
+  const owned = candidates.filter((candidate) =>
+    candidate.id != null && ownedRecordIds.includes(candidate.id))
+  if (candidates.length !== 1 || owned.length !== 1 || !owned[0]?.id) {
+    throw new CloudflareDnsRecordConflictError(record.name)
+  }
+  try {
+    return {
+      ...await updateCloudflareDnsRecord(
+        zoneId,
+        owned[0].id,
+        record,
+        options,
+      ),
+      ownershipDisposition: "owned",
+    }
+  } catch (error) {
+    candidates = await readCandidates()
+    const reconciled = candidates.find((candidate) =>
+      sameCloudflareRecord(candidate, record))
+    if (reconciled) {
+      return {
+        ...reconciled,
+        ownershipDisposition:
+          reconciled.id && ownedRecordIds.includes(reconciled.id)
+            ? "owned"
+            : "unowned_reused",
+      }
     }
     throw error
   }
@@ -776,6 +1040,119 @@ export async function getCloudflareSslVerification(
       ? "failed"
       : "pending"
   return { status, providerStatuses: statuses, raw: payload }
+}
+
+const certificateNameCovers = (certificateName: string, hostname: string): boolean => {
+  const name = certificateName.trim().toLowerCase().replace(/\.$/, "")
+  const host = hostname.trim().toLowerCase().replace(/\.$/, "")
+  if (name === host) return true
+  if (!name.startsWith("*.")) return false
+  const suffix = name.slice(2)
+  return host.endsWith(`.${suffix}`) &&
+    host.split(".").length === suffix.split(".").length + 1
+}
+
+export async function getCloudflareHostnameCertificate(
+  zoneId: string,
+  hostname: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareHostnameCertificateResult> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  const settingsResponse = await fetcher(options)(
+    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/ssl/universal/settings`,
+    { method: "GET", headers: headers(token) },
+  )
+  const settingsPayload = await json(settingsResponse)
+  assertCloudflareOk("Cloudflare Universal SSL settings", settingsResponse, settingsPayload)
+  const packs: Record<string, unknown>[] = []
+  const packPayloads: unknown[] = []
+  let page = 1
+  let expectedTotalPages: number | null = null
+  let expectedTotalCount: number | null = null
+  const maximumPages = 10_000
+  while (true) {
+    if (page > maximumPages) {
+      throw new Error("Cloudflare certificate pagination exceeded its safety bound.")
+    }
+    const packsResponse = await fetcher(options)(
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/ssl/certificate_packs?status=all&deploy=production&per_page=50&page=${page}`,
+      { method: "GET", headers: headers(token) },
+    )
+    const packsPayload = await json(packsResponse)
+    assertCloudflareOk("Cloudflare certificate pack list", packsResponse, packsPayload)
+    packPayloads.push(packsPayload)
+    const pagePacks = resultArray(packsPayload)
+    packs.push(...pagePacks)
+    const resultInfo = readObject(readObject(packsPayload).result_info)
+    const responsePage = Number.isSafeInteger(resultInfo.page)
+      ? Number(resultInfo.page)
+      : null
+    const responsePerPage = Number.isSafeInteger(resultInfo.per_page)
+      ? Number(resultInfo.per_page)
+      : null
+    const totalPages = Number.isSafeInteger(resultInfo.total_pages)
+      ? Number(resultInfo.total_pages)
+      : null
+    const totalCount = Number.isSafeInteger(resultInfo.total_count)
+      ? Number(resultInfo.total_count)
+      : null
+    const count = Number.isSafeInteger(resultInfo.count)
+      ? Number(resultInfo.count)
+      : null
+    if (
+      (responsePage != null && responsePage !== page) ||
+      (responsePerPage != null && responsePerPage !== 50) ||
+      (count != null && count !== pagePacks.length) ||
+      (totalPages != null && (totalPages < 1 || totalPages > maximumPages)) ||
+      (totalCount != null && totalCount < packs.length)
+    ) {
+      throw new Error("Cloudflare certificate pagination metadata is invalid.")
+    }
+    if (expectedTotalPages == null) expectedTotalPages = totalPages
+    if (expectedTotalCount == null) expectedTotalCount = totalCount
+    if (
+      totalPages != null &&
+      expectedTotalPages != null &&
+      totalPages !== expectedTotalPages
+    ) {
+      throw new Error("Cloudflare certificate pagination changed during read.")
+    }
+    if (
+      totalCount != null &&
+      expectedTotalCount != null &&
+      totalCount !== expectedTotalCount
+    ) {
+      throw new Error("Cloudflare certificate count changed during read.")
+    }
+    const more = totalPages != null ? page < totalPages : pagePacks.length === 50
+    if (!more) break
+    page += 1
+  }
+  if (expectedTotalCount != null && packs.length !== expectedTotalCount) {
+    throw new Error("Cloudflare certificate pagination returned an incomplete result.")
+  }
+  const universalSslEnabled = resultObject(settingsPayload).enabled === true
+  const matchingPacks = packs.filter((pack) => {
+    const hosts = Array.isArray(pack.hosts)
+      ? pack.hosts.filter((entry): entry is string => typeof entry === "string")
+      : []
+    return hosts.some((candidate) => certificateNameCovers(candidate, hostname))
+  })
+  const certificateStatuses = matchingPacks.flatMap((pack) =>
+    typeof pack.status === "string" ? [pack.status] : [])
+  return {
+    hostname,
+    universalSslEnabled,
+    covered:
+      universalSslEnabled &&
+      matchingPacks.some((pack) => pack.status === "active"),
+    certificateStatuses,
+    raw: {
+      universalSsl: settingsPayload,
+      certificatePacks: packPayloads,
+    },
+  }
 }
 
 export async function getCloudflareDnssec(

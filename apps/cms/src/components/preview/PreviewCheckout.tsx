@@ -162,9 +162,6 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
-  acceptMigrationSupplementalOrderAction?: (
-    formData: FormData,
-  ) => Promise<MigrationCustomerActionState>
   recollectAcceptedMigrationInputAction?: (
     formData: FormData,
   ) => Promise<MigrationCustomerActionState>
@@ -252,7 +249,6 @@ export function PreviewCheckout({
   checkDomainAction,
   saveProfileAction,
   startPaymentAction,
-  acceptMigrationSupplementalOrderAction,
   recollectAcceptedMigrationInputAction,
   submitMigrationTransferCodeAction,
   termsHref,
@@ -280,16 +276,6 @@ export function PreviewCheckout({
     startPaymentAction,
     initialActionState,
   )
-  const [supplementalState, supplementalAction, supplementalPending] =
-    useActionState(
-      async (
-        _previous: MigrationCustomerActionState,
-        formData: FormData,
-      ) => acceptMigrationSupplementalOrderAction
-        ? acceptMigrationSupplementalOrderAction(formData)
-        : initialMigrationActionState,
-      initialMigrationActionState,
-    )
   const [recollectionState, recollectionAction, recollectionPending] =
     useActionState(
       async (
@@ -1006,66 +992,6 @@ export function PreviewCheckout({
                     ))}
                 </ul>
               )}
-              {migrationStatus.operatorAuthorization === "awaiting_payment" &&
-                migrationStatus.supplementalProposal &&
-                acceptMigrationSupplementalOrderAction && (
-                  <form
-                    action={supplementalAction}
-                    className="mt-4 grid gap-3 rounded-md border bg-background p-3"
-                  >
-                    <input
-                      type="hidden"
-                      name="migrationId"
-                      value={migrationStatus.migrationId}
-                    />
-                    <input
-                      type="hidden"
-                      name="expectedMigrationVersion"
-                      value={migrationStatus.updatedAt}
-                    />
-                    <p className="font-medium">
-                      {t("checkoutMigrationSupplementalTitle")}
-                    </p>
-                    <p>
-                      {t("checkoutMigrationSupplementalScope", {
-                        scope: migrationWorkScopeLabel(
-                          migrationStatus.supplementalProposal.workScopeCode,
-                          t,
-                        ),
-                      })}
-                    </p>
-                    <p>
-                      {t("checkoutMigrationSupplementalPrice", {
-                        net: money(
-                          locale,
-                          migrationStatus.supplementalProposal.netAmountMinor,
-                          "EUR",
-                        ),
-                        gross: money(
-                          locale,
-                          migrationStatus.supplementalProposal.grossAmountMinor,
-                          "EUR",
-                        ),
-                      })}
-                    </p>
-                    <Button type="submit" className="w-fit" disabled={supplementalPending}>
-                      {supplementalPending && (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      )}
-                      {t("checkoutMigrationSupplementalRetry")}
-                    </Button>
-                    {supplementalState.message && (
-                      <p
-                        className={supplementalState.ok
-                          ? "text-sm text-foreground"
-                          : "text-sm text-destructive"}
-                        role={supplementalState.ok ? "status" : "alert"}
-                      >
-                        {supplementalState.message}
-                      </p>
-                    )}
-                  </form>
-                )}
               {migrationStatus.actions.some((action) =>
                 action.action === "provide_epp_code" &&
                 ["required", "failed"].includes(action.status)) &&
@@ -2242,21 +2168,6 @@ const migrationStateLabel = (
   } as const
   const key = keys[state as keyof typeof keys]
   return key ? t(key) : t("checkoutMigrationStateUnknown")
-}
-
-const migrationWorkScopeLabel = (
-  scope: string,
-  t: ReturnType<typeof useTranslations<"preview">>,
-): string => {
-  const keys = {
-    verify_customer_zone_export: "checkoutMigrationScopeVerifyZoneExport",
-    resolve_supported_zone_conflict:
-      "checkoutMigrationScopeResolveZoneConflict",
-    complete_supported_provider_handoff:
-      "checkoutMigrationScopeProviderHandoff",
-  } as const
-  const key = keys[scope as keyof typeof keys]
-  return key ? t(key) : t("checkoutMigrationScopeUnknown")
 }
 
 function PreviewCheckoutStepper({

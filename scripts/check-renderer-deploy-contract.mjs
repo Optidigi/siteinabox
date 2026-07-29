@@ -9,6 +9,7 @@ const { RENDERER_PRODUCTION_HOSTS } = await import(
 const rendererComposePath = resolve(repoRoot, "apps/renderer/compose.yml")
 const rendererDockerfilePath = resolve(repoRoot, "apps/renderer/Dockerfile")
 const rendererPackagePath = resolve(repoRoot, "apps/renderer/package.json")
+const cmsComposePath = resolve(repoRoot, "apps/cms/docker-compose.yml")
 const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-renderer-image.yml")
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 
@@ -75,7 +76,6 @@ for (const requiredFragment of [
   "file: ${SIAB_RENDERER_API_TOKEN_FILE:?required}",
   "file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?required}",
   "/run/secrets/cloudflare_tunnel_token",
-  "http://siteinabox-renderer:4321",
   'test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]',
   "renderer-origin:",
 ]) {
@@ -97,9 +97,37 @@ for (const forbiddenFragment of [
   "SIAB_RENDERER_API_TOKEN: ${",
   "SIAB_RENDERER_ORIGIN_SECRET: ${",
   "SIAB_RENDERER_ORIGIN_SECRET_FILE:",
+  "--url",
+  "httpHostHeader",
 ]) {
   if (rendererCompose.includes(forbiddenFragment)) {
     errors.push(`${formatPath(rendererComposePath)} publicly exposes or weakens the private origin: ${forbiddenFragment}`)
+  }
+}
+
+const cmsCompose = await readFile(cmsComposePath, "utf8")
+for (const requiredFragment of [
+  "siteinabox-cms-tunnel:",
+  "CLOUDFLARE_RENDERER_TUNNEL_ID:",
+  "CLOUDFLARE_CMS_TUNNEL_ID:",
+  "/run/secrets/cloudflare_cms_tunnel_token",
+  "file: ${CLOUDFLARE_CMS_TUNNEL_TOKEN_FILE:?required}",
+  "networks: [proxy, internal, cms-origin]",
+  "networks: [cms-origin]",
+  "cms-origin:",
+]) {
+  if (!cmsCompose.includes(requiredFragment)) {
+    errors.push(`${formatPath(cmsComposePath)} is missing private CMS Tunnel contract: ${requiredFragment}`)
+  }
+}
+for (const forbiddenFragment of [
+  "Host(`admin.ami-care.nl`)",
+  "HostRegexp(",
+  "cloudflare_cms_tunnel_token\n      - --url",
+  "httpHostHeader",
+]) {
+  if (cmsCompose.includes(forbiddenFragment)) {
+    errors.push(`${formatPath(cmsComposePath)} exposes a customer-specific or weak CMS origin route: ${forbiddenFragment}`)
   }
 }
 
@@ -150,4 +178,4 @@ if (errors.length > 0) {
   process.exit(1)
 }
 
-console.log(`Renderer deploy contract OK: ${expectedHosts.join(", ")}`)
+console.log("Renderer/CMS private Tunnel deploy contract OK: customer hosts are data-driven")

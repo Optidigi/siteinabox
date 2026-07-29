@@ -69,12 +69,10 @@ import { normalizeDomain } from "@/lib/domains/normalize"
 import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/lib/legal/checkoutEvidence"
 import { satisfyRequirementsFromTransaction } from "@/lib/legal/customerRequirements"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
-import { createSupplementalMigrationMollieCheckout } from "@/lib/payments/molliePayments"
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { normalizeGenerationRunPaymentState } from "@/lib/payments/generationRunPayment"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
-import { requestMigrationOperatorWork } from "@/lib/domains/assistedMigration"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
@@ -666,116 +664,6 @@ const translateDomainMigrationInputFailure = (error: unknown): never => {
     )
   }
   throw new MigrationCustomerActionError("retryable_service_error")
-}
-
-async function acceptMigrationSupplementalOrder(
-  clientSlug: string,
-  formData: FormData,
-): Promise<string> {
-  const context = await requirePreviewCheckoutContext(clientSlug)
-  const migrationId = String(formData.get("migrationId") ?? "").trim()
-  const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
-  if (!/^\d+$/.test(migrationId) || !expectedVersion) {
-    throw new MigrationCustomerActionError("invalid_input")
-  }
-  const migration = await context.payload.findByID({
-    collection: "domain-migrations",
-    id: migrationId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const originatingOrderId = relationshipId(migration.originatingOrder)
-  if (
-    migration.updatedAt !== expectedVersion ||
-    !["awaiting_customer_acceptance", "awaiting_payment"].includes(
-      migration.operatorWorkAuthorizationState,
-    ) ||
-    migration.operatorWorkCause !== "customer_migration" ||
-    !migration.operatorWorkScope ||
-    !originatingOrderId
-  ) {
-    throw new MigrationCustomerActionError("refresh_required")
-  }
-  const order = await context.payload.findByID({
-    collection: "orders",
-    id: originatingOrderId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  if (
-    !sameRelationshipId(order.generationRun, context.run.id) ||
-    !sameRelationshipId(order.tenant, context.tenant.id) ||
-    order.customerEmail.trim().toLowerCase() !==
-      context.customerEmail.trim().toLowerCase()
-  ) {
-    throw new Error("Supplemental migration proposal belongs to another customer.")
-  }
-  let supplementalOrder
-  if (migration.operatorWorkAuthorizationState === "awaiting_payment") {
-    const supplementalOrderId = relationshipId(migration.supplementalOrder)
-    if (!supplementalOrderId) {
-      throw new Error("Supplemental migration payment has no immutable order.")
-    }
-    supplementalOrder = await context.payload.findByID({
-      collection: "orders",
-      id: supplementalOrderId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    if (
-      supplementalOrder.orderKind !== "migration_supplemental" ||
-      !sameRelationshipId(supplementalOrder.parentOrder, order.id) ||
-      !sameRelationshipId(supplementalOrder.tenant, context.tenant.id) ||
-      supplementalOrder.customerEmail.trim().toLowerCase() !==
-        context.customerEmail.trim().toLowerCase()
-    ) {
-      throw new Error("Supplemental migration payment belongs to another authority.")
-    }
-  } else {
-    const audit = await requestAudit()
-    const acceptedAt = new Date().toISOString()
-    const result = await requestMigrationOperatorWork(context.payload, {
-      migrationId: migration.id,
-      requestedClassification: "assisted_standard",
-      workCause: "customer_migration",
-      workScope: migration.operatorWorkScope,
-      supplementalAcceptance: {
-        actorEmail: context.customerEmail,
-        acceptedAt,
-        ipAddress: audit.ipAddress,
-        userAgent: audit.userAgent,
-      },
-      now: acceptedAt,
-    })
-    if (!result.supplementalOrder) {
-      throw new Error("Supplemental migration order was not created.")
-    }
-    supplementalOrder = result.supplementalOrder
-  }
-  const checkout = await createSupplementalMigrationMollieCheckout(
-    context.payload,
-    {
-      orderId: supplementalOrder.id,
-      redirectUrl:
-        `https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return&migration=supplemental`,
-    },
-  ).catch(() => {
-    throw new MigrationCustomerActionError("retryable_service_error")
-  })
-  return checkout.checkoutUrl
-}
-
-export async function acceptMigrationSupplementalOrderAction(
-  clientSlug: string,
-  formData: FormData,
-): Promise<MigrationCustomerActionState> {
-  let checkoutUrl: string
-  try {
-    checkoutUrl = await acceptMigrationSupplementalOrder(clientSlug, formData)
-  } catch (error) {
-    return migrationCustomerActionFailure(error)
-  }
-  redirect(checkoutUrl)
 }
 
 async function recollectAcceptedMigrationInput(

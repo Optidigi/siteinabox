@@ -4,6 +4,7 @@ import {
   type CommerceReleaseGateDecision,
 } from "@siteinabox/contracts/commerce"
 import type { Payload } from "payload"
+import type { Tenant } from "@/payload-types"
 
 const clean = (value: string | undefined): string | null => {
   const normalized = value?.trim()
@@ -86,7 +87,58 @@ export async function commerceProductionReadinessBlockers(
   if (criticalAlerts.totalDocs > 0 || criticalAlerts.docs.length > 0) {
     blockers.push("production_has_open_critical_commerce_alerts")
   }
+  blockers.push(...await commerceEdgeInventoryBlockers(payload, true))
   return [...new Set(blockers)]
+}
+
+export async function commerceEdgeInventoryBlockers(
+  payload: Payload,
+  requireActiveRouting = false,
+): Promise<string[]> {
+  const blockers: string[] = []
+  const liveTenants = await payload.find({
+    collection: "tenants",
+    where: { status: { equals: "active" } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  for (const tenant of liveTenants.docs as Tenant[]) {
+    const domain = tenant.domain?.trim().toLowerCase().replace(/\.$/, "")
+    if (!domain) {
+      blockers.push("active_tenant_missing_canonical_domain")
+      continue
+    }
+    const managedDomains = await payload.find({
+      collection: "managed-domains",
+      where: {
+        and: [
+          { tenant: { equals: tenant.id } },
+          { domainNameAscii: { equals: domain } },
+          { state: { equals: "active" } },
+          { cloudflareZoneId: { exists: true } },
+          ...(requireActiveRouting
+            ? [
+                { edgeRoutingStatus: { equals: "active" } },
+                { adminHttpsStatus: { equals: "verified" } },
+                { httpsStatus: { equals: "verified" } },
+              ]
+            : []),
+        ],
+      },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (managedDomains.docs.length !== 1) {
+      blockers.push(
+        requireActiveRouting
+          ? `active_tenant_edge_routing_unready:${tenant.id}`
+          : `active_tenant_managed_domain_inventory_invalid:${tenant.id}`,
+      )
+    }
+  }
+  return blockers
 }
 
 export function commerceProviderReadsAllowed(

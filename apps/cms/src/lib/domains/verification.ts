@@ -656,23 +656,37 @@ export async function verifyParentDsAbsent(
 
 export async function verifyHttpsEndpoint(
   domain: string,
-  options: { fetchImpl?: typeof fetch; signal?: AbortSignal } = {},
+  options: {
+    fetchImpl?: typeof fetch
+    signal?: AbortSignal
+    service?: "renderer" | "cms"
+    expectedDomain?: string
+  } = {},
 ): Promise<HttpsVerification> {
   try {
-    const response = await (options.fetchImpl ?? globalThis.fetch)(`https://${canonicalDnsName(domain)}/`, {
+    const service = options.service ?? "renderer"
+    const path = service === "renderer" ? "/__siab/edge-check" : "/api/edge-check"
+    const response = await (options.fetchImpl ?? globalThis.fetch)(`https://${canonicalDnsName(domain)}${path}`, {
       method: "HEAD",
       redirect: "manual",
       cache: "no-store",
       signal: options.signal ?? AbortSignal.timeout(10_000),
       headers: { "User-Agent": "Siteinabox-Commerce-Verification/1.0" },
     })
-    if (response.status >= 200 && response.status < 500) {
+    if (
+      response.status === 200 &&
+      response.headers.get("x-siab-service") === service &&
+      (
+        !options.expectedDomain ||
+        response.headers.get("x-siab-domain") === canonicalDnsName(options.expectedDomain)
+      )
+    ) {
       return { status: "verified", httpStatus: response.status, reason: null }
     }
     return {
       status: "pending",
       httpStatus: response.status,
-      reason: "https_endpoint_unready",
+      reason: "https_service_identity_unready",
     }
   } catch {
     return { status: "pending", httpStatus: null, reason: "https_connection_unready" }

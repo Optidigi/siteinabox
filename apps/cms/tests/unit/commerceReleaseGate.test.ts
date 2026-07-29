@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 const { prepareDomainMigration } = vi.hoisted(() => ({
   prepareDomainMigration: vi.fn(async (_payload, migrationId) => ({
@@ -11,6 +11,7 @@ const { prepareDomainMigration } = vi.hoisted(() => ({
 vi.mock("@/lib/domains/migration", () => ({ prepareDomainMigration }))
 
 import {
+  commerceEdgeInventoryBlockers,
   commerceProductionReadinessBlockers,
   commerceReleaseGate,
   requireCommerceProviderWritesAllowed,
@@ -21,12 +22,18 @@ import { asPayload } from "../_helpers/mockPayload"
 const taskPayload = asPayload({
   findByID: vi.fn(async () => ({
     id: 10,
+    cloudflareZoneState: "not_started",
+    providerTransferState: "not_started",
     cutoverWriteState: "not_started",
     rollbackWriteState: "not_started",
+    dnssecPhase: "source_unsigned",
+    dnssecWriteState: "not_started",
   })),
 })
 
 describe("staged commerce release runtime gate", () => {
+  afterEach(() => vi.unstubAllEnvs())
+
   it("defaults to disabled and permits shadow provider reads only", () => {
     expect(commerceReleaseGate({} as NodeJS.ProcessEnv)).toEqual({
       providerReadsAllowed: false,
@@ -47,6 +54,7 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks uncommitted migration writes before provider modules execute", async () => {
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "disabled")
     const migrationHandler = prepareDomainMigrationTask.handler as unknown as (
       input: {
         input: { migrationId: string }
@@ -91,10 +99,13 @@ describe("staged commerce release runtime gate", () => {
 
   it("blocks production preflight on an open critical commerce alert", async () => {
     const readinessPayload = asPayload({
-      find: vi.fn(async () => ({
-        docs: [{ id: 1, severity: "critical", status: "open" }],
-        totalDocs: 1,
-      })),
+      find: vi.fn(async ({ collection }: { collection: string }) =>
+        collection === "operational-alerts"
+          ? {
+              docs: [{ id: 1, severity: "critical", status: "open" }],
+              totalDocs: 1,
+            }
+          : { docs: [], totalDocs: 0 }),
     })
     const blockers = await commerceProductionReadinessBlockers(
       readinessPayload,
@@ -116,6 +127,25 @@ describe("staged commerce release runtime gate", () => {
     )
     expect(blockers).toEqual([
       "production_has_open_critical_commerce_alerts",
+    ])
+  })
+
+  it("blocks deployment inventory when a live tenant has no managed domain", async () => {
+    const readinessPayload = asPayload({
+      find: vi.fn(async ({ collection }: { collection: string }) =>
+        collection === "tenants"
+          ? {
+              docs: [{
+                id: 12,
+                status: "active",
+                domain: "ami-care.nl",
+              }],
+              totalDocs: 1,
+            }
+          : { docs: [], totalDocs: 0 }),
+    })
+    await expect(commerceEdgeInventoryBlockers(readinessPayload)).resolves.toEqual([
+      "active_tenant_managed_domain_inventory_invalid:12",
     ])
   })
 })

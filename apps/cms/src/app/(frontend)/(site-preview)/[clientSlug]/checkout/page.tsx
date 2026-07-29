@@ -30,7 +30,6 @@ import {
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import {
-  acceptMigrationSupplementalOrderAction,
   checkPreviewCheckoutDomainAction,
   recollectAcceptedMigrationInputAction,
   savePreviewCheckoutProfileAction,
@@ -192,9 +191,6 @@ export default async function PreviewCheckoutPage({
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
-        acceptMigrationSupplementalOrderAction={
-          acceptMigrationSupplementalOrderAction.bind(null, context.clientSlug)
-        }
         recollectAcceptedMigrationInputAction={
           recollectAcceptedMigrationInputAction.bind(null, context.clientSlug)
         }

@@ -1,4 +1,4 @@
-export type RendererDeployTargetId = "ami-care"
+export type RendererDeployTargetId = string
 
 export type RendererDeployTarget = {
   readonly id: RendererDeployTargetId
@@ -7,25 +7,21 @@ export type RendererDeployTarget = {
   readonly productionOrigin: `https://${string}`
 }
 
-export const RENDERER_DEPLOY_TARGETS = [
-  {
-    id: "ami-care",
-    tenantSlug: "ami-care",
-    productionHost: "ami-care.nl",
-    productionOrigin: "https://ami-care.nl",
-  },
-] as const satisfies readonly RendererDeployTarget[]
+// Production customer hosts are managed-domain data reconciled to Cloudflare
+// Tunnel ingress. Keep this list empty: adding a hostname here would create a
+// competing static routing authority and bypass lifecycle state.
+export const RENDERER_DEPLOY_TARGETS: readonly RendererDeployTarget[] = []
 
 export const RENDERER_PRODUCTION_HOSTS = RENDERER_DEPLOY_TARGETS.map((target) => target.productionHost)
 
-export const RENDERER_DEPLOY_TARGETS_BY_HOST = Object.fromEntries(
+export const RENDERER_DEPLOY_TARGETS_BY_HOST: Readonly<Record<string, RendererDeployTarget>> = Object.fromEntries(
   RENDERER_DEPLOY_TARGETS.map((target) => [target.productionHost, target]),
-) as Readonly<Record<(typeof RENDERER_PRODUCTION_HOSTS)[number], (typeof RENDERER_DEPLOY_TARGETS)[number]>>
+)
 
-export function isRendererProductionHost(host: string): host is (typeof RENDERER_PRODUCTION_HOSTS)[number] {
+export function isRendererProductionHost(host: string): boolean {
   return Object.hasOwn(RENDERER_DEPLOY_TARGETS_BY_HOST, host)
 }
 
 export function getRendererDeployTargetByHost(host: string): RendererDeployTarget | null {
-  return RENDERER_DEPLOY_TARGETS_BY_HOST[host as keyof typeof RENDERER_DEPLOY_TARGETS_BY_HOST] ?? null
+  return RENDERER_DEPLOY_TARGETS_BY_HOST[host] ?? null
 }

@@ -51,8 +51,6 @@ services:
       - run
       - --token-file
       - /run/secrets/cloudflare_tunnel_token
-      - --url
-      - http://siteinabox-renderer:4321
     depends_on:
       siteinabox-renderer:
         condition: service_healthy

@@ -92,7 +92,7 @@ const signedZoneExport: CompleteZoneExport = {
   },
 }
 
-const createStore = () => {
+const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
   const collections: Record<string, MockDoc[]> = {
     orders: [{
       id: 600,
@@ -230,7 +230,17 @@ const createStore = () => {
     return doc
   })
   const create = vi.fn(async ({ collection, data }: { collection: string; data: Record<string, unknown> }) => {
-    const doc = { id: nextId++, ...data }
+    const doc = {
+      id: nextId++,
+      ...data,
+      ...(collection === "managed-domains" && options.managedDomainEdgeReady !== false
+        ? {
+            edgeRoutingStatus: "active",
+            httpsStatus: "verified",
+            adminHttpsStatus: "verified",
+          }
+        : {}),
+    }
     ;(collections[collection] ??= []).push(doc)
     return doc
   })
@@ -301,7 +311,7 @@ const preparedMigration = async (
     transferCode: "opaque-nl-transfer-code",
     env: {
       DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
-      SIAB_RENDERER_TARGET_HOST: "renderer.siteinabox.nl",
+      CLOUDFLARE_RENDERER_TUNNEL_ID: "11111111-1111-4111-8111-111111111111",
     } as unknown as NodeJS.ProcessEnv,
     now: "2026-07-28T08:00:00.000Z",
   })
@@ -585,7 +595,14 @@ const asMigrationDependencies = (
 
 beforeEach(() => {
   vi.stubEnv("DOMAIN_MIGRATION_ENCRYPTION_KEY", ENCRYPTION_KEY)
-  vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
+  vi.stubEnv(
+    "CLOUDFLARE_RENDERER_TUNNEL_ID",
+    "11111111-1111-4111-8111-111111111111",
+  )
+  vi.stubEnv(
+    "CLOUDFLARE_CMS_TUNNEL_ID",
+    "22222222-2222-4222-8222-222222222222",
+  )
 })
 
 afterEach(() => {
@@ -916,6 +933,39 @@ describe("automatic existing-domain migration", () => {
     expect(store.collections.tenants![0]).toMatchObject({
       domain: "example.nl",
       domainVerification: { status: "verified" },
+    })
+  })
+
+  it("waits for automatic edge readiness before transfer and resumes from a preview tenant", async () => {
+    const store = createStore({ managedDomainEdgeReady: false })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+
+    const managedDomain = store.collections["managed-domains"]![0]!
+    Object.assign(managedDomain, {
+      edgeRoutingStatus: "active",
+      httpsStatus: "verified",
+      adminHttpsStatus: "verified",
+    })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
     })
   })
 

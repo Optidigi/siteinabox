@@ -90,6 +90,8 @@ import {
 import { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
 import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
 import { activateManagedDomainEntitlement } from "@/lib/domains/provisioning"
+import { cloudflareTunnelTarget } from "@/lib/domains/cloudflareTunnels"
+import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
@@ -202,11 +204,39 @@ const canonicalNameservers = (value: unknown): string[] =>
       ).map((entry) => entry.trim().toLowerCase().replace(/\.$/, "")))].sort()
     : []
 
+const stringIds = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((entry): entry is string =>
+        typeof entry === "string" && entry.trim().length > 0)
+    : []
+
 const nameserversEqual = (left: unknown, right: unknown): boolean => {
   const leftNames = canonicalNameservers(left)
   const rightNames = canonicalNameservers(right)
   return leftNames.length === rightNames.length &&
     leftNames.every((entry, index) => entry === rightNames[index])
+}
+
+const migrationZoneRecordsForComparison = (
+  records: Awaited<ReturnType<typeof listCloudflareMigrationDnsRecords>>,
+  domain: string,
+): NormalizedCompleteZone["records"] => {
+  let cmsTunnelTarget: string | null = null
+  try {
+    cmsTunnelTarget = cloudflareTunnelTarget("cms")
+  } catch {
+    // Missing routing configuration remains fail-closed in edge reconciliation.
+  }
+  return records
+    .map((entry) => entry.record)
+    .filter((record) =>
+      !(record.type === "NS" && record.name === domain) &&
+      !(
+        cmsTunnelTarget &&
+        record.type === "CNAME" &&
+        record.name === `admin.${domain}` &&
+        record.content === cmsTunnelTarget
+      ))
 }
 
 const canonicalDsRecords = (value: unknown): string[] =>
@@ -852,10 +882,10 @@ export async function acquireAutomaticMigrationInputs(
     throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const target = buildAutomaticMigrationTargetZone(source, {
-    rendererTargetHost: input.env?.SIAB_RENDERER_TARGET_HOST ??
-      process.env.SIAB_RENDERER_TARGET_HOST,
-    rendererTargetIp: input.env?.SIAB_RENDERER_TARGET_IP ??
-      process.env.SIAB_RENDERER_TARGET_IP,
+    rendererTargetHost: cloudflareTunnelTarget(
+      "renderer",
+      input.env ?? process.env,
+    ),
   })
   const sourceAuthorityHash = domainMigrationSourceAuthorityHash(source)
   const sourceHash = domainMigrationEvidenceHash(source)
@@ -993,6 +1023,8 @@ async function getOrCreateManagedDomain(
       registrantVerificationStatus: "not_checked",
       authoritativeDnsStatus: "pending",
       httpsStatus: "pending",
+      edgeRoutingStatus: "pending",
+      adminHttpsStatus: "pending",
       entitlementStatus: "pending",
       customerStatus: "provisioning",
       renewalIntent: true,
@@ -2385,9 +2417,7 @@ export async function prepareDomainMigration(
   let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   let comparison = semanticZoneComparison(
     target.records,
-    cloudflareRecords
-      .map((entry) => entry.record)
-      .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+    migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
   )
   if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
     if (
@@ -2411,9 +2441,11 @@ export async function prepareDomainMigration(
     )
   }
   if (!comparison.equivalent && cloudflareRecords.length > 0) {
-    const unexpectedExisting = cloudflareRecords.some((entry) =>
-      !(entry.record.type === "NS" && entry.record.name === target.domain) &&
-      semanticZoneComparison(target.records, [entry.record]).unexpected.length > 0)
+    const unexpectedExisting = migrationZoneRecordsForComparison(
+      cloudflareRecords,
+      target.domain,
+    ).some((record) =>
+      semanticZoneComparison(target.records, [record]).unexpected.length > 0)
     if (unexpectedExisting) {
       migration = await updateMigration(payload, migration, {
         state: "failed",
@@ -2469,9 +2501,7 @@ export async function prepareDomainMigration(
     cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
     comparison = semanticZoneComparison(
       target.records,
-      cloudflareRecords
-        .map((entry) => entry.record)
-        .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+      migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
     )
   }
   if (!comparison.equivalent) {
@@ -2485,6 +2515,38 @@ export async function prepareDomainMigration(
     reconciliationRequired: false,
     failureReason: null,
   }, "cloudflare_target_zone_semantically_verified", deps.now())
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    cloudflareZoneId: zone.id,
+    cloudflareNameservers: zone.nameServers,
+    cloudflareZoneStatus: zone.status,
+    cloudflareDnsRecordIds: [...new Set([
+      ...stringIds(managedDomain.cloudflareDnsRecordIds),
+      ...cloudflareRecords
+        .map((entry) => entry.id)
+        .filter((id): id is string => Boolean(id)),
+    ])],
+    reconciliationRequired: managedDomain.edgeRoutingStatus !== "active",
+  }, "migration_edge_zone_linked", deps.now())
+  if (managedDomain.edgeRoutingStatus === "failed") {
+    return stopUnfulfillableMigrationBeforeRegistrarCommit(
+      payload,
+      migration,
+      managedDomain,
+      order,
+      "automatic_edge_routing_conflict",
+      deps.now(),
+    )
+  }
+  if (
+    managedDomain.edgeRoutingStatus !== "configured" &&
+    managedDomain.edgeRoutingStatus !== "active"
+  ) {
+    await queueCommerceReconciliation(payload)
+    return waiting(
+      migration,
+      "Automatic website and administration routing is being prepared before transfer.",
+    )
+  }
   if (
     sourceEvidenceStale &&
     migration.providerTransferState === "not_started"
@@ -3021,9 +3083,7 @@ export async function prepareDomainMigration(
   const postCutoverRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   const postCutoverComparison = semanticZoneComparison(
     target.records,
-    postCutoverRecords
-      .map((entry) => entry.record)
-      .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+    migrationZoneRecordsForComparison(postCutoverRecords, target.domain),
   )
   const authoritativeDns = await deps.verifyAuthoritativeDns(
     migration.domainNameAscii,
@@ -3037,20 +3097,32 @@ export async function prepareDomainMigration(
     preservedRecords,
     zone.nameServers,
   )
-  const ssl = await deps.getCloudflareSslVerification(zone.id)
-  const https = ssl.status === "active"
-    ? await deps.verifyHttpsEndpoint(migration.domainNameAscii)
-    : { status: "pending" as const, httpStatus: null, reason: "cloudflare_ssl_pending" }
+  const edgeReady =
+    managedDomain.edgeRoutingStatus === "active" &&
+    managedDomain.httpsStatus === "verified" &&
+    managedDomain.adminHttpsStatus === "verified"
+  const https = edgeReady
+    ? { status: "verified" as const, httpStatus: 200, reason: null }
+    : {
+        status: "pending" as const,
+        httpStatus: null,
+        reason: "automatic_edge_routing_pending",
+      }
   const verification = {
     checkedAt: deps.now(),
     semanticZone: postCutoverComparison,
     authoritativeDns,
     preservedDns,
     cloudflareSsl: {
-      status: ssl.status,
-      providerStatuses: ssl.providerStatuses,
+      status: edgeReady ? "active" : "pending",
+      providerStatuses: [],
     },
     https,
+    edgeRouting: {
+      status: managedDomain.edgeRoutingStatus,
+      adminHttpsStatus: managedDomain.adminHttpsStatus,
+      checkedAt: managedDomain.edgeRoutingCheckedAt,
+    },
     preservedRecordCount: preservedRecords.length,
   }
   migration = await updateMigration(payload, migration, {
@@ -3059,13 +3131,13 @@ export async function prepareDomainMigration(
   const verified = postCutoverComparison.equivalent &&
     authoritativeDns.status === "verified" &&
     preservedDns.status === "verified" &&
-    ssl.status === "active" &&
-    https.status === "verified"
+    edgeReady
   if (!verified) {
     const deadlineReached = migration.verificationDeadlineAt
       ? new Date(deps.now()).getTime() >= new Date(migration.verificationDeadlineAt).getTime()
       : false
     if (!deadlineReached && postCutoverComparison.equivalent) {
+      await queueCommerceReconciliation(payload)
       return waiting(migration, "Cutover propagation and HTTPS verification are still pending.")
     }
     return rollbackCutover(
@@ -3154,7 +3226,6 @@ export async function prepareDomainMigration(
     httpsEvidence: https,
     cloudflareZoneId: zone.id,
     cloudflareNameservers: zone.nameServers,
-    cloudflareDnsRecordIds: postCutoverRecords.map((entry) => entry.id).filter(Boolean),
     cloudflareZoneStatus: zone.status,
     transferredAt: managedDomain.transferredAt ?? deps.now(),
     reconciliationRequired: false,

@@ -34,7 +34,8 @@ Global production evidence also remains disabled:
 
 - authenticated provider connector, authorized AXFR/IXFR, and automatic
   validated-export DNS sources;
-- assisted migration;
+- automatic existing-domain migration for each enabled complete-source
+  mechanism;
 - renderer multi-TLD routing;
 - verified edge/origin trust;
 - application-created recurring Mollie payments.
@@ -90,13 +91,13 @@ procedure later.
 
 ### Existing domains
 
-- complete authenticated source, assisted standard, customer action required,
-  transfer pending, invalid authorization, DNSSEC cutover, and rollback;
+- complete authenticated source, customer action required, transfer pending,
+  invalid authorization, DNSSEC cutover, and rollback;
 - mail, DKIM/TXT, wildcard, delegated-zone, and specialist-record
   preservation;
-- unsupported/custom-quote and transfer-out paths;
-- unexpected operator work blocked until the immutable supplemental order is
-  paid.
+- unsupported-source and transfer-out paths;
+- no new assisted/manual migration sale or EUR 49 operator step. Historical
+  assisted and supplemental orders remain immutable audit evidence only.
 
 Public DNS enumeration is supplemental evidence only. Never use it as the
 source snapshot.

@@ -372,7 +372,7 @@ export function buildAutomaticMigrationTargetZone(
           type: "CNAME",
           name: `www.${source.domain}`,
           ttl: 300,
-          content: source.domain,
+          content: rendererTargetHost as string,
           proxied: true,
         },
       ]

@@ -93,7 +93,7 @@ describe("automatic existing-domain zone contracts", () => {
       expect.objectContaining({
         type: "CNAME",
         name: "www.example.nl",
-        content: "example.nl",
+        content: "renderer.siteinabox.nl",
         proxied: true,
       }),
       expect.objectContaining({ type: "MX", priority: 10, target: "mail.example.net" }),

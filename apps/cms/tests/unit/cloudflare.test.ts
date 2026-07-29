@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  buildCloudflareEdgeDnsRecordRequests,
   buildCloudflareDnsRecordRequests,
+  assertCloudflareEdgeDnsRecordsReconciliable,
+  CloudflareDnsRecordConflictError,
   CloudflareIndeterminateWriteError,
   createCloudflareEmailSendingSubdomain,
   createCloudflareDnsRecord,
@@ -14,9 +17,11 @@ import {
   getCloudflareEmailSendingSubdomain,
   getCloudflareDnsRecordUsage,
   getCloudflareDnssec,
+  getCloudflareHostnameCertificate,
   getCloudflareSslVerification,
   listCloudflareEmailSendingSubdomains,
   listCloudflareMigrationDnsRecords,
+  reconcileOwnedCloudflareDnsRecord,
 } from "@/lib/domains/cloudflare"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -30,6 +35,8 @@ const env = {
   CLOUDFLARE_API_BASE_URL: "https://cloudflare.test/client/v4",
   CLOUDFLARE_API_TOKEN: "cf-token",
   CLOUDFLARE_ACCOUNT_ID: "account-123",
+  CLOUDFLARE_RENDERER_TUNNEL_ID: "11111111-1111-4111-8111-111111111111",
+  CLOUDFLARE_CMS_TUNNEL_ID: "22222222-2222-4222-8222-222222222222",
   SIAB_RENDERER_TARGET_HOST: "renderer.siteinabox.nl",
 } as unknown as NodeJS.ProcessEnv
 
@@ -205,6 +212,191 @@ describe("Cloudflare domain adapter", () => {
         proxied: false,
       },
     ])
+  })
+
+  it("builds exact apex, www, and admin records for the dedicated Tunnels", () => {
+    expect(buildCloudflareEdgeDnsRecordRequests("Example.nl.", env)).toEqual([
+      {
+        type: "CNAME",
+        name: "example.nl",
+        content: "11111111-1111-4111-8111-111111111111.cfargotunnel.com",
+        ttl: 1,
+        proxied: true,
+      },
+      {
+        type: "CNAME",
+        name: "www.example.nl",
+        content: "11111111-1111-4111-8111-111111111111.cfargotunnel.com",
+        ttl: 1,
+        proxied: true,
+      },
+      {
+        type: "CNAME",
+        name: "admin.example.nl",
+        content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
+        ttl: 1,
+        proxied: true,
+      },
+    ])
+  })
+
+  it("does not overwrite an unowned A, AAAA, or CNAME collision", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: true,
+      result: [{
+        id: "foreign-aaaa",
+        type: "AAAA",
+        name: "admin.example.nl",
+        content: "2001:db8::1",
+        proxied: false,
+      }],
+    }))
+    await expect(reconcileOwnedCloudflareDnsRecord("zone-123", {
+      type: "CNAME",
+      name: "admin.example.nl",
+      content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
+      ttl: 1,
+      proxied: true,
+    }, [], {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toBeInstanceOf(CloudflareDnsRecordConflictError)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("paginates all address records before accepting an edge DNS plan", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const page = new URL(String(input)).searchParams.get("page")
+      return Response.json({
+        success: true,
+        result: page === "1"
+          ? Array.from({ length: 500 }, (_, index) => ({
+              id: `unrelated-${index}`,
+              type: "A",
+              name: `unrelated-${index}.example.nl`,
+              content: "192.0.2.1",
+            }))
+          : [{
+              id: "foreign-aaaa",
+              type: "AAAA",
+              name: "admin.example.nl",
+              content: "2001:db8::1",
+            }],
+        result_info: { total_pages: 2 },
+      })
+    })
+    await expect(assertCloudflareEdgeDnsRecordsReconciliable(
+      "zone-123",
+      buildCloudflareEdgeDnsRecordRequests("example.nl", env),
+      [],
+      { env, fetchImpl: fetchMock as typeof fetch },
+    )).rejects.toBeInstanceOf(CloudflareDnsRecordConflictError)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not adopt an identical external replacement after a failed owned update", async () => {
+    let reads = 0
+    const fetchMock = vi.fn(async (
+      _input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      if (init?.method === "PUT") {
+        return Response.json({ success: false }, { status: 500 })
+      }
+      reads += 1
+      return Response.json({
+        success: true,
+        result: reads === 1
+          ? [{
+              id: "owned-old",
+              type: "CNAME",
+              name: "admin.example.nl",
+              content: "old-target.invalid",
+              proxied: true,
+            }]
+          : [{
+              id: "foreign-replacement",
+              type: "CNAME",
+              name: "admin.example.nl",
+              content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
+              proxied: true,
+            }],
+      })
+    })
+    await expect(reconcileOwnedCloudflareDnsRecord("zone-123", {
+      type: "CNAME",
+      name: "admin.example.nl",
+      content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
+      ttl: 1,
+      proxied: true,
+    }, ["owned-old"], {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      id: "foreign-replacement",
+      ownershipDisposition: "unowned_reused",
+    })
+  })
+
+  it("requires Universal SSL and an active pack covering the exact hostname", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/ssl/universal/settings")) {
+        return Response.json({ success: true, result: { enabled: true } })
+      }
+      if (url.includes("/ssl/certificate_packs")) {
+        return Response.json({
+          success: true,
+          result: [{
+            status: "active",
+            hosts: ["example.nl", "*.example.nl"],
+          }],
+        })
+      }
+      throw new Error(`Unexpected fetch ${url}`)
+    })
+    await expect(getCloudflareHostnameCertificate(
+      "zone-123",
+      "admin.example.nl",
+      { env, fetchImpl: fetchMock as typeof fetch },
+    )).resolves.toMatchObject({
+      universalSslEnabled: true,
+      covered: true,
+      certificateStatuses: ["active"],
+    })
+    await expect(getCloudflareHostnameCertificate(
+      "zone-123",
+      "deep.admin.example.nl",
+      { env, fetchImpl: fetchMock as typeof fetch },
+    )).resolves.toMatchObject({
+      covered: false,
+    })
+  })
+
+  it("uses the certificate-pack limit and finds coverage on a later page", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url.endsWith("/ssl/universal/settings")) {
+        return Response.json({ success: true, result: { enabled: true } })
+      }
+      const parsed = new URL(url)
+      expect(parsed.searchParams.get("per_page")).toBe("50")
+      const page = parsed.searchParams.get("page")
+      return Response.json({
+        success: true,
+        result: page === "1"
+          ? Array.from({ length: 50 }, () => ({
+              status: "pending",
+              hosts: ["unrelated.invalid"],
+            }))
+          : [{ status: "active", hosts: ["*.example.nl"] }],
+        result_info: { total_pages: 2 },
+      })
+    })
+    await expect(getCloudflareHostnameCertificate(
+      "zone-123",
+      "admin.example.nl",
+      { env, fetchImpl: fetchMock as typeof fetch },
+    )).resolves.toMatchObject({ covered: true })
   })
 
   it("requires renderer target config before building DNS records", () => {

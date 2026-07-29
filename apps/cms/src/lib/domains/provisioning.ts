@@ -64,6 +64,7 @@ import {
   type AuthoritativeDnsVerification,
   type HttpsVerification,
 } from "@/lib/domains/verification"
+import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
 
 type ManagedDomainLifecycleData = Partial<ManagedDomain> & Record<string, unknown>
 
@@ -311,6 +312,8 @@ async function getOrCreateManagedDomain(
         registrantVerificationStatus: "not_checked",
         authoritativeDnsStatus: "pending",
         httpsStatus: "pending",
+        edgeRoutingStatus: "pending",
+        adminHttpsStatus: "pending",
         entitlementStatus: "pending",
         customerStatus: "provisioning",
         renewalIntent: true,
@@ -922,46 +925,11 @@ export async function provisionPaidDomainOrder(
     )
   }
 
-  let dnsRecords: Awaited<ReturnType<typeof createCloudflareZoneDnsRecords>>
-  if (initialFailureReason === "cloudflare_dns_write_indeterminate") {
-    const existingRecords = await dependencies.listCloudflareDnsRecords(zone.id)
-    const requestedRecords = dependencies.buildCloudflareDnsRecordRequests(normalized.domain)
-    const reconciledRecords = requestedRecords
-      .map((requested) => matchingDnsRecord(existingRecords, requested))
-    if (reconciledRecords.some((record) => !record)) {
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare DNS creation remains indeterminate; no retry was sent.",
-      )
-    }
-    dnsRecords = reconciledRecords.filter(
-      (record): record is NonNullable<typeof record> => Boolean(record),
-    )
-  } else {
-    try {
-      dnsRecords = await dependencies.createCloudflareZoneDnsRecords(zone.id, normalized.domain)
-    } catch (error) {
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
-      managedDomain = await updateManagedDomain(payload, managedDomain, {
-        reconciliationRequired: true,
-        failureReason: "cloudflare_dns_write_indeterminate",
-      }, "cloudflare_dns_write_indeterminate", dependencies.now())
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare DNS record creation is awaiting reconciliation.",
-      )
-    }
-  }
   const refreshedZone = (await dependencies.listCloudflareZones(normalized.domain))
     .find((candidate) => candidate.id === zone?.id) ?? zone
   managedDomain = await updateManagedDomain(payload, managedDomain, {
-    cloudflareDnsRecordIds: dnsRecords.map((record) => record.id).filter(Boolean),
     cloudflareZoneStatus: refreshedZone.status,
-  }, "cloudflare_dns_records_reconciled", dependencies.now())
+  }, "cloudflare_zone_reconciled", dependencies.now())
   if (refreshedZone.status !== "active") {
     return waiting(
       normalized.domain,
@@ -990,39 +958,21 @@ export async function provisionPaidDomainOrder(
     )
   }
 
-  const ssl = await dependencies.getCloudflareSslVerification(zone.id)
-  if (ssl.status !== "active") {
+  if (
+    managedDomain.edgeRoutingStatus !== "active" ||
+    managedDomain.httpsStatus !== "verified" ||
+    managedDomain.adminHttpsStatus !== "verified"
+  ) {
+    await queueCommerceReconciliation(payload)
     managedDomain = await updateManagedDomain(payload, managedDomain, {
-      httpsStatus: ssl.status === "failed" ? "failed" : "pending",
-      httpsCheckedAt: dependencies.now(),
-      httpsEvidence: { certificateStatuses: ssl.providerStatuses },
       reconciliationRequired: true,
-      failureReason: ssl.status === "failed" ? "cloudflare_ssl_verification_failed" : null,
-    }, `cloudflare_ssl_${ssl.status}`, dependencies.now())
+      failureReason: null,
+    }, "edge_routing_reconciliation_queued", dependencies.now())
     return waiting(
       normalized.domain,
       run,
       managedDomain,
-      "Cloudflare HTTPS certificate activation is not complete.",
-    )
-  }
-  const https = await dependencies.verifyHttpsEndpoint(normalized.domain)
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    httpsStatus: https.status === "verified" ? "verified" : "pending",
-    httpsCheckedAt: dependencies.now(),
-    httpsEvidence: {
-      certificateStatuses: ssl.providerStatuses,
-      httpStatus: https.httpStatus,
-      reason: https.reason,
-    },
-    reconciliationRequired: https.status !== "verified",
-  }, `https_endpoint_${https.status}`, dependencies.now())
-  if (https.status !== "verified") {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "The HTTPS endpoint is not reachable yet.",
+      "Automatic website and administration routing is awaiting Cloudflare activation.",
     )
   }
 
@@ -1167,8 +1117,15 @@ export async function activateManagedDomainEntitlement(
   domain: ManagedDomain,
   now = new Date().toISOString(),
 ): Promise<ManagedDomain> {
-  if (domain.authoritativeDnsStatus !== "verified" || domain.httpsStatus !== "verified") {
-    throw new Error("Managed-domain entitlement requires verified authoritative DNS and HTTPS.")
+  if (
+    domain.authoritativeDnsStatus !== "verified" ||
+    domain.httpsStatus !== "verified" ||
+    domain.adminHttpsStatus !== "verified" ||
+    domain.edgeRoutingStatus !== "active"
+  ) {
+    throw new Error(
+      "Managed-domain entitlement requires verified authoritative DNS, website HTTPS, and administration routing.",
+    )
   }
   return updateManagedDomain(payload, domain, {
     state: "active",

@@ -8,7 +8,6 @@ import {
   type RendererActiveDomainRouting,
   type SiteSettings,
 } from "@siteinabox/contracts"
-import { isRendererProductionHost } from "@siteinabox/contracts/deploy-targets"
 import type {
   PublishedSiteSnapshot,
   PublishedSnapshotManifest,
@@ -594,7 +593,6 @@ async function tenantDomainIsActive(
   tenant: Tenant,
 ): Promise<boolean> {
   const canonicalHost = normalizeRequestHost(tenant.domain)
-  if (isRendererProductionHost(canonicalHost)) return true
 
   const managedDomains = await payload.find({
     collection: "managed-domains",
@@ -605,6 +603,7 @@ async function tenantDomainIsActive(
         { state: { equals: "active" } },
         { authoritativeDnsStatus: { equals: "verified" } },
         { httpsStatus: { equals: "verified" } },
+        { edgeRoutingStatus: { equals: "active" } },
         { entitlementStatus: { equals: "active" } },
         { customerStatus: { equals: "active" } },
       ],

@@ -33,6 +33,7 @@ export const reconcileCommerceTask: TaskConfig<{
       { processBillingAgreement },
       { queueDueCommerceNotifications },
       { recordCommerceAdminException, resolveCommerceAdminException },
+      { reconcileCommerceEdgeRouting },
       {
         alertOnStaleMollieSynchronization,
         recoverMissingMolliePaymentReferences,
@@ -46,9 +47,30 @@ export const reconcileCommerceTask: TaskConfig<{
       import("@/lib/billing/billingLifecycle"),
       import("@/lib/commerce/notifications"),
       import("@/lib/commerce/alerts"),
+      import("@/lib/domains/edgeRouting"),
       import("@/lib/commerce/reconciliation"),
     ])
     const now = new Date()
+    const edgeRoutingResult = await reconcileCommerceEdgeRouting(req.payload)
+    if (edgeRoutingResult.failed > 0) {
+      await recordCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "edge_routing_blocked",
+        message: "Automatic customer edge routing is blocked by configuration, permissions, capacity, or conflicting DNS.",
+        subjectId: "cloudflare-edge-routing",
+        severity: "critical",
+        now: now.toISOString(),
+      })
+    } else {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "edge_routing_blocked",
+        subjectId: "cloudflare-edge-routing",
+        now: now.toISOString(),
+      })
+    }
     const paymentResult = await req.payload.find({
       collection: "payment-attempts",
       where: {
@@ -379,7 +401,8 @@ export const reconcileCommerceTask: TaskConfig<{
           pendingRefundResult.docs.length +
           expiryResult.examined +
           transferOutResult.examined +
-          expiredMigrationSecrets,
+          expiredMigrationSecrets +
+          edgeRoutingResult.examined,
         queued,
       },
     }

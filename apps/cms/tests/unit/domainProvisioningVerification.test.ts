@@ -222,17 +222,24 @@ describe("enabled-TLD domain verification", () => {
   })
 
   it.each(["example.nl", "example.be"])(
-    "treats a neutral renderer 404 as successful HTTPS transport evidence for %s",
+    "requires the renderer identity response for %s",
     async (domain) => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }))
+    const fetchImpl = vi.fn(async () => new Response(null, {
+      status: 200,
+      headers: {
+        "x-siab-service": "renderer",
+        "x-siab-domain": domain,
+      },
+    }))
     await expect(verifyHttpsEndpoint(domain, {
       fetchImpl: fetchImpl as typeof fetch,
+      expectedDomain: domain,
     })).resolves.toEqual({
       status: "verified",
-      httpStatus: 404,
+      httpStatus: 200,
       reason: null,
     })
-    expect(fetchImpl).toHaveBeenCalledWith(`https://${domain}/`, expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith(`https://${domain}/__siab/edge-check`, expect.objectContaining({
       method: "HEAD",
       redirect: "manual",
     }))

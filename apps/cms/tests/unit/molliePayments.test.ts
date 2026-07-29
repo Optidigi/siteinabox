@@ -11,6 +11,10 @@ vi.mock("@/payload.config", () => ({
 }))
 
 vi.mock("@/lib/domains/verification", () => ({
+  verifyDnssecChain: vi.fn(async () => ({
+    status: "verified",
+    reason: null,
+  })),
   verifyParentDsAbsent: vi.fn(async () => ({
     status: "absent",
     records: [],
@@ -521,7 +525,17 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ) {
           throw new Error(`duplicate key value violates ${collection}.${uniqueKey}`)
         }
-        const doc = { id: base + docs.length, ...data }
+        const doc = {
+          id: base + docs.length,
+          ...data,
+          ...(collection === "managed-domains"
+            ? {
+                edgeRoutingStatus: "active",
+                httpsStatus: "verified",
+                adminHttpsStatus: "verified",
+              }
+            : {}),
+        }
         docs.push(doc)
         return doc
       }
@@ -2648,7 +2662,14 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
-    vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
+    vi.stubEnv(
+      "CLOUDFLARE_RENDERER_TUNNEL_ID",
+      "11111111-1111-4111-8111-111111111111",
+    )
+    vi.stubEnv(
+      "CLOUDFLARE_CMS_TUNNEL_ID",
+      "22222222-2222-4222-8222-222222222222",
+    )
     const {
       payload,
       run,
@@ -3182,7 +3203,14 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
-    vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
+    vi.stubEnv(
+      "CLOUDFLARE_RENDERER_TUNNEL_ID",
+      "11111111-1111-4111-8111-111111111111",
+    )
+    vi.stubEnv(
+      "CLOUDFLARE_CMS_TUNNEL_ID",
+      "22222222-2222-4222-8222-222222222222",
+    )
     const { payload, managedDomains } = createPayloadStub({
       payment: {
         status: "pending_provider",

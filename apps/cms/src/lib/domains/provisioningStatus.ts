@@ -103,7 +103,9 @@ export async function loadCustomerProvisioningStatus(
         code: "https",
         status: manualReview
           ? "review"
-          : domain?.httpsStatus === "verified"
+          : domain?.httpsStatus === "verified" &&
+              domain.adminHttpsStatus === "verified" &&
+              domain.edgeRoutingStatus === "active"
             ? "complete"
             : "pending",
       },
