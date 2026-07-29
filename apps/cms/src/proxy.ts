@@ -133,14 +133,9 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // out-of-scope; rate-limiting it would interfere with the P1 #6 BOOTSTRAP_TOKEN
 // seed runbook + AMD-1 owner-invite flow.
 //
-// Anonymous detection (per dispatch Constraint 1, approach (b)): a caller
-// is "anonymous" iff BOTH the `Authorization` header is absent AND no
-// `payload-token` cookie is present. Authed callers (super-admin via
-// API-key client, or any logged-in user via session cookie) bypass the
-// limiter; authenticated tenant provisioning can still issue bursts of
-// /api/users/forgot-password. The residual gap (authed editor floods forgot-
-// password with arbitrary emails) is recorded as out-of-batch observation
-// in the batch report; closing it is a future-audit item.
+// Authentication signals do not bypass this limiter. Middleware cannot
+// validate a session or API key, and treating their mere presence as trusted
+// would let an attacker opt out by sending a bogus header or cookie.
 //
 // Identifier: leftmost IP from `X-Forwarded-For` (the VPS sits behind nginx-
 // proxy-manager, which sets this header per the audit's deployment notes;
@@ -159,7 +154,7 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // the same IP. Path normalization strips trailing slashes so `/api/forms` and
 // `/api/forms/` share one budget (Test Case 5).
 //
-// Generated-site forms also get a second anonymous-only budget keyed by
+// Generated-site forms also get a second budget keyed by
 // tenant/form target. This catches distributed low-volume spam that rotates IPs
 // but pounds one customer's form. Defaults are intentionally conservative for
 // a single-instance production CMS and can be relaxed/tightened without code:
@@ -234,18 +229,6 @@ const isRateLimitedRequest = (req: NextRequest): boolean => {
 
 const isFormsRequest = (req: NextRequest): boolean =>
   req.method === "POST" && normalizePath(req.nextUrl.pathname) === "/api/forms"
-
-// Anonymous = no Authorization header AND no payload-token cookie. Either
-// signal flips the caller to "authed-or-trusted" and the limiter skips.
-const isAnonymousCaller = (req: NextRequest): boolean => {
-  if (req.headers.get("authorization")) return false
-  // NextRequest exposes parsed cookies via the cookies() helper in the
-  // edge runtime; fall back to a manual cookie-header parse for unit-test
-  // shapes that don't materialise the cookie store.
-  const tokenCookie = req.cookies.get("payload-token")
-  if (tokenCookie?.value) return false
-  return true
-}
 
 // Leftmost IP from X-Forwarded-For. The VPS deployment terminates TLS at
 // Traefik, which appends client IPs in chain order
@@ -375,6 +358,35 @@ const retryMsFromLimiterRejection = (rejRes: unknown, fallbackMs: number): numbe
   return Number.isFinite(ms) ? ms : fallbackMs
 }
 
+const unsafeMethod = (method: string): boolean =>
+  ["POST", "PUT", "PATCH", "DELETE"].includes(method)
+
+const browserOriginMatchesRequest = (req: NextRequest): boolean => {
+  const origin = req.headers.get("origin")
+  if (!origin) return true
+  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
+  const host = forwardedHost || req.headers.get("host")
+  if (!host) return false
+  const forwardedProto = req.headers.get("x-forwarded-proto")
+    ?.split(",")[0]?.trim().toLowerCase()
+  const protocol = forwardedProto ||
+    (process.env.NODE_ENV === "development" ? "http" : "https")
+  try {
+    return new URL(origin).origin === `${protocol}://${host}`
+  } catch {
+    return false
+  }
+}
+
+const buildCrossOriginMutationResponse = (
+  pathname: string,
+  nonce: string,
+): NextResponse => applySecurityHeaders(
+  NextResponse.json({ error: "Cross-origin mutation forbidden" }, { status: 403 }),
+  pathname,
+  nonce,
+)
+
 // -----------------------------------------------------------------------------
 // Proxy entry point
 // -----------------------------------------------------------------------------
@@ -386,6 +398,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   // picks up the request-side x-csp-nonce header and applies it to hydration
   // scripts automatically.
   const nonce = buildNonce()
+
+  if (unsafeMethod(req.method) && !browserOriginMatchesRequest(req)) {
+    return buildCrossOriginMutationResponse(req.nextUrl.pathname, nonce)
+  }
 
   if (isPreviewPath(req.nextUrl.pathname)) {
     const res = new NextResponse(null, { status: 404 })
@@ -408,11 +424,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     return buildPasswordLoginUnavailableResponse(req.nextUrl.pathname, nonce)
   }
 
-  // Rate-limit short-circuit: gate ONLY when the request is in scope
-  // (POST + named path + anonymous caller). Authenticated callers and
-  // out-of-scope paths fall through to the unchanged headers-stamping
-  // path below.
-  if (isRateLimitedRequest(req) && isAnonymousCaller(req)) {
+  // Rate-limit every caller on public POST surfaces. Middleware cannot
+  // cryptographically validate a presented session or API key, so raw auth
+  // headers and cookies must never exempt a request from this boundary.
+  if (isRateLimitedRequest(req)) {
     const limiter = getRateLimiter()
     const ip = extractClientIp(req)
     const key = `${normalizePath(req.nextUrl.pathname)}:${ip}`

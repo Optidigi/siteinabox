@@ -233,8 +233,8 @@ export async function requestDomainTransferOutAction(formData: FormData) {
       now,
     })
     await queueDomainTransferOutPreparation(payload, domain.id)
-  } catch (error) {
-    console.error("Domain transfer-out request failed", error)
+  } catch {
+    console.error("Domain transfer-out request failed")
     redirect("/settings?domainTransfer=failed#domain-transfer")
   }
   revalidatePath("/settings")
@@ -274,8 +274,8 @@ export async function markDomainTransferOutStartedAction(formData: FormData) {
       managedDomainId,
       actor: domainActor(user.email, tenantId),
     })
-  } catch (error) {
-    console.error("Domain transfer-out start confirmation failed", error)
+  } catch {
+    console.error("Domain transfer-out start confirmation failed")
     redirect("/settings?domainTransfer=failed#domain-transfer")
   }
   revalidatePath("/settings")
@@ -294,8 +294,8 @@ export async function confirmDomainTransferCompletedAction(formData: FormData) {
       managedDomainId,
       actor: domainActor(user.email, tenantId),
     })
-  } catch (error) {
-    console.error("Domain transfer-out completion confirmation failed", error)
+  } catch {
+    console.error("Domain transfer-out completion confirmation failed")
     redirect("/settings?domainTransfer=failed#domain-transfer")
   }
   revalidatePath("/settings")

@@ -402,9 +402,24 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 10,
       siteManifest: null,
     }
+    const managedDomain = {
+      id: 20,
+      tenant: tenant.id,
+      domainNameAscii: tenant.domain,
+      state: "active",
+      authoritativeDnsStatus: "verified",
+      httpsStatus: "verified",
+      edgeRoutingStatus: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    }
     const payload = {
       find: vi.fn(async ({ collection }: MockFindArgs) => ({
-        docs: collection === "tenants" ? [tenant] : [],
+        docs: collection === "tenants"
+          ? [tenant]
+          : collection === "managed-domains"
+            ? [managedDomain]
+            : [],
       })),
       findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
         if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
@@ -418,5 +433,62 @@ describe("published snapshot theme serving", () => {
     const result = await resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain)
 
     expect(result?.snapshot.theme).toEqual(amicarePublishedSiteSnapshot.theme)
+  })
+
+  it("resolves www only from the canonical tenant domain and ignores hostile settings aliases", async () => {
+    const victim = {
+      id: 2,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: "victim.nl",
+      status: "active",
+      activeSnapshot: 22,
+      siteManifest: null,
+    }
+    const snapshot = {
+      ...amicarePublishedSiteSnapshot,
+      domain: victim.domain,
+    }
+    const find = vi.fn(async ({ collection }: MockFindArgs) => ({
+      docs: collection === "tenants"
+        ? [victim]
+        : collection === "managed-domains"
+          ? [{
+              id: 23,
+              tenant: victim.id,
+              domainNameAscii: victim.domain,
+              state: "active",
+              authoritativeDnsStatus: "verified",
+              httpsStatus: "verified",
+              edgeRoutingStatus: "active",
+              entitlementStatus: "active",
+              customerStatus: "active",
+            }]
+          : collection === "site-settings"
+            ? [{
+                id: 99,
+                tenant: 1,
+                aliases: [{ host: "www.victim.nl" }],
+              }]
+            : [],
+    }))
+    const payload = {
+      find,
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (collection === "published-site-snapshots" && String(id) === "22") {
+          return { id: 22, status: "active", snapshot }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    const result = await resolvePublishedSnapshotByHost(
+      asPayload(payload),
+      "www.victim.nl",
+    )
+
+    expect(result?.tenant.id).toBe(victim.id)
+    expect(find).not.toHaveBeenCalledWith(expect.objectContaining({
+      collection: "site-settings",
+    }))
   })
 })

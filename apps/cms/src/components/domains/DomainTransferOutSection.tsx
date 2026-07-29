@@ -43,6 +43,13 @@ export function DomainTransferOutSection({
     ["transfer_code_ready", "transfer_pending"].includes(domain.custodyStatus)
   const canStart = domain.custodyStatus === "transfer_code_ready"
   const canConfirm = domain.custodyStatus === "transfer_pending"
+  const custodyLabel: Record<string, string> = {
+    managed: "In beheer",
+    offboarding_requested: "Verhuizing aangevraagd",
+    transfer_code_ready: "Verhuiscode gereed",
+    transfer_pending: "Verhuizing loopt",
+    transferred_out: "Verhuisd",
+  }
   return (
     <Card id={sectionId} className="w-full max-w-3xl scroll-mt-20">
       <CardHeader>
@@ -67,8 +74,27 @@ export function DomainTransferOutSection({
         )}
         <div className="flex items-center justify-between gap-3 rounded-md border p-4">
           <span className="font-medium">{domain.domainName}</span>
-          <Badge variant="outline">{domain.custodyStatus}</Badge>
+          <Badge variant="outline">
+            {custodyLabel[domain.custodyStatus] ?? "Status wordt bijgewerkt"}
+          </Badge>
         </div>
+        {domain.custodyStatus !== "transferred_out" && (
+          <div className="grid gap-2">
+            <p className="text-sm text-muted-foreground">
+              Zolang Siteinabox de DNS beheert, kun je hier een actuele export
+              downloaden van alle DNS-records, inclusief mail- en
+              verificatierecords.
+            </p>
+            <Button asChild type="button" variant="outline" className="w-fit">
+              <a
+                href={`/api/domains/${encodeURIComponent(domain.id)}/dns-export`}
+                download
+              >
+                DNS-export downloaden
+              </a>
+            </Button>
+          </div>
+        )}
         {canRequest && (
           <form action={requestDomainTransferOutAction} className="grid gap-3">
             <input type="hidden" name="managedDomainId" value={domain.id} />

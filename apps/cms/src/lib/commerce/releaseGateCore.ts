@@ -153,6 +153,44 @@ export function commerceProviderWritesAllowed(
   return commerceReleaseGate(env).providerWritesAllowed
 }
 
+/**
+ * Narrow bootstrap gate for the one operation that establishes the
+ * Cloudflare-to-origin path whose live proof is required by the global
+ * production gate. It accepts only the origin-isolation blocker; every other
+ * production prerequisite and the explicit write acknowledgement must pass.
+ */
+export function commerceEdgeBootstrapWritesAllowed(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (clean(env.COMMERCE_RELEASE_STAGE) !== "production") return false
+  const blockers = commerceReleaseGate(env).blockers
+  return blockers.length === 1 &&
+    blockers[0] === "production_origin_isolation_not_verified"
+}
+
+export async function commerceEdgeBootstrapBlockers(
+  payload: Payload,
+): Promise<string[]> {
+  const blockers = await commerceEdgeInventoryBlockers(payload, false)
+  const criticalAlerts = await payload.find({
+    collection: "operational-alerts",
+    where: {
+      and: [
+        { status: { equals: "open" } },
+        { severity: { equals: "critical" } },
+        { source: { in: ["payments", "domains"] } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (criticalAlerts.totalDocs > 0 || criticalAlerts.docs.length > 0) {
+    blockers.push("edge_bootstrap_has_open_critical_commerce_alerts")
+  }
+  return [...new Set(blockers)]
+}
+
 export function requireCommerceProviderWritesAllowed(
   operation: string,
   env: NodeJS.ProcessEnv = process.env,

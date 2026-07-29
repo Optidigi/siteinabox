@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { asPayload } from "../_helpers/mockPayload"
 
@@ -8,6 +8,7 @@ const {
   queueDomainMigrationPreparation,
   queueDomainRenewal,
   queueOrderFulfillment,
+  commerceProviderWritesAllowed,
 } = vi.hoisted(() => ({
   reconcileCommerceEdgeRouting: vi.fn(async () => ({
     examined: 0,
@@ -19,6 +20,7 @@ const {
   queueDomainMigrationPreparation: vi.fn(),
   queueDomainRenewal: vi.fn(),
   queueOrderFulfillment: vi.fn(),
+  commerceProviderWritesAllowed: vi.fn(() => true),
 }))
 
 vi.mock("@/lib/jobs/prepareDomainMigrationTask", () => ({
@@ -49,10 +51,36 @@ vi.mock("@/lib/commerce/alerts", () => ({
   recordCommerceAdminException,
   resolveCommerceAdminException: vi.fn(),
 }))
+vi.mock("@/lib/commerce/releaseGateCore", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/commerce/releaseGateCore")>()),
+  commerceProviderWritesAllowed,
+}))
 
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
 
 describe("commerce reconciliation migration scheduling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    commerceProviderWritesAllowed.mockReturnValue(true)
+  })
+
+  it("performs no edge writes or blocking alert when provider writes are intentionally disabled", async () => {
+    commerceProviderWritesAllowed.mockReturnValue(false)
+    const payload = asPayload({
+      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
+    })
+    const handler = reconcileCommerceTask.handler as unknown as (
+      args: { req: { payload: typeof payload } }
+    ) => Promise<{ output: { examined: number; queued: number } }>
+
+    await expect(handler({ req: { payload } })).resolves.toBeDefined()
+
+    expect(reconcileCommerceEdgeRouting).not.toHaveBeenCalled()
+    expect(recordCommerceAdminException).not.toHaveBeenCalledWith(
+      expect.objectContaining({ code: "release_gate_blocked_edge_routing" }),
+    )
+  })
+
   it("continues payment and renewal reconciliation after edge capacity fails closed", async () => {
     reconcileCommerceEdgeRouting.mockResolvedValueOnce({
       examined: 301,

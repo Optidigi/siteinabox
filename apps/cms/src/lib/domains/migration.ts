@@ -25,7 +25,10 @@ import type {
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
-import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import {
+  recordCommerceAdminException,
+  resolveCommerceAdminException,
+} from "@/lib/commerce/alerts"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
 
 import {
@@ -1119,6 +1122,16 @@ const providerRejectedTransferAuthorization = (
   error.status < 500 &&
   error.providerCode != null &&
   invalidTransferAuthorizationCodes.has(error.providerCode)
+
+export const transferAutorenewMode = (
+  capability: TldCapability,
+): "on" | "off" =>
+  tldCapabilityOperationFlagEnabled(
+    capability,
+    "renewal_provider_autorenew",
+  )
+    ? "on"
+    : "off"
 
 const PROVIDER_WRITE_CLAIM_LEASE_MS = 5 * 60_000
 const PROVIDER_WRITE_RECONCILIATION_TIMEOUT_MS = 24 * 60 * 60_000
@@ -2778,7 +2791,7 @@ export async function prepareDomainMigration(
         dnssecKeys: source.dnssec.status === "signed"
           ? sourceDnskeys(source)
           : undefined,
-        autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
+        autorenew: transferAutorenewMode(capability),
         reference: migration.idempotencyKey,
         acceptedCapabilityVersion: capability.capabilityVersion,
       })
@@ -2847,7 +2860,49 @@ export async function prepareDomainMigration(
         state: "awaiting_provider",
       }, "provider_transfer_processing", deps.now())
     }
+    const requestedAt = migration.transferRequestedAt
+      ? new Date(migration.transferRequestedAt).getTime()
+      : Number.NaN
+    const maximumWaitMs =
+      Math.max(1, capability.transfer.maximumExpectedWaitDays) *
+      24 * 60 * 60 * 1_000
+    if (
+      Number.isFinite(requestedAt) &&
+      new Date(deps.now()).getTime() - requestedAt >= maximumWaitMs
+    ) {
+      if (migration.failureReason !== "provider_transfer_sla_exceeded") {
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          failureReason: "provider_transfer_sla_exceeded",
+          reconciliationRequired: true,
+        }, "provider_transfer_sla_exceeded", deps.now())
+      }
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "provider_transfer_sla_exceeded",
+        message:
+          "The registrar transfer exceeded the governed TLD waiting window; automated polling continues without repeating the transfer write.",
+        tenant: managedDomain.tenant,
+        subjectId: migration.id,
+        severity: "error",
+        now: deps.now(),
+      })
+    }
     return waiting(migration, "Openprovider is still processing the domain transfer.")
+  }
+  await resolveCommerceAdminException({
+    payload,
+    source: "domains",
+    code: "provider_transfer_sla_exceeded",
+    subjectId: migration.id,
+    now: deps.now(),
+  })
+  if (migration.failureReason === "provider_transfer_sla_exceeded") {
+    migration = await updateMigration(payload, migration, {
+      failureReason: null,
+      reconciliationRequired: false,
+    }, "provider_transfer_completed_after_sla", deps.now())
   }
   if (providerDomain.ownerHandle !== customerHandle) {
     return stopMigrationForProviderManualReview(

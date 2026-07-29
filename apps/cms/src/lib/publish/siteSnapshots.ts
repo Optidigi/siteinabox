@@ -23,7 +23,6 @@ import type {
   ManagedDomain,
   PublishedSiteSnapshot as PublishedSiteSnapshotDoc,
   SiteGenerationRun,
-  SiteSetting,
   Tenant,
 } from "@/payload-types"
 import { asRecord } from "@/lib/record"
@@ -615,35 +614,18 @@ async function tenantDomainIsActive(
   return Boolean((managedDomains.docs[0] as ManagedDomain | undefined)?.id)
 }
 
-const activeHostsFromSettings = (tenant: Tenant, settings: SiteSetting[]): string[] => {
+const activeHostsForTenant = (tenant: Tenant): string[] => {
   const canonicalHost = normalizeRequestHost(tenant.domain)
-  const aliases = settings
-    .filter((setting) => String(relationshipId(setting.tenant)) === String(tenant.id))
-    .flatMap((setting) => setting.aliases ?? [])
-    .map((alias) => {
-      const aliasRecord = asRecord(alias)
-      return normalizeRequestHost(typeof aliasRecord?.host === "string" ? aliasRecord.host : null)
-    })
-    .filter((host): host is string => Boolean(host))
-
-  return [...new Set([canonicalHost, ...aliases].filter(Boolean))]
-}
-
-async function settingsForTenant(payload: Payload, tenant: Tenant): Promise<SiteSetting[]> {
-  const result = await payload.find({
-    collection: "site-settings",
-    where: { tenant: { equals: tenant.id } },
-    limit: 10,
-    depth: 0,
-    overrideAccess: true,
-  })
-  return result.docs as SiteSetting[]
+  return canonicalHost
+    ? [canonicalHost, `www.${canonicalHost}`]
+    : []
 }
 
 async function tenantForHost(payload: Payload, host: string): Promise<TenantHostResolution | null> {
+  const canonicalHost = host.startsWith("www.") ? host.slice(4) : host
   const direct = await payload.find({
     collection: "tenants",
-    where: { domain: { equals: host } },
+    where: { domain: { equals: canonicalHost } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
@@ -652,31 +634,10 @@ async function tenantForHost(payload: Payload, host: string): Promise<TenantHost
     const tenant = direct.docs[0] as Tenant
     return {
       tenant,
-      activeHosts: activeHostsFromSettings(tenant, await settingsForTenant(payload, tenant)),
+      activeHosts: activeHostsForTenant(tenant),
     }
   }
-
-  const settings = await payload.find({
-    collection: "site-settings",
-    limit: 1000,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const matches = (settings.docs as SiteSetting[]).filter((doc) =>
-    (doc.aliases ?? []).some((alias) => {
-      const aliasRecord = asRecord(alias)
-      return normalizeRequestHost(typeof aliasRecord?.host === "string" ? aliasRecord.host : null) === host
-    }),
-  )
-  const tenantIds = [...new Set(matches.map((match) => relationshipId(match.tenant)).filter(Boolean).map(String))]
-  const tenantId = tenantIds.length === 1 ? tenantIds[0] : null
-  if (!tenantId) return null
-
-  const tenant = await getTenant(payload, tenantId)
-  return {
-    tenant,
-    activeHosts: activeHostsFromSettings(tenant, matches),
-  }
+  return null
 }
 
 async function activeSnapshotForTenant(payload: Payload, tenant: Tenant): Promise<PublishedSiteSnapshotDoc | null> {

@@ -17,11 +17,13 @@ import {
   type CloudflareTunnelReconciliation,
 } from "@/lib/domains/cloudflareTunnels"
 import { verifyHttpsEndpoint } from "@/lib/domains/verification"
+import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
 import { relationshipId } from "@/lib/relationshipId"
 
 const MAX_MANAGED_TUNNEL_HOSTNAMES = 900
 
 type EdgeRoutingDependencies = {
+  providerWritesAllowed: () => boolean
   now: () => string
   reconcileTunnel: typeof reconcileCloudflareTunnel
   buildDnsRecords: typeof buildCloudflareEdgeDnsRecordRequests
@@ -32,6 +34,7 @@ type EdgeRoutingDependencies = {
 }
 
 const defaultDependencies: EdgeRoutingDependencies = {
+  providerWritesAllowed: commerceProviderWritesAllowed,
   now: () => new Date().toISOString(),
   reconcileTunnel: reconcileCloudflareTunnel,
   buildDnsRecords: buildCloudflareEdgeDnsRecordRequests,
@@ -115,6 +118,11 @@ export async function reconcileCommerceEdgeRouting(
   dependencyOverrides: Partial<EdgeRoutingDependencies> = {},
 ): Promise<EdgeRoutingReconciliationResult> {
   const dependencies = { ...defaultDependencies, ...dependencyOverrides }
+  if (!dependencies.providerWritesAllowed()) {
+    throw new Error(
+      "Commerce release stage does not allow Cloudflare edge provider writes.",
+    )
+  }
   const candidates = await payload.find({
     collection: "managed-domains",
     where: {

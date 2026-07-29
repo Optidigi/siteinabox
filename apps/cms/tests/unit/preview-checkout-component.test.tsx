@@ -208,26 +208,40 @@ describe("PreviewCheckout Phase 3 flow", () => {
   })
 
   it("keeps existing-domain migration fail-closed and exposes its authorized source inputs only when enabled", async () => {
-    const checkDomainAction = vi.fn().mockResolvedValue({
-      ok: true,
-      status: "preflight_complete" as const,
-      domain: "example.nl",
-      domainMode: "existing_domain" as const,
-      migrationReadiness: "unsupported" as const,
-      migrationClassification: null,
-      migrationPreflightOnly: true,
-      migrationPublicEvidence: {
-        checkedAt: "2026-07-29T12:00:00.000Z",
-        authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
-        dnssecDsPresent: true,
-        dnssecDsRecords: ["12345 13 2 " + "AB".repeat(32)],
-        dnssecDsTtl: 3600,
-        probableDnsProvider: "Example DNS",
-        registrar: "Example Registrar",
-        supplementalOnly: true as const,
+    const migrationPublicEvidence = {
+      checkedAt: "2026-07-29T12:00:00.000Z",
+      authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
+      dnssecDsPresent: true,
+      dnssecDsRecords: ["12345 13 2 " + "AB".repeat(32)],
+      dnssecDsTtl: 3600,
+      probableDnsProvider: "Example DNS",
+      registrar: "Example Registrar",
+      supplementalOnly: true as const,
+    }
+    const checkDomainAction = vi.fn().mockImplementation(
+      async (_state: unknown, formData: FormData) => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+        const sourceMethod = String(formData.get("migrationSourceMethod") ?? "")
+        return {
+          ok: sourceMethod === "",
+          status: sourceMethod === "" ? "preflight_complete" as const : "invalid" as const,
+          domain: "example.nl",
+          domainMode: "existing_domain" as const,
+          migrationReadiness: "unsupported" as const,
+          migrationClassification: null,
+          migrationSourceMechanism: sourceMethod || undefined,
+          migrationPreflightOnly: true,
+          migrationPublicEvidence,
+          message: sourceMethod === ""
+            ? "Nothing has been transferred or ordered."
+            : "Correct the transfer authorization and try again.",
+          requestToken:
+            document.querySelector<HTMLInputElement>(
+              '#checkout-domain-form input[name="requestToken"]',
+            )?.value ?? String(formData.get("requestToken") ?? ""),
+        }
       },
-      message: "Nothing has been transferred or ordered.",
-    })
+    )
     const commonProps = {
       customerEmail: "owner@example.test",
       currentDomain: null,
@@ -329,6 +343,12 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })).toBeNull()
     expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
     expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(3))
+    expect(screen.getByLabelText("checkoutMigrationZoneExportLabel")).toBeTruthy()
+    expect(screen.getByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
     expect(
       container.querySelector<HTMLInputElement>(
         '#checkout-domain-form input[name="domainMode"]',

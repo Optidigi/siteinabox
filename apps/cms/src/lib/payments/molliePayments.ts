@@ -26,8 +26,10 @@ import {
   ensureChargebackCreditNote,
   ensureInvoiceEvidence,
   ensurePendingCreditNote,
+  ensurePendingPaymentAdjustment,
   ensureRefundCreditNote,
-  issueCreditNote,
+  ensureRefundPaymentAdjustment,
+  issueAccountingDocument,
 } from "@/lib/payments/accountingEvidence"
 import {
   MollieApiError,
@@ -54,6 +56,7 @@ import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { verifyCheckoutEvidence } from "@/lib/legal/checkoutEvidence"
+import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
 
 type CreateCheckoutInput = {
   runId: string | number
@@ -2307,6 +2310,7 @@ const synchronizeAccountingEvidence = async (
   attempt: PaymentAttempt,
   payment: MolliePayment,
   now: string,
+  duplicatePayment = false,
 ): Promise<void> => {
   if (![
     "paid",
@@ -2316,12 +2320,14 @@ const synchronizeAccountingEvidence = async (
     "refund_failed",
     "chargeback",
   ].includes(attempt.state)) return
-  const invoice = await ensureInvoiceEvidence({
-    payload,
-    order,
-    paymentAttempt: attempt,
-    issuedAt: payment.paidAt ?? attempt.paidAt ?? now,
-  })
+  const invoice = duplicatePayment
+    ? null
+    : await ensureInvoiceEvidence({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        issuedAt: payment.paidAt ?? attempt.paidAt ?? now,
+      })
   if (
     (attempt.refundedAmountMinor ?? 0) +
       (attempt.chargebackAmountMinor ?? 0) >
@@ -2340,9 +2346,15 @@ const synchronizeAccountingEvidence = async (
         depth: 0,
         overrideAccess: true,
       }) as AccountingDocument
+      const expectedDocumentType = duplicatePayment
+        ? "payment_adjustment"
+        : "credit_note"
+      const expectedReason = duplicatePayment
+        ? "overpayment_refund"
+        : "refund"
       if (
-        pendingDocument.documentType !== "credit_note" ||
-        pendingDocument.reason !== "refund" ||
+        pendingDocument.documentType !== expectedDocumentType ||
+        pendingDocument.reason !== expectedReason ||
         !sameRelationshipId(pendingDocument.order, order.id) ||
         !sameRelationshipId(pendingDocument.paymentAttempt, attempt.id)
       ) {
@@ -2352,7 +2364,7 @@ const synchronizeAccountingEvidence = async (
           "Mollie refund metadata does not match the pending accounting evidence.",
         )
       }
-      await issueCreditNote({
+      await issueAccountingDocument({
         payload,
         document: pendingDocument,
         providerOperationId: refund.id,
@@ -2361,16 +2373,29 @@ const synchronizeAccountingEvidence = async (
       })
       continue
     }
-    await ensureRefundCreditNote({
-      payload,
-      order,
-      paymentAttempt: attempt,
-      invoice,
-      providerRefundId: refund.id,
-      providerStatus: refund.status,
-      grossAmountMinor,
-      issuedAt: refund.createdAt ?? now,
-    })
+    if (duplicatePayment) {
+      await ensureRefundPaymentAdjustment({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        providerRefundId: refund.id,
+        providerStatus: refund.status,
+        grossAmountMinor,
+        issuedAt: refund.createdAt ?? now,
+      })
+    } else {
+      if (!invoice) throw new Error("Refund credit evidence requires an invoice.")
+      await ensureRefundCreditNote({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        invoice,
+        providerRefundId: refund.id,
+        providerStatus: refund.status,
+        grossAmountMinor,
+        issuedAt: refund.createdAt ?? now,
+      })
+    }
   }
   for (const refund of failedRefunds(payment)) {
     const pendingDocumentId = refund.metadata?.accountingDocumentId
@@ -2381,9 +2406,15 @@ const synchronizeAccountingEvidence = async (
       depth: 0,
       overrideAccess: true,
     }) as AccountingDocument
+    const expectedDocumentType = duplicatePayment
+      ? "payment_adjustment"
+      : "credit_note"
+    const expectedReason = duplicatePayment
+      ? "overpayment_refund"
+      : "refund"
     if (
-      pendingDocument.documentType !== "credit_note" ||
-      pendingDocument.reason !== "refund" ||
+      pendingDocument.documentType !== expectedDocumentType ||
+      pendingDocument.reason !== expectedReason ||
       !sameRelationshipId(pendingDocument.order, order.id) ||
       !sameRelationshipId(pendingDocument.paymentAttempt, attempt.id)
     ) {
@@ -2420,16 +2451,117 @@ const synchronizeAccountingEvidence = async (
   for (const chargeback of payment._embedded?.chargebacks ?? []) {
     const grossAmountMinor = minorAmount(chargeback.amount)
     if (grossAmountMinor == null) continue
-    await ensureChargebackCreditNote({
-      payload,
-      order,
-      paymentAttempt: attempt,
-      invoice,
-      providerChargebackId: chargeback.id,
-      grossAmountMinor,
-      issuedAt: chargeback.createdAt ?? now,
+    if (duplicatePayment) {
+      await ensureRefundPaymentAdjustment({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        providerRefundId: chargeback.id,
+        providerStatus: "chargeback",
+        grossAmountMinor,
+        issuedAt: chargeback.createdAt ?? now,
+      })
+    } else {
+      if (!invoice) throw new Error("Chargeback credit evidence requires an invoice.")
+      await ensureChargebackCreditNote({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        invoice,
+        providerChargebackId: chargeback.id,
+        grossAmountMinor,
+        issuedAt: chargeback.createdAt ?? now,
+      })
+    }
+  }
+}
+
+const authoritativeInvoiceForDuplicatePayment = async (
+  payload: Payload,
+  order: Order,
+  duplicateAttempt: PaymentAttempt,
+  now: string,
+): Promise<AccountingDocument> => {
+  const invoiceResult = await payload.find({
+    collection: "accounting-documents",
+    where: {
+      and: [
+        { order: { equals: order.id } },
+        { documentType: { equals: "invoice" } },
+      ],
+    },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const existingInvoice = invoiceResult.docs[0] as AccountingDocument | undefined
+  if (existingInvoice) return existingInvoice
+  if (!order.providerPaymentId) {
+    throw new Error("Duplicate payment refund requires an authoritative order payment.")
+  }
+  const authoritativeAttempt = await findOneDoc(payload, "payment-attempts", {
+    providerPaymentId: { equals: order.providerPaymentId },
+  })
+  if (
+    !authoritativeAttempt ||
+    String(authoritativeAttempt.id) === String(duplicateAttempt.id)
+  ) {
+    throw new Error("Duplicate payment refund could not resolve the authoritative payment.")
+  }
+  return ensureInvoiceEvidence({
+    payload,
+    order,
+    paymentAttempt: authoritativeAttempt,
+    issuedAt: authoritativeAttempt.paidAt ?? now,
+  })
+}
+
+const ensureDuplicatePaymentRefundQueued = async (
+  payload: Payload,
+  order: Order,
+  attempt: PaymentAttempt,
+  now: string,
+): Promise<AccountingDocument> => {
+  await authoritativeInvoiceForDuplicatePayment(
+    payload,
+    order,
+    attempt,
+    now,
+  )
+  const evidenceKey =
+    `payment-adjustment:payment-attempt:${attempt.id}:duplicate_payment`
+  const existing = await findOneDoc(payload, "accounting-documents", {
+    evidenceKey: { equals: evidenceKey },
+  })
+  const document = existing ?? await ensurePendingPaymentAdjustment({
+    payload,
+    order,
+    paymentAttempt: attempt,
+    grossAmountMinor: attempt.grossAmountMinor,
+    now,
+  })
+  if (
+    document.state === "pending_provider" &&
+    !document.providerOperationId &&
+    document.providerStatus !== "refund_job_queued"
+  ) {
+    await queueMollieRefund(payload, {
+      paymentAttemptId: attempt.id,
+      scenario: "duplicate_payment",
+    })
+    await payload.update({
+      collection: "accounting-documents",
+      id: document.id,
+      data: {
+        providerStatus: "refund_job_queued",
+        lastSyncedAt: now,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { accountingDocumentLifecycleMutation: true },
     })
   }
+  return document
 }
 
 export async function synchronizeMolliePayment(
@@ -2502,23 +2634,37 @@ export async function synchronizeMolliePayment(
   }) as Order
   const ownsSharedProjection = await attemptOwnsSharedProjection(payload, attempt)
   if (!ownsSharedProjection) {
-    if ([
+    const captured = [
       "paid",
       "refund_pending",
       "partially_refunded",
       "refunded",
       "refund_failed",
       "chargeback",
-    ].includes(attempt.state)) {
+    ].includes(attempt.state)
+    if (captured) {
       attempt = await updateAttempt(payload, attempt, {
-        reconciliationRequired: true,
+        reconciliationRequired: false,
         failureCode: "non_authoritative_attempt_captured",
         failureMessage:
-          "A superseded payment attempt has captured provider state and requires reconciliation.",
+          "A superseded payment attempt was captured and its governed refund was queued.",
         lastSyncedAt: now,
       })
+      await ensureDuplicatePaymentRefundQueued(
+        payload,
+        order,
+        attempt,
+        now,
+      )
+      await synchronizeAccountingEvidence(
+        payload,
+        order,
+        attempt,
+        payment,
+        now,
+        true,
+      )
     }
-    await synchronizeAccountingEvidence(payload, order, attempt, payment, now)
     return {
       ok: true,
       paymentAttemptId: attempt.id,
@@ -2685,28 +2831,25 @@ export async function requestMollieRefund(
     overrideAccess: true,
   }) as Order
   const now = new Date().toISOString()
-  const invoice = await ensureInvoiceEvidence({
-    payload,
-    order,
-    paymentAttempt: attempt,
-    issuedAt: attempt.paidAt ?? now,
-  })
   const requestedGrossAmountMinor = refundGrossAmount(order, attempt, input.scenario)
-  const requestedEvidenceKey =
-    `credit-note:payment-attempt:${attempt.id}:${input.scenario}`
+  const duplicatePayment = input.scenario === "duplicate_payment"
+  const requestedEvidenceKey = duplicatePayment
+    ? `payment-adjustment:payment-attempt:${attempt.id}:duplicate_payment`
+    : `credit-note:payment-attempt:${attempt.id}:${input.scenario}`
   const reversalDocuments = await payload.find({
     collection: "accounting-documents",
     where: {
-      and: [
-        { paymentAttempt: { equals: attempt.id } },
-        { documentType: { equals: "credit_note" } },
-      ],
+      paymentAttempt: { equals: attempt.id },
     },
     limit: 1_000,
     depth: 0,
     overrideAccess: true,
   })
-  const reversals = reversalDocuments.docs as AccountingDocument[]
+  const reversals = (reversalDocuments.docs as AccountingDocument[]).filter(
+    (entry) =>
+      entry.documentType === "credit_note" ||
+      entry.documentType === "payment_adjustment",
+  )
   const existingDocument = reversals.find((entry) =>
     entry.evidenceKey === requestedEvidenceKey
   )
@@ -2728,15 +2871,37 @@ export async function requestMollieRefund(
   ) {
     throw new Error("The requested refund exceeds the remaining captured amount.")
   }
-  let document = existingDocument ?? await ensurePendingCreditNote({
-    payload,
-    order,
-    paymentAttempt: attempt,
-    invoice,
-    scenario: input.scenario,
-    grossAmountMinor: requestedGrossAmountMinor,
-    now,
-  })
+  const invoice = duplicatePayment
+    ? null
+    : await ensureInvoiceEvidence({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        issuedAt: attempt.paidAt ?? now,
+      })
+  let document = existingDocument
+  if (!document) {
+    if (duplicatePayment) {
+      document = await ensurePendingPaymentAdjustment({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        grossAmountMinor: requestedGrossAmountMinor,
+        now,
+      })
+    } else {
+      if (!invoice) throw new Error("Refund credit evidence requires an invoice.")
+      document = await ensurePendingCreditNote({
+        payload,
+        order,
+        paymentAttempt: attempt,
+        invoice,
+        scenario: input.scenario,
+        grossAmountMinor: requestedGrossAmountMinor,
+        now,
+      })
+    }
+  }
   if (document.providerOperationId) {
     return {
       document,

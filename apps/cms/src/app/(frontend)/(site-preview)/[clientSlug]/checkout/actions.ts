@@ -375,6 +375,7 @@ async function checkExistingDomainMigration(
         migrationReadiness: "unsupported",
         migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
         migrationPublicEvidence: publicEvidence,
+        migrationPreflightOnly: true,
         message: "Kies een ondersteunde volledige DNS-bron.",
         requestToken,
       }
@@ -413,6 +414,7 @@ async function checkExistingDomainMigration(
         migrationClassification: null,
         migrationSourceMechanism: acquiredSource.mechanism,
         migrationPublicEvidence: assessment.publicEvidence,
+        migrationPreflightOnly: true,
         message: assessment.message,
         requestToken,
       }
@@ -427,6 +429,7 @@ async function checkExistingDomainMigration(
         migrationReadiness: "unsupported",
         migrationSourceMechanism: acquiredSource.mechanism,
         migrationPublicEvidence: assessment.publicEvidence,
+        migrationPreflightOnly: true,
         message: "Deze verhuizing heeft geen deterministische ondersteunde providerprijs.",
         requestToken,
       }

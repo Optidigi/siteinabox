@@ -363,6 +363,51 @@ describe("Phase 2 commerce record schemas", () => {
         context: {},
       }),
     )).toThrow("immutable customer and continuity evidence")
+    const registrantDelivery = {
+      domainNameAscii: "example.be",
+      custodyStatus: "transfer_code_ready",
+      offboardingRequestedAt: "2026-07-28T10:00:00.000Z",
+      offboardingRequestedByEmail: "customer@example.com",
+      offboardingRequestId: "request-email-delivery",
+      offboardingContinuityEvidence: {
+        schemaVersion: 2,
+        domain: "example.be",
+        capturedAt: "2026-07-28T10:00:00.000Z",
+        authoritativeNameservers: [
+          "ada.ns.cloudflare.com",
+          "bob.ns.cloudflare.com",
+        ],
+        dnssecStatus: "unsigned",
+        parentDsRecords: [],
+        zoneSnapshotHash: "a".repeat(64),
+        mailRecordSetHash: "b".repeat(64),
+        serviceRecordSetHash: "c".repeat(64),
+        preservationMode: "retain_existing_dns_and_mail",
+      },
+      transferOutCodeDeliveryStatus: "registrant_email",
+      encryptedTransferOutCode: null,
+    }
+    expect(validateManagedDomainCustody(
+      hookArgsFor(validateManagedDomainCustody, {
+        operation: "update",
+        data: registrantDelivery,
+        req: {},
+        collection: {},
+        context: {},
+      }),
+    )).toMatchObject(registrantDelivery)
+    expect(() => validateManagedDomainCustody(
+      hookArgsFor(validateManagedDomainCustody, {
+        operation: "update",
+        data: {
+          ...registrantDelivery,
+          transferOutCodeDeliveryStatus: "provider_returned",
+        },
+        req: {},
+        collection: {},
+        context: {},
+      }),
+    )).toThrow("requires an encrypted auth code")
     expect(() => protectManagedDomain(hookArgsFor(protectManagedDomain, {
       operation: "update",
       data: { custodyStatus: "managed" },

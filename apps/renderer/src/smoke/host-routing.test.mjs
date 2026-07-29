@@ -32,6 +32,10 @@ test("routes production hosts through canonical provider snapshots and keeps 404
   const dataDir = await mkdtemp(join(tmpdir(), "siab-renderer-media-"))
   await mkdir(join(dataDir, "tenants", "tenant-ami-care", "media"), { recursive: true })
   await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "bedroom.jpg"), "stub media")
+  await writeFile(
+    join(dataDir, "tenants", "tenant-ami-care", "media", "favicon.svg"),
+    "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",
+  )
   const port = await getOpenPort()
   const baseUrl = `http://127.0.0.1:${port}`
   const child = spawn("pnpm", ["exec", "astro", "dev", "--host", "127.0.0.1", "--port", String(port)], {

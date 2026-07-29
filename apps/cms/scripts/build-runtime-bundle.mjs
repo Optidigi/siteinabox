@@ -132,6 +132,27 @@ await build({
   outfile: path.join(outDir, "ensure-renderer-domain-alias.bundled.mjs"),
 })
 
+// Read-only target-database release gates. These must ship in the exact
+// reviewed image because the standalone runner intentionally contains neither
+// the TypeScript source tree nor pnpm/tsx.
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/check-commerce-production-readiness.ts")],
+  outfile: path.join(outDir, "check-commerce-production-readiness.bundled.mjs"),
+})
+
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/check-commerce-edge-inventory.ts")],
+  outfile: path.join(outDir, "check-commerce-edge-inventory.bundled.mjs"),
+})
+
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/reconcile-commerce-edge-routing.ts")],
+  outfile: path.join(outDir, "reconcile-commerce-edge-routing.bundled.mjs"),
+})
+
 // Mark the directory as ESM so any `.js` peers parse as module syntax.
 // Belt-and-braces: the bundled output is `.mjs`, but a sibling package.json
 // keeps behaviour explicit and protects against future renames.

@@ -141,9 +141,15 @@ These steps require a separate approved production change:
    evidence dossier.
 2. Back up the database and prove restore availability without restoring over
    production.
-3. Apply the committed migrations and run the production-readiness preflight.
-4. Deploy with `COMMERCE_RELEASE_STAGE=shadow`; verify read-only reconciliation.
-5. Establish and verify private/authenticated Cloudflare-to-origin routing.
+3. Deploy the exact reviewed image with `COMMERCE_RELEASE_STAGE=shadow`; its
+   boot path applies the committed additive migrations.
+4. Verify read-only reconciliation and run the bundled edge-inventory gate.
+5. With explicit Cloudflare write approval, run the artifact-contained,
+   narrowly scoped edge-routing reconciliation command. Verify the private
+   origin and live HTTPS probes, set the origin-isolation evidence flag, then
+   run the read-only production-readiness gate. Follow the exact commands in
+   [Commerce release](commerce-release.md) and keep the long-lived service in
+   `shadow`.
 6. Rehearse the approved provider scenarios and record redacted evidence.
 7. Enable only the reviewed operation/TLD set in the effective capability
    catalogue, review and deploy that code change, then perform a controlled
@@ -165,6 +171,12 @@ transfer-out access. Continue paid or provider-committed renewal obligations
 and provider reconciliation. Use forward recovery when a migration guard
 protects immutable legal, secret-audit, supplemental-order, or transfer-out
 records.
+
+The additive payment-adjustment enum migration cannot be rolled down after
+payment-adjustment evidence exists. Keep the migrated schema, restore the
+previous compatible application image if necessary, and correct the
+application forward. Never delete accounting evidence to force a schema
+rollback.
 
 For an existing-domain cutover, restore the frozen source nameserver/DNSSEC
 plan and validate authoritative plus recursive answers before declaring

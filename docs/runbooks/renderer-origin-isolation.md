@@ -2,16 +2,19 @@
 
 ## Existing-domain rollout gate
 
-Before deploying the schema/application pair that enforces dynamic edge
-routing, run `pnpm --dir apps/cms check:commerce-edge-inventory` against the
-target database. It is read-only and fails when an active tenant does not have
-exactly one active managed-domain row with a Cloudflare zone. Do not deploy
-while it fails.
+Deploy the exact reviewed CMS image in `shadow`, then run its bundled
+`/app/dist-runtime/check-commerce-edge-inventory.bundled.mjs` command against
+the target database using the one-off command in
+[Commerce release](commerce-release.md). It is read-only and fails when an
+active tenant does not have exactly one active managed-domain row with a
+Cloudflare zone. Do not advance beyond `shadow` while it fails.
 
 After the additive migration and both application/Tunnel services are running,
-run commerce reconciliation until every pre-existing active domain reports
-edge routing `active`, renderer/admin HTTPS `verified`, and then run
-`pnpm --dir apps/cms check:commerce-production-readiness`. If reconciliation
+use the explicitly approved, bundled
+`reconcile-commerce-edge-routing.bundled.mjs` command to establish exact
+routes. Repeat it while certificate state is legitimately pending, run the
+black-box origin/host probes, and only then set the origin-isolation evidence
+flag and run the bundled read-only production-readiness gate. If reconciliation
 cannot complete, restore the previous application images; the additive
 migration is compatible and must remain in place while the evidence issue is
 corrected.

@@ -77,6 +77,19 @@ const setup = () => {
 }
 
 describe("automatic Cloudflare edge routing", () => {
+  it("performs no Payload or provider call when provider writes are disabled", async () => {
+    const fixture = setup()
+    const reconcileTunnel = vi.fn()
+
+    await expect(reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => false,
+      reconcileTunnel,
+    })).rejects.toThrow("does not allow Cloudflare edge provider writes")
+
+    expect(fixture.payload.find).not.toHaveBeenCalled()
+    expect(reconcileTunnel).not.toHaveBeenCalled()
+  })
+
   it("activates only after exact DNS, certificates, tunnels, and service probes pass", async () => {
     const fixture = setup()
     const reconcileDnsRecord = vi.fn(async (
@@ -89,6 +102,7 @@ describe("automatic Cloudflare edge routing", () => {
       ownershipDisposition: "created" as const,
     }))
     const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
       buildDnsRecords: vi.fn(() => fixture.records),
@@ -123,6 +137,7 @@ describe("automatic Cloudflare edge routing", () => {
   it("persists provider/tunnel outages as resumable pending state", async () => {
     const fixture = setup()
     const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async () => {
         throw new Error("provider unavailable")
@@ -145,6 +160,7 @@ describe("automatic Cloudflare edge routing", () => {
     async (status) => {
     const fixture = setup()
     const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async () => {
         throw new CloudflareTunnelApiError("Tunnel read", status)
@@ -166,6 +182,7 @@ describe("automatic Cloudflare edge routing", () => {
   it("fails closed on an unowned DNS collision", async () => {
     const fixture = setup()
     const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
       buildDnsRecords: vi.fn(() => fixture.records),
@@ -191,6 +208,7 @@ describe("automatic Cloudflare edge routing", () => {
     const reconcileDnsRecord = vi.fn()
     const assertDnsRecordsReconciliable = vi.fn()
     const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async (kind) => ({
         ...tunnel(kind),
@@ -209,6 +227,7 @@ describe("automatic Cloudflare edge routing", () => {
     const fixture = setup()
     fixture.stored.cloudflareDnsRecordIds = ["mx", "dkim", "dmarc"]
     await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
       buildDnsRecords: vi.fn(() => fixture.records),
@@ -247,6 +266,7 @@ describe("automatic Cloudflare edge routing", () => {
   it("does not adopt an exact unowned record inserted after preflight", async () => {
     const fixture = setup()
     await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
       now: () => "2026-07-29T20:00:00.000Z",
       reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
       buildDnsRecords: vi.fn(() => fixture.records),

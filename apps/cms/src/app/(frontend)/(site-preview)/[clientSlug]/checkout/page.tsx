@@ -40,6 +40,7 @@ import {
   automaticMigrationSourceEnabled,
   existingDomainMigrationCheckoutEnabled,
 } from "@/lib/domains/migrationCheckout"
+import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGateCore"
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 
@@ -136,6 +137,17 @@ export default async function PreviewCheckoutPage({
         })
       : null)
 
+    const enabledMigrationSourceMethods = ([
+      "cloudflare_api_v1",
+      "authorized_axfr_v1",
+      "validated_provider_export_v1",
+    ] as const).filter((mechanism) =>
+      automaticMigrationSourceEnabled(mechanism))
+    const existingDomainMigrationEnabled =
+      existingDomainMigrationCheckoutEnabled() &&
+      commerceProviderReadsAllowed() &&
+      enabledMigrationSourceMethods.length > 0
+
     return (
       <PreviewCheckout
         customerEmail={context.customerEmail}
@@ -150,13 +162,8 @@ export default async function PreviewCheckoutPage({
             : "domain"
         }
         paymentReturn={paymentReturn}
-        existingDomainMigrationEnabled={existingDomainMigrationCheckoutEnabled()}
-        enabledMigrationSourceMethods={([
-          "cloudflare_api_v1",
-          "authorized_axfr_v1",
-          "validated_provider_export_v1",
-        ] as const).filter((mechanism) =>
-          automaticMigrationSourceEnabled(mechanism))}
+        existingDomainMigrationEnabled={existingDomainMigrationEnabled}
+        enabledMigrationSourceMethods={enabledMigrationSourceMethods}
         migrationStatus={migrationStatus}
         provisioningStatus={provisioningStatus}
         acceptedOrderId={acceptedResume?.orderId ?? null}

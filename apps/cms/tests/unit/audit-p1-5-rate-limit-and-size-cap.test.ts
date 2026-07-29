@@ -70,7 +70,7 @@ import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFi
 //  R1.  AMD-1 owner-invite: role/tenants field-access for owner→editor in own tenant unchanged
 //  R2.  AMD-2 apiKey field-level access: apiKey/enableAPIKey/apiKeyIndex still isSuperAdminField
 //  R3.  AMD-3 honest-rejection hook: `Users.hooks.beforeOperation` still has the hook
-//  R4.  super-admin authed forgot-password not rate-limited (= TDD #4; explicit cross-ref label)
+//  R4.  raw authentication signals cannot bypass the public POST limiter
 //  R5.  P1 #6 bootstrap: anonymous POST /api/users with valid BOOTSTRAP_TOKEN succeeds AND is not
 //       rate-limited (out-of-scope of finding #5)
 
@@ -87,6 +87,7 @@ type ReqOpts = {
   body?: BodyInit
   contentType?: string
   host?: string
+  origin?: string
 }
 
 const reqAt = (opts: ReqOpts) => {
@@ -97,6 +98,7 @@ const reqAt = (opts: ReqOpts) => {
   if (opts.authorization) headers["authorization"] = opts.authorization
   if (opts.cookie) headers["cookie"] = opts.cookie
   if (opts.contentType) headers["content-type"] = opts.contentType
+  if (opts.origin) headers.origin = opts.origin
   return new NextRequest(`https://${opts.host ?? "admin.siteinabox.nl"}${opts.path}`, {
     method: opts.method ?? "POST",
     headers,
@@ -146,6 +148,20 @@ afterEach(() => {
 // -----------------------------------------------------------------------------
 
 describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
+  it("rejects cross-origin browser mutations and accepts the exact request origin", async () => {
+    const hostile = await middleware(reqAt({
+      path: "/api/users/request-data",
+      origin: "https://attacker.example",
+    }))
+    expect(hostile.status).toBe(403)
+
+    const sameOrigin = await middleware(reqAt({
+      path: "/api/users/request-data",
+      origin: "https://admin.siteinabox.nl",
+    }))
+    expect(sameOrigin.status).not.toBe(403)
+  })
+
   it("Case 1: /api/forms anon — 10 permitted, 11th returns 429 + Retry-After", async () => {
     for (let i = 1; i <= 10; i++) {
       const res = await middleware(reqAt({ path: "/api/forms", ip: "203.0.113.10" }))
@@ -194,12 +210,8 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
     )
   })
 
-  it("Case 4 / R4: super-admin authed (Authorization: users API-Key …) is exempt — 100 POSTs to /api/users/forgot-password all permitted", async () => {
-    // Authorization header alone is sufficient to flip out of the
-    // anonymous-only branch (per dispatch Constraint 1 approach (b)).
-    // This is the machine-client invariant: owner-invite tenant provisioning
-    // can call /api/users/forgot-password from a single IP in a burst.
-    for (let i = 1; i <= 100; i++) {
+  it("Case 4 / R4: an unvalidated Authorization header cannot bypass the public POST limiter", async () => {
+    for (let i = 1; i <= 10; i++) {
       const res = await middleware(
         reqAt({
           path: "/api/users/forgot-password",
@@ -209,14 +221,15 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       )
       expectAllowed(res, `authed sa #${i}`)
     }
+    expectBlocked(await middleware(reqAt({
+      path: "/api/users/forgot-password",
+      ip: "203.0.113.40",
+      authorization: "users API-Key sa-token-pretend",
+    })), "authed sa #11")
   })
 
-  it("Case 4b: payload-token session cookie also bypasses the limiter (the in-app reset-password UI shape)", async () => {
-    // Defense-in-depth: a logged-in user clicking "reset password" while
-    // already authed shouldn't be rate-limited as if anonymous. Since the
-    // anonymous-only check is `no Authorization header AND no payload-token
-    // cookie`, presence of either bypasses.
-    for (let i = 1; i <= 50; i++) {
+  it("Case 4b: an unvalidated payload-token cookie cannot bypass the public POST limiter", async () => {
+    for (let i = 1; i <= 10; i++) {
       const res = await middleware(
         reqAt({
           path: "/api/users/forgot-password",
@@ -226,6 +239,11 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       )
       expectAllowed(res, `cookie-authed #${i}`)
     }
+    expectBlocked(await middleware(reqAt({
+      path: "/api/users/forgot-password",
+      ip: "203.0.113.41",
+      cookie: "payload-token=opaque-jwt; other=ignored",
+    })), "cookie-authed #11")
   })
 
   it("Case 5: path normalization — /api/forms and /api/forms/ (trailing slash) share one rate-limit budget", async () => {
@@ -503,8 +521,8 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
     }
   })
 
-  it("generated-site forms: authenticated callers bypass both public form limiters", async () => {
-    for (let i = 1; i <= 60; i++) {
+  it("generated-site forms: a raw session cookie cannot bypass either public form limiter", async () => {
+    for (let i = 1; i <= 10; i++) {
       const res = await middleware(formPostAt({
         path: "/api/forms",
         ip: "203.0.113.42",
@@ -514,6 +532,13 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       }))
       expectAllowed(res, `authed form #${i}`)
     }
+    expectBlocked(await middleware(formPostAt({
+      path: "/api/forms",
+      ip: "203.0.113.42",
+      tenant: "tenant-a",
+      formName: "contact",
+      cookie: "payload-token=opaque-jwt",
+    })), "authed form #11")
   })
 })
 

@@ -440,11 +440,29 @@ export const validateManagedDomainCustody: CollectionBeforeValidateHook = ({
       throw new Error("Domain offboarding continuity evidence belongs to another domain.")
     }
   }
-  if (
-    ["transfer_code_ready", "transfer_pending"].includes(custodyStatus) &&
-    !current.encryptedTransferOutCode
-  ) {
-    throw new Error("Transfer-out readiness requires an encrypted provider auth code.")
+  if (["transfer_code_ready", "transfer_pending"].includes(custodyStatus)) {
+    const deliveryStatus = current.transferOutCodeDeliveryStatus
+    if (
+      deliveryStatus === "provider_returned" &&
+      !current.encryptedTransferOutCode
+    ) {
+      throw new Error(
+        "Provider-returned transfer-out readiness requires an encrypted auth code.",
+      )
+    }
+    if (
+      deliveryStatus === "registrant_email" &&
+      current.encryptedTransferOutCode
+    ) {
+      throw new Error(
+        "Registrant-delivered transfer-out readiness must not retain an auth code.",
+      )
+    }
+    if (!["provider_returned", "registrant_email"].includes(String(deliveryStatus))) {
+      throw new Error(
+        "Transfer-out readiness requires a verified authorization delivery mechanism.",
+      )
+    }
   }
   if (
     custodyStatus === "transferred_out" &&
@@ -1487,7 +1505,7 @@ export const AccountingDocuments: CollectionConfig = {
       name: "documentType",
       type: "select",
       required: true,
-      options: selectOptions(["invoice", "credit_note"]),
+      options: selectOptions(["invoice", "credit_note", "payment_adjustment"]),
       index: true,
     },
     {
@@ -1516,7 +1534,12 @@ export const AccountingDocuments: CollectionConfig = {
       name: "reason",
       type: "select",
       required: true,
-      options: selectOptions(["payment_collected", "refund", "chargeback"]),
+      options: selectOptions([
+        "payment_collected",
+        "refund",
+        "chargeback",
+        "overpayment_refund",
+      ]),
       index: true,
     },
     {

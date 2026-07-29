@@ -93,7 +93,7 @@ const enableProductionCommerceRelease = () => {
   vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
   vi.stubEnv(
     "COMMERCE_RELEASE_EVIDENCE_VERSION",
-    "commerce-production-readiness-2026-07-28.1",
+    "commerce-production-readiness-2026-07-29.1",
   )
   vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
   vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
@@ -113,7 +113,7 @@ const enableSandboxCommerceRelease = () => {
   vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
   vi.stubEnv(
     "COMMERCE_RELEASE_EVIDENCE_VERSION",
-    "commerce-production-readiness-2026-07-28.1",
+    "commerce-production-readiness-2026-07-29.1",
   )
   vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
   vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://sandbox.openprovider.test/v1beta")
@@ -2845,11 +2845,11 @@ describe("Mollie payment flow", () => {
 
     await expect(requestMollieRefund(payload, {
       paymentAttemptId: String(paymentAttempts[0]?.id),
-      scenario: "duplicate_payment",
+      scenario: "unfulfillable_before_provider_commit",
     })).resolves.toMatchObject({ providerRefundId: "re_single_flight" })
     await expect(requestMollieRefund(payload, {
       paymentAttemptId: String(paymentAttempts[0]?.id),
-      scenario: "unfulfillable_before_provider_commit",
+      scenario: "duplicate_payment",
     })).rejects.toThrow("Another refund is awaiting provider resolution")
 
     expect(fetch).toHaveBeenCalledTimes(1)
@@ -3021,6 +3021,173 @@ describe("Mollie payment flow", () => {
     expect(accountingDocuments.filter((document) =>
       document.documentType === "invoice",
     )).toHaveLength(1)
+  })
+
+  it("refunds one superseded captured payment without a second sale invoice", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      accountingDocuments,
+      order,
+      queue,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_duplicate_capture",
+        providerStatus: "open",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    const duplicateAttempt = paymentAttempts[0]!
+    Object.assign(duplicateAttempt, {
+      idempotencyKey:
+        "mollie:first-payment:order:600:authority-v3:attempt-1",
+      state: "pending_provider",
+      providerPaymentId: "tr_duplicate_capture",
+      providerStatus: "open",
+    })
+    paymentAttempts.push({
+      ...duplicateAttempt,
+      id: 902,
+      attemptNumber: 2,
+      idempotencyKey:
+        "mollie:first-payment:order:600:authority-v3:attempt-2",
+      state: "paid",
+      providerPaymentId: "tr_authoritative_capture",
+      providerStatus: "paid",
+      paidAt: "2026-07-28T09:55:00.000Z",
+    })
+    Object.assign(order, {
+      state: "fulfilled",
+      paymentStatus: "paid",
+      providerPaymentId: "tr_authoritative_capture",
+      paidAt: "2026-07-28T09:55:00.000Z",
+    })
+    const providerPayment = {
+      id: "tr_duplicate_capture",
+      status: "paid",
+      amount: { currency: "EUR", value: "499.00" },
+      customerId: "cst_test_123",
+      mandateId: "mdt_test_123",
+      sequenceType: "first",
+      paidAt: "2026-07-28T10:00:00.000Z",
+      metadata: {
+        paymentAttemptId: duplicateAttempt.id,
+        billingAgreementId: billingAgreements[0]?.id,
+        orderId: order.id,
+        idempotencyKey: duplicateAttempt.idempotencyKey,
+        mollieCustomerId: "cst_test_123",
+        sequenceType: "first",
+        purpose: "first_payment",
+      },
+      _embedded: { refunds: [], chargebacks: [] },
+    } as const
+
+    queue.mockRejectedValueOnce(new Error("temporary queue outage"))
+    await expect(applyMollieWebhookPayment(
+      payload,
+      providerPayment.id,
+      async () => providerPayment as never,
+    )).rejects.toThrow("temporary queue outage")
+
+    const first = await applyMollieWebhookPayment(
+      payload,
+      providerPayment.id,
+      async () => providerPayment as never,
+    )
+    const repeated = await applyMollieWebhookPayment(
+      payload,
+      providerPayment.id,
+      async () => providerPayment as never,
+    )
+
+    expect(first).toMatchObject({
+      fulfillmentRequired: false,
+      state: "paid",
+    })
+    expect(repeated).toMatchObject({
+      duplicate: true,
+      fulfillmentRequired: false,
+    })
+    expect(order).toMatchObject({
+      state: "fulfilled",
+      providerPaymentId: "tr_authoritative_capture",
+    })
+    expect(accountingDocuments.filter((document) =>
+      document.documentType === "invoice"
+    )).toEqual([
+      expect.objectContaining({ paymentAttempt: 902 }),
+    ])
+    expect(accountingDocuments.filter((document) =>
+      document.refundScenario === "duplicate_payment"
+    )).toEqual([
+      expect.objectContaining({
+        documentType: "payment_adjustment",
+        reason: "overpayment_refund",
+        paymentAttempt: duplicateAttempt.id,
+        state: "pending_provider",
+        netAmountMinor: 0,
+        vatAmountMinor: 0,
+        grossAmountMinor: duplicateAttempt.grossAmountMinor,
+        providerStatus: "refund_job_queued",
+      }),
+    ])
+    expect(queue).toHaveBeenCalledTimes(2)
+    expect(queue).toHaveBeenLastCalledWith(expect.objectContaining({
+      task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: String(duplicateAttempt.id),
+        scenario: "duplicate_payment",
+      },
+    }))
+
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({
+        id: "re_duplicate_capture",
+        status: "pending",
+        amount: { currency: "EUR", value: "499.00" },
+      }), { status: 201 })
+    ))
+    const refundInput = {
+      paymentAttemptId: String(duplicateAttempt.id),
+      scenario: "duplicate_payment" as const,
+    }
+    await expect(requestMollieRefund(payload, refundInput)).resolves.toMatchObject({
+      providerRefundId: "re_duplicate_capture",
+      reused: false,
+    })
+    await expect(requestMollieRefund(payload, refundInput)).resolves.toMatchObject({
+      providerRefundId: "re_duplicate_capture",
+      reused: true,
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(accountingDocuments.filter((document) =>
+      document.documentType === "invoice"
+    )).toHaveLength(1)
+    expect(accountingDocuments.filter((document) =>
+      document.documentType === "credit_note"
+    )).toHaveLength(0)
+    expect(accountingDocuments.filter((document) =>
+      document.documentType === "payment_adjustment"
+    )).toEqual([
+      expect.objectContaining({
+        reason: "overpayment_refund",
+        netAmountMinor: 0,
+        vatAmountMinor: 0,
+        grossAmountMinor: duplicateAttempt.grossAmountMinor,
+        providerOperationId: "re_duplicate_capture",
+      }),
+    ])
+    const saleInvoiceGross = accountingDocuments
+      .filter((document) => document.documentType === "invoice")
+      .reduce((total, document) => total + Number(document.grossAmountMinor), 0)
+    const vatCreditGross = accountingDocuments
+      .filter((document) => document.documentType === "credit_note")
+      .reduce((total, document) => total + Number(document.grossAmountMinor), 0)
+    expect(saleInvoiceGross - vatCreditGross).toBe(order.totalGrossMinor)
   })
 
   it("serializes all refund scenarios for one captured payment", () => {
@@ -4048,5 +4215,48 @@ describe("Mollie payment flow", () => {
     expect(update).not.toHaveBeenCalled()
     expect(queue).toHaveBeenCalledOnce()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("rejects an oversized webhook body before queueing work", async () => {
+    const { payload, queue } = createPayloadStub()
+    vi.mocked(getPayload).mockResolvedValue(payload)
+    const response = await mollieWebhookPOST(asNextRequest(new Request(
+      "https://admin.siteinabox.nl/api/payments/mollie/webhook",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "content-length": "5000",
+        },
+        body: `id=tr_test&padding=${"a".repeat(5_000)}`,
+      },
+    )))
+
+    expect(response.status).toBe(413)
+    expect(queue).not.toHaveBeenCalled()
+  })
+
+  it("acknowledges an obsolete Mollie 404 without a task retry", async () => {
+    const { payload } = createPayloadStub()
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({
+        title: "Not Found",
+        detail: "The payment does not exist.",
+      }), { status: 404 })
+    ))
+    const handler = syncMolliePaymentTask.handler as unknown as (
+      args: { input: { paymentId: string }; req: { payload: typeof payload } }
+    ) => Promise<{ output: { status: string; fulfillmentQueued: boolean } }>
+
+    await expect(handler({
+      input: { paymentId: "tr_obsolete" },
+      req: { payload },
+    })).resolves.toMatchObject({
+      output: {
+        status: "ignored",
+        fulfillmentQueued: false,
+      },
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 })

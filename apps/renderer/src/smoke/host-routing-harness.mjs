@@ -313,7 +313,21 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/bedroom.jpg")
   assert.equal(amicareMedia.status, 200)
   assert.equal(amicareMedia.headers.get("content-type"), "image/jpeg")
+  assert.equal(amicareMedia.headers.get("x-content-type-options"), "nosniff")
   assert.equal(await amicareMedia.text(), "stub media")
+
+  const amicareSvg = await fetchWithHost(
+    baseUrl,
+    "ami-care.nl",
+    "/siab-media/tenant-ami-care/favicon.svg",
+  )
+  assert.equal(amicareSvg.status, 200)
+  assert.equal(amicareSvg.headers.get("content-type"), "image/svg+xml")
+  assert.equal(amicareSvg.headers.get("x-content-type-options"), "nosniff")
+  assert.equal(
+    amicareSvg.headers.get("content-security-policy"),
+    "default-src 'none'; script-src 'none'; sandbox",
+  )
 
   const traversalMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/%2E%2E/bedroom.jpg")
   assert.equal(traversalMedia.status, 404)

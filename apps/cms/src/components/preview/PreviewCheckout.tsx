@@ -317,6 +317,10 @@ export function PreviewCheckout({
         : ""
     })
   const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
+  const [migrationPreflight, setMigrationPreflight] = React.useState<{
+    domain: string
+    publicEvidence: PreviewCheckoutActionState["migrationPublicEvidence"]
+  } | null>(null)
   const [suggestionsState, setSuggestionsState] =
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
   const [suggestionsPending, setSuggestionsPending] = React.useState(false)
@@ -343,7 +347,7 @@ export function PreviewCheckout({
     checkState.requestToken === latestDomainRequestTokenRef.current
   const checkMechanismIsCurrent =
     domainMode !== "existing_domain" ||
-    checkState.status === "preflight_complete" ||
+    checkState.migrationPreflightOnly === true ||
     checkState.migrationSourceMechanism === migrationSourceMethod
   const checkAppliesToCurrentInput = Boolean(
     checkTokenIsCurrent &&
@@ -374,7 +378,8 @@ export function PreviewCheckout({
       checkState.domain &&
       checkState.domain === normalizedDomainValue &&
       (checkState.domainMode ?? "new_registration") === domainMode &&
-      checkTokenIsCurrent
+      checkTokenIsCurrent &&
+      checkMechanismIsCurrent
     ) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
@@ -383,6 +388,25 @@ export function PreviewCheckout({
   }, [
     checkState,
     checkMechanismIsCurrent,
+    checkTokenIsCurrent,
+    domainMode,
+    normalizedDomainValue,
+  ])
+
+  React.useEffect(() => {
+    if (
+      domainMode === "existing_domain" &&
+      checkState.migrationPreflightOnly &&
+      checkState.domain === normalizedDomainValue &&
+      checkTokenIsCurrent
+    ) {
+      setMigrationPreflight({
+        domain: checkState.domain,
+        publicEvidence: checkState.migrationPublicEvidence,
+      })
+    }
+  }, [
+    checkState,
     checkTokenIsCurrent,
     domainMode,
     normalizedDomainValue,
@@ -655,6 +679,7 @@ export function PreviewCheckout({
       setCheckedDomain(null)
       setQuotes(null)
       setMigrationSourceMethod("")
+      setMigrationPreflight(null)
       if (step !== "domain") setStep("domain")
     }
   }
@@ -666,6 +691,7 @@ export function PreviewCheckout({
     setCheckedDomain(null)
     setQuotes(null)
     setMigrationSourceMethod("")
+    setMigrationPreflight(null)
     setDomainValue("")
     lastSubmittedDomainRef.current = null
   }
@@ -674,7 +700,6 @@ export function PreviewCheckout({
     method: AutomaticMigrationSourceMethod,
   ) => {
     if (method === migrationSourceMethod) return
-    latestDomainRequestTokenRef.current = null
     setMigrationSourceMethod(method)
     setCheckedDomain(null)
     setQuotes(null)
@@ -1237,8 +1262,7 @@ export function PreviewCheckout({
                 </div>
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
-                  checkState.migrationPreflightOnly &&
-                  checkAppliesToCurrentInput && (
+                  migrationPreflight?.domain === normalizedDomainValue && (
                   <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
                     <fieldset className="grid gap-3">
                       <legend className="font-medium">
@@ -1292,7 +1316,8 @@ export function PreviewCheckout({
                           description={t("checkoutMigrationAxfrNameserverHelp")}
                           value={undefined}
                           defaultValue={
-                            checkState.migrationPublicEvidence
+                            (checkState.migrationPublicEvidence ??
+                              migrationPreflight.publicEvidence)
                               ?.authoritativeNameservers[0]
                           }
                           autoComplete="off"

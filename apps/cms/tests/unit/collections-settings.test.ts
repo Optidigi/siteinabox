@@ -50,6 +50,18 @@ describe("SiteSettings collection config", () => {
     expect(f.type).toBe("array")
     const host = findSubField("fields" in f ? f.fields : undefined, "host")
     expect(host).toMatchObject({ type: "text", required: true })
+    if (!("access" in f) || !f.access?.create || !f.access.update) {
+      throw new Error("Aliases require field-level create and update access.")
+    }
+    expect(f.access.create({
+      req: { user: { role: "owner" } },
+    } as never)).toBe(false)
+    expect(f.access.update({
+      req: { user: { role: "owner" } },
+    } as never)).toBe(false)
+    expect(f.access.update({
+      req: { user: { role: "super-admin" } },
+    } as never)).toBe(true)
   })
 
   it("adds nap group with the expected sub-fields", () => {

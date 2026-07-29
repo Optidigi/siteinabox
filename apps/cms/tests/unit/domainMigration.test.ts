@@ -5,6 +5,7 @@ import {
   createAutomaticDomainMigration,
   prepareDomainMigration,
   replaceMigrationTransferAuthorization,
+  transferAutorenewMode,
 } from "@/lib/domains/migration"
 import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
 import {
@@ -25,6 +26,8 @@ import {
 } from "@/lib/domains/migrationSecrets"
 import { MigrationSourceChangedError } from "@/lib/domains/migrationSources/refresh"
 import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
+import { getTldCapabilityByVersion } from
+  "@siteinabox/contracts/tld-capabilities"
 import {
   attachMigrationCheckoutSecret,
   migrationCheckoutSecretKey,
@@ -331,6 +334,7 @@ const workflowDependencies = (input?: {
   rollbackAuthoritativeStatus?: "verified" | "pending"
   rollbackPreservedStatus?: "verified" | "pending"
   verificationStatus?: string
+  providerStatus?: string
   sourceParentDsRecords?: string[]
 }) => {
   let providerDomain: {
@@ -398,7 +402,7 @@ const workflowDependencies = (input?: {
       providerDomain = {
         id: 9001,
         domain,
-        status: "ACT",
+        status: input?.providerStatus ?? "ACT",
         ownerHandle: "OWNER-CLIENT",
         adminHandle: null,
         nameServers: options.nameServers.map((entry) => entry.name),
@@ -584,6 +588,10 @@ const workflowDependencies = (input?: {
     },
     setTargetDsVisible: (value: boolean) => {
       targetDsVisible = value
+    },
+    setProviderStatus: (value: string) => {
+      if (!providerDomain) throw new Error("Provider domain is not initialized.")
+      providerDomain.status = value
     },
   }
 }
@@ -913,6 +921,7 @@ describe("automatic existing-domain migration", () => {
       "example.nl",
       expect.objectContaining({
         nameServers: OLD_NAMESERVERS.map((name) => ({ name })),
+        autorenew: "on",
       }),
     )
     expect(fixture.getProviderDomain()?.nameServers).toEqual(CLOUDFLARE_NAMESERVERS)
@@ -934,6 +943,19 @@ describe("automatic existing-domain migration", () => {
       domain: "example.nl",
       domainVerification: { status: "verified" },
     })
+  })
+
+  it("keeps provider autorenew off when transfer is enabled but renewal is not", () => {
+    const legacy = getTldCapabilityByVersion("tld-nl-2026-07-26.1")
+    if (!legacy) throw new Error("Expected the governed historical .nl contract.")
+    expect(transferAutorenewMode({
+      ...legacy,
+      production: {
+        ...legacy.production,
+        incomingTransfer: true,
+        renewal: false,
+      },
+    })).toBe("off")
   })
 
   it("waits for automatic edge readiness before transfer and resumes from a preview tenant", async () => {
@@ -966,6 +988,58 @@ describe("automatic existing-domain migration", () => {
     expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
     expect(store.collections.tenants![0]).toMatchObject({
       domain: "example.nl",
+    })
+  })
+
+  it("alerts after the governed transfer wait window without repeating the registrar write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      providerStatus: "PENDING",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+
+    fixture.setNow("2026-07-29T09:00:01.000Z")
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("still processing"),
+    })
+
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      failureReason: "provider_transfer_sla_exceeded",
+      reconciliationRequired: true,
+    })
+    expect(store.collections["operational-alerts"]?.at(-1)).toMatchObject({
+      severity: "error",
+      dedupeKey: expect.stringContaining("provider_transfer_sla_exceeded"),
+    })
+
+    fixture.setProviderStatus("ACT")
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toBeDefined()
+
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(store.collections["operational-alerts"]?.find((alert) =>
+      String(alert.dedupeKey).includes("provider_transfer_sla_exceeded")
+    )).toMatchObject({
+      status: "resolved",
+      dedupeKey: expect.stringContaining("provider_transfer_sla_exceeded"),
     })
   })
 

@@ -11,6 +11,8 @@ const { prepareDomainMigration } = vi.hoisted(() => ({
 vi.mock("@/lib/domains/migration", () => ({ prepareDomainMigration }))
 
 import {
+  commerceEdgeBootstrapBlockers,
+  commerceEdgeBootstrapWritesAllowed,
   commerceEdgeInventoryBlockers,
   commerceProductionReadinessBlockers,
   commerceReleaseGate,
@@ -51,6 +53,43 @@ describe("staged commerce release runtime gate", () => {
       "Mollie payment creation",
       { COMMERCE_RELEASE_STAGE: "shadow" } as unknown as NodeJS.ProcessEnv,
     )).toThrow("commerce_release_shadow_read_only")
+  })
+
+  it("allows only the scoped edge bootstrap before origin isolation is proven", () => {
+    const edgeBootstrapEnv = {
+      COMMERCE_RELEASE_STAGE: "production",
+      COMMERCE_RELEASE_EVIDENCE_VERSION:
+        "commerce-production-readiness-2026-07-29.1",
+      COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
+      COMMERCE_ORIGIN_ISOLATION_VERIFIED: "",
+      NODE_ENV: "production",
+      MOLLIE_API_KEY: "live_test",
+      OPENPROVIDER_USERNAME: "provider-user",
+      OPENPROVIDER_PASSWORD: "provider-password",
+      CLOUDFLARE_API_TOKEN: "cloudflare-token",
+      CLOUDFLARE_ACCOUNT_ID: "account",
+      DOMAIN_MIGRATION_ENCRYPTION_KEY:
+        Buffer.alloc(32, 1).toString("base64"),
+    } as unknown as NodeJS.ProcessEnv
+
+    expect(commerceReleaseGate(edgeBootstrapEnv)).toMatchObject({
+      providerWritesAllowed: false,
+      blockers: ["production_origin_isolation_not_verified"],
+    })
+    expect(commerceEdgeBootstrapWritesAllowed(edgeBootstrapEnv)).toBe(true)
+    expect(commerceEdgeBootstrapWritesAllowed({
+      ...edgeBootstrapEnv,
+      COMMERCE_RELEASE_EVIDENCE_VERSION:
+        "commerce-production-readiness-2026-07-28.1",
+    })).toBe(false)
+    expect(commerceEdgeBootstrapWritesAllowed({
+      ...edgeBootstrapEnv,
+      COMMERCE_RELEASE_STAGE: "shadow",
+    })).toBe(false)
+    expect(commerceEdgeBootstrapWritesAllowed({
+      ...edgeBootstrapEnv,
+      COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
+    })).toBe(false)
   })
 
   it("blocks uncommitted migration writes before provider modules execute", async () => {
@@ -112,7 +151,7 @@ describe("staged commerce release runtime gate", () => {
       {
         COMMERCE_RELEASE_STAGE: "production",
         COMMERCE_RELEASE_EVIDENCE_VERSION:
-          "commerce-production-readiness-2026-07-28.1",
+          "commerce-production-readiness-2026-07-29.1",
         COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
         COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
         NODE_ENV: "production",
@@ -146,6 +185,31 @@ describe("staged commerce release runtime gate", () => {
     })
     await expect(commerceEdgeInventoryBlockers(readinessPayload)).resolves.toEqual([
       "active_tenant_managed_domain_inventory_invalid:12",
+    ])
+  })
+
+  it("blocks scoped edge bootstrap on invalid inventory or critical commerce alerts", async () => {
+    const bootstrapPayload = asPayload({
+      find: vi.fn(async ({ collection }: { collection: string }) => {
+        if (collection === "tenants") {
+          return {
+            docs: [{ id: 12, status: "active", domain: "ami-care.nl" }],
+            totalDocs: 1,
+          }
+        }
+        if (collection === "operational-alerts") {
+          return {
+            docs: [{ id: 99, severity: "critical", status: "open" }],
+            totalDocs: 1,
+          }
+        }
+        return { docs: [], totalDocs: 0 }
+      }),
+    })
+
+    await expect(commerceEdgeBootstrapBlockers(bootstrapPayload)).resolves.toEqual([
+      "active_tenant_managed_domain_inventory_invalid:12",
+      "edge_bootstrap_has_open_critical_commerce_alerts",
     ])
   })
 })

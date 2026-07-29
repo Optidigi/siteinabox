@@ -51,8 +51,28 @@ export const reconcileCommerceTask: TaskConfig<{
       import("@/lib/commerce/reconciliation"),
     ])
     const now = new Date()
-    const edgeRoutingResult = await reconcileCommerceEdgeRouting(req.payload)
-    if (edgeRoutingResult.failed > 0) {
+    const providerWritesAllowed = commerceProviderWritesAllowed()
+    const edgeRoutingResult = providerWritesAllowed
+      ? await reconcileCommerceEdgeRouting(req.payload)
+      : null
+    if (!providerWritesAllowed) {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "release_gate_blocked_edge_routing",
+        subjectId: "cloudflare-edge-routing",
+        now: now.toISOString(),
+      })
+    } else {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "release_gate_blocked_edge_routing",
+        subjectId: "cloudflare-edge-routing",
+        now: now.toISOString(),
+      })
+    }
+    if (edgeRoutingResult && edgeRoutingResult.failed > 0) {
       await recordCommerceAdminException({
         payload: req.payload,
         source: "domains",
@@ -62,7 +82,7 @@ export const reconcileCommerceTask: TaskConfig<{
         severity: "critical",
         now: now.toISOString(),
       })
-    } else {
+    } else if (edgeRoutingResult) {
       await resolveCommerceAdminException({
         payload: req.payload,
         source: "domains",
@@ -132,10 +152,15 @@ export const reconcileCommerceTask: TaskConfig<{
       collection: "accounting-documents",
       where: {
         and: [
-          { documentType: { equals: "credit_note" } },
+          {
+            documentType: {
+              in: ["credit_note", "payment_adjustment"],
+            },
+          },
           { state: { equals: "pending_provider" } },
           { refundScenario: { exists: true } },
           { providerOperationId: { exists: false } },
+          { providerStatus: { not_equals: "refund_job_queued" } },
           { reconciliationRequired: { equals: false } },
         ],
       },
@@ -402,7 +427,7 @@ export const reconcileCommerceTask: TaskConfig<{
           expiryResult.examined +
           transferOutResult.examined +
           expiredMigrationSecrets +
-          edgeRoutingResult.examined,
+          (edgeRoutingResult?.examined ?? 0),
         queued,
       },
     }

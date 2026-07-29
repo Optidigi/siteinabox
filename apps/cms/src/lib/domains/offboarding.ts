@@ -5,11 +5,16 @@ import {
   domainOffboardingContinuityEvidenceSchema,
   type DomainOffboardingContinuityEvidence,
 } from "@siteinabox/contracts/commerce"
+import type { NormalizedMigrationDnsRecord } from
+  "@siteinabox/contracts/domain-migration"
 import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { ManagedDomain, Order } from "@/payload-types"
 
-import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGate"
+import {
+  commerceProviderReadsAllowed,
+  commerceProviderWritesAllowed,
+} from "@/lib/commerce/releaseGate"
 import { listCloudflareMigrationDnsRecords } from "@/lib/domains/cloudflare"
 import {
   findOpenProviderDomain,
@@ -32,6 +37,7 @@ type CustomerActor = {
 
 type OffboardingDependencies = {
   providerReadsAllowed: () => boolean
+  providerWritesAllowed: () => boolean
   loginOpenProvider: typeof loginOpenProvider
   getOpenProviderDomainAuthCode: typeof getOpenProviderDomainAuthCode
   findOpenProviderDomain: typeof findOpenProviderDomain
@@ -43,6 +49,7 @@ type OffboardingDependencies = {
 
 const defaultDependencies: OffboardingDependencies = {
   providerReadsAllowed: commerceProviderReadsAllowed,
+  providerWritesAllowed: commerceProviderWritesAllowed,
   loginOpenProvider,
   getOpenProviderDomainAuthCode,
   findOpenProviderDomain,
@@ -143,6 +150,87 @@ const hashRecords = (records: unknown[]): string => createHash("sha256")
   .update(JSON.stringify(records))
   .digest("hex")
 
+export type DomainDnsPortabilityExport = {
+  schemaVersion: 2
+  format: "siteinabox-dns-portability-v2"
+  domain: string
+  exportedAt: string
+  authoritativeNameservers: string[]
+  provider: "cloudflare"
+  complete: true
+  dnssec: {
+    parentStatus: "present" | "absent" | "indeterminate"
+    parentDsRecords: string[]
+  }
+  records: NormalizedMigrationDnsRecord[]
+}
+
+export async function exportDomainDnsPortability(
+  payload: Payload,
+  input: {
+    managedDomainId: string | number
+    actor: CustomerActor
+    now?: string
+  },
+  dependencies: Pick<
+    OffboardingDependencies,
+    | "providerReadsAllowed"
+    | "listCloudflareMigrationDnsRecords"
+    | "verifyParentDsAbsent"
+  > = {
+    providerReadsAllowed: commerceProviderReadsAllowed,
+    listCloudflareMigrationDnsRecords,
+    verifyParentDsAbsent,
+  },
+): Promise<DomainDnsPortabilityExport> {
+  const domain = await payload.findByID({
+    collection: "managed-domains",
+    id: input.managedDomainId,
+    depth: 0,
+    overrideAccess: true,
+  }) as ManagedDomain
+  await requireCustomerAuthority(payload, domain, input.actor)
+  if (!dependencies.providerReadsAllowed()) {
+    throw new Error("Commerce release stage does not allow provider reads.")
+  }
+  if (
+    domain.custodyStatus === "transferred_out" ||
+    domain.state === "expired" ||
+    !domain.cloudflareZoneId ||
+    !Array.isArray(domain.cloudflareNameservers) ||
+    domain.cloudflareNameservers.length < 2
+  ) {
+    throw new Error(
+      "A complete DNS export requires a customer-owned domain with verified authoritative Cloudflare DNS.",
+    )
+  }
+  const records = (await dependencies.listCloudflareMigrationDnsRecords(
+    domain.cloudflareZoneId,
+  )).map(({ record }) => record)
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+  if (records.length === 0) {
+    throw new Error("The authoritative DNS zone is empty or incomplete.")
+  }
+  const parentDs = await dependencies.verifyParentDsAbsent(domain.domainNameAscii)
+  return {
+    schemaVersion: 2,
+    format: "siteinabox-dns-portability-v2",
+    domain: domain.domainNameAscii,
+    exportedAt: input.now ?? new Date().toISOString(),
+    authoritativeNameservers: domain.cloudflareNameservers
+      .map(String)
+      .map((value) => value.toLowerCase())
+      .sort(),
+    provider: "cloudflare",
+    complete: true,
+    dnssec: {
+      parentStatus: parentDs.status,
+      parentDsRecords: parentDs.records,
+    },
+    records,
+  }
+}
+
 export async function captureDomainOffboardingContinuityEvidence(
   payload: Payload,
   input: {
@@ -171,7 +259,6 @@ export async function captureDomainOffboardingContinuityEvidence(
   }
   if (
     !domain.cloudflareZoneId ||
-    domain.authoritativeDnsStatus !== "verified" ||
     !Array.isArray(domain.cloudflareNameservers) ||
     domain.cloudflareNameservers.length < 2
   ) {
@@ -251,8 +338,22 @@ export async function requestDomainOffboarding(
   ) {
     return domain
   }
-  if (domain.state !== "active" || domain.custodyStatus !== "managed") {
-    throw new Error("Only an active managed domain can start offboarding.")
+  const renewalDate = domain.providerRenewalDate
+    ? new Date(domain.providerRenewalDate)
+    : null
+  if (
+    !["active", "renewal_pending", "provider_hold", "manual_review"].includes(
+      domain.state,
+    ) ||
+    !renewalDate ||
+    !Number.isFinite(renewalDate.getTime()) ||
+    renewalDate.getTime() <= new Date(now).getTime() ||
+    !domain.providerDomainId ||
+    domain.custodyStatus !== "managed"
+  ) {
+    throw new Error(
+      "Only an unexpired provider-reconciled customer domain can start offboarding.",
+    )
   }
   requireAutomaticOutgoingTransfer(domain, now)
   const evidence = domainOffboardingContinuityEvidenceSchema.parse(
@@ -323,6 +424,15 @@ export async function prepareDomainTransferOutCode(
   ) {
     throw new Error(
       "Transfer-out code preparation requires a reconciled provider domain identity.",
+    )
+  }
+  if (
+    capability.transfer.outgoing.mechanism ===
+      "openprovider_registrant_delivery" &&
+    !deps.providerWritesAllowed()
+  ) {
+    throw new Error(
+      "Commerce release stage does not allow provider-delivered transfer codes.",
     )
   }
   const authorization = await deps.getOpenProviderDomainAuthCode(
