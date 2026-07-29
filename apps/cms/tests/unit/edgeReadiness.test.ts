@@ -15,7 +15,7 @@ const managedDomain = {
   cloudflareZoneId: "zone-1",
 }
 
-const payload = () => asPayload({
+const payload = (tenantStatus = "preview") => asPayload({
   find: vi.fn(async ({ collection }: { collection: string }) => ({
     docs: collection === "managed-domains" ? [managedDomain] : [],
     totalDocs: collection === "managed-domains" ? 1 : 0,
@@ -26,7 +26,7 @@ const payload = () => asPayload({
       : {
           id: 12,
           domain: "preview.example.invalid",
-          status: "preview",
+          status: tenantStatus,
         }),
 })
 
@@ -64,5 +64,18 @@ describe("domain-bound edge readiness", () => {
       host: "admin.example.nl",
       "x-forwarded-host": "admin.example.nl",
     }))).toBe("admin.example.nl")
+  })
+
+  it("keeps suspended customer administration reachable while public rendering is blocked", async () => {
+    await expect(resolveManagedDomainEdgeIdentity(
+      payload("suspended"),
+      "admin.example.nl",
+      "cms",
+    )).resolves.toEqual({ domain: "example.nl", tenantId: "12" })
+    await expect(resolveManagedDomainEdgeIdentity(
+      payload("suspended"),
+      "example.nl",
+      "renderer",
+    )).resolves.toBeNull()
   })
 })

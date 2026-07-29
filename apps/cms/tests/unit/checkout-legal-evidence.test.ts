@@ -9,6 +9,25 @@ import type { CheckoutProfile } from "@/payload-types"
 
 import { asGenerationRun, asTenant, cast } from "../_helpers/cast"
 import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockWhere } from "../_helpers/mockPayload"
+
+const completeRegistrant = {
+  companyName: "Demo B.V.",
+  firstName: "Client",
+  lastName: "Name",
+  email: "client@example.com",
+  street: "Markt",
+  number: "1",
+  suffix: null,
+  zipcode: "6041AA",
+  city: "Roermond",
+  country: "NL",
+  state: null,
+  phoneCountryCode: "+31",
+  phoneAreaCode: "475",
+  phoneSubscriberNumber: "123456",
+  locale: "nl_NL",
+}
+
 const createPayload = () => {
   let id = 100
   const stores: Record<string, Array<Record<string, unknown>>> = {
@@ -118,7 +137,7 @@ describe("checkout legal evidence", () => {
         draftVersion: "draft-30",
         now: new Date("2026-07-27T11:56:00.000Z"),
       }),
-      domainRegistrant: { email: "client@example.com" },
+      domainRegistrant: completeRegistrant,
       domain: "demo.nl",
       requestId: "req-1",
       now: new Date("2026-07-27T12:00:00.000Z"),
@@ -151,7 +170,7 @@ describe("checkout legal evidence", () => {
         draftVersion: "draft-30",
         now: new Date("2026-07-27T11:56:01.000Z"),
       }),
-      domainRegistrant: { email: "client@example.com" },
+      domainRegistrant: completeRegistrant,
       domain: "demo.nl",
       requestId: "req-2",
       now: new Date("2026-07-27T12:00:00.000Z"),
@@ -248,7 +267,11 @@ describe("checkout legal evidence", () => {
       approval: approval.approval,
       checkoutProfile,
       quote,
-      domainRegistrant: { email: "client@example.com", firstName: "Maria", lastName: "de la Cruz" },
+      domainRegistrant: {
+        ...completeRegistrant,
+        firstName: "Maria",
+        lastName: "de la Cruz",
+      },
       domain: "demo.nl",
       now: new Date("2026-07-28T12:00:00.000Z"),
     }
@@ -338,7 +361,7 @@ describe("checkout legal evidence", () => {
           },
         ],
       },
-      domainRegistrant: { email: "client@example.com" },
+      domainRegistrant: completeRegistrant,
       domain: "demo.nl",
       requestId: "req-forged",
       now: new Date("2026-07-29T13:00:00.000Z"),

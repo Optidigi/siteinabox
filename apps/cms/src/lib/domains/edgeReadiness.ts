@@ -76,8 +76,8 @@ export async function resolveManagedDomainEdgeIdentity(
     overrideAccess: true,
   }) as Tenant
   if (
-    tenant.status === "suspended" ||
-    tenant.status === "archived"
+    tenant.status === "archived" ||
+    (surface === "renderer" && tenant.status === "suspended")
   ) {
     return null
   }

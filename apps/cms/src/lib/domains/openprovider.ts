@@ -1127,7 +1127,10 @@ export async function getOpenProviderResellerBalance(
 export async function getOpenProviderDomainAuthCode(
   domainId: string | number,
   options?: OpenProviderOptions,
-): Promise<string> {
+): Promise<
+  | { delivery: "provider_returned"; authCode: string }
+  | { delivery: "registrant_email" }
+> {
   const normalizedId = String(domainId).trim()
   if (!normalizedId) throw new Error("OpenProvider domain id is required.")
   const env = options?.env ?? process.env
@@ -1146,10 +1149,13 @@ export async function getOpenProviderDomainAuthCode(
   const authCode = typeof data.auth_code === "string"
     ? data.auth_code.trim()
     : ""
-  if (!authCode) {
-    throw new Error("OpenProvider did not return an external domain auth code.")
+  if (authCode) {
+    return { delivery: "provider_returned", authCode }
   }
-  return authCode
+  if (data.success === true) {
+    return { delivery: "registrant_email" }
+  }
+  throw new Error("OpenProvider did not return an external domain auth code.")
 }
 
 export async function registerOpenProviderDomain(

@@ -5,7 +5,7 @@ import {
   contractingPartyTypeSchema,
 } from "./commerce"
 
-export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-29.2" as const
+export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-29.3" as const
 
 export const INTENDED_TLD_CATALOG = Object.freeze([
   "nl",
@@ -130,6 +130,19 @@ export const tldCapabilitySchema = z.object({
     confirmation: providerConfirmationSchema,
     validRegistrantPhoneRequired: z.boolean(),
     renewalEffect: transferRenewalEffectSchema,
+    outgoing: z.object({
+      supported: z.boolean(),
+      mechanism: z.enum([
+        "openprovider_external_auth_code",
+        "openprovider_registrant_delivery",
+        "unsupported",
+      ]),
+      providerEvidenceUrl: z.url().nullable(),
+    }).strict().default({
+      supported: false,
+      mechanism: "unsupported",
+      providerEvidenceUrl: null,
+    }),
   }).strict(),
   verification: z.object({
     requirement: z.enum(["provider_reported", "conditional_registry_risk_check"]),
@@ -754,7 +767,7 @@ const correctedCapability = (capability: TldCapability): TldCapability => {
   const configuredRecord = configured as Record<string, unknown>
   return tldCapabilitySchema.parse({
     ...capability,
-    capabilityVersion: `tld-${capability.tld}-2026-07-29.2`,
+    capabilityVersion: `tld-${capability.tld}-2026-07-29.3`,
     production: PRODUCTION_DISABLED,
     effectiveFrom: CONTRACT_CORRECTION_EFFECTIVE_FROM,
     effectiveUntil: null,
@@ -782,6 +795,13 @@ const correctedCapability = (capability: TldCapability): TldCapability => {
         (gtld ? "registrant_email" : "none"),
       renewalEffect: configuredRecord.renewalEffect ??
         (gtld ? "provider_determined" : capability.transfer.renewalEffect),
+      outgoing: {
+        supported: true,
+        mechanism: ["be", "eu"].includes(capability.tld)
+          ? "openprovider_registrant_delivery"
+          : "openprovider_external_auth_code",
+        providerEvidenceUrl: "https://docs.openprovider.com/doc/all#tag/AuthCode",
+      },
     },
     restoration: {
       ...capability.restoration,

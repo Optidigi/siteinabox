@@ -20,6 +20,7 @@ export type DomainTransferOutView = {
   id: string
   domainName: string
   custodyStatus: string
+  transferOutCodeDeliveryStatus?: string | null
 }
 
 export function DomainTransferOutSection({
@@ -37,9 +38,9 @@ export function DomainTransferOutSection({
   >(revealDomainTransferOutCodeAction, {})
   if (!domain) return null
   const canRequest = domain.custodyStatus === "managed"
-  const canReveal = ["transfer_code_ready", "transfer_pending"].includes(
-    domain.custodyStatus,
-  )
+  const canReveal =
+    domain.transferOutCodeDeliveryStatus === "provider_returned" &&
+    ["transfer_code_ready", "transfer_pending"].includes(domain.custodyStatus)
   const canStart = domain.custodyStatus === "transfer_code_ready"
   const canConfirm = domain.custodyStatus === "transfer_pending"
   return (
@@ -113,6 +114,16 @@ export function DomainTransferOutSection({
               </p>
             )}
           </form>
+        )}
+        {domain.transferOutCodeDeliveryStatus === "registrant_email" && (
+          <Alert>
+            <AlertTitle>Verhuiscode is naar de domeinhouder gestuurd</AlertTitle>
+            <AlertDescription>
+              OpenProvider of het register heeft de code naar het e-mailadres
+              van de domeinhouder gestuurd. Gebruik die code bij de nieuwe
+              registrar; Siteinabox bewaart of toont deze code niet.
+            </AlertDescription>
+          </Alert>
         )}
         {canStart && (
           <form action={markDomainTransferOutStartedAction}>

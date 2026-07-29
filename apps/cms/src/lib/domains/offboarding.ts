@@ -5,6 +5,7 @@ import {
   domainOffboardingContinuityEvidenceSchema,
   type DomainOffboardingContinuityEvidence,
 } from "@siteinabox/contracts/commerce"
+import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { ManagedDomain, Order } from "@/payload-types"
 
@@ -117,6 +118,26 @@ const requireCustomerAuthority = async (
 
 const transferCodeBinding = (domain: ManagedDomain): string =>
   `managed-domain-transfer-out:${domain.id}`
+
+const requireAutomaticOutgoingTransfer = (
+  domain: ManagedDomain,
+  effectiveAt: string,
+): NonNullable<ReturnType<typeof tldCapabilityAt>> => {
+  const capability = tldCapabilityAt(domain.tld, effectiveAt)
+  if (
+    domain.provider !== "openprovider" ||
+    !capability?.transfer.outgoing.supported ||
+    ![
+      "openprovider_external_auth_code",
+      "openprovider_registrant_delivery",
+    ].includes(capability.transfer.outgoing.mechanism)
+  ) {
+    throw new Error(
+      `Automatic transfer-out is not contract-enabled for .${domain.tld}.`,
+    )
+  }
+  return capability
+}
 
 const hashRecords = (records: unknown[]): string => createHash("sha256")
   .update(JSON.stringify(records))
@@ -233,11 +254,7 @@ export async function requestDomainOffboarding(
   if (domain.state !== "active" || domain.custodyStatus !== "managed") {
     throw new Error("Only an active managed domain can start offboarding.")
   }
-  if (domain.tld !== "nl" || domain.provider !== "openprovider") {
-    throw new Error(
-      "Automatic transfer-out currently supports only .nl Openprovider domains.",
-    )
-  }
+  requireAutomaticOutgoingTransfer(domain, now)
   const evidence = domainOffboardingContinuityEvidenceSchema.parse(
     input.continuityEvidence,
   )
@@ -285,14 +302,13 @@ export async function prepareDomainTransferOutCode(
   if (domain.custodyStatus === "transfer_code_ready") return domain
   if (
     domain.custodyStatus !== "offboarding_requested" ||
-    domain.tld !== "nl" ||
-    domain.provider !== "openprovider" ||
     !domain.providerDomainId
   ) {
     throw new Error(
-      "Transfer-out code preparation currently requires an offboarding .nl Openprovider domain.",
+      "Transfer-out code preparation requires a contract-enabled Openprovider domain.",
     )
   }
+  const capability = requireAutomaticOutgoingTransfer(domain, now)
   if (!deps.providerReadsAllowed()) {
     throw new Error("Commerce release stage does not allow provider reads.")
   }
@@ -309,17 +325,35 @@ export async function prepareDomainTransferOutCode(
       "Transfer-out code preparation requires a reconciled provider domain identity.",
     )
   }
-  const authCode = await deps.getOpenProviderDomainAuthCode(
+  const authorization = await deps.getOpenProviderDomainAuthCode(
     domain.providerDomainId,
     { token },
   )
+  if (authorization.delivery === "registrant_email") {
+    if (
+      capability.transfer.outgoing.mechanism !==
+      "openprovider_registrant_delivery"
+    ) {
+      throw new Error(
+        "OpenProvider did not return the contract-required external auth code.",
+      )
+    }
+    return updateDomain(payload, domain, {
+      custodyStatus: "transfer_code_ready",
+      encryptedTransferOutCode: null,
+      transferOutCodeDeliveryStatus: "registrant_email",
+      reconciliationRequired: true,
+      failureReason: null,
+    }, "external_transfer_code_sent_to_registrant_dns_unchanged", now)
+  }
   const encryptedTransferOutCode = deps.sealSecret(
-    authCode,
+    authorization.authCode,
     transferCodeBinding(domain),
   )
   domain = await updateDomain(payload, domain, {
     custodyStatus: "transfer_code_ready",
     encryptedTransferOutCode,
+    transferOutCodeDeliveryStatus: "provider_returned",
     transferOutCodeFetchedAt: now,
     reconciliationRequired: true,
     failureReason: null,
@@ -381,7 +415,10 @@ export async function markDomainTransferOutStarted(
   if (domain.custodyStatus === "transfer_pending") return domain
   if (
     domain.custodyStatus !== "transfer_code_ready" ||
-    !domain.encryptedTransferOutCode
+    (
+      !domain.encryptedTransferOutCode &&
+      domain.transferOutCodeDeliveryStatus !== "registrant_email"
+    )
   ) {
     throw new Error("Transfer-out cannot start before the customer receives authorization.")
   }

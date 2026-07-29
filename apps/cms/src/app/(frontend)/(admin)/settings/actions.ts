@@ -18,6 +18,7 @@ import {
   type TenantNotificationCategories,
 } from "@/lib/legal/communicationPreferences"
 import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
+import { createMandateRecoveryMolliePayment } from "@/lib/payments/molliePayments"
 import {
   captureDomainOffboardingContinuityEvidence,
   confirmDomainTransferCompletedByCustomer,
@@ -180,6 +181,25 @@ export async function cancelBillingAgreementAction(formData: FormData) {
   }
   revalidatePath("/settings")
   redirect("/settings?billing=cancelled#billing")
+}
+
+export async function recoverBillingAgreementAction(formData: FormData) {
+  const { payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") redirect("/?error=forbidden")
+  const billingAgreementId = String(formData.get("billingAgreementId") ?? "").trim()
+  if (!billingAgreementId) redirect("/settings?billing=recovery-failed#billing")
+  let checkoutUrl: string
+  try {
+    const result = await createMandateRecoveryMolliePayment(payload, {
+      billingAgreementId,
+      tenantId,
+    })
+    checkoutUrl = result.checkoutUrl
+  } catch {
+    console.error("Billing recovery checkout failed")
+    redirect("/settings?billing=recovery-failed#billing")
+  }
+  redirect(checkoutUrl)
 }
 
 const domainActor = (email: string, tenantId: string) => ({ email, tenantId })

@@ -192,7 +192,7 @@ describe("social auth host validation", () => {
     await expect(isAllowedSocialAuthHost(req)).resolves.toBe(false)
   })
 
-  it("rejects suspended tenant admin hosts", async () => {
+  it("allows suspended tenant admin hosts for billing recovery and transfer-out", async () => {
     fakeFind.mockResolvedValueOnce({
       docs: [{ id: 7, domain: "ami-care.nl", status: "suspended" }],
     })
@@ -200,7 +200,7 @@ describe("social auth host validation", () => {
       headers: { host: "admin.ami-care.nl" },
     })
 
-    await expect(isAllowedSocialAuthHost(req)).resolves.toBe(false)
+    await expect(isAllowedSocialAuthHost(req)).resolves.toBe(true)
   })
 
   it("trusts the configured canonical Better Auth origin without a request", async () => {

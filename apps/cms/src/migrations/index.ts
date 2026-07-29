@@ -88,6 +88,7 @@ import * as migration_20260729_135247_durable_live_handoff_delivery from './2026
 import * as migration_20260729_164603_automatic_migration_sources from './20260729_164603_automatic_migration_sources';
 import * as migration_20260729_180259_automatic_dnssec_migration from './20260729_180259_automatic_dnssec_migration';
 import * as migration_20260729_185555_automatic_edge_routing from './20260729_185555_automatic_edge_routing';
+import * as migration_20260729_195522_automatic_transfer_code_delivery from './20260729_195522_automatic_transfer_code_delivery';
 
 export const migrations = [
   {
@@ -538,6 +539,11 @@ export const migrations = [
   {
     up: migration_20260729_185555_automatic_edge_routing.up,
     down: migration_20260729_185555_automatic_edge_routing.down,
-    name: '20260729_185555_automatic_edge_routing'
+    name: '20260729_185555_automatic_edge_routing',
+  },
+  {
+    up: migration_20260729_195522_automatic_transfer_code_delivery.up,
+    down: migration_20260729_195522_automatic_transfer_code_delivery.down,
+    name: '20260729_195522_automatic_transfer_code_delivery'
   },
 ];

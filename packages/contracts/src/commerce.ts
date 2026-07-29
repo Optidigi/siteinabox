@@ -648,7 +648,7 @@ export const billingAgreementStateTransitions = {
   past_due: ["active", "suspended", "cancellation_scheduled", "cancelled"],
   suspended: ["active", "cancellation_scheduled", "cancelled"],
   cancellation_scheduled: ["active", "past_due", "cancelled"],
-  cancelled: [],
+  cancelled: ["cancellation_scheduled"],
 } as const satisfies TransitionMap<BillingAgreementState>
 
 export const managedDomainStates = [

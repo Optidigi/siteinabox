@@ -1029,6 +1029,7 @@ async function getOrCreateManagedDomain(
       customerStatus: "provisioning",
       renewalIntent: true,
       providerAutorenew: "unknown",
+      transferOutCodeDeliveryStatus: "not_requested",
       transferOutProviderMissingCount: 0,
       reconciliationRequired: false,
       stateHistory: [{ at: now, state: "transfer_pending", reason: "migration_preparation_started" }],

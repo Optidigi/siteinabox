@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   captureEvidence: vi.fn(),
   getContext: vi.fn(),
   getPayload: vi.fn(),
+  recoverBilling: vi.fn(),
   queuePreparation: vi.fn(),
   requestOffboarding: vi.fn(),
 }))
@@ -30,6 +31,9 @@ vi.mock("@/lib/context", () => ({ getSiabContext: mocks.getContext }))
 vi.mock("@/lib/billing/billingLifecycle", () => ({
   scheduleCancellationAtPeriodEnd: vi.fn(),
 }))
+vi.mock("@/lib/payments/molliePayments", () => ({
+  createMandateRecoveryMolliePayment: mocks.recoverBilling,
+}))
 vi.mock("@/lib/legal/customerRequirements", () => ({
   acceptCustomerLegalRequirement: vi.fn(),
   objectToNoticeAndContinuedUse: vi.fn(),
@@ -52,7 +56,7 @@ vi.mock("@/lib/jobs/prepareDomainTransferOutTask", () => ({
   queueDomainTransferOutPreparation: mocks.queuePreparation,
 }))
 
-import { requestDomainTransferOutAction } from
+import { recoverBillingAgreementAction, requestDomainTransferOutAction } from
   "@/app/(frontend)/(admin)/settings/actions"
 
 const form = () => {
@@ -73,6 +77,34 @@ describe("authenticated domain-offboarding server action", () => {
     })
     mocks.captureEvidence.mockResolvedValue({ schemaVersion: 2 })
     mocks.requestOffboarding.mockResolvedValue({ id: 10 })
+  })
+
+  it("does not log provider details or customer data when billing recovery fails", async () => {
+    mocks.auth.mockResolvedValue({
+      user: {
+        id: 1,
+        email: "owner@example.com",
+        role: "owner",
+        tenants: [{ tenant: 1 }],
+      },
+    })
+    mocks.recoverBilling.mockRejectedValue(
+      new Error("Mollie cst_private failed for owner@example.com"),
+    )
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const data = new FormData()
+    data.set("billingAgreementId", "900")
+
+    await expect(recoverBillingAgreementAction(data)).rejects.toMatchObject({
+      location: "/settings?billing=recovery-failed#billing",
+    })
+
+    expect(errorLog).toHaveBeenCalledWith("Billing recovery checkout failed")
+    expect(errorLog).not.toHaveBeenCalledWith(
+      expect.stringContaining("cst_private"),
+      expect.anything(),
+    )
+    errorLog.mockRestore()
   })
 
   it("rejects unauthenticated and cross-tenant callers before offboarding", async () => {

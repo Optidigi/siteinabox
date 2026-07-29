@@ -427,8 +427,14 @@ export async function recoverMissingMolliePaymentReferences(
       recoveredPaymentIds.push(match.id)
       continue
     }
+    const isRecurringCollection =
+      attempt.sequenceType === "recurring" && attempt.purpose === "recurring"
+    const isMandateRecovery =
+      attempt.sequenceType === "first" &&
+      attempt.purpose === "recurring" &&
+      attempt.idempotencyKey.startsWith("mollie:mandate-recovery:")
     if (
-      attempt.sequenceType === "recurring" &&
+      (isRecurringCollection || isMandateRecovery) &&
       attempt.state === "pending_provider"
     ) {
       const agreementId = relationshipId(attempt.billingAgreement)
@@ -505,8 +511,9 @@ export async function recoverMissingMolliePaymentReferences(
             : {
                 reconciliationRequired: false,
                 failureCode: "provider_absence_reconciled",
-                failureMessage:
-                  "No Mollie payment matched the durable recurring-payment authority.",
+                failureMessage: isMandateRecovery
+                  ? "No Mollie payment matched the durable mandate-recovery authority."
+                  : "No Mollie payment matched the durable recurring-payment authority.",
                 lastSyncedAt: nowDate.toISOString(),
                 stateHistory: [
                   ...(Array.isArray(attempt.stateHistory)

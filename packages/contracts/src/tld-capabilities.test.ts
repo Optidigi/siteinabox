@@ -233,6 +233,20 @@ describe("effective-dated TLD capability catalog", () => {
     })
   })
 
+  it("records provider-backed outgoing transfer automation for every intended TLD", () => {
+    for (const tld of INTENDED_TLD_CATALOG) {
+      expect(
+        tldCapabilityAt(tld, CONTRACT_CORRECTION_EFFECTIVE_AT)?.transfer.outgoing,
+      ).toEqual({
+        supported: true,
+        mechanism: ["be", "eu"].includes(tld)
+          ? "openprovider_registrant_delivery"
+          : "openprovider_external_auth_code",
+        providerEvidenceUrl: "https://docs.openprovider.com/doc/all#tag/AuthCode",
+      })
+    }
+  })
+
   it("fails closed after correcting the current contracts pending provider rehearsals", () => {
     for (const operation of tldProductionOperations) {
       expect(
