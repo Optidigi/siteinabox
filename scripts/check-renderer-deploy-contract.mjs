@@ -71,9 +71,8 @@ for (const requiredFragment of [
   "image: ghcr.io/optidigi/siteinabox-renderer@${SIAB_RENDERER_IMAGE_DIGEST:?required}",
   "docker.io/cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df",
   "SIAB_RENDERER_API_TOKEN_FILE: /run/secrets/renderer_api_token",
-  "SIAB_RENDERER_ORIGIN_SECRET_FILE: /run/secrets/renderer_origin_secret",
+  "SIAB_RENDERER_ORIGIN_TRUST_MODE: cloudflare_tunnel",
   "file: ${SIAB_RENDERER_API_TOKEN_FILE:?required}",
-  "file: ${SIAB_RENDERER_ORIGIN_SECRET_FILE:?required}",
   "file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?required}",
   "/run/secrets/cloudflare_tunnel_token",
   "http://siteinabox-renderer:4321",
@@ -97,6 +96,7 @@ for (const forbiddenFragment of [
   "ports:",
   "SIAB_RENDERER_API_TOKEN: ${",
   "SIAB_RENDERER_ORIGIN_SECRET: ${",
+  "SIAB_RENDERER_ORIGIN_SECRET_FILE:",
 ]) {
   if (rendererCompose.includes(forbiddenFragment)) {
     errors.push(`${formatPath(rendererComposePath)} publicly exposes or weakens the private origin: ${forbiddenFragment}`)

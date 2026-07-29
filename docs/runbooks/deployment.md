@@ -656,7 +656,6 @@ PORT=4321
 SIAB_CMS_URL=https://admin.siteinabox.nl
 SIAB_RENDERER_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
 SIAB_RENDERER_API_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-api-token
-SIAB_RENDERER_ORIGIN_SECRET_FILE=/srv/saas/secrets/siteinabox-renderer-origin
 CLOUDFLARE_TUNNEL_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-tunnel-token
 DATA_DIR=/data
 SITE_URL=https://<renderer-host-or-default-public-origin>

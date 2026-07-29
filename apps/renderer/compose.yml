@@ -16,11 +16,11 @@ services:
       PORT: "4321"
       SIAB_CMS_URL: ${SIAB_CMS_URL}
       SIAB_RENDERER_API_TOKEN_FILE: /run/secrets/renderer_api_token
-      SIAB_RENDERER_ORIGIN_SECRET_FILE: /run/secrets/renderer_origin_secret
+      SIAB_RENDERER_ORIGIN_TRUST_MODE: cloudflare_tunnel
       SITE_URL: ${SITE_URL}
       SIAB_RENDERER_FIXTURE_MODE: ${SIAB_RENDERER_FIXTURE_MODE:-}
       DATA_DIR: /data-out
-    secrets: [renderer_api_token, renderer_origin_secret]
+    secrets: [renderer_api_token]
     volumes:
       - ${DATA_HOST_PATH:-/srv/data/saas/siab-payload}:/data-out:ro
     expose: ["4321"]
@@ -77,7 +77,5 @@ networks:
 secrets:
   renderer_api_token:
     file: ${SIAB_RENDERER_API_TOKEN_FILE:?required}
-  renderer_origin_secret:
-    file: ${SIAB_RENDERER_ORIGIN_SECRET_FILE:?required}
   cloudflare_tunnel_token:
     file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?required}

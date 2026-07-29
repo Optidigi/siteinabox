@@ -13,6 +13,10 @@ const production = {
   NODE_ENV: "production",
   SIAB_RENDERER_ORIGIN_SECRET: secret,
 }
+const tunnelProduction = {
+  NODE_ENV: "production",
+  SIAB_RENDERER_ORIGIN_TRUST_MODE: "cloudflare_tunnel",
+}
 
 function request(headers: HeadersInit): Request {
   return new Request("http://renderer:4321/", { headers })
@@ -58,6 +62,41 @@ test("reads the production origin secret from a mounted secret file", () => {
   } finally {
     rmSync(directory, { recursive: true })
   }
+})
+
+test("accepts the explicit private Cloudflare Tunnel trust mode without an edge secret", () => {
+  const headers = protectedHeaders()
+  delete (headers as Record<string, string>)[RENDERER_ORIGIN_VERIFICATION_HEADER]
+  assert.equal(
+    publicHostFromProtectedRequest(request(headers), tunnelProduction),
+    "studio-example.be",
+  )
+  assert.equal(
+    publicHostFromProtectedRequest(request({
+      ...headers,
+      [RENDERER_ORIGIN_VERIFICATION_HEADER]: "client-supplied-value",
+    }), tunnelProduction),
+    "studio-example.be",
+  )
+})
+
+test("fails closed for ambiguous or invalid Tunnel trust configuration", () => {
+  assert.equal(publicHostFromProtectedRequest(request(protectedHeaders()), {
+    ...tunnelProduction,
+    SIAB_RENDERER_ORIGIN_SECRET: secret,
+  }), null)
+  assert.equal(publicHostFromProtectedRequest(request(protectedHeaders()), {
+    NODE_ENV: "production",
+    SIAB_RENDERER_ORIGIN_TRUST_MODE: "public_proxy",
+  }), null)
+  assert.equal(publicHostFromProtectedRequest(request({
+    ...protectedHeaders(),
+    "x-forwarded-proto": "http",
+  }), tunnelProduction), null)
+  assert.equal(publicHostFromProtectedRequest(request({
+    ...protectedHeaders(),
+    "x-forwarded-host": "another.example.com",
+  }), tunnelProduction), null)
 })
 
 test("rejects direct-origin, non-HTTPS, malformed, and cross-host requests", () => {
