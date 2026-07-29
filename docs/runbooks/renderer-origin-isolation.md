@@ -12,11 +12,11 @@ Tunnel makes an outbound connection to Cloudflare and forwards traffic to
 network. The renderer has no published port, public Traefik route, or
 customer-host certificate resolver.
 
-Each participating Cloudflare zone overwrites `X-Siab-Origin-Verify` with the
-same high-entropy secret mounted into the renderer. The private Tunnel is the
-primary origin boundary; this header is defense-in-depth and rejects requests
-from an unexpected peer on the private network. Client-supplied values must be
-overwritten, never conditionally preserved.
+`SIAB_RENDERER_ORIGIN_TRUST_MODE=cloudflare_tunnel` makes the private Tunnel
+the explicit origin boundary. The renderer has no published listener or public
+proxy attachment, and production startup fails closed if this mode is mixed
+with the legacy edge-secret configuration. This avoids coupling every customer
+zone to a shared header secret and its coordinated rotation.
 
 The application then resolves the canonicalized `Host` only through active CMS
 domain/snapshot data. Apex and `www` are separate allowlist entries. Unknown,
@@ -27,7 +27,6 @@ Primary Cloudflare contracts:
 - [Cloudflare Tunnel uses outbound-only connections](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)
 - [Route DNS records to a tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/routing-to-tunnel/dns/)
 - [Run a tunnel from a token file](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/run-parameters/)
-- [Request Header Transform Rules overwrite a static header](https://developers.cloudflare.com/rules/transform/request-header-modification/)
 
 ## Approval-gated production setup
 
@@ -45,30 +44,23 @@ tokens or the origin-secret value.
    an origin `Host` override.
 3. Store the tunnel token in
    `/srv/saas/secrets/siteinabox-renderer-tunnel-token` and a separately
-   generated value of at least 32 random characters in
-   `/srv/saas/secrets/siteinabox-renderer-origin`. Store the renderer/CMS
-   bearer value in `/srv/saas/secrets/siteinabox-renderer-api-token`. Files
-   must be owned by numeric UID/GID `1000:1000` and mode `0600`, matching both
-   explicitly unprivileged compose services. If the host deployment account
-   uses another UID, install the files with `1000:1000` ownership rather than
-   weakening their mode.
-4. For every enabled customer zone, create or update the zone-level
-   `http_request_late_transform` ruleset so a rule matching only renderer-owned
-   hostnames performs a static `set` operation on `X-Siab-Origin-Verify`.
-   Preserve every unrelated rule in that ruleset. Verify with Cloudflare Trace
-   that the rule matches; do not expose the resulting header in application
-   logs.
-5. Create proxied CNAME records for each approved apex and explicit `www`
+   generated renderer/CMS bearer value in
+   `/srv/saas/secrets/siteinabox-renderer-api-token`. Files must be owned by
+   numeric UID/GID `1000:1000` and mode `0600`, matching both explicitly
+   unprivileged compose services. If the host deployment account uses another
+   UID, install the files with `1000:1000` ownership rather than weakening
+   their mode.
+4. Create proxied CNAME records for each approved apex and explicit `www`
    hostname to `<TUNNEL_UUID>.cfargotunnel.com`. Cloudflare CNAME flattening
    handles an apex. Do not route a hostname until CMS domain ownership,
    entitlement, DNS, and publication prerequisites are satisfied.
-6. Record the currently deployed renderer digest for rollback. Set
+5. Record the currently deployed renderer digest for rollback. Set
    `SIAB_RENDERER_IMAGE_DIGEST` to the digest emitted by the successful image
    workflow, then deploy `apps/renderer/compose.yml`. Confirm both container
    health checks pass and the tunnel reports connected. Confirm the host
    firewall, container runtime, and any upstream load balancer expose no route
    to renderer port `4321`.
-7. Wait for Universal SSL on each hostname. Persist certificate-pending as an
+6. Wait for Universal SSL on each hostname. Persist certificate-pending as an
    expected waiting state; do not publish merely because DNS resolves.
 
 ## Required proving probes
@@ -84,13 +76,11 @@ network or Tunnel change:
 - An inactive/cancelled hostname returns the neutral `404`.
 - Automated renderer smoke tests prove Tenant A's host cannot retrieve Tenant
   B's snapshot or media.
-- A request from a disposable peer on `renderer-origin` without
-  `X-Siab-Origin-Verify`, and another with a guessed value, both return the
-  neutral `404`. The port must not be reachable from outside the host/private
-  container network at all.
-- A client request through Cloudflare carrying a deliberately wrong
-  `X-Siab-Origin-Verify` still succeeds for an active host, proving Cloudflare
-  overwrote the client value. Cloudflare Trace must show the expected rule.
+- The renderer port is unreachable from outside the private container network.
+  A disposable peer not attached to `renderer-origin` cannot connect.
+- A client request through Cloudflare carrying an arbitrary
+  `X-Siab-Origin-Verify` value has no effect; the obsolete header is not an
+  authentication authority in Tunnel mode.
 - Malformed, Unicode, and Punycode host probes match the renderer routing
   contract.
 - Restart the renderer and Tunnel independently; active routing recovers
@@ -104,15 +94,8 @@ whose separate evidence matrices also pass.
 
 ## Secret rotation
 
-Treat the Tunnel token and origin secret independently. Revoke or rotate the
-Tunnel token through Cloudflare only during an approved change, then replace
-the token file and restart only the Tunnel container.
-
-For the origin secret, schedule a brief fail-closed maintenance window because
-the renderer accepts one value. Update every applicable zone transform rule,
-replace the renderer secret file, restart the renderer, and immediately rerun
-the direct-peer and public probes. If any zone is missed, leave its publication
-gate disabled.
+Revoke or rotate the Tunnel token through Cloudflare only during an approved
+change, then replace the token file and restart only the Tunnel container.
 
 ## Rollback
 
@@ -121,8 +104,7 @@ gate disabled.
    boundary. Restore `SIAB_RENDERER_IMAGE_DIGEST` to the recorded prior digest
    and roll back only the compose version to the last version already proven
    behind that Tunnel.
-3. Restore the previous ruleset revision or secret only as one coordinated
-   change; never expose port `4321` or restore the public arbitrary-host
+3. Never expose port `4321` or restore the public arbitrary-host
    Traefik/certificate route as a shortcut.
 4. Re-run all proving probes. Resume publication only after HTTPS, host
    isolation, and direct-origin rejection pass.

@@ -7,9 +7,12 @@ const MINIMUM_ORIGIN_SECRET_LENGTH = 32
 
 type OriginProtectionEnvironment = {
   NODE_ENV?: string
+  SIAB_RENDERER_ORIGIN_TRUST_MODE?: string
   SIAB_RENDERER_ORIGIN_SECRET?: string
   SIAB_RENDERER_ORIGIN_SECRET_FILE?: string
 }
+
+const CLOUDFLARE_TUNNEL_TRUST_MODE = "cloudflare_tunnel"
 
 function secretsMatch(actual: string, expected: string): boolean {
   const actualBytes = Buffer.from(actual)
@@ -26,20 +29,7 @@ function unprotectedDevelopmentHost(request: Request): string | null {
   return localHost === "localhost" || localHost === "127.0.0.1" ? localHost : null
 }
 
-export function publicHostFromProtectedRequest(
-  request: Request,
-  environment: OriginProtectionEnvironment = process.env,
-): string | null {
-  const expectedSecret = readRuntimeSecret(
-    environment.SIAB_RENDERER_ORIGIN_SECRET,
-    environment.SIAB_RENDERER_ORIGIN_SECRET_FILE,
-  )
-  const protectionRequired = environment.NODE_ENV === "production" || expectedSecret.length > 0
-  if (!protectionRequired) return unprotectedDevelopmentHost(request)
-  if (expectedSecret.length < MINIMUM_ORIGIN_SECRET_LENGTH) return null
-
-  const actualSecret = request.headers.get(RENDERER_ORIGIN_VERIFICATION_HEADER) ?? ""
-  if (!secretsMatch(actualSecret, expectedSecret)) return null
+function publicHostFromTrustedProxy(request: Request): string | null {
   if (request.headers.get("x-forwarded-proto")?.trim().toLowerCase() !== "https") return null
 
   const proxyHost = normalizePublicDomainHost(request.headers.get("host"))
@@ -51,6 +41,33 @@ export function publicHostFromProtectedRequest(
     if (!forwardedHost || forwardedHost !== proxyHost) return null
   }
   return proxyHost
+}
+
+export function publicHostFromProtectedRequest(
+  request: Request,
+  environment: OriginProtectionEnvironment = process.env,
+): string | null {
+  const trustMode = environment.SIAB_RENDERER_ORIGIN_TRUST_MODE?.trim()
+  const expectedSecret = readRuntimeSecret(
+    environment.SIAB_RENDERER_ORIGIN_SECRET,
+    environment.SIAB_RENDERER_ORIGIN_SECRET_FILE,
+  )
+  if (trustMode === CLOUDFLARE_TUNNEL_TRUST_MODE) {
+    // In this mode the renderer has no published port and shares a private
+    // bridge only with its outbound cloudflared connector. Reject ambiguous
+    // mixed-mode configuration so the network boundary remains explicit.
+    if (expectedSecret.length > 0) return null
+    return publicHostFromTrustedProxy(request)
+  }
+  if (trustMode) return null
+
+  const protectionRequired = environment.NODE_ENV === "production" || expectedSecret.length > 0
+  if (!protectionRequired) return unprotectedDevelopmentHost(request)
+  if (expectedSecret.length < MINIMUM_ORIGIN_SECRET_LENGTH) return null
+
+  const actualSecret = request.headers.get(RENDERER_ORIGIN_VERIFICATION_HEADER) ?? ""
+  if (!secretsMatch(actualSecret, expectedSecret)) return null
+  return publicHostFromTrustedProxy(request)
 }
 
 export function neutralOriginNotFound(): Response {

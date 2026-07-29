@@ -54,14 +54,13 @@ verified authoritative DNS and HTTPS. The CMS snapshot endpoint returns that
 eligible canonical domain and its explicit active alias allowlist; the renderer
 validates the routing envelope before serving tenant content. Apex and `www`
 are independent entries—`www` is not inferred.
-Production origin requests must carry the high-entropy
-`X-Siab-Origin-Verify` value overwritten at the Cloudflare edge and must arrive
-through the outbound-only Cloudflare Tunnel. The renderer has no published host
-port and is not attached to the public Traefik network, so the header is
-defense-in-depth rather than the sole origin trust boundary. The original
-`Host` is required; when `X-Forwarded-Host` is present it must match. Health
-checks inside the private container network are the only unauthenticated
-exception.
+Production origin requests arrive only through the outbound-only Cloudflare
+Tunnel. The renderer has no published host port and is not attached to the
+public Traefik network. `SIAB_RENDERER_ORIGIN_TRUST_MODE=cloudflare_tunnel`
+selects this topology explicitly and fails closed when combined with the legacy
+edge-secret mode. The original `Host` is required; `X-Forwarded-Proto` must be
+HTTPS, and when `X-Forwarded-Host` is present it must match. Health checks inside
+the private container network are the only unauthenticated exception.
 Unknown or invalid hosts fail with a tenant-neutral 404.
 
 ### Typed public block variants
