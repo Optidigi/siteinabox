@@ -9,6 +9,7 @@ import {
   closeServer,
   getOpenPort,
   startStubCms,
+  TEST_RENDERER_API_TOKEN,
   TEST_RENDERER_ORIGIN_SECRET,
   waitForRenderer,
 } from "./host-routing-harness.mjs"
@@ -54,6 +55,8 @@ try {
     "PORT=4321",
     "-e",
     `SIAB_CMS_URL=${cms.url}`,
+    "-e",
+    `SIAB_RENDERER_API_TOKEN=${TEST_RENDERER_API_TOKEN}`,
     "-e",
     `SIAB_RENDERER_ORIGIN_SECRET=${TEST_RENDERER_ORIGIN_SECRET}`,
     "-e",
