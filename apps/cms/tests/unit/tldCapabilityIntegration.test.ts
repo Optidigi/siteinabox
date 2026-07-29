@@ -59,6 +59,7 @@ describe("effective TLD allowlist integration", () => {
     await expect(suggestAvailablePreviewDomainBatch(
       "example.com",
       { amount: "10.00", currency: "EUR" },
+      { capabilityEffectiveAt: LEGACY_NL_ENABLED_AT },
     )).resolves.toEqual({
       suggestions: [],
       nextCursor: 0,
@@ -78,7 +79,7 @@ describe("effective TLD allowlist integration", () => {
     expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
   })
 
-  it("keeps a modeled but disabled .be capability away from provider reads", async () => {
+  it("keeps a modeled .be capability away from provider reads before activation", async () => {
     vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
     openProviderMocks.checkAvailability.mockResolvedValue({
       status: "available",
@@ -95,7 +96,7 @@ describe("effective TLD allowlist integration", () => {
       run,
       "example.be",
       null,
-      { record: false },
+      { record: false, capabilityEffectiveAt: LEGACY_NL_ENABLED_AT },
     )).rejects.toThrow("not enabled")
 
     expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
@@ -126,14 +127,31 @@ describe("effective TLD allowlist integration", () => {
     expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith("example.nl")
   })
 
-  it("blocks current .nl registration before provider reads until evidence is enabled", async () => {
-    await expect(checkAndRecordPreviewDomainOrder(
-      asPayload({ update: vi.fn() }),
-      run,
-      "example.nl",
-      null,
-      { record: false },
-    )).rejects.toThrow("not enabled")
-    expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
-  })
+  it.each(["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"])(
+    "allows current .%s registration through provider-backed pricing",
+    async (tld) => {
+      vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
+      openProviderMocks.checkAvailability.mockResolvedValue({
+        status: "available",
+        domain: `example.${tld}`,
+        available: true,
+        premium: false,
+        price: { amount: "8.00", currency: "EUR" },
+        internalReason: null,
+      })
+
+      await expect(checkAndRecordPreviewDomainOrder(
+        asPayload({ update: vi.fn() }),
+        run,
+        `example.${tld}`,
+        null,
+        { record: false },
+      )).resolves.toMatchObject({
+        domain: `example.${tld}`,
+        included: true,
+        messageKey: "checkoutDomainAvailable",
+      })
+      expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith(`example.${tld}`)
+    },
+  )
 })

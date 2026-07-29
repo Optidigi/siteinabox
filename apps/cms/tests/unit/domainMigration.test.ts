@@ -483,6 +483,7 @@ describe("automatic existing-domain migration", () => {
 
   it("clears retained checkout ciphertext on retry after acquisition already succeeded", async () => {
     const store = createStore()
+    const now = new Date("2026-07-28T09:00:00.000Z")
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
       normalizeCompleteZone(zoneExport),
     )
@@ -517,6 +518,7 @@ describe("automatic existing-domain migration", () => {
       domain: "example.nl",
       sourceZoneHash,
       encryptedInput,
+      now,
     })
     await attachMigrationCheckoutSecret(store.payload, {
       secretKey,
@@ -524,6 +526,7 @@ describe("automatic existing-domain migration", () => {
       generationRunId: 500,
       domain: "example.nl",
       sourceZoneHash,
+      now,
     })
     const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
     const originalUpdate = update.getMockImplementation() as (
@@ -542,13 +545,13 @@ describe("automatic existing-domain migration", () => {
       return originalUpdate(args)
     })
 
-    await expect(createAutomaticDomainMigration(store.payload, 600))
+    await expect(createAutomaticDomainMigration(store.payload, 600, now.toISOString()))
       .rejects.toThrow("simulated secret clearing failure")
     expect(store.collections["domain-migrations"]).toHaveLength(1)
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       sourceZoneSnapshot: expect.any(Object),
     })
-    await expect(createAutomaticDomainMigration(store.payload, 600))
+    await expect(createAutomaticDomainMigration(store.payload, 600, now.toISOString()))
       .resolves.toMatchObject({ sourceZoneSnapshot: expect.any(Object) })
     expect(store.collections["migration-checkout-secrets"]![0]).toMatchObject({
       state: "consumed",

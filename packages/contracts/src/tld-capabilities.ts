@@ -5,7 +5,7 @@ import {
   contractingPartyTypeSchema,
 } from "./commerce"
 
-export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-28.1" as const
+export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-29.1" as const
 
 export const INTENDED_TLD_CATALOG = Object.freeze([
   "nl",
@@ -246,6 +246,14 @@ const PRODUCTION_DISABLED = Object.freeze({
   restoration: false,
 })
 
+const REGISTRATION_PRODUCTION_ENABLED = Object.freeze({
+  registration: true,
+  incomingTransfer: false,
+  renewal: false,
+  registrantVerification: true,
+  restoration: false,
+})
+
 const LEGACY_PRODUCTION_ENABLED = Object.freeze({
   registration: true,
   incomingTransfer: true,
@@ -311,7 +319,7 @@ const commonCapability = {
   },
 } as const
 
-const catalogInput = [
+const catalogHistoryInput = [
   {
     ...commonCapability,
     capabilityVersion: "tld-nl-2026-07-26.1",
@@ -593,6 +601,32 @@ const catalogInput = [
     },
   })),
 ] as const
+
+const REGISTRATION_PRODUCTION_EFFECTIVE_FROM = "2026-07-29T12:00:00.000Z"
+
+const catalogHistory = tldCapabilityCatalogSchema.parse(catalogHistoryInput)
+
+const catalogInput: TldCapability[] = catalogHistory.flatMap((capability) => {
+  if (capability.effectiveUntil !== null) return [capability]
+
+  return [
+    {
+      ...capability,
+      effectiveUntil: REGISTRATION_PRODUCTION_EFFECTIVE_FROM,
+    },
+    {
+      ...capability,
+      capabilityVersion: `tld-${capability.tld}-2026-07-29.1`,
+      production: REGISTRATION_PRODUCTION_ENABLED,
+      effectiveFrom: REGISTRATION_PRODUCTION_EFFECTIVE_FROM,
+      effectiveUntil: null,
+      evidence: {
+        ...capability.evidence,
+        reviewedAt: REGISTRATION_PRODUCTION_EFFECTIVE_FROM,
+      },
+    },
+  ]
+})
 
 const deepFreeze = <T extends object>(value: T): Readonly<T> => {
   for (const entry of Object.values(value)) {
