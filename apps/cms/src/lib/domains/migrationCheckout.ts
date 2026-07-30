@@ -10,6 +10,7 @@ import {
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  productionTldCapabilitiesAt,
   tldCapabilityOperationFlagEnabled,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -237,7 +238,8 @@ export async function inspectExistingDomainPublicEvidence(
 export function existingDomainMigrationCheckoutEnabled(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED?.trim() === "1"
+  return env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED?.trim() === "1" &&
+    productionTldCapabilitiesAt("incoming_transfer").length > 0
 }
 
 export function automaticMigrationSourceEnabled(

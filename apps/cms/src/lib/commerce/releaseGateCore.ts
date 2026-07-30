@@ -3,6 +3,7 @@ import {
   evaluateCommerceReleaseGate,
   type CommerceReleaseGateDecision,
 } from "@siteinabox/contracts/commerce"
+import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { Tenant } from "@/payload-types"
 import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
@@ -48,6 +49,23 @@ const cloudflareSourceOAuthConfigured = (
   )
 }
 
+const existingMigrationRouteBlockers = (
+  env: NodeJS.ProcessEnv,
+): string[] => {
+  if (clean(env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED) !== "1") return []
+  const completeSourceEnabled =
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED) === "1" ||
+    clean(env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED) === "1"
+  return [
+    ...(!completeSourceEnabled
+      ? ["existing_domain_migration_has_no_complete_source"]
+      : []),
+    ...(productionTldCapabilitiesAt("incoming_transfer").length === 0
+      ? ["existing_domain_migration_has_no_enabled_transfer_tld"]
+      : []),
+  ]
+}
+
 export function commerceReleaseGate(
   env: NodeJS.ProcessEnv = process.env,
 ): CommerceReleaseGateDecision {
@@ -85,6 +103,7 @@ export async function commerceProductionReadinessBlockers(
 ): Promise<string[]> {
   const decision = commerceReleaseGate(env)
   const blockers = [...decision.blockers]
+  blockers.push(...existingMigrationRouteBlockers(env))
   if (!cloudflareSourceOAuthConfigured(env)) {
     blockers.push("cloudflare_source_oauth_configuration_incomplete")
   }

@@ -1,5 +1,6 @@
 import "server-only"
 
+import { getTldCapabilityByVersion } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { DomainMigration, ManagedDomain, Order } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
@@ -39,6 +40,36 @@ const readRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null
+
+const transferConfirmationDeadline = (
+  order: Order,
+  migration: DomainMigration,
+): string | null => {
+  if (!migration.transferRequestedAt) return null
+  const capabilityEvidence = readRecord(
+    readRecord(order.quoteEvidence)?.tldCapability,
+  )
+  const capabilityVersion = typeof capabilityEvidence?.capabilityVersion === "string"
+    ? capabilityEvidence.capabilityVersion
+    : null
+  const capability = capabilityVersion
+    ? getTldCapabilityByVersion(capabilityVersion)
+    : null
+  if (
+    !capability ||
+    capability.tld !== migration.tld ||
+    capability.transfer.customerConfirmation !== "registrant_email"
+  ) {
+    return null
+  }
+  const requestedAt = Date.parse(migration.transferRequestedAt)
+  if (!Number.isFinite(requestedAt)) return null
+  return new Date(
+    requestedAt +
+    Math.max(1, capability.transfer.maximumExpectedWaitDays) *
+      24 * 60 * 60 * 1_000,
+  ).toISOString()
+}
 
 const customerActions = (value: unknown): CustomerMigrationActionStatus[] => {
   const source = readRecord(value)
@@ -123,6 +154,8 @@ export async function loadCustomerMigrationStatus(
         ? migration.transferCodeExpiresAt ?? null
         : action.action === "verify_registrant"
           ? managedDomain?.registrantVerificationDueAt ?? null
+          : action.action === "confirm_transfer"
+            ? transferConfirmationDeadline(order, migration)
           : null),
   }))
   const supplementalOrderId = relationshipId(migration.supplementalOrder)

@@ -1,5 +1,6 @@
 import "server-only"
 
+import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import {
   getCloudflareDnsRecordUsage,
   getCloudflareDnssec,
@@ -275,6 +276,17 @@ const configurationBlockers = (env: NodeJS.ProcessEnv): string[] => {
     )
   ) {
     blockers.push(code("cloudflare_source_oauth", "configuration_mismatch"))
+  }
+  if (clean(env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED) === "1") {
+    const completeSourceEnabled =
+      clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED) === "1" ||
+      clean(env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED) === "1"
+    if (!completeSourceEnabled) {
+      blockers.push(code("existing_domain_source", "configuration_mismatch"))
+    }
+    if (productionTldCapabilitiesAt("incoming_transfer").length === 0) {
+      blockers.push(code("incoming_transfer_tld", "configuration_mismatch"))
+    }
   }
   return blockers
 }

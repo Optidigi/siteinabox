@@ -123,7 +123,8 @@ export class DomainMigrationCustomerInputError extends Error {
   }
 }
 
-type MigrationActionStatus = "required" | "pending" | "completed" | "not_required" | "failed"
+export type MigrationActionStatus =
+  "required" | "pending" | "completed" | "not_required" | "failed"
 type MigrationActionEvidence = {
   status: MigrationActionStatus
   updatedAt: string
@@ -375,6 +376,78 @@ const withAction = (
   },
 })
 
+export const transferConfirmationStatus = (
+  capability: TldCapability,
+  providerDispatched: boolean,
+): "not_required" | "pending" | "required" =>
+  capability.transfer.customerConfirmation === "none"
+    ? "not_required"
+    : providerDispatched
+      ? "required"
+      : "pending"
+
+export const nextTransferConfirmationStatus = (
+  current: MigrationActionStatus,
+  capability: TldCapability,
+  providerDispatched: boolean,
+): MigrationActionStatus => {
+  if (capability.transfer.customerConfirmation === "none") {
+    return "not_required"
+  }
+  if (current === "completed" || current === "failed" || current === "required") {
+    return current
+  }
+  return transferConfirmationStatus(capability, providerDispatched)
+}
+
+const transferConfirmationAction = (
+  actions: MigrationCustomerActionStates,
+  capability: TldCapability,
+  status: "pending" | "required",
+  now: string,
+): MigrationCustomerActionStates => {
+  const actionStatus = nextTransferConfirmationStatus(
+    actions.confirm_transfer.status,
+    capability,
+    status === "required",
+  )
+  const current = actions.confirm_transfer
+  if (
+    current.status === "completed" ||
+    (
+      current.status === actionStatus &&
+      (
+        actionStatus === "not_required" ||
+        current.evidence === (
+          actionStatus === "required"
+            ? "registrant_email_confirmation_required"
+            : "awaiting_provider_transfer_dispatch"
+        )
+      )
+    )
+  ) {
+    return actions
+  }
+  if (actionStatus === "not_required") {
+    return withAction(
+      actions,
+      "confirm_transfer",
+      "not_required",
+      now,
+      "tld_confirmation_not_required",
+    )
+  }
+  return withAction(
+    actions,
+    "confirm_transfer",
+    actionStatus,
+    now,
+    actionStatus === "required"
+      ? "registrant_email_confirmation_required"
+      : "awaiting_provider_transfer_dispatch",
+  )
+}
+
 const migrationHistory = (
   migration: DomainMigration,
   at: string,
@@ -615,7 +688,12 @@ export async function createAutomaticDomainMigration(
     overrideAccess: true,
   })
   if (existing.docs.length > 1) throw new Error("Duplicate automatic migration authority.")
-  const actions = actionStates(null, now)
+  const actions = transferConfirmationAction(
+    actionStates(null, now),
+    capability,
+    "pending",
+    now,
+  )
   let migration = existing.docs[0] as DomainMigration | undefined
   if (!migration) {
     try {
@@ -3307,8 +3385,15 @@ export async function prepareDomainMigration(
         reference: migration.idempotencyKey,
         acceptedCapabilityVersion: capability.capabilityVersion,
       })
+      actions = transferConfirmationAction(
+        actionStates(migration.customerActions, deps.now()),
+        capability,
+        "required",
+        deps.now(),
+      )
       migration = await updateMigration(payload, migration, {
         providerTransferId: String(transfer.id),
+        customerActions: actions,
       }, `provider_transfer_${transfer.status}`, deps.now())
     } catch (error) {
       try {
@@ -3317,9 +3402,16 @@ export async function prepareDomainMigration(
         // The prepared write remains authoritative until reconciliation succeeds.
       }
       if (!providerDomain && error instanceof OpenProviderIndeterminateWriteError) {
+        actions = transferConfirmationAction(
+          actionStates(migration.customerActions, deps.now()),
+          capability,
+          "required",
+          deps.now(),
+        )
         migration = await updateMigration(payload, migration, {
           state: "awaiting_provider",
           providerTransferState: "indeterminate",
+          customerActions: actions,
           reconciliationRequired: true,
           failureReason: "openprovider_transfer_indeterminate",
         }, "provider_transfer_indeterminate", deps.now())
@@ -3367,9 +3459,23 @@ export async function prepareDomainMigration(
     providerDomain,
     capability.transfer.confirmation.activeStatuses,
   )) {
-    if (migration.state === "preparing") {
+    const currentConfirmationStatus = actions.confirm_transfer.status
+    const confirmationNeedsUpdate =
+      nextTransferConfirmationStatus(
+        currentConfirmationStatus,
+        capability,
+        true,
+      ) !== currentConfirmationStatus
+    if (migration.state === "preparing" || confirmationNeedsUpdate) {
+      actions = transferConfirmationAction(
+        actions,
+        capability,
+        "required",
+        deps.now(),
+      )
       migration = await updateMigration(payload, migration, {
         state: "awaiting_provider",
+        customerActions: actions,
       }, "provider_transfer_processing", deps.now())
     }
     const requestedAt = migration.transferRequestedAt
@@ -3453,7 +3559,17 @@ export async function prepareDomainMigration(
   ].includes(storedRegistrantVerification)
   actions = actionStates(migration.customerActions, deps.now())
   actions = withAction(
-    withAction(actions, "confirm_transfer", "completed", deps.now(), "provider_domain_active"),
+    withAction(
+      actions,
+      "confirm_transfer",
+      capability.transfer.customerConfirmation === "none"
+        ? "not_required"
+        : "completed",
+      deps.now(),
+      capability.transfer.customerConfirmation === "none"
+        ? "tld_confirmation_not_required"
+        : "provider_domain_active",
+    ),
     "verify_registrant",
     verificationActionRequired
       ? registrantVerification === "pending" ? "required" : "failed"

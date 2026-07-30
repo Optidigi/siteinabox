@@ -3,9 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   acquireAutomaticMigrationInputs,
   createAutomaticDomainMigration,
+  nextTransferConfirmationStatus,
   prepareDomainMigration,
   replaceMigrationSourceRefreshAuthority,
   replaceMigrationTransferAuthorization,
+  transferConfirmationStatus,
   transferAutorenewMode,
 } from "@/lib/domains/migration"
 import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
@@ -629,6 +631,34 @@ afterEach(() => {
 })
 
 describe("automatic existing-domain migration", () => {
+  it("derives transfer-confirmation actions from the frozen TLD capability", async () => {
+    const nlStore = createStore()
+    await createAutomaticDomainMigration(nlStore.payload, 600)
+    expect(nlStore.collections["domain-migrations"]![0]).toMatchObject({
+      customerActions: {
+        confirm_transfer: {
+          status: "not_required",
+          evidence: "tld_confirmation_not_required",
+        },
+      },
+    })
+
+    const comCapability = getTldCapabilityByVersion("tld-com-2026-07-29.3")
+    if (!comCapability) throw new Error("Missing corrected .com capability fixture.")
+    expect(transferConfirmationStatus(comCapability, false)).toBe("pending")
+    expect(transferConfirmationStatus(comCapability, true)).toBe("required")
+    expect(nextTransferConfirmationStatus(
+      "required",
+      comCapability,
+      true,
+    )).toBe("required")
+    expect(nextTransferConfirmationStatus(
+      "completed",
+      comCapability,
+      false,
+    )).toBe("completed")
+  })
+
   it("reuses the order-keyed migration authority across duplicate fulfillment calls", async () => {
     const store = createStore()
 

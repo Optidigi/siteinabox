@@ -7,7 +7,10 @@ import {
   openCheckoutQuote,
   sealCheckoutQuote,
 } from "@/lib/checkout/checkoutQuote"
-import { assessExistingDomainMigrationInput } from "@/lib/domains/migrationCheckout"
+import {
+  assessExistingDomainMigrationInput,
+  existingDomainMigrationCheckoutEnabled,
+} from "@/lib/domains/migrationCheckout"
 import { DomainMigrationCustomerInputError } from "@/lib/domains/migration"
 import { migrationCheckoutSecretKey } from "@/lib/domains/migrationCheckoutSecret"
 import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
@@ -41,9 +44,20 @@ const mocks = vi.hoisted(() => ({
   acquireCloudflareSource: vi.fn(),
   acquireValidatedProviderExport: vi.fn(),
   cloudflareSourceOAuthEnabled: vi.fn(() => false),
+  productionTldCapabilitiesAt: vi.fn(() => [{}]),
   loadCloudflareSourceAuthorization: vi.fn(),
   attachCloudflareSourceAuthorization: vi.fn(),
 }))
+
+vi.mock("@siteinabox/contracts/tld-capabilities", async (importOriginal) => {
+  const original = await importOriginal<
+    typeof import("@siteinabox/contracts/tld-capabilities")
+  >()
+  return {
+    ...original,
+    productionTldCapabilitiesAt: mocks.productionTldCapabilitiesAt,
+  }
+})
 
 vi.mock("next/headers", () => ({
   headers: vi.fn(async () => mocks.headers),
@@ -286,6 +300,7 @@ describe("preview checkout domain suggestion action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.cloudflareSourceOAuthEnabled.mockReturnValue(false)
+    mocks.productionTldCapabilitiesAt.mockReturnValue([{}])
     vi.spyOn(console, "info").mockImplementation(() => {})
     vi.spyOn(console, "error").mockImplementation(() => {})
     mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
@@ -484,6 +499,12 @@ describe("preview checkout domain suggestion action", () => {
         createdAt: "2026-07-26T12:00:00.000Z",
       },
     })
+  })
+
+  it("does not advertise existing-domain checkout without an enabled transfer TLD", () => {
+    mocks.productionTldCapabilitiesAt.mockReturnValue([])
+
+    expect(existingDomainMigrationCheckoutEnabled()).toBe(false)
   })
 
   it("blocks payment before explicit preview approval", async () => {

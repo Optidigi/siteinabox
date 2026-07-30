@@ -267,7 +267,37 @@ describe("staged commerce release runtime gate", () => {
       } as unknown as NodeJS.ProcessEnv,
     )
     expect(blockers).toEqual([
+      "existing_domain_migration_has_no_enabled_transfer_tld",
       "cloudflare_source_oauth_configuration_incomplete",
+    ])
+  })
+
+  it("blocks an advertised migration route without a complete source or enabled transfer TLD", async () => {
+    const readinessPayload = asPayload({
+      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
+    })
+    const blockers = await commerceProductionReadinessBlockers(
+      readinessPayload,
+      {
+        COMMERCE_RELEASE_STAGE: "production",
+        COMMERCE_RELEASE_EVIDENCE_VERSION:
+          "commerce-production-readiness-2026-07-30.1",
+        COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
+        COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
+        COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
+        NODE_ENV: "production",
+        MOLLIE_API_KEY: "live_fixture",
+        OPENPROVIDER_USERNAME: "provider-user",
+        OPENPROVIDER_PASSWORD: "provider-password",
+        CLOUDFLARE_API_TOKEN: "cloudflare-token",
+        CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+        DOMAIN_MIGRATION_ENCRYPTION_KEY:
+          Buffer.alloc(32, 1).toString("base64"),
+      } as unknown as NodeJS.ProcessEnv,
+    )
+    expect(blockers).toEqual([
+      "existing_domain_migration_has_no_complete_source",
+      "existing_domain_migration_has_no_enabled_transfer_tld",
     ])
   })
 
