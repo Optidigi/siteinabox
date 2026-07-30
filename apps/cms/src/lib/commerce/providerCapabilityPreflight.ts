@@ -263,6 +263,19 @@ const configurationBlockers = (env: NodeJS.ProcessEnv): string[] => {
   ) {
     blockers.push(code("cloudflare", "configuration_mismatch"))
   }
+  if (
+    clean(env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED) === "1" &&
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED) === "1" &&
+    (
+      clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED) !== "1" ||
+      !clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID) ||
+      !clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET) ||
+      clean(env.CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI) !==
+        "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
+    )
+  ) {
+    blockers.push(code("cloudflare_source_oauth", "configuration_mismatch"))
+  }
   return blockers
 }
 

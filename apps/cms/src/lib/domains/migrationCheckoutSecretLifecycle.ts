@@ -1,8 +1,12 @@
 import type { Payload } from "payload"
+import { relationshipId } from "@/lib/relationshipId"
 
 type ExpirableMigrationCheckoutSecret = {
   id: string | number
   state: "pending_order" | "attached"
+  generationRun: Parameters<typeof relationshipId>[0]
+  domainNameAscii: string
+  encryptedInput: string | null
   expiresAt: string
   updatedAt: string
 }
@@ -25,6 +29,39 @@ export async function expireStaleMigrationCheckoutSecrets(
   })
   let expired = 0
   for (const value of result.docs as ExpirableMigrationCheckoutSecret[]) {
+    if (value.encryptedInput) {
+      const generationRunId = relationshipId(value.generationRun)
+      if (generationRunId) {
+        try {
+          const [
+            { openCheckoutMigrationInput },
+            { revokeCloudflareSourceAuthorization },
+          ] = await Promise.all([
+            import("@/lib/domains/migrationSecrets"),
+            import("@/lib/domains/cloudflareSourceOAuth"),
+          ])
+          const opened = openCheckoutMigrationInput(
+            value.encryptedInput,
+            generationRunId,
+            value.domainNameAscii,
+          )
+          if (
+            opened.schemaVersion === 2 &&
+            opened.sourceRefreshCredential.kind === "cloudflare_oauth"
+          ) {
+            await revokeCloudflareSourceAuthorization(
+              payload,
+              opened.sourceRefreshCredential,
+              { now },
+            )
+          }
+        } catch {
+          // The encrypted checkout authority is cleared below. Any delegated
+          // grant remains durably owned by its authorization record and its
+          // cleanup job continues bounded revocation retries.
+        }
+      }
+    }
     const update = await payload.update({
       collection: "migration-checkout-secrets",
       where: {

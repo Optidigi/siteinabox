@@ -243,7 +243,10 @@ describe("complete migration source acquisition", () => {
           id: "zone-1",
           name: "example.nl",
           status: "active",
-          name_servers: publicEvidence.authoritativeNameservers,
+          name_servers: [
+            "ada.ns.cloudflare.com",
+            "bob.ns.cloudflare.com",
+          ],
         }],
       })
     })
@@ -251,6 +254,13 @@ describe("complete migration source acquisition", () => {
     const acquired = await acquireCloudflareSource({
       domain: "example.nl",
       token: "customer-zone-read-token",
+      publicEvidence: {
+        ...publicEvidence,
+        authoritativeNameservers: [
+          "ada.ns.cloudflare.com",
+          "bob.ns.cloudflare.com",
+        ],
+      },
       options: {
         fetchImpl: fetchImpl as typeof fetch,
         apiBaseUrl: "https://cloudflare.test/client/v4",
@@ -301,19 +311,55 @@ describe("complete migration source acquisition", () => {
           id: "zone-1",
           name: "example.nl",
           status: "active",
-          name_servers: publicEvidence.authoritativeNameservers,
+          name_servers: [
+            "ada.ns.cloudflare.com",
+            "bob.ns.cloudflare.com",
+          ],
         }],
       })
     })
     await expect(acquireCloudflareSource({
       domain: "example.nl",
       token: "customer-zone-read-token",
+      publicEvidence: {
+        ...publicEvidence,
+        authoritativeNameservers: [
+          "ada.ns.cloudflare.com",
+          "bob.ns.cloudflare.com",
+        ],
+      },
       options: {
         fetchImpl: fetchImpl as typeof fetch,
         apiBaseUrl: "https://cloudflare.test/client/v4",
       },
     })).rejects.toThrow("pagination")
     expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("rejects a Cloudflare zone that is not the domain's current authority", async () => {
+    const fetchImpl = vi.fn(async () => Response.json({
+      success: true,
+      result: [{
+        id: "zone-1",
+        name: "example.nl",
+        status: "active",
+        name_servers: [
+          "ada.ns.cloudflare.com",
+          "bob.ns.cloudflare.com",
+        ],
+      }],
+    }))
+
+    await expect(acquireCloudflareSource({
+      domain: "example.nl",
+      token: "customer-zone-read-token",
+      publicEvidence,
+      options: {
+        fetchImpl: fetchImpl as typeof fetch,
+        apiBaseUrl: "https://cloudflare.test/client/v4",
+      },
+    })).rejects.toThrow("not the domain's current authoritative zone")
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
   it("bounds stalled Cloudflare source reads", async () => {

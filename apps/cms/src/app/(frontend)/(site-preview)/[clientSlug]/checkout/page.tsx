@@ -43,6 +43,11 @@ import {
 import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGateCore"
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
+import {
+  cloudflareSourceOAuthEnabled,
+  loadCloudflareSourceAuthorizationMetadata,
+} from "@/lib/domains/cloudflareSourceOAuth"
+import { relationshipId } from "@/lib/relationshipId"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("preview")
@@ -54,12 +59,20 @@ export default async function PreviewCheckoutPage({
   searchParams,
 }: {
   params: Promise<{ clientSlug: string }>
-  searchParams?: Promise<{ payment?: string | string[] }>
+  searchParams?: Promise<{
+    payment?: string | string[]
+    cloudflareSource?: string | string[]
+  }>
 }) {
   if (!(await isPreviewHost())) notFound()
 
   const { clientSlug } = await params
-  const paymentReturn = (await searchParams)?.payment === "return"
+  const resolvedSearchParams = await searchParams
+  const paymentReturn = resolvedSearchParams?.payment === "return"
+  const cloudflareSourceValue =
+    typeof resolvedSearchParams?.cloudflareSource === "string"
+      ? resolvedSearchParams.cloudflareSource
+      : null
   const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
   if (!normalizedClientSlug) notFound()
 
@@ -89,6 +102,27 @@ export default async function PreviewCheckoutPage({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
     })
+    const oauthEnabled = cloudflareSourceOAuthEnabled()
+    const tenantId = relationshipId(context.tenant)
+    const sourceMetadata =
+      oauthEnabled &&
+      tenantId &&
+      cloudflareSourceValue &&
+      !["failed", "provider-mismatch"].includes(cloudflareSourceValue)
+        ? await loadCloudflareSourceAuthorizationMetadata(
+            context.payload,
+            {
+              authorizationKey: cloudflareSourceValue,
+              generationRunId: context.run.id,
+              tenantId,
+              clientSlug: context.clientSlug,
+              customerEmail: context.customerEmail,
+            },
+          )
+        : null
+    const cloudflareSourceAuthorization =
+      sourceMetadata?.authorizationKey ?? null
+    const cloudflareSourceDomain = sourceMetadata?.domain ?? null
     const payment = context.run.payment && typeof context.run.payment === "object"
       ? context.run.payment as { status?: string | null }
       : null
@@ -141,7 +175,8 @@ export default async function PreviewCheckoutPage({
       "cloudflare_api_v1",
       "authorized_axfr_v1",
     ] as const).filter((mechanism) =>
-      automaticMigrationSourceEnabled(mechanism))
+      automaticMigrationSourceEnabled(mechanism) &&
+      (mechanism !== "cloudflare_api_v1" || oauthEnabled))
     const existingDomainMigrationEnabled =
       existingDomainMigrationCheckoutEnabled() &&
       commerceProviderReadsAllowed() &&
@@ -149,6 +184,7 @@ export default async function PreviewCheckoutPage({
 
     return (
       <PreviewCheckout
+        clientSlug={context.clientSlug}
         customerEmail={context.customerEmail}
         currentDomain={selectedDomain}
         domainReady={Boolean(selectedDomain)}
@@ -163,6 +199,18 @@ export default async function PreviewCheckoutPage({
         paymentReturn={paymentReturn}
         existingDomainMigrationEnabled={existingDomainMigrationEnabled}
         enabledMigrationSourceMethods={enabledMigrationSourceMethods}
+        cloudflareSourceOAuthEnabled={oauthEnabled}
+        cloudflareSourceAuthorization={cloudflareSourceAuthorization}
+        cloudflareSourceDomain={cloudflareSourceDomain}
+        cloudflareSourceResult={
+          sourceMetadata
+            ? "connected"
+            : cloudflareSourceValue === "failed"
+              ? "failed"
+              : cloudflareSourceValue === "provider-mismatch"
+                ? "provider-mismatch"
+                : null
+        }
         migrationStatus={migrationStatus}
         provisioningStatus={provisioningStatus}
         acceptedOrderId={acceptedResume?.orderId ?? null}

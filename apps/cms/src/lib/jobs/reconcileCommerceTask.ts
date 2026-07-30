@@ -34,6 +34,7 @@ export const reconcileCommerceTask: TaskConfig<{
       { queueDueCommerceNotifications },
       { recordCommerceAdminException, resolveCommerceAdminException },
       { reconcileCommerceEdgeRouting },
+      { expireCloudflareSourceAuthorizations },
       {
         alertOnStaleMollieSynchronization,
         recoverMissingMolliePaymentReferences,
@@ -48,6 +49,7 @@ export const reconcileCommerceTask: TaskConfig<{
       import("@/lib/commerce/notifications"),
       import("@/lib/commerce/alerts"),
       import("@/lib/domains/edgeRouting"),
+      import("@/lib/domains/cloudflareSourceOAuth"),
       import("@/lib/commerce/reconciliation"),
     ])
     const now = new Date()
@@ -404,6 +406,28 @@ export const reconcileCommerceTask: TaskConfig<{
       req.payload,
       now,
     )
+    const expiredSourceAuthorizations =
+      await expireCloudflareSourceAuthorizations(req.payload, { now })
+    if (expiredSourceAuthorizations.failed > 0) {
+      await recordCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "cloudflare_source_oauth_cleanup_failed",
+        message:
+          "Expired Cloudflare source authorization could not be revoked and will be retried.",
+        subjectId: "cloudflare-source-oauth",
+        metadata: { failed: expiredSourceAuthorizations.failed },
+        now: now.toISOString(),
+      })
+    } else {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "cloudflare_source_oauth_cleanup_failed",
+        subjectId: "cloudflare-source-oauth",
+        now: now.toISOString(),
+      })
+    }
     await reconcileOpenProviderBalanceAlert(
       req.payload,
       {},
@@ -427,6 +451,7 @@ export const reconcileCommerceTask: TaskConfig<{
           expiryResult.examined +
           transferOutResult.examined +
           expiredMigrationSecrets +
+          expiredSourceAuthorizations.examined +
           (edgeRoutingResult?.examined ?? 0),
         queued,
       },

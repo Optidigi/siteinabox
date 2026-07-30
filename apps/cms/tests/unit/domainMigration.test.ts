@@ -33,6 +33,9 @@ import {
   MigrationSourceChangedError,
   MigrationSourceDnssecTransitionPendingError,
 } from "@/lib/domains/migrationSources/refresh"
+import {
+  MigrationSourceRefreshRetryableError,
+} from "@/lib/domains/migrationSources/types"
 import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
 import { getTldCapabilityByVersion } from
   "@siteinabox/contracts/tld-capabilities"
@@ -879,6 +882,83 @@ describe("automatic existing-domain migration", () => {
     })
     expect(JSON.stringify(store.collections["domain-migrations"]![0]))
       .not.toContain("customer-scoped-cloudflare-token")
+  })
+
+  it("waits without revoking authority while another OAuth refresh owns the claim", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...zoneExport,
+      authority: {
+        mechanism: "cloudflare_api",
+        provider: "cloudflare",
+        complete: true,
+      },
+    }
+    const normalized = normalizeCompleteZone(automaticZone)
+    const sourceAuthorityHash = domainMigrationSourceAuthorityHash(normalized)
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "cloudflare_api_v1",
+        sourceZoneHash: sourceAuthorityHash,
+      },
+    }
+    const migration = await createAutomaticDomainMigration(store.payload, 600)
+    await acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: migration.id,
+      zoneExport: automaticZone,
+      transferCode: "opaque-nl-transfer-code",
+      sourceRefreshAuthority: {
+        schemaVersion: 1,
+        domain: "example.nl",
+        sourceMechanism: "cloudflare_api_v1",
+        acceptedSourceAuthorityHash: sourceAuthorityHash,
+        acceptedSourceContentHash: domainMigrationSourceContentHash(normalized),
+        credential: {
+          kind: "cloudflare_oauth",
+          authorizationKey: "o".repeat(43),
+          zoneId: "a".repeat(32),
+        },
+      },
+      now: "2026-07-28T08:00:00.000Z",
+      env: {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+        CLOUDFLARE_RENDERER_TUNNEL_ID:
+          "11111111-1111-4111-8111-111111111111",
+      } as unknown as NodeJS.ProcessEnv,
+    })
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+    })
+    const resolve = vi.fn(async () => {
+      throw new MigrationSourceRefreshRetryableError(
+        "Cloudflare OAuth refresh is already in progress.",
+      )
+    })
+    const refresh = vi.fn()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        resolveCloudflareOAuthCredential: resolve,
+        refreshAutomaticMigrationSource: refresh,
+      }),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("refresh is temporarily pending"),
+    })
+    expect(resolve).toHaveBeenCalledOnce()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "preparing",
+      failureReason: null,
+      encryptedSourceRefreshAuthority: expect.any(String),
+    })
   })
 
   it("atomically accepts only one replacement source authority", async () => {

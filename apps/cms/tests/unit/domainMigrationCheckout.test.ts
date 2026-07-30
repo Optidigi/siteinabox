@@ -5,6 +5,7 @@ import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 import {
   assessExistingDomainMigrationInput,
   automaticMigrationSourceEnabled,
+  inspectExistingDomainPublicEvidence,
   type ExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
 import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
@@ -69,6 +70,53 @@ describe("automatic migration source gates", () => {
       "validated_provider_export_v1",
       sourceEnv,
     )).toBe(false)
+  })
+
+  it("detects providers on DNS-label boundaries and discovers registrars via IANA RDAP", async () => {
+    const fetchImpl = async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url === "https://data.iana.org/rdap/dns.json") {
+        return new Response(JSON.stringify({
+          services: [
+            [["nl"], ["https://rdap.example.test/"]],
+            ["malformed"],
+          ],
+        }), { status: 200 })
+      }
+      if (url === "https://rdap.example.test/domain/example.nl") {
+        return new Response(JSON.stringify({
+          entities: [{
+            handle: "REGISTRAR-1",
+            roles: ["registrar"],
+            vcardArray: [
+              "vcard",
+              [["fn", {}, "text", "Example Registrar B.V."]],
+            ],
+          }],
+        }), { status: 200 })
+      }
+      return new Response(null, { status: 404 })
+    }
+    const evidence = await inspectExistingDomainPublicEvidence("example.nl", {
+      now: new Date("2026-07-30T10:00:00.000Z"),
+      resolveNsImpl: async () => [
+        "ADA.NS.CLOUDFLARE.COM",
+        "bob.ns.cloudflare.com.",
+        "cloudflare.com.attacker.example",
+      ],
+      resolveDsImpl: async () => [],
+      fetchImpl: fetchImpl as typeof fetch,
+    })
+
+    expect(evidence).toMatchObject({
+      probableDnsProvider: "cloudflare",
+      registrar: "Example Registrar B.V.",
+      authoritativeNameservers: [
+        "ada.ns.cloudflare.com",
+        "bob.ns.cloudflare.com",
+        "cloudflare.com.attacker.example",
+      ],
+    })
   })
 })
 

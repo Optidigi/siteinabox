@@ -15,6 +15,13 @@ export class MigrationSourceAuthorizationError extends Error {
   }
 }
 
+export class MigrationSourceRefreshRetryableError extends Error {
+  constructor(message = "The automatic DNS source authorization refresh is temporarily unavailable.") {
+    super(message)
+    this.name = "MigrationSourceRefreshRetryableError"
+  }
+}
+
 export type AutomaticMigrationSourceMechanism = Exclude<
   MigrationSourceMechanism,
   "customer_authorized_provider_export_v1"

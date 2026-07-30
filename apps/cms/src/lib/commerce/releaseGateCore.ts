@@ -30,6 +30,24 @@ const validMigrationEncryptionKey = (value: string | undefined): boolean => {
   }
 }
 
+const cloudflareSourceOAuthConfigured = (
+  env: NodeJS.ProcessEnv,
+): boolean => {
+  if (
+    clean(env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED) !== "1" ||
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED) !== "1"
+  ) {
+    return true
+  }
+  return (
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED) === "1" &&
+    Boolean(clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID)) &&
+    Boolean(clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET)) &&
+    clean(env.CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI) ===
+      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
+  )
+}
+
 export function commerceReleaseGate(
   env: NodeJS.ProcessEnv = process.env,
 ): CommerceReleaseGateDecision {
@@ -67,6 +85,9 @@ export async function commerceProductionReadinessBlockers(
 ): Promise<string[]> {
   const decision = commerceReleaseGate(env)
   const blockers = [...decision.blockers]
+  if (!cloudflareSourceOAuthConfigured(env)) {
+    blockers.push("cloudflare_source_oauth_configuration_incomplete")
+  }
   if (commerceReleaseStageSchema.catch("disabled").parse(
     clean(env.COMMERCE_RELEASE_STAGE),
   ) !== "production") {

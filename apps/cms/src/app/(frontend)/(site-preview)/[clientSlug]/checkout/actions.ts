@@ -47,7 +47,12 @@ import {
   getOpenProviderDomainTransferPrice,
 } from "@/lib/domains/openprovider"
 import { acquireAuthorizedAxfr } from "@/lib/domains/migrationSources/axfr"
-import { acquireCloudflareSource } from "@/lib/domains/migrationSources/cloudflare"
+import type { AcquiredMigrationSource } from "@/lib/domains/migrationSources/types"
+import {
+  attachCloudflareSourceAuthorization,
+  loadCloudflareSourceAuthorization,
+  type CloudflareSourceAuthorizationRecord,
+} from "@/lib/domains/cloudflareSourceOAuth"
 import {
   acquireValidatedProviderExport,
 } from "@/lib/domains/migrationSources/providerExport"
@@ -84,6 +89,8 @@ import {
   replaceMigrationSourceRefreshAuthority,
   replaceMigrationTransferAuthorization,
 } from "@/lib/domains/migration"
+import { domainMigrationSourceAuthorityHash } from
+  "@/lib/domains/migrationEvidence"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -253,13 +260,39 @@ const acquireAutomaticMigrationSourceFromForm = async (
   publicEvidence: Awaited<
     ReturnType<typeof inspectExistingDomainPublicEvidence>
   >,
-) => {
+  authority?: {
+    context: Awaited<ReturnType<typeof requirePreviewCheckoutContext>>
+  },
+): Promise<
+  AcquiredMigrationSource & {
+    oauthAuthorization?: CloudflareSourceAuthorizationRecord
+  }
+> => {
   if (sourceMethod === "cloudflare_api_v1") {
-    return acquireCloudflareSource({
-      domain,
-      token: String(formData.get("cloudflareSourceToken") ?? ""),
-      publicEvidence,
-    })
+    const authorizationKey = String(
+      formData.get("cloudflareSourceAuthorization") ?? "",
+    ).trim()
+    if (authorizationKey) {
+      if (!authority) {
+        throw new Error("Cloudflare OAuth context is required.")
+      }
+      const authorization = await loadCloudflareSourceAuthorization(
+        authority.context.payload,
+        {
+          authorizationKey,
+          generationRunId: authority.context.run.id,
+          tenantId: authority.context.tenant.id,
+          clientSlug: authority.context.clientSlug,
+          customerEmail: authority.context.customerEmail,
+          domain,
+        },
+      )
+      return {
+        ...authorization.source,
+        oauthAuthorization: authorization.record,
+      }
+    }
+    throw new Error("Cloudflare OAuth authorization is required.")
   }
   if (sourceMethod === "authorized_axfr_v1") {
     return acquireAuthorizedAxfr({
@@ -393,6 +426,7 @@ async function checkExistingDomainMigration(
       >,
       formData,
       publicEvidence,
+      { context },
     )
     const assessment = assessExistingDomainMigrationInput({
       generationRunId: context.run.id,
@@ -711,6 +745,7 @@ async function recollectAcceptedMigrationInput(
           quote.migrationSourceMechanism,
           formData,
           publicEvidence,
+          { context },
         ).catch(() => {
           throw new MigrationCustomerActionError("invalid_input")
         })
@@ -737,7 +772,7 @@ async function recollectAcceptedMigrationInput(
     requestedAssistance:
       quote.migrationClassification === "assisted_standard",
     publicEvidence,
-    acceptedOrderRecollection: !currentAutomaticSource,
+    acceptedOrderRecollection: true,
     acceptedCapabilityVersion: resume.tldCapabilityVersion ?? undefined,
     acquiredSource: currentAutomaticSource ?? undefined,
   })
@@ -751,6 +786,16 @@ async function recollectAcceptedMigrationInput(
     )
   ) {
     throw new MigrationCustomerActionError("invalid_input")
+  }
+  if (currentAutomaticSource?.oauthAuthorization) {
+    try {
+      await attachCloudflareSourceAuthorization(
+        context.payload,
+        currentAutomaticSource.oauthAuthorization,
+      )
+    } catch {
+      throw new MigrationCustomerActionError("refresh_required")
+    }
   }
   await replaceExpiredAttachedMigrationCheckoutSecret(context.payload, {
     secretKey: quote.migrationSecretKey!,
@@ -860,6 +905,7 @@ async function submitMigrationTransferCode(
         sourceMechanism,
         formData,
         publicEvidence,
+        { context },
       ).catch(() => {
         throw new MigrationCustomerActionError("invalid_input")
       })
@@ -882,6 +928,12 @@ async function submitMigrationTransferCode(
       throw new MigrationCustomerActionError("invalid_input")
     }
     try {
+      if (acquiredSource?.oauthAuthorization) {
+        await attachCloudflareSourceAuthorization(
+          context.payload,
+          acquiredSource.oauthAuthorization,
+        )
+      }
       if (
         migration.failureReason ===
           "source_authority_reauthorization_required"
@@ -1275,6 +1327,12 @@ export async function startPreviewCheckoutPaymentAction(
     }
   }
   const registrant = domainRegistrantFromCheckoutProfile(checkoutProfile)
+  let acceptedMigrationInput: ReturnType<
+    typeof openCheckoutMigrationInput
+  > | null = null
+  let sourceAuthorization:
+    | Awaited<ReturnType<typeof loadCloudflareSourceAuthorization>>
+    | null = null
 
   try {
     const domainStart = startPreviewCheckoutTimer()
@@ -1310,6 +1368,7 @@ export async function startPreviewCheckoutPaymentAction(
           context.run.id,
           domain,
         )
+        acceptedMigrationInput = migrationInput
         if (
           migrationInput.classification !== acceptedQuote.migrationClassification ||
           migrationInput.sourceMechanism !==
@@ -1405,12 +1464,60 @@ export async function startPreviewCheckoutPaymentAction(
     }
     if (acceptedQuote.domainMode === "existing_domain") {
       if (acceptedQuote.migrationInputEnvelope) {
+        if (
+          acceptedMigrationInput?.schemaVersion === 2 &&
+          acceptedMigrationInput.sourceRefreshCredential.kind ===
+            "cloudflare_oauth"
+        ) {
+          const authorizationKey = String(
+            formData.get("cloudflareSourceAuthorization") ?? "",
+          ).trim()
+          if (
+            !authorizationKey ||
+            authorizationKey !==
+              acceptedMigrationInput.sourceRefreshCredential.authorizationKey
+          ) {
+            return {
+              ok: false,
+              status: "version_conflict",
+              message: t("checkoutQuoteVersionConflict"),
+            }
+          }
+          sourceAuthorization = await loadCloudflareSourceAuthorization(
+            context.payload,
+            {
+              authorizationKey,
+              generationRunId: context.run.id,
+              tenantId: context.tenant.id,
+              clientSlug: context.clientSlug,
+              customerEmail: context.customerEmail,
+              domain,
+            },
+          )
+          if (
+            domainMigrationSourceAuthorityHash(
+              sourceAuthorization.source.zone,
+            ) !== acceptedQuote.migrationSourceZoneHash
+          ) {
+            return {
+              ok: false,
+              status: "version_conflict",
+              message: t("checkoutQuoteVersionConflict"),
+            }
+          }
+        }
         await persistMigrationCheckoutSecret(context.payload, {
           generationRunId: context.run.id,
           domain: readyDomain,
           sourceZoneHash: acceptedQuote.migrationSourceZoneHash!,
           encryptedInput: acceptedQuote.migrationInputEnvelope,
         })
+        if (sourceAuthorization) {
+          await attachCloudflareSourceAuthorization(
+            context.payload,
+            sourceAuthorization.record,
+          )
+        }
       } else {
         await openAttachedMigrationCheckoutSecret(context.payload, {
           secretKey: acceptedQuote.migrationSecretKey!,

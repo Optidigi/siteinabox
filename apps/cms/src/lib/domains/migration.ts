@@ -51,9 +51,14 @@ import {
   type AutomaticSourceRefreshAuthority,
 } from "@/lib/domains/migrationSecrets"
 import {
+  resolveCloudflareOAuthCredential,
+  revokeCloudflareSourceAuthorization,
+} from "@/lib/domains/cloudflareSourceOAuth"
+import {
   MigrationSourceChangedError,
   MigrationSourceDnssecTransitionPendingError,
   refreshAutomaticMigrationSource,
+  type AutomaticMigrationSourceRefreshInput,
   type AutomaticMigrationSourceRefreshMode,
 } from "@/lib/domains/migrationSources/refresh"
 import {
@@ -63,6 +68,7 @@ import {
 } from "@/lib/domains/migrationCheckoutSecret"
 import {
   MigrationSourceAuthorizationError,
+  MigrationSourceRefreshRetryableError,
   type AcquiredMigrationSource,
 } from "@/lib/domains/migrationSources/types"
 import {
@@ -165,6 +171,7 @@ type MigrationDependencies = {
   publishAndActivateAfterCompletedPayment: typeof publishAndActivateAfterCompletedPayment
   activateManagedDomainEntitlement: typeof activateManagedDomainEntitlement
   refreshAutomaticMigrationSource: typeof refreshAutomaticMigrationSource
+  resolveCloudflareOAuthCredential: typeof resolveCloudflareOAuthCredential
 }
 
 const defaultDependencies: MigrationDependencies = {
@@ -195,6 +202,7 @@ const defaultDependencies: MigrationDependencies = {
   publishAndActivateAfterCompletedPayment,
   activateManagedDomainEntitlement,
   refreshAutomaticMigrationSource,
+  resolveCloudflareOAuthCredential,
 }
 
 const readObject = (value: unknown): Record<string, unknown> =>
@@ -432,6 +440,26 @@ const clearedMigrationCredentials = (now: string) => ({
   sourceRefreshAuthorityDeletedAt: now,
 })
 
+const revokeMigrationSourceAuthority = async (
+  payload: Payload,
+  migration: DomainMigration,
+  now: string,
+): Promise<void> => {
+  if (!migration.encryptedSourceRefreshAuthority) return
+  const authority = openAutomaticSourceRefreshAuthority(
+    migration.encryptedSourceRefreshAuthority,
+    migration.idempotencyKey,
+    migration.domainNameAscii,
+  )
+  if (authority.credential.kind === "cloudflare_oauth") {
+    await revokeCloudflareSourceAuthorization(
+      payload,
+      authority.credential,
+      { now: new Date(now) },
+    )
+  }
+}
+
 async function updateManagedDomain(
   payload: Payload,
   domain: ManagedDomain,
@@ -548,6 +576,7 @@ export async function createAutomaticDomainMigration(
   now = new Date().toISOString(),
   dependencies: {
     refreshAutomaticMigrationSource?: typeof refreshAutomaticMigrationSource
+    resolveCloudflareOAuthCredential?: typeof resolveCloudflareOAuthCredential
   } = {},
 ): Promise<DomainMigration> {
   const order = await payload.findByID({
@@ -671,18 +700,54 @@ export async function createAutomaticDomainMigration(
     }
     let refreshedSource: CompleteZoneExport
     try {
-      refreshedSource = checkoutInput.schemaVersion === 2
-        ? await (
-            dependencies.refreshAutomaticMigrationSource ??
-            refreshAutomaticMigrationSource
-          )(checkoutInput)
-        : checkoutInput.sourceZone
+      if (checkoutInput.schemaVersion === 2) {
+        let refreshInput: AutomaticMigrationSourceRefreshInput = checkoutInput
+        if (
+          checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth"
+        ) {
+          const credential = await (
+            dependencies.resolveCloudflareOAuthCredential ??
+            resolveCloudflareOAuthCredential
+          )(
+            payload,
+            checkoutInput.sourceRefreshCredential,
+            { now: new Date(now) },
+          )
+          if (!credential.zoneId) {
+            throw new MigrationSourceAuthorizationError()
+          }
+          refreshInput = {
+            ...checkoutInput,
+            sourceRefreshCredential: {
+              kind: "cloudflare_api_token",
+              token: credential.accessToken,
+              zoneId: credential.zoneId,
+            },
+          }
+        }
+        refreshedSource = await (
+          dependencies.refreshAutomaticMigrationSource ??
+          refreshAutomaticMigrationSource
+        )(refreshInput)
+      } else {
+        refreshedSource = checkoutInput.sourceZone
+      }
     } catch (error) {
       if (
         !(error instanceof MigrationSourceChangedError) &&
         !(error instanceof MigrationSourceAuthorizationError)
       ) {
         throw error
+      }
+      if (
+        checkoutInput.schemaVersion === 2 &&
+        checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth"
+      ) {
+        await revokeCloudflareSourceAuthorization(
+          payload,
+          checkoutInput.sourceRefreshCredential,
+          { now: new Date(now) },
+        )
       }
       await invalidateAttachedMigrationCheckoutSecret(payload, {
         secretKey: checkoutSecretKey,
@@ -1346,6 +1411,7 @@ const sourceRefreshReauthorization = async (
   now: string,
   reason: string,
 ): Promise<DomainMigration> => {
+  await revokeMigrationSourceAuthority(payload, migration, now)
   const actions = withAction(
     actionStates(migration.customerActions, now),
     "authorize_provider",
@@ -1371,6 +1437,7 @@ const refreshMigrationSourceAuthority = async (
   deps: Pick<
     MigrationDependencies,
     "now" | "refreshAutomaticMigrationSource" | "verifyParentDsAbsent"
+    | "resolveCloudflareOAuthCredential"
   >,
 ): Promise<{
   migration: DomainMigration
@@ -1428,6 +1495,27 @@ const refreshMigrationSourceAuthority = async (
       migration.idempotencyKey,
       migration.domainNameAscii,
     )
+    let sourceCredential = authority.credential
+    if (authority.credential.kind === "cloudflare_oauth") {
+      try {
+        const resolved = await deps.resolveCloudflareOAuthCredential(
+          payload,
+          authority.credential,
+          { now: new Date(now) },
+        )
+        if (!resolved.zoneId) throw new MigrationSourceAuthorizationError()
+        sourceCredential = {
+          kind: "cloudflare_api_token",
+          token: resolved.accessToken,
+          zoneId: resolved.zoneId,
+        }
+      } catch (error) {
+        if (error instanceof MigrationSourceRefreshRetryableError) {
+          throw error
+        }
+        throw new MigrationSourceAuthorizationError()
+      }
+    }
     const source = migrationSource(migration)
     if (
       authority.sourceMechanism !== migration.sourceMechanism ||
@@ -1444,9 +1532,18 @@ const refreshMigrationSourceAuthority = async (
       sourceZoneHash: authority.acceptedSourceAuthorityHash,
       sourceContentHash: authority.acceptedSourceContentHash,
       sourceZone: source,
-      sourceRefreshCredential: authority.credential,
+      sourceRefreshCredential: sourceCredential,
     }, {}, mode)
   } catch (error) {
+    if (error instanceof MigrationSourceRefreshRetryableError) {
+      return {
+        migration,
+        blocked: waiting(
+          migration,
+          "The automatic DNS source authorization refresh is temporarily pending.",
+        ),
+      }
+    }
     if (error instanceof MigrationSourceDnssecTransitionPendingError) {
       return {
         migration,
@@ -1553,6 +1650,7 @@ async function stopMigrationForProviderManualReview(
   now: string,
   message: string,
 ): Promise<MigrationResult> {
+  await revokeMigrationSourceAuthority(payload, migration, now)
   migration = await updateMigration(payload, migration, {
     state: "failed",
     ...clearedMigrationCredentials(now),
@@ -1591,6 +1689,7 @@ async function stopUnfulfillableMigrationBeforeRegistrarCommit(
   code: string,
   now: string,
 ): Promise<MigrationResult> {
+  await revokeMigrationSourceAuthority(payload, migration, now)
   migration = await updateMigration(payload, migration, {
     state: "failed",
     ...clearedMigrationCredentials(now),
@@ -1658,6 +1757,7 @@ async function stopMigrationForRevokedPaymentBeforeRegistrarCommit(
   order: Order,
   now: string,
 ): Promise<MigrationResult> {
+  await revokeMigrationSourceAuthority(payload, migration, now)
   migration = await updateMigration(payload, migration, {
     state: "failed",
     ...clearedMigrationCredentials(now),
@@ -2505,6 +2605,7 @@ async function rollbackCutover(
     reconciliationRequired: false,
     failureReason: redactOperationalMessage(reason),
   }, "migration_automatically_rolled_back", deps.now())
+  await revokeMigrationSourceAuthority(payload, migration, deps.now())
   migration = await updateMigration(payload, migration, {
     state: "rolled_back",
     rollbackWriteState: "confirmed",
@@ -2855,6 +2956,11 @@ export async function prepareDomainMigration(
     ).some((record) =>
       semanticZoneComparison(target.records, [record]).unexpected.length > 0)
     if (unexpectedExisting) {
+      await revokeMigrationSourceAuthority(
+        payload,
+        migration,
+        deps.now(),
+      )
       migration = await updateMigration(payload, migration, {
         state: "failed",
         semanticComparison: comparison,
@@ -3707,6 +3813,7 @@ export async function prepareDomainMigration(
     failureReason: null,
   }, "migration_cutover_verified", deps.now())
   managedDomain = await deps.activateManagedDomainEntitlement(payload, managedDomain, deps.now())
+  await revokeMigrationSourceAuthority(payload, migration, deps.now())
   migration = await updateMigration(payload, migration, {
     state: "completed",
     completedAt: deps.now(),

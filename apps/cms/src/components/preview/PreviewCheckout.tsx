@@ -140,6 +140,7 @@ export type PreviewCheckoutCatalog = {
 }
 
 type PreviewCheckoutProps = {
+  clientSlug?: string
   customerEmail: string
   currentDomain?: string | null
   domainReady?: boolean
@@ -150,6 +151,10 @@ type PreviewCheckoutProps = {
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
   enabledMigrationSourceMethods?: AutomaticMigrationSourceMethod[]
+  cloudflareSourceOAuthEnabled?: boolean
+  cloudflareSourceAuthorization?: string | null
+  cloudflareSourceDomain?: string | null
+  cloudflareSourceResult?: "connected" | "failed" | "provider-mismatch" | null
   migrationStatus?: CustomerMigrationStatus | null
   provisioningStatus?: CustomerProvisioningStatus | null
   acceptedOrderId?: string | number | null
@@ -227,6 +232,7 @@ const checkoutFieldId = (field: string): string | null => ({
 } as Record<string, string>)[field] ?? null
 
 export function PreviewCheckout({
+  clientSlug = "",
   customerEmail,
   currentDomain,
   domainReady = false,
@@ -237,6 +243,10 @@ export function PreviewCheckout({
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
   enabledMigrationSourceMethods = [],
+  cloudflareSourceOAuthEnabled = false,
+  cloudflareSourceAuthorization = null,
+  cloudflareSourceDomain = null,
+  cloudflareSourceResult = null,
   migrationStatus = null,
   provisioningStatus = null,
   acceptedOrderId = null,
@@ -308,10 +318,15 @@ export function PreviewCheckout({
   )
   const [domainMode, setDomainMode] = React.useState<
     "new_registration" | "existing_domain"
-  >(initialQuotes?.annual.quote.domainMode ?? "new_registration")
+  >(
+    cloudflareSourceAuthorization
+      ? "existing_domain"
+      : initialQuotes?.annual.quote.domainMode ?? "new_registration",
+  )
   const [migrationSourceMethod, setMigrationSourceMethod] =
     React.useState<AutomaticMigrationSourceMethod | "">(() => {
       const source = initialQuotes?.annual.quote.migrationSourceMechanism
+      if (cloudflareSourceAuthorization) return "cloudflare_api_v1"
       return source && source !== "customer_authorized_provider_export_v1"
         ? source
         : ""
@@ -325,7 +340,9 @@ export function PreviewCheckout({
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
   const [suggestionsPending, setSuggestionsPending] = React.useState(false)
   const readyDomain = domainReady && currentDomain ? currentDomain : null
-  const [domainValue, setDomainValue] = React.useState(readyDomain ?? "")
+  const [domainValue, setDomainValue] = React.useState(
+    cloudflareSourceDomain ?? readyDomain ?? "",
+  )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const domainRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
@@ -404,11 +421,28 @@ export function PreviewCheckout({
         domain: checkState.domain,
         publicEvidence: checkState.migrationPublicEvidence,
       })
+      if (existingDomainMigrationEnabled && cloudflareSourceOAuthEnabled) {
+        const detectedProvider =
+          checkState.migrationPublicEvidence?.probableDnsProvider
+        if (
+          detectedProvider === "cloudflare" &&
+          enabledMigrationSourceMethods.includes("cloudflare_api_v1")
+        ) {
+          setMigrationSourceMethod("cloudflare_api_v1")
+        } else if (
+          enabledMigrationSourceMethods.includes("authorized_axfr_v1")
+        ) {
+          setMigrationSourceMethod("authorized_axfr_v1")
+        }
+      }
     }
   }, [
     checkState,
     checkTokenIsCurrent,
+    cloudflareSourceOAuthEnabled,
     domainMode,
+    enabledMigrationSourceMethods,
+    existingDomainMigrationEnabled,
     normalizedDomainValue,
   ])
 
@@ -735,9 +769,55 @@ export function PreviewCheckout({
     setPaymentSubmitRequested(true)
     paymentFormRef.current?.requestSubmit()
   }
+  const acceptedMigrationDomain =
+    initialQuotes?.annual.quote.domainMode === "existing_domain"
+      ? initialQuotes.annual.quote.selectedDomain
+      : null
+  const cloudflareSourceMatchesAcceptedOrder = Boolean(
+    acceptedMigrationDomain &&
+    cloudflareSourceAuthorization &&
+    cloudflareSourceDomain === acceptedMigrationDomain,
+  )
 
   return (
     <main className="min-h-dvh bg-background pb-24 text-foreground md:pb-6">
+      {cloudflareSourceOAuthEnabled && (
+        <>
+          {domainMode === "existing_domain" && normalizedDomainValue && (
+            <form
+              id="checkout-cloudflare-source-connect-form"
+              method="post"
+              action="/api/domain-migration-source/cloudflare/start"
+              hidden
+            >
+              <input type="hidden" name="clientSlug" value={clientSlug} />
+              <input type="hidden" name="domain" value={normalizedDomainValue} />
+            </form>
+          )}
+          {migrationStatus?.domain && (
+            <form
+              id="migration-cloudflare-source-reconnect-form"
+              method="post"
+              action="/api/domain-migration-source/cloudflare/start"
+              hidden
+            >
+              <input type="hidden" name="clientSlug" value={clientSlug} />
+              <input type="hidden" name="domain" value={migrationStatus.domain} />
+            </form>
+          )}
+          {acceptedMigrationDomain && (
+            <form
+              id="accepted-cloudflare-source-reconnect-form"
+              method="post"
+              action="/api/domain-migration-source/cloudflare/start"
+              hidden
+            >
+              <input type="hidden" name="clientSlug" value={clientSlug} />
+              <input type="hidden" name="domain" value={acceptedMigrationDomain} />
+            </form>
+          )}
+        </>
+      )}
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center gap-3 px-3 py-2 md:min-h-16 md:px-4">
           <a href={previewHref} className="flex min-w-0 items-center gap-2">
@@ -862,16 +942,42 @@ export function PreviewCheckout({
                     />
                   )}
                   {migrationSourceMethod === "cloudflare_api_v1" && (
-                    <CheckoutTextField
-                      id="accepted-cloudflare-source-token"
-                      name="cloudflareSourceToken"
-                      type="password"
-                      label={t("checkoutMigrationCloudflareTokenLabel")}
-                      description={t("checkoutMigrationCloudflareTokenHelp")}
-                      value={undefined}
-                      autoComplete="off"
-                      required
-                    />
+                    cloudflareSourceOAuthEnabled ? (
+                      cloudflareSourceMatchesAcceptedOrder ? (
+                        <>
+                          <Alert role="status">
+                            <AlertTitle>Cloudflare is opnieuw gekoppeld</AlertTitle>
+                            <AlertDescription>
+                              De volledige DNS-bron is opnieuw gecontroleerd
+                              voor deze geaccepteerde bestelling.
+                            </AlertDescription>
+                          </Alert>
+                          <input
+                            type="hidden"
+                            name="cloudflareSourceAuthorization"
+                            value={cloudflareSourceAuthorization ?? ""}
+                          />
+                        </>
+                      ) : (
+                        <Button
+                          type="submit"
+                          form="accepted-cloudflare-source-reconnect-form"
+                          className="w-fit"
+                        >
+                          Cloudflare opnieuw koppelen
+                        </Button>
+                      )
+                    ) : (
+                      <Alert variant="destructive" role="alert">
+                        <AlertTitle>
+                          Veilige Cloudflare-koppeling is niet beschikbaar
+                        </AlertTitle>
+                        <AlertDescription>
+                          De bestelling blijft veilig gepauzeerd totdat de
+                          gedelegeerde koppeling beschikbaar is.
+                        </AlertDescription>
+                      </Alert>
+                    )
                   )}
                   {migrationSourceMethod === "authorized_axfr_v1" && (
                     <>
@@ -958,7 +1064,17 @@ export function PreviewCheckout({
                     />
                     <span>{t("checkoutMigrationTransferAuthorization")}</span>
                   </label>
-                  <Button type="submit" className="w-fit" disabled={recollectionPending}>
+                  <Button
+                    type="submit"
+                    className="w-fit"
+                    disabled={
+                      recollectionPending ||
+                      (
+                        migrationSourceMethod === "cloudflare_api_v1" &&
+                        !cloudflareSourceMatchesAcceptedOrder
+                      )
+                    }
+                  >
                     {recollectionPending && (
                       <Loader2 className="size-4 animate-spin" aria-hidden />
                     )}
@@ -1056,16 +1172,46 @@ export function PreviewCheckout({
                         <>
                           {migrationStatus.sourceMechanism ===
                             "cloudflare_api_v1" && (
-                              <CheckoutTextField
-                                id="migration-replacement-cloudflare-token"
-                                name="cloudflareSourceToken"
-                                type="password"
-                                label={t("checkoutMigrationCloudflareTokenLabel")}
-                                description={t("checkoutMigrationCloudflareTokenHelp")}
-                                value={undefined}
-                                autoComplete="off"
-                                required
-                              />
+                              cloudflareSourceOAuthEnabled ? (
+                                cloudflareSourceAuthorization &&
+                                cloudflareSourceDomain ===
+                                  migrationStatus.domain ? (
+                                  <>
+                                    <Alert role="status">
+                                      <AlertTitle>
+                                        Cloudflare is opnieuw gekoppeld
+                                      </AlertTitle>
+                                      <AlertDescription>
+                                        Sla de nieuwe bronmachtiging op om de
+                                        automatische migratie te hervatten.
+                                      </AlertDescription>
+                                    </Alert>
+                                    <input
+                                      type="hidden"
+                                      name="cloudflareSourceAuthorization"
+                                      value={cloudflareSourceAuthorization}
+                                    />
+                                  </>
+                                ) : (
+                                  <Button
+                                    type="submit"
+                                    form="migration-cloudflare-source-reconnect-form"
+                                    className="w-fit"
+                                  >
+                                    Cloudflare opnieuw koppelen
+                                  </Button>
+                                )
+                              ) : (
+                                <Alert variant="destructive" role="alert">
+                                  <AlertTitle>
+                                    Veilige Cloudflare-koppeling is niet beschikbaar
+                                  </AlertTitle>
+                                  <AlertDescription>
+                                    De migratie blijft veilig gepauzeerd totdat
+                                    de gedelegeerde koppeling beschikbaar is.
+                                  </AlertDescription>
+                                </Alert>
+                              )
                             )}
                           {migrationStatus.sourceMechanism ===
                             "authorized_axfr_v1" && (
@@ -1153,7 +1299,22 @@ export function PreviewCheckout({
                           />
                         </>
                       )}
-                    <Button type="submit" className="w-fit" disabled={transferCodePending}>
+                    <Button
+                      type="submit"
+                      className="w-fit"
+                      disabled={
+                        transferCodePending ||
+                        (
+                          migrationStatus.sourceMechanism ===
+                            "cloudflare_api_v1" &&
+                          cloudflareSourceOAuthEnabled &&
+                          !(
+                            cloudflareSourceAuthorization &&
+                            cloudflareSourceDomain === migrationStatus.domain
+                          )
+                        )
+                      }
+                    >
                       {transferCodePending && (
                         <Loader2 className="size-4 animate-spin" aria-hidden />
                       )}
@@ -1188,6 +1349,23 @@ export function PreviewCheckout({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
+              {cloudflareSourceResult === "failed" && (
+                <Alert variant="destructive" role="alert">
+                  <AlertTitle>Cloudflare-koppeling niet voltooid</AlertTitle>
+                  <AlertDescription>
+                    Probeer de koppeling opnieuw. Er is niets besteld,
+                    betaald of verhuisd.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {cloudflareSourceResult === "provider-mismatch" && (
+                <Alert role="status">
+                  <AlertTitle>Dit domein gebruikt geen Cloudflare-DNS</AlertTitle>
+                  <AlertDescription>
+                    Kies de getoonde geautoriseerde DNS-bron voor dit domein.
+                  </AlertDescription>
+                </Alert>
+              )}
               <fieldset className="grid gap-3">
                 <legend className="text-base font-semibold">
                   {t("checkoutDomainModeLegend")}
@@ -1283,67 +1461,130 @@ export function PreviewCheckout({
                 </div>
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
-                  migrationPreflight?.domain === normalizedDomainValue && (
+                  (
+                    migrationPreflight?.domain === normalizedDomainValue ||
+                    (
+                      cloudflareSourceAuthorization &&
+                      cloudflareSourceDomain === normalizedDomainValue
+                    )
+                  ) && (
                   <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
-                    <fieldset className="grid gap-3">
-                      <legend className="font-medium">
+                    {!cloudflareSourceAuthorization &&
+                      cloudflareSourceOAuthEnabled && (
+                    <div className="grid gap-2">
+                      <p className="font-medium">
                         {t("checkoutMigrationSourceLegend")}
-                      </legend>
-                      <p className="text-sm text-muted-foreground">
-                        {t("checkoutMigrationSourceHelp")}
                       </p>
-                      {([
-                        ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
-                        ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
-                        ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
-                      ] as const)
-                        .filter(([value]) =>
-                          enabledMigrationSourceMethods.includes(value))
-                        .map(([value, label]) => (
-                        <label
-                          key={value}
-                          className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3"
-                        >
-                          <input
-                            type="radio"
-                            name="checkout-migration-source"
-                            value={value}
-                            checked={migrationSourceMethod === value}
-                            onChange={() => updateMigrationSourceMethod(value)}
-                            className="mt-1"
-                          />
-                          <span>{t(label)}</span>
-                        </label>
-                      ))}
-                    </fieldset>
+                      <p className="text-sm text-muted-foreground">
+                        {migrationSourceMethod === "cloudflare_api_v1"
+                          ? "Cloudflare is als DNS-provider herkend. Koppel je account veilig om de volledige zone automatisch te controleren."
+                          : migrationSourceMethod === "authorized_axfr_v1"
+                            ? "Voor deze DNS-provider gebruiken we een geautoriseerde volledige zoneoverdracht (AXFR)."
+                            : t("checkoutMigrationSourceHelp")}
+                      </p>
+                    </div>
+                    )}
+                    {!cloudflareSourceAuthorization &&
+                      !cloudflareSourceOAuthEnabled && (
+                        <fieldset className="grid gap-3">
+                          <legend className="font-medium">
+                            {t("checkoutMigrationSourceLegend")}
+                          </legend>
+                          <p className="text-sm text-muted-foreground">
+                            {t("checkoutMigrationSourceHelp")}
+                          </p>
+                          {([
+                            ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
+                            ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
+                            ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
+                          ] as const)
+                            .filter(([value]) =>
+                              enabledMigrationSourceMethods.includes(value))
+                            .map(([value, label]) => (
+                              <label
+                                key={value}
+                                className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3"
+                              >
+                                <input
+                                  type="radio"
+                                  name="checkout-migration-source"
+                                  value={value}
+                                  checked={migrationSourceMethod === value}
+                                  onChange={() =>
+                                    updateMigrationSourceMethod(value)}
+                                  className="mt-1"
+                                />
+                                <span>{t(label)}</span>
+                              </label>
+                            ))}
+                        </fieldset>
+                      )}
                     {migrationSourceMethod === "cloudflare_api_v1" && (
-                      <CheckoutTextField
-                        id="checkout-cloudflare-source-token"
-                        name="cloudflareSourceToken"
-                        type="password"
-                        label={t("checkoutMigrationCloudflareTokenLabel")}
-                        description={t("checkoutMigrationCloudflareTokenHelp")}
-                        value={undefined}
-                        autoComplete="off"
-                        required
-                      />
+                      cloudflareSourceOAuthEnabled ? (
+                        cloudflareSourceAuthorization ? (
+                          <Alert role="status">
+                            <AlertTitle>Cloudflare is veilig gekoppeld</AlertTitle>
+                            <AlertDescription>
+                              De volledige DNS-zone is gecontroleerd. Vul alleen
+                              nog de verhuiscode in; de verhuizing start pas na
+                              een geslaagde betaling.
+                            </AlertDescription>
+                            <input
+                              type="hidden"
+                              name="cloudflareSourceAuthorization"
+                              value={cloudflareSourceAuthorization}
+                            />
+                          </Alert>
+                        ) : (
+                          <Button
+                            type="submit"
+                            form="checkout-cloudflare-source-connect-form"
+                            className="w-fit"
+                          >
+                            Cloudflare veilig koppelen
+                          </Button>
+                        )
+                      ) : (
+                        <Alert variant="destructive" role="alert">
+                          <AlertTitle>
+                            Veilige Cloudflare-koppeling is niet beschikbaar
+                          </AlertTitle>
+                          <AlertDescription>
+                            Deze bronroute blijft uitgeschakeld; er wordt geen
+                            API-token in checkout geaccepteerd.
+                          </AlertDescription>
+                        </Alert>
+                      )
                     )}
                     {migrationSourceMethod === "authorized_axfr_v1" && (
                       <>
-                        <CheckoutTextField
-                          id="checkout-axfr-nameserver"
-                          name="axfrNameserver"
-                          label={t("checkoutMigrationAxfrNameserverLabel")}
-                          description={t("checkoutMigrationAxfrNameserverHelp")}
-                          value={undefined}
-                          defaultValue={
-                            (checkState.migrationPublicEvidence ??
-                              migrationPreflight.publicEvidence)
-                              ?.authoritativeNameservers[0]
-                          }
-                          autoComplete="off"
-                          required
-                        />
+                        <div className="grid gap-2">
+                          <Label htmlFor="checkout-axfr-nameserver">
+                            {t("checkoutMigrationAxfrNameserverLabel")}
+                          </Label>
+                          <select
+                            id="checkout-axfr-nameserver"
+                            name="axfrNameserver"
+                            className="h-10 rounded-md border bg-background px-3 text-sm"
+                            required
+                            defaultValue={
+                              (checkState.migrationPublicEvidence ??
+                                migrationPreflight?.publicEvidence)
+                                ?.authoritativeNameservers[0]
+                            }
+                          >
+                            {(checkState.migrationPublicEvidence ??
+                              migrationPreflight?.publicEvidence)
+                              ?.authoritativeNameservers.map((nameserver) => (
+                                <option key={nameserver} value={nameserver}>
+                                  {nameserver}
+                                </option>
+                              ))}
+                          </select>
+                          <p className="text-sm text-muted-foreground">
+                            {t("checkoutMigrationAxfrNameserverHelp")}
+                          </p>
+                        </div>
                         <CheckoutTextField
                           id="checkout-axfr-tsig-name"
                           name="axfrTsigName"
@@ -2006,6 +2247,13 @@ export function PreviewCheckout({
                   name="checkoutQuoteToken"
                   value={selectedQuote?.token ?? ""}
                 />
+                {cloudflareSourceAuthorization && (
+                  <input
+                    type="hidden"
+                    name="cloudflareSourceAuthorization"
+                    value={cloudflareSourceAuthorization}
+                  />
+                )}
                 <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />

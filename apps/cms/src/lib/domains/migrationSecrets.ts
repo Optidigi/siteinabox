@@ -105,6 +105,11 @@ export type AutomaticSourceRefreshCredential =
       zoneId: string
     }
   | {
+      kind: "cloudflare_oauth"
+      authorizationKey: string
+      zoneId: string
+    }
+  | {
       kind: "authorized_axfr"
       nameserver: string
       tsigName: string | null
@@ -144,7 +149,10 @@ export function buildAutomaticSourceRefreshAuthority(input: {
   const durablePair =
     (
       input.sourceMechanism === "cloudflare_api_v1" &&
-      input.credential.kind === "cloudflare_api_token"
+      (
+        input.credential.kind === "cloudflare_api_token" ||
+        input.credential.kind === "cloudflare_oauth"
+      )
     ) ||
     (
       input.sourceMechanism === "authorized_axfr_v1" &&
@@ -191,12 +199,22 @@ const automaticRefreshCredentialValid = (
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const credential = value as Record<string, unknown>
   if (sourceMechanism === "cloudflare_api_v1") {
-    return credential.kind === "cloudflare_api_token" &&
-      typeof credential.token === "string" &&
-      credential.token.trim().length >= 20 &&
-      credential.token.length <= 512 &&
-      typeof credential.zoneId === "string" &&
-      /^[a-f0-9]{32}$/i.test(credential.zoneId)
+    if (
+      typeof credential.zoneId !== "string" ||
+      !/^[a-f0-9]{32}$/i.test(credential.zoneId)
+    ) {
+      return false
+    }
+    if (credential.kind === "cloudflare_api_token") {
+      return typeof credential.token === "string" &&
+        credential.token.trim().length >= 20 &&
+        credential.token.length <= 512
+    }
+    if (credential.kind === "cloudflare_oauth") {
+      return typeof credential.authorizationKey === "string" &&
+        /^[A-Za-z0-9_-]{40,128}$/.test(credential.authorizationKey)
+    }
+    return false
   }
   if (sourceMechanism === "authorized_axfr_v1") {
     const tsigName = credential.tsigName
@@ -232,7 +250,10 @@ const durableSourceRefreshAuthorityValid = (
   (
     (
       input.sourceMechanism === "cloudflare_api_v1" &&
-      input.credential.kind === "cloudflare_api_token"
+      (
+        input.credential.kind === "cloudflare_api_token" ||
+        input.credential.kind === "cloudflare_oauth"
+      )
     ) ||
     (
       input.sourceMechanism === "authorized_axfr_v1" &&

@@ -357,4 +357,223 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(container.querySelector('input[type="hidden"][name="transferCode"]'))
       .toBeNull()
   })
+
+  it("uses a provider-directed Cloudflare connection without token or source-choice controls", async () => {
+    const checkDomainAction = vi.fn(async (
+      _state: unknown,
+      formData: FormData,
+    ) => ({
+      ok: true,
+      status: "preflight_complete" as const,
+      domain: "example.nl",
+      domainMode: "existing_domain" as const,
+      migrationReadiness: "unsupported" as const,
+      migrationClassification: null,
+      migrationSourceMechanism: undefined,
+      migrationPreflightOnly: true,
+      migrationPublicEvidence: {
+        checkedAt: "2026-07-30T12:00:00.000Z",
+        authoritativeNameservers: [
+          "ada.ns.cloudflare.com",
+          "bob.ns.cloudflare.com",
+        ],
+        dnssecDsPresent: false,
+        dnssecDsRecords: [],
+        dnssecDsTtl: null,
+        probableDnsProvider: "cloudflare",
+        registrar: "Example Registrar",
+        supplementalOnly: true as const,
+      },
+      message: "Preflight complete.",
+      requestToken: String(formData.get("requestToken") ?? ""),
+    }))
+    const props = {
+      clientSlug: "example",
+      customerEmail: "owner@example.test",
+      initialProfile: profile,
+      initialDetails: profile,
+      initialQuotes: null,
+      catalog: {
+        version: "2026-07-26.1",
+        currency: "EUR" as const,
+        vatRateBasisPoints: 2_100,
+        plans: {
+          monthly: { code: "siteinabox-monthly", netAmountMinor: 1_900 },
+          annual: { code: "siteinabox-annual", netAmountMinor: 19_000 },
+        },
+        domainIncludedAllowanceNetMinor: 1_000,
+        migrations: {
+          automaticNetAmountMinor: 0,
+          assistedStandardNetAmountMinor: 4_900,
+        },
+      },
+      paymentStatus: "not_started",
+      previewHref: "/example",
+      prewarmHref: "/example/checkout/prewarm",
+      suggestionsHref: "/example/checkout/suggestions",
+      checkDomainAction,
+      saveProfileAction: vi.fn(),
+      startPaymentAction: vi.fn(),
+      termsHref: "https://www.siteinabox.nl/voorwaarden",
+      privacyHref: "https://www.siteinabox.nl/privacy",
+      termsVersion: "2026-07-07.1",
+      privacyVersion: "2026-07-18.1",
+      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
+      businessUseDeclarationText:
+        "Ik sluit deze overeenkomst uitsluitend zakelijk.",
+      locale: "nl-NL",
+      existingDomainMigrationEnabled: true,
+      cloudflareSourceOAuthEnabled: true,
+      enabledMigrationSourceMethods: [
+        "cloudflare_api_v1" as const,
+        "authorized_axfr_v1" as const,
+      ],
+    }
+    const { container, rerender } = render(<PreviewCheckout {...props} />)
+    fireEvent.click(screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    }))
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    const connect = await screen.findByRole("button", {
+      name: "Cloudflare veilig koppelen",
+    })
+    const connectForm = container.querySelector<HTMLFormElement>(
+      `#${connect.getAttribute("form")}`,
+    )
+    expect(connectForm?.getAttribute("method")).toBe("post")
+    expect(connectForm?.getAttribute("action")).toBe(
+      "/api/domain-migration-source/cloudflare/start",
+    )
+    expect(container.querySelectorAll("form form")).toHaveLength(0)
+    expect(screen.queryByLabelText("checkoutMigrationSourceTokenLabel")).toBeNull()
+    expect(screen.queryByRole("radio", {
+      name: "checkoutMigrationSourceCloudflare",
+    })).toBeNull()
+    expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
+
+    rerender(<PreviewCheckout
+      {...props}
+      cloudflareSourceAuthorization="opaque-source-handle"
+      cloudflareSourceDomain="example.nl"
+      cloudflareSourceResult="connected"
+    />)
+    expect(screen.getByText("Cloudflare is veilig gekoppeld")).toBeTruthy()
+    expect(container.querySelector<HTMLInputElement>(
+      'input[name="cloudflareSourceAuthorization"]',
+    )?.value).toBe("opaque-source-handle")
+    expect(screen.getByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
+    expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
+  })
+
+  it("recollects an accepted Cloudflare source only through a bound OAuth handle", () => {
+    const annual = quote("annual")
+    const monthly = quote("monthly")
+    const existingQuotes = {
+      annual: {
+        ...annual,
+        quote: {
+          ...annual.quote,
+          domainMode: "existing_domain" as const,
+          selectedDomain: "example.nl",
+          migrationClassification: "automatic" as const,
+          migrationSourceMechanism: "cloudflare_api_v1" as const,
+          migrationSourceZoneHash: "zone-hash",
+          migrationSecretKey: "secret-key",
+        },
+      },
+      monthly: {
+        ...monthly,
+        quote: {
+          ...monthly.quote,
+          domainMode: "existing_domain" as const,
+          selectedDomain: "example.nl",
+          migrationClassification: "automatic" as const,
+          migrationSourceMechanism: "cloudflare_api_v1" as const,
+          migrationSourceZoneHash: "zone-hash",
+          migrationSecretKey: "secret-key",
+        },
+      },
+    }
+    const props = {
+      clientSlug: "example",
+      customerEmail: "owner@example.test",
+      currentDomain: "example.nl",
+      domainReady: true,
+      initialProfile: profile,
+      initialDetails: profile,
+      initialQuotes: existingQuotes,
+      acceptedOrderId: 90,
+      requiresMigrationRecollection: true,
+      existingDomainMigrationEnabled: true,
+      cloudflareSourceOAuthEnabled: true,
+      enabledMigrationSourceMethods: ["cloudflare_api_v1" as const],
+      catalog: {
+        version: "2026-07-26.1",
+        currency: "EUR" as const,
+        vatRateBasisPoints: 2_100,
+        plans: {
+          monthly: { code: "siteinabox-monthly", netAmountMinor: 1_900 },
+          annual: { code: "siteinabox-annual", netAmountMinor: 19_000 },
+        },
+        domainIncludedAllowanceNetMinor: 1_000,
+        migrations: { automaticNetAmountMinor: 0 },
+      },
+      paymentStatus: "canceled",
+      previewHref: "/example",
+      prewarmHref: "/example/checkout/prewarm",
+      suggestionsHref: "/example/checkout/suggestions",
+      checkDomainAction: vi.fn(),
+      saveProfileAction: vi.fn(),
+      startPaymentAction: vi.fn(),
+      recollectAcceptedMigrationInputAction: vi.fn(),
+      termsHref: "https://www.siteinabox.nl/voorwaarden",
+      privacyHref: "https://www.siteinabox.nl/privacy",
+      termsVersion: "2026-07-07.1",
+      privacyVersion: "2026-07-18.1",
+      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
+      businessUseDeclarationText:
+        "Ik sluit deze overeenkomst uitsluitend zakelijk.",
+      locale: "nl-NL",
+    }
+    const { container, rerender } = render(<PreviewCheckout {...props} />)
+
+    expect(container.querySelector("#accepted-cloudflare-source-token")).toBeNull()
+    const reconnect = screen.getByRole("button", {
+      name: "Cloudflare opnieuw koppelen",
+    })
+    expect(reconnect.getAttribute("form")).toBe(
+      "accepted-cloudflare-source-reconnect-form",
+    )
+    expect(container.querySelectorAll("form form")).toHaveLength(0)
+    expect((screen.getByRole("button", {
+      name: "checkoutMigrationRecollectionSubmit",
+    }) as HTMLButtonElement).disabled).toBe(true)
+
+    rerender(
+      <PreviewCheckout
+        {...props}
+        cloudflareSourceAuthorization="opaque-source-handle"
+        cloudflareSourceDomain="example.nl"
+        cloudflareSourceResult="connected"
+      />,
+    )
+    const recollectionForm = container.querySelector<HTMLFormElement>(
+      'form input[name="acceptedOrderId"][value="90"]',
+    )?.closest("form")
+    expect(recollectionForm?.querySelector<HTMLInputElement>(
+      'input[name="cloudflareSourceAuthorization"]',
+    )?.value).toBe("opaque-source-handle")
+    expect(recollectionForm?.querySelector("#accepted-cloudflare-source-token"))
+      .toBeNull()
+    expect((screen.getByRole("button", {
+      name: "checkoutMigrationRecollectionSubmit",
+    }) as HTMLButtonElement).disabled).toBe(false)
+    expect(container.querySelectorAll("form form")).toHaveLength(0)
+  })
 })
