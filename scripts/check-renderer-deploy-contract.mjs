@@ -14,6 +14,8 @@ const landingComposePath = resolve(repoRoot, "apps/landing/compose.yml")
 const intakeComposePath = resolve(repoRoot, "apps/intake/compose.yml")
 const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-renderer-image.yml")
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
+const traefikAopConfigPath = resolve(repoRoot, "ops/traefik/cloudflare-aop.dynamic.yml")
+const traefikAopComposePath = resolve(repoRoot, "ops/traefik/compose.cloudflare-aop.yml")
 
 const expectedHosts = [...RENDERER_PRODUCTION_HOSTS].sort()
 const expectedHostSet = new Set(expectedHosts)
@@ -120,6 +122,48 @@ for (const requiredFragment of [
 ]) {
   if (!cmsCompose.includes(requiredFragment)) {
     errors.push(`${formatPath(cmsComposePath)} is missing private CMS Tunnel contract: ${requiredFragment}`)
+  }
+}
+
+const cloudflareAopOption = "tls.options=siteinabox-cloudflare-aop@file"
+for (const composePath of [cmsComposePath, landingComposePath, intakeComposePath]) {
+  const compose = await readFile(composePath, "utf8")
+  const websecureRouters = [
+    ...compose.matchAll(/traefik\.http\.routers\.([a-z0-9-]+)\.entrypoints=websecure/g),
+  ].map((match) => match[1])
+  if (websecureRouters.length === 0) {
+    errors.push(`${formatPath(composePath)} must declare at least one explicit platform websecure router`)
+  }
+  for (const router of websecureRouters) {
+    const requiredBinding = `traefik.http.routers.${router}.${cloudflareAopOption}`
+    if (!compose.includes(requiredBinding)) {
+      errors.push(
+        `${formatPath(composePath)} must bind platform HTTPS router ${router} to ${cloudflareAopOption}`,
+      )
+    }
+  }
+}
+
+const traefikAopConfig = await readFile(traefikAopConfigPath, "utf8")
+for (const requiredFragment of [
+  "siteinabox-cloudflare-aop:",
+  "minVersion: VersionTLS12",
+  "sniStrict: true",
+  "/run/secrets/siteinabox-cloudflare-aop-ca.pem",
+  "clientAuthType: RequireAndVerifyClientCert",
+]) {
+  if (!traefikAopConfig.includes(requiredFragment)) {
+    errors.push(`${formatPath(traefikAopConfigPath)} is missing platform AOP contract: ${requiredFragment}`)
+  }
+}
+const traefikAopCompose = await readFile(traefikAopComposePath, "utf8")
+for (const requiredFragment of [
+  "TRAEFIK_PROVIDERS_FILE_DIRECTORY: /etc/traefik/dynamic",
+  "./cloudflare-aop.dynamic.yml:/etc/traefik/dynamic/cloudflare-aop.yml:ro",
+  "${SIAB_CLOUDFLARE_AOP_CA_FILE:?required}:/run/secrets/siteinabox-cloudflare-aop-ca.pem:ro",
+]) {
+  if (!traefikAopCompose.includes(requiredFragment)) {
+    errors.push(`${formatPath(traefikAopComposePath)} is missing platform AOP deployment contract: ${requiredFragment}`)
   }
 }
 for (const forbiddenFragment of [

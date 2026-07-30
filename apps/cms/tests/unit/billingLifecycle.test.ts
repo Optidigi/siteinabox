@@ -107,6 +107,10 @@ const createStore = (input: {
     orders: MockDoc[]
     attempts: MockDoc[]
   }) => void
+  beforeRenewalCycleConditionalUpdate?: (state: {
+    cycles: MockDoc[]
+  }) => void
+  failManagedDomainUpdateOnce?: boolean
 } = {}) => {
   const agreement = { ...baseAgreement, ...input.agreement }
   const tenant = {
@@ -157,6 +161,8 @@ const createStore = (input: {
     return doc
   })
   let conditionalHookPending = Boolean(input.beforeAgreementConditionalUpdate)
+  let renewalCycleHookPending = Boolean(input.beforeRenewalCycleConditionalUpdate)
+  let managedDomainFailurePending = Boolean(input.failManagedDomainUpdateOnce)
   const update = vi.fn(async ({
     collection,
     id,
@@ -182,6 +188,19 @@ const createStore = (input: {
         ).toISOString()
       }
       return { docs, totalDocs: docs.length }
+    }
+    if (collection === "domain-renewal-cycles" && where) {
+      if (renewalCycleHookPending) {
+        renewalCycleHookPending = false
+        input.beforeRenewalCycleConditionalUpdate?.({ cycles })
+      }
+      const docs = cycles.filter((doc) => matchesWhere(doc, where))
+      for (const doc of docs) Object.assign(doc, data)
+      return { docs, totalDocs: docs.length }
+    }
+    if (collection === "managed-domains" && managedDomainFailurePending) {
+      managedDomainFailurePending = false
+      throw new Error("injected managed-domain update failure")
     }
     const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
@@ -585,6 +604,157 @@ describe("application-created recurring billing", () => {
       renewalIntent: false,
       cancelAt: "2026-09-01T10:00:00.000Z",
     })
+  })
+
+  it("preserves a renewal cycle committed concurrently with cancellation", async () => {
+    const domain = {
+      id: 950,
+      tenant: 1,
+      domainNameAscii: "example.nl",
+      state: "active",
+      renewalIntent: true,
+    }
+    const cycle = {
+      id: 960,
+      managedDomain: 950,
+      billingAgreement: 900,
+      state: "payment_required",
+      providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
+      paymentSecuredAt: null,
+      stateHistory: [],
+    }
+    const store = createStore({
+      domains: [domain],
+      cycles: [cycle],
+      beforeRenewalCycleConditionalUpdate: ({ cycles }) => {
+        const concurrentCycle = cycles[0]
+        if (!concurrentCycle) throw new Error("Missing renewal cycle fixture")
+        Object.assign(concurrentCycle, {
+          state: "payment_committed",
+          paymentSecuredAt: "2026-07-27T10:00:00.500Z",
+        })
+      },
+    })
+
+    await expect(scheduleCancellationAtPeriodEnd({
+      payload: store.payload,
+      agreementId: 900,
+      tenantId: 1,
+      actorUserId: 10,
+      actorEmail: "owner@example.com",
+      now: new Date("2026-07-27T10:00:00.000Z"),
+    })).resolves.toMatchObject({ state: "cancellation_scheduled" })
+    expect(cycle).toMatchObject({
+      state: "payment_committed",
+      paymentSecuredAt: "2026-07-27T10:00:00.500Z",
+    })
+    expect(ensureCommerceNotification).toHaveBeenCalledOnce()
+  })
+
+  it("resumes cancellation cleanup and notification after a partial failure", async () => {
+    const domain = {
+      id: 950,
+      tenant: 1,
+      domainNameAscii: "example.nl",
+      state: "active",
+      renewalIntent: true,
+    }
+    const cycle = {
+      id: 960,
+      managedDomain: 950,
+      billingAgreement: 900,
+      state: "payment_required",
+      providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
+      paymentSecuredAt: null,
+      stateHistory: [],
+    }
+    const store = createStore({
+      domains: [domain],
+      cycles: [cycle],
+      failManagedDomainUpdateOnce: true,
+    })
+    const cancellationInput = {
+      payload: store.payload,
+      agreementId: 900,
+      tenantId: 1,
+      actorUserId: 10,
+      actorEmail: "owner@example.com",
+      now: new Date("2026-07-27T10:00:00.000Z"),
+    }
+
+    await expect(scheduleCancellationAtPeriodEnd(cancellationInput))
+      .rejects.toThrow("injected managed-domain update failure")
+    expect(store.agreement).toMatchObject({ state: "cancellation_scheduled" })
+    expect(domain).toMatchObject({ renewalIntent: true })
+
+    await expect(scheduleCancellationAtPeriodEnd(cancellationInput))
+      .resolves.toMatchObject({ state: "cancellation_scheduled" })
+    expect(domain).toMatchObject({ renewalIntent: false })
+    expect(cycle).toMatchObject({ state: "cancelled" })
+    expect(ensureCommerceNotification).toHaveBeenCalledOnce()
+  })
+
+  it("repairs effective cancellation side effects after the agreement was committed", async () => {
+    const domain = {
+      id: 950,
+      tenant: 1,
+      domainNameAscii: "example.nl",
+      state: "active",
+      renewalIntent: true,
+    }
+    const uncovered = {
+      id: 960,
+      managedDomain: 950,
+      billingAgreement: 900,
+      state: "payment_required",
+      providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
+      paymentSecuredAt: null,
+      stateHistory: [],
+    }
+    const committed = {
+      id: 961,
+      managedDomain: 950,
+      billingAgreement: 900,
+      state: "payment_committed",
+      providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
+      paymentSecuredAt: "2026-07-20T00:00:00.000Z",
+      stateHistory: [],
+    }
+    const store = createStore({
+      agreement: {
+        state: "cancellation_scheduled",
+        renewalIntent: false,
+        cancelAt: "2026-08-01T10:00:00.000Z",
+      },
+      domains: [domain],
+      cycles: [uncovered, committed],
+      failManagedDomainUpdateOnce: true,
+    })
+    const processInput = {
+      payload: store.payload,
+      agreement: store.agreement as never,
+      now: new Date("2026-08-01T10:00:00.000Z"),
+    }
+
+    await expect(processBillingAgreement(processInput))
+      .rejects.toThrow("injected managed-domain update failure")
+    expect(store.agreement).toMatchObject({
+      state: "cancelled",
+      cancelledAt: "2026-08-01T10:00:00.000Z",
+    })
+
+    await expect(processBillingAgreement(processInput)).resolves.toEqual({
+      status: "cancelled",
+      paymentRequested: false,
+    })
+    expect(domain).toMatchObject({ renewalIntent: false })
+    expect(uncovered).toMatchObject({ state: "cancelled" })
+    expect(committed).toMatchObject({ state: "payment_committed" })
+    expect(ensureCommerceNotification).toHaveBeenCalledOnce()
+    expect(ensureCommerceNotification).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "cancellation_effective",
+      eventAt: "2026-08-01T10:00:00.000Z",
+    }))
   })
 
   it("does not regress a concurrently paid agreement back to past due", async () => {

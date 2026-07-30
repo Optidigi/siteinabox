@@ -517,7 +517,16 @@ export async function processBillingAgreement(input: {
   const now = nowDate.toISOString()
   let agreement = input.agreement
   const origin = await loadOriginatingOrder(input.payload, agreement)
-  if (agreement.state === "cancelled" || agreement.state === "suspended") {
+  if (agreement.state === "cancelled") {
+    await reconcileCancelledAgreement({
+      payload: input.payload,
+      agreement,
+      origin,
+      now,
+    })
+    return { status: agreement.state, paymentRequested: false }
+  }
+  if (agreement.state === "suspended") {
     return { status: agreement.state, paymentRequested: false }
   }
   if (agreement.state === "cancellation_scheduled") {
@@ -705,7 +714,13 @@ async function cancelUncoveredRenewals(
       ) continue
       await payload.update({
         collection: "domain-renewal-cycles",
-        id: cycle.id,
+        where: {
+          and: [
+            { id: { equals: cycle.id } },
+            { state: { in: ["scheduled", "payment_required", "failed", "manual_review"] } },
+            { paymentSecuredAt: { exists: false } },
+          ],
+        },
         data: {
           state: "cancelled",
           cancelledAt: now,
@@ -794,9 +809,12 @@ export async function scheduleCancellationAtPeriodEnd(input: {
       throw new Error("Billing agreement does not belong to the authenticated tenant.")
     }
     if (
-      candidate.state === "cancelled" ||
-      candidate.state === "cancellation_scheduled"
+      candidate.state === "cancelled"
     ) return candidate
+    if (candidate.state === "cancellation_scheduled") {
+      agreement = candidate
+      break
+    }
     if (!["active", "past_due", "suspended"].includes(candidate.state)) {
       throw new Error("Billing agreement cannot be cancelled in its current state.")
     }
@@ -878,21 +896,37 @@ async function finalizeCancellation(input: {
   origin: Order
   now: string
 }): Promise<BillingAgreement> {
-  const agreement = await claimAgreementUpdate(input.payload, input.agreement, {
+  const claimed = await claimAgreementUpdate(input.payload, input.agreement, {
     state: "cancelled",
     renewalIntent: false,
     cancelledAt: input.now,
     endedAt: input.now,
     stateHistory: agreementHistory(input.agreement, "cancelled", input.now, "period_end"),
   })
-  if (!agreement) {
-    return input.payload.findByID({
+  const agreement = claimed ?? await input.payload.findByID({
       collection: "billing-agreements",
       id: input.agreement.id,
       depth: 0,
       overrideAccess: true,
-    }) as Promise<BillingAgreement>
+    }) as BillingAgreement
+  if (agreement.state !== "cancelled") {
+    return agreement
   }
+  await reconcileCancelledAgreement({
+    payload: input.payload,
+    agreement,
+    origin: input.origin,
+    now: input.now,
+  })
+  return agreement
+}
+
+async function reconcileCancelledAgreement(input: {
+  payload: Payload
+  agreement: BillingAgreement
+  origin: Order
+  now: string
+}): Promise<void> {
   const tenantId = relationshipId(input.agreement.tenant)
   if (tenantId) {
     const tenant = await input.payload.findByID({
@@ -916,13 +950,12 @@ async function finalizeCancellation(input: {
       })
     }
   }
-  await cancelUncoveredRenewals(input.payload, agreement, input.now)
+  await cancelUncoveredRenewals(input.payload, input.agreement, input.now)
   await ensureBillingNotification({
     payload: input.payload,
-    agreement,
+    agreement: input.agreement,
     order: input.origin,
     kind: "cancellation_effective",
-    eventAt: input.now,
+    eventAt: input.agreement.cancelledAt ?? input.agreement.endedAt ?? input.now,
   })
-  return agreement
 }
