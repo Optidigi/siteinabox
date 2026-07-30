@@ -14,6 +14,7 @@ import type {
   CheckoutProfile,
   ManagedDomain,
   Order,
+  PaymentAttempt,
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
@@ -57,6 +58,11 @@ import {
   buildTenantEmailSendingFromCloudflareSubdomain,
   type TenantEmailSendingState,
 } from "@/lib/tenants/emailSending"
+import {
+  initialPaymentBlocksNewFulfillment,
+  initialPaymentIsFinanciallySecured,
+  registrarCommitStarted,
+} from "@/lib/payments/initialPaymentPolicy"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import {
   verifyAuthoritativeDns,
@@ -75,6 +81,8 @@ export type ProvisionPaidDomainResult = {
   managedDomain: ManagedDomain
   message?: string
 }
+
+export type InitialDomainFinancialAuthority = "paid" | "custody_only"
 
 type ProvisioningDependencies = {
   now: () => string
@@ -123,6 +131,66 @@ const readObject = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null
+
+async function assertInitialDomainFinancialAuthority(
+  payload: Payload,
+  input: {
+    orderId: string | number
+    paymentAttemptId: string | number
+  },
+): Promise<{
+  authority: InitialDomainFinancialAuthority
+  order: Order
+}> {
+  const [order, attempt, domains] = await Promise.all([
+    payload.findByID({
+      collection: "orders",
+      id: input.orderId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<Order>,
+    payload.findByID({
+      collection: "payment-attempts",
+      id: input.paymentAttemptId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<PaymentAttempt>,
+    payload.find({
+      collection: "managed-domains",
+      where: { originatingOrder: { equals: input.orderId } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    }),
+  ])
+  if (
+    attempt.purpose !== "first_payment" ||
+    !sameRelationshipId(attempt.order, order.id)
+  ) {
+    throw new Error("Domain provisioning requires its order-bound first payment attempt.")
+  }
+  const managedDomain = domains.docs.length === 1
+    ? domains.docs[0] as ManagedDomain
+    : null
+  if (
+    initialPaymentIsFinanciallySecured(order, attempt) &&
+    (
+      order.state === "fulfillment_pending" ||
+      registrarCommitStarted(managedDomain)
+    )
+  ) {
+    return { authority: "paid", order }
+  }
+  if (
+    initialPaymentBlocksNewFulfillment(attempt) &&
+    registrarCommitStarted(managedDomain)
+  ) {
+    return { authority: "custody_only", order }
+  }
+  throw new Error(
+    "Domain provisioning is blocked without a financially secured order; no provider write was attempted.",
+  )
+}
 
 const capabilityForAcceptedOrder = (
   order: Order,
@@ -194,6 +262,123 @@ async function updateManagedDomain(
     overrideAccess: true,
     context: { managedDomainLifecycleMutation: true },
   }) as Promise<ManagedDomain>
+}
+
+async function claimRegistrarCommit(
+  payload: Payload,
+  input: {
+    order: Order
+    paymentAttemptId: string | number
+    managedDomain: ManagedDomain
+    now: string
+  },
+): Promise<ManagedDomain | null> {
+  const transactionID = await payload.db.beginTransaction()
+  if (!transactionID) {
+    throw new Error("Registrar commitment requires a database transaction.")
+  }
+  const req = { transactionID }
+  try {
+    let attemptClaim = await payload.update({
+      collection: "payment-attempts",
+      where: {
+        and: [
+          { id: { equals: input.paymentAttemptId } },
+          { order: { equals: input.order.id } },
+          { purpose: { equals: "first_payment" } },
+          { state: { equals: "paid" } },
+        ],
+      },
+      data: { state: "paid" },
+      depth: 0,
+      overrideAccess: true,
+      context: { paymentAttemptLifecycleMutation: true },
+      req,
+    })
+    if (!Array.isArray(attemptClaim.docs) || attemptClaim.docs.length === 0) {
+      attemptClaim = await payload.update({
+        collection: "payment-attempts",
+        where: {
+          and: [
+            { id: { equals: input.paymentAttemptId } },
+            { order: { equals: input.order.id } },
+            { purpose: { equals: "first_payment" } },
+            { state: { equals: "refund_failed" } },
+          ],
+        },
+        data: { state: "refund_failed" },
+        depth: 0,
+        overrideAccess: true,
+        context: { paymentAttemptLifecycleMutation: true },
+        req,
+      })
+    }
+    const claimedAttempt = Array.isArray(attemptClaim.docs)
+      ? attemptClaim.docs[0] as PaymentAttempt | undefined
+      : undefined
+    if (!claimedAttempt?.providerPaymentId) {
+      await payload.db.rollbackTransaction(transactionID)
+      return null
+    }
+    const orderClaim = await payload.update({
+      collection: "orders",
+      where: {
+        and: [
+          { id: { equals: input.order.id } },
+          { state: { equals: "fulfillment_pending" } },
+          { paymentStatus: { equals: "paid" } },
+          { providerPaymentId: { equals: claimedAttempt.providerPaymentId } },
+        ],
+      },
+      data: { paymentStatus: "paid" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+      req,
+    })
+    if (!Array.isArray(orderClaim.docs) || orderClaim.docs.length !== 1) {
+      await payload.db.rollbackTransaction(transactionID)
+      return null
+    }
+    const domainClaim = await payload.update({
+      collection: "managed-domains",
+      where: {
+        and: [
+          { id: { equals: input.managedDomain.id } },
+          { originatingOrder: { equals: input.order.id } },
+          { providerRegistrationState: { equals: "not_started" } },
+        ],
+      },
+      data: {
+        providerRegistrationState: "prepared",
+        registrationRequestedAt: input.now,
+        reconciliationRequired: true,
+        failureReason: null,
+        stateHistory: historyWith(
+          input.managedDomain,
+          input.now,
+          input.managedDomain.state,
+          "provider_registration_prepared",
+        ),
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { managedDomainLifecycleMutation: true },
+      req,
+    })
+    const claimedDomain = Array.isArray(domainClaim.docs)
+      ? domainClaim.docs[0] as ManagedDomain | undefined
+      : undefined
+    if (!claimedDomain) {
+      await payload.db.rollbackTransaction(transactionID)
+      return null
+    }
+    await payload.db.commitTransaction(transactionID)
+    return claimedDomain
+  } catch (error) {
+    await payload.db.rollbackTransaction(transactionID).catch(() => undefined)
+    throw error
+  }
 }
 
 async function compatibilityProjection(
@@ -417,11 +602,17 @@ export async function provisionPaidDomainOrder(
   run: SiteGenerationRun,
   input: {
     order: Order
+    paymentAttemptId: string | number
     selectedDomain?: string | null
     dependencies?: Partial<ProvisioningDependencies>
   },
 ): Promise<ProvisionPaidDomainResult> {
   const dependencies = { ...defaultDependencies, ...input.dependencies }
+  const financialAuthority = await assertInitialDomainFinancialAuthority(payload, {
+    orderId: input.order.id,
+    paymentAttemptId: input.paymentAttemptId,
+  })
+  input.order = financialAuthority.order
   const selectedDomain = input.selectedDomain ?? input.order.domain
   const normalized = normalizeDomain(selectedDomain)
   if (!normalized.ok) throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
@@ -674,6 +865,10 @@ export async function provisionPaidDomainOrder(
         )
       }
       try {
+        await assertInitialDomainFinancialAuthority(payload, {
+          orderId: input.order.id,
+          paymentAttemptId: input.paymentAttemptId,
+        })
         customerHandle = (await dependencies.createOpenProviderCustomerHandle(registrant, {
           token,
           reference: managedDomain.provisioningIdempotencyKey,
@@ -715,6 +910,10 @@ export async function provisionPaidDomainOrder(
       )
     }
     try {
+      await assertInitialDomainFinancialAuthority(payload, {
+        orderId: input.order.id,
+        paymentAttemptId: input.paymentAttemptId,
+      })
       zone = await dependencies.createOrReuseCloudflareZone(normalized.domain)
     } catch (error) {
       if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
@@ -744,12 +943,22 @@ export async function provisionPaidDomainOrder(
   }
 
   if (!providerDomain) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      providerRegistrationState: "prepared",
-      registrationRequestedAt: managedDomain.registrationRequestedAt ?? dependencies.now(),
-      reconciliationRequired: true,
-      failureReason: null,
-    }, "provider_registration_prepared", dependencies.now())
+    const claimedAt = dependencies.now()
+    const claimedDomain = await claimRegistrarCommit(payload, {
+      order: input.order,
+      paymentAttemptId: input.paymentAttemptId,
+      managedDomain,
+      now: claimedAt,
+    })
+    if (!claimedDomain) {
+      return waiting(
+        normalized.domain,
+        run,
+        managedDomain,
+        "Payment authority changed before registrar commitment; no registration was sent.",
+      )
+    }
+    managedDomain = claimedDomain
     try {
       const registration = await dependencies.registerOpenProviderDomain(normalized.domain, {
         token,

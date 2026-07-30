@@ -261,6 +261,7 @@ async function retryDomainProvisioning(payload: Payload, run: SiteGenerationRun)
     }
     const result = await provisionPaidDomainOrder(payload, run, {
       order,
+      paymentAttemptId: securedAttempt.id,
       selectedDomain: payment.selectedDomain,
     })
     return result.run

@@ -21,10 +21,14 @@ import {
   recordGenerationRunPostPaymentAutomationState,
 } from "@/lib/payments/generationRunPayment"
 import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
+import {
+  initialPaymentBlocksNewFulfillment,
+  initialPaymentIsFinanciallySecured,
+} from "@/lib/payments/initialPaymentPolicy"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
 export type FulfillOrderResult = {
-  status: "fulfilled" | "waiting" | "failed"
+  status: "fulfilled" | "custody_preserved" | "waiting" | "failed"
   orderId: string | number
   message?: string
 }
@@ -50,7 +54,23 @@ export async function fulfillPaidOrder(
   if (!sameRelationshipId(paymentAttempt.order, order.id)) {
     throw new Error("Payment attempt does not belong to the fulfillment order.")
   }
-  if (paymentAttempt.state !== "paid") {
+  const financiallySecured = initialPaymentIsFinanciallySecured(
+    order,
+    paymentAttempt,
+  )
+  const adjustedPayment = initialPaymentBlocksNewFulfillment(paymentAttempt)
+  if (
+    paymentAttempt.state === "refund_failed" &&
+    order.state === "fulfilled" &&
+    order.paymentStatus === "paid"
+  ) {
+    return {
+      status: "fulfilled",
+      orderId: order.id,
+      message: "The failed refund did not alter the fulfilled paid service.",
+    }
+  }
+  if (!financiallySecured && !adjustedPayment) {
     return {
       status: "waiting",
       orderId: order.id,
@@ -86,6 +106,13 @@ export async function fulfillPaidOrder(
 
   try {
     if (isSupportedDomainMigrationOrder(order)) {
+      if (!financiallySecured) {
+        return {
+          status: "waiting",
+          orderId: order.id,
+          message: "A financially adjusted payment cannot start a domain transfer.",
+        }
+      }
       const migration = await createDomainMigration(payload, order.id)
       if (migration.state !== "awaiting_customer") {
         await queueDomainMigrationPreparation(payload, migration.id)
@@ -102,6 +129,7 @@ export async function fulfillPaidOrder(
     if (payment.selectedDomain && mollieDomainProvisioningEnabled()) {
       const provisioned = await provisionPaidDomainOrder(payload, run, {
         order,
+        paymentAttemptId: paymentAttempt.id,
         selectedDomain: payment.selectedDomain,
       })
       run = provisioned.run
@@ -114,15 +142,17 @@ export async function fulfillPaidOrder(
         }
       }
       if (provisioned.status === "unfulfillable") {
-        await payload.jobs.queue({
-          task: "request-mollie-refund",
-          input: {
-            paymentAttemptId: String(paymentAttempt.id),
-            scenario: "unfulfillable_before_provider_commit",
-          },
-          queue: "default",
-          overrideAccess: true,
-        })
+        if (financiallySecured) {
+          await payload.jobs.queue({
+            task: "request-mollie-refund",
+            input: {
+              paymentAttemptId: String(paymentAttempt.id),
+              scenario: "unfulfillable_before_provider_commit",
+            },
+            queue: "default",
+            overrideAccess: true,
+          })
+        }
         if (order.state === "fulfillment_pending") {
           await payload.update({
             collection: "orders",
@@ -136,7 +166,41 @@ export async function fulfillPaidOrder(
         return {
           status: "failed",
           orderId: order.id,
-          message: `${provisioned.message ?? "Domain fulfillment became unavailable."} A governed refund was queued.`,
+          message: financiallySecured
+            ? `${provisioned.message ?? "Domain fulfillment became unavailable."} A governed refund was queued.`
+            : (provisioned.message ?? "Domain custody reconciliation could not complete."),
+        }
+      }
+      if (!financiallySecured) {
+        await payload.update({
+          collection: "managed-domains",
+          id: managedDomain.id,
+          data: {
+            state: "active",
+            entitlementStatus: "blocked",
+            customerStatus: "manual_review",
+            reconciliationRequired: false,
+            failureReason: `initial_payment_${paymentAttempt.state}`,
+          },
+          depth: 0,
+          overrideAccess: true,
+          context: { managedDomainLifecycleMutation: true },
+        })
+        if (order.state === "fulfillment_pending") {
+          await payload.update({
+            collection: "orders",
+            id: order.id,
+            data: { state: "exception" },
+            depth: 0,
+            overrideAccess: true,
+            context: { legalOrderLifecycleMutation: true },
+          })
+        }
+        return {
+          status: "custody_preserved",
+          orderId: order.id,
+          message:
+            "Registrar commitment was reconciled without activating website entitlement.",
         }
       }
     } else if (payment.selectedDomain && mollieApiKeyMode() === "live") {

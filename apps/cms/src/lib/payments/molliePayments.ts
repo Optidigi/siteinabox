@@ -50,13 +50,20 @@ import {
   type GenerationRunPaymentStatus,
 } from "@/lib/payments/generationRunPayment"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
-import { ensureCommerceNotification } from "@/lib/commerce/notifications"
+import {
+  ensureCommerceNotification,
+  queueCommerceNotification,
+} from "@/lib/commerce/notifications"
 import { requireCommerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { verifyCheckoutEvidence } from "@/lib/legal/checkoutEvidence"
 import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
+import {
+  initialPaymentBlocksNewFulfillment,
+  registrarCommitStarted,
+} from "@/lib/payments/initialPaymentPolicy"
 
 type CreateCheckoutInput = {
   runId: string | number
@@ -2131,7 +2138,7 @@ const synchronizeOrderProjection = async (
   attempt: PaymentAttempt,
   now: string,
 ): Promise<{ order: Order; fulfillmentClaimed: boolean }> => {
-  const captured = [
+  const capturedHistorically = [
     "paid",
     "refund_pending",
     "partially_refunded",
@@ -2151,12 +2158,30 @@ const synchronizeOrderProjection = async (
             ? "expired"
             : attempt.state === "failed"
               ? "failed"
-              : captured
+              : capturedHistorically
                 ? "paid"
                 : "open"
-  const nextState = captured && order.state === "accepted"
+  let adjustedWithoutRegistrarCommit = false
+  if (
+    order.state === "fulfillment_pending" &&
+    initialPaymentBlocksNewFulfillment(attempt)
+  ) {
+    const managedDomains = await payload.find({
+      collection: "managed-domains",
+      where: { originatingOrder: { equals: order.id } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    adjustedWithoutRegistrarCommit =
+      managedDomains.docs.length !== 1 ||
+      !registrarCommitStarted(managedDomains.docs[0]!)
+  }
+  const nextState = attempt.state === "paid" && order.state === "accepted"
     ? "fulfillment_pending"
-    : order.state
+    : adjustedWithoutRegistrarCommit
+      ? "exception"
+      : order.state
   const fulfillmentClaimed = attempt.purpose === "first_payment" &&
     order.state === "accepted" &&
     nextState === "fulfillment_pending"
@@ -2164,7 +2189,7 @@ const synchronizeOrderProjection = async (
     state: nextState,
     paymentStatus,
     providerPaymentId: attempt.providerPaymentId,
-    paidAt: captured ? (attempt.paidAt ?? now) : undefined,
+    paidAt: capturedHistorically ? (attempt.paidAt ?? now) : undefined,
     cancelledAt: attempt.state === "cancelled" ? (attempt.cancelledAt ?? now) : undefined,
   }
   let updatedOrder: Order
@@ -2741,12 +2766,12 @@ export async function synchronizeMolliePayment(
   await synchronizeAccountingEvidence(payload, updatedOrder, attempt, payment, now)
   if (
     attempt.purpose === "first_payment" &&
-    ["paid", "refund_pending", "partially_refunded"].includes(attempt.state)
+    attempt.state === "paid"
   ) {
     const tenantId = relationshipId(updatedOrder.tenant)
     const billingAgreementId = relationshipId(attempt.billingAgreement)
     if (tenantId && billingAgreementId) {
-      await ensureCommerceNotification({
+      const delivery = await ensureCommerceNotification({
         payload,
         kind: "payment_received",
         tenantId,
@@ -2754,11 +2779,12 @@ export async function synchronizeMolliePayment(
         eventAt: attempt.paidAt ?? now,
         billingAgreementId,
       })
+      await queueCommerceNotification(payload, delivery.id)
     }
   }
   const fulfillmentRequired =
     orderProjection.fulfillmentClaimed &&
-    ["paid", "refund_pending", "partially_refunded"].includes(attempt.state) &&
+    attempt.state === "paid" &&
     updatedOrder.state === "fulfillment_pending"
   return {
     ok: true,

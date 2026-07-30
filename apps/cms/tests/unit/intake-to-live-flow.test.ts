@@ -317,6 +317,11 @@ const createPayloadStub = () => {
       return docs[index]
     }),
     jobs: { queue: vi.fn(async () => ({ id: 1 })) },
+    db: {
+      beginTransaction: vi.fn(async () => "tx-domain-registration"),
+      commitTransaction: vi.fn(async () => undefined),
+      rollbackTransaction: vi.fn(async () => undefined),
+    },
     logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
   }
   return { payload: asPayload(payload), store }
