@@ -1,7 +1,7 @@
 import "server-only"
 
 import type { Payload } from "payload"
-import type { ManagedDomain, Order } from "@/payload-types"
+import type { ManagedDomain, Order, Tenant } from "@/payload-types"
 import {
   buildCloudflareEdgeDnsRecordRequests,
   assertCloudflareEdgeDnsRecordsReconciliable,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/domains/cloudflareTunnels"
 import { verifyHttpsEndpoint } from "@/lib/domains/verification"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
+import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
 import { relationshipId } from "@/lib/relationshipId"
 
 const MAX_MANAGED_TUNNEL_HOSTNAMES = 900
@@ -56,6 +57,13 @@ const domainHosts = (domain: string) => ({
   admin: `admin.${domain}`,
 })
 
+export type CommerceEdgeRoutingInventory = {
+  managedDomains: ManagedDomain[]
+  rendererHosts: string[]
+  cmsHosts: string[]
+  zoneDomains: string[]
+}
+
 export const managedDomainIsEdgeEligible = async (
   payload: Payload,
   domain: ManagedDomain,
@@ -73,6 +81,90 @@ export const managedDomainIsEdgeEligible = async (
   }) as Order
   return order.paymentStatus === "paid" &&
     ["fulfillment_pending", "fulfilled", "exception"].includes(order.state ?? "")
+}
+
+const uniqueSorted = (values: string[]): string[] =>
+  [...new Set(values)].sort()
+
+/**
+ * One inventory authority for both Tunnel reconciliation and its read-only
+ * production preflight. The legacy bridge is explicit and disappears once a
+ * managed-domain record owns the hostname.
+ */
+export async function resolveCommerceEdgeRoutingInventory(
+  payload: Payload,
+): Promise<CommerceEdgeRoutingInventory> {
+  const candidates = await payload.find({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { cloudflareZoneId: { exists: true } },
+        { custodyStatus: { not_in: ["transferred_out"] } },
+        {
+          state: {
+            in: [
+              "registration_pending",
+              "transfer_pending",
+              "active",
+              "renewal_pending",
+              "provider_hold",
+            ],
+          },
+        },
+      ],
+    },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const managedDomains: ManagedDomain[] = []
+  for (const domain of candidates.docs as ManagedDomain[]) {
+    if (await managedDomainIsEdgeEligible(payload, domain)) {
+      managedDomains.push(domain)
+    }
+  }
+
+  const rendererHosts = managedDomains.flatMap((domain) => {
+    const hosts = domainHosts(domain.domainNameAscii)
+    return [hosts.apex, hosts.www]
+  })
+  const cmsHosts = managedDomains.map((domain) =>
+    domainHosts(domain.domainNameAscii).admin)
+
+  const activeTenants = await payload.find({
+    collection: "tenants",
+    where: { status: { equals: "active" } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const zoneDomains: string[] = []
+  for (const tenant of activeTenants.docs as Tenant[]) {
+    const domain = tenant.domain?.trim().toLowerCase().replace(/\.$/, "")
+    if (!domain) continue
+    zoneDomains.push(domain)
+    const anyManagedDomain = await payload.find({
+      collection: "managed-domains",
+      where: { domainNameAscii: { equals: domain } },
+      limit: 1,
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (anyManagedDomain.docs.length > 0) continue
+    const adoption = await resolveLegacyEdgeAdoption(payload, domain)
+    if (!adoption || adoption.tenantId !== String(tenant.id)) continue
+    if (adoption.rendererApexReady) rendererHosts.push(domain)
+    if (adoption.rendererWwwReady) rendererHosts.push(`www.${domain}`)
+    if (adoption.cmsAdminReady) cmsHosts.push(`admin.${domain}`)
+  }
+
+  return {
+    managedDomains,
+    rendererHosts: uniqueSorted(rendererHosts),
+    cmsHosts: uniqueSorted(cmsHosts),
+    zoneDomains: uniqueSorted(zoneDomains),
+  }
 }
 
 const updateDomain = async (
@@ -123,40 +215,10 @@ export async function reconcileCommerceEdgeRouting(
       "Commerce release stage does not allow Cloudflare edge provider writes.",
     )
   }
-  const candidates = await payload.find({
-    collection: "managed-domains",
-    where: {
-      and: [
-        { cloudflareZoneId: { exists: true } },
-        { custodyStatus: { not_in: ["transferred_out"] } },
-        {
-          state: {
-            in: [
-              "registration_pending",
-              "transfer_pending",
-              "active",
-              "renewal_pending",
-              "provider_hold",
-            ],
-          },
-        },
-      ],
-    },
-    pagination: false,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const eligible: ManagedDomain[] = []
-  for (const domain of candidates.docs as ManagedDomain[]) {
-    if (await managedDomainIsEdgeEligible(payload, domain)) eligible.push(domain)
-  }
-
-  const rendererHosts = eligible.flatMap((domain) => {
-    const hosts = domainHosts(domain.domainNameAscii)
-    return [hosts.apex, hosts.www]
-  }).sort()
-  const cmsHosts = eligible.map((domain) =>
-    domainHosts(domain.domainNameAscii).admin).sort()
+  const inventory = await resolveCommerceEdgeRoutingInventory(payload)
+  const eligible = inventory.managedDomains
+  const rendererHosts = inventory.rendererHosts
+  const cmsHosts = inventory.cmsHosts
   if (rendererHosts.length + cmsHosts.length > MAX_MANAGED_TUNNEL_HOSTNAMES) {
     const checkedAt = dependencies.now()
     for (const domain of eligible) {

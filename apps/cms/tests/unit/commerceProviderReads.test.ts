@@ -5,6 +5,7 @@ import {
   getOpenProviderResellerBalance,
 } from "@/lib/domains/openprovider"
 import {
+  inspectMollieProfileCapabilities,
   listRecentMollieCustomers,
   listRecentMolliePayments,
 } from "@/lib/payments/mollieAdapter"
@@ -91,6 +92,38 @@ describe("Phase 11 provider read contracts", () => {
         }),
       }),
     )
+  })
+
+  it("inspects the current Mollie profile and enabled payment sequences with GET only", async () => {
+    const fetchImpl = vi.fn(async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      expect(init?.method).toBe("GET")
+      const url = String(input)
+      if (url.endsWith("/profiles/me")) {
+        return Response.json({ id: "pfl_fixture" })
+      }
+      if (
+        url.endsWith("/methods?sequenceType=first") ||
+        url.endsWith("/methods?sequenceType=recurring")
+      ) {
+        return Response.json({
+          _embedded: { methods: [{ id: "ideal" }] },
+        })
+      }
+      throw new Error(`Unexpected Mollie read ${url}`)
+    })
+
+    await expect(inspectMollieProfileCapabilities({
+      env: {
+        MOLLIE_API_KEY: "live_fixture",
+      } as unknown as NodeJS.ProcessEnv,
+      fetchImpl: fetchImpl as typeof fetch,
+    })).resolves.toBeUndefined()
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method === "GET"))
+      .toBe(true)
   })
 
   it("paginates missing-webhook recovery without forwarding credentials off-origin", async () => {

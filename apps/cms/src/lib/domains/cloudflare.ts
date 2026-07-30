@@ -936,7 +936,7 @@ export async function getCloudflareDnsRecordUsage(
   options?: CloudflareOptions,
 ): Promise<CloudflareDnsRecordUsage> {
   const env = options?.env ?? process.env
-  const { token } = requireCloudflareConfig(env)
+  const { token, accountId } = requireCloudflareConfig(env)
   const response = await fetcher(options)(
     `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/usage`,
     { method: "GET", headers: headers(token) },
@@ -947,10 +947,44 @@ export async function getCloudflareDnsRecordUsage(
   const recordQuota = result.record_quota
   const recordUsage = result.record_usage
   if (
+    !Number.isSafeInteger(recordUsage) ||
+    Number(recordUsage) < 0
+  ) {
+    throw new Error("Cloudflare DNS record usage response is invalid.")
+  }
+  if (recordQuota === null) {
+    const accountResponse = await fetcher(options)(
+      `${apiBase(env)}/accounts/${encodeURIComponent(accountId)}/dns_records/usage`,
+      { method: "GET", headers: headers(token) },
+    )
+    const accountPayload = await json(accountResponse)
+    assertCloudflareOk(
+      "Cloudflare account DNS record usage",
+      accountResponse,
+      accountPayload,
+    )
+    const accountResult = resultObject(accountPayload)
+    const accountQuota = accountResult.record_quota
+    const accountUsage = accountResult.record_usage
+    if (
+      !Number.isSafeInteger(accountQuota) ||
+      Number(accountQuota) < 0 ||
+      !Number.isSafeInteger(accountUsage) ||
+      Number(accountUsage) < 0 ||
+      Number(accountUsage) > Number(accountQuota)
+    ) {
+      throw new Error(
+        "Cloudflare account DNS record usage response is invalid.",
+      )
+    }
+    return {
+      recordQuota: Number(accountQuota),
+      recordUsage: Number(accountUsage),
+    }
+  }
+  if (
     !Number.isSafeInteger(recordQuota) ||
     Number(recordQuota) < 0 ||
-    !Number.isSafeInteger(recordUsage) ||
-    Number(recordUsage) < 0 ||
     Number(recordUsage) > Number(recordQuota)
   ) {
     throw new Error("Cloudflare DNS record usage response is invalid.")

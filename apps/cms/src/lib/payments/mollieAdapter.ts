@@ -120,6 +120,11 @@ export type CreateMollieCustomerInput = {
 
 const MOLLIE_API_BASE = "https://api.mollie.com/v2"
 
+type MollieReadOptions = {
+  env?: NodeJS.ProcessEnv
+  fetchImpl?: typeof fetch
+}
+
 export class MollieApiError extends Error {
   status: number
   detail?: string | null
@@ -157,6 +162,74 @@ export function mollieApiKeyMode(env = process.env): MollieApiKeyMode {
 
 export function mollieDomainProvisioningEnabled(env = process.env): boolean {
   return commerceProviderWritesAllowed(env)
+}
+
+const mollieFetcher = (options?: MollieReadOptions): typeof fetch =>
+  options?.fetchImpl ?? globalThis.fetch
+
+export async function inspectMollieProfileCapabilities(
+  options?: MollieReadOptions,
+): Promise<void> {
+  const env = options?.env ?? process.env
+  const request = mollieFetcher(options)
+  const headers = {
+    Authorization: `Bearer ${requireMollieApiKey(env)}`,
+    Accept: "application/json",
+  }
+  const profileResponse = await request(`${MOLLIE_API_BASE}/profiles/me`, {
+    method: "GET",
+    headers,
+  })
+  if (!profileResponse.ok) {
+    throw new MollieApiError(
+      "Mollie current profile lookup",
+      profileResponse.status,
+    )
+  }
+  const profile = await profileResponse.json() as unknown
+  if (
+    !profile ||
+    typeof profile !== "object" ||
+    Array.isArray(profile) ||
+    !(
+      "id" in profile &&
+      typeof profile.id === "string" &&
+      /^pfl_[A-Za-z0-9]+$/.test(profile.id)
+    )
+  ) {
+    throw new Error("Mollie current profile response is invalid.")
+  }
+
+  for (const sequenceType of ["first", "recurring"] as const) {
+    const methodsResponse = await request(
+      `${MOLLIE_API_BASE}/methods?sequenceType=${sequenceType}`,
+      { method: "GET", headers },
+    )
+    if (!methodsResponse.ok) {
+      throw new MollieApiError(
+        `Mollie ${sequenceType} payment-method lookup`,
+        methodsResponse.status,
+      )
+    }
+    const methodsPayload = await methodsResponse.json() as unknown
+    const embedded = methodsPayload &&
+        typeof methodsPayload === "object" &&
+        !Array.isArray(methodsPayload) &&
+        "_embedded" in methodsPayload &&
+        methodsPayload._embedded &&
+        typeof methodsPayload._embedded === "object" &&
+        !Array.isArray(methodsPayload._embedded)
+      ? methodsPayload._embedded
+      : null
+    const methods = embedded && "methods" in embedded
+      ? embedded.methods
+      : null
+    if (!Array.isArray(methods) || methods.length === 0) {
+      throw new Error(
+        `Mollie has no enabled ${sequenceType} payment method.`,
+      )
+    }
+  }
 }
 
 export function publicCmsOrigin(env = process.env): string {

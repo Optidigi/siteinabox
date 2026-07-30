@@ -78,9 +78,14 @@ tokens or the origin-secret value.
    unprivileged compose services. If the host deployment account uses another
    UID, install the files with `1000:1000` ownership rather than weakening
    their mode.
-4. Give the CMS automation token Account `Cloudflare Tunnel: Edit`, Zone
-   `Zone: Read/Edit`, Zone `DNS: Edit`, and Zone `SSL and Certificates: Read`
-   for the Siteinabox account and managed zones. The runtime Tunnel tokens are
+4. Give the CMS automation token Account `Cloudflare Tunnel: Edit`, Account
+   `DNS Settings: Read`, Zone
+   `Zone: Read/Edit`, Zone `DNS: Read/Edit`, and Zone
+   `SSL and Certificates: Read`
+   for the Siteinabox account and managed zones. Account `DNS Settings: Read`
+   is used only when Cloudflare reports a zone-level DNS record quota as
+   `null`; the readiness check then verifies the account-level quota instead.
+   The runtime Tunnel tokens are
    separate credentials. The exclusive `reconcile-commerce` job installs
    proxied CNAMEs for apex, `www`, and `admin`, verifies config after writes,
    and refuses to overwrite an unowned A/AAAA/CNAME collision.
@@ -88,6 +93,15 @@ tokens or the origin-secret value.
    this topology therefore supports at most 300 three-host tenants per Tunnel
    pair before reconciliation fails closed and raises a critical capacity
    alert. Provision another reviewed Tunnel pair before reaching that limit.
+
+   Cloudflare's DNS and Zone permissions are zone-scoped and do not include
+   the account-scoped Tunnel permission. A token with every DNS/Zone box
+   selected can therefore still receive `401`/`403` on the Tunnel API. The
+   production readiness command reads both dedicated Tunnels and their
+   configurations/connections with the exact runtime token; this proves read
+   access only. Cloudflare currently accepts either Tunnel Read or Edit for
+   those GET endpoints, so retain dashboard/policy evidence for Edit and prove
+   the first controlled reconciliation separately.
 5. Record the currently deployed renderer digest for rollback. Set
    `SIAB_RENDERER_IMAGE_DIGEST` to the digest emitted by the successful image
    workflow, then deploy `apps/renderer/compose.yml`. Confirm both container

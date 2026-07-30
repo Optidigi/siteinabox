@@ -34,7 +34,7 @@ describe("supplemental assisted-migration Mollie payment", () => {
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
     vi.stubEnv(
       "COMMERCE_RELEASE_EVIDENCE_VERSION",
-      "commerce-production-readiness-2026-07-29.1",
+      "commerce-production-readiness-2026-07-30.1",
     )
     vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
     vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://sandbox.openprovider.test/v1beta")

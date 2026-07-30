@@ -43,6 +43,23 @@ describe("artifact-contained commerce CLI safety", () => {
     expect(source).toMatch(/telemetry:\s*false/)
   })
 
+  it("keeps production capability preflight strictly read-only", () => {
+    const source = readFileSync(
+      path.join(
+        cmsRoot,
+        "src/lib/commerce/providerCapabilityPreflight.ts",
+      ),
+      "utf8",
+    )
+    expect(source).not.toContain("reconcileCloudflareTunnel")
+    expect(source).not.toMatch(
+      /\b(createMollie|createOpenProvider|createCloudflare|renewOpenProvider|transferOpenProvider|putTunnelConfiguration)\b/,
+    )
+    expect(source).toContain("inspectCloudflareTunnel")
+    expect(source).toContain("inspectMollieProfileCapabilities")
+    expect(source).toContain("getOpenProviderResellerBalance")
+  })
+
   it("passes the no-autorun interlock to all documented one-off containers", () => {
     const runbook = readFileSync(releaseRunbook, "utf8")
     expect(runbook.match(/-e PAYLOAD_DISABLE_JOBS_AUTORUN=1/g)).toHaveLength(3)
