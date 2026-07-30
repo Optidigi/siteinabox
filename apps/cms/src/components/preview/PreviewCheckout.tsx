@@ -1018,7 +1018,10 @@ export function PreviewCheckout({
                 </ul>
               )}
               {migrationStatus.actions.some((action) =>
-                action.action === "provide_epp_code" &&
+                (
+                  action.action === "provide_epp_code" ||
+                  action.action === "authorize_provider"
+                ) &&
                 ["required", "failed"].includes(action.status)) &&
                 submitMigrationTransferCodeAction && (
                   <form
@@ -1035,8 +1038,20 @@ export function PreviewCheckout({
                       name="expectedMigrationVersion"
                       value={migrationStatus.updatedAt}
                     />
+                    {!migrationStatus.actions.some((action) =>
+                      action.action === "provide_epp_code" &&
+                      ["required", "failed"].includes(action.status)) && (
+                        <input
+                          type="hidden"
+                          name="sourceAuthorityOnly"
+                          value="accepted"
+                        />
+                      )}
                     {migrationStatus.actions.some((action) =>
-                      action.action === "upload_complete_zone" &&
+                      (
+                        action.action === "upload_complete_zone" ||
+                        action.action === "authorize_provider"
+                      ) &&
                       ["required", "failed"].includes(action.status)) && (
                         <>
                           {migrationStatus.sourceMechanism ===
@@ -1122,16 +1137,22 @@ export function PreviewCheckout({
                             )}
                         </>
                       )}
-                    <Label htmlFor="migration-replacement-transfer-code">
-                      {t("checkoutMigrationTransferCodeReplacement")}
-                    </Label>
-                    <Input
-                      id="migration-replacement-transfer-code"
-                      name="transferCode"
-                      type="password"
-                      autoComplete="off"
-                      required
-                    />
+                    {migrationStatus.actions.some((action) =>
+                      action.action === "provide_epp_code" &&
+                      ["required", "failed"].includes(action.status)) && (
+                        <>
+                          <Label htmlFor="migration-replacement-transfer-code">
+                            {t("checkoutMigrationTransferCodeReplacement")}
+                          </Label>
+                          <Input
+                            id="migration-replacement-transfer-code"
+                            name="transferCode"
+                            type="password"
+                            autoComplete="off"
+                            required
+                          />
+                        </>
+                      )}
                     <Button type="submit" className="w-fit" disabled={transferCodePending}>
                       {transferCodePending && (
                         <Loader2 className="size-4 animate-spin" aria-hidden />

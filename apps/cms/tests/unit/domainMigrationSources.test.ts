@@ -4,7 +4,10 @@ import {
   normalizeCompleteZone,
   type CompleteZoneExport,
 } from "@siteinabox/contracts/domain-migration"
-import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
+import {
+  domainMigrationSourceAuthorityHash,
+  domainMigrationSourceContentHash,
+} from "@/lib/domains/migrationEvidence"
 import {
   acquireAuthorizedAxfr,
 } from "@/lib/domains/migrationSources/axfr"
@@ -17,6 +20,7 @@ import {
 } from "@/lib/domains/migrationSources/providerExport"
 import {
   MigrationSourceChangedError,
+  MigrationSourceDnssecTransitionPendingError,
   refreshAutomaticMigrationSource,
 } from "@/lib/domains/migrationSources/refresh"
 import type {
@@ -432,5 +436,154 @@ describe("complete migration source acquisition", () => {
         minttl: 300,
       })),
     })).rejects.toBeInstanceOf(MigrationSourceChangedError)
+  })
+
+  it("allows only the governed parent-DS delta in content comparison", async () => {
+    const input = await checkoutInput()
+    const source = {
+      ...normalizeCompleteZone(input.sourceZone),
+      dnssec: {
+        status: "signed" as const,
+        parentDsRecords: ["12345 13 2 " + "AB".repeat(32)],
+        parentDsTtl: 3600,
+        dnsKeys: [{
+          flags: 257,
+          protocol: 3 as const,
+          algorithm: 13,
+          publicKey: "BAUG",
+        }],
+      },
+    }
+    const afterDsRemoval = {
+      ...source,
+      dnssec: {
+        ...source.dnssec,
+        status: "unsigned",
+        parentDsRecords: [],
+        parentDsTtl: null,
+      },
+    }
+    expect(domainMigrationSourceAuthorityHash(afterDsRemoval))
+      .not.toBe(domainMigrationSourceAuthorityHash(source))
+    expect(domainMigrationSourceContentHash(afterDsRemoval))
+      .toBe(domainMigrationSourceContentHash(source))
+    expect(domainMigrationSourceContentHash({
+      ...afterDsRemoval,
+      records: afterDsRemoval.records.map((record, index) =>
+        index === 0 && "content" in record
+          ? { ...record, content: "192.0.2.99" }
+          : record),
+    })).not.toBe(domainMigrationSourceContentHash(source))
+  })
+
+  it("uses fresh public DS evidence for Cloudflare refresh and scopes DS relaxation", async () => {
+    const base = await checkoutInput()
+    const acceptedZone = {
+      ...base.sourceZone,
+      authority: {
+        mechanism: "cloudflare_api" as const,
+        provider: "cloudflare",
+        complete: true as const,
+      },
+      dnssec: {
+        status: "signed" as const,
+        parentDsRecords: ["12345 13 2 " + "AB".repeat(32)],
+        parentDsTtl: 3600,
+        dnsKeys: [{
+          flags: 257,
+          protocol: 3 as const,
+          algorithm: 13,
+          publicKey: "BAUG",
+        }],
+      },
+    }
+    const normalized = normalizeCompleteZone(acceptedZone)
+    const input = {
+      domain: "example.nl",
+      sourceMechanism: "cloudflare_api_v1" as const,
+      sourceZoneHash: domainMigrationSourceAuthorityHash(normalized),
+      sourceContentHash: domainMigrationSourceContentHash(normalized),
+      sourceZone: acceptedZone,
+      sourceRefreshCredential: {
+        kind: "cloudflare_api_token" as const,
+        token: "scoped-cloudflare-token",
+        zoneId: "a".repeat(32),
+      },
+    }
+    const changedEvidence = {
+      ...publicEvidence,
+      dnssecDsPresent: true,
+      dnssecDsRecords: ["54321 13 2 " + "CD".repeat(32)],
+      dnssecDsTtl: 7200,
+    }
+    const inspectChanged = vi.fn(async () => changedEvidence)
+    const acquireChanged = vi.fn(async (request: {
+      publicEvidence?: typeof changedEvidence
+    }) => ({
+      mechanism: "cloudflare_api_v1" as const,
+      refreshCredential: input.sourceRefreshCredential,
+      zone: {
+        ...acceptedZone,
+        dnssec: {
+          ...acceptedZone.dnssec,
+          parentDsRecords: changedEvidence.dnssecDsRecords,
+          parentDsTtl: changedEvidence.dnssecDsTtl,
+        },
+      },
+    }))
+
+    await expect(refreshAutomaticMigrationSource(input, {
+      inspectPublicEvidence: inspectChanged,
+      acquireCloudflareSource: acquireChanged as never,
+    })).rejects.toBeInstanceOf(MigrationSourceChangedError)
+    expect(acquireChanged).toHaveBeenCalledWith(expect.objectContaining({
+      publicEvidence: changedEvidence,
+    }))
+    await expect(refreshAutomaticMigrationSource(input, {
+      inspectPublicEvidence: inspectChanged,
+      acquireCloudflareSource: acquireChanged as never,
+    }, "stable_content_after_dnssec_transition")).rejects.toBeInstanceOf(
+      MigrationSourceDnssecTransitionPendingError,
+    )
+    const acquireAxfr = vi.fn()
+    await expect(refreshAutomaticMigrationSource({
+      ...input,
+      sourceMechanism: "authorized_axfr_v1",
+      sourceRefreshCredential: {
+        kind: "authorized_axfr",
+        nameserver: "ns1.provider.example",
+        tsigName: null,
+        tsigSecret: null,
+      },
+    }, {
+      inspectPublicEvidence: inspectChanged,
+      acquireAuthorizedAxfr: acquireAxfr as never,
+    }, "stable_content_after_dnssec_transition")).rejects.toBeInstanceOf(
+      MigrationSourceDnssecTransitionPendingError,
+    )
+    expect(acquireAxfr).not.toHaveBeenCalled()
+
+    const absentEvidence = {
+      ...publicEvidence,
+      dnssecDsPresent: false,
+      dnssecDsRecords: [],
+      dnssecDsTtl: null,
+    }
+    await expect(refreshAutomaticMigrationSource(input, {
+      inspectPublicEvidence: vi.fn(async () => absentEvidence),
+      acquireCloudflareSource: vi.fn(async () => ({
+        mechanism: "cloudflare_api_v1" as const,
+        refreshCredential: input.sourceRefreshCredential,
+        zone: {
+          ...acceptedZone,
+          dnssec: {
+            ...acceptedZone.dnssec,
+            status: "unsigned" as const,
+            parentDsRecords: [],
+            parentDsTtl: null,
+          },
+        },
+      })) as never,
+    }, "stable_content_after_dnssec_transition")).resolves.toBeDefined()
   })
 })

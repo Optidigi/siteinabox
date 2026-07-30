@@ -208,9 +208,10 @@ export function automaticMigrationSourceEnabled(
   if (mechanism === "authorized_axfr_v1") {
     return env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED?.trim() === "1"
   }
-  if (mechanism === "validated_provider_export_v1") {
-    return env.COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED?.trim() === "1"
-  }
+  // A customer-uploaded file cannot independently prove complete source
+  // authority. Keep the parser for historical evidence, but never expose this
+  // mechanism as an ordinary automatic checkout route.
+  if (mechanism === "validated_provider_export_v1") return false
   return false
 }
 

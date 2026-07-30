@@ -10,7 +10,11 @@ import {
   replaceExpiredAttachedMigrationCheckoutSecret,
 } from "@/lib/domains/migrationCheckoutSecret"
 import { expireStaleMigrationCheckoutSecrets } from "@/lib/domains/migrationCheckoutSecretLifecycle"
-import { sealCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
+import {
+  openAutomaticSourceRefreshAuthority,
+  sealAutomaticSourceRefreshAuthority,
+  sealCheckoutMigrationInput,
+} from "@/lib/domains/migrationSecrets"
 import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
 import { normalizeCompleteZone } from "@siteinabox/contracts/domain-migration"
 import { asPayload } from "../_helpers/mockPayload"
@@ -441,5 +445,65 @@ describe("migration checkout secret lifecycle", () => {
     ])
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+  })
+})
+
+describe("durable automatic source refresh authority", () => {
+  it.each([
+    {
+      sourceMechanism: "cloudflare_api_v1" as const,
+      credential: {
+        kind: "cloudflare_api_token" as const,
+        token: "scoped-cloudflare-token-value",
+        zoneId: "a".repeat(32),
+      },
+    },
+    {
+      sourceMechanism: "authorized_axfr_v1" as const,
+      credential: {
+        kind: "authorized_axfr" as const,
+        nameserver: "ns1.example.test",
+        tsigName: "siab-key",
+        tsigSecret: "dGVzdC1zZWNyZXQtdmFsdWU=",
+      },
+    },
+  ])("round-trips a bounded $sourceMechanism credential", (variant) => {
+    const authority = {
+      schemaVersion: 1 as const,
+      domain: "example.nl",
+      sourceMechanism: variant.sourceMechanism,
+      acceptedSourceAuthorityHash: "a".repeat(64),
+      acceptedSourceContentHash: "b".repeat(64),
+      credential: variant.credential,
+    }
+    const envelope = sealAutomaticSourceRefreshAuthority(
+      authority,
+      "domain-migration:order:90:v1",
+    )
+
+    expect(envelope).not.toContain(JSON.stringify(variant.credential))
+    expect(openAutomaticSourceRefreshAuthority(
+      envelope,
+      "domain-migration:order:90:v1",
+      "example.nl",
+    )).toEqual(authority)
+    expect(() => openAutomaticSourceRefreshAuthority(
+      envelope,
+      "domain-migration:order:91:v1",
+      "example.nl",
+    )).toThrow()
+  })
+
+  it("rejects a provider-export pseudo credential as durable authority", () => {
+    expect(() => sealAutomaticSourceRefreshAuthority({
+      schemaVersion: 1,
+      domain: "example.nl",
+      sourceMechanism: "validated_provider_export_v1",
+      acceptedSourceAuthorityHash: "a".repeat(64),
+      acceptedSourceContentHash: "b".repeat(64),
+      credential: { kind: "provider_export", sourceSoaSerial: 10 },
+    } as never, "domain-migration:order:90:v1")).toThrow(
+      "refresh authority is invalid",
+    )
   })
 })

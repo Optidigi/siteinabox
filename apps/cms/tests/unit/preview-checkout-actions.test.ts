@@ -1329,6 +1329,18 @@ describe("preview checkout domain suggestion action", () => {
         migrationId: 100,
         zoneExport: reacquiredZone,
         transferCode: "replacement-secret",
+        sourceRefreshAuthority: {
+          schemaVersion: 1,
+          domain: "ami-care.nl",
+          sourceMechanism: "cloudflare_api_v1",
+          acceptedSourceAuthorityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          acceptedSourceContentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          credential: {
+            kind: "cloudflare_api_token",
+            token: "customer-read-token",
+            zoneId: "a".repeat(32),
+          },
+        },
         expectedUpdatedAt: "migration-version-1",
       },
     )

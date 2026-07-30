@@ -65,7 +65,22 @@ describe("domain migration collection constraints", () => {
     } as unknown as BeforeValidateArgs)).toThrow("custom quote")
     expect(() => validateDomainMigration({
       data: { state: "completed", encryptedTransferCode: "ciphertext" },
-    } as unknown as BeforeValidateArgs)).toThrow("delete the encrypted transfer code")
+    } as unknown as BeforeValidateArgs)).toThrow("delete encrypted credentials")
+    for (const state of [
+      "completed",
+      "rolled_back",
+      "failed",
+      "custom_quote_required",
+    ]) {
+      expect(() => validateDomainMigration({
+        data: {
+          state,
+          encryptedSourceRefreshAuthority: "ciphertext",
+        },
+      } as unknown as BeforeValidateArgs)).toThrow(
+        "delete encrypted credentials",
+      )
+    }
   })
 
   it("enforces paid/non-billable authorization and immutable operator audit fields", () => {
@@ -101,5 +116,14 @@ describe("domain migration collection constraints", () => {
       throw new Error("Encrypted transfer code field access is missing.")
     }
     expect(field.access.read({} as never)).toBe(false)
+    const sourceField = DomainMigrations.fields.find(
+      (candidate) =>
+        "name" in candidate &&
+        candidate.name === "encryptedSourceRefreshAuthority",
+    )
+    if (!sourceField || !("access" in sourceField) || !sourceField.access?.read) {
+      throw new Error("Encrypted source refresh field access is missing.")
+    }
+    expect(sourceField.access.read({} as never)).toBe(false)
   })
 })

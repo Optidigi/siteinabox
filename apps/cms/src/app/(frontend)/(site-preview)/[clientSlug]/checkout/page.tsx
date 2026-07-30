@@ -140,7 +140,6 @@ export default async function PreviewCheckoutPage({
     const enabledMigrationSourceMethods = ([
       "cloudflare_api_v1",
       "authorized_axfr_v1",
-      "validated_provider_export_v1",
     ] as const).filter((mechanism) =>
       automaticMigrationSourceEnabled(mechanism))
     const existingDomainMigrationEnabled =

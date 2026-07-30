@@ -18,15 +18,16 @@ gate also permits provider reads. Each source is independently fail-closed:
 
 - `COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED=1` enables a customer-scoped
   Cloudflare API connector. The token needs only Zone Read and DNS Read for the
-  selected zone. It is encrypted, expires after 24 hours, and is never replaced
-  with the Siteinabox destination token.
+  selected zone. A dedicated encrypted refresh authority is retained for at
+  most 30 days, revalidated before registrar commit and nameserver cutover,
+  and is never replaced with the Siteinabox destination token.
 - `COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED=1` enables authorized AXFR from a
   currently authoritative public nameserver, optionally with an encrypted TSIG
   secret. The server pins the resolved public address, requires matching
   opening/closing SOAs, validates the zone with BIND, and captures twice.
-- `COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED=1` is reserved for
-  reviewed provider-export contracts. Keep it disabled for generic uploads:
-  a syntactically valid but partial file cannot prove completeness.
+- Generic provider-export uploads are not an automatic checkout mechanism. A
+  syntactically valid but partial file cannot prove completeness, so the
+  historical parser has no production enablement flag.
 
 Keep both the global flag and the relevant source flag unset in production
 until every gate below has current environment-specific evidence:

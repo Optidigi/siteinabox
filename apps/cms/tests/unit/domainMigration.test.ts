@@ -4,6 +4,7 @@ import {
   acquireAutomaticMigrationInputs,
   createAutomaticDomainMigration,
   prepareDomainMigration,
+  replaceMigrationSourceRefreshAuthority,
   replaceMigrationTransferAuthorization,
   transferAutorenewMode,
 } from "@/lib/domains/migration"
@@ -19,12 +20,19 @@ import type {
 } from "@siteinabox/contracts/domain-migration"
 import { normalizeCompleteZone } from "@siteinabox/contracts/domain-migration"
 import type { ParentDsVerification } from "@/lib/domains/verification"
-import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
 import {
+  domainMigrationSourceAuthorityHash,
+  domainMigrationSourceContentHash,
+} from "@/lib/domains/migrationEvidence"
+import {
+  openAutomaticSourceRefreshAuthority,
   openMigrationSecret,
   sealCheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
-import { MigrationSourceChangedError } from "@/lib/domains/migrationSources/refresh"
+import {
+  MigrationSourceChangedError,
+  MigrationSourceDnssecTransitionPendingError,
+} from "@/lib/domains/migrationSources/refresh"
 import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
 import { getTldCapabilityByVersion } from
   "@siteinabox/contracts/tld-capabilities"
@@ -788,6 +796,189 @@ describe("automatic existing-domain migration", () => {
     expect(store.payload.jobs.queue).not.toHaveBeenCalled()
   })
 
+  it("retains only refresh authority and completes after a six-day provider wait", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...zoneExport,
+      authority: {
+        mechanism: "cloudflare_api",
+        provider: "cloudflare",
+        complete: true,
+      },
+    }
+    const normalized = normalizeCompleteZone(automaticZone)
+    const sourceAuthorityHash = domainMigrationSourceAuthorityHash(normalized)
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "cloudflare_api_v1",
+        sourceZoneHash: sourceAuthorityHash,
+      },
+    }
+    const migration = await createAutomaticDomainMigration(store.payload, 600)
+    await acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: migration.id,
+      zoneExport: automaticZone,
+      transferCode: "opaque-nl-transfer-code",
+      sourceRefreshAuthority: {
+        schemaVersion: 1,
+        domain: "example.nl",
+        sourceMechanism: "cloudflare_api_v1",
+        acceptedSourceAuthorityHash: sourceAuthorityHash,
+        acceptedSourceContentHash: domainMigrationSourceContentHash(normalized),
+        credential: {
+          kind: "cloudflare_api_token",
+          token: "customer-scoped-cloudflare-token",
+          zoneId: "a".repeat(32),
+        },
+      },
+      now: "2026-07-28T08:00:00.000Z",
+      env: {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+        CLOUDFLARE_RENDERER_TUNNEL_ID:
+          "11111111-1111-4111-8111-111111111111",
+      } as unknown as NodeJS.ProcessEnv,
+    })
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      providerStatus: "PENDING",
+    })
+    const refresh = vi.fn(async () => ({
+      ...automaticZone,
+      acquiredAt: fixture.dependencies.now(),
+    }))
+    const dependencies = {
+      ...fixture.dependencies,
+      refreshAutomaticMigrationSource: refresh,
+    }
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+
+    fixture.setNow("2026-08-03T09:00:00.000Z")
+    fixture.setProviderStatus("ACT")
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(refresh.mock.calls.length).toBeGreaterThanOrEqual(3)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      encryptedTransferCode: null,
+      encryptedSourceRefreshAuthority: null,
+      sourceRefreshAuthorityDeletedAt: expect.any(String),
+    })
+    expect(JSON.stringify(store.collections["domain-migrations"]![0]))
+      .not.toContain("customer-scoped-cloudflare-token")
+  })
+
+  it("atomically accepts only one replacement source authority", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...zoneExport,
+      authority: {
+        mechanism: "cloudflare_api",
+        provider: "cloudflare",
+        complete: true,
+      },
+    }
+    const normalized = normalizeCompleteZone(automaticZone)
+    const sourceAuthorityHash = domainMigrationSourceAuthorityHash(normalized)
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "cloudflare_api_v1",
+        sourceZoneHash: sourceAuthorityHash,
+      },
+    }
+    const created = await createAutomaticDomainMigration(store.payload, 600)
+    await acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: created.id,
+      zoneExport: automaticZone,
+      transferCode: "opaque-nl-transfer-code",
+      sourceRefreshAuthority: {
+        schemaVersion: 1,
+        domain: "example.nl",
+        sourceMechanism: "cloudflare_api_v1",
+        acceptedSourceAuthorityHash: sourceAuthorityHash,
+        acceptedSourceContentHash: domainMigrationSourceContentHash(normalized),
+        credential: {
+          kind: "cloudflare_api_token",
+          token: "initial-customer-cloudflare-token",
+          zoneId: "a".repeat(32),
+        },
+      },
+      now: "2026-07-28T08:00:00.000Z",
+      env: {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+        CLOUDFLARE_RENDERER_TUNNEL_ID:
+          "11111111-1111-4111-8111-111111111111",
+      } as unknown as NodeJS.ProcessEnv,
+    })
+    const migration = store.collections["domain-migrations"]![0]!
+    Object.assign(migration, {
+      state: "awaiting_customer",
+      failureReason: "source_authority_reauthorization_required",
+      providerTransferState: "confirmed",
+      updatedAt: "2026-08-03T09:00:00.000Z",
+    })
+    vi.mocked(store.payload.jobs.queue).mockClear()
+    store.payload.db.drizzle.execute = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ id: migration.id }] })
+      .mockResolvedValueOnce({ rows: [] }) as never
+    const replacement = (token: string) =>
+      replaceMigrationSourceRefreshAuthority(store.payload, {
+        migrationId: migration.id!,
+        expectedUpdatedAt: "2026-08-03T09:00:00.000Z",
+        acquiredSource: {
+          mechanism: "cloudflare_api_v1",
+          zone: automaticZone,
+          refreshCredential: {
+            kind: "cloudflare_api_token",
+            token,
+            zoneId: "a".repeat(32),
+          },
+        },
+        now: "2026-08-03T09:01:00.000Z",
+        env: {
+          DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+    const results = await Promise.allSettled([
+      replacement("winning-customer-cloudflare-token"),
+      replacement("losing-customer-cloudflare-token"),
+    ])
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+    const persisted = store.collections["domain-migrations"]![0]!
+    expect(openAutomaticSourceRefreshAuthority(
+      String(persisted.encryptedSourceRefreshAuthority),
+      String(persisted.idempotencyKey),
+      "example.nl",
+      {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+      } as unknown as NodeJS.ProcessEnv,
+    )).toMatchObject({
+      credential: {
+        token: "winning-customer-cloudflare-token",
+      },
+    })
+    expect(store.payload.jobs.queue).toHaveBeenCalledTimes(1)
+  })
+
   it("preserves an accepted assisted-standard classification in the migration authority", async () => {
     const store = createStore()
     const order = store.collections.orders![0]!
@@ -1112,6 +1303,130 @@ describe("automatic existing-domain migration", () => {
       dnssecVerification: {
         verified: true,
       },
+    })
+  })
+
+  it("refreshes signed AXFR authority after a long parent-DS cache wait", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...signedZoneExport,
+      authority: {
+        mechanism: "authorized_axfr",
+        provider: "axfr:ns1.legacy.example",
+        complete: true,
+      },
+    }
+    const normalized = normalizeCompleteZone(automaticZone)
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "authorized_axfr_v1",
+        sourceZoneHash: domainMigrationSourceAuthorityHash(normalized),
+      },
+    }
+    const migration = await createAutomaticDomainMigration(store.payload, 600)
+    const prepared = await acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: migration.id,
+      zoneExport: automaticZone,
+      transferCode: "opaque-nl-transfer-code",
+      sourceRefreshAuthority: {
+        schemaVersion: 1,
+        domain: "example.nl",
+        sourceMechanism: "authorized_axfr_v1",
+        acceptedSourceAuthorityHash:
+          domainMigrationSourceAuthorityHash(normalized),
+        acceptedSourceContentHash:
+          domainMigrationSourceContentHash(normalized),
+        credential: {
+          kind: "authorized_axfr",
+          nameserver: "ns1.legacy.example",
+          tsigName: "siteinabox-key",
+          tsigSecret: "dGVzdC1hdXRob3JpdHktc2VjcmV0",
+        },
+      },
+      env: {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+        CLOUDFLARE_RENDERER_TUNNEL_ID:
+          "11111111-1111-4111-8111-111111111111",
+      } as unknown as NodeJS.ProcessEnv,
+      now: "2026-07-28T08:00:00.000Z",
+    })
+    const fixture = workflowDependencies({
+      sourceParentDsRecords: [sourceDsRecord],
+    })
+    const refreshedAfterDsRemoval: CompleteZoneExport = {
+      ...automaticZone,
+      acquiredAt: "2026-08-03T10:00:01.000Z",
+      dnssec: {
+        ...automaticZone.dnssec,
+        status: "unsigned",
+        parentDsRecords: [],
+        parentDsTtl: null,
+      },
+    }
+    let sourceCaptureStillSeesParentDs = false
+    const refresh = vi.fn(async (
+      _input: unknown,
+      _dependencies: unknown,
+      mode?: string,
+    ) => {
+      if (
+        mode === "stable_content_after_dnssec_transition" &&
+        sourceCaptureStillSeesParentDs
+      ) {
+        throw new MigrationSourceDnssecTransitionPendingError()
+      }
+      return mode === "stable_content_after_dnssec_transition"
+        ? refreshedAfterDsRemoval
+        : automaticZone
+    })
+    const dependencies = {
+      ...fixture.dependencies,
+      refreshAutomaticMigrationSource: refresh,
+    }
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      prepared.id,
+      asMigrationDependencies(dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      dnssecPhase: "source_ds_cache_wait",
+    })
+
+    fixture.setNow("2026-08-03T10:00:01.000Z")
+    sourceCaptureStillSeesParentDs = true
+    await expect(prepareDomainMigration(
+      store.payload,
+      prepared.id,
+      asMigrationDependencies(dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      encryptedSourceRefreshAuthority: expect.any(String),
+      dnssecPhase: "source_ds_cache_wait",
+    })
+
+    sourceCaptureStillSeesParentDs = false
+    await expect(prepareDomainMigration(
+      store.payload,
+      prepared.id,
+      asMigrationDependencies(dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+
+    expect(refresh).toHaveBeenCalledWith(
+      expect.any(Object),
+      {},
+      "stable_content_after_dnssec_transition",
+    )
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      encryptedSourceRefreshAuthority: null,
+      failureReason: null,
     })
   })
 

@@ -52,7 +52,10 @@ import {
   acquireValidatedProviderExport,
 } from "@/lib/domains/migrationSources/providerExport"
 import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
-import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
+import {
+  buildAutomaticSourceRefreshAuthority,
+  openCheckoutMigrationInput,
+} from "@/lib/domains/migrationSecrets"
 import {
   attachMigrationCheckoutSecret,
   migrationCheckoutSecretKey,
@@ -78,6 +81,7 @@ import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
   acquireAutomaticMigrationInputs,
   DomainMigrationCustomerInputError,
+  replaceMigrationSourceRefreshAuthority,
   replaceMigrationTransferAuthorization,
 } from "@/lib/domains/migration"
 
@@ -373,6 +377,7 @@ async function checkExistingDomainMigration(
         domain: normalized.domain,
         domainMode: "existing_domain",
         migrationReadiness: "unsupported",
+        migrationClassification: null,
         migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
         migrationPublicEvidence: publicEvidence,
         migrationPreflightOnly: true,
@@ -779,7 +784,13 @@ async function submitMigrationTransferCode(
   const migrationId = String(formData.get("migrationId") ?? "").trim()
   const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
   const transferCode = String(formData.get("transferCode") ?? "").trim()
-  if (!/^\d+$/.test(migrationId) || !expectedVersion || !transferCode) {
+  const sourceAuthorityOnly =
+    formData.get("sourceAuthorityOnly") === "accepted"
+  if (
+    !/^\d+$/.test(migrationId) ||
+    !expectedVersion ||
+    (!transferCode && !sourceAuthorityOnly)
+  ) {
     throw new MigrationCustomerActionError("invalid_input")
   }
   const migration = await context.payload.findByID({
@@ -788,6 +799,17 @@ async function submitMigrationTransferCode(
     depth: 0,
     overrideAccess: true,
   })
+  if (
+    !transferCode &&
+    !(
+      migration.failureReason ===
+        "source_authority_reauthorization_required" &&
+      migration.providerTransferState === "confirmed" &&
+      sourceAuthorityOnly
+    )
+  ) {
+    throw new MigrationCustomerActionError("invalid_input")
+  }
   const originatingOrderId = relationshipId(migration.originatingOrder)
   if (!originatingOrderId) {
     throw new Error("Transfer-code correction has no originating order.")
@@ -806,7 +828,10 @@ async function submitMigrationTransferCode(
   ) {
     throw new Error("Transfer-code correction belongs to another customer.")
   }
-  if (migration.failureReason === "source_evidence_stale") {
+  if (
+    migration.failureReason === "source_evidence_stale" ||
+    migration.failureReason === "source_authority_reauthorization_required"
+  ) {
     if (
       migration.updatedAt !== expectedVersion ||
       migration.state !== "awaiting_customer"
@@ -815,6 +840,9 @@ async function submitMigrationTransferCode(
     }
     const sourceMechanism = migration.sourceMechanism
     let zoneExport: unknown
+    let acquiredSource: Awaited<
+      ReturnType<typeof acquireAutomaticMigrationSourceFromForm>
+    > | null = null
     if (
       sourceMechanism &&
       sourceMechanism !== "customer_authorized_provider_export_v1"
@@ -827,7 +855,7 @@ async function submitMigrationTransferCode(
       ).catch(() => {
         throw new MigrationCustomerActionError("retryable_service_error")
       })
-      const acquiredSource = await acquireAutomaticMigrationSourceFromForm(
+      acquiredSource = await acquireAutomaticMigrationSourceFromForm(
         migration.domainNameAscii,
         sourceMechanism,
         formData,
@@ -846,19 +874,52 @@ async function submitMigrationTransferCode(
         throw new MigrationCustomerActionError("invalid_input")
       }
     }
+    if (
+      migration.failureReason ===
+        "source_authority_reauthorization_required" &&
+      !acquiredSource
+    ) {
+      throw new MigrationCustomerActionError("invalid_input")
+    }
     try {
-      await acquireAutomaticMigrationInputs(context.payload, {
-        migrationId: migration.id,
-        zoneExport: zoneExport as Parameters<
-          typeof acquireAutomaticMigrationInputs
-        >[1]["zoneExport"],
-        transferCode,
-        expectedUpdatedAt: expectedVersion,
-      })
+      if (
+        migration.failureReason ===
+          "source_authority_reauthorization_required"
+      ) {
+        await replaceMigrationSourceRefreshAuthority(context.payload, {
+          migrationId: migration.id,
+          acquiredSource: acquiredSource!,
+          transferCode: transferCode || undefined,
+          expectedUpdatedAt: expectedVersion,
+        })
+      } else {
+        if (!transferCode) {
+          throw new DomainMigrationCustomerInputError("invalid_input")
+        }
+        await acquireAutomaticMigrationInputs(context.payload, {
+          migrationId: migration.id,
+          zoneExport: zoneExport as Parameters<
+            typeof acquireAutomaticMigrationInputs
+          >[1]["zoneExport"],
+          transferCode,
+          sourceRefreshAuthority: acquiredSource
+            ? buildAutomaticSourceRefreshAuthority({
+                domain: migration.domainNameAscii,
+                sourceMechanism: acquiredSource.mechanism,
+                sourceZone: acquiredSource.zone,
+                credential: acquiredSource.refreshCredential,
+              })
+            : undefined,
+          expectedUpdatedAt: expectedVersion,
+        })
+      }
     } catch (error) {
       translateDomainMigrationInputFailure(error)
     }
   } else {
+    if (!transferCode) {
+      throw new MigrationCustomerActionError("invalid_input")
+    }
     try {
       await replaceMigrationTransferAuthorization(context.payload, {
         migrationId: migration.id,

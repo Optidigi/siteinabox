@@ -14,7 +14,10 @@ import {
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
 import type { MigrationClassification } from "@siteinabox/contracts/commerce"
-import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
+import {
+  domainMigrationSourceAuthorityHash,
+  domainMigrationSourceContentHash,
+} from "@/lib/domains/migrationEvidence"
 
 const ENVELOPE_VERSION = "v1"
 
@@ -112,6 +115,55 @@ export type AutomaticSourceRefreshCredential =
       sourceSoaSerial: number
     }
 
+export type DurableAutomaticSourceMechanism =
+  | "cloudflare_api_v1"
+  | "authorized_axfr_v1"
+
+export type DurableAutomaticSourceRefreshCredential = Exclude<
+  AutomaticSourceRefreshCredential,
+  { kind: "provider_export" }
+>
+
+export type AutomaticSourceRefreshAuthority = {
+  schemaVersion: 1
+  domain: string
+  sourceMechanism: DurableAutomaticSourceMechanism
+  acceptedSourceAuthorityHash: string
+  acceptedSourceContentHash: string
+  credential: DurableAutomaticSourceRefreshCredential
+}
+
+export function buildAutomaticSourceRefreshAuthority(input: {
+  domain: string
+  sourceMechanism: MigrationSourceMechanism
+  sourceZone: CompleteZoneExport | NormalizedCompleteZone
+  credential: AutomaticSourceRefreshCredential
+}): AutomaticSourceRefreshAuthority {
+  const sourceZone = normalizeCompleteZone(input.sourceZone)
+  const domain = input.domain.trim().toLowerCase()
+  const durablePair =
+    (
+      input.sourceMechanism === "cloudflare_api_v1" &&
+      input.credential.kind === "cloudflare_api_token"
+    ) ||
+    (
+      input.sourceMechanism === "authorized_axfr_v1" &&
+      input.credential.kind === "authorized_axfr"
+    )
+  if (!durablePair || sourceZone.domain !== domain) {
+    throw new Error("Automatic source has no durable refresh authority.")
+  }
+  return {
+    schemaVersion: 1,
+    domain,
+    sourceMechanism: input.sourceMechanism as DurableAutomaticSourceMechanism,
+    acceptedSourceAuthorityHash:
+      domainMigrationSourceAuthorityHash(sourceZone),
+    acceptedSourceContentHash: domainMigrationSourceContentHash(sourceZone),
+    credential: input.credential as DurableAutomaticSourceRefreshCredential,
+  }
+}
+
 export type AutomaticCheckoutMigrationInput = {
   schemaVersion: 2
   generationRunId: string
@@ -166,6 +218,31 @@ const automaticRefreshCredentialValid = (
     Number(credential.sourceSoaSerial) >= 0 &&
     Number(credential.sourceSoaSerial) <= 4_294_967_295
 }
+
+const HASH_PATTERN = /^[a-f0-9]{64}$/
+
+const durableSourceRefreshAuthorityValid = (
+  input: AutomaticSourceRefreshAuthority,
+): boolean =>
+  input.schemaVersion === 1 &&
+  input.domain === input.domain.trim().toLowerCase() &&
+  input.domain.length > 0 &&
+  HASH_PATTERN.test(input.acceptedSourceAuthorityHash) &&
+  HASH_PATTERN.test(input.acceptedSourceContentHash) &&
+  (
+    (
+      input.sourceMechanism === "cloudflare_api_v1" &&
+      input.credential.kind === "cloudflare_api_token"
+    ) ||
+    (
+      input.sourceMechanism === "authorized_axfr_v1" &&
+      input.credential.kind === "authorized_axfr"
+    )
+  ) &&
+  automaticRefreshCredentialValid(
+    input.sourceMechanism,
+    input.credential,
+  )
 
 const automaticSourceAuthorityMatches = (
   sourceMechanism: AutomaticCheckoutMigrationInput["sourceMechanism"],
@@ -297,4 +374,45 @@ export function openCheckoutMigrationInput(
     transferCode: input.transferCode,
     transferAuthorizationAccepted: true,
   } as OpenedCheckoutMigrationInput
+}
+
+const sourceRefreshBinding = (migrationBinding: string): string =>
+  `${migrationBinding.trim()}:source-refresh`
+
+export function sealAutomaticSourceRefreshAuthority(
+  input: AutomaticSourceRefreshAuthority,
+  migrationBinding: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  if (!migrationBinding.trim() || !durableSourceRefreshAuthorityValid(input)) {
+    throw new Error("Automatic source refresh authority is invalid.")
+  }
+  return sealMigrationSecret(
+    JSON.stringify(input),
+    sourceRefreshBinding(migrationBinding),
+    env,
+  )
+}
+
+export function openAutomaticSourceRefreshAuthority(
+  envelope: string,
+  migrationBinding: string,
+  expectedDomain: string,
+  env: NodeJS.ProcessEnv = process.env,
+): AutomaticSourceRefreshAuthority {
+  const plaintext = openMigrationSecret(
+    envelope,
+    sourceRefreshBinding(migrationBinding),
+    env,
+  )
+  const input = JSON.parse(plaintext) as AutomaticSourceRefreshAuthority
+  if (
+    !durableSourceRefreshAuthorityValid(input) ||
+    input.domain !== expectedDomain.trim().toLowerCase()
+  ) {
+    throw new Error(
+      "Automatic source refresh authority does not match the migration.",
+    )
+  }
+  return input
 }
