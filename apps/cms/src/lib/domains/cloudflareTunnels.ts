@@ -31,6 +31,11 @@ export type CloudflareTunnelReconciliation = {
   changed: boolean
 }
 
+export type CloudflareTunnelInspection = Omit<
+  CloudflareTunnelReconciliation,
+  "changed"
+>
+
 export class CloudflareTunnelConfigurationError extends Error {
   constructor(message: string) {
     super(message)
@@ -330,6 +335,27 @@ async function tunnelHasConnections(
         parsed.is_pending_reconnect === false
     })
   })
+}
+
+/**
+ * Strictly read-only Tunnel evidence used by release preflight. Keep this
+ * separate from reconciliation so a capability check can never drift into a
+ * configuration PUT.
+ */
+export async function inspectCloudflareTunnel(
+  kind: CloudflareTunnelKind,
+  options?: CloudflareTunnelOptions,
+): Promise<CloudflareTunnelInspection> {
+  const tunnel = await getCloudflareTunnel(kind, options)
+  const configuration = await getTunnelConfiguration(kind, options)
+  return {
+    tunnel,
+    ingress: configuration.ingress,
+    configurationVersion: configuration.version,
+    connected:
+      tunnel.status === "healthy" &&
+      await tunnelHasConnections(kind, options),
+  }
 }
 
 export async function reconcileCloudflareTunnel(

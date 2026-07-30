@@ -27,7 +27,7 @@ settings as authorization for an unreviewed live provider operation.
   rerun for that environment.
 
 The current evidence version is
-`commerce-production-readiness-2026-07-29.1`. Set
+`commerce-production-readiness-2026-07-30.1`. Set
 `COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=1` only in the separately approved
 release environment. This flag is a deployment interlock, not approval by
 itself.
@@ -103,7 +103,36 @@ Before moving to the next stage:
 
    The readiness command evaluates all production interlocks without changing
    the running service stage or performing provider writes. It fails when an
-   interlock is missing or a critical payment/domain alert remains open.
+   interlock is missing, a critical payment/domain alert remains open, or the
+   exact deployed credentials cannot complete the bounded read-only provider
+   evidence below:
+
+   - Mollie current-profile and enabled first/recurring payment-method reads;
+   - Openprovider login plus EUR reseller-balance read;
+   - renderer and CMS Cloudflare Tunnel identity, remote configuration,
+     healthy connection, and terminal `http_status:404` reads;
+   - active-tenant Cloudflare zone, DNS usage, DNSSEC, Universal SSL, and
+     certificate coverage reads.
+
+   Requests go only to the official production API origins, reject redirects,
+   enforce per-request and overall deadlines, bound response size, and report
+   stable blocker codes without provider bodies or credentials. No additional
+   environment variable is required: the command uses the existing provider,
+   Tunnel, release-stage, and active-tenant configuration.
+
+   Successful reads are necessary evidence, not write authorization. They do
+   not prove Cloudflare Tunnel/DNS Edit, future-zone scope, Mollie payment or
+   refund creation, Openprovider registration/transfer/renewal, webhook
+   delivery, or transactional email. Keep those exact scopes operator-verified
+   and complete the controlled canaries before enabling their independent
+   production flags. Primary read contracts:
+
+   - [Mollie current profile](https://docs.mollie.com/reference/get-current-profile)
+     and [enabled methods](https://docs.mollie.com/reference/list-methods);
+   - [Openprovider API](https://developers.openprovider.com/);
+   - [Cloudflare Tunnel read](https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/subresources/cloudflared/methods/get/),
+     [configuration read](https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/subresources/cloudflared/subresources/configurations/methods/get/),
+     and [connection read](https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/subresources/cloudflared/subresources/connections/methods/get/).
 
 Record environment-specific evidence outside the repository. Do not commit
 credentials, customer data, provider responses, transfer codes, operator

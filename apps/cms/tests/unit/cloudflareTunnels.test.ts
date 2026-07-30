@@ -4,6 +4,7 @@ import {
   buildCloudflareTunnelIngress,
   CloudflareTunnelApiError,
   cloudflareTunnelTarget,
+  inspectCloudflareTunnel,
   reconcileCloudflareTunnel,
 } from "@/lib/domains/cloudflareTunnels"
 
@@ -48,6 +49,61 @@ describe("Cloudflare dedicated Tunnel contracts", () => {
       .toBe(`${rendererId}.cfargotunnel.com`)
     expect(cloudflareTunnelTarget("cms", env))
       .toBe(`${cmsId}.cfargotunnel.com`)
+  })
+
+  it("inspects identity, exact configuration and connections using GET only", async () => {
+    const expected = buildCloudflareTunnelIngress("renderer", ["example.nl"])
+    const fetchMock = vi.fn(async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const url = String(input)
+      expect(init?.method).toBe("GET")
+      if (url.endsWith(`/cfd_tunnel/${rendererId}`)) {
+        return Response.json({
+          success: true,
+          result: {
+            id: rendererId,
+            name: "siteinabox-renderer",
+            status: "healthy",
+            config_src: "cloudflare",
+            account_tag: "account-123",
+          },
+        })
+      }
+      if (url.endsWith("/configurations")) {
+        return Response.json({
+          success: true,
+          result: { version: 7, config: { ingress: expected } },
+        })
+      }
+      if (url.endsWith("/connections")) {
+        return Response.json({
+          success: true,
+          result: [{
+            conns: [{ id: "connection-1", is_pending_reconnect: false }],
+          }],
+        })
+      }
+      return Response.json({ success: false }, { status: 404 })
+    })
+
+    await expect(inspectCloudflareTunnel("renderer", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      ingress: expected,
+      configurationVersion: 7,
+      connected: true,
+      tunnel: {
+        id: rendererId,
+        name: "siteinabox-renderer",
+        status: "healthy",
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls.every(([, init]) => init?.method === "GET"))
+      .toBe(true)
   })
 
   it("replaces drifted remote ingress once and confirms a healthy connector", async () => {

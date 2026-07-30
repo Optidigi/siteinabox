@@ -91,6 +91,30 @@ describe("Cloudflare domain adapter", () => {
     )
   })
 
+  it("uses account usage when Cloudflare applies an account-level DNS quota", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url.endsWith("/zones/zone-123/dns_records/usage")) {
+        return Response.json({
+          success: true,
+          result: { record_quota: null, record_usage: 2 },
+        })
+      }
+      if (url.endsWith("/accounts/account-123/dns_records/usage")) {
+        return Response.json({
+          success: true,
+          result: { record_quota: 10_000, record_usage: 120 },
+        })
+      }
+      throw new Error(`Unexpected Cloudflare usage read ${url}`)
+    })
+    await expect(getCloudflareDnsRecordUsage("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual({ recordQuota: 10_000, recordUsage: 120 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it("creates a full zone and returns Cloudflare nameservers", async () => {
     const fetchMock = vi.fn(async () => Response.json({
       success: true,

@@ -132,7 +132,7 @@ describe("staged commerce release runtime gate", () => {
     const edgeBootstrapEnv = {
       COMMERCE_RELEASE_STAGE: "production",
       COMMERCE_RELEASE_EVIDENCE_VERSION:
-        "commerce-production-readiness-2026-07-29.1",
+        "commerce-production-readiness-2026-07-30.1",
       COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
       COMMERCE_ORIGIN_ISOLATION_VERIFIED: "",
       NODE_ENV: "production",
@@ -224,7 +224,7 @@ describe("staged commerce release runtime gate", () => {
       {
         COMMERCE_RELEASE_STAGE: "production",
         COMMERCE_RELEASE_EVIDENCE_VERSION:
-          "commerce-production-readiness-2026-07-29.1",
+          "commerce-production-readiness-2026-07-30.1",
         COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
         COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
         NODE_ENV: "production",

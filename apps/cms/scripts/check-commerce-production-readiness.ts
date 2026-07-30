@@ -5,15 +5,31 @@ async function main(): Promise<number> {
     { getPayload },
     { default: config },
     { commerceProductionReadinessBlockers },
+    { commerceProviderCapabilityBlockers },
+    { resolveCommerceEdgeRoutingInventory },
   ] = await Promise.all([
     import("payload"),
     import("@/payload.config"),
     import("@/lib/commerce/releaseGateCore"),
+    import("@/lib/commerce/providerCapabilityPreflight"),
+    import("@/lib/domains/edgeRouting"),
   ])
 
   const payload = await getPayload({ config })
   try {
-    const blockers = await commerceProductionReadinessBlockers(payload)
+    const localBlockers = await commerceProductionReadinessBlockers(payload)
+    const edgeInventory = await resolveCommerceEdgeRoutingInventory(payload)
+    const providerBlockers = await commerceProviderCapabilityBlockers({
+      zoneDomains: edgeInventory.zoneDomains,
+      tunnelHostnames: {
+        renderer: edgeInventory.rendererHosts,
+        cms: edgeInventory.cmsHosts,
+      },
+    })
+    const blockers = [...new Set([
+      ...localBlockers,
+      ...providerBlockers,
+    ])]
 
     if (blockers.length > 0) {
       payload.logger.error(
