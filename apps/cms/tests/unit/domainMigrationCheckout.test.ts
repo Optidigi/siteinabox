@@ -5,7 +5,9 @@ import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 import {
   assessExistingDomainMigrationInput,
   automaticMigrationSourceEnabled,
+  gtldTransferEligibilityDeclarationRequired,
   inspectExistingDomainPublicEvidence,
+  publicTransferBlockers,
   type ExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
 import { dnskeyDsRecord } from "@/lib/domains/migrationSources/dnssecEvidence"
@@ -85,6 +87,9 @@ describe("automatic migration source gates", () => {
       }
       if (url === "https://rdap.example.test/domain/example.nl") {
         return new Response(JSON.stringify({
+          objectClassName: "domain",
+          ldhName: "example.nl",
+          status: [],
           entities: [{
             handle: "REGISTRAR-1",
             roles: ["registrar"],
@@ -116,6 +121,161 @@ describe("automatic migration source gates", () => {
         "bob.ns.cloudflare.com",
         "cloudflare.com.attacker.example",
       ],
+      registryStatuses: [],
+      registryTransferEvidence: "confirmed",
+      transferBlockers: [],
+    })
+  })
+
+  it("surfaces RDAP transfer locks and the ICANN 60-day windows before source acquisition", async () => {
+    const fetchImpl = async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url === "https://data.iana.org/rdap/dns.json") {
+        return new Response(JSON.stringify({
+          services: [[["com"], ["https://rdap.example.test/"]]],
+        }), { status: 200 })
+      }
+      if (url === "https://rdap.example.test/domain/example.com") {
+        return new Response(JSON.stringify({
+          objectClassName: "domain",
+          ldhName: "example.com",
+          status: ["clientTransferProhibited", "active"],
+          events: [
+            {
+              eventAction: "registration",
+              eventDate: "2026-07-15T10:00:00.000Z",
+            },
+            {
+              eventAction: "expiration",
+              eventDate: "2027-07-15T10:00:00.000Z",
+            },
+          ],
+        }), { status: 200 })
+      }
+      return new Response(null, { status: 404 })
+    }
+
+    const evidence = await inspectExistingDomainPublicEvidence("example.com", {
+      now: new Date("2026-07-30T10:00:00.000Z"),
+      resolveNsImpl: async () => ["ns1.example.test"],
+      resolveDsImpl: async () => [],
+      fetchImpl: fetchImpl as typeof fetch,
+    })
+
+    expect(evidence).toMatchObject({
+      registryStatuses: ["active", "client transfer prohibited"],
+      registeredAt: "2026-07-15T10:00:00.000Z",
+      registryExpiryAt: "2027-07-15T10:00:00.000Z",
+      registryTransferEvidence: "confirmed",
+      transferBlockers: [
+        "icann_initial_registration_60_day_eligibility_risk",
+        "rdap_status:client_transfer_prohibited",
+      ],
+    })
+  })
+
+  it.each([
+    ["empty response", {}],
+    ["wrong domain", {
+      objectClassName: "domain",
+      ldhName: "other.example",
+      status: [],
+    }],
+    ["invalid statuses", {
+      objectClassName: "domain",
+      ldhName: "example.com",
+      status: "active",
+    }],
+    ["invalid events", {
+      objectClassName: "domain",
+      ldhName: "example.com",
+      status: [],
+      events: [{}],
+    }],
+  ])("fails closed for malformed RDAP evidence: %s", async (_label, rdap) => {
+    const evidence = await inspectExistingDomainPublicEvidence("example.com", {
+      now: new Date("2026-07-30T10:00:00.000Z"),
+      resolveNsImpl: async () => ["ns1.example.test"],
+      resolveDsImpl: async () => [],
+      fetchImpl: (async (input: string | URL | Request) => {
+        const url = String(input)
+        if (url === "https://data.iana.org/rdap/dns.json") {
+          return Response.json({
+            services: [[["com"], ["https://rdap.example.test/"]]],
+          })
+        }
+        if (url === "https://rdap.example.test/domain/example.com") {
+          return Response.json(rdap)
+        }
+        return new Response(null, { status: 404 })
+      }) as typeof fetch,
+    })
+
+    expect(evidence.registryTransferEvidence).toBe("unavailable")
+    expect(evidence.transferBlockers).toContain(
+      "rdap_transfer_evidence_unavailable",
+    )
+  })
+
+  it("fails closed without ccTLD status evidence but does not add ICANN timing locks", () => {
+    expect(publicTransferBlockers({
+      tld: "nl",
+      evidenceAvailable: false,
+      statuses: [],
+      registeredAt: "2026-07-15T10:00:00.000Z",
+      lastTransferredAt: null,
+      now: new Date("2026-07-30T10:00:00.000Z"),
+    })).toEqual(["rdap_transfer_evidence_unavailable"])
+  })
+
+  it("normalizes transfer states and treats pending restore as a lifecycle blocker", () => {
+    expect(publicTransferBlockers({
+      tld: "com",
+      evidenceAvailable: true,
+      statuses: [
+        "clientTransferProhibited",
+        "server-transfer-prohibited",
+        "https://icann.org/epp#pendingRestore",
+      ],
+      registeredAt: null,
+      lastTransferredAt: null,
+      now: new Date("2026-07-30T10:00:00.000Z"),
+    })).toEqual([
+      "rdap_status:client_transfer_prohibited",
+      "rdap_status:pending_restore",
+      "rdap_status:server_transfer_prohibited",
+    ])
+  })
+
+  it("treats the exact ICANN 60-day boundary as no longer an unresolved timing risk", () => {
+    expect(publicTransferBlockers({
+      tld: "com",
+      evidenceAvailable: true,
+      statuses: [],
+      registeredAt: "2026-06-01T10:00:00.000Z",
+      lastTransferredAt: null,
+      now: new Date("2026-07-31T10:00:00.000Z"),
+    })).toEqual([])
+  })
+
+  it("requires the immutable eligibility declaration only for ICANN-policy gTLDs", () => {
+    expect(gtldTransferEligibilityDeclarationRequired("com")).toBe(true)
+    expect(gtldTransferEligibilityDeclarationRequired("shop")).toBe(true)
+    expect(gtldTransferEligibilityDeclarationRequired("nl")).toBe(false)
+    expect(gtldTransferEligibilityDeclarationRequired("be")).toBe(false)
+  })
+
+  it("fails closed when public RDAP transfer evidence is unavailable for a gTLD", async () => {
+    const evidence = await inspectExistingDomainPublicEvidence("example.com", {
+      now: new Date("2026-07-30T10:00:00.000Z"),
+      resolveNsImpl: async () => ["ns1.example.test"],
+      resolveDsImpl: async () => [],
+      fetchImpl: (async () => new Response(null, { status: 404 })) as typeof fetch,
+    })
+
+    expect(evidence).toMatchObject({
+      registryTransferEvidence: "unavailable",
+      transferBlockers: ["rdap_transfer_evidence_unavailable"],
     })
   })
 })
@@ -152,6 +312,91 @@ const assess = (
 })
 
 describe("existing-domain checkout preflight", () => {
+  it("freezes the gTLD eligibility declaration into encrypted migration evidence", () => {
+    const comZone = zoneExport({
+      domain: "example.com",
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "legacy-provider",
+        complete: true,
+      },
+      records: [{
+        type: "A",
+        name: "example.com",
+        ttl: 300,
+        content: "192.0.2.10",
+      }],
+    })
+    const acquiredSource = {
+      mechanism: "validated_provider_export_v1" as const,
+      zone: comZone,
+      refreshCredential: {
+        kind: "provider_export" as const,
+        sourceSoaSerial: 2026072901,
+      },
+    }
+    const baseInput = {
+      generationRunId: 500,
+      domain: "example.com",
+      zoneExport: comZone,
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      requestedAssistance: false,
+      publicEvidence: publicEvidence({
+        registryTransferEvidence: "confirmed",
+        transferBlockers: [],
+      }),
+      acquiredSource,
+      env,
+      now: new Date("2026-07-28T10:00:00.000Z"),
+    }
+
+    expect(assess(baseInput)).toMatchObject({
+      readiness: "unsupported",
+      sourceZone: null,
+      encryptedInput: null,
+    })
+    const accepted = assess({
+      ...baseInput,
+      gtldTransferEligibilityAccepted: true,
+    })
+    expect(accepted).toMatchObject({
+      readiness: "ready_automatic",
+      classification: "automatic",
+    })
+    expect(openCheckoutMigrationInput(
+      accepted.encryptedInput!,
+      500,
+      "example.com",
+      env,
+    )).toMatchObject({
+      gtldTransferEligibilityAccepted: true,
+    })
+  })
+
+  it("stops before reading transfer secrets when public registry evidence is blocked", () => {
+    const result = assess({
+      generationRunId: 500,
+      domain: "example.nl",
+      zoneExport: zoneExport(),
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      requestedAssistance: false,
+      publicEvidence: publicEvidence({
+        transferBlockers: ["rdap_status:client_transfer_prohibited"],
+      }),
+      env,
+      now: new Date("2026-07-28T10:00:00.000Z"),
+    })
+
+    expect(result).toMatchObject({
+      readiness: "unsupported",
+      classification: null,
+      sourceZone: null,
+      encryptedInput: null,
+    })
+  })
+
   it("issues automatic encrypted evidence only from a validated source adapter", () => {
     const acquiredZone = zoneExport({
       authority: {

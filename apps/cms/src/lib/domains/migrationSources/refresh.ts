@@ -35,6 +35,13 @@ export class MigrationSourceDnssecTransitionPendingError extends Error {
   }
 }
 
+export class MigrationTransferEligibilityBlockedError extends Error {
+  constructor() {
+    super("Fresh registry evidence blocks the domain transfer.")
+    this.name = "MigrationTransferEligibilityBlockedError"
+  }
+}
+
 type RefreshDependencies = {
   acquireCloudflareSource?: typeof acquireCloudflareSource
   acquireAuthorizedAxfr?: typeof acquireAuthorizedAxfr
@@ -63,6 +70,17 @@ const requireCompletedDnssecTransition = (
     evidence.dnssecDsPresent
   ) {
     throw new MigrationSourceDnssecTransitionPendingError()
+  }
+}
+
+const requireTransferEligibility = (
+  evidence: ExistingDomainPublicEvidence,
+): void => {
+  if (
+    evidence.registryTransferEvidence !== "confirmed" ||
+    (evidence.transferBlockers?.length ?? 0) > 0
+  ) {
+    throw new MigrationTransferEligibilityBlockedError()
   }
 }
 
@@ -111,6 +129,7 @@ const verifyExportAuthority = async (
     (dependencies.resolveSoaImpl ?? resolveSoa)(input.domain),
   ])
   const source = normalizeCompleteZone(input.sourceZone)
+  requireTransferEligibility(publicEvidence)
   if (
     soa.serial !== credential.sourceSoaSerial ||
     !sameNames(
@@ -138,6 +157,7 @@ export async function refreshAutomaticMigrationSource(
     const publicEvidence = await (
       dependencies.inspectPublicEvidence ?? inspectExistingDomainPublicEvidence
     )(input.domain)
+    requireTransferEligibility(publicEvidence)
     requireCompletedDnssecTransition(publicEvidence, mode)
     const acquired = await (
       dependencies.acquireCloudflareSource ?? acquireCloudflareSource
@@ -162,6 +182,7 @@ export async function refreshAutomaticMigrationSource(
     const publicEvidence: ExistingDomainPublicEvidence = await (
       dependencies.inspectPublicEvidence ?? inspectExistingDomainPublicEvidence
     )(input.domain)
+    requireTransferEligibility(publicEvidence)
     requireCompletedDnssecTransition(publicEvidence, mode)
     return requireSameSource(
       await (

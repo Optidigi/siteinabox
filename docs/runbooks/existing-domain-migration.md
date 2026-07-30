@@ -15,6 +15,9 @@ DNS as complete-source evidence, issues a payable quote, or starts a transfer.
 `COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=1` exposes the subsequent
 authorized-source and payable migration journey only when the commerce release
 gate also permits provider reads. Each source is independently fail-closed:
+the exact selected TLD must be production-enabled for incoming transfer before
+the UI exposes source credentials or a transfer code. Enabling one TLD never
+opens another TLD's source route.
 
 - `COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED=1` enables a customer-scoped
   Cloudflare connector. The ordinary customer route also requires
@@ -65,6 +68,15 @@ as a complete source. Unsupported records, stale or changed authority,
 unsupported TLD behavior, nondeterministic pricing, and any source over the
 effective destination capacity stop before payment.
 
+Registry transfer evidence is fail-closed. A successful RDAP response must be
+a structurally valid domain object bound to the selected LDH name; malformed,
+wrong-domain, unavailable, transfer-prohibited, hold, redemption, restore, or
+delete evidence blocks checkout. The canonical public-evidence hash is frozen
+in the signed quote, refreshed before every payment attempt (including an
+accepted-order retry), and checked again immediately before the registrar
+write. A newly appearing lock persists a waiting state and sends no
+Openprovider transfer request.
+
 The current pre-payment capacity policy is effective-dated with this release:
 new Cloudflare Free zones guarantee 200 DNS records, so checkout accepts at
 most 198 source records and reserves two managed website routes. After the
@@ -90,6 +102,9 @@ Before redirecting to Mollie, checkout freezes:
 - current provider transfer price and quote timestamp;
 - automatic classification and exact source mechanism;
 - the semantic source-zone hash;
+- the canonical public registry-evidence hash;
+- for an ICANN-policy gTLD, the exact versioned transfer-eligibility
+  declaration text and immutable acceptance;
 - an opaque reference to the dedicated encrypted checkout-secret record;
 - plan, domain allowance/surcharge, migration fee, VAT, and gross amount;
 - contracting profile, legal versions, business-use declaration, request
@@ -102,6 +117,12 @@ but does not calculate it. A changed provider
 price produces a new quote requiring explicit acceptance. A cancelled payment
 return reissues a short-lived signature over the exact accepted nonvolatile
 authority; it never asks the browser to reconstruct the zone or transfer code.
+
+For `.eu`, the accepted registrant evidence also couples eligibility to holder
+kind and address: a company uses establishment in its eligible address
+country; a natural person uses matching residence or eligible citizenship.
+Only natural-person citizenship is emitted to Openprovider as the `.eu`
+`country_of_citizenship` customer extension.
 
 ## Customer states
 

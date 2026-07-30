@@ -13,6 +13,12 @@ import {
   COMMERCIAL_CATALOG,
   COMMERCIAL_CATALOG_VERSION,
 } from "@siteinabox/contracts/commerce"
+import {
+  GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+  getTldCapabilityForProductionOperation,
+  isEuRegistryEligibilityCountry,
+  tldCapabilityAt,
+} from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutProfile } from "@/payload-types"
 import {
   checkoutProfileDraftFromFormData,
@@ -39,7 +45,9 @@ import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, sugge
 import {
   assessExistingDomainMigrationInput,
   automaticMigrationSourceEnabled,
+  existingDomainPublicEvidenceHash,
   existingDomainMigrationCheckoutEnabled,
+  gtldTransferEligibilityDeclarationRequired,
   inspectExistingDomainPublicEvidence,
   type ExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
@@ -119,7 +127,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "preflight_complete" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "preflight_complete" | "release_pending" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -138,6 +146,16 @@ export type PreviewCheckoutActionState = {
   migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationPublicEvidence?: ExistingDomainPublicEvidence | null
   migrationPreflightOnly?: boolean
+  migrationReleaseBlocked?: boolean
+}
+
+function migrationAssessmentMessage(
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  assessment: ReturnType<typeof assessExistingDomainMigrationInput>,
+): string {
+  return t(`checkoutMigrationAssessment_${assessment.reason}`, {
+    tld: `.${assessment.domain.split(".").at(-1) ?? ""}`,
+  })
 }
 
 export type PreviewCheckoutProfileActionState = {
@@ -204,6 +222,10 @@ const issueCheckoutQuoteSet = (input: {
   migrationClassification?: "automatic" | "assisted_standard" | null
   migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationSourceZoneHash?: string | null
+  migrationPublicEvidenceHash?: string | null
+  gtldTransferEligibilityDeclarationVersion?: string | null
+  gtldTransferEligibilityDeclarationText?: string | null
+  gtldTransferEligibilityAccepted?: boolean
   migrationInputEnvelope?: string | null
   migrationSecretKey?: string | null
   now?: Date
@@ -221,6 +243,13 @@ const issueCheckoutQuoteSet = (input: {
       migrationClassification: input.migrationClassification,
       migrationSourceMechanism: input.migrationSourceMechanism,
       migrationSourceZoneHash: input.migrationSourceZoneHash,
+      migrationPublicEvidenceHash: input.migrationPublicEvidenceHash,
+      gtldTransferEligibilityDeclarationVersion:
+        input.gtldTransferEligibilityDeclarationVersion,
+      gtldTransferEligibilityDeclarationText:
+        input.gtldTransferEligibilityDeclarationText,
+      gtldTransferEligibilityAccepted:
+        input.gtldTransferEligibilityAccepted,
       migrationInputEnvelope: input.migrationInputEnvelope,
       migrationSecretKey: input.migrationSecretKey,
       now: input.now,
@@ -258,6 +287,7 @@ const domainStatusFromMessageKey = (
 ): NonNullable<PreviewCheckoutActionState["status"]> => {
   if (messageKey === "checkoutDomainAvailable") return "available"
   if (messageKey === "checkoutDomainAvailableExtraFee") return "available_extra"
+  if (messageKey === "checkoutDomainReleasePending") return "release_pending"
   if (messageKey === "checkoutDomainUnavailable") return "unavailable"
   if (messageKey === "checkoutDomainPremium") return "premium"
   return "service_error"
@@ -360,6 +390,7 @@ async function checkExistingDomainMigration(
   domain: string,
   formData: FormData,
   requestToken: string | undefined,
+  t: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<PreviewCheckoutActionState> {
   const normalized = normalizeDomain(domain)
   if (!normalized.ok) {
@@ -369,25 +400,12 @@ async function checkExistingDomainMigration(
       domain,
       domainMode: "existing_domain",
       migrationReadiness: "unsupported",
-      message: "Vul een geldige bestaande domeinnaam in.",
+      message: t("checkoutDomainInvalid"),
       requestToken,
     }
   }
-  if (!commerceProviderReadsAllowed()) {
-    return {
-      ok: false,
-      status: "service_error",
-      domain: normalized.domain,
-      domainMode: "existing_domain",
-      migrationReadiness: "unsupported",
-      migrationPreflightOnly: true,
-      message:
-        "De domeinvoorcontrole is nog niet vrijgegeven. Er is niets verhuisd of besteld.",
-      requestToken,
-    }
-  }
-
   const migrationCheckoutEnabled =
+    commerceProviderReadsAllowed() &&
     existingDomainMigrationCheckoutEnabled()
   const sourceMethod = String(formData.get("migrationSourceMethod") ?? "").trim()
   if (!migrationCheckoutEnabled || !sourceMethod) {
@@ -395,8 +413,14 @@ async function checkExistingDomainMigration(
       const publicEvidence = await inspectExistingDomainPublicEvidence(
         normalized.domain,
       )
+      const transferBlocked = (publicEvidence.transferBlockers?.length ?? 0) > 0
+      const productionCapability = getTldCapabilityForProductionOperation(
+        normalized.extension,
+        "incoming_transfer",
+      )
+      const releaseBlocked = productionCapability === null
       return {
-        ok: true,
+        ok: !transferBlocked && !releaseBlocked,
         status: "preflight_complete",
         domain: normalized.domain,
         domainMode: "existing_domain",
@@ -404,10 +428,20 @@ async function checkExistingDomainMigration(
         migrationClassification: null,
         migrationPublicEvidence: publicEvidence,
         migrationPreflightOnly: true,
+        migrationReleaseBlocked: releaseBlocked,
         message:
-          migrationCheckoutEnabled
-            ? "De openbare voorcontrole is afgerond. Kies nu een volledige DNS-bron; er is nog niets verhuisd of besteld."
-            : "De openbare voorcontrole is afgerond. Er is nog niets verhuisd of besteld. De automatische bronroute is nog niet vrijgegeven.",
+          transferBlocked
+            ? t("checkoutMigrationTransferBlocked")
+            : releaseBlocked
+              ? t(
+                  tldCapabilityAt(normalized.extension)
+                    ? "checkoutMigrationTldReleasePending"
+                    : "checkoutMigrationTldUnsupported",
+                  { tld: `.${normalized.extension}` },
+                )
+            : migrationCheckoutEnabled
+            ? t("checkoutMigrationPublicPreflightSourceRequired")
+            : t("checkoutMigrationPublicPreflightReleasePending"),
         requestToken,
       }
     } catch {
@@ -418,8 +452,7 @@ async function checkExistingDomainMigration(
         domainMode: "existing_domain",
         migrationReadiness: "unsupported",
         migrationPreflightOnly: true,
-        message:
-          "De openbare voorcontrole kon nu niet worden afgerond. Er is niets verhuisd of besteld.",
+        message: t("checkoutMigrationPublicPreflightFailed"),
         requestToken,
       }
     }
@@ -437,7 +470,61 @@ async function checkExistingDomainMigration(
       domainMode: "existing_domain",
       migrationReadiness: "unsupported",
       migrationPreflightOnly: true,
-      message: "De openbare domeingegevens konden nu niet opnieuw worden bevestigd.",
+      message: t("checkoutMigrationPublicEvidenceRefreshFailed"),
+      requestToken,
+    }
+  }
+  if ((publicEvidence.transferBlockers?.length ?? 0) > 0) {
+    return {
+      ok: false,
+      status: "preflight_complete",
+      domain: normalized.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationClassification: null,
+      migrationPublicEvidence: publicEvidence,
+      migrationPreflightOnly: true,
+      message: t("checkoutMigrationTransferBlocked"),
+      requestToken,
+    }
+  }
+  const productionCapability = getTldCapabilityForProductionOperation(
+    normalized.extension,
+    "incoming_transfer",
+  )
+  if (!productionCapability) {
+    return {
+      ok: false,
+      status: "preflight_complete",
+      domain: normalized.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationClassification: null,
+      migrationPublicEvidence: publicEvidence,
+      migrationPreflightOnly: true,
+      message: t(
+        tldCapabilityAt(normalized.extension)
+          ? "checkoutMigrationTldReleasePending"
+          : "checkoutMigrationTldUnsupported",
+        { tld: `.${normalized.extension}` },
+      ),
+      requestToken,
+    }
+  }
+  if (
+    gtldTransferEligibilityDeclarationRequired(normalized.extension) &&
+    formData.get("gtldTransferEligibility") !== "accepted"
+  ) {
+    return {
+      ok: false,
+      status: "invalid",
+      domain: normalized.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationClassification: null,
+      migrationPublicEvidence: publicEvidence,
+      migrationPreflightOnly: true,
+      message: t("checkoutMigrationGtldEligibilityRequired"),
       requestToken,
     }
   }
@@ -460,7 +547,7 @@ async function checkExistingDomainMigration(
         migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
         migrationPublicEvidence: publicEvidence,
         migrationPreflightOnly: true,
-        message: "Kies een ondersteunde volledige DNS-bron.",
+        message: t("checkoutMigrationSourceUnsupported"),
         requestToken,
       }
     }
@@ -481,6 +568,8 @@ async function checkExistingDomainMigration(
       transferCode: String(formData.get("transferCode") ?? ""),
       transferAuthorizationAccepted:
         formData.get("transferAuthorization") === "accepted",
+      gtldTransferEligibilityAccepted:
+        formData.get("gtldTransferEligibility") === "accepted",
       requestedAssistance: false,
       publicEvidence,
       acquiredSource,
@@ -500,7 +589,7 @@ async function checkExistingDomainMigration(
         migrationSourceMechanism: acquiredSource.mechanism,
         migrationPublicEvidence: assessment.publicEvidence,
         migrationPreflightOnly: true,
-        message: assessment.message,
+        message: migrationAssessmentMessage(t, assessment),
         requestToken,
       }
     }
@@ -515,7 +604,7 @@ async function checkExistingDomainMigration(
         migrationSourceMechanism: acquiredSource.mechanism,
         migrationPublicEvidence: assessment.publicEvidence,
         migrationPreflightOnly: true,
-        message: "Deze verhuizing heeft geen deterministische ondersteunde providerprijs.",
+        message: t("checkoutMigrationPriceUnsupported"),
         requestToken,
       }
     }
@@ -530,6 +619,18 @@ async function checkExistingDomainMigration(
       migrationClassification: assessment.classification,
       migrationSourceMechanism: acquiredSource.mechanism,
       migrationSourceZoneHash: assessment.sourceZoneHash,
+      migrationPublicEvidenceHash: existingDomainPublicEvidenceHash(
+        assessment.publicEvidence!,
+      ),
+      ...(gtldTransferEligibilityDeclarationRequired(normalized.extension)
+        ? {
+            gtldTransferEligibilityDeclarationVersion:
+              GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+            gtldTransferEligibilityDeclarationText:
+              t("checkoutMigrationGtldEligibilityDeclaration"),
+            gtldTransferEligibilityAccepted: true,
+          }
+        : {}),
       migrationInputEnvelope: assessment.encryptedInput,
       migrationSecretKey: migrationCheckoutSecretKey(
         context.run.id,
@@ -546,7 +647,7 @@ async function checkExistingDomainMigration(
       migrationClassification: assessment.classification,
       migrationSourceMechanism: acquiredSource.mechanism,
       migrationPublicEvidence: assessment.publicEvidence,
-      message: assessment.message,
+      message: migrationAssessmentMessage(t, assessment),
       included: providerPrice.netAmountMinor <=
         COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
       domainSurchargeNetMinor: quotes.annual.quote.domainSurchargeNetMinor,
@@ -566,8 +667,7 @@ async function checkExistingDomainMigration(
       migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
       migrationPreflightOnly: true,
       migrationPublicEvidence: publicEvidence,
-      message:
-        "De volledige DNS-bron kon niet veilig worden bevestigd. Controleer de gekozen brongegevens en probeer opnieuw; er is niets besteld of verhuisd.",
+      message: t("checkoutMigrationSourceVerificationFailed"),
       requestToken,
     }
   }
@@ -600,7 +700,13 @@ export async function checkPreviewCheckoutDomainAction(
     }
   }
   if (domainMode === "existing_domain") {
-    return checkExistingDomainMigration(context, domain, formData, requestToken)
+    return checkExistingDomainMigration(
+      context,
+      domain,
+      formData,
+      requestToken,
+      t,
+    )
   }
   if (!commerceProviderReadsAllowed()) {
     return {
@@ -624,6 +730,7 @@ export async function checkPreviewCheckoutDomainAction(
       {
         record: false,
         includedProviderPrice: catalogDomainAllowance(),
+        requireProductionCapability: false,
       },
     )
     logPreviewCheckoutTiming("primary_check_provider", providerStart, { clientSlug: context.clientSlug, domain: result.domain }, {
@@ -632,8 +739,10 @@ export async function checkPreviewCheckoutDomainAction(
     const extraFee = result.extraFeeAmount && result.extraFeeCurrency
       ? { amount: result.extraFeeAmount, currency: result.extraFeeCurrency }
       : null
-    const canCheckout = result.messageKey === "checkoutDomainAvailable" ||
+    const canCheckout = result.productionOperationEnabled && (
+      result.messageKey === "checkoutDomainAvailable" ||
       result.messageKey === "checkoutDomainAvailableExtraFee"
+    )
     let quotes: CheckoutQuoteSet | undefined
     if (canCheckout) {
       if (
@@ -652,7 +761,7 @@ export async function checkPreviewCheckoutDomainAction(
       })
     }
     const response = {
-      ok: result.messageKey === "checkoutDomainAvailable" || result.messageKey === "checkoutDomainAvailableExtraFee",
+      ok: canCheckout,
       status: domainStatusFromMessageKey(result.messageKey),
       message: t(result.messageKey, {
         domain: result.domain,
@@ -828,6 +937,8 @@ async function recollectAcceptedMigrationInput(
     transferCode: String(formData.get("transferCode") ?? ""),
     transferAuthorizationAccepted:
       formData.get("transferAuthorization") === "accepted",
+    gtldTransferEligibilityAccepted:
+      formData.get("gtldTransferEligibility") === "accepted",
     requestedAssistance:
       quote.migrationClassification === "assisted_standard",
     publicEvidence,
@@ -1079,6 +1190,71 @@ export async function savePreviewCheckoutProfileAction(
       fieldErrors,
     }
   }
+  const profileDomain = normalizeDomain(
+    String(formData.get("domain") ?? ""),
+  )
+  const euEligibilityCombinationInvalid =
+    profileDomain.ok &&
+    profileDomain.extension === "eu" &&
+    (
+      (
+        parsed.data.partyType === "registered_business" &&
+        (
+          parsed.data.euEligibilityBasis !== "establishment" ||
+          parsed.data.euEligibilityCountry !== parsed.data.country
+        )
+      ) ||
+      (
+        parsed.data.partyType === "business_in_formation" &&
+        (
+          parsed.data.euEligibilityBasis === "establishment" ||
+          (
+            parsed.data.euEligibilityBasis === "residence" &&
+            parsed.data.euEligibilityCountry !== parsed.data.country
+          )
+        )
+      )
+    )
+  if (
+    profileDomain.ok &&
+    profileDomain.extension === "eu" &&
+    (
+      !parsed.data.euEligibilityBasis ||
+      !isEuRegistryEligibilityCountry(parsed.data.euEligibilityCountry) ||
+      euEligibilityCombinationInvalid
+    )
+  ) {
+    return {
+      ok: false,
+      status: "invalid",
+      message: t("checkoutDetailsInvalid"),
+      requestToken,
+      fieldErrors: {
+        ...(!parsed.data.euEligibilityBasis || euEligibilityCombinationInvalid
+          ? {
+              euEligibilityBasis:
+                t(
+                  euEligibilityCombinationInvalid
+                    ? "checkoutEuEligibilityCombinationInvalid"
+                    : "checkoutEuEligibilityBasisRequired",
+                ),
+            }
+          : {}),
+        ...(
+          !isEuRegistryEligibilityCountry(parsed.data.euEligibilityCountry) ||
+          euEligibilityCombinationInvalid
+          ? {
+              euEligibilityCountry:
+                t(
+                  euEligibilityCombinationInvalid
+                    ? "checkoutEuEligibilityCombinationInvalid"
+                    : "checkoutEuEligibilityCountryRequired",
+                ),
+            }
+          : {}),
+      },
+    }
+  }
   const audit = await requestAudit()
   const saved = await saveCheckoutProfileVersion({
     payload: context.payload,
@@ -1120,6 +1296,7 @@ export async function savePreviewCheckoutProfileAction(
         priorQuote.selectedDomain !== selectedDomain ||
         !priorQuote.migrationClassification ||
         !priorQuote.migrationSourceZoneHash ||
+        !priorQuote.migrationPublicEvidenceHash ||
         !priorQuote.migrationInputEnvelope ||
         !priorQuote.migrationSecretKey
       ) {
@@ -1142,6 +1319,14 @@ export async function savePreviewCheckoutProfileAction(
         migrationClassification: priorQuote.migrationClassification,
         migrationSourceMechanism: priorQuote.migrationSourceMechanism,
         migrationSourceZoneHash: priorQuote.migrationSourceZoneHash,
+        migrationPublicEvidenceHash:
+          priorQuote.migrationPublicEvidenceHash,
+        gtldTransferEligibilityDeclarationVersion:
+          priorQuote.gtldTransferEligibilityDeclarationVersion,
+        gtldTransferEligibilityDeclarationText:
+          priorQuote.gtldTransferEligibilityDeclarationText,
+        gtldTransferEligibilityAccepted:
+          priorQuote.gtldTransferEligibilityAccepted,
         migrationInputEnvelope: priorQuote.migrationInputEnvelope,
         migrationSecretKey: priorQuote.migrationSecretKey,
       })
@@ -1408,9 +1593,7 @@ export async function startPreviewCheckoutPaymentAction(
     let readyRun = context.run
     let readyDomain = domain
     let currentQuote: ReturnType<typeof buildCheckoutQuote>
-    if (resumesAcceptedOrder) {
-      currentQuote = acceptedQuote
-    } else if (acceptedQuote.domainMode === "existing_domain") {
+    if (acceptedQuote.domainMode === "existing_domain") {
       if (
         !commerceProviderReadsAllowed() ||
         !existingDomainMigrationCheckoutEnabled() ||
@@ -1420,11 +1603,9 @@ export async function startPreviewCheckoutPaymentAction(
           acceptedQuote.migrationSourceMechanism,
         ) ||
         !acceptedQuote.migrationSourceZoneHash ||
+        !acceptedQuote.migrationPublicEvidenceHash ||
         !acceptedQuote.migrationSecretKey ||
-        (
-          !acceptedQuote.migrationInputEnvelope &&
-          !resumesAcceptedOrder
-        )
+        (!acceptedQuote.migrationInputEnvelope && !resumesAcceptedOrder)
       ) {
         return {
           ok: false,
@@ -1432,6 +1613,33 @@ export async function startPreviewCheckoutPaymentAction(
           message: t("checkoutQuoteVersionConflict"),
         }
       }
+      let refreshedPublicEvidence: ExistingDomainPublicEvidence
+      try {
+        refreshedPublicEvidence = await inspectExistingDomainPublicEvidence(
+          domain,
+        )
+      } catch {
+        return {
+          ok: false,
+          status: "version_conflict",
+          message: t("checkoutQuoteVersionConflict"),
+        }
+      }
+      if (
+        (refreshedPublicEvidence.transferBlockers?.length ?? 0) > 0 ||
+        existingDomainPublicEvidenceHash(refreshedPublicEvidence) !==
+          acceptedQuote.migrationPublicEvidenceHash
+      ) {
+        return {
+          ok: false,
+          status: "version_conflict",
+          message: t("checkoutQuoteVersionConflict"),
+        }
+      }
+    }
+    if (resumesAcceptedOrder) {
+      currentQuote = acceptedQuote
+    } else if (acceptedQuote.domainMode === "existing_domain") {
       if (acceptedQuote.migrationInputEnvelope) {
         const migrationInput = openCheckoutMigrationInput(
           acceptedQuote.migrationInputEnvelope,
@@ -1471,6 +1679,14 @@ export async function startPreviewCheckoutPaymentAction(
         migrationClassification: acceptedQuote.migrationClassification,
         migrationSourceMechanism: acceptedQuote.migrationSourceMechanism,
         migrationSourceZoneHash: acceptedQuote.migrationSourceZoneHash,
+        migrationPublicEvidenceHash:
+          acceptedQuote.migrationPublicEvidenceHash,
+        gtldTransferEligibilityDeclarationVersion:
+          acceptedQuote.gtldTransferEligibilityDeclarationVersion,
+        gtldTransferEligibilityDeclarationText:
+          acceptedQuote.gtldTransferEligibilityDeclarationText,
+        gtldTransferEligibilityAccepted:
+          acceptedQuote.gtldTransferEligibilityAccepted,
         migrationInputEnvelope: acceptedQuote.migrationInputEnvelope,
         migrationSecretKey: acceptedQuote.migrationSecretKey,
         providerQuotedAt: new Date().toISOString(),
@@ -1534,6 +1750,14 @@ export async function startPreviewCheckoutPaymentAction(
           migrationClassification: currentQuote.migrationClassification,
           migrationSourceMechanism: currentQuote.migrationSourceMechanism,
           migrationSourceZoneHash: currentQuote.migrationSourceZoneHash,
+          migrationPublicEvidenceHash:
+            currentQuote.migrationPublicEvidenceHash,
+          gtldTransferEligibilityDeclarationVersion:
+            currentQuote.gtldTransferEligibilityDeclarationVersion,
+          gtldTransferEligibilityDeclarationText:
+            currentQuote.gtldTransferEligibilityDeclarationText,
+          gtldTransferEligibilityAccepted:
+            currentQuote.gtldTransferEligibilityAccepted,
           migrationInputEnvelope: currentQuote.migrationInputEnvelope,
           migrationSecretKey: currentQuote.migrationSecretKey,
         }),

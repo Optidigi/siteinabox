@@ -1,5 +1,6 @@
 import "server-only"
 
+import { createHash } from "node:crypto"
 import { resolveNs } from "node:dns/promises"
 import {
   normalizeCompleteZone,
@@ -11,6 +12,7 @@ import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
   productionTldCapabilitiesAt,
+  tldUsesIcannTransferPolicy,
   tldCapabilityOperationFlagEnabled,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -50,6 +52,12 @@ export type ExistingDomainPublicEvidence = {
   dnssecDsTtl: number | null
   probableDnsProvider: string | null
   registrar: string | null
+  registryStatuses?: string[]
+  registeredAt?: string | null
+  lastTransferredAt?: string | null
+  registryExpiryAt?: string | null
+  registryTransferEvidence?: "confirmed" | "unavailable"
+  transferBlockers?: string[]
   supplementalOnly: true
 }
 
@@ -58,10 +66,46 @@ export type ExistingDomainMigrationAssessment = {
   domain: string
   classification: Exclude<MigrationClassification, "complex"> | null
   message: string
+  reason:
+    | "invalid_domain"
+    | "tld_not_enabled"
+    | "gtld_eligibility_required"
+    | "registry_transfer_blocked"
+    | "invalid_zone"
+    | "stale_or_wrong_zone"
+    | "nameservers_changed"
+    | "zone_capacity_exceeded"
+    | "dnssec_evidence_incomplete"
+    | "transfer_authorization_invalid"
+    | "dnssec_release_pending"
+    | "source_authority_mismatch"
+    | "automatic_ready"
+    | "accepted_order_recollected"
+    | "source_completeness_unproven"
   sourceZone: NormalizedCompleteZone | null
   sourceZoneHash: string | null
   encryptedInput: string | null
   publicEvidence: ExistingDomainPublicEvidence | null
+}
+
+export function existingDomainPublicEvidenceHash(
+  evidence: ExistingDomainPublicEvidence,
+): string {
+  return createHash("sha256").update(JSON.stringify({
+    authoritativeNameservers: canonicalNames(evidence.authoritativeNameservers),
+    dnssecDsPresent: evidence.dnssecDsPresent,
+    dnssecDsRecords: [...evidence.dnssecDsRecords].sort(),
+    dnssecDsTtl: evidence.dnssecDsTtl,
+    probableDnsProvider: evidence.probableDnsProvider?.trim().toLowerCase() ?? null,
+    registrar: evidence.registrar?.trim().toLowerCase() ?? null,
+    registryStatuses: [...(evidence.registryStatuses ?? [])].sort(),
+    registeredAt: evidence.registeredAt ?? null,
+    lastTransferredAt: evidence.lastTransferredAt ?? null,
+    registryExpiryAt: evidence.registryExpiryAt ?? null,
+    registryTransferEvidence:
+      evidence.registryTransferEvidence ?? "unavailable",
+    transferBlockers: [...(evidence.transferBlockers ?? [])].sort(),
+  })).digest("hex")
 }
 
 const canonicalNames = (values: string[]): string[] =>
@@ -101,10 +145,79 @@ const timeout = async <T>(promise: Promise<T>, milliseconds: number): Promise<T>
   }
 }
 
-const rdapRegistrar = async (
+type RdapDomainEvidence = {
+  registrar: string | null
+  statuses: string[]
+  registeredAt: string | null
+  lastTransferredAt: string | null
+  expiresAt: string | null
+}
+
+const normalizedRdapStatus = (value: string): string =>
+  value
+    .trim()
+    .replace(/^https?:\/\/[^#]+#/i, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+
+const validRdapDate = (value: unknown): string | null => {
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) return null
+  return new Date(value).toISOString()
+}
+
+export function gtldTransferEligibilityDeclarationRequired(tld: string): boolean {
+  return tldUsesIcannTransferPolicy(tld)
+}
+
+export function publicTransferBlockers(input: {
+  tld: string
+  evidenceAvailable: boolean
+  statuses: string[]
+  registeredAt: string | null
+  lastTransferredAt: string | null
+  now: Date
+}): string[] {
+  const statuses = new Set(input.statuses.map(normalizedRdapStatus))
+  const blockers: string[] = []
+  const isIcannGtld = tldUsesIcannTransferPolicy(input.tld)
+  if (!input.evidenceAvailable) {
+    blockers.push("rdap_transfer_evidence_unavailable")
+  }
+  const blockingStatuses = [
+    "client transfer prohibited",
+    "server transfer prohibited",
+    "pending transfer",
+    "redemption period",
+    "pending delete",
+    "pending restore",
+    "client hold",
+    "server hold",
+  ]
+  for (const status of blockingStatuses) {
+    if (statuses.has(status)) blockers.push(`rdap_status:${status.replaceAll(" ", "_")}`)
+  }
+  if (isIcannGtld) {
+    const sixtyDaysAgo = input.now.getTime() - 60 * 24 * 60 * 60_000
+    const registeredAt = input.registeredAt ? Date.parse(input.registeredAt) : Number.NaN
+    const lastTransferredAt = input.lastTransferredAt
+      ? Date.parse(input.lastTransferredAt)
+      : Number.NaN
+    if (Number.isFinite(registeredAt) && registeredAt > sixtyDaysAgo) {
+      blockers.push("icann_initial_registration_60_day_eligibility_risk")
+    }
+    if (Number.isFinite(lastTransferredAt) && lastTransferredAt > sixtyDaysAgo) {
+      blockers.push("icann_previous_transfer_60_day_eligibility_risk")
+    }
+  }
+  return [...new Set(blockers)].sort()
+}
+
+const rdapDomainEvidence = async (
   domain: string,
   fetchImpl: typeof fetch,
-): Promise<string | null> => {
+): Promise<RdapDomainEvidence | null> => {
   const tld = domain.split(".").at(-1)
   if (!tld) return null
   const bootstrapResponse = await fetchImpl(
@@ -151,20 +264,84 @@ const rdapRegistrar = async (
     },
   )
   if (!response.ok) return null
-  const payload = await response.json() as {
+  const rawPayload: unknown = await response.json()
+  if (
+    !rawPayload ||
+    typeof rawPayload !== "object" ||
+    Array.isArray(rawPayload)
+  ) {
+    return null
+  }
+  const payload = rawPayload as {
+    objectClassName?: string
+    ldhName?: string
+    status?: string[]
+    events?: Array<{
+      eventAction?: string
+      eventDate?: string
+    }>
     entities?: Array<{
       handle?: string
       roles?: string[]
       vcardArray?: [string, Array<[string, Record<string, unknown>, string, string]>]
     }>
   }
+  if (
+    payload.objectClassName !== "domain" ||
+    typeof payload.ldhName !== "string" ||
+    canonicalNames([payload.ldhName])[0] !== canonicalNames([domain])[0] ||
+    !Array.isArray(payload.status) ||
+    !payload.status.every((status) => typeof status === "string") ||
+    (
+      payload.events !== undefined &&
+      (
+        !Array.isArray(payload.events) ||
+        !payload.events.every((event) =>
+          event &&
+          typeof event === "object" &&
+          typeof event.eventAction === "string" &&
+          typeof event.eventDate === "string")
+      )
+    ) ||
+    (
+      payload.entities !== undefined &&
+      !Array.isArray(payload.entities)
+    )
+  ) {
+    return null
+  }
   const registrar = payload.entities?.find((entity) =>
     entity.roles?.includes("registrar"))
-  if (!registrar) return null
-  const name = registrar.vcardArray?.[1].find((entry) => entry[0] === "fn")?.[3]
-  return typeof name === "string" && name.trim()
-    ? name.trim()
-    : registrar.handle?.trim() || null
+  const name = registrar?.vcardArray?.[1].find((entry) => entry[0] === "fn")?.[3]
+  const statuses = [...new Set(
+    (payload.status ?? [])
+      .filter((status): status is string => typeof status === "string")
+      .map(normalizedRdapStatus)
+      .filter(Boolean),
+  )].sort()
+  const eventDate = (...actions: string[]): string | null => {
+    const normalizedActions = new Set(actions.map((action) => action.toLowerCase()))
+    const dates = (payload.events ?? [])
+      .filter((event) =>
+        typeof event.eventAction === "string" &&
+        normalizedActions.has(event.eventAction.trim().toLowerCase()))
+      .map((event) => validRdapDate(event.eventDate))
+      .filter((date): date is string => date !== null)
+      .sort()
+    return dates.at(-1) ?? null
+  }
+  const registeredAt = eventDate("registration")
+  const lastTransferredAt = eventDate("transfer", "last transfer")
+  const expiresAt = eventDate("expiration", "expiry")
+  return {
+    registrar: typeof name === "string" && name.trim()
+      ? name.trim()
+      : registrar?.handle?.trim() || null,
+    statuses,
+    registeredAt,
+    lastTransferredAt,
+    expiresAt,
+  }
 }
 
 export async function inspectExistingDomainPublicEvidence(
@@ -178,6 +355,7 @@ export async function inspectExistingDomainPublicEvidence(
 ): Promise<ExistingDomainPublicEvidence> {
   const resolveNsImpl = input.resolveNsImpl ?? resolveNs
   const fetchImpl = input.fetchImpl ?? fetch
+  const now = input.now ?? new Date()
   const dsEvidencePromise = input.resolveDsImpl
     ? timeout(input.resolveDsImpl(domain).then((records) => ({
         records: records.flatMap((record) => {
@@ -217,20 +395,33 @@ export async function inspectExistingDomainPublicEvidence(
           ttl: evidence.ttl ?? null,
         }
       }), 20_000)
-  const [nameservers, dsEvidence, registrar] = await Promise.all([
+  const [nameservers, dsEvidence, rdap] = await Promise.all([
     timeout(resolveNsImpl(domain), 3_000),
     dsEvidencePromise,
-    rdapRegistrar(domain, fetchImpl).catch(() => null),
+    rdapDomainEvidence(domain, fetchImpl).catch(() => null),
   ])
   const normalizedNameservers = canonicalNames(nameservers)
   return {
-    checkedAt: (input.now ?? new Date()).toISOString(),
+    checkedAt: now.toISOString(),
     authoritativeNameservers: normalizedNameservers,
     dnssecDsPresent: dsEvidence.records.length > 0,
     dnssecDsRecords: dsEvidence.records,
     dnssecDsTtl: dsEvidence.ttl,
     probableDnsProvider: probableDnsProvider(normalizedNameservers),
-    registrar,
+    registrar: rdap?.registrar ?? null,
+    registryStatuses: rdap?.statuses ?? [],
+    registeredAt: rdap?.registeredAt ?? null,
+    lastTransferredAt: rdap?.lastTransferredAt ?? null,
+    registryExpiryAt: rdap?.expiresAt ?? null,
+    registryTransferEvidence: rdap ? "confirmed" : "unavailable",
+    transferBlockers: publicTransferBlockers({
+      tld: domain.split(".").at(-1) ?? "",
+      evidenceAvailable: rdap !== null,
+      statuses: rdap?.statuses ?? [],
+      registeredAt: rdap?.registeredAt ?? null,
+      lastTransferredAt: rdap?.lastTransferredAt ?? null,
+      now,
+    }),
     supplementalOnly: true,
   }
 }
@@ -265,6 +456,7 @@ export function assessExistingDomainMigrationInput(input: {
   zoneExport: CompleteZoneExport
   transferCode: string
   transferAuthorizationAccepted: boolean
+  gtldTransferEligibilityAccepted?: boolean
   requestedAssistance: boolean
   publicEvidence: ExistingDomainPublicEvidence
   acceptedOrderRecollection?: boolean
@@ -287,6 +479,7 @@ export function assessExistingDomainMigrationInput(input: {
       domain: input.domain.trim().toLowerCase(),
       classification: null,
       message: "De bestaande domeinnaam is ongeldig.",
+      reason: "invalid_domain",
       sourceZone: null,
       sourceZoneHash: null,
       encryptedInput: null,
@@ -314,6 +507,38 @@ export function assessExistingDomainMigrationInput(input: {
       domain: normalizedDomain.domain,
       classification: null,
       message: `Inkomende verhuizing voor .${normalizedDomain.extension} is niet ingeschakeld.`,
+      reason: "tld_not_enabled",
+      sourceZone: null,
+      sourceZoneHash: null,
+      encryptedInput: null,
+      publicEvidence: input.publicEvidence,
+    }
+  }
+  if (
+    gtldTransferEligibilityDeclarationRequired(normalizedDomain.extension) &&
+    input.gtldTransferEligibilityAccepted !== true
+  ) {
+    return {
+      readiness: "unsupported",
+      domain: normalizedDomain.domain,
+      classification: null,
+      message:
+        "Bevestig dat er geen bekende recente houderwijziging, procedure of andere registrarblokkade geldt voordat deze gTLD kan worden verhuisd.",
+      reason: "gtld_eligibility_required",
+      sourceZone: null,
+      sourceZoneHash: null,
+      encryptedInput: null,
+      publicEvidence: input.publicEvidence,
+    }
+  }
+  if ((input.publicEvidence.transferBlockers?.length ?? 0) > 0) {
+    return {
+      readiness: "unsupported",
+      domain: normalizedDomain.domain,
+      classification: null,
+      message:
+        "De openbare registrygegevens tonen een actieve verhuisblokkade. Hef die eerst op en voer daarna een nieuwe voorcontrole uit.",
+      reason: "registry_transfer_blocked",
       sourceZone: null,
       sourceZoneHash: null,
       encryptedInput: null,
@@ -333,6 +558,7 @@ export function assessExistingDomainMigrationInput(input: {
       domain: normalizedDomain.domain,
       classification: null,
       message: "De volledige zone-export is ongeldig of bevat niet-ondersteunde records.",
+      reason: "invalid_zone",
       sourceZone: null,
       sourceZoneHash: null,
       encryptedInput: null,
@@ -351,6 +577,7 @@ export function assessExistingDomainMigrationInput(input: {
       domain: normalizedDomain.domain,
       classification: null,
       message: "De zone-export hoort niet bij dit domein of is ouder dan 24 uur.",
+      reason: "stale_or_wrong_zone",
       sourceZone: null,
       sourceZoneHash: null,
       encryptedInput: null,
@@ -366,6 +593,7 @@ export function assessExistingDomainMigrationInput(input: {
       domain: normalizedDomain.domain,
       classification: null,
       message: "De gezaghebbende nameservers zijn gewijzigd; lever een nieuwe volledige export aan.",
+      reason: "nameservers_changed",
       sourceZone: null,
       sourceZoneHash: null,
       encryptedInput: null,
@@ -379,6 +607,7 @@ export function assessExistingDomainMigrationInput(input: {
       classification: null,
       message:
         "Deze zone bevat te veel records voor de gegarandeerde automatische doelcapaciteit. Er wordt niets besteld of betaald.",
+      reason: "zone_capacity_exceeded",
       sourceZone,
       sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
       encryptedInput: null,
@@ -408,6 +637,7 @@ export function assessExistingDomainMigrationInput(input: {
         classification: null,
         message:
           "De DNSSEC-bronketen is niet volledig of cryptografisch aantoonbaar. Er wordt niets besteld of betaald.",
+        reason: "dnssec_evidence_incomplete",
         sourceZone,
         sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
         encryptedInput: null,
@@ -424,6 +654,7 @@ export function assessExistingDomainMigrationInput(input: {
       domain: normalizedDomain.domain,
       classification: null,
       message: "Een geldige verhuiscode en uitdrukkelijke verhuisautorisatie zijn vereist.",
+      reason: "transfer_authorization_invalid",
       sourceZone,
       sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
       encryptedInput: null,
@@ -440,6 +671,7 @@ export function assessExistingDomainMigrationInput(input: {
       classification: null,
       message:
         `Inkomende verhuizing voor .${normalizedDomain.extension} blijft uitgeschakeld totdat DNSSEC- en cutoverbewijs compleet is.`,
+      reason: "dnssec_release_pending",
       sourceZone,
       sourceZoneHash: domainMigrationSourceAuthorityHash(sourceZone),
       encryptedInput: null,
@@ -458,6 +690,7 @@ export function assessExistingDomainMigrationInput(input: {
         domain: normalizedDomain.domain,
         classification: null,
         message: "De automatische bronautoriteit komt niet overeen met de gevalideerde zone.",
+        reason: "source_authority_mismatch",
         sourceZone,
         sourceZoneHash,
         encryptedInput: null,
@@ -475,12 +708,15 @@ export function assessExistingDomainMigrationInput(input: {
       sourceRefreshCredential: input.acquiredSource.refreshCredential,
       transferCode: input.transferCode,
       transferAuthorizationAccepted: true,
+      gtldTransferEligibilityAccepted:
+        input.gtldTransferEligibilityAccepted === true,
     }
     return {
       readiness: "ready_automatic",
       domain: normalizedDomain.domain,
       classification: "automatic",
       message: "De volledige DNS-bron en verhuisvereisten zijn automatisch gevalideerd.",
+      reason: "automatic_ready",
       sourceZone,
       sourceZoneHash,
       encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
@@ -498,12 +734,15 @@ export function assessExistingDomainMigrationInput(input: {
       sourceZone: input.zoneExport,
       transferCode: input.transferCode,
       transferAuthorizationAccepted: true,
+      gtldTransferEligibilityAccepted:
+        input.gtldTransferEligibilityAccepted === true,
     }
     return {
       readiness: "ready_assisted",
       domain: normalizedDomain.domain,
       classification: "assisted_standard",
       message: "De bestaande geaccepteerde migratiegegevens zijn veilig vernieuwd.",
+      reason: "accepted_order_recollected",
       sourceZone,
       sourceZoneHash,
       encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
@@ -520,6 +759,7 @@ export function assessExistingDomainMigrationInput(input: {
     classification: null,
     message:
       "Deze export is technisch geldig, maar de volledigheid kan nog niet automatisch worden bewezen. Er wordt niets besteld of betaald.",
+    reason: "source_completeness_unproven",
     sourceZone,
     sourceZoneHash,
     encryptedInput: null,

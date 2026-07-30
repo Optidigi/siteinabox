@@ -286,6 +286,7 @@ describe("preview checkout page domain initialization", () => {
       migrationClassification: "automatic",
       migrationSourceMechanism: "validated_provider_export_v1",
       migrationSourceZoneHash: "a".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
       migrationInputEnvelope: "v1.encrypted",
       selectedDomain: "existing.nl",
       domainMode: "existing_domain",

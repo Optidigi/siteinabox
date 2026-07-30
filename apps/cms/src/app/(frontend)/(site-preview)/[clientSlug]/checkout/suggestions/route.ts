@@ -2,6 +2,7 @@ import { getLocale } from "next-intl/server"
 import { NextRequest, NextResponse } from "next/server"
 import { maxDomainProviderPriceFromEnv } from "@/lib/domains/orderState"
 import { suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
+import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGate"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import type { PreviewCheckoutSuggestionsState } from "../actions"
 import { requirePreviewCheckoutContext } from "../previewCheckoutContext"
@@ -91,6 +92,18 @@ async function handleSuggestionsRequest(
   if (!input.domain) {
     logPreviewCheckoutTiming("suggestions_total", totalStart, { clientSlug: context.clientSlug }, { ok: false, reason: "missing_domain" })
     return jsonState({ ok: false, suggestions: [], cursor: 0, done: true })
+  }
+  if (!commerceProviderReadsAllowed()) {
+    logPreviewCheckoutTiming("suggestions_total", totalStart, {
+      clientSlug: context.clientSlug,
+    }, { ok: false, reason: "provider_reads_disabled" })
+    return jsonState({
+      ok: false,
+      domain: input.domain,
+      suggestions: [],
+      cursor: input.cursor,
+      done: true,
+    })
   }
 
   try {

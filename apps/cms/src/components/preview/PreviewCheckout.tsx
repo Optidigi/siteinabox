@@ -25,6 +25,7 @@ import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
+import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
 import type {
@@ -48,7 +49,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "preflight_complete" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "preflight_complete" | "release_pending" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -66,6 +67,7 @@ export type PreviewCheckoutActionState = {
   migrationClassification?: "automatic" | "assisted_standard" | null
   migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationPreflightOnly?: boolean
+  migrationReleaseBlocked?: boolean
   migrationPublicEvidence?: {
     checkedAt: string
     authoritativeNameservers: string[]
@@ -74,6 +76,12 @@ export type PreviewCheckoutActionState = {
     dnssecDsTtl: number | null
     probableDnsProvider: string | null
     registrar: string | null
+    registryStatuses?: string[]
+    registeredAt?: string | null
+    lastTransferredAt?: string | null
+    registryExpiryAt?: string | null
+    registryTransferEvidence?: "confirmed" | "unavailable"
+    transferBlockers?: string[]
     supplementalOnly: true
   } | null
 }
@@ -295,6 +303,8 @@ const checkoutFieldId = (field: string): string | null => ({
   phoneCountryCode: "checkout-phone-country",
   phoneAreaCode: "checkout-phone-area",
   phoneSubscriberNumber: "checkout-phone-number",
+  euEligibilityBasis: "checkout-eu-eligibility-basis",
+  euEligibilityCountry: "checkout-eu-eligibility-country",
 } as Record<string, string>)[field] ?? null
 
 export function PreviewCheckout({
@@ -422,6 +432,7 @@ export function PreviewCheckout({
   const [migrationPreflight, setMigrationPreflight] = React.useState<{
     domain: string
     publicEvidence: PreviewCheckoutActionState["migrationPublicEvidence"]
+    releaseBlocked: boolean
   } | null>(null)
   const [suggestionsState, setSuggestionsState] =
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
@@ -477,6 +488,21 @@ export function PreviewCheckout({
     checkState.domain &&
     checkState.domain === normalizedDomainValue &&
     (checkState.domainMode ?? "new_registration") === domainMode,
+  )
+  const activeMigrationPublicEvidence = checkAppliesToCurrentInput
+    ? checkState.migrationPublicEvidence
+    : migrationPreflight?.domain === normalizedDomainValue
+      ? migrationPreflight.publicEvidence
+      : null
+  const migrationTransferBlocked = Boolean(
+    (activeMigrationPublicEvidence?.transferBlockers?.length ?? 0) > 0,
+  )
+  const migrationReleaseBlocked = Boolean(
+    checkAppliesToCurrentInput
+      ? checkState.migrationReleaseBlocked
+      : migrationPreflight?.domain === normalizedDomainValue
+        ? migrationPreflight.releaseBlocked
+        : false,
   )
   const suggestionsApplyToCurrentInput = Boolean(
     suggestionsState.domain && suggestionsState.domain === normalizedDomainValue,
@@ -573,16 +599,20 @@ export function PreviewCheckout({
 
   React.useEffect(() => {
     if (
-      checkState.ok &&
       checkState.domain &&
       checkState.domain === normalizedDomainValue &&
       (checkState.domainMode ?? "new_registration") === domainMode &&
       checkTokenIsCurrent &&
       checkMechanismIsCurrent
     ) {
-      setCheckedDomain(checkState.domain)
-      setDomainValue(checkState.domain)
-      setQuotes(checkState.quotes ?? null)
+      if (checkState.ok) {
+        setCheckedDomain(checkState.domain)
+        setDomainValue(checkState.domain)
+        setQuotes(checkState.quotes ?? null)
+      } else {
+        setCheckedDomain(null)
+        setQuotes(null)
+      }
     }
   }, [
     checkState,
@@ -602,8 +632,14 @@ export function PreviewCheckout({
       setMigrationPreflight({
         domain: checkState.domain,
         publicEvidence: checkState.migrationPublicEvidence,
+        releaseBlocked: checkState.migrationReleaseBlocked === true,
       })
-      if (existingDomainMigrationEnabled) {
+      if (
+        checkState.migrationReleaseBlocked ||
+        (checkState.migrationPublicEvidence?.transferBlockers?.length ?? 0) > 0
+      ) {
+        setMigrationSourceMethod("")
+      } else if (existingDomainMigrationEnabled) {
         setMigrationSourceMethod(
           availableMigrationSourceMethods[0] ?? "",
         )
@@ -841,11 +877,16 @@ export function PreviewCheckout({
     selectedDomain &&
     quotes &&
     quotes.annual.quote.domainMode === domainMode &&
-    ((checkState.ok && checkAppliesToCurrentInput) || selectedDomain === readyDomain),
+    (
+      checkAppliesToCurrentInput
+        ? checkState.ok
+        : selectedDomain === readyDomain
+    ),
   )
   const domainResultKind = checkPending
     ? "loading"
-    : checkState.status === "preflight_complete" && checkAppliesToCurrentInput
+    : ["preflight_complete", "release_pending"].includes(checkState.status ?? "") &&
+        checkAppliesToCurrentInput
       ? "info"
     : domainIsReady
       ? "success"
@@ -1666,6 +1707,8 @@ export function PreviewCheckout({
                 </div>
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
+                  !migrationTransferBlocked &&
+                  !migrationReleaseBlocked &&
                   (
                     migrationPreflight?.domain === normalizedDomainValue ||
                     (
@@ -1840,6 +1883,19 @@ export function PreviewCheckout({
                       />
                       <span>{t("checkoutMigrationTransferAuthorization")}</span>
                     </label>
+                    {tldUsesIcannTransferPolicy(
+                      normalizedDomainValue.split(".").at(-1) ?? "",
+                    ) && (
+                      <label className="flex items-start gap-3 text-sm leading-6">
+                        <Checkbox
+                          name="gtldTransferEligibility"
+                          value="accepted"
+                          className="mt-1"
+                          required
+                        />
+                        <span>{t("checkoutMigrationGtldEligibilityDeclaration")}</span>
+                      </label>
+                    )}
                   </div>
                 )}
                 <div aria-live="polite" aria-atomic="true">
@@ -1871,14 +1927,34 @@ export function PreviewCheckout({
                 </Alert>
               )}
 
+              {domainMode === "new_registration" &&
+                checkState.status === "release_pending" &&
+                checkAppliesToCurrentInput && (
+                  <Alert role="status">
+                    <Info className="size-4" aria-hidden />
+                    <AlertTitle>{t("checkoutDomainReleasePendingTitle")}</AlertTitle>
+                    <AlertDescription>{checkState.message}</AlertDescription>
+                  </Alert>
+                )}
+
               {domainMode === "existing_domain" && checkAppliesToCurrentInput && (
                 <Alert
-                  variant={checkState.ok ? "default" : "destructive"}
-                  role={checkState.ok ? "status" : "alert"}
+                  variant={
+                    checkState.ok && !migrationTransferBlocked
+                      ? "default"
+                      : "destructive"
+                  }
+                  role={
+                    checkState.ok && !migrationTransferBlocked
+                      ? "status"
+                      : "alert"
+                  }
                 >
                   <Info className="size-4" aria-hidden />
                   <AlertTitle>
-                    {checkState.migrationPreflightOnly
+                    {migrationTransferBlocked
+                      ? t("checkoutMigrationTransferBlockedTitle")
+                      : checkState.migrationPreflightOnly
                       ? t("checkoutMigrationPreflightComplete")
                       : checkState.migrationReadiness === "ready_automatic"
                       ? t("checkoutMigrationReadyAutomatic")
@@ -2211,6 +2287,70 @@ export function PreviewCheckout({
                     />
                   </div>
                 </fieldset>
+
+                {selectedDomain?.endsWith(".eu") && (
+                  <fieldset className="grid gap-4">
+                    <legend className="text-base font-semibold">
+                      {t("checkoutEuEligibilityTitle")}
+                    </legend>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="checkout-eu-eligibility-basis">
+                          {t("checkoutEuEligibilityBasis")}
+                        </Label>
+                        <select
+                          id="checkout-eu-eligibility-basis"
+                          name="euEligibilityBasis"
+                          className="h-10 rounded-md border bg-background px-3 text-sm"
+                          value={details.euEligibilityBasis ?? ""}
+                          onChange={(event) =>
+                            updateDetail(
+                              "euEligibilityBasis",
+                              event.target.value as
+                                | "establishment"
+                                | "residence"
+                                | "citizenship"
+                                | "",
+                            )}
+                          required
+                        >
+                          <option value="">
+                            {t("checkoutEuEligibilityChoose")}
+                          </option>
+                          {details.partyType === "registered_business" ? (
+                            <option value="establishment">
+                              {t("checkoutEuEligibilityEstablishment")}
+                            </option>
+                          ) : (
+                            <>
+                              <option value="residence">
+                                {t("checkoutEuEligibilityResidence")}
+                              </option>
+                              <option value="citizenship">
+                                {t("checkoutEuEligibilityCitizenship")}
+                              </option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                      <CheckoutTextField
+                        id="checkout-eu-eligibility-country"
+                        name="euEligibilityCountry"
+                        label={t("checkoutEuEligibilityCountry")}
+                        description={t("checkoutEuEligibilityCountryHelp")}
+                        value={details.euEligibilityCountry ?? ""}
+                        error={profileState.fieldErrors?.euEligibilityCountry}
+                        maxLength={2}
+                        onChange={(value) =>
+                          updateDetail(
+                            "euEligibilityCountry",
+                            value.toUpperCase(),
+                          )}
+                        required
+                      />
+                    </div>
+                  </fieldset>
+                )}
 
                 <fieldset className="grid gap-4">
                   <legend className="text-base font-semibold">{t("checkoutPhoneTitle")}</legend>
@@ -2572,6 +2712,8 @@ export function PreviewCheckout({
         sourceAcquisitionReady={Boolean(
           checkState.status === "preflight_complete" &&
           checkAppliesToCurrentInput &&
+          !migrationTransferBlocked &&
+          !migrationReleaseBlocked &&
           migrationSourceMethod,
         )}
         paymentStatus={

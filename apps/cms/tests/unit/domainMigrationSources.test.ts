@@ -21,6 +21,7 @@ import {
 import {
   MigrationSourceChangedError,
   MigrationSourceDnssecTransitionPendingError,
+  MigrationTransferEligibilityBlockedError,
   refreshAutomaticMigrationSource,
 } from "@/lib/domains/migrationSources/refresh"
 import type {
@@ -63,6 +64,8 @@ const publicEvidence = {
   dnssecDsTtl: null,
   probableDnsProvider: "example",
   registrar: "Example Registrar",
+  registryTransferEvidence: "confirmed" as const,
+  transferBlockers: [],
   supplementalOnly: true as const,
 }
 
@@ -482,6 +485,27 @@ describe("complete migration source acquisition", () => {
         minttl: 300,
       })),
     })).rejects.toBeInstanceOf(MigrationSourceChangedError)
+  })
+
+  it("stops source refresh before acquisition when fresh registry evidence blocks transfer", async () => {
+    const input = await checkoutInput()
+    const acquireCloudflareSource = vi.fn()
+    await expect(refreshAutomaticMigrationSource({
+      ...input,
+      sourceMechanism: "cloudflare_api_v1",
+      sourceRefreshCredential: {
+        kind: "cloudflare_api_token",
+        token: "customer-token",
+        zoneId: "zone-1",
+      },
+    }, {
+      inspectPublicEvidence: vi.fn(async () => ({
+        ...publicEvidence,
+        transferBlockers: ["rdap_status:client_transfer_prohibited"],
+      })),
+      acquireCloudflareSource,
+    })).rejects.toBeInstanceOf(MigrationTransferEligibilityBlockedError)
+    expect(acquireCloudflareSource).not.toHaveBeenCalled()
   })
 
   it("allows only the governed parent-DS delta in content comparison", async () => {

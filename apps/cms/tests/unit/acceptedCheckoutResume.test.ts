@@ -8,6 +8,9 @@ import {
   buildCheckoutQuote,
   openCheckoutQuote,
 } from "@/lib/checkout/checkoutQuote"
+import {
+  GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+} from "@siteinabox/contracts/tld-capabilities"
 import { asPayload } from "../_helpers/mockPayload"
 
 const mocks = vi.hoisted(() => ({
@@ -31,21 +34,32 @@ vi.mock("@/lib/domains/migrationCheckoutSecret", async (importOriginal) => {
   }
 })
 
-const acceptedOrder = () => {
+const acceptedOrder = (selectedDomain = "example.nl") => {
+  const isGtld = selectedDomain === "example.com"
   const quote = buildCheckoutQuote({
     billingPeriod: "annual",
     providerOperationPriceNetMinor: 1_250,
     migrationClassification: "automatic",
     migrationSourceMechanism: "validated_provider_export_v1",
     migrationSourceZoneHash: "a".repeat(64),
+    migrationPublicEvidenceHash: "c".repeat(64),
     migrationInputEnvelope: "v1.encrypted-authority",
     migrationSecretKey: "migration-secret:accepted",
-    selectedDomain: "example.nl",
+    selectedDomain,
     domainMode: "existing_domain",
     providerQuotedAt: "2026-07-28T09:55:00.000Z",
     profileVersion: 2,
     draftVersion: "draft-before-payment-return",
     now: new Date("2026-07-28T10:00:00.000Z"),
+    ...(isGtld
+      ? {
+          gtldTransferEligibilityDeclarationVersion:
+            GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+          gtldTransferEligibilityDeclarationText:
+            "I confirm the governed gTLD transfer conditions.",
+          gtldTransferEligibilityAccepted: true,
+        }
+      : {}),
   })
   return {
     quote,
@@ -75,6 +89,7 @@ const acceptedOrder = () => {
           quote.providerOperationPriceNetMinor,
         domainSurchargeNetMinor: quote.domainSurchargeNetMinor,
         migrationServiceFeeNetMinor: quote.migrationServiceFeeNetMinor,
+        migrationPublicEvidenceHash: quote.migrationPublicEvidenceHash,
         subtotalNetMinor: quote.netAmountMinor,
         vatRateBasisPoints: quote.vatRateBasisPoints,
         vatAmountMinor: quote.vatAmountMinor,
@@ -85,8 +100,10 @@ const acceptedOrder = () => {
         transferRenewalEffect: quote.transferRenewalEffect,
         domainRenewalExplanation: quote.domainRenewalExplanation,
         tldCapability: {
-          tld: "nl",
-          capabilityVersion: "tld-nl-2026-07-28.1",
+          tld: isGtld ? "com" : "nl",
+          capabilityVersion: isGtld
+            ? "tld-com-2026-07-28.1"
+            : "tld-nl-2026-07-28.1",
           effectiveFrom: "2026-07-28T00:00:00.000Z",
           transferRenewalEffect: quote.transferRenewalEffect,
         },
@@ -94,7 +111,18 @@ const acceptedOrder = () => {
           classification: quote.migrationClassification,
           sourceMechanism: quote.migrationSourceMechanism,
           sourceZoneHash: quote.migrationSourceZoneHash,
+          publicEvidenceHash: quote.migrationPublicEvidenceHash,
           checkoutSecretKey: quote.migrationSecretKey,
+          ...(isGtld
+            ? {
+                transferEligibilityDeclaration: {
+                  version:
+                    quote.gtldTransferEligibilityDeclarationVersion,
+                  text: quote.gtldTransferEligibilityDeclarationText,
+                  accepted: quote.gtldTransferEligibilityAccepted,
+                },
+              }
+            : {}),
         },
       },
     },
@@ -151,6 +179,38 @@ describe("accepted checkout resume", () => {
       },
       overrideAccess: true,
     }))
+  })
+
+  it("reconstructs durable gTLD acceptance after the migration secret was consumed", async () => {
+    const { order } = acceptedOrder("example.com")
+    const find = vi.fn(async () => ({ docs: [order], totalDocs: 1 }))
+    mocks.openAttachedMigrationCheckoutSecret.mockRejectedValueOnce(
+      new Error("Migration checkout secret was already consumed."),
+    )
+
+    const resume = await loadAcceptedCheckoutResume(asPayload({ find }), {
+      generationRunId: 500,
+      customerEmail: "customer@example.com",
+      signingSecret: "resume-secret",
+      now: new Date("2026-07-28T10:10:00.000Z"),
+    })
+
+    expect(resume).toMatchObject({
+      domain: "example.com",
+      requiresMigrationRecollection: true,
+      tldCapabilityVersion: "tld-com-2026-07-28.1",
+      quotes: {
+        annual: {
+          quote: {
+            gtldTransferEligibilityDeclarationVersion:
+              GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+            gtldTransferEligibilityDeclarationText:
+              "I confirm the governed gTLD transfer conditions.",
+            gtldTransferEligibilityAccepted: true,
+          },
+        },
+      },
+    })
   })
 
   it("fails closed when stored commercial evidence no longer reconciles", async () => {

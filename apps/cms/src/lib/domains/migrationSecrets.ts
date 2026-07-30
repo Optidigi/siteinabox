@@ -14,6 +14,7 @@ import {
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
 import type { MigrationClassification } from "@siteinabox/contracts/commerce"
+import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 import {
   domainMigrationSourceAuthorityHash,
   domainMigrationSourceContentHash,
@@ -96,6 +97,7 @@ type LegacyCheckoutMigrationInput = {
   sourceZone: CompleteZoneExport
   transferCode: string
   transferAuthorizationAccepted: true
+  gtldTransferEligibilityAccepted?: boolean
 }
 
 export type AutomaticSourceRefreshCredential =
@@ -186,6 +188,7 @@ export type AutomaticCheckoutMigrationInput = {
   sourceRefreshCredential: AutomaticSourceRefreshCredential
   transferCode: string
   transferAuthorizationAccepted: true
+  gtldTransferEligibilityAccepted?: boolean
 }
 
 export type CheckoutMigrationInput =
@@ -285,6 +288,7 @@ type SerializedCheckoutMigrationInput = {
   sourceRefreshCredential?: AutomaticSourceRefreshCredential
   transferCode?: string
   transferAuthorizationAccepted?: true
+  gtldTransferEligibilityAccepted?: boolean
 }
 
 export type OpenedCheckoutMigrationInput =
@@ -325,7 +329,13 @@ export function sealCheckoutMigrationInput(
     input.generationRunId.trim().length === 0 ||
     sourceZone.domain !== input.domain.trim().toLowerCase() ||
     input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
-    input.transferAuthorizationAccepted !== true
+    input.transferAuthorizationAccepted !== true ||
+    (
+      tldUsesIcannTransferPolicy(
+        input.domain.split(".").at(-1) ?? "",
+      ) &&
+      input.gtldTransferEligibilityAccepted !== true
+    )
   ) {
     throw new Error("Checkout migration input is invalid.")
   }
@@ -375,6 +385,12 @@ export function openCheckoutMigrationInput(
     sourceZone.domain !== normalizedDomain ||
     input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
     input.transferAuthorizationAccepted !== true ||
+    (
+      tldUsesIcannTransferPolicy(
+        normalizedDomain.split(".").at(-1) ?? "",
+      ) &&
+      input.gtldTransferEligibilityAccepted !== true
+    ) ||
     typeof input.transferCode !== "string" ||
     !input.transferCode.trim()
   ) {
@@ -394,6 +410,8 @@ export function openCheckoutMigrationInput(
     normalizedSourceZone: sourceZone,
     transferCode: input.transferCode,
     transferAuthorizationAccepted: true,
+    gtldTransferEligibilityAccepted:
+      input.gtldTransferEligibilityAccepted === true,
   } as OpenedCheckoutMigrationInput
 }
 

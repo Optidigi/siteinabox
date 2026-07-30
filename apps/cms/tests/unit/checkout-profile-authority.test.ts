@@ -398,6 +398,38 @@ describe("checkout profile authority", () => {
     })
   })
 
+  it("preserves .eu eligibility evidence through the immutable profile projection", () => {
+    expect(domainRegistrantFromCheckoutProfile({
+      profileKey: "profile-eu",
+      profileVersion: 1,
+      customerName: "Ada Lovelace",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      customerEmail: "owner@example.test",
+      partyType: "registered_business",
+      contractingPartyName: "Analytical Engines B.V.",
+      kvkNumber: "12345678",
+      intendedCompanyName: null,
+      billingAddress: {
+        schemaVersion: 1,
+        street: "Markt",
+        number: "1",
+        suffix: null,
+        zipcode: "1234 AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+        euEligibilityBasis: "establishment",
+        euEligibilityCountry: "NL",
+      },
+    })).toMatchObject({
+      euEligibilityBasis: "establishment",
+      euEligibilityCountry: "NL",
+    })
+  })
+
   it.each(["registered_business", "business_in_formation"] as const)(
     "preserves structured compound names for %s registrants",
     (partyType) => {

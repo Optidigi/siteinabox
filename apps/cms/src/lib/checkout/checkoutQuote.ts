@@ -12,7 +12,9 @@ import {
 } from "@siteinabox/contracts/commerce"
 import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
 import {
+  GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
   tldCapabilityAt,
+  tldUsesIcannTransferPolicy,
   type TransferRenewalEffect,
 } from "@siteinabox/contracts/tld-capabilities"
 import { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
@@ -40,6 +42,10 @@ export type CheckoutQuote = CommercialAmount & {
   migrationClassification: Exclude<MigrationClassification, "complex"> | null
   migrationSourceMechanism: MigrationSourceMechanism | null
   migrationSourceZoneHash: string | null
+  migrationPublicEvidenceHash?: string | null
+  gtldTransferEligibilityDeclarationVersion?: string | null
+  gtldTransferEligibilityDeclarationText?: string | null
+  gtldTransferEligibilityAccepted?: boolean
   migrationInputEnvelope: string | null
   migrationSecretKey: string | null
   planPriceNetMinor: number
@@ -74,6 +80,10 @@ export function buildCheckoutQuote(input: {
   migrationClassification?: MigrationClassification | null
   migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationSourceZoneHash?: string | null
+  migrationPublicEvidenceHash?: string | null
+  gtldTransferEligibilityDeclarationVersion?: string | null
+  gtldTransferEligibilityDeclarationText?: string | null
+  gtldTransferEligibilityAccepted?: boolean
   migrationInputEnvelope?: string | null
   migrationSecretKey?: string | null
   selectedDomain: string
@@ -123,6 +133,7 @@ export function buildCheckoutQuote(input: {
       !input.migrationClassification ||
       !migrationSourceMechanism ||
       !/^[a-f0-9]{64}$/.test(input.migrationSourceZoneHash ?? "") ||
+      !/^[a-f0-9]{64}$/.test(input.migrationPublicEvidenceHash ?? "") ||
       (
         !input.migrationInputEnvelope &&
         !input.migrationSecretKey
@@ -131,12 +142,40 @@ export function buildCheckoutQuote(input: {
   ) {
     throw new Error("Existing-domain checkout requires frozen migration input evidence.")
   }
+  const gtldDeclarationRequired =
+    domainMode === "existing_domain" && tldUsesIcannTransferPolicy(tld)
+  if (
+    gtldDeclarationRequired &&
+    (
+      input.gtldTransferEligibilityDeclarationVersion !==
+        GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION ||
+      !input.gtldTransferEligibilityDeclarationText?.trim() ||
+      input.gtldTransferEligibilityAccepted !== true
+    )
+  ) {
+    throw new Error(
+      "gTLD transfer checkout requires immutable eligibility acceptance evidence.",
+    )
+  }
+  if (
+    !gtldDeclarationRequired &&
+    (
+      input.gtldTransferEligibilityDeclarationVersion ||
+      input.gtldTransferEligibilityDeclarationText ||
+      input.gtldTransferEligibilityAccepted
+    )
+  ) {
+    throw new Error(
+      "Transfer eligibility declaration evidence is not applicable to this order.",
+    )
+  }
   if (
     domainMode === "new_registration" &&
     (
       input.migrationClassification ||
       migrationSourceMechanism ||
       input.migrationSourceZoneHash ||
+      input.migrationPublicEvidenceHash ||
       input.migrationInputEnvelope ||
       input.migrationSecretKey
     )
@@ -193,6 +232,13 @@ export function buildCheckoutQuote(input: {
     migrationClassification: input.migrationClassification ?? null,
     migrationSourceMechanism,
     migrationSourceZoneHash: input.migrationSourceZoneHash ?? null,
+    migrationPublicEvidenceHash: input.migrationPublicEvidenceHash ?? null,
+    gtldTransferEligibilityDeclarationVersion:
+      input.gtldTransferEligibilityDeclarationVersion ?? null,
+    gtldTransferEligibilityDeclarationText:
+      input.gtldTransferEligibilityDeclarationText ?? null,
+    gtldTransferEligibilityAccepted:
+      input.gtldTransferEligibilityAccepted === true,
     migrationInputEnvelope: input.migrationInputEnvelope ?? null,
     migrationSecretKey: input.migrationSecretKey ?? null,
     planPriceNetMinor: subscription.netAmountMinor,
@@ -277,6 +323,7 @@ export function openCheckoutQuote(
       !parsed.migrationClassification ||
       !parsed.migrationSourceMechanism ||
       !/^[a-f0-9]{64}$/.test(parsed.migrationSourceZoneHash ?? "") ||
+      !/^[a-f0-9]{64}$/.test(parsed.migrationPublicEvidenceHash ?? "") ||
       (
         !parsed.migrationInputEnvelope &&
         !parsed.migrationSecretKey
@@ -284,6 +331,19 @@ export function openCheckoutQuote(
     )
   ) {
     throw new Error("Checkout quote token has incomplete migration evidence.")
+  }
+  const parsedTld = parsed.selectedDomain.split(".").at(-1)?.toLowerCase() ?? ""
+  if (
+    parsed.domainMode === "existing_domain" &&
+    tldUsesIcannTransferPolicy(parsedTld) &&
+    (
+      parsed.gtldTransferEligibilityDeclarationVersion !==
+        GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION ||
+      !parsed.gtldTransferEligibilityDeclarationText?.trim() ||
+      parsed.gtldTransferEligibilityAccepted !== true
+    )
+  ) {
+    throw new Error("Checkout quote token has incomplete gTLD acceptance evidence.")
   }
   const expiresAt = Date.parse(parsed.quoteExpiresAt)
   if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) {
@@ -309,6 +369,10 @@ export function sameCommercialCheckoutQuote(
     "migrationClassification",
     "migrationSourceMechanism",
     "migrationSourceZoneHash",
+    "migrationPublicEvidenceHash",
+    "gtldTransferEligibilityDeclarationVersion",
+    "gtldTransferEligibilityDeclarationText",
+    "gtldTransferEligibilityAccepted",
     "migrationSecretKey",
     "netAmountMinor",
     "vatAmountMinor",
