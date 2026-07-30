@@ -91,18 +91,18 @@ describe("generated-site form tenant notifications", () => {
     expect(mocks.sendEmail.mock.calls[0]?.[0].html).toContain("Please call me.")
   })
 
-  it("skips without platform fallback when tenant sender is not verified", async () => {
+  it("uses the platform sender while tenant-branded email is pending", async () => {
     const payload = payloadStub({
       tenant: { id: 7, emailSending: { provider: "cloudflare", status: "pending" } },
     })
 
     await notifyTenantOfFormSubmission({ doc: formDoc, payload })
 
-    expect(mocks.sendEmail).not.toHaveBeenCalled()
-    expect(payload.logger.warn).toHaveBeenCalledWith("[forms] tenant notification skipped", expect.objectContaining({
-      reason: "tenant_sender_unverified",
-      tenantId: "7",
-      formId: 99,
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: "owner@client.nl",
+      from: "noreply@siteinabox.nl",
+      replyTo: "ada@example.com",
+      intent: "forms.tenant_notification",
     }))
   })
 

@@ -2,15 +2,34 @@
 
 ## Existing-domain rollout gate
 
-Deploy the exact reviewed CMS image in `shadow`, then run its bundled
+Pull and stage the exact reviewed CMS image in `shadow` without replacing the
+long-lived service, apply its migration one-off, then run its bundled
 `/app/dist-runtime/check-commerce-edge-inventory.bundled.mjs` command against
 the target database using the one-off command in
 [Commerce release](commerce-release.md). It is read-only and fails when an
 active tenant does not have exactly one active managed-domain row with a
-Cloudflare zone. Do not advance beyond `shadow` while it fails.
+Cloudflare zone, unless that tenant has the narrowly versioned, system-owned
+pre-commerce routing adoption described below. Do not advance beyond `shadow`
+while it fails.
 
-After the additive migration and both application/Tunnel services are running,
-use the explicitly approved, bundled
+The additive
+`20260730_102220_durable_pre_commerce_routing_adoption` migration converts only
+the exact already-verified historical Ami Care shape into durable
+`preCommerceRoutingAdoption` evidence. It fails migration rather than guessing
+when that tenant, active snapshot, unique `www` alias, verification, or
+managed-domain precedence differs. Databases without the historical tenant
+remain `not_adopted`. This record grants routing only and must never be used as
+registrant, payment, registrar, renewal, transfer, DNS-write, or provider
+evidence.
+
+Before replacing the long-lived CMS service, keep the old compatible service
+running and execute the exact reviewed image's bundled migration once with jobs
+disabled, as documented in [Deployment](deployment.md#step-5--apply-database-migrations).
+The migration is transactional and refuses ambiguous historical evidence.
+After it succeeds, run the bundled read-only inventory check and verify the row
+is `adopted`, its `adoptedDomain` is `ami-care.nl`, and its evidence version is
+`pre-commerce-routing-v1`. Only then replace the application/Tunnel services
+and use the explicitly approved, bundled
 `reconcile-commerce-edge-routing.bundled.mjs` command to establish exact
 routes. Repeat it while certificate state is legitimately pending, run the
 black-box origin/host probes, and only then set the origin-isolation evidence

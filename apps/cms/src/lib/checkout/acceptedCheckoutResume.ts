@@ -2,6 +2,7 @@ import "server-only"
 
 import type { Payload } from "payload"
 import type { Order } from "@/payload-types"
+import { getTldCapabilityByVersion } from "@siteinabox/contracts/tld-capabilities"
 import {
   buildCheckoutQuote,
   sameCommercialCheckoutQuote,
@@ -9,6 +10,7 @@ import {
   type CheckoutQuote,
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
+import { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
 import {
   attachMigrationCheckoutSecret,
   openAttachedMigrationCheckoutSecret,
@@ -68,7 +70,7 @@ const resumeQuote = (
   const evidence = record(order.quoteEvidence)
   if (
     !evidence ||
-    evidence.schemaVersion !== 3 ||
+    evidence.schemaVersion !== CHECKOUT_QUOTE_SCHEMA_VERSION ||
     !["monthly", "annual"].includes(String(order.billingPeriod)) ||
     order.currency !== "EUR"
   ) {
@@ -118,7 +120,7 @@ const resumeQuote = (
     throw new Error("Accepted checkout order has invalid line-item evidence.")
   }
   const quote: CheckoutQuote = {
-    schemaVersion: 3,
+    schemaVersion: CHECKOUT_QUOTE_SCHEMA_VERSION,
     catalogVersion: text(evidence, "catalogVersion"),
     packageCode: String(order.packageCode),
     billingPeriod: order.billingPeriod as "monthly" | "annual",
@@ -152,6 +154,9 @@ const resumeQuote = (
     quoteExpiresAt: new Date(now.getTime() + 15 * 60_000).toISOString(),
     profileVersion: integer(evidence, "profileVersion"),
     draftVersion: text(evidence, "draftVersion"),
+    transferRenewalEffect: domainMode === "existing_domain"
+      ? text(evidence, "transferRenewalEffect") as CheckoutQuote["transferRenewalEffect"]
+      : null,
     domainRenewalExplanation: text(evidence, "domainRenewalExplanation"),
     currency: "EUR",
     netAmountMinor: integer(evidence, "subtotalNetMinor"),
@@ -167,6 +172,7 @@ const resumeQuote = (
     migrationSourceZoneHash: quote.migrationSourceZoneHash,
     migrationInputEnvelope: quote.migrationInputEnvelope,
     migrationSecretKey: quote.migrationSecretKey,
+    transferRenewalEffect: quote.transferRenewalEffect,
     selectedDomain: quote.selectedDomain,
     domainMode: quote.domainMode,
     providerQuotedAt: quote.providerQuotedAt,
@@ -240,11 +246,19 @@ export async function loadAcceptedCheckoutResume(
   const tldCapabilityVersion = typeof tldCapability?.capabilityVersion === "string"
     ? tldCapability.capabilityVersion
     : null
+  const frozenCapability = tldCapabilityVersion
+    ? getTldCapabilityByVersion(tldCapabilityVersion)
+    : null
   if (
     quote.domainMode === "existing_domain" &&
     (
       !tldCapabilityVersion ||
-      tldCapability?.tld !== quote.selectedDomain.split(".").at(-1)?.toLowerCase()
+      !tldCapability ||
+      !frozenCapability ||
+      tldCapability?.tld !== quote.selectedDomain.split(".").at(-1)?.toLowerCase() ||
+      frozenCapability.tld !== tldCapability.tld ||
+      quote.transferRenewalEffect !== frozenCapability.transfer.renewalEffect ||
+      tldCapability.transferRenewalEffect !== frozenCapability.transfer.renewalEffect
     )
   ) {
     throw new Error(

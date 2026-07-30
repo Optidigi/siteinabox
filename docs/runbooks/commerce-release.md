@@ -41,6 +41,10 @@ Before moving to the next stage:
 2. Run `pnpm --dir apps/cms check:commerce-release`.
 3. Run the complete CMS test suite against disposable PostgreSQL 18 and apply
    the committed migration chain from an empty database.
+   Size the production PostgreSQL connection budget for Payload, both Better
+   Auth pools, and four dedicated commerce advisory-lock connections per CMS
+   process. The lock pool is deliberately separate so lock waiters cannot
+   exhaust the application pool.
 4. Run `pnpm renderer:deploy-contract`, `pnpm renderer:test`, and
    `pnpm renderer:build`.
 5. In provider sandbox or HTTP contract fixtures, rehearse duplicate Mollie

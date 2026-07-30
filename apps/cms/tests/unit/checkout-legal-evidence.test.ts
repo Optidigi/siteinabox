@@ -193,9 +193,10 @@ describe("checkout legal evidence", () => {
       businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
       totalGross: 229.9,
       quoteEvidence: {
-        schemaVersion: 3,
+        schemaVersion: 4,
         initialAuthorityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
         selectedDomain: "demo.nl",
+        transferRenewalEffect: null,
         planPriceNetMinor: 19_000,
         subtotalNetMinor: 19_000,
         vatAmountMinor: 3_990,
@@ -205,6 +206,7 @@ describe("checkout legal evidence", () => {
           tld: "nl",
           capabilityVersion: "tld-nl-2026-07-26.1",
           effectiveFrom: "2026-01-01T00:00:00.000Z",
+          transferRenewalEffect: null,
         },
       },
     })

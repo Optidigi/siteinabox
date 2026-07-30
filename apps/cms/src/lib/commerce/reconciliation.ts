@@ -463,6 +463,8 @@ export async function recoverMissingMolliePaymentReferences(
             },
             data: {
               lastPaymentAttemptAt: null,
+              reconciliationRequired: false,
+              failureReason: null,
               ...(cancellationScheduled
                 ? { cancelAt: agreement.currentPeriodEndsAt ?? agreement.cancelAt }
                 : {}),

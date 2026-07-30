@@ -84,6 +84,10 @@ const mutableLifecycleFields = new Set([
   "dnssecVerification",
   "operatorWorkAuthorizationState",
   "semanticComparison",
+  "encryptedSourceRefreshAuthority",
+  "sourceRefreshAuthorityExpiresAt",
+  "sourceRefreshAuthorityDeletedAt",
+  "sourceAuthorityLastVerifiedAt",
   "encryptedTransferCode",
   "transferCodeReceivedAt",
   "transferCodeExpiresAt",
@@ -167,10 +171,15 @@ export const validateDomainMigration: CollectionBeforeValidateHook = ({
     throw new Error("Complex migrations require a custom quote and cannot be accepted orders.")
   }
   if (
-    ["completed", "rolled_back"].includes(String(current.state)) &&
-    current.encryptedTransferCode
+    ["completed", "rolled_back", "failed", "custom_quote_required"].includes(
+      String(current.state),
+    ) &&
+    (
+      current.encryptedTransferCode ||
+      current.encryptedSourceRefreshAuthority
+    )
   ) {
-    throw new Error("Terminal domain migrations must delete the encrypted transfer code.")
+    throw new Error("Terminal domain migrations must delete encrypted credentials.")
   }
   const authorizationState = current.operatorWorkAuthorizationState
   const cause = current.operatorWorkCause
@@ -306,6 +315,15 @@ export const DomainMigrations: CollectionConfig = {
       admin: { readOnly: true },
       access: { read: () => false },
     },
+    {
+      name: "encryptedSourceRefreshAuthority",
+      type: "textarea",
+      access: { read: () => false },
+      admin: { hidden: true },
+    },
+    { name: "sourceRefreshAuthorityExpiresAt", type: "date", index: true },
+    { name: "sourceRefreshAuthorityDeletedAt", type: "date" },
+    { name: "sourceAuthorityLastVerifiedAt", type: "date", index: true },
     { name: "targetZoneHash", type: "text", unique: true, index: true },
     {
       name: "targetZoneSnapshot",

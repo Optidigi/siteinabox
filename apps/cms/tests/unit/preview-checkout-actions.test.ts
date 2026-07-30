@@ -7,7 +7,10 @@ import {
   openCheckoutQuote,
   sealCheckoutQuote,
 } from "@/lib/checkout/checkoutQuote"
-import { assessExistingDomainMigrationInput } from "@/lib/domains/migrationCheckout"
+import {
+  assessExistingDomainMigrationInput,
+  existingDomainMigrationCheckoutEnabled,
+} from "@/lib/domains/migrationCheckout"
 import { DomainMigrationCustomerInputError } from "@/lib/domains/migration"
 import { migrationCheckoutSecretKey } from "@/lib/domains/migrationCheckoutSecret"
 import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
@@ -40,7 +43,24 @@ const mocks = vi.hoisted(() => ({
   acquireAutomaticMigrationInputs: vi.fn(),
   acquireCloudflareSource: vi.fn(),
   acquireValidatedProviderExport: vi.fn(),
+  cloudflareSourceOAuthEnabled: vi.fn(() => false),
+  commerceProviderReadsAllowed: vi.fn(() => true),
+  productionTldCapabilitiesAt: vi.fn(() => [{}]),
+  loadCloudflareSourceAuthorization: vi.fn(),
+  attachCloudflareSourceAuthorization: vi.fn(),
+  loadCustomerBillingAgreement: vi.fn(),
+  scheduleCancellationAtPeriodEnd: vi.fn(),
 }))
+
+vi.mock("@siteinabox/contracts/tld-capabilities", async (importOriginal) => {
+  const original = await importOriginal<
+    typeof import("@siteinabox/contracts/tld-capabilities")
+  >()
+  return {
+    ...original,
+    productionTldCapabilitiesAt: mocks.productionTldCapabilitiesAt,
+  }
+})
 
 vi.mock("next/headers", () => ({
   headers: vi.fn(async () => mocks.headers),
@@ -120,7 +140,7 @@ vi.mock("@/lib/commerce/releaseGate", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/commerce/releaseGate")>()
   return {
     ...original,
-    commerceProviderReadsAllowed: () => true,
+    commerceProviderReadsAllowed: mocks.commerceProviderReadsAllowed,
   }
 })
 
@@ -147,6 +167,20 @@ vi.mock("@/lib/domains/migrationSources/providerExport", () => ({
 vi.mock("@/lib/domains/migrationSources/cloudflare", () => ({
   acquireCloudflareSource: mocks.acquireCloudflareSource,
 }))
+
+vi.mock("@/lib/domains/cloudflareSourceOAuth", async (importOriginal) => {
+  const original = await importOriginal<
+    typeof import("@/lib/domains/cloudflareSourceOAuth")
+  >()
+  return {
+    ...original,
+    cloudflareSourceOAuthEnabled: mocks.cloudflareSourceOAuthEnabled,
+    loadCloudflareSourceAuthorization:
+      mocks.loadCloudflareSourceAuthorization,
+    attachCloudflareSourceAuthorization:
+      mocks.attachCloudflareSourceAuthorization,
+  }
+})
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createMollieCheckoutForGenerationRun: mocks.createMollieCheckoutForGenerationRun,
@@ -175,6 +209,14 @@ vi.mock("@/lib/legal/checkoutEvidence", () => ({
 
 vi.mock("@/lib/legal/customerRequirements", () => ({
   satisfyRequirementsFromTransaction: mocks.satisfyRequirementsFromTransaction,
+}))
+
+vi.mock("@/lib/billing/customerBillingAgreement", () => ({
+  loadCustomerBillingAgreement: mocks.loadCustomerBillingAgreement,
+}))
+
+vi.mock("@/lib/billing/billingLifecycle", () => ({
+  scheduleCancellationAtPeriodEnd: mocks.scheduleCancellationAtPeriodEnd,
 }))
 
 const validPaymentForm = () => {
@@ -268,6 +310,9 @@ const validExistingDomainForm = () => {
 describe("preview checkout domain suggestion action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.cloudflareSourceOAuthEnabled.mockReturnValue(false)
+    mocks.commerceProviderReadsAllowed.mockReturnValue(true)
+    mocks.productionTldCapabilitiesAt.mockReturnValue([{}])
     vi.spyOn(console, "info").mockImplementation(() => {})
     vi.spyOn(console, "error").mockImplementation(() => {})
     mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
@@ -283,6 +328,7 @@ describe("preview checkout domain suggestion action", () => {
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("PAYLOAD_SECRET", "checkout-test-secret")
     vi.stubEnv("DOMAIN_MIGRATION_ENCRYPTION_KEY", Buffer.alloc(32, 9).toString("base64"))
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "shadow")
     vi.stubEnv("COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED", "1")
     vi.stubEnv("COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED", "1")
     vi.stubEnv("COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED", "1")
@@ -335,6 +381,7 @@ describe("preview checkout domain suggestion action", () => {
     })
     mocks.acquireAutomaticMigrationInputs.mockResolvedValue({ id: 100 })
     mocks.loadAcceptedCheckoutResume.mockResolvedValue(null)
+    mocks.loadCustomerBillingAgreement.mockResolvedValue(null)
     mocks.suggestAvailablePreviewDomainBatch.mockResolvedValue({
       suggestions: [{
         domain: "amicare-web.nl",
@@ -466,6 +513,12 @@ describe("preview checkout domain suggestion action", () => {
         createdAt: "2026-07-26T12:00:00.000Z",
       },
     })
+  })
+
+  it("does not advertise existing-domain checkout without an enabled transfer TLD", () => {
+    mocks.productionTldCapabilitiesAt.mockReturnValue([])
+
+    expect(existingDomainMigrationCheckoutEnabled()).toBe(false)
   })
 
   it("blocks payment before explicit preview approval", async () => {
@@ -895,6 +948,94 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
+  it("performs no existing-domain source read while commerce reads are disabled", async () => {
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "disabled")
+    mocks.commerceProviderReadsAllowed.mockReturnValue(false)
+    const { checkPreviewCheckoutDomainAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("domainMode", "existing_domain")
+    formData.set("requestToken", "existing-disabled-1")
+
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "service_error",
+      domainMode: "existing_domain",
+      migrationPreflightOnly: true,
+    })
+    expect(mocks.inspectExistingDomainPublicEvidence).not.toHaveBeenCalled()
+    expect(mocks.loadCloudflareSourceAuthorization).not.toHaveBeenCalled()
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
+  })
+
+  it("performs no new-domain provider read or repricing while commerce reads are disabled", async () => {
+    mocks.commerceProviderReadsAllowed.mockReturnValue(false)
+    const {
+      checkPreviewCheckoutDomainAction,
+      savePreviewCheckoutProfileAction,
+      startPreviewCheckoutPaymentAction,
+      suggestPreviewCheckoutDomainsAction,
+    } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const check = new FormData()
+    check.set("domain", "ami-care.nl")
+    check.set("domainMode", "new_registration")
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      check,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "service_error",
+    })
+
+    const suggestions = new FormData()
+    suggestions.set("domain", "ami-care.nl")
+    await expect(suggestPreviewCheckoutDomainsAction(
+      "ami-care",
+      { ok: false },
+      suggestions,
+    )).resolves.toMatchObject({
+      ok: false,
+      suggestions: [],
+      done: true,
+    })
+
+    const profileForm = validProfileForm()
+    profileForm.set("domain", "ami-care.nl")
+    profileForm.set("domainMode", "new_registration")
+    await expect(savePreviewCheckoutProfileAction(
+      "ami-care",
+      { ok: false, message: "" },
+      profileForm,
+    )).resolves.toMatchObject({
+      ok: true,
+      status: "saved",
+      quotes: undefined,
+    })
+
+    await expect(startPreviewCheckoutPaymentAction(
+      "ami-care",
+      { ok: false, message: "" },
+      validPaymentForm(),
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "version_conflict",
+    })
+
+    expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
+    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
+    expect(mocks.requireReadyPreviewDomainOrder).not.toHaveBeenCalled()
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
+  })
+
   it("keeps existing-domain payment disabled without complete DNSSEC evidence", async () => {
     const { checkPreviewCheckoutDomainAction } = await import(
       "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
@@ -1032,6 +1173,142 @@ describe("preview checkout domain suggestion action", () => {
     })
     expect(mocks.replaceExpiredAttachedMigrationCheckoutSecret)
       .not.toHaveBeenCalled()
+  })
+
+  it("recollects an accepted Cloudflare order through its bound OAuth handle", async () => {
+    mocks.cloudflareSourceOAuthEnabled.mockReturnValue(true)
+    const context = await mocks.loadPreviewGrantContext()
+    const authorizationKey = "oauth-handle-" + "a".repeat(40)
+    const cloudflareZone = {
+      ...completeExistingDomainZone(),
+      schemaVersion: 1 as const,
+      format: "siab-complete-zone-v1" as const,
+      authority: {
+        mechanism: "cloudflare_api" as const,
+        provider: "cloudflare",
+        complete: true as const,
+      },
+    } as Parameters<typeof assessExistingDomainMigrationInput>[0]["zoneExport"]
+    const acquiredSource = {
+      mechanism: "cloudflare_api_v1" as const,
+      zone: cloudflareZone,
+      refreshCredential: {
+        kind: "cloudflare_oauth" as const,
+        authorizationKey,
+        zoneId: "a".repeat(32),
+      },
+    }
+    const assessment = assessExistingDomainMigrationInput({
+      generationRunId: 500,
+      domain: "ami-care.nl",
+      zoneExport: acquiredSource.zone,
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      requestedAssistance: false,
+      acceptedOrderRecollection: true,
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+      publicEvidence: await mocks.inspectExistingDomainPublicEvidence(),
+      acquiredSource,
+    })
+    if (!assessment.sourceZoneHash || !assessment.encryptedInput) {
+      throw new Error("Expected automatic Cloudflare recollection assessment.")
+    }
+    const quote = buildCheckoutQuote({
+      catalogVersion: "2026-07-26.1",
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_250,
+      selectedDomain: "ami-care.nl",
+      domainMode: "existing_domain",
+      migrationClassification: "automatic",
+      migrationSourceMechanism: "cloudflare_api_v1",
+      migrationSourceZoneHash: assessment.sourceZoneHash,
+      migrationInputEnvelope: null,
+      migrationSecretKey: migrationCheckoutSecretKey(
+        500,
+        "ami-care.nl",
+        assessment.sourceZoneHash,
+      ),
+      providerQuotedAt: new Date().toISOString(),
+      profileVersion: 1,
+      draftVersion: "draft-500",
+    })
+    mocks.loadAcceptedCheckoutResume.mockResolvedValue({
+      orderId: 90,
+      domain: "ami-care.nl",
+      billingPeriod: "annual",
+      quotes: {
+        monthly: sealCheckoutQuote(quote, "checkout-test-secret"),
+        annual: sealCheckoutQuote(quote, "checkout-test-secret"),
+      },
+      requiresMigrationRecollection: true,
+      tldCapabilityVersion: "tld-nl-2026-07-28.1",
+    })
+    const authorizationRecord = {
+      id: 200,
+      authorizationKey,
+      stateDigest: "a".repeat(64),
+      browserBindingDigest: "b".repeat(64),
+      generationRun: 500,
+      tenant: 12,
+      clientSlug: "ami-care",
+      customerEmailDigest: "c".repeat(64),
+      domainNameAscii: "ami-care.nl",
+      encryptedAuthority: "sealed",
+      state: "authorized" as const,
+      expiresAt: "2026-07-31T10:00:00.000Z",
+      updatedAt: "2026-07-30T10:00:00.000Z",
+    }
+    mocks.loadCloudflareSourceAuthorization.mockResolvedValue({
+      record: authorizationRecord,
+      source: acquiredSource,
+    })
+    const { recollectAcceptedMigrationInputAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("acceptedOrderId", "90")
+    formData.set("migrationSourceMethod", "cloudflare_api_v1")
+    formData.set("cloudflareSourceAuthorization", authorizationKey)
+    formData.set("transferCode", "opaque-transfer-code")
+    formData.set("transferAuthorization", "accepted")
+
+    await expect(
+      recollectAcceptedMigrationInputAction("ami-care", formData),
+    ).rejects.toThrow()
+    expect(mocks.loadCloudflareSourceAuthorization).toHaveBeenCalledWith(
+      context.payload,
+      {
+        authorizationKey,
+        generationRunId: 500,
+        tenantId: 12,
+        clientSlug: "ami-care",
+        customerEmail: "customer@example.com",
+        domain: "ami-care.nl",
+      },
+    )
+    expect(mocks.attachCloudflareSourceAuthorization).toHaveBeenCalledWith(
+      context.payload,
+      authorizationRecord,
+    )
+    expect(mocks.replaceExpiredAttachedMigrationCheckoutSecret)
+      .toHaveBeenCalledWith(
+        context.payload,
+        expect.objectContaining({
+          orderId: 90,
+          generationRunId: 500,
+          domain: "ami-care.nl",
+          sourceZoneHash: assessment.sourceZoneHash,
+          encryptedInput: expect.any(String),
+        }),
+      )
+    expect(
+      mocks.attachCloudflareSourceAuthorization.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      mocks.replaceExpiredAttachedMigrationCheckoutSecret
+        .mock.invocationCallOrder[0]!,
+    )
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+    expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
   })
 
   it("stops existing-domain payment before any evidence write when transfer pricing changes", async () => {
@@ -1266,7 +1543,7 @@ describe("preview checkout domain suggestion action", () => {
     )
   })
 
-  it("reacquires the accepted Cloudflare source after payment and resumes safely", async () => {
+  it("rejects pasted Cloudflare tokens during paid-source reauthorization", async () => {
     const context = await mocks.loadPreviewGrantContext()
     context.payload.findByID = vi.fn()
       .mockResolvedValueOnce({
@@ -1313,26 +1590,113 @@ describe("preview checkout domain suggestion action", () => {
 
     await expect(
       submitMigrationTransferCodeAction("ami-care", formData),
-    ).resolves.toMatchObject({ ok: true, status: "saved" })
-    expect(mocks.acquireCloudflareSource).toHaveBeenCalledWith({
-      domain: "ami-care.nl",
-      token: "customer-read-token",
-      publicEvidence: expect.objectContaining({
-        dnssecDsPresent: false,
-        dnssecDsRecords: [],
-        dnssecDsTtl: null,
-      }),
+    ).resolves.toMatchObject({ ok: false, status: "invalid_input" })
+    expect(mocks.acquireCloudflareSource).not.toHaveBeenCalled()
+    expect(mocks.acquireAutomaticMigrationInputs).not.toHaveBeenCalled()
+    expect(mocks.replaceMigrationTransferAuthorization).not.toHaveBeenCalled()
+  })
+
+  it("reauthorizes a paid Cloudflare migration through a bound opaque OAuth handle", async () => {
+    mocks.cloudflareSourceOAuthEnabled.mockReturnValue(true)
+    const context = await mocks.loadPreviewGrantContext()
+    context.payload.findByID = vi.fn()
+      .mockResolvedValueOnce({
+        id: 100,
+        originatingOrder: 90,
+        domainNameAscii: "ami-care.nl",
+        sourceMechanism: "cloudflare_api_v1",
+        state: "awaiting_customer",
+        failureReason: "source_evidence_stale",
+        updatedAt: "migration-version-1",
+      })
+      .mockResolvedValueOnce({
+        id: 90,
+        generationRun: 500,
+        tenant: 12,
+        customerEmail: "customer@example.com",
+      })
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    const reacquiredZone = {
+      ...completeExistingDomainZone(),
+      authority: {
+        mechanism: "cloudflare_api" as const,
+        provider: "cloudflare",
+        complete: true as const,
+      },
+    }
+    const authorizationRecord = {
+      id: 200,
+      authorizationKey: "opaque-source-handle",
+      stateDigest: "a".repeat(64),
+      browserBindingDigest: "b".repeat(64),
+      generationRun: 500,
+      tenant: 12,
+      clientSlug: "ami-care",
+      customerEmail: "customer@example.com",
+      domainNameAscii: "ami-care.nl",
+      encryptedAuthority: "sealed",
+      state: "authorized" as const,
+      expiresAt: "2026-07-31T10:00:00.000Z",
+      updatedAt: "2026-07-30T10:00:00.000Z",
+    }
+    const source = {
+      mechanism: "cloudflare_api_v1" as const,
+      zone: reacquiredZone,
+      refreshCredential: {
+        kind: "cloudflare_oauth" as const,
+        authorizationKey: "opaque-source-handle",
+        zoneId: "a".repeat(32),
+      },
+    }
+    mocks.loadCloudflareSourceAuthorization.mockResolvedValue({
+      record: authorizationRecord,
+      source,
     })
-    expect(mocks.acquireAutomaticMigrationInputs).toHaveBeenCalledWith(
+    const { submitMigrationTransferCodeAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("migrationId", "100")
+    formData.set("expectedMigrationVersion", "migration-version-1")
+    formData.set("cloudflareSourceAuthorization", "opaque-source-handle")
+    formData.set("transferCode", "replacement-secret")
+
+    await expect(
+      submitMigrationTransferCodeAction("ami-care", formData),
+    ).resolves.toMatchObject({ ok: true, status: "saved" })
+    expect(mocks.loadCloudflareSourceAuthorization).toHaveBeenCalledWith(
       context.payload,
       {
+        authorizationKey: "opaque-source-handle",
+        generationRunId: 500,
+        tenantId: 12,
+        clientSlug: "ami-care",
+        customerEmail: "customer@example.com",
+        domain: "ami-care.nl",
+      },
+    )
+    expect(mocks.acquireCloudflareSource).not.toHaveBeenCalled()
+    expect(mocks.acquireAutomaticMigrationInputs).toHaveBeenCalledWith(
+      context.payload,
+      expect.objectContaining({
         migrationId: 100,
         zoneExport: reacquiredZone,
         transferCode: "replacement-secret",
+        sourceRefreshAuthority: expect.objectContaining({
+          credential: source.refreshCredential,
+        }),
         expectedUpdatedAt: "migration-version-1",
-      },
+      }),
     )
-    expect(mocks.replaceMigrationTransferAuthorization).not.toHaveBeenCalled()
+    expect(mocks.attachCloudflareSourceAuthorization).toHaveBeenCalledWith(
+      context.payload,
+      authorizationRecord,
+    )
+    expect(
+      mocks.attachCloudflareSourceAuthorization.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      mocks.acquireAutomaticMigrationInputs.mock.invocationCallOrder[0]!,
+    )
   })
 
   it("does not reauthorize a paid migration through a disabled source adapter", async () => {
@@ -1722,5 +2086,76 @@ describe("preview checkout domain suggestion action", () => {
       { amount: "10.00", currency: "EUR" },
       { cursor: 5, batchSize: 5, existingDomains: ["amicare-web.nl"] },
     )
+  })
+
+  it("derives period-end cancellation only from authenticated checkout authority", async () => {
+    mocks.getSession.mockResolvedValue({
+      user: { id: "preview-user-7", email: "Customer@Example.com" },
+    })
+    const agreement = {
+      id: 88,
+      state: "active",
+      billingPeriod: "annual",
+      currentPeriodEndsAt: "2027-07-30T10:00:00.000Z",
+      cancelAt: null,
+      updatedAt: "2026-07-30T10:00:00.000Z",
+    }
+    mocks.loadCustomerBillingAgreement.mockResolvedValue(agreement)
+    mocks.scheduleCancellationAtPeriodEnd.mockResolvedValue({
+      ...agreement,
+      state: "cancellation_scheduled",
+      cancelAt: "2027-07-30T10:00:00.000Z",
+    })
+    const { schedulePreviewCheckoutCancellationAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    await expect(schedulePreviewCheckoutCancellationAction(
+      "ami-care",
+      { ok: false, status: "idle", message: "" },
+      new FormData(),
+    )).resolves.toMatchObject({
+      ok: true,
+      status: "scheduled",
+      agreement: {
+        id: 88,
+        state: "cancellation_scheduled",
+      },
+    })
+
+    expect(mocks.loadCustomerBillingAgreement).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        generationRunId: 500,
+        tenantId: 12,
+        customerEmail: "customer@example.com",
+      },
+    )
+    expect(mocks.scheduleCancellationAtPeriodEnd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agreementId: 88,
+        tenantId: 12,
+        actorUserId: "preview-user-7",
+        actorEmail: "customer@example.com",
+      }),
+    )
+  })
+
+  it("fails closed when preview cancellation has no authenticated actor", async () => {
+    mocks.getSession.mockResolvedValue(null)
+    const { schedulePreviewCheckoutCancellationAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    await expect(schedulePreviewCheckoutCancellationAction(
+      "ami-care",
+      { ok: false, status: "idle", message: "" },
+      new FormData(),
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "failed",
+    })
+    expect(mocks.loadCustomerBillingAgreement).not.toHaveBeenCalled()
+    expect(mocks.scheduleCancellationAtPeriodEnd).not.toHaveBeenCalled()
   })
 })

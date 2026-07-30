@@ -389,6 +389,8 @@ export async function requestMigrationOperatorWork(
       operatorWorkAuthorizationState: "custom_quote_required",
       encryptedTransferCode: null,
       transferCodeDeletedAt: now,
+      encryptedSourceRefreshAuthority: null,
+      sourceRefreshAuthorityDeletedAt: now,
       reconciliationRequired: false,
       failureReason: "complex_migration_requires_custom_quote",
     }, "complex_migration_stopped_before_payment", now)
@@ -669,6 +671,8 @@ export async function failMigrationOperatorWork(
     state: "failed",
     encryptedTransferCode: null,
     transferCodeDeletedAt: now,
+    encryptedSourceRefreshAuthority: null,
+    sourceRefreshAuthorityDeletedAt: now,
     reconciliationRequired: false,
     failureReason:
       `${input.failureCode}:recorded_by_super_admin:${actor.id}`,

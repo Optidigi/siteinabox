@@ -131,6 +131,41 @@ describe("read-only production provider capability preflight", () => {
     }
   })
 
+  it("fails closed without complete Cloudflare source OAuth configuration", async () => {
+    const deps = dependencies()
+    await expect(commerceProviderCapabilityBlockers(options({
+      env: {
+        ...baseEnv,
+        COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
+        COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED: "1",
+      } as unknown as NodeJS.ProcessEnv,
+      dependencies: deps,
+    }))).resolves.toEqual([
+      "provider_capability:cloudflare_source_oauth:configuration_mismatch",
+      "provider_capability:incoming_transfer_tld:configuration_mismatch",
+    ])
+    for (const dependency of Object.values(deps)) {
+      expect(dependency).not.toHaveBeenCalled()
+    }
+  })
+
+  it("performs no probes for a migration route without a complete source", async () => {
+    const deps = dependencies()
+    await expect(commerceProviderCapabilityBlockers(options({
+      env: {
+        ...baseEnv,
+        COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
+      } as unknown as NodeJS.ProcessEnv,
+      dependencies: deps,
+    }))).resolves.toEqual([
+      "provider_capability:existing_domain_source:configuration_mismatch",
+      "provider_capability:incoming_transfer_tld:configuration_mismatch",
+    ])
+    for (const dependency of Object.values(deps)) {
+      expect(dependency).not.toHaveBeenCalled()
+    }
+  })
+
   it("classifies independent provider failures with stable redacted codes", async () => {
     const deps = dependencies()
     deps.inspectMollie.mockRejectedValue(

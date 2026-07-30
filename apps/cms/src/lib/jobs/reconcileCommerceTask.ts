@@ -10,6 +10,7 @@ import { queueMolliePaymentSync } from "@/lib/jobs/syncMolliePaymentTask"
 import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
 import { relationshipId } from "@/lib/relationshipId"
 import { expireStaleMigrationCheckoutSecrets } from "@/lib/domains/migrationCheckoutSecretLifecycle"
+import { registrarCommitStarted } from "@/lib/payments/initialPaymentPolicy"
 
 export const reconcileCommerceTask: TaskConfig<{
   input: Record<string, never>
@@ -34,6 +35,8 @@ export const reconcileCommerceTask: TaskConfig<{
       { queueDueCommerceNotifications },
       { recordCommerceAdminException, resolveCommerceAdminException },
       { reconcileCommerceEdgeRouting },
+      { expireCloudflareSourceAuthorizations },
+      { reconcileTenantEmailSending },
       {
         alertOnStaleMollieSynchronization,
         recoverMissingMolliePaymentReferences,
@@ -48,6 +51,8 @@ export const reconcileCommerceTask: TaskConfig<{
       import("@/lib/commerce/notifications"),
       import("@/lib/commerce/alerts"),
       import("@/lib/domains/edgeRouting"),
+      import("@/lib/domains/cloudflareSourceOAuth"),
+      import("@/lib/tenants/emailSendingRefresh"),
       import("@/lib/commerce/reconciliation"),
     ])
     const now = new Date()
@@ -55,6 +60,9 @@ export const reconcileCommerceTask: TaskConfig<{
     const edgeRoutingResult = providerWritesAllowed
       ? await reconcileCommerceEdgeRouting(req.payload)
       : null
+    if (providerWritesAllowed) {
+      await reconcileTenantEmailSending(req.payload)
+    }
     if (!providerWritesAllowed) {
       await resolveCommerceAdminException({
         payload: req.payload,
@@ -222,12 +230,26 @@ export const reconcileCommerceTask: TaskConfig<{
     for (const managedDomain of domainResult.docs) {
       const orderId = relationshipId(managedDomain.originatingOrder)
       if (!orderId) continue
+      const committed = registrarCommitStarted(managedDomain)
       const attempts = await req.payload.find({
         collection: "payment-attempts",
         where: {
           and: [
             { order: { equals: orderId } },
-            { state: { in: ["paid", "refund_pending", "partially_refunded"] } },
+            {
+              state: {
+                in: committed
+                  ? [
+                    "paid",
+                    "refund_pending",
+                    "partially_refunded",
+                    "refunded",
+                    "refund_failed",
+                    "chargeback",
+                  ]
+                  : ["paid"],
+              },
+            },
           ],
         },
         sort: "-paidAt",
@@ -263,7 +285,7 @@ export const reconcileCommerceTask: TaskConfig<{
         where: {
           and: [
             { order: { equals: order.id } },
-            { state: { in: ["paid", "refund_pending", "partially_refunded"] } },
+            { state: { in: ["paid", "refund_failed"] } },
           ],
         },
         sort: "-paidAt",
@@ -404,6 +426,28 @@ export const reconcileCommerceTask: TaskConfig<{
       req.payload,
       now,
     )
+    const expiredSourceAuthorizations =
+      await expireCloudflareSourceAuthorizations(req.payload, { now })
+    if (expiredSourceAuthorizations.failed > 0) {
+      await recordCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "cloudflare_source_oauth_cleanup_failed",
+        message:
+          "Expired Cloudflare source authorization could not be revoked and will be retried.",
+        subjectId: "cloudflare-source-oauth",
+        metadata: { failed: expiredSourceAuthorizations.failed },
+        now: now.toISOString(),
+      })
+    } else {
+      await resolveCommerceAdminException({
+        payload: req.payload,
+        source: "domains",
+        code: "cloudflare_source_oauth_cleanup_failed",
+        subjectId: "cloudflare-source-oauth",
+        now: now.toISOString(),
+      })
+    }
     await reconcileOpenProviderBalanceAlert(
       req.payload,
       {},
@@ -427,6 +471,7 @@ export const reconcileCommerceTask: TaskConfig<{
           expiryResult.examined +
           transferOutResult.examined +
           expiredMigrationSecrets +
+          expiredSourceAuthorizations.examined +
           (edgeRoutingResult?.examined ?? 0),
         queued,
       },

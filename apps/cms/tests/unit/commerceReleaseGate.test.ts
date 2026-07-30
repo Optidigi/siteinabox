@@ -33,7 +33,7 @@ const taskPayload = asPayload({
   })),
 })
 
-const legacyEdgeInventoryPayload = (
+const adoptedEdgeInventoryPayload = (
   options: {
     activeSnapshot?: boolean
     snapshotStatus?: "active" | "superseded"
@@ -44,6 +44,7 @@ const legacyEdgeInventoryPayload = (
     duplicateTenant?: boolean
     foreignWwwAlias?: boolean
     wwwCanonicalConflict?: boolean
+    adoptionState?: "adopted" | "not_adopted" | "revoked"
   } = {},
 ) => {
   const tenant = {
@@ -51,6 +52,25 @@ const legacyEdgeInventoryPayload = (
     status: "active",
     domain: "ami-care.nl",
     domainVerification: { status: "verified" },
+    preCommerceRoutingAdoption: {
+      state: options.adoptionState ?? "adopted",
+      adoptedDomain:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "ami-care.nl",
+      evidenceVersion:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "pre-commerce-routing-v1",
+      adoptedAt:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "2026-07-30T09:59:23.000Z",
+      revokedAt:
+        options.adoptionState === "revoked"
+          ? "2026-07-30T10:00:00.000Z"
+          : null,
+    },
     activeSnapshot: options.activeSnapshot === false ? null : 154,
   }
   return asPayload({
@@ -242,6 +262,102 @@ describe("staged commerce release runtime gate", () => {
     ])
   })
 
+  it("blocks production while a resumable order has legacy checkout quote evidence", async () => {
+    const readinessPayload = asPayload({
+      find: vi.fn(async ({ collection }: { collection: string }) =>
+        collection === "orders"
+          ? {
+              docs: [{
+                id: 41,
+                state: "fulfillment_pending",
+                quoteEvidence: { schemaVersion: 3 },
+              }],
+              totalDocs: 1,
+            }
+          : { docs: [], totalDocs: 0 }),
+    })
+    const blockers = await commerceProductionReadinessBlockers(
+      readinessPayload,
+      {
+        COMMERCE_RELEASE_STAGE: "production",
+        COMMERCE_RELEASE_EVIDENCE_VERSION:
+          "commerce-production-readiness-2026-07-30.1",
+        COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
+        COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
+        NODE_ENV: "production",
+        MOLLIE_API_KEY: "live_fixture",
+        OPENPROVIDER_USERNAME: "provider-user",
+        OPENPROVIDER_PASSWORD: "provider-password",
+        CLOUDFLARE_API_TOKEN: "cloudflare-token",
+        CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+        DOMAIN_MIGRATION_ENCRYPTION_KEY:
+          Buffer.alloc(32, 1).toString("base64"),
+      } as unknown as NodeJS.ProcessEnv,
+    )
+    expect(blockers).toContain(
+      "pending_order_uses_legacy_checkout_quote_evidence",
+    )
+  })
+
+  it("blocks production readiness when Cloudflare source OAuth is incomplete", async () => {
+    const readinessPayload = asPayload({
+      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
+    })
+    const blockers = await commerceProductionReadinessBlockers(
+      readinessPayload,
+      {
+        COMMERCE_RELEASE_STAGE: "production",
+        COMMERCE_RELEASE_EVIDENCE_VERSION:
+          "commerce-production-readiness-2026-07-30.1",
+        COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
+        COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
+        COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
+        COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED: "1",
+        NODE_ENV: "production",
+        MOLLIE_API_KEY: "live_fixture",
+        OPENPROVIDER_USERNAME: "provider-user",
+        OPENPROVIDER_PASSWORD: "provider-password",
+        CLOUDFLARE_API_TOKEN: "cloudflare-token",
+        CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+        DOMAIN_MIGRATION_ENCRYPTION_KEY:
+          Buffer.alloc(32, 1).toString("base64"),
+      } as unknown as NodeJS.ProcessEnv,
+    )
+    expect(blockers).toEqual([
+      "existing_domain_migration_has_no_enabled_transfer_tld",
+      "cloudflare_source_oauth_configuration_incomplete",
+    ])
+  })
+
+  it("blocks an advertised migration route without a complete source or enabled transfer TLD", async () => {
+    const readinessPayload = asPayload({
+      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
+    })
+    const blockers = await commerceProductionReadinessBlockers(
+      readinessPayload,
+      {
+        COMMERCE_RELEASE_STAGE: "production",
+        COMMERCE_RELEASE_EVIDENCE_VERSION:
+          "commerce-production-readiness-2026-07-30.1",
+        COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
+        COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
+        COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
+        NODE_ENV: "production",
+        MOLLIE_API_KEY: "live_fixture",
+        OPENPROVIDER_USERNAME: "provider-user",
+        OPENPROVIDER_PASSWORD: "provider-password",
+        CLOUDFLARE_API_TOKEN: "cloudflare-token",
+        CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+        DOMAIN_MIGRATION_ENCRYPTION_KEY:
+          Buffer.alloc(32, 1).toString("base64"),
+      } as unknown as NodeJS.ProcessEnv,
+    )
+    expect(blockers).toEqual([
+      "existing_domain_migration_has_no_complete_source",
+      "existing_domain_migration_has_no_enabled_transfer_tld",
+    ])
+  })
+
   it("blocks deployment inventory when a live tenant has no managed domain", async () => {
     const readinessPayload = asPayload({
       find: vi.fn(async ({ collection }: { collection: string }) =>
@@ -261,9 +377,9 @@ describe("staged commerce release runtime gate", () => {
     ])
   })
 
-  it("accepts only the audited verified legacy domain in edge inventory", async () => {
+  it("accepts only a durably adopted verified domain in edge inventory", async () => {
     await expect(
-      commerceEdgeInventoryBlockers(legacyEdgeInventoryPayload(), true),
+      commerceEdgeInventoryBlockers(adoptedEdgeInventoryPayload(), true),
     ).resolves.toEqual([])
   })
 
@@ -278,13 +394,33 @@ describe("staged commerce release runtime gate", () => {
     ["duplicate tenant", { duplicateTenant: true }],
     ["foreign www alias owner", { foreignWwwAlias: true }],
     ["canonical www owner", { wwwCanonicalConflict: true }],
-  ] as const)("blocks the audited legacy inventory with %s", async (_label, options) => {
+    ["missing adoption", { adoptionState: "not_adopted" }],
+    ["revoked adoption", { adoptionState: "revoked" }],
+  ] as const)("blocks the adopted inventory with %s", async (_label, options) => {
     await expect(
       commerceEdgeInventoryBlockers(
-        legacyEdgeInventoryPayload(options),
+        adoptedEdgeInventoryPayload(options),
         true,
       ),
     ).resolves.toEqual(["active_tenant_edge_routing_unready:1"])
+    await expect(
+      commerceEdgeInventoryBlockers(
+        adoptedEdgeInventoryPayload(options),
+        false,
+      ),
+    ).resolves.toEqual([
+      "active_tenant_managed_domain_inventory_invalid:1",
+    ])
+  })
+
+  it("blocks edge bootstrap until every adopted route is ready", async () => {
+    await expect(
+      commerceEdgeBootstrapBlockers(
+        adoptedEdgeInventoryPayload({ wwwAliasCount: 0 }),
+      ),
+    ).resolves.toEqual([
+      "active_tenant_managed_domain_inventory_invalid:1",
+    ])
   })
 
   it("blocks scoped edge bootstrap on invalid inventory or critical commerce alerts", async () => {

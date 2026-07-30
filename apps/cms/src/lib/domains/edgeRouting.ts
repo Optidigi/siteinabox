@@ -18,7 +18,7 @@ import {
 } from "@/lib/domains/cloudflareTunnels"
 import { verifyHttpsEndpoint } from "@/lib/domains/verification"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
-import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
+import { resolvePreCommerceRoutingAdoption } from "@/lib/domains/preCommerceRoutingAdoption"
 import { relationshipId } from "@/lib/relationshipId"
 
 const MAX_MANAGED_TUNNEL_HOSTNAMES = 900
@@ -88,8 +88,8 @@ const uniqueSorted = (values: string[]): string[] =>
 
 /**
  * One inventory authority for both Tunnel reconciliation and its read-only
- * production preflight. The legacy bridge is explicit and disappears once a
- * managed-domain record owns the hostname.
+ * production preflight. A durable pre-commerce adoption is routing-only and
+ * disappears once a managed-domain record owns the hostname.
  */
 export async function resolveCommerceEdgeRoutingInventory(
   payload: Payload,
@@ -152,7 +152,7 @@ export async function resolveCommerceEdgeRoutingInventory(
       overrideAccess: true,
     })
     if (anyManagedDomain.docs.length > 0) continue
-    const adoption = await resolveLegacyEdgeAdoption(payload, domain)
+    const adoption = await resolvePreCommerceRoutingAdoption(payload, domain)
     if (!adoption || adoption.tenantId !== String(tenant.id)) continue
     if (adoption.rendererApexReady) rendererHosts.push(domain)
     if (adoption.rendererWwwReady) rendererHosts.push(`www.${domain}`)

@@ -30,23 +30,47 @@ const payload = (tenantStatus = "preview") => asPayload({
   }),
 })
 
-const legacyPayload = (
+const adoptedPayload = (
   options: {
     domainVerification?: "verified" | "pending"
     snapshotStatus?: "active" | "superseded"
     managedDomainExists?: boolean
     tenantStatus?: "active" | "suspended"
+    adoptionState?: "adopted" | "not_adopted" | "revoked"
     wwwAliasCount?: number
     foreignWwwAlias?: boolean
     wwwCanonicalConflict?: boolean
+    domain?: string
+    adoptedDomain?: string
   } = {},
 ) => {
+  const domain = options.domain ?? "ami-care.nl"
+  const wwwHost = `www.${domain}`
   const tenant = {
     id: 1,
-    domain: "ami-care.nl",
+    domain,
     status: options.tenantStatus ?? "active",
     domainVerification: {
       status: options.domainVerification ?? "verified",
+    },
+    preCommerceRoutingAdoption: {
+      state: options.adoptionState ?? "adopted",
+      adoptedDomain:
+        options.adoptionState === "not_adopted"
+          ? null
+          : options.adoptedDomain ?? domain,
+      evidenceVersion:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "pre-commerce-routing-v1",
+      adoptedAt:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "2026-07-30T09:59:23.000Z",
+      revokedAt:
+        options.adoptionState === "revoked"
+          ? "2026-07-30T10:00:00.000Z"
+          : null,
     },
     activeSnapshot: 154,
   }
@@ -64,9 +88,9 @@ const legacyPayload = (
           ? [{ id: 99, domainNameAscii: tenant.domain }]
           : []
         : collection === "tenants"
-          ? JSON.stringify(where).includes("www.ami-care.nl")
+          ? JSON.stringify(where).includes(wwwHost)
             ? options.wwwCanonicalConflict
-              ? [{ id: 2, domain: "www.ami-care.nl", status: "active" }]
+              ? [{ id: 2, domain: wwwHost, status: "active" }]
               : []
             : [tenant]
           : collection === "site-settings"
@@ -77,7 +101,7 @@ const legacyPayload = (
                   { length: options.wwwAliasCount ?? 1 },
                   (_, index) => ({
                     id: `alias-${index}`,
-                    host: "www.ami-care.nl",
+                    host: wwwHost,
                   }),
                 ),
               }]
@@ -148,60 +172,92 @@ describe("domain-bound edge readiness", () => {
     ["renderer", "ami-care.nl"],
     ["renderer", "www.ami-care.nl"],
     ["cms", "admin.ami-care.nl"],
-  ] as const)("resolves the audited legacy %s identity", async (surface, host) => {
+  ] as const)("resolves the durably adopted %s identity", async (surface, host) => {
     await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload(),
+      adoptedPayload(),
       host,
       surface,
     )).resolves.toEqual({ domain: "ami-care.nl", tenantId: "1" })
   })
 
-  it("rejects legacy identity when verification, snapshot, or managed-domain precedence fails", async () => {
+  it("uses durable tenant evidence instead of a static hostname list", async () => {
     await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ domainVerification: "pending" }),
+      adoptedPayload({ domain: "historical.example" }),
+      "historical.example",
+      "renderer",
+    )).resolves.toEqual({
+      domain: "historical.example",
+      tenantId: "1",
+    })
+  })
+
+  it("does not carry adoption authority to a changed tenant domain", async () => {
+    await expect(resolveManagedDomainEdgeIdentity(
+      adoptedPayload({
+        domain: "retargeted.example",
+        adoptedDomain: "ami-care.nl",
+      }),
+      "retargeted.example",
+      "renderer",
+    )).resolves.toBeNull()
+  })
+
+  it("rejects adopted identity when evidence, verification, snapshot, or managed-domain precedence fails", async () => {
+    await expect(resolveManagedDomainEdgeIdentity(
+      adoptedPayload({ adoptionState: "not_adopted" }),
       "ami-care.nl",
       "renderer",
     )).resolves.toBeNull()
     await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ snapshotStatus: "superseded" }),
+      adoptedPayload({ adoptionState: "revoked" }),
       "ami-care.nl",
       "renderer",
     )).resolves.toBeNull()
     await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ managedDomainExists: true }),
+      adoptedPayload({ domainVerification: "pending" }),
+      "ami-care.nl",
+      "renderer",
+    )).resolves.toBeNull()
+    await expect(resolveManagedDomainEdgeIdentity(
+      adoptedPayload({ snapshotStatus: "superseded" }),
+      "ami-care.nl",
+      "renderer",
+    )).resolves.toBeNull()
+    await expect(resolveManagedDomainEdgeIdentity(
+      adoptedPayload({ managedDomainExists: true }),
       "ami-care.nl",
       "renderer",
     )).resolves.toBeNull()
   })
 
-  it("requires exactly one explicit www alias for the legacy renderer", async () => {
+  it("requires exactly one explicit www alias for the adopted renderer", async () => {
     await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ wwwAliasCount: 0 }),
+      adoptedPayload({ wwwAliasCount: 0 }),
       "www.ami-care.nl",
       "renderer",
     )).resolves.toBeNull()
     await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ wwwAliasCount: 2 }),
-      "www.ami-care.nl",
-      "renderer",
-    )).resolves.toBeNull()
-  })
-
-  it("rejects a globally conflicting legacy www owner", async () => {
-    await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ foreignWwwAlias: true }),
-      "www.ami-care.nl",
-      "renderer",
-    )).resolves.toBeNull()
-    await expect(resolveManagedDomainEdgeIdentity(
-      legacyPayload({ wwwCanonicalConflict: true }),
+      adoptedPayload({ wwwAliasCount: 2 }),
       "www.ami-care.nl",
       "renderer",
     )).resolves.toBeNull()
   })
 
-  it("keeps suspended legacy administration reachable while blocking rendering", async () => {
-    const suspended = legacyPayload({ tenantStatus: "suspended" })
+  it("rejects a globally conflicting adopted www owner", async () => {
+    await expect(resolveManagedDomainEdgeIdentity(
+      adoptedPayload({ foreignWwwAlias: true }),
+      "www.ami-care.nl",
+      "renderer",
+    )).resolves.toBeNull()
+    await expect(resolveManagedDomainEdgeIdentity(
+      adoptedPayload({ wwwCanonicalConflict: true }),
+      "www.ami-care.nl",
+      "renderer",
+    )).resolves.toBeNull()
+  })
+
+  it("keeps suspended adopted administration reachable while blocking rendering", async () => {
+    const suspended = adoptedPayload({ tenantStatus: "suspended" })
     await expect(resolveManagedDomainEdgeIdentity(
       suspended,
       "admin.ami-care.nl",

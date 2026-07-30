@@ -17,16 +17,26 @@ authorized-source and payable migration journey only when the commerce release
 gate also permits provider reads. Each source is independently fail-closed:
 
 - `COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED=1` enables a customer-scoped
-  Cloudflare API connector. The token needs only Zone Read and DNS Read for the
-  selected zone. It is encrypted, expires after 24 hours, and is never replaced
-  with the Siteinabox destination token.
+  Cloudflare connector. The ordinary customer route also requires
+  `COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED=1` and a public
+  Cloudflare OAuth client configured for Authorization Code plus refresh-token
+  grants, `client_secret_basic`, PKCE S256, the exact preview callback, and only
+  `zone.read`, `dns.read`, and `offline_access`. Customers never paste an API
+  token. A dedicated encrypted refresh authority is retained for at most 35
+  days, revalidated before registrar commit and nameserver cutover, and is
+  never replaced with the Siteinabox destination token. Refresh ownership is
+  claimed in the database before the provider call. Unknown refresh outcomes
+  remain explicit, while issued or reduced-scope grants are retained as
+  encrypted, immediately due revocation work. Terminal migration and abandoned
+  checkout paths revoke the grant; failed revocation remains durable and is
+  retried by commerce reconciliation.
 - `COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED=1` enables authorized AXFR from a
   currently authoritative public nameserver, optionally with an encrypted TSIG
   secret. The server pins the resolved public address, requires matching
   opening/closing SOAs, validates the zone with BIND, and captures twice.
-- `COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED=1` is reserved for
-  reviewed provider-export contracts. Keep it disabled for generic uploads:
-  a syntactically valid but partial file cannot prove completeness.
+- Generic provider-export uploads are not an automatic checkout mechanism. A
+  syntactically valid but partial file cannot prove completeness, so the
+  historical parser has no production enablement flag.
 
 Keep both the global flag and the relevant source flag unset in production
 until every gate below has current environment-specific evidence:
@@ -68,6 +78,8 @@ Primary contracts:
 - [Openprovider transfer API](https://support.openprovider.eu/hc/en-us/articles/360024922953-14-Domains-API-How-to-transfer-a-domain)
 - [Openprovider TLD pricing API](https://support.openprovider.eu/hc/en-us/articles/360023656573-1-TLD-API-Search-an-extension)
 - [Cloudflare DNS import/export limits](https://developers.cloudflare.com/dns/manage-dns-records/how-to/import-and-export/)
+- [Cloudflare OAuth client configuration](https://developers.cloudflare.com/fundamentals/oauth/create-an-oauth-client/)
+- [Cloudflare OAuth endpoints](https://developers.cloudflare.com/fundamentals/oauth/integrate-with-cloudflare/)
 - [SIDN transfer and DNSSEC guidance](https://www.sidn.nl/en/nl-domain-name/transferring-your-domain-name)
 
 ## Accepted authority
@@ -153,3 +165,10 @@ inspect the secret collection plus migrations in
 as a rollback shortcut. Keep the current schema, correct the application
 forward, and run the normal migration command again. A down migration is
 permitted only on an empty disposable schema where both guards are empty.
+
+The `cloudflare_source_oauth` down migration additionally refuses to remove its
+table while any pending, authorized, attached, refreshing, or
+revocation-pending authority—or any encrypted authority—exists. Disable new
+OAuth starts, let reconciliation revoke and terminalize all grants, verify the
+guard query is empty, and only then run a reviewed rollback. Never delete an
+authorization row to bypass the guard.

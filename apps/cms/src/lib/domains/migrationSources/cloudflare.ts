@@ -203,6 +203,20 @@ const capture = async (
   if (!zoneId || nameservers.length < 2) {
     throw new Error("Cloudflare source zone metadata is incomplete.")
   }
+  const publicNameservers = [...new Set(
+    publicEvidence.authoritativeNameservers.map(canonical),
+  )].sort()
+  const assignedNameservers = [...new Set(nameservers)].sort()
+  if (
+    publicNameservers.length !== assignedNameservers.length ||
+    !publicNameservers.every(
+      (nameserver, index) => nameserver === assignedNameservers[index],
+    )
+  ) {
+    throw new Error(
+      "Cloudflare source zone is not the domain's current authoritative zone.",
+    )
+  }
   const rawRecords: Record<string, unknown>[] = []
   let expectedCount: number | null = null
   let expectedPages: number | null = null

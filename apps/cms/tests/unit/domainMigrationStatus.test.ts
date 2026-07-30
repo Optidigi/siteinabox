@@ -164,4 +164,61 @@ describe("customer migration status projection", () => {
       },
     })
   })
+
+  it("exposes the governed registrant-email confirmation deadline", async () => {
+    const order = {
+      id: 600,
+      generationRun: 500,
+      tenant: 1,
+      orderKind: "initial_subscription",
+      customerEmail: "client@example.com",
+      quoteEvidence: {
+        tldCapability: {
+          tld: "com",
+          capabilityVersion: "tld-com-2026-07-29.3",
+        },
+      },
+    }
+    const migration = {
+      id: 700,
+      originatingOrder: 600,
+      managedDomain: null,
+      domainNameAscii: "example.com",
+      tld: "com",
+      state: "awaiting_provider",
+      acceptedClassification: "automatic",
+      sourceMechanism: "cloudflare_api_v1",
+      operatorWorkAuthorizationState: "not_required",
+      customerActions: {
+        confirm_transfer: {
+          status: "required",
+          updatedAt: "2026-07-28T08:00:00.000Z",
+          evidence: "registrant_email_confirmation_required",
+        },
+      },
+      transferRequestedAt: "2026-07-28T08:00:00.000Z",
+      updatedAt: "2026-07-28T08:00:00.000Z",
+    }
+    const payload = asPayload({
+      find: vi.fn(async ({ collection }: { collection: string }) => ({
+        docs: collection === "orders"
+          ? [order]
+          : collection === "domain-migrations"
+            ? [migration]
+            : [],
+      })),
+      findByID: vi.fn(),
+    })
+
+    await expect(loadCustomerMigrationStatus(payload, {
+      generationRunId: 500,
+      customerEmail: "CLIENT@example.com",
+    })).resolves.toMatchObject({
+      actions: [{
+        action: "confirm_transfer",
+        status: "required",
+        deadlineAt: "2026-08-03T08:00:00.000Z",
+      }],
+    })
+  })
 })

@@ -130,6 +130,39 @@ describe("Phase 3 checkout quote", () => {
     })).toThrow("frozen migration input evidence")
   })
 
+  it("discloses and freezes the governed .nl and .be transfer-renewal effects", () => {
+    const existingDomainQuote = (selectedDomain: string) => buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 800,
+      migrationClassification: "automatic",
+      migrationSourceMechanism: "validated_provider_export_v1",
+      migrationSourceZoneHash: "a".repeat(64),
+      migrationInputEnvelope: "encrypted-source",
+      domainMode: "existing_domain",
+      ...quoteContext,
+      selectedDomain,
+    })
+    const nl = existingDomainQuote("example.nl")
+    const be = existingDomainQuote("example.be")
+
+    expect(nl).toMatchObject({
+      transferRenewalEffect: "unchanged",
+      domainRenewalExplanation: expect.stringContaining(
+        "wijzigt de huidige verlengdatum niet",
+      ),
+    })
+    expect(be).toMatchObject({
+      transferRenewalEffect: "restarts_from_transfer_date",
+      domainRenewalExplanation: expect.stringContaining(
+        "nieuwe registratieperiode vanaf de transferdatum",
+      ),
+    })
+    expect(sameCommercialCheckoutQuote(nl, {
+      ...nl,
+      transferRenewalEffect: "extends_one_year",
+    })).toBe(false)
+  })
+
   it("seals quote evidence and rejects tampering or expiry", () => {
     const issuedAt = new Date("2026-07-28T10:00:00.000Z")
     const envelope = sealCheckoutQuote(buildCheckoutQuote({

@@ -31,8 +31,10 @@ import {
 } from "@/lib/checkout/checkoutQuote"
 import {
   checkPreviewCheckoutDomainAction,
+  loadPreviewCheckoutLiveStatusAction,
   recollectAcceptedMigrationInputAction,
   savePreviewCheckoutProfileAction,
+  schedulePreviewCheckoutCancellationAction,
   startPreviewCheckoutPaymentAction,
   submitMigrationTransferCodeAction,
 } from "./actions"
@@ -43,6 +45,12 @@ import {
 import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGateCore"
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
+import {
+  cloudflareSourceCheckoutEnabled,
+  loadCloudflareSourceAuthorizationMetadata,
+} from "@/lib/domains/cloudflareSourceOAuth"
+import { relationshipId } from "@/lib/relationshipId"
+import { loadCustomerBillingAgreement } from "@/lib/billing/customerBillingAgreement"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("preview")
@@ -54,12 +62,20 @@ export default async function PreviewCheckoutPage({
   searchParams,
 }: {
   params: Promise<{ clientSlug: string }>
-  searchParams?: Promise<{ payment?: string | string[] }>
+  searchParams?: Promise<{
+    payment?: string | string[]
+    cloudflareSource?: string | string[]
+  }>
 }) {
   if (!(await isPreviewHost())) notFound()
 
   const { clientSlug } = await params
-  const paymentReturn = (await searchParams)?.payment === "return"
+  const resolvedSearchParams = await searchParams
+  const paymentReturn = resolvedSearchParams?.payment === "return"
+  const cloudflareSourceValue =
+    typeof resolvedSearchParams?.cloudflareSource === "string"
+      ? resolvedSearchParams.cloudflareSource
+      : null
   const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
   if (!normalizedClientSlug) notFound()
 
@@ -89,6 +105,27 @@ export default async function PreviewCheckoutPage({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
     })
+    const oauthEnabled = cloudflareSourceCheckoutEnabled()
+    const tenantId = relationshipId(context.tenant)
+    const sourceMetadata =
+      oauthEnabled &&
+      tenantId &&
+      cloudflareSourceValue &&
+      !["failed", "provider-mismatch"].includes(cloudflareSourceValue)
+        ? await loadCloudflareSourceAuthorizationMetadata(
+            context.payload,
+            {
+              authorizationKey: cloudflareSourceValue,
+              generationRunId: context.run.id,
+              tenantId,
+              clientSlug: context.clientSlug,
+              customerEmail: context.customerEmail,
+            },
+          )
+        : null
+    const cloudflareSourceAuthorization =
+      sourceMetadata?.authorizationKey ?? null
+    const cloudflareSourceDomain = sourceMetadata?.domain ?? null
     const payment = context.run.payment && typeof context.run.payment === "object"
       ? context.run.payment as { status?: string | null }
       : null
@@ -113,13 +150,18 @@ export default async function PreviewCheckoutPage({
     const selectedDomain = acceptedResume?.domain ??
       (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
     const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
-    const [migrationStatus, provisioningStatus] = await Promise.all([
+    const [migrationStatus, provisioningStatus, billingAgreement] = await Promise.all([
       loadCustomerMigrationStatus(context.payload, {
         generationRunId: context.run.id,
         customerEmail: context.customerEmail,
       }),
       loadCustomerProvisioningStatus(context.payload, {
         generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerBillingAgreement(context.payload, {
+        generationRunId: context.run.id,
+        tenantId: context.tenant.id,
         customerEmail: context.customerEmail,
       }),
     ])
@@ -140,9 +182,9 @@ export default async function PreviewCheckoutPage({
     const enabledMigrationSourceMethods = ([
       "cloudflare_api_v1",
       "authorized_axfr_v1",
-      "validated_provider_export_v1",
     ] as const).filter((mechanism) =>
-      automaticMigrationSourceEnabled(mechanism))
+      automaticMigrationSourceEnabled(mechanism) &&
+      (mechanism !== "cloudflare_api_v1" || oauthEnabled))
     const existingDomainMigrationEnabled =
       existingDomainMigrationCheckoutEnabled() &&
       commerceProviderReadsAllowed() &&
@@ -150,6 +192,7 @@ export default async function PreviewCheckoutPage({
 
     return (
       <PreviewCheckout
+        clientSlug={context.clientSlug}
         customerEmail={context.customerEmail}
         currentDomain={selectedDomain}
         domainReady={Boolean(selectedDomain)}
@@ -164,8 +207,21 @@ export default async function PreviewCheckoutPage({
         paymentReturn={paymentReturn}
         existingDomainMigrationEnabled={existingDomainMigrationEnabled}
         enabledMigrationSourceMethods={enabledMigrationSourceMethods}
+        cloudflareSourceOAuthEnabled={oauthEnabled}
+        cloudflareSourceAuthorization={cloudflareSourceAuthorization}
+        cloudflareSourceDomain={cloudflareSourceDomain}
+        cloudflareSourceResult={
+          sourceMetadata
+            ? "connected"
+            : cloudflareSourceValue === "failed"
+              ? "failed"
+              : cloudflareSourceValue === "provider-mismatch"
+                ? "provider-mismatch"
+                : null
+        }
         migrationStatus={migrationStatus}
         provisioningStatus={provisioningStatus}
+        billingAgreement={billingAgreement}
         acceptedOrderId={acceptedResume?.orderId ?? null}
         requiresMigrationRecollection={
           acceptedResume?.requiresMigrationRecollection ?? false
@@ -198,11 +254,20 @@ export default async function PreviewCheckoutPage({
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
+        loadLiveStatusAction={
+          loadPreviewCheckoutLiveStatusAction.bind(null, context.clientSlug)
+        }
         recollectAcceptedMigrationInputAction={
           recollectAcceptedMigrationInputAction.bind(null, context.clientSlug)
         }
         submitMigrationTransferCodeAction={
           submitMigrationTransferCodeAction.bind(null, context.clientSlug)
+        }
+        scheduleCancellationAction={
+          schedulePreviewCheckoutCancellationAction.bind(
+            null,
+            context.clientSlug,
+          )
         }
         termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
         privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}

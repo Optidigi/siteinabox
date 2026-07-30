@@ -6,6 +6,7 @@ import { sendEmail, asMailLogPayload, type MailLogPayload } from "@/lib/email/se
 import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
+import { getPlatformMailSender } from "@/lib/email/sendEmail"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
@@ -148,20 +149,15 @@ export async function notifyTenantOfFormSubmission({
       return
     }
 
-    const sender = resolveVerifiedTenantSender(tenant as Parameters<typeof resolveVerifiedTenantSender>[0])
-    if (!sender) {
-      payload.logger?.warn?.("[forms] tenant notification skipped", {
-        reason: "tenant_sender_unverified",
-        tenantId,
-        formId: doc.id,
-      })
-      return
-    }
+    const sender = resolveVerifiedTenantSender(
+      tenant as Parameters<typeof resolveVerifiedTenantSender>[0],
+    )
+    const senderEmail = sender?.senderEmail ?? getPlatformMailSender()
 
     const message = tenantFormNotificationTemplate(doc)
     const deliveries = await Promise.allSettled(recipients.map((recipient) => sendEmail({
         to: recipient,
-        from: sender.senderEmail,
+        from: senderEmail,
         replyTo: safeEmail(doc.email ?? firstStringFromRecord(doc.data, ["email", "contactEmail"])) ?? undefined,
         subject: message.subject,
         html: message.html,

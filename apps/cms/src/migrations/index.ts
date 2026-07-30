@@ -90,6 +90,9 @@ import * as migration_20260729_180259_automatic_dnssec_migration from './2026072
 import * as migration_20260729_185555_automatic_edge_routing from './20260729_185555_automatic_edge_routing';
 import * as migration_20260729_195522_automatic_transfer_code_delivery from './20260729_195522_automatic_transfer_code_delivery';
 import * as migration_20260729_203217 from './20260729_203217';
+import * as migration_20260730_013908_automatic_source_refresh_authority from './20260730_013908_automatic_source_refresh_authority';
+import * as migration_20260730_030555_cloudflare_source_oauth from './20260730_030555_cloudflare_source_oauth';
+import * as migration_20260730_102220_durable_pre_commerce_routing_adoption from './20260730_102220_durable_pre_commerce_routing_adoption';
 
 export const migrations = [
   {
@@ -550,6 +553,21 @@ export const migrations = [
   {
     up: migration_20260729_203217.up,
     down: migration_20260729_203217.down,
-    name: '20260729_203217'
+    name: '20260729_203217',
+  },
+  {
+    up: migration_20260730_013908_automatic_source_refresh_authority.up,
+    down: migration_20260730_013908_automatic_source_refresh_authority.down,
+    name: '20260730_013908_automatic_source_refresh_authority',
+  },
+  {
+    up: migration_20260730_030555_cloudflare_source_oauth.up,
+    down: migration_20260730_030555_cloudflare_source_oauth.down,
+    name: '20260730_030555_cloudflare_source_oauth',
+  },
+  {
+    up: migration_20260730_102220_durable_pre_commerce_routing_adoption.up,
+    down: migration_20260730_102220_durable_pre_commerce_routing_adoption.down,
+    name: '20260730_102220_durable_pre_commerce_routing_adoption'
   },
 ];

@@ -25,3 +25,20 @@ export const domainMigrationSourceAuthorityHash = (value: unknown): string => {
   delete source.acquiredAt
   return domainMigrationEvidenceHash(source)
 }
+
+export const domainMigrationSourceContentHash = (value: unknown): string => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return domainMigrationEvidenceHash(value)
+  }
+  const source = { ...(value as Record<string, unknown>) }
+  delete source.acquiredAt
+  const dnssec = source.dnssec
+  if (dnssec && typeof dnssec === "object" && !Array.isArray(dnssec)) {
+    const stableDnssec = { ...(dnssec as Record<string, unknown>) }
+    delete stableDnssec.status
+    delete stableDnssec.parentDsRecords
+    delete stableDnssec.parentDsTtl
+    source.dnssec = stableDnssec
+  }
+  return domainMigrationEvidenceHash(source)
+}

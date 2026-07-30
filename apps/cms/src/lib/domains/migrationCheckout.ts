@@ -10,6 +10,7 @@ import {
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  productionTldCapabilitiesAt,
   tldCapabilityOperationFlagEnabled,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -69,11 +70,17 @@ const canonicalNames = (values: string[]): string[] =>
     .sort()
 
 const probableDnsProvider = (nameservers: string[]): string | null => {
-  const joined = nameservers.join(" ")
-  if (joined.includes("cloudflare.com")) return "cloudflare"
-  if (joined.includes("transip.net")) return "transip"
-  if (joined.includes("yourhosting.nl")) return "yourhosting"
-  if (joined.includes("openprovider.")) return "openprovider"
+  const canonical = nameservers.map((nameserver) =>
+    nameserver.trim().toLowerCase().replace(/\.$/, ""))
+  const usesSuffix = (suffix: string) =>
+    canonical.some((nameserver) =>
+      nameserver === suffix || nameserver.endsWith(`.${suffix}`))
+  if (usesSuffix("ns.cloudflare.com")) return "cloudflare"
+  if (usesSuffix("transip.net")) return "transip"
+  if (usesSuffix("yourhosting.nl")) return "yourhosting"
+  if (usesSuffix("openprovider.eu") || usesSuffix("openprovider.nl")) {
+    return "openprovider"
+  }
   return null
 }
 
@@ -98,9 +105,45 @@ const rdapRegistrar = async (
   domain: string,
   fetchImpl: typeof fetch,
 ): Promise<string | null> => {
-  if (!domain.endsWith(".nl")) return null
+  const tld = domain.split(".").at(-1)
+  if (!tld) return null
+  const bootstrapResponse = await fetchImpl(
+    "https://data.iana.org/rdap/dns.json",
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(3_000),
+    },
+  )
+  if (!bootstrapResponse.ok) return null
+  const bootstrap: unknown = await bootstrapResponse.json()
+  const rawServices =
+    bootstrap &&
+    typeof bootstrap === "object" &&
+    !Array.isArray(bootstrap) &&
+    Array.isArray((bootstrap as { services?: unknown }).services)
+      ? (bootstrap as { services: unknown[] }).services
+      : []
+  const services = rawServices.flatMap((entry): Array<[string[], string[]]> =>
+    Array.isArray(entry) &&
+    Array.isArray(entry[0]) &&
+    entry[0].every((value) => typeof value === "string") &&
+    Array.isArray(entry[1]) &&
+    entry[1].every((value) => typeof value === "string")
+      ? [[entry[0], entry[1]]]
+      : [])
+  const baseUrl = services.find(([tlds]) =>
+    tlds.some((entry) => entry.toLowerCase() === tld))?.[1]?.[0]
+  if (!baseUrl) return null
+  const parsedBaseUrl = new URL(baseUrl)
+  if (parsedBaseUrl.protocol !== "https:") return null
   const response = await fetchImpl(
-    `https://rdap.sidn.nl/domain/${encodeURIComponent(domain)}`,
+    new URL(
+      `domain/${encodeURIComponent(domain)}`,
+      parsedBaseUrl.toString().endsWith("/")
+        ? parsedBaseUrl
+        : `${parsedBaseUrl.toString()}/`,
+    ).toString(),
     {
       method: "GET",
       headers: { Accept: "application/rdap+json, application/json" },
@@ -195,7 +238,8 @@ export async function inspectExistingDomainPublicEvidence(
 export function existingDomainMigrationCheckoutEnabled(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED?.trim() === "1"
+  return env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED?.trim() === "1" &&
+    productionTldCapabilitiesAt("incoming_transfer").length > 0
 }
 
 export function automaticMigrationSourceEnabled(
@@ -208,9 +252,10 @@ export function automaticMigrationSourceEnabled(
   if (mechanism === "authorized_axfr_v1") {
     return env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED?.trim() === "1"
   }
-  if (mechanism === "validated_provider_export_v1") {
-    return env.COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED?.trim() === "1"
-  }
+  // A customer-uploaded file cannot independently prove complete source
+  // authority. Keep the parser for historical evidence, but never expose this
+  // mechanism as an ordinary automatic checkout route.
+  if (mechanism === "validated_provider_export_v1") return false
   return false
 }
 

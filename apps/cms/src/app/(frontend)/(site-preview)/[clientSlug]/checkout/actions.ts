@@ -47,12 +47,20 @@ import {
   getOpenProviderDomainTransferPrice,
 } from "@/lib/domains/openprovider"
 import { acquireAuthorizedAxfr } from "@/lib/domains/migrationSources/axfr"
-import { acquireCloudflareSource } from "@/lib/domains/migrationSources/cloudflare"
+import type { AcquiredMigrationSource } from "@/lib/domains/migrationSources/types"
+import {
+  attachCloudflareSourceAuthorization,
+  loadCloudflareSourceAuthorization,
+  type CloudflareSourceAuthorizationRecord,
+} from "@/lib/domains/cloudflareSourceOAuth"
 import {
   acquireValidatedProviderExport,
 } from "@/lib/domains/migrationSources/providerExport"
 import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
-import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
+import {
+  buildAutomaticSourceRefreshAuthority,
+  openCheckoutMigrationInput,
+} from "@/lib/domains/migrationSecrets"
 import {
   attachMigrationCheckoutSecret,
   migrationCheckoutSecretKey,
@@ -72,14 +80,33 @@ import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayme
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { normalizeGenerationRunPaymentState } from "@/lib/payments/generationRunPayment"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
-import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
+import {
+  requirePreviewCheckoutActorContext,
+  requirePreviewCheckoutContext,
+} from "./previewCheckoutContext"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
   acquireAutomaticMigrationInputs,
   DomainMigrationCustomerInputError,
+  replaceMigrationSourceRefreshAuthority,
   replaceMigrationTransferAuthorization,
 } from "@/lib/domains/migration"
+import { domainMigrationSourceAuthorityHash } from
+  "@/lib/domains/migrationEvidence"
+import {
+  loadCustomerBillingAgreement,
+  type CustomerBillingAgreementView,
+} from "@/lib/billing/customerBillingAgreement"
+import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
+import {
+  loadCustomerMigrationStatus,
+  type CustomerMigrationStatus,
+} from "@/lib/domains/migrationStatus"
+import {
+  loadCustomerProvisioningStatus,
+  type CustomerProvisioningStatus,
+} from "@/lib/domains/provisioningStatus"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -130,6 +157,20 @@ export type PreviewCheckoutSuggestionsState = {
   suggestions?: PreviewCheckoutDomainOption[]
   cursor?: number
   done?: boolean
+}
+
+export type PreviewCheckoutCancellationState = {
+  ok: boolean
+  status: "idle" | "scheduled" | "unavailable" | "failed"
+  message: string
+  agreement?: CustomerBillingAgreementView | null
+}
+
+export type PreviewCheckoutLiveStatus = {
+  paymentStatus: string
+  migrationStatus: CustomerMigrationStatus | null
+  provisioningStatus: CustomerProvisioningStatus | null
+  billingAgreement: CustomerBillingAgreementView | null
 }
 
 const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): string | null => {
@@ -249,13 +290,42 @@ const acquireAutomaticMigrationSourceFromForm = async (
   publicEvidence: Awaited<
     ReturnType<typeof inspectExistingDomainPublicEvidence>
   >,
-) => {
+  authority?: {
+    context: Awaited<ReturnType<typeof requirePreviewCheckoutContext>>
+  },
+): Promise<
+  AcquiredMigrationSource & {
+  oauthAuthorization?: CloudflareSourceAuthorizationRecord
+  }
+> => {
+  if (!commerceProviderReadsAllowed()) {
+    throw new Error("Migration source reads are blocked by the commerce release gate.")
+  }
   if (sourceMethod === "cloudflare_api_v1") {
-    return acquireCloudflareSource({
-      domain,
-      token: String(formData.get("cloudflareSourceToken") ?? ""),
-      publicEvidence,
-    })
+    const authorizationKey = String(
+      formData.get("cloudflareSourceAuthorization") ?? "",
+    ).trim()
+    if (authorizationKey) {
+      if (!authority) {
+        throw new Error("Cloudflare OAuth context is required.")
+      }
+      const authorization = await loadCloudflareSourceAuthorization(
+        authority.context.payload,
+        {
+          authorizationKey,
+          generationRunId: authority.context.run.id,
+          tenantId: authority.context.tenant.id,
+          clientSlug: authority.context.clientSlug,
+          customerEmail: authority.context.customerEmail,
+          domain,
+        },
+      )
+      return {
+        ...authorization.source,
+        oauthAuthorization: authorization.record,
+      }
+    }
+    throw new Error("Cloudflare OAuth authorization is required.")
   }
   if (sourceMethod === "authorized_axfr_v1") {
     return acquireAuthorizedAxfr({
@@ -303,9 +373,22 @@ async function checkExistingDomainMigration(
       requestToken,
     }
   }
+  if (!commerceProviderReadsAllowed()) {
+    return {
+      ok: false,
+      status: "service_error",
+      domain: normalized.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationPreflightOnly: true,
+      message:
+        "De domeinvoorcontrole is nog niet vrijgegeven. Er is niets verhuisd of besteld.",
+      requestToken,
+    }
+  }
 
   const migrationCheckoutEnabled =
-    existingDomainMigrationCheckoutEnabled() && commerceProviderReadsAllowed()
+    existingDomainMigrationCheckoutEnabled()
   const sourceMethod = String(formData.get("migrationSourceMethod") ?? "").trim()
   if (!migrationCheckoutEnabled || !sourceMethod) {
     try {
@@ -373,6 +456,7 @@ async function checkExistingDomainMigration(
         domain: normalized.domain,
         domainMode: "existing_domain",
         migrationReadiness: "unsupported",
+        migrationClassification: null,
         migrationSourceMechanism: sourceMethod as MigrationSourceMechanism,
         migrationPublicEvidence: publicEvidence,
         migrationPreflightOnly: true,
@@ -388,6 +472,7 @@ async function checkExistingDomainMigration(
       >,
       formData,
       publicEvidence,
+      { context },
     )
     const assessment = assessExistingDomainMigrationInput({
       generationRunId: context.run.id,
@@ -516,6 +601,16 @@ export async function checkPreviewCheckoutDomainAction(
   }
   if (domainMode === "existing_domain") {
     return checkExistingDomainMigration(context, domain, formData, requestToken)
+  }
+  if (!commerceProviderReadsAllowed()) {
+    return {
+      ok: false,
+      status: "service_error",
+      domain,
+      domainMode,
+      message: t("checkoutDomainServiceUnavailable"),
+      requestToken,
+    }
   }
 
   try {
@@ -673,6 +768,9 @@ async function recollectAcceptedMigrationInput(
   clientSlug: string,
   formData: FormData,
 ): Promise<string> {
+  if (!commerceProviderReadsAllowed()) {
+    throw new MigrationCustomerActionError("retryable_service_error")
+  }
   const context = await requirePreviewCheckoutContext(clientSlug)
   const orderId = String(formData.get("acceptedOrderId") ?? "").trim()
   if (!/^\d+$/.test(orderId)) {
@@ -706,6 +804,7 @@ async function recollectAcceptedMigrationInput(
           quote.migrationSourceMechanism,
           formData,
           publicEvidence,
+          { context },
         ).catch(() => {
           throw new MigrationCustomerActionError("invalid_input")
         })
@@ -732,7 +831,7 @@ async function recollectAcceptedMigrationInput(
     requestedAssistance:
       quote.migrationClassification === "assisted_standard",
     publicEvidence,
-    acceptedOrderRecollection: !currentAutomaticSource,
+    acceptedOrderRecollection: true,
     acceptedCapabilityVersion: resume.tldCapabilityVersion ?? undefined,
     acquiredSource: currentAutomaticSource ?? undefined,
   })
@@ -746,6 +845,16 @@ async function recollectAcceptedMigrationInput(
     )
   ) {
     throw new MigrationCustomerActionError("invalid_input")
+  }
+  if (currentAutomaticSource?.oauthAuthorization) {
+    try {
+      await attachCloudflareSourceAuthorization(
+        context.payload,
+        currentAutomaticSource.oauthAuthorization,
+      )
+    } catch {
+      throw new MigrationCustomerActionError("refresh_required")
+    }
   }
   await replaceExpiredAttachedMigrationCheckoutSecret(context.payload, {
     secretKey: quote.migrationSecretKey!,
@@ -779,7 +888,13 @@ async function submitMigrationTransferCode(
   const migrationId = String(formData.get("migrationId") ?? "").trim()
   const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
   const transferCode = String(formData.get("transferCode") ?? "").trim()
-  if (!/^\d+$/.test(migrationId) || !expectedVersion || !transferCode) {
+  const sourceAuthorityOnly =
+    formData.get("sourceAuthorityOnly") === "accepted"
+  if (
+    !/^\d+$/.test(migrationId) ||
+    !expectedVersion ||
+    (!transferCode && !sourceAuthorityOnly)
+  ) {
     throw new MigrationCustomerActionError("invalid_input")
   }
   const migration = await context.payload.findByID({
@@ -788,6 +903,17 @@ async function submitMigrationTransferCode(
     depth: 0,
     overrideAccess: true,
   })
+  if (
+    !transferCode &&
+    !(
+      migration.failureReason ===
+        "source_authority_reauthorization_required" &&
+      migration.providerTransferState === "confirmed" &&
+      sourceAuthorityOnly
+    )
+  ) {
+    throw new MigrationCustomerActionError("invalid_input")
+  }
   const originatingOrderId = relationshipId(migration.originatingOrder)
   if (!originatingOrderId) {
     throw new Error("Transfer-code correction has no originating order.")
@@ -806,7 +932,10 @@ async function submitMigrationTransferCode(
   ) {
     throw new Error("Transfer-code correction belongs to another customer.")
   }
-  if (migration.failureReason === "source_evidence_stale") {
+  if (
+    migration.failureReason === "source_evidence_stale" ||
+    migration.failureReason === "source_authority_reauthorization_required"
+  ) {
     if (
       migration.updatedAt !== expectedVersion ||
       migration.state !== "awaiting_customer"
@@ -815,11 +944,17 @@ async function submitMigrationTransferCode(
     }
     const sourceMechanism = migration.sourceMechanism
     let zoneExport: unknown
+    let acquiredSource: Awaited<
+      ReturnType<typeof acquireAutomaticMigrationSourceFromForm>
+    > | null = null
     if (
       sourceMechanism &&
       sourceMechanism !== "customer_authorized_provider_export_v1"
     ) {
-      if (!automaticMigrationSourceEnabled(sourceMechanism)) {
+      if (
+        !commerceProviderReadsAllowed() ||
+        !automaticMigrationSourceEnabled(sourceMechanism)
+      ) {
         throw new MigrationCustomerActionError("retryable_service_error")
       }
       const publicEvidence = await inspectExistingDomainPublicEvidence(
@@ -827,11 +962,12 @@ async function submitMigrationTransferCode(
       ).catch(() => {
         throw new MigrationCustomerActionError("retryable_service_error")
       })
-      const acquiredSource = await acquireAutomaticMigrationSourceFromForm(
+      acquiredSource = await acquireAutomaticMigrationSourceFromForm(
         migration.domainNameAscii,
         sourceMechanism,
         formData,
         publicEvidence,
+        { context },
       ).catch(() => {
         throw new MigrationCustomerActionError("invalid_input")
       })
@@ -846,19 +982,58 @@ async function submitMigrationTransferCode(
         throw new MigrationCustomerActionError("invalid_input")
       }
     }
+    if (
+      migration.failureReason ===
+        "source_authority_reauthorization_required" &&
+      !acquiredSource
+    ) {
+      throw new MigrationCustomerActionError("invalid_input")
+    }
     try {
-      await acquireAutomaticMigrationInputs(context.payload, {
-        migrationId: migration.id,
-        zoneExport: zoneExport as Parameters<
-          typeof acquireAutomaticMigrationInputs
-        >[1]["zoneExport"],
-        transferCode,
-        expectedUpdatedAt: expectedVersion,
-      })
+      if (acquiredSource?.oauthAuthorization) {
+        await attachCloudflareSourceAuthorization(
+          context.payload,
+          acquiredSource.oauthAuthorization,
+        )
+      }
+      if (
+        migration.failureReason ===
+          "source_authority_reauthorization_required"
+      ) {
+        await replaceMigrationSourceRefreshAuthority(context.payload, {
+          migrationId: migration.id,
+          acquiredSource: acquiredSource!,
+          transferCode: transferCode || undefined,
+          expectedUpdatedAt: expectedVersion,
+        })
+      } else {
+        if (!transferCode) {
+          throw new DomainMigrationCustomerInputError("invalid_input")
+        }
+        await acquireAutomaticMigrationInputs(context.payload, {
+          migrationId: migration.id,
+          zoneExport: zoneExport as Parameters<
+            typeof acquireAutomaticMigrationInputs
+          >[1]["zoneExport"],
+          transferCode,
+          sourceRefreshAuthority: acquiredSource
+            ? buildAutomaticSourceRefreshAuthority({
+                domain: migration.domainNameAscii,
+                sourceMechanism: acquiredSource.mechanism,
+                sourceZone: acquiredSource.zone,
+                credential: acquiredSource.refreshCredential,
+              })
+            : undefined,
+          expectedUpdatedAt: expectedVersion,
+        })
+      }
     } catch (error) {
       translateDomainMigrationInputFailure(error)
     }
   } else {
+    if (!transferCode) {
+      throw new MigrationCustomerActionError("invalid_input")
+    }
     try {
       await replaceMigrationTransferAuthorization(context.payload, {
         migrationId: migration.id,
@@ -930,7 +1105,11 @@ export async function savePreviewCheckoutProfileAction(
     ? "existing_domain"
     : "new_registration"
   let quotes: CheckoutQuoteSet | undefined
-  if (selectedDomain && domainMode === "existing_domain") {
+  if (
+    selectedDomain &&
+    commerceProviderReadsAllowed() &&
+    domainMode === "existing_domain"
+  ) {
     try {
       const priorQuote = openCheckoutQuote(
         String(formData.get("existingMigrationQuoteToken") ?? ""),
@@ -969,7 +1148,7 @@ export async function savePreviewCheckoutProfileAction(
     } catch {
       quotes = undefined
     }
-  } else if (selectedDomain) {
+  } else if (selectedDomain && commerceProviderReadsAllowed()) {
     const refreshed = await checkAndRecordPreviewDomainOrder(
       context.payload,
       context.run,
@@ -1036,6 +1215,9 @@ export async function suggestPreviewCheckoutDomainsAction(
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   if (!domain) return { ok: false, suggestions: [], cursor: 0, done: true }
+  if (!commerceProviderReadsAllowed()) {
+    return { ok: false, domain, suggestions: [], cursor: 0, done: true }
+  }
 
   try {
     const locale = await getLocale()
@@ -1214,6 +1396,12 @@ export async function startPreviewCheckoutPaymentAction(
     }
   }
   const registrant = domainRegistrantFromCheckoutProfile(checkoutProfile)
+  let acceptedMigrationInput: ReturnType<
+    typeof openCheckoutMigrationInput
+  > | null = null
+  let sourceAuthorization:
+    | Awaited<ReturnType<typeof loadCloudflareSourceAuthorization>>
+    | null = null
 
   try {
     const domainStart = startPreviewCheckoutTimer()
@@ -1224,6 +1412,7 @@ export async function startPreviewCheckoutPaymentAction(
       currentQuote = acceptedQuote
     } else if (acceptedQuote.domainMode === "existing_domain") {
       if (
+        !commerceProviderReadsAllowed() ||
         !existingDomainMigrationCheckoutEnabled() ||
         !acceptedQuote.migrationClassification ||
         !acceptedQuote.migrationSourceMechanism ||
@@ -1249,6 +1438,7 @@ export async function startPreviewCheckoutPaymentAction(
           context.run.id,
           domain,
         )
+        acceptedMigrationInput = migrationInput
         if (
           migrationInput.classification !== acceptedQuote.migrationClassification ||
           migrationInput.sourceMechanism !==
@@ -1288,6 +1478,13 @@ export async function startPreviewCheckoutPaymentAction(
         draftVersion: acceptedQuote.draftVersion,
       })
     } else {
+      if (!commerceProviderReadsAllowed()) {
+        return {
+          ok: false,
+          status: "version_conflict",
+          message: t("checkoutQuoteVersionConflict"),
+        }
+      }
       const ready = await requireReadyPreviewDomainOrder(
         context.payload,
         context.run,
@@ -1344,12 +1541,60 @@ export async function startPreviewCheckoutPaymentAction(
     }
     if (acceptedQuote.domainMode === "existing_domain") {
       if (acceptedQuote.migrationInputEnvelope) {
+        if (
+          acceptedMigrationInput?.schemaVersion === 2 &&
+          acceptedMigrationInput.sourceRefreshCredential.kind ===
+            "cloudflare_oauth"
+        ) {
+          const authorizationKey = String(
+            formData.get("cloudflareSourceAuthorization") ?? "",
+          ).trim()
+          if (
+            !authorizationKey ||
+            authorizationKey !==
+              acceptedMigrationInput.sourceRefreshCredential.authorizationKey
+          ) {
+            return {
+              ok: false,
+              status: "version_conflict",
+              message: t("checkoutQuoteVersionConflict"),
+            }
+          }
+          sourceAuthorization = await loadCloudflareSourceAuthorization(
+            context.payload,
+            {
+              authorizationKey,
+              generationRunId: context.run.id,
+              tenantId: context.tenant.id,
+              clientSlug: context.clientSlug,
+              customerEmail: context.customerEmail,
+              domain,
+            },
+          )
+          if (
+            domainMigrationSourceAuthorityHash(
+              sourceAuthorization.source.zone,
+            ) !== acceptedQuote.migrationSourceZoneHash
+          ) {
+            return {
+              ok: false,
+              status: "version_conflict",
+              message: t("checkoutQuoteVersionConflict"),
+            }
+          }
+        }
         await persistMigrationCheckoutSecret(context.payload, {
           generationRunId: context.run.id,
           domain: readyDomain,
           sourceZoneHash: acceptedQuote.migrationSourceZoneHash!,
           encryptedInput: acceptedQuote.migrationInputEnvelope,
         })
+        if (sourceAuthorization) {
+          await attachCloudflareSourceAuthorization(
+            context.payload,
+            sourceAuthorization.record,
+          )
+        }
       } else {
         await openAttachedMigrationCheckoutSecret(context.payload, {
           secretKey: acceptedQuote.migrationSecretKey!,
@@ -1475,5 +1720,98 @@ export async function startPreviewCheckoutPaymentAction(
       })
     }
     return { ok: false, status: "payment_error", message: t("checkoutPaymentFailed") }
+  }
+}
+
+export async function schedulePreviewCheckoutCancellationAction(
+  clientSlug: string,
+  _previousState: PreviewCheckoutCancellationState,
+  _formData: FormData,
+): Promise<PreviewCheckoutCancellationState> {
+  const t = await getTranslations("preview")
+  try {
+    const context = await requirePreviewCheckoutActorContext(clientSlug)
+    const agreement = await loadCustomerBillingAgreement(context.payload, {
+      generationRunId: context.run.id,
+      tenantId: context.tenant.id,
+      customerEmail: context.customerEmail,
+    })
+    if (
+      !agreement ||
+      !["active", "past_due", "suspended", "cancellation_scheduled", "cancelled"]
+        .includes(agreement.state)
+    ) {
+      return {
+        ok: false,
+        status: "unavailable",
+        message: t("checkoutCancellationUnavailable"),
+        agreement,
+      }
+    }
+    const audit = await requestAudit()
+    const cancelled = await scheduleCancellationAtPeriodEnd({
+      payload: context.payload,
+      agreementId: agreement.id,
+      tenantId: context.tenant.id,
+      actorUserId: context.previewUserId,
+      actorEmail: context.customerEmail,
+      requestId: audit.requestId,
+      ipAddress: audit.ipAddress,
+      userAgent: audit.userAgent,
+    })
+    const view: CustomerBillingAgreementView = {
+      id: cancelled.id,
+      state: cancelled.state,
+      billingPeriod: cancelled.billingPeriod,
+      currentPeriodEndsAt: cancelled.currentPeriodEndsAt ?? null,
+      cancelAt: cancelled.cancelAt ?? null,
+      updatedAt: cancelled.updatedAt,
+    }
+    revalidatePath(`/${context.clientSlug}/checkout`)
+    return {
+      ok: true,
+      status: "scheduled",
+      message: t("checkoutCancellationScheduled"),
+      agreement: view,
+    }
+  } catch {
+    console.error("Preview checkout cancellation failed", {
+      operation: "schedule_cancellation",
+      code: "bounded_failure",
+    })
+    return {
+      ok: false,
+      status: "failed",
+      message: t("checkoutCancellationFailed"),
+    }
+  }
+}
+
+export async function loadPreviewCheckoutLiveStatusAction(
+  clientSlug: string,
+): Promise<PreviewCheckoutLiveStatus> {
+  const context = await requirePreviewCheckoutContext(clientSlug)
+  const [migrationStatus, provisioningStatus, billingAgreement] =
+    await Promise.all([
+      loadCustomerMigrationStatus(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerProvisioningStatus(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerBillingAgreement(context.payload, {
+        generationRunId: context.run.id,
+        tenantId: context.tenant.id,
+        customerEmail: context.customerEmail,
+      }),
+    ])
+  return {
+    paymentStatus:
+      normalizeGenerationRunPaymentState(context.run.payment).status,
+    migrationStatus,
+    provisioningStatus,
+    billingAgreement,
   }
 }

@@ -3,9 +3,11 @@ import {
   evaluateCommerceReleaseGate,
   type CommerceReleaseGateDecision,
 } from "@siteinabox/contracts/commerce"
+import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { Tenant } from "@/payload-types"
-import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
+import { resolvePreCommerceRoutingAdoption } from "@/lib/domains/preCommerceRoutingAdoption"
+import { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
 
 const clean = (value: string | undefined): string | null => {
   const normalized = value?.trim()
@@ -28,6 +30,41 @@ const validMigrationEncryptionKey = (value: string | undefined): boolean => {
   } catch {
     return false
   }
+}
+
+const cloudflareSourceOAuthConfigured = (
+  env: NodeJS.ProcessEnv,
+): boolean => {
+  if (
+    clean(env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED) !== "1" ||
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED) !== "1"
+  ) {
+    return true
+  }
+  return (
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED) === "1" &&
+    Boolean(clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID)) &&
+    Boolean(clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET)) &&
+    clean(env.CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI) ===
+      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
+  )
+}
+
+const existingMigrationRouteBlockers = (
+  env: NodeJS.ProcessEnv,
+): string[] => {
+  if (clean(env.COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED) !== "1") return []
+  const completeSourceEnabled =
+    clean(env.COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED) === "1" ||
+    clean(env.COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED) === "1"
+  return [
+    ...(!completeSourceEnabled
+      ? ["existing_domain_migration_has_no_complete_source"]
+      : []),
+    ...(productionTldCapabilitiesAt("incoming_transfer").length === 0
+      ? ["existing_domain_migration_has_no_enabled_transfer_tld"]
+      : []),
+  ]
 }
 
 export function commerceReleaseGate(
@@ -67,6 +104,10 @@ export async function commerceProductionReadinessBlockers(
 ): Promise<string[]> {
   const decision = commerceReleaseGate(env)
   const blockers = [...decision.blockers]
+  blockers.push(...existingMigrationRouteBlockers(env))
+  if (!cloudflareSourceOAuthConfigured(env)) {
+    blockers.push("cloudflare_source_oauth_configuration_incomplete")
+  }
   if (commerceReleaseStageSchema.catch("disabled").parse(
     clean(env.COMMERCE_RELEASE_STAGE),
   ) !== "production") {
@@ -87,6 +128,25 @@ export async function commerceProductionReadinessBlockers(
   })
   if (criticalAlerts.totalDocs > 0 || criticalAlerts.docs.length > 0) {
     blockers.push("production_has_open_critical_commerce_alerts")
+  }
+  const pendingOrders = await payload.find({
+    collection: "orders",
+    where: {
+      state: { in: ["accepted", "fulfillment_pending", "exception"] },
+    },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (pendingOrders.docs.some((order) => {
+    const quoteEvidence = order.quoteEvidence
+    return !quoteEvidence ||
+      typeof quoteEvidence !== "object" ||
+      Array.isArray(quoteEvidence) ||
+      (quoteEvidence as Record<string, unknown>).schemaVersion !==
+        CHECKOUT_QUOTE_SCHEMA_VERSION
+  })) {
+    blockers.push("pending_order_uses_legacy_checkout_quote_evidence")
   }
   blockers.push(...await commerceEdgeInventoryBlockers(payload, true))
   return [...new Set(blockers)]
@@ -141,14 +201,14 @@ export async function commerceEdgeInventoryBlockers(
         overrideAccess: true,
       })
       const adoption = anyManagedDomain.docs.length === 0
-        ? await resolveLegacyEdgeAdoption(payload, domain)
+        ? await resolvePreCommerceRoutingAdoption(payload, domain)
         : null
-      const auditedLegacyBridge = adoption?.tenantId === String(tenant.id) &&
-        (!requireActiveRouting ||
-          (adoption.rendererApexReady &&
-            adoption.rendererWwwReady &&
-            adoption.cmsAdminReady))
-      if (auditedLegacyBridge) continue
+      const auditedPreCommerceAdoption =
+        adoption?.tenantId === String(tenant.id) &&
+        adoption.rendererApexReady &&
+        adoption.rendererWwwReady &&
+        adoption.cmsAdminReady
+      if (auditedPreCommerceAdoption) continue
       blockers.push(
         requireActiveRouting
           ? `active_tenant_edge_routing_unready:${tenant.id}`

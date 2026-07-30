@@ -93,13 +93,17 @@ BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS=
 MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 MICROSOFT_TENANT_ID=common
+SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS=
 APPLE_CLIENT_ID=
 APPLE_CLIENT_SECRET=
+SIAB_APPLE_OAUTH_CALLBACK_HOSTS=
 DATA_HOST_PATH=/srv/data/saas/siab-payload
 SUPER_ADMIN_DOMAIN=siteinabox.nl
+CLOUDFLARE_EMAIL_API_TOKEN=
 CLOUDFLARE_EMAIL_SMTP_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
 SIAB_EMAIL_PREFERENCE_SECRET=<dedicated-random-hmac-secret>
@@ -117,7 +121,10 @@ COMMERCE_ORIGIN_ISOLATION_VERIFIED=
 COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=
 COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED=
 COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED=
-COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED=
+COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED=
+CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID=
+CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET=
+CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI=https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
@@ -185,10 +192,12 @@ The command refuses sent/cancelled deliveries and preserves the attempt count;
 the scheduled worker performs the actual resend and records a new mail-log row.
 
 Leave provider credentials blank until the Google, Microsoft, and Apple apps are
-registered. The login page only renders provider buttons for complete
-client-id/client-secret pairs. Normal tenant admin hosts are accepted
-dynamically from Payload tenants; use `BETTER_AUTH_ALLOWED_HOSTS` only for
-preview or non-tenant admin hosts.
+registered. A login page renders a provider button only when its credentials
+are complete and the exact request host is listed in the matching
+`SIAB_<PROVIDER>_OAUTH_CALLBACK_HOSTS` value. Add a host only after registering
+`https://<host>/api/auth/callback/<provider>` with that provider. Normal tenant
+admin hosts still support magic-link authentication dynamically from Payload;
+`BETTER_AUTH_ALLOWED_HOSTS` is not OAuth callback evidence.
 Set `BETTER_AUTH_API_KEY` only after connecting the existing SIAB app/project in
 the Better Auth Infrastructure dashboard. Leave `BETTER_AUTH_API_URL` and
 `BETTER_AUTH_KV_URL` blank unless the dashboard gives environment-specific
@@ -216,9 +225,11 @@ generation uses the public admin or preview origin instead of the container
 bind host.
 Cloudflare Email Sending is the canonical mail path. Runtime delivery prefers
 Cloudflare's REST Email Sending API over HTTPS using `CLOUDFLARE_ACCOUNT_ID`
-and `CLOUDFLARE_API_TOKEN`, with `EMAIL_FROM` as the platform sender. SMTP via
-`CLOUDFLARE_EMAIL_SMTP_TOKEN` is only a fallback for environments where
-outbound `smtps://smtp.mx.cloudflare.net:465` is reachable. This path covers
+and the dedicated mail-scoped `CLOUDFLARE_EMAIL_API_TOKEN`, with `EMAIL_FROM`
+as the platform sender. The DNS/zone automation token is never reused to send
+mail. SMTP via `CLOUDFLARE_EMAIL_SMTP_TOKEN` is the fallback when the REST mail
+token is absent and outbound `smtps://smtp.mx.cloudflare.net:465` is reachable.
+This path covers
 platform/admin messages, Better Auth CMS and preview magic links, intake
 internal notifications, privacy exports, preview handoff mail, and any other
 platform-sender mail. Tenant generated-site form notifications use the tenant's
@@ -226,11 +237,13 @@ verified sender, normally `noreply@mail.<tenant-domain>`, after
 `tenants.emailSending.status` is verified.
 
 The same Cloudflare API env used for DNS automation also provisions and
-refreshes tenant Email Sending subdomains: set `CLOUDFLARE_API_TOKEN`,
-`CLOUDFLARE_ACCOUNT_ID`, and optionally `CLOUDFLARE_API_BASE_URL`. Generated
-site activation for a generation run requires verified tenant Email Sending;
-manual activation bypasses approval/payment only and must not be used to skip
-domain or sender verification.
+refreshes optional tenant-branded Email Sending subdomains: set
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and optionally
+`CLOUDFLARE_API_BASE_URL`. Sender creation and verification are reconciled
+asynchronously and never hold the website offline. Until a tenant sender is
+verified, transactional and form-notification mail uses the configured
+platform `EMAIL_FROM`; `tenants.emailSending` continues to expose the truthful
+pending or failed branded-sender state.
 
 Mail sends write metadata-only `mail-logs` when the caller supplies Payload,
 and important or repeated failures upsert `operational-alerts`. These
@@ -267,7 +280,7 @@ Current production environment requirements:
 | Better Auth | Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_PREVIEW_SECRET`; `BETTER_AUTH_API_KEY` remains optional Infrastructure dashboard/audit integration. |
 | CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
 | Renderer token | Set the same `SIAB_RENDERER_API_TOKEN` for the CMS snapshot endpoint and renderer environment. |
-| Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
+| Email | Set `CLOUDFLARE_ACCOUNT_ID`, dedicated `CLOUDFLARE_EMAIL_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; never reuse the DNS token; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
 | Mollie | Set `MOLLIE_API_KEY` and the webhook base URL. The classic webhook accepts Mollie's form-encoded payment ID and always retrieves authoritative state through the API; accepted order/payment-attempt amounts are the only monetary authority. |
 | Commerce release | Keep `COMMERCE_RELEASE_STAGE=disabled` until the evidence and staged enablement procedure in [commerce-release.md](commerce-release.md) is complete. |
@@ -342,17 +355,34 @@ otherwise.
 
 For an existing production CMS, take an operator-approved Postgres backup and
 record the current CMS image ID before pulling or restarting the new image.
-Do not hand-edit migration state or run ad hoc SQL. The expected production
-sequence is:
+Do not hand-edit migration state or run ad hoc SQL. Keep the old compatible CMS
+service running while the reviewed new image applies migrations as a one-off.
+This prevents a data-sensitive migration guard from turning into an application
+restart loop. The expected production sequence is:
 
 1. Operator verifies the redacted `.env` key inventory and fills required
    values.
 2. Operator creates a timestamped Postgres backup.
 3. Operator records the current `siteinabox-cms` image ID/tag for rollback.
-4. Operator pulls the reviewed CMS image and starts the stack.
-5. `migrate-on-boot` applies pending committed migrations.
-6. Operator reviews logs and health before proceeding to renderer or smoke
-   phases.
+4. Operator pulls the reviewed CMS image without replacing the running service.
+5. Operator applies pending committed migrations from that exact image, with
+   jobs disabled:
+
+   ```bash
+   docker compose pull siteinabox-cms
+   docker compose run --rm --no-deps \
+     --entrypoint node \
+     -e PAYLOAD_DISABLE_JOBS_AUTORUN=1 \
+     siteinabox-cms \
+     /app/dist-runtime/migrate-on-boot.bundled.mjs
+   ```
+
+6. Operator runs any migration-specific read-only inventory check. For the
+   durable pre-commerce routing adoption migration, run the bundled
+   `check-commerce-edge-inventory` command from the same image before Tunnel
+   reconciliation or service replacement.
+7. Operator replaces the CMS service, then reviews logs and health before
+   proceeding to renderer or smoke phases.
 
 Final production smoke/review remains blocked until the operator has set the
 required production env values and explicitly approved the production deploy.
@@ -363,9 +393,9 @@ What this means in practice:
   `docker logs siteinabox-cms` to see `[migrate-on-boot] N migration(s) applied`.
 - **Existing DB:** subsequent boots log `[migrate-on-boot] no pending
   migrations` (sub-second) and proceed to the Next standalone server.
-- **Migration failure:** the script exits non-zero, the container restarts
-  per `restart: unless-stopped`, and the loop is visible in
-  `docker compose ps`. Inspect `docker logs siteinabox-cms` for the SQL error.
+- **Migration failure:** the one-off command exits non-zero and its transaction
+  rolls back. Do not replace the long-lived service. Correct the evidence or
+  code and rerun the reviewed image; do not bypass the guard.
 
 Future schema changes flow:
 
@@ -698,8 +728,12 @@ snapshot. There is no inferred `www` mapping or canonical-domain redirect.
 
 The production renderer owns generated-site tenant domains. `ami-care.nl` is
 served from the same canonical provider-block snapshot contract as every other
-tenant; `amicare.optidigi.nl` may be used only as an alias/staging host for that
-snapshot. The exact approval-gated Cloudflare setup, probes, rotation
+tenant. Its historical route is authorized by the system-owned,
+migration-backed `preCommerceRoutingAdoption` record—not a static hostname
+allowlist and not fabricated commerce history. Any future managed-domain row
+for the hostname permanently supersedes that routing-only adoption.
+`amicare.optidigi.nl` may be used only as an alias/staging host for that
+snapshot. The exact migration check, approval-gated Cloudflare setup, probes, rotation
 constraints, and rollback sequence are in
 [Renderer origin isolation](./renderer-origin-isolation.md). Keep
 `COMMERCE_ORIGIN_ISOLATION_VERIFIED` unset until that runbook's evidence is
@@ -723,19 +757,19 @@ Paid customer checkout now owns the first automated domain path:
    order job creates a
    Cloudflare zone, creates the customer owner/admin contact
    handle in OpenProvider, registers the domain with Cloudflare nameservers and
-   auto-renew enabled, creates the renderer DNS records, creates or reuses the
-   Cloudflare Email Sending subdomain, and records tenant domain and sender
-   verification state. Provider sandbox writes require the sandbox release
+   auto-renew enabled, creates the renderer DNS records, starts best-effort
+   tenant-branded Email Sending reconciliation, and records tenant domain and
+   sender verification state. Provider sandbox writes require the sandbox release
    stage and explicit non-production provider API hosts.
-5. Publish and activate snapshots only after the domain and generated-site
-   tenant sender are verified. Payment and domain/sender provisioning do not
-   publish or activate a site by themselves.
+5. Publish and activate snapshots only after payment, approval, authoritative
+   DNS, website/admin HTTPS, and edge routing are verified. Optional branded
+   sender verification continues independently.
 
-Manual verification remains an operator fallback for domains or senders that
-were handled outside this automated checkout path. Manual activation bypasses
+Manual domain verification remains an operator fallback for domains handled
+outside this automated checkout path. Manual activation bypasses
 approval/payment only; run-linked generated-site activation still requires a
-verified domain, verified tenant Email Sending, and a tenant that is not
-suspended or archived.
+verified domain and a tenant that is not suspended or archived. Branded sender
+verification is never a publication override.
 
 Before recording manual domain verification, confirm primary domains and
 aliases resolve through the dedicated Tunnel and preserve the public `Host`.
@@ -822,8 +856,9 @@ without relying on CSP middleware for `/api/*` routes.
 
 ## Future improvements (out of scope for this runbook)
 
-- **Secrets manager.** Move `CLOUDFLARE_EMAIL_SMTP_TOKEN`,
-  `CLOUDFLARE_API_TOKEN`, and eventually `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`
+- **Secrets manager.** Move `CLOUDFLARE_EMAIL_API_TOKEN`,
+  `CLOUDFLARE_EMAIL_SMTP_TOKEN`, `CLOUDFLARE_API_TOKEN`, and eventually
+  `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`
   out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.
 - **CORS / CSRF allowlist.** Once approved automation calls Payload

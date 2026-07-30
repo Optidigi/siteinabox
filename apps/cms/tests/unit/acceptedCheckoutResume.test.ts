@@ -82,11 +82,13 @@ const acceptedOrder = () => {
         futureSubscriptionNetMinor: quote.futureSubscriptionNetMinor,
         futureSubscriptionVatMinor: quote.futureSubscriptionVatMinor,
         futureSubscriptionGrossMinor: quote.futureSubscriptionGrossMinor,
+        transferRenewalEffect: quote.transferRenewalEffect,
         domainRenewalExplanation: quote.domainRenewalExplanation,
         tldCapability: {
           tld: "nl",
           capabilityVersion: "tld-nl-2026-07-28.1",
           effectiveFrom: "2026-07-28T00:00:00.000Z",
+          transferRenewalEffect: quote.transferRenewalEffect,
         },
         migration: {
           classification: quote.migrationClassification,
@@ -162,6 +164,32 @@ describe("accepted checkout resume", () => {
       signingSecret: "resume-secret",
       now: new Date("2026-07-28T10:10:00.000Z"),
     })).rejects.toThrow("no longer matches")
+  })
+
+  it("rejects missing or mismatched frozen transfer-renewal evidence", async () => {
+    const missing = acceptedOrder().order
+    delete (missing.quoteEvidence as Record<string, unknown>)
+      .transferRenewalEffect
+    await expect(loadAcceptedCheckoutResume(asPayload({
+      find: vi.fn(async () => ({ docs: [missing], totalDocs: 1 })),
+    }), {
+      generationRunId: 500,
+      customerEmail: "customer@example.com",
+      signingSecret: "resume-secret",
+      now: new Date("2026-07-28T10:10:00.000Z"),
+    })).rejects.toThrow("missing transferRenewalEffect")
+
+    const mismatched = acceptedOrder().order
+    mismatched.quoteEvidence.tldCapability.transferRenewalEffect =
+      "extends_one_year"
+    await expect(loadAcceptedCheckoutResume(asPayload({
+      find: vi.fn(async () => ({ docs: [mismatched], totalDocs: 1 })),
+    }), {
+      generationRunId: 500,
+      customerEmail: "customer@example.com",
+      signingSecret: "resume-secret",
+      now: new Date("2026-07-28T10:10:00.000Z"),
+    })).rejects.toThrow("frozen TLD capability evidence")
   })
 
   it("returns the frozen order with a safe recollection gate after secret expiry", async () => {

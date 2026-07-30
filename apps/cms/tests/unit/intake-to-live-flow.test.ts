@@ -25,6 +25,14 @@ vi.mock("@/payload.config", () => ({
   default: {},
 }))
 
+vi.mock("@/lib/commerce/orderLock", () => ({
+  withCommerceOrderLock: vi.fn(async (
+    _payload: unknown,
+    _orderId: string | number,
+    operation: () => Promise<unknown>,
+  ) => operation()),
+}))
+
 vi.mock("@/lib/domains/verification", () => ({
   verifyDnssecChain: vi.fn(async () => ({
     status: "verified",
@@ -317,6 +325,11 @@ const createPayloadStub = () => {
       return docs[index]
     }),
     jobs: { queue: vi.fn(async () => ({ id: 1 })) },
+    db: {
+      beginTransaction: vi.fn(async () => "tx-domain-registration"),
+      commitTransaction: vi.fn(async () => undefined),
+      rollbackTransaction: vi.fn(async () => undefined),
+    },
     logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
   }
   return { payload: asPayload(payload), store }
@@ -800,7 +813,7 @@ describe("intake-to-live mocked flow", () => {
       domainVerification: expect.objectContaining({ status: "verified" }),
       emailSending: expect.objectContaining({
         provider: "cloudflare",
-        status: "verified",
+        status: "not_configured",
         senderEmail: "noreply@mail.flow-live.nl",
       }),
     })

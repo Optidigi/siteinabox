@@ -13,7 +13,11 @@ vi.mock("payload", async () => {
   }
 })
 
-import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
+import {
+  getEnabledSocialAuthProviders,
+  getEnabledSocialAuthProvidersForHost,
+  socialAuthCallbackRegisteredForHost,
+} from "@/lib/socialAuth/providers"
 import { buildCmsAuthHeaders, buildCmsAuthRequest, getBetterAuthBaseURL, getTrustedSocialAuthOrigins, isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 
@@ -28,6 +32,9 @@ describe("social auth provider configuration", () => {
     delete process.env.MICROSOFT_CLIENT_SECRET
     delete process.env.APPLE_CLIENT_ID
     delete process.env.APPLE_CLIENT_SECRET
+    delete process.env.SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS
+    delete process.env.SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS
+    delete process.env.SIAB_APPLE_OAUTH_CALLBACK_HOSTS
   })
 
   it("enables only providers with a client id and secret", () => {
@@ -36,6 +43,37 @@ describe("social auth provider configuration", () => {
     process.env.APPLE_CLIENT_ID = "apple-id"
 
     expect(getEnabledSocialAuthProviders()).toEqual(["google"])
+  })
+
+  it("exposes each provider only on an exact registered callback host", () => {
+    process.env.GOOGLE_CLIENT_ID = "google-id"
+    process.env.GOOGLE_CLIENT_SECRET = "google-secret"
+    process.env.MICROSOFT_CLIENT_ID = "microsoft-id"
+    process.env.MICROSOFT_CLIENT_SECRET = "microsoft-secret"
+    process.env.SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS =
+      "admin.siteinabox.nl, ADMIN.AMI-CARE.NL:443"
+    process.env.SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS =
+      "admin.siteinabox.nl"
+
+    expect(getEnabledSocialAuthProvidersForHost("admin.ami-care.nl"))
+      .toEqual(["google"])
+    expect(getEnabledSocialAuthProvidersForHost("admin.siteinabox.nl"))
+      .toEqual(["google", "microsoft"])
+    expect(getEnabledSocialAuthProvidersForHost("admin.unknown.nl"))
+      .toEqual([])
+    expect(socialAuthCallbackRegisteredForHost(
+      "google",
+      "ADMIN.AMI-CARE.NL:443",
+    )).toBe(true)
+  })
+
+  it("does not accept wildcard callback evidence", () => {
+    process.env.GOOGLE_CLIENT_ID = "google-id"
+    process.env.GOOGLE_CLIENT_SECRET = "google-secret"
+    process.env.SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS = "admin.*"
+
+    expect(getEnabledSocialAuthProvidersForHost("admin.ami-care.nl"))
+      .toEqual([])
   })
 })
 

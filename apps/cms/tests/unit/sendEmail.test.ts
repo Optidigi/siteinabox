@@ -19,6 +19,7 @@ describe("sendEmail", () => {
   const originalTimeout = process.env.SIAB_MAIL_SEND_TIMEOUT_MS
   const originalAccountId = process.env.CLOUDFLARE_ACCOUNT_ID
   const originalApiToken = process.env.CLOUDFLARE_API_TOKEN
+  const originalEmailApiToken = process.env.CLOUDFLARE_EMAIL_API_TOKEN
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
@@ -29,6 +30,7 @@ describe("sendEmail", () => {
     delete process.env.SIAB_MAIL_SEND_TIMEOUT_MS
     delete process.env.CLOUDFLARE_ACCOUNT_ID
     delete process.env.CLOUDFLARE_API_TOKEN
+    delete process.env.CLOUDFLARE_EMAIL_API_TOKEN
     globalThis.fetch = mocks.fetch
     mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail })
     mocks.sendMail.mockResolvedValue({ messageId: "test-message" })
@@ -64,6 +66,11 @@ describe("sendEmail", () => {
       delete process.env.CLOUDFLARE_API_TOKEN
     } else {
       process.env.CLOUDFLARE_API_TOKEN = originalApiToken
+    }
+    if (originalEmailApiToken === undefined) {
+      delete process.env.CLOUDFLARE_EMAIL_API_TOKEN
+    } else {
+      process.env.CLOUDFLARE_EMAIL_API_TOKEN = originalEmailApiToken
     }
     globalThis.fetch = originalFetch
   })
@@ -161,7 +168,8 @@ describe("sendEmail", () => {
 
   it("prefers Cloudflare REST API when account credentials are available", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
-    process.env.CLOUDFLARE_API_TOKEN = "cf-api-token"
+    process.env.CLOUDFLARE_API_TOKEN = "dns-only-token"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
     process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN = "cf-smtp-token"
     const payload = mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
@@ -184,7 +192,7 @@ describe("sendEmail", () => {
       expect.objectContaining({
         method: "POST",
         headers: {
-          authorization: "Bearer cf-api-token",
+          authorization: "Bearer cf-email-api-token",
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -207,6 +215,22 @@ describe("sendEmail", () => {
         sentAt: "2026-07-01T12:03:00.000Z",
       }),
     })
+  })
+
+  it("never reuses the DNS automation token for REST mail", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_API_TOKEN = "dns-only-token"
+    process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN = "smtp-token"
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await sendEmail({
+      to: "customer@example.com",
+      subject: "Preview access",
+      html: "<p>Login</p>",
+    })
+
+    expect(mocks.fetch).not.toHaveBeenCalled()
+    expect(mocks.createTransport).toHaveBeenCalled()
   })
 
   it("bounds Cloudflare SMTP send duration", async () => {
@@ -580,7 +604,7 @@ describe("sendEmail", () => {
     } }))
 
     process.env.CLOUDFLARE_ACCOUNT_ID = "account"
-    process.env.CLOUDFLARE_API_TOKEN = "api-token"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "email-api-token"
     await sendEmail({ to: "customer@example.com", subject: "Mail", html: "<p>Mail</p>", listUnsubscribe: links })
     const request = cast<{ body: string }>(mocks.fetch.mock.calls.at(-1)?.[1])
     expect(JSON.parse(request.body).headers).toMatchObject({

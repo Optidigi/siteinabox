@@ -50,13 +50,21 @@ import {
   type GenerationRunPaymentStatus,
 } from "@/lib/payments/generationRunPayment"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
-import { ensureCommerceNotification } from "@/lib/commerce/notifications"
+import {
+  ensureCommerceNotification,
+  queueCommerceNotification,
+} from "@/lib/commerce/notifications"
 import { requireCommerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
+import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { verifyCheckoutEvidence } from "@/lib/legal/checkoutEvidence"
 import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
+import {
+  initialPaymentBlocksNewFulfillment,
+  registrarCommitStarted,
+} from "@/lib/payments/initialPaymentPolicy"
 
 type CreateCheckoutInput = {
   runId: string | number
@@ -546,6 +554,7 @@ const claimRecurringProviderWrite = async (
     if (
       !["active", "past_due"].includes(candidate.state) ||
       !candidate.renewalIntent ||
+      candidate.reconciliationRequired ||
       !candidate.providerCustomerId ||
       !candidate.providerMandateId
     ) return null
@@ -560,9 +569,14 @@ const claimRecurringProviderWrite = async (
           { updatedAt: { equals: candidate.updatedAt } },
           { state: { in: ["active", "past_due"] } },
           { renewalIntent: { equals: true } },
+          { reconciliationRequired: { equals: false } },
         ],
       },
-      data: { lastPaymentAttemptAt: claimedAt },
+      data: {
+        lastPaymentAttemptAt: claimedAt,
+        reconciliationRequired: true,
+        failureReason: "A recurring Mollie provider write is in progress.",
+      },
       depth: 0,
       overrideAccess: true,
       context: { billingAgreementLifecycleMutation: true },
@@ -878,7 +892,12 @@ export async function createSupplementalMigrationMollieCheckout(
       reused: true,
     }
   }
-  if (attempt.reconciliationRequired) {
+  if (
+    attempt.reconciliationRequired &&
+    ["refund_pending", "partially_refunded", "refunded", "refund_failed"].includes(
+      attempt.state,
+    )
+  ) {
     throw new Error("Supplemental Mollie payment requires reconciliation before retry.")
   }
   if (!attemptResult.created) {
@@ -965,6 +984,7 @@ export async function createApplicationRecurringMolliePayment(
   if (
     !["active", "past_due"].includes(agreement.state) ||
     !agreement.renewalIntent ||
+    agreement.reconciliationRequired ||
     !agreement.providerCustomerId ||
     !agreement.providerMandateId
   ) {
@@ -1168,6 +1188,34 @@ export async function createApplicationRecurringMolliePayment(
       lastSyncedAt: now,
       stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now, payment.status),
     })
+    const releaseClaim = await payload.update({
+      collection: "billing-agreements",
+      where: {
+        and: [
+          { id: { equals: claimedAgreement.id } },
+          { updatedAt: { equals: claimedAgreement.updatedAt } },
+          { lastPaymentAttemptAt: { equals: attempt.createdAt } },
+          { reconciliationRequired: { equals: true } },
+        ],
+      },
+      data: {
+        reconciliationRequired: false,
+        failureReason: null,
+        lastSyncedAt: now,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { billingAgreementLifecycleMutation: true },
+    })
+    if (!Array.isArray(releaseClaim.docs) || releaseClaim.docs.length !== 1) {
+      await updateAttempt(payload, attempt, {
+        reconciliationRequired: true,
+        failureCode: "agreement_provider_write_release_conflict",
+        failureMessage:
+          "The recurring provider write succeeded but its agreement claim requires reconciliation.",
+        lastSyncedAt: now,
+      })
+    }
     await payload.update({
       collection: "orders",
       id: order.id,
@@ -1179,6 +1227,32 @@ export async function createApplicationRecurringMolliePayment(
     return { paymentAttempt: attempt, reused: false }
   } catch (error) {
     await markProviderWriteIndeterminate(payload, attempt, error)
+    const knownRejected = error instanceof MollieApiError &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.status !== 409
+    if (knownRejected && claimedAgreement.updatedAt) {
+      await payload.update({
+        collection: "billing-agreements",
+        where: {
+          and: [
+            { id: { equals: claimedAgreement.id } },
+            { updatedAt: { equals: claimedAgreement.updatedAt } },
+            { lastPaymentAttemptAt: { equals: attempt.createdAt } },
+            { reconciliationRequired: { equals: true } },
+          ],
+        },
+        data: {
+          reconciliationRequired: false,
+          lastPaymentAttemptAt: null,
+          failureReason: "Mollie rejected the recurring provider write.",
+          lastSyncedAt: now,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+    }
     throw error
   }
 }
@@ -1814,11 +1888,128 @@ const synchronizeBillingAgreement = async (
     })
     return
   }
+  if (
+    attempt.reconciliationRequired &&
+    ["refund_pending", "partially_refunded", "refunded", "refund_failed"].includes(
+      attempt.state,
+    )
+  ) {
+    await updateAgreement(payload, agreement, {
+      reconciliationRequired: true,
+      failureReason:
+        "Mollie payment adjustment evidence is incomplete or conflicting; recurring collection remains paused.",
+      lastSyncedAt: now,
+    })
+    return
+  }
+  const pendingRefundAmountMinor = totalMinor(
+    pendingRefunds(payment),
+    attempt.currency,
+  )
+  const fullRefundPending =
+    attempt.state === "refund_pending" &&
+    attempt.grossAmountMinor > 0 &&
+    (attempt.refundedAmountMinor ?? 0) + pendingRefundAmountMinor >=
+      attempt.grossAmountMinor
+  const attemptCoverageStartsAt = Date.parse(
+    order.servicePeriodStartsAt ?? attempt.paidAt ?? attempt.createdAt,
+  )
+  const currentCoverageStartsAt = Date.parse(agreement.currentPeriodStartsAt ?? "")
+  const ownsCurrentCoverage =
+    !Number.isFinite(attemptCoverageStartsAt) ||
+    !Number.isFinite(currentCoverageStartsAt) ||
+    attemptCoverageStartsAt >= currentCoverageStartsAt
+  if ((fullRefundPending || attempt.state === "refunded") && !ownsCurrentCoverage) {
+    return
+  }
+  if (fullRefundPending) {
+    await updateAgreement(payload, agreement, {
+      reconciliationRequired: true,
+      failureReason:
+        "A full Mollie refund is pending; recurring collection is paused until provider reconciliation.",
+      lastSyncedAt: now,
+    })
+    return
+  }
+  const fullyRefunded =
+    attempt.state === "refunded" &&
+    attempt.grossAmountMinor > 0 &&
+    (attempt.refundedAmountMinor ?? 0) >= attempt.grossAmountMinor
+  if (fullyRefunded) {
+    let candidate = agreement
+    for (let retry = 0; retry < 5; retry += 1) {
+      if (!candidate.updatedAt) {
+        throw new Error("Billing agreement is missing its concurrency version.")
+      }
+      const immediatelyTerminal = [
+        "pending_first_payment",
+        "mandate_pending",
+      ].includes(candidate.state)
+      const state: BillingAgreement["state"] =
+        candidate.state === "cancelled"
+          ? "cancelled"
+          : immediatelyTerminal
+            ? "cancelled"
+            : "cancellation_scheduled"
+      const cancelAt =
+        order.servicePeriodStartsAt ??
+        candidate.currentPeriodStartsAt ??
+        attempt.paidAt ??
+        now
+      const result = await payload.update({
+        collection: "billing-agreements",
+        where: {
+          and: [
+            { id: { equals: candidate.id } },
+            { updatedAt: { equals: candidate.updatedAt } },
+            { state: { equals: candidate.state } },
+          ],
+        },
+        data: {
+          state,
+          renewalIntent: false,
+          nextChargeAt: null,
+          cancelAt,
+          ...(state === "cancelled"
+            ? {
+                cancelledAt: candidate.cancelledAt ?? now,
+                endedAt: candidate.endedAt ?? now,
+              }
+            : {}),
+          reconciliationRequired: false,
+          failureReason:
+            "The captured subscription payment was fully refunded; future collection is disabled.",
+          lastSyncedAt: now,
+          stateHistory: candidate.state === state
+            ? candidate.stateHistory
+            : agreementHistory(
+              candidate.stateHistory,
+              state,
+              now,
+              "payment_fully_refunded",
+            ),
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+      const updated = Array.isArray(result.docs)
+        ? result.docs[0] as BillingAgreement | undefined
+        : undefined
+      if (updated) return
+      candidate = await payload.findByID({
+        collection: "billing-agreements",
+        id: agreement.id,
+        depth: 0,
+        overrideAccess: true,
+      }) as BillingAgreement
+    }
+    throw new Error("Full-refund agreement synchronization lost its concurrency claim.")
+  }
   if ([
     "paid",
     "refund_pending",
     "partially_refunded",
-    "refunded",
     "refund_failed",
   ].includes(attempt.state)) {
     const mandateId = payment.mandateId ?? agreement.providerMandateId
@@ -2131,7 +2322,7 @@ const synchronizeOrderProjection = async (
   attempt: PaymentAttempt,
   now: string,
 ): Promise<{ order: Order; fulfillmentClaimed: boolean }> => {
-  const captured = [
+  const capturedHistorically = [
     "paid",
     "refund_pending",
     "partially_refunded",
@@ -2151,12 +2342,30 @@ const synchronizeOrderProjection = async (
             ? "expired"
             : attempt.state === "failed"
               ? "failed"
-              : captured
+              : capturedHistorically
                 ? "paid"
                 : "open"
-  const nextState = captured && order.state === "accepted"
+  let adjustedWithoutRegistrarCommit = false
+  if (
+    order.state === "fulfillment_pending" &&
+    initialPaymentBlocksNewFulfillment(attempt)
+  ) {
+    const managedDomains = await payload.find({
+      collection: "managed-domains",
+      where: { originatingOrder: { equals: order.id } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    adjustedWithoutRegistrarCommit =
+      managedDomains.docs.length !== 1 ||
+      !registrarCommitStarted(managedDomains.docs[0]!)
+  }
+  const nextState = attempt.state === "paid" && order.state === "accepted"
     ? "fulfillment_pending"
-    : order.state
+    : adjustedWithoutRegistrarCommit
+      ? "exception"
+      : order.state
   const fulfillmentClaimed = attempt.purpose === "first_payment" &&
     order.state === "accepted" &&
     nextState === "fulfillment_pending"
@@ -2164,7 +2373,7 @@ const synchronizeOrderProjection = async (
     state: nextState,
     paymentStatus,
     providerPaymentId: attempt.providerPaymentId,
-    paidAt: captured ? (attempt.paidAt ?? now) : undefined,
+    paidAt: capturedHistorically ? (attempt.paidAt ?? now) : undefined,
     cancelledAt: attempt.state === "cancelled" ? (attempt.cancelledAt ?? now) : undefined,
   }
   let updatedOrder: Order
@@ -2593,6 +2802,17 @@ export async function synchronizeMolliePayment(
     throw new Error("Mollie payment amount does not match the frozen payment attempt.")
   }
 
+  const orderId = relationshipId(attempt.order)
+  if (!orderId) {
+    throw new Error("Mollie payment attempt is missing its authoritative order.")
+  }
+  return withCommerceOrderLock(payload, orderId, async () => {
+  attempt = await payload.findByID({
+    collection: "payment-attempts",
+    id: attempt.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as PaymentAttempt
   const now = new Date().toISOString()
   const target = targetAttemptState(attempt, payment)
   const duplicate =
@@ -2741,12 +2961,12 @@ export async function synchronizeMolliePayment(
   await synchronizeAccountingEvidence(payload, updatedOrder, attempt, payment, now)
   if (
     attempt.purpose === "first_payment" &&
-    ["paid", "refund_pending", "partially_refunded"].includes(attempt.state)
+    attempt.state === "paid"
   ) {
     const tenantId = relationshipId(updatedOrder.tenant)
     const billingAgreementId = relationshipId(attempt.billingAgreement)
     if (tenantId && billingAgreementId) {
-      await ensureCommerceNotification({
+      const delivery = await ensureCommerceNotification({
         payload,
         kind: "payment_received",
         tenantId,
@@ -2754,11 +2974,12 @@ export async function synchronizeMolliePayment(
         eventAt: attempt.paidAt ?? now,
         billingAgreementId,
       })
+      await queueCommerceNotification(payload, delivery.id)
     }
   }
   const fulfillmentRequired =
     orderProjection.fulfillmentClaimed &&
-    ["paid", "refund_pending", "partially_refunded"].includes(attempt.state) &&
+    attempt.state === "paid" &&
     updatedOrder.state === "fulfillment_pending"
   return {
     ok: true,
@@ -2768,6 +2989,7 @@ export async function synchronizeMolliePayment(
     duplicate,
     fulfillmentRequired,
   }
+  })
 }
 
 export const applyMollieWebhookPayment = synchronizeMolliePayment
@@ -2799,6 +3021,30 @@ const refundGrossAmount = (
 }
 
 export async function requestMollieRefund(
+  payload: Payload,
+  input: {
+    paymentAttemptId: string | number
+    scenario: RefundScenario
+  },
+): Promise<{ document: AccountingDocument; providerRefundId: string; reused: boolean }> {
+  const attempt = await payload.findByID({
+    collection: "payment-attempts",
+    id: input.paymentAttemptId,
+    depth: 0,
+    overrideAccess: true,
+  }) as PaymentAttempt
+  const orderId = relationshipId(attempt.order)
+  if (!orderId) {
+    throw new Error("Mollie refund attempt is missing its authoritative order.")
+  }
+  return withCommerceOrderLock(
+    payload,
+    orderId,
+    () => requestMollieRefundLocked(payload, input),
+  )
+}
+
+async function requestMollieRefundLocked(
   payload: Payload,
   input: {
     paymentAttemptId: string | number
@@ -2916,12 +3162,99 @@ export async function requestMollieRefund(
     throw new Error("Mollie refund creation requires reconciliation before retry.")
   }
   requireCommerceProviderWritesAllowed("Mollie refund creation")
-  if (attempt.state !== "refund_pending") {
-    attempt = await updateAttempt(payload, attempt, {
-      state: "refund_pending",
-      refundPendingAt: now,
-      stateHistory: stateHistory(attempt.stateHistory, "refund_pending", now),
+  const fullRefundRequested =
+    !duplicatePayment &&
+    committedReversalMinor + document.grossAmountMinor >= attempt.grossAmountMinor
+  let refundAgreementClaim: BillingAgreement | null = null
+  if (fullRefundRequested) {
+    const agreementId = relationshipId(attempt.billingAgreement)
+    if (agreementId) {
+      const agreement = await payload.findByID({
+        collection: "billing-agreements",
+        id: agreementId,
+        depth: 0,
+        overrideAccess: true,
+      }) as BillingAgreement
+      const attemptAuthorityAt = Date.parse(attempt.paidAt ?? attempt.createdAt)
+      const lastCollectionClaimAt = Date.parse(agreement.lastPaymentAttemptAt ?? "")
+      if (
+        Number.isFinite(attemptAuthorityAt) &&
+        Number.isFinite(lastCollectionClaimAt) &&
+        lastCollectionClaimAt > attemptAuthorityAt
+      ) {
+        throw new Error(
+          "A later recurring collection already claimed this agreement; full refund requires reconciliation.",
+        )
+      }
+      if (!agreement.updatedAt || agreement.reconciliationRequired) {
+        throw new Error(
+          "Full refund requires an unreconciled billing-agreement collection pause.",
+        )
+      }
+      const claim = await payload.update({
+        collection: "billing-agreements",
+        where: {
+          and: [
+            { id: { equals: agreement.id } },
+            { updatedAt: { equals: agreement.updatedAt } },
+            { state: { equals: agreement.state } },
+            { reconciliationRequired: { equals: false } },
+          ],
+        },
+        data: {
+          reconciliationRequired: true,
+          failureReason:
+            "A full Mollie refund is being requested; recurring collection is paused.",
+          lastSyncedAt: now,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+      refundAgreementClaim = Array.isArray(claim.docs)
+        ? (claim.docs[0] as BillingAgreement | undefined) ?? null
+        : null
+      if (!refundAgreementClaim) {
+        throw new Error(
+          "Full refund lost the billing-agreement collection claim before the provider write.",
+        )
+      }
+    }
+  }
+  const releaseRefundAgreementClaim = async (
+    failureReason: string | null,
+  ): Promise<void> => {
+    if (!refundAgreementClaim?.updatedAt) return
+    await payload.update({
+      collection: "billing-agreements",
+      where: {
+        and: [
+          { id: { equals: refundAgreementClaim.id } },
+          { updatedAt: { equals: refundAgreementClaim.updatedAt } },
+          { reconciliationRequired: { equals: true } },
+        ],
+      },
+      data: {
+        reconciliationRequired: false,
+        failureReason,
+        lastSyncedAt: now,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { billingAgreementLifecycleMutation: true },
     })
+  }
+  try {
+    if (attempt.state !== "refund_pending") {
+      attempt = await updateAttempt(payload, attempt, {
+        state: "refund_pending",
+        refundPendingAt: now,
+        stateHistory: stateHistory(attempt.stateHistory, "refund_pending", now),
+      })
+    }
+  } catch (error) {
+    await releaseRefundAgreementClaim(null)
+    throw error
   }
   const refundIdempotencyKey = `mollie:refund:${attempt.id}:${input.scenario}:v1`
   try {
@@ -2999,6 +3332,13 @@ export async function requestMollieRefund(
         now,
       ),
     })
+    if (knownRejected || safeRetry) {
+      await releaseRefundAgreementClaim(
+        knownRejected
+          ? "Mollie rejected the full refund request."
+          : "Mollie confirmed that the full refund write can be retried safely.",
+      )
+    }
     throw error
   }
 }

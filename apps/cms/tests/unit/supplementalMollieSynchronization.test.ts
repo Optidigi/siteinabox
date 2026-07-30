@@ -9,6 +9,13 @@ const { authorizeMigrationOperatorWorkFromPayment } = vi.hoisted(() => ({
 vi.mock("@/lib/domains/assistedMigration", () => ({
   authorizeMigrationOperatorWorkFromPayment,
 }))
+vi.mock("@/lib/commerce/orderLock", () => ({
+  withCommerceOrderLock: vi.fn(async (
+    _payload: unknown,
+    _orderId: string | number,
+    operation: () => Promise<unknown>,
+  ) => operation()),
+}))
 vi.mock("@/lib/payments/accountingEvidence", () => ({
   ensureChargebackCreditNote: vi.fn(),
   ensureInvoiceEvidence: vi.fn(async () => ({ id: 300 })),

@@ -2,7 +2,6 @@ import "server-only"
 import crypto from "node:crypto"
 import type { Payload, PayloadRequest, Where } from "payload"
 import {
-  isLegacyRendererDomainAdoptionHost,
   normalizePublicDomainHost,
   validateProviderBlockInstance,
   type Page as ContractPage,
@@ -35,12 +34,11 @@ import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { isActivationPaymentSatisfied } from "@/lib/payments/generationRunPayment"
-import { hasVerifiedTenantSender } from "@/lib/tenants/emailSending"
-import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSendingRefresh"
 import type { PublicAnalyticsConfigInput } from "@/lib/analytics/config"
 import type { PageAnalyticsProjectionContext } from "@/lib/projection/pageToJson"
 import type { SettingsAnalyticsProjectionContext } from "@/lib/projection/settingsToJson"
 import { queueLiveHandoffAfterActivation } from "@/lib/publish/liveHandoffEmail"
+import { resolvePreCommerceRoutingAdoption } from "@/lib/domains/preCommerceRoutingAdoption"
 
 const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: true } as const
 const PUBLISHED_SNAPSHOT_RETENTION_LIMIT = 10
@@ -183,10 +181,6 @@ export function canActivatePublishedSnapshot(
   const tenantAlreadyLive = options.tenant?.status === "active"
   if (options.tenant && domainVerificationStatus !== "verified" && !tenantAlreadyLive) {
     return { ok: false, reason: "Activation requires verified domain ownership." }
-  }
-
-  if (run && !hasVerifiedTenantSender(options.tenant)) {
-    return { ok: false, reason: "Generated-site activation requires verified tenant email sending." }
   }
 
   if (options.manualActivation) return { ok: true }
@@ -446,16 +440,13 @@ export async function activatePublishedSnapshot(
   })
   const tenantId = relationshipId(snapshotDoc.tenant)
   if (!tenantId) throw new Error("Published snapshot is missing a tenant.")
-  let tenant = await getTenant(payload, tenantId, options.req)
+  const tenant = await getTenant(payload, tenantId, options.req)
   if (normalizeRequestHost(snapshotDoc.domain) !== normalizeRequestHost(tenant.domain)) {
     throw new Error("Cannot activate a snapshot for a tenant domain that has changed.")
   }
 
   const runId = relationshipId(snapshotDoc.sourceGenerationRun)
   const run = await getGenerationRun(payload, runId, options.req)
-  if (run && !hasVerifiedTenantSender(tenant)) {
-    tenant = await refreshTenantEmailSendingFromCloudflare(payload, tenant)
-  }
   const gate = canActivatePublishedSnapshot(run, { manualActivation: options.manualActivation, tenant })
   if (!gate.ok) throw new Error(gate.reason)
 
@@ -619,6 +610,9 @@ async function tenantDomainIsActive(
   let canonicalActive = Boolean(
     (canonicalManagedDomain.docs[0] as ManagedDomain | undefined)?.id,
   )
+  let adoption: Awaited<
+    ReturnType<typeof resolvePreCommerceRoutingAdoption>
+  > = null
 
   if (!canonicalActive) {
     const anyManagedDomain = await payload.find({
@@ -630,19 +624,22 @@ async function tenantDomainIsActive(
     })
     if (anyManagedDomain.docs.length > 0) return false
 
-    // Existing audited tenants predate commerce-owned managed-domain records.
-    // Once any canonical row exists, its stricter lifecycle is authoritative.
+    // Existing audited tenants may predate commerce-owned managed-domain
+    // records. The explicit database adoption grants routing only; any
+    // canonical managed-domain row permanently takes precedence.
+    adoption = await resolvePreCommerceRoutingAdoption(
+      payload,
+      canonicalHost,
+    )
     canonicalActive =
-      isLegacyRendererDomainAdoptionHost(canonicalHost) &&
-      tenant.domainVerification?.status === "verified"
+      adoption?.tenantId === String(tenant.id) &&
+      adoption.rendererApexReady
   }
   if (!canonicalActive) return false
 
-  if (
-    requestedHost === canonicalHost ||
-    requestedHost === `www.${canonicalHost}`
-  ) {
-    return true
+  if (requestedHost === canonicalHost) return true
+  if (requestedHost === `www.${canonicalHost}`) {
+    return adoption ? adoption.rendererWwwReady : true
   }
 
   // Every other alias additionally requires its own active lifecycle.
@@ -800,11 +797,13 @@ export async function resolvePublishedSnapshotByHost(
   if (normalizeRequestHost(snapshot.domain) !== normalizeRequestHost(tenant.domain)) return null
   const canonicalHost = normalizeRequestHost(tenant.domain)
   const explicitWwwHost = `www.${canonicalHost}`
+  const explicitWwwActive =
+    resolution.activeHosts.includes(explicitWwwHost) &&
+    (host === explicitWwwHost ||
+      await tenantDomainIsActive(payload, tenant, explicitWwwHost))
   const activeHosts = [
     canonicalHost,
-    ...(resolution.activeHosts.includes(explicitWwwHost)
-      ? [explicitWwwHost]
-      : []),
+    ...(explicitWwwActive ? [explicitWwwHost] : []),
     ...(host !== canonicalHost && host !== explicitWwwHost ? [host] : []),
   ]
 

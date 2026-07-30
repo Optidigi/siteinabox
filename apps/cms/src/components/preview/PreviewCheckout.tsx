@@ -35,6 +35,7 @@ import type { CheckoutQuoteSet } from "@/lib/checkout/checkoutQuote"
 import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import type { CustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
+import type { CustomerBillingAgreementView } from "@/lib/billing/customerBillingAgreement"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -107,6 +108,20 @@ export type MigrationCustomerActionState = {
   message: string
 }
 
+export type PreviewCheckoutCancellationState = {
+  ok: boolean
+  status: "idle" | "scheduled" | "unavailable" | "failed"
+  message: string
+  agreement?: CustomerBillingAgreementView | null
+}
+
+export type PreviewCheckoutLiveStatus = {
+  paymentStatus: string
+  migrationStatus: CustomerMigrationStatus | null
+  provisioningStatus: CustomerProvisioningStatus | null
+  billingAgreement: CustomerBillingAgreementView | null
+}
+
 type PreviewCheckoutAction = (
   previousState: PreviewCheckoutActionState,
   formData: FormData,
@@ -140,6 +155,7 @@ export type PreviewCheckoutCatalog = {
 }
 
 type PreviewCheckoutProps = {
+  clientSlug?: string
   customerEmail: string
   currentDomain?: string | null
   domainReady?: boolean
@@ -150,8 +166,13 @@ type PreviewCheckoutProps = {
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
   enabledMigrationSourceMethods?: AutomaticMigrationSourceMethod[]
+  cloudflareSourceOAuthEnabled?: boolean
+  cloudflareSourceAuthorization?: string | null
+  cloudflareSourceDomain?: string | null
+  cloudflareSourceResult?: "connected" | "failed" | "provider-mismatch" | null
   migrationStatus?: CustomerMigrationStatus | null
   provisioningStatus?: CustomerProvisioningStatus | null
+  billingAgreement?: CustomerBillingAgreementView | null
   acceptedOrderId?: string | number | null
   requiresMigrationRecollection?: boolean
   catalog: PreviewCheckoutCatalog
@@ -162,12 +183,17 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
+  loadLiveStatusAction?: () => Promise<PreviewCheckoutLiveStatus>
   recollectAcceptedMigrationInputAction?: (
     formData: FormData,
   ) => Promise<MigrationCustomerActionState>
   submitMigrationTransferCodeAction?: (
     formData: FormData,
   ) => Promise<MigrationCustomerActionState>
+  scheduleCancellationAction?: (
+    previousState: PreviewCheckoutCancellationState,
+    formData: FormData,
+  ) => Promise<PreviewCheckoutCancellationState>
   termsHref: string
   privacyHref: string
   termsVersion: string
@@ -193,6 +219,51 @@ const initialMigrationActionState: MigrationCustomerActionState = {
   ok: false,
   status: "idle",
   message: "",
+}
+const initialCancellationState: PreviewCheckoutCancellationState = {
+  ok: false,
+  status: "idle",
+  message: "",
+}
+
+export const checkoutStatusNeedsPolling = (input: {
+  paymentReturn: boolean
+  paymentStatus: string
+  migrationStatus: CustomerMigrationStatus | null
+  provisioningStatus: CustomerProvisioningStatus | null
+}): boolean => {
+  if (!input.paymentReturn) return false
+  if (
+    ["failed", "canceled", "cancelled", "expired"].includes(
+      input.paymentStatus,
+    )
+  ) {
+    return false
+  }
+  if (
+    input.provisioningStatus?.stages.some(
+      (stage) =>
+        stage.status === "review" ||
+        (stage.code === "activation" && stage.status === "complete"),
+    )
+  ) {
+    return false
+  }
+  if (input.migrationStatus) {
+    if (
+      ["completed", "custom_quote_required", "failed", "rolled_back"]
+        .includes(input.migrationStatus.state)
+    ) {
+      return false
+    }
+    if (
+      input.migrationStatus.actions.some((action) =>
+        ["required", "failed", "overdue"].includes(action.status))
+    ) {
+      return false
+    }
+  }
+  return true
 }
 
 const placeholderSuggestionsForDomain = (domain: string): PreviewCheckoutDomainOption[] =>
@@ -227,6 +298,7 @@ const checkoutFieldId = (field: string): string | null => ({
 } as Record<string, string>)[field] ?? null
 
 export function PreviewCheckout({
+  clientSlug = "",
   customerEmail,
   currentDomain,
   domainReady = false,
@@ -237,8 +309,13 @@ export function PreviewCheckout({
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
   enabledMigrationSourceMethods = [],
-  migrationStatus = null,
-  provisioningStatus = null,
+  cloudflareSourceOAuthEnabled = false,
+  cloudflareSourceAuthorization = null,
+  cloudflareSourceDomain = null,
+  cloudflareSourceResult = null,
+  migrationStatus: initialMigrationStatus = null,
+  provisioningStatus: initialProvisioningStatus = null,
+  billingAgreement: initialBillingAgreement = null,
   acceptedOrderId = null,
   requiresMigrationRecollection = false,
   catalog,
@@ -249,8 +326,10 @@ export function PreviewCheckout({
   checkDomainAction,
   saveProfileAction,
   startPaymentAction,
+  loadLiveStatusAction,
   recollectAcceptedMigrationInputAction,
   submitMigrationTransferCodeAction,
+  scheduleCancellationAction,
   termsHref,
   privacyHref,
   termsVersion,
@@ -296,6 +375,24 @@ export function PreviewCheckout({
         : initialMigrationActionState,
       initialMigrationActionState,
     )
+  const [cancellationState, cancellationAction, cancellationPending] =
+    useActionState(
+      async (
+        _previous: PreviewCheckoutCancellationState,
+        formData: FormData,
+      ) => scheduleCancellationAction
+        ? scheduleCancellationAction(_previous, formData)
+        : initialCancellationState,
+      initialCancellationState,
+    )
+  const [paymentStatusLive, setPaymentStatusLive] =
+    React.useState(paymentStatus)
+  const [migrationStatus, setMigrationStatus] =
+    React.useState(initialMigrationStatus)
+  const [provisioningStatus, setProvisioningStatus] =
+    React.useState(initialProvisioningStatus)
+  const [billingAgreement, setBillingAgreement] =
+    React.useState(initialBillingAgreement)
   const [details, setDetails] = React.useState<CheckoutProfileDraft>(
     initialProfile ?? initialDetails,
   )
@@ -308,10 +405,15 @@ export function PreviewCheckout({
   )
   const [domainMode, setDomainMode] = React.useState<
     "new_registration" | "existing_domain"
-  >(initialQuotes?.annual.quote.domainMode ?? "new_registration")
+  >(
+    cloudflareSourceAuthorization
+      ? "existing_domain"
+      : initialQuotes?.annual.quote.domainMode ?? "new_registration",
+  )
   const [migrationSourceMethod, setMigrationSourceMethod] =
     React.useState<AutomaticMigrationSourceMethod | "">(() => {
       const source = initialQuotes?.annual.quote.migrationSourceMechanism
+      if (cloudflareSourceAuthorization) return "cloudflare_api_v1"
       return source && source !== "customer_authorized_provider_export_v1"
         ? source
         : ""
@@ -325,7 +427,9 @@ export function PreviewCheckout({
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
   const [suggestionsPending, setSuggestionsPending] = React.useState(false)
   const readyDomain = domainReady && currentDomain ? currentDomain : null
-  const [domainValue, setDomainValue] = React.useState(readyDomain ?? "")
+  const [domainValue, setDomainValue] = React.useState(
+    cloudflareSourceDomain ?? readyDomain ?? "",
+  )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const domainRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
@@ -343,6 +447,24 @@ export function PreviewCheckout({
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
+  const detectedMigrationDnsProvider =
+    checkState.migrationPublicEvidence?.probableDnsProvider ??
+    migrationPreflight?.publicEvidence?.probableDnsProvider ??
+    null
+  const availableMigrationSourceMethods = React.useMemo(
+    () => enabledMigrationSourceMethods.filter((method) =>
+      method !== "cloudflare_api_v1" ||
+      (
+        cloudflareSourceOAuthEnabled &&
+        detectedMigrationDnsProvider === "cloudflare"
+      )
+    ),
+    [
+      cloudflareSourceOAuthEnabled,
+      detectedMigrationDnsProvider,
+      enabledMigrationSourceMethods,
+    ],
+  )
   const checkTokenIsCurrent = !checkState.requestToken ||
     checkState.requestToken === latestDomainRequestTokenRef.current
   const checkMechanismIsCurrent =
@@ -361,6 +483,83 @@ export function PreviewCheckout({
   )
   const domainLooksCheckable =
     normalizedDomainValue.includes(".") && normalizedDomainValue.length >= 5
+
+  React.useEffect(() => {
+    if (cancellationState.agreement) {
+      setBillingAgreement(cancellationState.agreement)
+    }
+  }, [cancellationState.agreement])
+
+  React.useEffect(() => {
+    const customerActionJustSaved =
+      transferCodeState.ok && transferCodeState.status === "saved"
+    if (
+      !loadLiveStatusAction ||
+      (
+        !customerActionJustSaved &&
+        !checkoutStatusNeedsPolling({
+          paymentReturn: paymentReturn || customerActionJustSaved,
+          paymentStatus: paymentStatusLive,
+          migrationStatus,
+          provisioningStatus,
+        })
+      )
+    ) {
+      return
+    }
+
+    let stopped = false
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let attempts = 0
+    const schedule = (delay: number) => {
+      timeout = setTimeout(() => {
+        void poll()
+      }, delay)
+    }
+    const poll = async () => {
+      if (stopped) return
+      if (document.visibilityState === "hidden") {
+        schedule(5_000)
+        return
+      }
+      attempts += 1
+      try {
+        const next = await loadLiveStatusAction()
+        if (stopped) return
+        setPaymentStatusLive(next.paymentStatus)
+        setMigrationStatus(next.migrationStatus)
+        setProvisioningStatus(next.provisioningStatus)
+        setBillingAgreement(next.billingAgreement)
+        if (
+          attempts >= 30 ||
+          !checkoutStatusNeedsPolling({
+            paymentReturn: paymentReturn || customerActionJustSaved,
+            paymentStatus: next.paymentStatus,
+            migrationStatus: next.migrationStatus,
+            provisioningStatus: next.provisioningStatus,
+          })
+        ) {
+          return
+        }
+      } catch {
+        if (stopped || attempts >= 30) return
+      }
+      schedule(Math.min(3_000 + attempts * 750, 15_000))
+    }
+    schedule(1_500)
+    return () => {
+      stopped = true
+      if (timeout) clearTimeout(timeout)
+    }
+    // The bound server action is stable for this mounted checkout. Restarting
+    // the loop on every status projection would create overlapping polls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    loadLiveStatusAction,
+    paymentReturn,
+    transferCodeState.ok,
+    transferCodeState.status,
+  ])
 
   React.useEffect(() => {
     const controller = new AbortController()
@@ -404,11 +603,18 @@ export function PreviewCheckout({
         domain: checkState.domain,
         publicEvidence: checkState.migrationPublicEvidence,
       })
+      if (existingDomainMigrationEnabled) {
+        setMigrationSourceMethod(
+          availableMigrationSourceMethods[0] ?? "",
+        )
+      }
     }
   }, [
     checkState,
     checkTokenIsCurrent,
+    availableMigrationSourceMethods,
     domainMode,
+    existingDomainMigrationEnabled,
     normalizedDomainValue,
   ])
 
@@ -735,9 +941,55 @@ export function PreviewCheckout({
     setPaymentSubmitRequested(true)
     paymentFormRef.current?.requestSubmit()
   }
+  const acceptedMigrationDomain =
+    initialQuotes?.annual.quote.domainMode === "existing_domain"
+      ? initialQuotes.annual.quote.selectedDomain
+      : null
+  const cloudflareSourceMatchesAcceptedOrder = Boolean(
+    acceptedMigrationDomain &&
+    cloudflareSourceAuthorization &&
+    cloudflareSourceDomain === acceptedMigrationDomain,
+  )
 
   return (
     <main className="min-h-dvh bg-background pb-24 text-foreground md:pb-6">
+      {cloudflareSourceOAuthEnabled && (
+        <>
+          {domainMode === "existing_domain" && normalizedDomainValue && (
+            <form
+              id="checkout-cloudflare-source-connect-form"
+              method="post"
+              action="/api/domain-migration-source/cloudflare/start"
+              hidden
+            >
+              <input type="hidden" name="clientSlug" value={clientSlug} />
+              <input type="hidden" name="domain" value={normalizedDomainValue} />
+            </form>
+          )}
+          {migrationStatus?.domain && (
+            <form
+              id="migration-cloudflare-source-reconnect-form"
+              method="post"
+              action="/api/domain-migration-source/cloudflare/start"
+              hidden
+            >
+              <input type="hidden" name="clientSlug" value={clientSlug} />
+              <input type="hidden" name="domain" value={migrationStatus.domain} />
+            </form>
+          )}
+          {acceptedMigrationDomain && (
+            <form
+              id="accepted-cloudflare-source-reconnect-form"
+              method="post"
+              action="/api/domain-migration-source/cloudflare/start"
+              hidden
+            >
+              <input type="hidden" name="clientSlug" value={clientSlug} />
+              <input type="hidden" name="domain" value={acceptedMigrationDomain} />
+            </form>
+          )}
+        </>
+      )}
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center gap-3 px-3 py-2 md:min-h-16 md:px-4">
           <a href={previewHref} className="flex min-w-0 items-center gap-2">
@@ -771,11 +1023,11 @@ export function PreviewCheckout({
             <Info className="size-4" aria-hidden />
             <AlertTitle>{t("checkoutPaymentReturnTitle")}</AlertTitle>
             <AlertDescription>
-              {paymentStatus === "completed"
+              {paymentStatusLive === "completed"
                 ? t("checkoutPaymentReturnCompleted")
-                : paymentStatus === "pending_provider"
+                : paymentStatusLive === "pending_provider"
                   ? t("checkoutPaymentReturnPending")
-                  : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatus)
+                  : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive)
                     ? t("checkoutPaymentReturnFailed")
                     : t("checkoutPaymentReturnUnknown")}
             </AlertDescription>
@@ -862,16 +1114,34 @@ export function PreviewCheckout({
                     />
                   )}
                   {migrationSourceMethod === "cloudflare_api_v1" && (
-                    <CheckoutTextField
-                      id="accepted-cloudflare-source-token"
-                      name="cloudflareSourceToken"
-                      type="password"
-                      label={t("checkoutMigrationCloudflareTokenLabel")}
-                      description={t("checkoutMigrationCloudflareTokenHelp")}
-                      value={undefined}
-                      autoComplete="off"
-                      required
-                    />
+                    cloudflareSourceOAuthEnabled ? (
+                      cloudflareSourceMatchesAcceptedOrder ? (
+                        <>
+                          <Alert role="status">
+                            <AlertTitle>{t("checkoutMigrationCloudflareReconnectedTitle")}</AlertTitle>
+                            <AlertDescription>{t("checkoutMigrationCloudflareReconnectedOrderDescription")}</AlertDescription>
+                          </Alert>
+                          <input
+                            type="hidden"
+                            name="cloudflareSourceAuthorization"
+                            value={cloudflareSourceAuthorization ?? ""}
+                          />
+                        </>
+                      ) : (
+                        <Button
+                          type="submit"
+                          form="accepted-cloudflare-source-reconnect-form"
+                          className="w-fit"
+                        >
+                          {t("checkoutMigrationCloudflareReconnect")}
+                        </Button>
+                      )
+                    ) : (
+                      <Alert variant="destructive" role="alert">
+                        <AlertTitle>{t("checkoutMigrationCloudflareUnavailableTitle")}</AlertTitle>
+                        <AlertDescription>{t("checkoutMigrationCloudflareUnavailableOrderDescription")}</AlertDescription>
+                      </Alert>
+                    )
                   )}
                   {migrationSourceMethod === "authorized_axfr_v1" && (
                     <>
@@ -958,7 +1228,17 @@ export function PreviewCheckout({
                     />
                     <span>{t("checkoutMigrationTransferAuthorization")}</span>
                   </label>
-                  <Button type="submit" className="w-fit" disabled={recollectionPending}>
+                  <Button
+                    type="submit"
+                    className="w-fit"
+                    disabled={
+                      recollectionPending ||
+                      (
+                        migrationSourceMethod === "cloudflare_api_v1" &&
+                        !cloudflareSourceMatchesAcceptedOrder
+                      )
+                    }
+                  >
                     {recollectionPending && (
                       <Loader2 className="size-4 animate-spin" aria-hidden />
                     )}
@@ -1018,7 +1298,10 @@ export function PreviewCheckout({
                 </ul>
               )}
               {migrationStatus.actions.some((action) =>
-                action.action === "provide_epp_code" &&
+                (
+                  action.action === "provide_epp_code" ||
+                  action.action === "authorize_provider"
+                ) &&
                 ["required", "failed"].includes(action.status)) &&
                 submitMigrationTransferCodeAction && (
                   <form
@@ -1035,22 +1318,54 @@ export function PreviewCheckout({
                       name="expectedMigrationVersion"
                       value={migrationStatus.updatedAt}
                     />
+                    {!migrationStatus.actions.some((action) =>
+                      action.action === "provide_epp_code" &&
+                      ["required", "failed"].includes(action.status)) && (
+                        <input
+                          type="hidden"
+                          name="sourceAuthorityOnly"
+                          value="accepted"
+                        />
+                      )}
                     {migrationStatus.actions.some((action) =>
-                      action.action === "upload_complete_zone" &&
+                      (
+                        action.action === "upload_complete_zone" ||
+                        action.action === "authorize_provider"
+                      ) &&
                       ["required", "failed"].includes(action.status)) && (
                         <>
                           {migrationStatus.sourceMechanism ===
                             "cloudflare_api_v1" && (
-                              <CheckoutTextField
-                                id="migration-replacement-cloudflare-token"
-                                name="cloudflareSourceToken"
-                                type="password"
-                                label={t("checkoutMigrationCloudflareTokenLabel")}
-                                description={t("checkoutMigrationCloudflareTokenHelp")}
-                                value={undefined}
-                                autoComplete="off"
-                                required
-                              />
+                              cloudflareSourceOAuthEnabled ? (
+                                cloudflareSourceAuthorization &&
+                                cloudflareSourceDomain ===
+                                  migrationStatus.domain ? (
+                                  <>
+                                    <Alert role="status">
+                                      <AlertTitle>{t("checkoutMigrationCloudflareReconnectedTitle")}</AlertTitle>
+                                      <AlertDescription>{t("checkoutMigrationCloudflareReconnectedMigrationDescription")}</AlertDescription>
+                                    </Alert>
+                                    <input
+                                      type="hidden"
+                                      name="cloudflareSourceAuthorization"
+                                      value={cloudflareSourceAuthorization}
+                                    />
+                                  </>
+                                ) : (
+                                  <Button
+                                    type="submit"
+                                    form="migration-cloudflare-source-reconnect-form"
+                                    className="w-fit"
+                                  >
+                                    {t("checkoutMigrationCloudflareReconnect")}
+                                  </Button>
+                                )
+                              ) : (
+                                <Alert variant="destructive" role="alert">
+                                  <AlertTitle>{t("checkoutMigrationCloudflareUnavailableTitle")}</AlertTitle>
+                                  <AlertDescription>{t("checkoutMigrationCloudflareUnavailableMigrationDescription")}</AlertDescription>
+                                </Alert>
+                              )
                             )}
                           {migrationStatus.sourceMechanism ===
                             "authorized_axfr_v1" && (
@@ -1122,17 +1437,38 @@ export function PreviewCheckout({
                             )}
                         </>
                       )}
-                    <Label htmlFor="migration-replacement-transfer-code">
-                      {t("checkoutMigrationTransferCodeReplacement")}
-                    </Label>
-                    <Input
-                      id="migration-replacement-transfer-code"
-                      name="transferCode"
-                      type="password"
-                      autoComplete="off"
-                      required
-                    />
-                    <Button type="submit" className="w-fit" disabled={transferCodePending}>
+                    {migrationStatus.actions.some((action) =>
+                      action.action === "provide_epp_code" &&
+                      ["required", "failed"].includes(action.status)) && (
+                        <>
+                          <Label htmlFor="migration-replacement-transfer-code">
+                            {t("checkoutMigrationTransferCodeReplacement")}
+                          </Label>
+                          <Input
+                            id="migration-replacement-transfer-code"
+                            name="transferCode"
+                            type="password"
+                            autoComplete="off"
+                            required
+                          />
+                        </>
+                      )}
+                    <Button
+                      type="submit"
+                      className="w-fit"
+                      disabled={
+                        transferCodePending ||
+                        (
+                          migrationStatus.sourceMechanism ===
+                            "cloudflare_api_v1" &&
+                          cloudflareSourceOAuthEnabled &&
+                          !(
+                            cloudflareSourceAuthorization &&
+                            cloudflareSourceDomain === migrationStatus.domain
+                          )
+                        )
+                      }
+                    >
                       {transferCodePending && (
                         <Loader2 className="size-4 animate-spin" aria-hidden />
                       )}
@@ -1154,6 +1490,62 @@ export function PreviewCheckout({
           </Alert>
         )}
 
+        {billingAgreement && (
+          <Alert role="status" aria-live="polite">
+            <ReceiptText className="size-4" aria-hidden />
+            <AlertTitle>{t("checkoutSubscriptionStatusTitle")}</AlertTitle>
+            <AlertDescription className="grid gap-3">
+              {billingAgreement.state === "cancellation_scheduled" ? (
+                <p>
+                  {billingAgreement.cancelAt
+                    ? t("checkoutCancellationEffectiveAt", {
+                        date: new Intl.DateTimeFormat(locale, {
+                          dateStyle: "long",
+                        }).format(new Date(billingAgreement.cancelAt)),
+                      })
+                    : t("checkoutCancellationScheduled")}
+                </p>
+              ) : billingAgreement.state === "cancelled" ? (
+                <p>{t("checkoutCancellationCompleted")}</p>
+              ) : (
+                <p>{t("checkoutSubscriptionActiveDescription")}</p>
+              )}
+              {scheduleCancellationAction &&
+                ["active", "past_due", "suspended"].includes(
+                  billingAgreement.state,
+                ) && (
+                  <form action={cancellationAction}>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={cancellationPending}
+                    >
+                      {cancellationPending && (
+                        <Loader2
+                          className="size-4 animate-spin"
+                          aria-hidden
+                        />
+                      )}
+                      {t("checkoutCancelAtPeriodEnd")}
+                    </Button>
+                  </form>
+                )}
+              {cancellationState.message && (
+                <p
+                  role={cancellationState.ok ? "status" : "alert"}
+                  className={
+                    cancellationState.ok
+                      ? "text-sm text-foreground"
+                      : "text-sm text-destructive"
+                  }
+                >
+                  {cancellationState.message}
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {step === "domain" && (
           <Card>
             <CardHeader>
@@ -1167,6 +1559,18 @@ export function PreviewCheckout({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
+              {cloudflareSourceResult === "failed" && (
+                <Alert variant="destructive" role="alert">
+                  <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
+                  <AlertDescription>{t("checkoutMigrationCloudflareFailedDescription")}</AlertDescription>
+                </Alert>
+              )}
+              {cloudflareSourceResult === "provider-mismatch" && (
+                <Alert role="status">
+                  <AlertTitle>{t("checkoutMigrationCloudflareMismatchTitle")}</AlertTitle>
+                  <AlertDescription>{t("checkoutMigrationCloudflareMismatchDescription")}</AlertDescription>
+                </Alert>
+              )}
               <fieldset className="grid gap-3">
                 <legend className="text-base font-semibold">
                   {t("checkoutDomainModeLegend")}
@@ -1262,67 +1666,115 @@ export function PreviewCheckout({
                 </div>
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
-                  migrationPreflight?.domain === normalizedDomainValue && (
+                  (
+                    migrationPreflight?.domain === normalizedDomainValue ||
+                    (
+                      cloudflareSourceAuthorization &&
+                      cloudflareSourceDomain === normalizedDomainValue
+                    )
+                  ) && (
                   <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
-                    <fieldset className="grid gap-3">
-                      <legend className="font-medium">
-                        {t("checkoutMigrationSourceLegend")}
-                      </legend>
-                      <p className="text-sm text-muted-foreground">
-                        {t("checkoutMigrationSourceHelp")}
-                      </p>
-                      {([
-                        ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
-                        ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
-                        ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
-                      ] as const)
-                        .filter(([value]) =>
-                          enabledMigrationSourceMethods.includes(value))
-                        .map(([value, label]) => (
-                        <label
-                          key={value}
-                          className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3"
-                        >
-                          <input
-                            type="radio"
-                            name="checkout-migration-source"
-                            value={value}
-                            checked={migrationSourceMethod === value}
-                            onChange={() => updateMigrationSourceMethod(value)}
-                            className="mt-1"
-                          />
-                          <span>{t(label)}</span>
-                        </label>
-                      ))}
-                    </fieldset>
+                    {!cloudflareSourceAuthorization &&
+                      availableMigrationSourceMethods.length > 0 && (
+                        <fieldset className="grid gap-3">
+                          <legend className="font-medium">
+                            {t("checkoutMigrationSourceLegend")}
+                          </legend>
+                          <p className="text-sm text-muted-foreground">
+                            {t("checkoutMigrationSourceHelp")}
+                          </p>
+                          {([
+                            ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
+                            ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
+                            ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
+                          ] as const)
+                            .filter(([value]) =>
+                              availableMigrationSourceMethods.includes(value))
+                            .map(([value, label]) => (
+                              <label
+                                key={value}
+                                className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3"
+                              >
+                                <input
+                                  type="radio"
+                                  name="checkout-migration-source"
+                                  value={value}
+                                  checked={migrationSourceMethod === value}
+                                  onChange={() =>
+                                    updateMigrationSourceMethod(value)}
+                                  className="mt-1"
+                                />
+                                <span>{t(label)}</span>
+                              </label>
+                            ))}
+                        </fieldset>
+                      )}
+                    {!cloudflareSourceAuthorization &&
+                      availableMigrationSourceMethods.length === 0 && (
+                        <Alert variant="destructive" role="alert">
+                          <AlertTitle>{t("checkoutMigrationNoAutomaticSourceTitle")}</AlertTitle>
+                          <AlertDescription>
+                            {t("checkoutMigrationNoAutomaticSourceDescription")}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     {migrationSourceMethod === "cloudflare_api_v1" && (
-                      <CheckoutTextField
-                        id="checkout-cloudflare-source-token"
-                        name="cloudflareSourceToken"
-                        type="password"
-                        label={t("checkoutMigrationCloudflareTokenLabel")}
-                        description={t("checkoutMigrationCloudflareTokenHelp")}
-                        value={undefined}
-                        autoComplete="off"
-                        required
-                      />
+                      cloudflareSourceOAuthEnabled ? (
+                        cloudflareSourceAuthorization ? (
+                          <Alert role="status">
+                            <AlertTitle>{t("checkoutMigrationCloudflareConnectedTitle")}</AlertTitle>
+                            <AlertDescription>{t("checkoutMigrationCloudflareConnectedDescription")}</AlertDescription>
+                            <input
+                              type="hidden"
+                              name="cloudflareSourceAuthorization"
+                              value={cloudflareSourceAuthorization}
+                            />
+                          </Alert>
+                        ) : (
+                          <Button
+                            type="submit"
+                            form="checkout-cloudflare-source-connect-form"
+                            className="w-fit"
+                          >
+                            {t("checkoutMigrationCloudflareConnect")}
+                          </Button>
+                        )
+                      ) : (
+                        <Alert variant="destructive" role="alert">
+                          <AlertTitle>{t("checkoutMigrationCloudflareUnavailableTitle")}</AlertTitle>
+                          <AlertDescription>{t("checkoutMigrationCloudflareUnavailableDescription")}</AlertDescription>
+                        </Alert>
+                      )
                     )}
                     {migrationSourceMethod === "authorized_axfr_v1" && (
                       <>
-                        <CheckoutTextField
-                          id="checkout-axfr-nameserver"
-                          name="axfrNameserver"
-                          label={t("checkoutMigrationAxfrNameserverLabel")}
-                          description={t("checkoutMigrationAxfrNameserverHelp")}
-                          value={undefined}
-                          defaultValue={
-                            (checkState.migrationPublicEvidence ??
-                              migrationPreflight.publicEvidence)
-                              ?.authoritativeNameservers[0]
-                          }
-                          autoComplete="off"
-                          required
-                        />
+                        <div className="grid gap-2">
+                          <Label htmlFor="checkout-axfr-nameserver">
+                            {t("checkoutMigrationAxfrNameserverLabel")}
+                          </Label>
+                          <select
+                            id="checkout-axfr-nameserver"
+                            name="axfrNameserver"
+                            className="h-10 rounded-md border bg-background px-3 text-sm"
+                            required
+                            defaultValue={
+                              (checkState.migrationPublicEvidence ??
+                                migrationPreflight?.publicEvidence)
+                                ?.authoritativeNameservers[0]
+                            }
+                          >
+                            {(checkState.migrationPublicEvidence ??
+                              migrationPreflight?.publicEvidence)
+                              ?.authoritativeNameservers.map((nameserver) => (
+                                <option key={nameserver} value={nameserver}>
+                                  {nameserver}
+                                </option>
+                              ))}
+                          </select>
+                          <p className="text-sm text-muted-foreground">
+                            {t("checkoutMigrationAxfrNameserverHelp")}
+                          </p>
+                        </div>
                         <CheckoutTextField
                           id="checkout-axfr-tsig-name"
                           name="axfrTsigName"
@@ -1439,13 +1891,13 @@ export function PreviewCheckout({
                     {checkState.migrationPublicEvidence && (
                       <span className="mt-2 block text-sm">
                         {t("checkoutMigrationPublicEvidence", {
-                          registrar: checkState.migrationPublicEvidence.registrar ?? "onbekend",
+                          registrar: checkState.migrationPublicEvidence.registrar ?? t("checkoutUnknown"),
                           provider:
                             checkState.migrationPublicEvidence.probableDnsProvider ??
-                            "onbekend",
+                            t("checkoutUnknown"),
                           nameservers:
                             checkState.migrationPublicEvidence.authoritativeNameservers.join(", ") ||
-                            "onbekend",
+                            t("checkoutUnknown"),
                           dnssec: checkState.migrationPublicEvidence.dnssecDsPresent
                             ? t("checkoutMigrationDnssecPresent")
                             : t("checkoutMigrationDnssecAbsent"),
@@ -1948,8 +2400,34 @@ export function PreviewCheckout({
                         selectedQuote.quote.currency,
                       )}
                     />
+                    {selectedQuote.quote.domainMode === "existing_domain" &&
+                      selectedQuote.quote.transferRenewalEffect && (
+                      <ReviewRow
+                        label={t("checkoutTransferRenewalEffect")}
+                        value={
+                          selectedQuote.quote.transferRenewalEffect === "unchanged"
+                            ? t("checkoutTransferRenewalEffectUnchanged")
+                            : selectedQuote.quote.transferRenewalEffect === "extends_one_year"
+                              ? t("checkoutTransferRenewalEffectExtendsOneYear")
+                              : selectedQuote.quote.transferRenewalEffect ===
+                                  "restarts_from_transfer_date"
+                                ? t("checkoutTransferRenewalEffectRestartsFromTransferDate")
+                                : t("checkoutTransferRenewalEffectProviderDetermined")
+                        }
+                      />
+                    )}
                     <p className="text-sm text-muted-foreground">
-                      {selectedQuote.quote.domainRenewalExplanation}
+                      {selectedQuote.quote.transferRenewalEffect === "unchanged"
+                        ? t("checkoutDomainRenewalExplanationUnchanged")
+                        : selectedQuote.quote.transferRenewalEffect === "extends_one_year"
+                          ? t("checkoutDomainRenewalExplanationExtendsOneYear")
+                          : selectedQuote.quote.transferRenewalEffect ===
+                              "restarts_from_transfer_date"
+                            ? t("checkoutDomainRenewalExplanationRestartsFromTransferDate")
+                            : selectedQuote.quote.transferRenewalEffect ===
+                                "provider_determined"
+                              ? t("checkoutDomainRenewalExplanationProviderDetermined")
+                              : t("checkoutDomainRenewalExplanationGeneric")}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t("checkoutQuoteValidUntil", {
@@ -1985,6 +2463,13 @@ export function PreviewCheckout({
                   name="checkoutQuoteToken"
                   value={selectedQuote?.token ?? ""}
                 />
+                {cloudflareSourceAuthorization && (
+                  <input
+                    type="hidden"
+                    name="cloudflareSourceAuthorization"
+                    value={cloudflareSourceAuthorization}
+                  />
+                )}
                 <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />
@@ -2092,7 +2577,7 @@ export function PreviewCheckout({
         paymentStatus={
           paymentState.status === "payment_pending"
             ? "pending_provider"
-            : paymentStatus
+            : paymentStatusLive
         }
         navigationLocked={acceptedOrderId != null}
         legalAccepted={

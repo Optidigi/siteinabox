@@ -44,6 +44,14 @@ const pendingTenant = {
   },
 }
 
+const adoptedPreCommerceRouting = {
+  state: "adopted" as const,
+  adoptedDomain: "ami-care.nl",
+  evidenceVersion: "pre-commerce-routing-v1",
+  adoptedAt: "2026-07-30T09:59:23.000Z",
+  revokedAt: null,
+}
+
 const createActivationPayload = (input?: { tenant?: MockDoc; run?: MockDoc }) => {
   const tenant: MockDoc = { ...(input?.tenant ?? pendingTenant) }
   const run: MockDoc = { ...(input?.run ?? approvedPaidRun) }
@@ -93,7 +101,7 @@ describe("published snapshot activation gate", () => {
     vi.restoreAllMocks()
   })
 
-  it("requires verified tenant email sending for generated-site activation", () => {
+  it("treats pending tenant-branded email as optional for generated-site activation", () => {
     expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
       tenant: asTenant({
         ...verifiedTenant,
@@ -105,13 +113,10 @@ describe("published snapshot activation gate", () => {
           senderEmail: "noreply@mail.clientsite.nl",
         },
       }),
-    })).toEqual({
-      ok: false,
-      reason: "Generated-site activation requires verified tenant email sending.",
-    })
+    })).toEqual({ ok: true })
   })
 
-  it("does not let manual generated-site activation bypass tenant email verification", () => {
+  it("treats failed tenant-branded email as optional for manual activation", () => {
     expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
       manualActivation: true,
       tenant: asTenant({
@@ -124,10 +129,7 @@ describe("published snapshot activation gate", () => {
           senderEmail: "noreply@mail.clientsite.nl",
         },
       }),
-    })).toEqual({
-      ok: false,
-      reason: "Generated-site activation requires verified tenant email sending.",
-    })
+    })).toEqual({ ok: true })
   })
 
   it("allows generated-site activation after domain, sender, approval, and payment are all satisfied", () => {
@@ -136,7 +138,7 @@ describe("published snapshot activation gate", () => {
     })).toEqual({ ok: true })
   })
 
-  it("refreshes pending tenant email sending during activation and activates when Cloudflare reports verified", async () => {
+  it("activates without synchronously refreshing optional tenant-branded email", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({
       success: true,
@@ -154,22 +156,18 @@ describe("published snapshot activation gate", () => {
       status: "active",
     })
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://cloudflare.test/client/v4/zones/zone-123/email/sending/subdomains/subdomain-123",
-      expect.objectContaining({ method: "GET" }),
-    )
+    expect(fetch).not.toHaveBeenCalled()
     expect(tenant.emailSending).toMatchObject({
-      status: "verified",
+      status: "pending",
       sendingDomain: "mail.clientsite.nl",
       senderEmail: "noreply@mail.clientsite.nl",
       cloudflareZoneId: "zone-123",
       cloudflareSubdomainId: "subdomain-123",
-      lastError: null,
     })
     expect(snapshot.status).toBe("active")
   })
 
-  it("refreshes pending tenant email sending during activation and blocks when Cloudflare still reports pending", async () => {
+  it("activates while optional tenant-branded email remains pending", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({
       success: true,
@@ -182,20 +180,18 @@ describe("published snapshot activation gate", () => {
       },
     })))
 
-    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 })).rejects.toThrow(
-      "Generated-site activation requires verified tenant email sending.",
-    )
+    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 }))
+      .resolves.toMatchObject({ id: 10, status: "active" })
 
     expect(tenant.emailSending).toMatchObject({
       status: "pending",
       sendingDomain: "mail.clientsite.nl",
       cloudflareSubdomainId: "subdomain-123",
-      lastError: null,
     })
-    expect(snapshot.status).toBe("drafted")
+    expect(snapshot.status).toBe("active")
   })
 
-  it("records sanitized Cloudflare refresh errors and blocks activation with the existing gate reason", async () => {
+  it("does not contact optional email provider during snapshot activation", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({
       success: false,
@@ -203,21 +199,12 @@ describe("published snapshot activation gate", () => {
       result: null,
     }, { status: 200 })))
 
-    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 })).rejects.toThrow(
-      "Generated-site activation requires verified tenant email sending.",
-    )
+    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 }))
+      .resolves.toMatchObject({ id: 10, status: "active" })
 
-    expect(tenant.emailSending).toMatchObject({
-      status: "failed",
-      cloudflareZoneId: "zone-123",
-      cloudflareSubdomainId: "subdomain-123",
-    })
-    expect(asMockDoc(tenant.emailSending).lastError).toBe(
-      "Cloudflare Email Sending subdomain get failed with HTTP 200.",
-    )
-    expect(asMockDoc(tenant.emailSending).lastError).not.toContain("cf-secret")
-    expect(asMockDoc(tenant.emailSending).lastError).not.toContain("Provider rejected")
-    expect(snapshot.status).toBe("drafted")
+    expect(fetch).not.toHaveBeenCalled()
+    expect(asMockDoc(tenant.emailSending).status).toBe("pending")
+    expect(snapshot.status).toBe("active")
   })
 
   it("keeps current-state manual activation without a generation run on the existing path", () => {
@@ -581,6 +568,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 44,
       siteManifest: null,
       domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const settings = {
       id: 101,
@@ -588,20 +576,30 @@ describe("published snapshot theme serving", () => {
       aliases: [{ host: `www.${tenant.domain}` }],
     }
     const payload = {
-      find: vi.fn(async ({ collection }: MockFindArgs) => ({
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
         docs: collection === "tenants"
-          ? [tenant]
+          ? JSON.stringify(where).includes(`www.${tenant.domain}`)
+            ? []
+            : [tenant]
           : collection === "site-settings"
             ? [settings]
             : [],
       })),
       findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
         if (
+          collection === "tenants" &&
+          String(id) === String(tenant.id)
+        ) {
+          return tenant
+        }
+        if (
           collection === "published-site-snapshots" &&
           String(id) === String(tenant.activeSnapshot)
         ) {
           return {
             id: tenant.activeSnapshot,
+            tenant: tenant.id,
+            domain: tenant.domain,
             status: "active",
             snapshot: amicarePublishedSiteSnapshot,
           }
@@ -618,6 +616,83 @@ describe("published snapshot theme serving", () => {
         activeHosts: [tenant.domain, `www.${tenant.domain}`],
       },
     })
+    await expect(
+      resolvePublishedSnapshotByHost(
+        asPayload(payload),
+        `www.${tenant.domain}`,
+      ),
+    ).resolves.toMatchObject({
+      tenant: { id: tenant.id },
+      routing: {
+        requestedHost: `www.${tenant.domain}`,
+        activeHosts: [tenant.domain, `www.${tenant.domain}`],
+      },
+    })
+  })
+
+  it("does not serve or advertise an ambiguous adopted www alias", async () => {
+    const tenant = {
+      id: 404,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 405,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
+    }
+    const settings = {
+      id: 406,
+      tenant: tenant.id,
+      aliases: [
+        { host: `www.${tenant.domain}` },
+        { host: `www.${tenant.domain}.` },
+      ],
+    }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? JSON.stringify(where).includes(`www.${tenant.domain}`)
+            ? []
+            : [tenant]
+          : collection === "site-settings"
+            ? [settings]
+            : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (
+          collection === "tenants" &&
+          String(id) === String(tenant.id)
+        ) {
+          return tenant
+        }
+        if (
+          collection === "published-site-snapshots" &&
+          String(id) === String(tenant.activeSnapshot)
+        ) {
+          return {
+            id: tenant.activeSnapshot,
+            tenant: tenant.id,
+            domain: tenant.domain,
+            status: "active",
+            snapshot: amicarePublishedSiteSnapshot,
+          }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain),
+    ).resolves.toMatchObject({
+      routing: { activeHosts: [tenant.domain] },
+    })
+    await expect(
+      resolvePublishedSnapshotByHost(
+        asPayload(payload),
+        `www.${tenant.domain}`,
+      ),
+    ).resolves.toBeNull()
   })
 
   it("blocks an unverified pre-commerce tenant without managed-domain evidence", async () => {
@@ -629,6 +704,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 55,
       siteManifest: null,
       domainVerification: { status: "pending" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const payload = {
       find: vi.fn(async ({ collection }: MockFindArgs) => ({
@@ -641,7 +717,7 @@ describe("published snapshot theme serving", () => {
     ).resolves.toBeNull()
   })
 
-  it("does not treat a newly verified tenant as a legacy commerce bypass", async () => {
+  it("does not treat a newly verified tenant as a pre-commerce routing bypass", async () => {
     const tenant = {
       id: 6,
       slug: "new-tenant",
@@ -671,6 +747,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 77,
       siteManifest: null,
       domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const alias = "shop.ami-care.nl"
     const settings = {
@@ -829,7 +906,7 @@ describe("published snapshot theme serving", () => {
     ).resolves.toBeNull()
   })
 
-  it("lets any canonical managed-domain row suppress the legacy fallback", async () => {
+  it("lets any canonical managed-domain row suppress pre-commerce adoption", async () => {
     const tenant = {
       id: 9,
       slug: amicarePublishedSiteSnapshot.tenantSlug,
@@ -838,6 +915,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 99,
       siteManifest: null,
       domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const settings = { id: 104, tenant: tenant.id, aliases: [] }
     const payload = {

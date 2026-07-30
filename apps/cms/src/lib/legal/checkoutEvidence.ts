@@ -189,6 +189,14 @@ export async function createOrderAndAcceptanceEvidence(input: {
   if (!tldCapability) {
     throw new Error(`TLD .${tld} is not enabled for accepted-order evidence.`)
   }
+  const expectedTransferRenewalEffect = input.quote.domainMode === "existing_domain"
+    ? tldCapability.transfer.renewalEffect
+    : null
+  if (input.quote.transferRenewalEffect !== expectedTransferRenewalEffect) {
+    throw new Error(
+      `Checkout transfer-renewal evidence does not match the governed .${tld} capability.`,
+    )
+  }
   const normalizedRegistrant = normalizeDomainRegistrantDetails(input.domainRegistrant)
   if (!normalizedRegistrant) {
     throw new Error("Accepted checkout requires complete registrant evidence.")
@@ -235,6 +243,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
       tld: tldCapability.tld,
       capabilityVersion: tldCapability.capabilityVersion,
       effectiveFrom: tldCapability.effectiveFrom,
+      transferRenewalEffect: expectedTransferRenewalEffect,
     },
   }
   const initialAuthorityHash = sha256(initialAuthority)
@@ -315,11 +324,13 @@ export async function createOrderAndAcceptanceEvidence(input: {
           futureSubscriptionNetMinor: input.quote.futureSubscriptionNetMinor,
           futureSubscriptionVatMinor: input.quote.futureSubscriptionVatMinor,
           futureSubscriptionGrossMinor: input.quote.futureSubscriptionGrossMinor,
+          transferRenewalEffect: input.quote.transferRenewalEffect,
           domainRenewalExplanation: input.quote.domainRenewalExplanation,
           tldCapability: {
             tld: tldCapability.tld,
             capabilityVersion: tldCapability.capabilityVersion,
             effectiveFrom: tldCapability.effectiveFrom,
+            transferRenewalEffect: input.quote.transferRenewalEffect,
           },
           businessUseDeclaration: {
             version: BUSINESS_USE_DECLARATION_VERSION,
