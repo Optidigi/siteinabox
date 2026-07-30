@@ -26,7 +26,6 @@ import {
   domainRegistrantFromCheckoutProfile,
   loadLatestCheckoutProfile,
   saveCheckoutProfileVersion,
-  type CheckoutProfileView,
 } from "@/lib/checkout/checkoutProfile"
 import {
   buildCheckoutQuote,
@@ -109,45 +108,29 @@ import {
 import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
 import {
   loadCustomerMigrationStatus,
-  type CustomerMigrationStatus,
 } from "@/lib/domains/migrationStatus"
 import {
   loadCustomerProvisioningStatus,
-  type CustomerProvisioningStatus,
 } from "@/lib/domains/provisioningStatus"
+import type {
+  MigrationCustomerActionState,
+  PreviewCheckoutActionState,
+  PreviewCheckoutCancellationState,
+  PreviewCheckoutDomainOption,
+  PreviewCheckoutLiveStatus,
+  PreviewCheckoutProfileActionState,
+  PreviewCheckoutSuggestionsState,
+} from "@/lib/checkout/previewCheckoutContract"
 
-export type PreviewCheckoutDomainOption = {
-  domain: string
-  included: boolean
-  extraFeeAmount: string | null
-  extraFeeCurrency: string | null
-  extraFeeLabel?: string | null
-}
-
-export type PreviewCheckoutActionState = {
-  ok: boolean
-  message: string
-  status?: "idle" | "preflight_complete" | "release_pending" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
-  checkoutUrl?: string
-  domain?: string
-  included?: boolean
-  extraFeeAmount?: string | null
-  extraFeeCurrency?: string | null
-  extraFeeLabel?: string | null
-  totalPriceLabel?: string | null
-  domainSurchargeNetMinor?: number
-  quotes?: CheckoutQuoteSet
-  requestToken?: string
-  currentProfile?: CheckoutProfileView
-  suggestions?: PreviewCheckoutDomainOption[]
-  domainMode?: "new_registration" | "existing_domain"
-  migrationReadiness?: "ready_automatic" | "ready_assisted" | "unsupported"
-  migrationClassification?: "automatic" | "assisted_standard" | null
-  migrationSourceMechanism?: MigrationSourceMechanism | null
-  migrationPublicEvidence?: ExistingDomainPublicEvidence | null
-  migrationPreflightOnly?: boolean
-  migrationReleaseBlocked?: boolean
-}
+export type {
+  MigrationCustomerActionState,
+  PreviewCheckoutActionState,
+  PreviewCheckoutCancellationState,
+  PreviewCheckoutDomainOption,
+  PreviewCheckoutLiveStatus,
+  PreviewCheckoutProfileActionState,
+  PreviewCheckoutSuggestionsState,
+} from "@/lib/checkout/previewCheckoutContract"
 
 function migrationAssessmentMessage(
   t: Awaited<ReturnType<typeof getTranslations>>,
@@ -156,39 +139,6 @@ function migrationAssessmentMessage(
   return t(`checkoutMigrationAssessment_${assessment.reason}`, {
     tld: `.${assessment.domain.split(".").at(-1) ?? ""}`,
   })
-}
-
-export type PreviewCheckoutProfileActionState = {
-  ok: boolean
-  message: string
-  status?: "idle" | "saved" | "conflict" | "invalid"
-  requestToken?: string
-  profile?: CheckoutProfileView
-  currentProfile?: CheckoutProfileView
-  fieldErrors?: Record<string, string>
-  quotes?: CheckoutQuoteSet
-}
-
-export type PreviewCheckoutSuggestionsState = {
-  ok: boolean
-  domain?: string
-  suggestions?: PreviewCheckoutDomainOption[]
-  cursor?: number
-  done?: boolean
-}
-
-export type PreviewCheckoutCancellationState = {
-  ok: boolean
-  status: "idle" | "scheduled" | "unavailable" | "failed"
-  message: string
-  agreement?: CustomerBillingAgreementView | null
-}
-
-export type PreviewCheckoutLiveStatus = {
-  paymentStatus: string
-  migrationStatus: CustomerMigrationStatus | null
-  provisioningStatus: CustomerProvisioningStatus | null
-  billingAgreement: CustomerBillingAgreementView | null
 }
 
 const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): string | null => {
@@ -821,17 +771,6 @@ const requestAudit = async () => {
     ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
     userAgent: requestHeaders.get("user-agent"),
   }
-}
-
-export type MigrationCustomerActionState = {
-  ok: boolean
-  status:
-    | "idle"
-    | "saved"
-    | "invalid_input"
-    | "refresh_required"
-    | "retryable_service_error"
-  message: string
 }
 
 class MigrationCustomerActionError extends Error {

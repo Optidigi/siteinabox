@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { maxDomainProviderPriceFromEnv } from "@/lib/domains/orderState"
 import { suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGate"
+import type { PreviewCheckoutSuggestionsState } from "@/lib/checkout/previewCheckoutContract"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
-import type { PreviewCheckoutSuggestionsState } from "../actions"
 import { requirePreviewCheckoutContext } from "../previewCheckoutContext"
 
 type SuggestionsRequest = {
