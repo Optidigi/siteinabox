@@ -4,6 +4,10 @@ This register contains unresolved defects, risks, accepted constraints, and
 unknowns. It is not a roadmap or implementation diary. Reverify external-state
 observations before acting on them.
 
+The remaining manual non-commerce production smokes for SIAB-001, SIAB-003,
+SIAB-004, and SIAB-005 are tracked together in
+[#22](https://github.com/Optidigi/siteinabox/issues/22).
+
 ## SIAB-001 — Generated-site visual fidelity is not accepted
 
 - **Classification:** Risk; **confidence:** high for the recorded acceptance gap.
@@ -55,10 +59,10 @@ observations before acting on them.
 - **Next:** Reproduce and separate read-only from management UI; never weaken
   server access.
 
-## SIAB-006 — Production activation has not been rehearsed
+## SIAB-006 — Paid production activation has not been rehearsed
 
-- **Classification:** Unknown; **scope:** payment, domain/DNS, publishing,
-  renderer, and handoff mail.
+- **Classification:** External release gate; **scope:** payment, domain/DNS,
+  publishing, renderer, and handoff mail.
 - **Code evidence:** The commerce failure suite, operation-specific TLD gates,
   renderer origin contract, and committed migration chain are exercised in CI.
   A local PostgreSQL 18 rehearsal applies the full migration chain before the
@@ -66,12 +70,21 @@ observations before acting on them.
   TLD catalogue, deterministic operation pricing, transfer availability, and
   DNSSEC support. This evidence does not prove a live paid Mollie-to-domain
   provisioning transaction or customer mail delivery.
+- **Deployment evidence:** On 2026-07-30, the merged release passed its hosted
+  CI and image builds, the production provider-readiness check, authenticated
+  read and identical-configuration write verification for both dedicated
+  Cloudflare Tunnels, terminal-404 origin probes, direct-origin rejection, and
+  live apex, `www`, and tenant-admin HTTPS probes. The public customer-source
+  Cloudflare OAuth client is active. The owner explicitly approved advancing
+  the long-lived commerce stage for the controlled paid canary.
 - **Next:** Complete the controlled paid checkout/provisioning canary and
-  capture redacted provider, DNS, renderer, and mail evidence. Keep the global
-  production write stage fail-closed until the remaining Cloudflare
-  origin/OAuth evidence and canary in
-  [Commerce production evidence](runbooks/commerce-production-evidence.md)
-  pass.
+  capture redacted payment, provider, DNS, renderer, status, and mail evidence.
+  Rotate the live payment credential before that canary. If the canary fails,
+  return the global stage to `shadow` immediately while preserving and
+  reconciling any provider-committed state. Track the controlled canary in
+  [#20](https://github.com/Optidigi/siteinabox/issues/20) and the broader
+  external operation matrix in
+  [#21](https://github.com/Optidigi/siteinabox/issues/21).
 
 ## SIAB-007 — Bot protection is outside the CMS surface
 

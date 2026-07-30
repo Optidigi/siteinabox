@@ -32,13 +32,31 @@ gate, payment state, accepted-order evidence, idempotency, and reconciliation.
 | `.online` | enabled | enabled | provider autorenew | enabled | enabled |
 | `.shop` | enabled | enabled | provider autorenew | enabled | enabled |
 
-Global provider writes remain disabled while the long-lived deployment is in
-`shadow`. Before advancing it, complete:
+As of 2026-07-30, explicit owner approval advanced the long-lived deployment
+to `production` for a controlled paid canary. The exact merged release passed
+the production provider-readiness check. Both dedicated Cloudflare Tunnels
+passed authenticated identity/configuration/connection reads, an
+identical-configuration write with unchanged post-write hashes, terminal-404
+unknown-host probes, direct-origin rejection, and active apex, `www`, and
+tenant-admin HTTPS probes. The public customer-source Cloudflare OAuth client
+is active. These are redacted capability observations; environment-specific
+identifiers and responses remain outside the repository.
 
-- verified edge/origin trust;
-- the public Cloudflare source OAuth client used for customer-authorized zone
-  import;
-- the controlled paid Mollie checkout/provisioning canary.
+The paid Mollie-to-domain transaction and customer/admin mail delivery have
+not yet been observed. Production-stage activation does not bypass the
+order-bound authoritative paid-state, capability-version, idempotency, or
+reconciliation gates. Before general customer availability:
+
+- rotate the current live Mollie credential and update only the production
+  secret store;
+- complete the controlled paid Mollie checkout/provisioning canary in
+  [#20](https://github.com/Optidigi/siteinabox/issues/20);
+- retain redacted live-operation evidence for the remaining provider matrix in
+  [#21](https://github.com/Optidigi/siteinabox/issues/21).
+
+If the controlled canary fails, return the global stage to `shadow`
+immediately. Preserve and reconcile any payment, domain, DNS, invoice, or
+provider-committed state; never delete a customer-owned domain as rollback.
 
 Existing paid or provider-committed obligations are not cancelled by a later
 feature-gate rollback. Their reconciliation and the minimum safety writes
@@ -150,14 +168,16 @@ These steps require a separate approved production change:
    run the read-only production-readiness gate. Follow the exact commands in
    [Commerce release](commerce-release.md) and keep the long-lived service in
    `shadow`.
-6. Rehearse the controlled paid checkout/provider canary and record redacted
-   evidence.
+6. Rotate the live Mollie credential. For an explicitly approved, access-
+   controlled canary window, enable the global production stage and run one
+   controlled paid checkout/provider canary. Record only redacted evidence.
 7. Confirm the deployed effective capability catalogue matches the intended
    operation/TLD set.
-8. Enable the global production stage only after its
-   evidence row passes.
+8. Leave the global production stage enabled only when the canary evidence row
+   passes. Otherwise return it to `shadow` immediately and reconcile any
+   provider-committed state.
 9. Monitor reconciliation, renewal dates, certificate readiness, alerts, and
-   customer-visible state before expanding scope.
+   customer-visible state before general availability or expanding scope.
 
 ## Rollback
 
