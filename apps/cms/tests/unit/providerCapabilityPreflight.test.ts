@@ -142,7 +142,6 @@ describe("read-only production provider capability preflight", () => {
       dependencies: deps,
     }))).resolves.toEqual([
       "provider_capability:cloudflare_source_oauth:configuration_mismatch",
-      "provider_capability:incoming_transfer_tld:configuration_mismatch",
     ])
     for (const dependency of Object.values(deps)) {
       expect(dependency).not.toHaveBeenCalled()
@@ -159,7 +158,6 @@ describe("read-only production provider capability preflight", () => {
       dependencies: deps,
     }))).resolves.toEqual([
       "provider_capability:existing_domain_source:configuration_mismatch",
-      "provider_capability:incoming_transfer_tld:configuration_mismatch",
     ])
     for (const dependency of Object.values(deps)) {
       expect(dependency).not.toHaveBeenCalled()

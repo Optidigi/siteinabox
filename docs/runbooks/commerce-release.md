@@ -147,9 +147,11 @@ evidence matrix. Follow
 [Existing-domain migration](existing-domain-migration.md); advancing the
 general commerce stage does not enable that customer journey.
 
-Every TLD operation is independently fail-closed in the effective capability
-catalogue. Advancing the global stage does not enable registration, incoming
-transfer, renewal, registrant verification, or restoration for any TLD.
+Every TLD operation is independently governed in the effective capability
+catalogue. The current intended catalogue enables registration, incoming
+transfer, provider-autorenew renewal, registrant verification, and restoration
+for all ten reviewed TLDs. Advancing the global stage still cannot bypass the
+selected TLD contract, accepted payment/order state, or provider-write gate.
 
 ## Paid checkout canary: expected customer and operator flow
 

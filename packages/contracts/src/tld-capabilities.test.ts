@@ -18,10 +18,17 @@ const PHASE_8_EFFECTIVE_AT = "2026-07-28T00:00:00.000Z"
 const PRODUCTION_READINESS_EFFECTIVE_AT = "2026-07-28T15:00:00.000Z"
 const REGISTRATION_PRODUCTION_EFFECTIVE_AT = "2026-07-29T12:00:00.000Z"
 const CONTRACT_CORRECTION_EFFECTIVE_AT = "2026-07-29T17:20:00.000Z"
+const PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT =
+  "2026-07-30T14:30:00.000Z"
+const BEFORE_PROVIDER_CAPABILITY_ENABLEMENT =
+  "2026-07-30T14:29:59.999Z"
 
 describe("effective-dated TLD capability catalog", () => {
   it("contains only schema-valid, non-overlapping capability records", () => {
     expect(tldCapabilityCatalogSchema.safeParse(TLD_CAPABILITY_CATALOG).success).toBe(true)
+    expect(new Set(
+      TLD_CAPABILITY_CATALOG.map((entry) => entry.capabilityVersion),
+    ).size).toBe(TLD_CAPABILITY_CATALOG.length)
 
     for (const tld of new Set(TLD_CAPABILITY_CATALOG.map((entry) => entry.tld))) {
       const records = TLD_CAPABILITY_CATALOG
@@ -29,7 +36,9 @@ describe("effective-dated TLD capability catalog", () => {
         .sort((left, right) => left.effectiveFrom.localeCompare(right.effectiveFrom))
       for (let index = 1; index < records.length; index += 1) {
         expect(records[index - 1]?.effectiveUntil).not.toBeNull()
-        expect(records[index - 1]?.effectiveUntil! <= records[index]!.effectiveFrom).toBe(true)
+        expect(records[index - 1]?.effectiveUntil).toBe(
+          records[index]!.effectiveFrom,
+        )
       }
     }
   })
@@ -253,6 +262,83 @@ describe("effective-dated TLD capability catalog", () => {
         productionTldCapabilitiesAt(operation, CONTRACT_CORRECTION_EFFECTIVE_AT),
       ).toEqual([])
     }
+  })
+
+  it("enables every governed operation after live provider capability evidence", () => {
+    for (const operation of tldProductionOperations.filter(
+      (operation) => operation !== "renewal_explicit",
+    )) {
+      expect(
+        productionTldCapabilitiesAt(
+          operation,
+          PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+        ).map((capability) => capability.tld),
+      ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    }
+    expect(
+      productionTldCapabilitiesAt(
+        "renewal_explicit",
+        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+      ),
+    ).toEqual([])
+
+    for (const tld of INTENDED_TLD_CATALOG) {
+      const capability = tldCapabilityAt(
+        tld,
+        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+      )
+      expect(capability?.production).toEqual({
+        registration: true,
+        incomingTransfer: true,
+        renewal: true,
+        registrantVerification: true,
+        restoration: true,
+      })
+      expect(capability?.dnssec.productionEvidenceComplete).toBe(true)
+      expect(capability?.capabilityVersion).toBe(
+        `tld-${tld}-2026-07-30.4`,
+      )
+      const providerAutorenew = getTldCapabilityForProductionOperation(
+        tld,
+        "renewal_provider_autorenew",
+        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+      )
+      const explicitRenewal = getTldCapabilityForProductionOperation(
+        tld,
+        "renewal_explicit",
+        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+      )
+      expect(Boolean(providerAutorenew) !== Boolean(explicitRenewal)).toBe(true)
+    }
+  })
+
+  it("switches from registration-only to the complete catalog at the exact boundary", () => {
+    expect(
+      productionTldCapabilitiesAt(
+        "registration",
+        BEFORE_PROVIDER_CAPABILITY_ENABLEMENT,
+      ).map((capability) => capability.tld),
+    ).toEqual([])
+    for (const operation of [
+      "incoming_transfer",
+      "renewal_provider_autorenew",
+      "renewal_explicit",
+      "registrant_verification",
+      "restoration",
+    ] as const) {
+      expect(
+        productionTldCapabilitiesAt(
+          operation,
+          BEFORE_PROVIDER_CAPABILITY_ENABLEMENT,
+        ),
+      ).toEqual([])
+    }
+    expect(
+      productionTldCapabilitiesAt(
+        "registration",
+        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+      ).map((capability) => capability.tld),
+    ).toEqual([...INTENDED_TLD_CATALOG].sort())
   })
 
   it("models exact current label, transfer, and lifecycle differences", () => {

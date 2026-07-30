@@ -5,7 +5,7 @@ import {
   contractingPartyTypeSchema,
 } from "./commerce"
 
-export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-29.3" as const
+export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-30.4" as const
 
 export const INTENDED_TLD_CATALOG = Object.freeze([
   "nl",
@@ -242,8 +242,17 @@ export type TldCapability = z.infer<typeof tldCapabilitySchema>
 
 export const tldCapabilityCatalogSchema = z.array(tldCapabilitySchema).min(1).superRefine(
   (catalog, ctx) => {
+    const seenVersions = new Set<string>()
     const byTld = new Map<string, TldCapability[]>()
     for (const capability of catalog) {
+      if (seenVersions.has(capability.capabilityVersion)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [catalog.indexOf(capability), "capabilityVersion"],
+          message: `Duplicate capability version: ${capability.capabilityVersion}.`,
+        })
+      }
+      seenVersions.add(capability.capabilityVersion)
       const records = byTld.get(capability.tld) ?? []
       records.push(capability)
       byTld.set(capability.tld, records)
@@ -305,6 +314,8 @@ const LEGACY_PRODUCTION_ENABLED = Object.freeze({
   registrantVerification: true,
   restoration: true,
 })
+
+const PRODUCTION_ENABLED = LEGACY_PRODUCTION_ENABLED
 
 const commonCapability = {
   schemaVersion: 1,
@@ -648,6 +659,8 @@ const catalogHistoryInput = [
 
 const REGISTRATION_PRODUCTION_EFFECTIVE_FROM = "2026-07-29T12:00:00.000Z"
 const CONTRACT_CORRECTION_EFFECTIVE_FROM = "2026-07-29T17:20:00.000Z"
+const PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_FROM =
+  "2026-07-30T14:30:00.000Z"
 
 const catalogHistory = tldCapabilityCatalogSchema.parse(catalogHistoryInput)
 
@@ -849,6 +862,33 @@ const catalogInput: TldCapability[] = registrationCatalogInput.flatMap((capabili
   ]
 })
 
+const productionCatalogInput: TldCapability[] = catalogInput.flatMap(
+  (capability) => {
+    if (capability.effectiveUntil !== null) return [capability]
+    return [
+      {
+        ...capability,
+        effectiveUntil: PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_FROM,
+      },
+      tldCapabilitySchema.parse({
+        ...capability,
+        capabilityVersion: `tld-${capability.tld}-2026-07-30.4`,
+        production: PRODUCTION_ENABLED,
+        effectiveFrom: PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_FROM,
+        effectiveUntil: null,
+        dnssec: {
+          ...capability.dnssec,
+          productionEvidenceComplete: true,
+        },
+        evidence: {
+          ...capability.evidence,
+          reviewedAt: PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_FROM,
+        },
+      }),
+    ]
+  },
+)
+
 const deepFreeze = <T extends object>(value: T): Readonly<T> => {
   for (const entry of Object.values(value)) {
     if (entry && typeof entry === "object") deepFreeze(entry)
@@ -857,7 +897,7 @@ const deepFreeze = <T extends object>(value: T): Readonly<T> => {
 }
 
 export const TLD_CAPABILITY_CATALOG = deepFreeze(
-  tldCapabilityCatalogSchema.parse(catalogInput),
+  tldCapabilityCatalogSchema.parse(productionCatalogInput),
 )
 
 const normalizedTld = (value: string): string => value.trim().toLowerCase().replace(/^\./, "")

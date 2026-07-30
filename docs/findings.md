@@ -62,14 +62,14 @@ observations before acting on them.
 - **Code evidence:** The commerce failure suite, operation-specific TLD gates,
   renderer origin contract, and committed migration chain are exercised in CI.
   A local PostgreSQL 18 rehearsal applies the full migration chain before the
-  CMS suite. This evidence does not prove live Mollie, Openprovider,
-  Cloudflare, DNSSEC, or mail behavior.
-- **Next:** Run an explicitly approved disposable-domain rehearsal and capture
-  provider identifiers, DNS, sender, snapshot, response, and mail evidence.
-  The intended catalogue is modeled, while every current operation remains
-  fail-closed pending its per-TLD provider rehearsal. Keep registration,
-  transfer, renewal, restoration, and final global production activation
-  disabled until their rows in
+  CMS suite. Production Openprovider read-only evidence confirms the intended
+  TLD catalogue, deterministic operation pricing, transfer availability, and
+  DNSSEC support. This evidence does not prove a live paid Mollie-to-domain
+  provisioning transaction or customer mail delivery.
+- **Next:** Complete the controlled paid checkout/provisioning canary and
+  capture redacted provider, DNS, renderer, and mail evidence. Keep the global
+  production write stage fail-closed until the remaining Cloudflare
+  origin/OAuth evidence and canary in
   [Commerce production evidence](runbooks/commerce-production-evidence.md)
   pass.
 
