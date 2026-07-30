@@ -1,0 +1,2 @@
+--providers.file.directory=/etc/traefik/dynamic
+--providers.file.watch=true

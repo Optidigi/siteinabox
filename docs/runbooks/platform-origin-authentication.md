@@ -22,8 +22,10 @@ certificate and Traefik mTLS.
 - `ops/traefik/cloudflare-aop.dynamic.yml` defines the
   `siteinabox-cloudflare-aop@file` TLS option with TLS 1.2 minimum, strict SNI,
   and `RequireAndVerifyClientCert`.
-- `ops/traefik/compose.cloudflare-aop.yml` adds the Traefik file provider and
-  mounts the AOP CA certificate.
+- `ops/traefik/cloudflare-aop.static-flags.txt` lists the static file-provider
+  flags that the base Traefik command must include.
+- `ops/traefik/compose.cloudflare-aop.yml` mounts the dynamic configuration and
+  AOP CA certificate.
 - Every platform HTTPS router in the CMS, landing, and intake compose files
   selects that exact TLS option.
 - `pnpm renderer:deploy-contract` fails when a platform router loses the
@@ -54,13 +56,18 @@ dependency.
    `basicConstraints=CA:FALSE`.
 4. Upload the leaf certificate and private key to Cloudflare. Wait until the
    certificate is active.
-5. Copy the two repository-owned files under `ops/traefik/` to
+5. Copy the three repository-owned files under `ops/traefik/` to
    `/srv/ops/infra/stacks/traefik/`. Set the following in that directory's
    mode-0600 `.env`:
 
    ```dotenv
    SIAB_CLOUDFLARE_AOP_CA_FILE=/srv/ops/secrets/siteinabox-cloudflare-aop-ca.pem
    ```
+
+   Add every line from `cloudflare-aop.static-flags.txt` to the base Traefik
+   service's `command` list. Traefik static configuration must use one
+   consistent source: a deployment that already supplies CLI flags cannot
+   rely on environment variables to activate an additional provider.
 
    Validate and start the exact merged stack:
 
@@ -75,12 +82,14 @@ dependency.
      -f compose.cloudflare-aop.yml \
      up -d --no-deps traefik
    docker inspect traefik --format '{{.State.Health.Status}}'
-   docker logs --since 5m traefik 2>&1 | grep -E \
-     'siteinabox-cloudflare-aop|error|Error' || true
+   docker logs --since 5m traefik 2>&1 | grep \
+     'Starting provider \\*file.Provider'
    ```
 
-   At this point no existing router refers to the option, so traffic remains
-   unchanged. Any file-provider, CA-read, or TLS-option error stops rollout.
+   Inspect the merged command with `docker compose config` and confirm both
+   file-provider flags are present. At this point no existing router refers to
+   the option, so traffic remains unchanged. A missing file-provider start
+   message, CA-read error, or TLS-option error stops rollout.
 6. Enable **zone-level** AOP for `siteinabox.nl`. Do not toggle the weaker
    global/shared AOP setting.
 7. Confirm the proxied platform routes still succeed.

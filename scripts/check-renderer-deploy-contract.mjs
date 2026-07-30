@@ -16,6 +16,7 @@ const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-ren
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 const traefikAopConfigPath = resolve(repoRoot, "ops/traefik/cloudflare-aop.dynamic.yml")
 const traefikAopComposePath = resolve(repoRoot, "ops/traefik/compose.cloudflare-aop.yml")
+const traefikAopStaticFlagsPath = resolve(repoRoot, "ops/traefik/cloudflare-aop.static-flags.txt")
 
 const expectedHosts = [...RENDERER_PRODUCTION_HOSTS].sort()
 const expectedHostSet = new Set(expectedHosts)
@@ -158,12 +159,22 @@ for (const requiredFragment of [
 }
 const traefikAopCompose = await readFile(traefikAopComposePath, "utf8")
 for (const requiredFragment of [
-  "TRAEFIK_PROVIDERS_FILE_DIRECTORY: /etc/traefik/dynamic",
   "./cloudflare-aop.dynamic.yml:/etc/traefik/dynamic/cloudflare-aop.yml:ro",
   "${SIAB_CLOUDFLARE_AOP_CA_FILE:?required}:/run/secrets/siteinabox-cloudflare-aop-ca.pem:ro",
 ]) {
   if (!traefikAopCompose.includes(requiredFragment)) {
     errors.push(`${formatPath(traefikAopComposePath)} is missing platform AOP deployment contract: ${requiredFragment}`)
+  }
+}
+const traefikAopStaticFlags = await readFile(traefikAopStaticFlagsPath, "utf8")
+for (const requiredFragment of [
+  "--providers.file.directory=/etc/traefik/dynamic",
+  "--providers.file.watch=true",
+]) {
+  if (!traefikAopStaticFlags.split("\n").includes(requiredFragment)) {
+    errors.push(
+      `${formatPath(traefikAopStaticFlagsPath)} is missing required Traefik static flag: ${requiredFragment}`,
+    )
   }
 }
 for (const forbiddenFragment of [
