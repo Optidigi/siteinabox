@@ -200,6 +200,33 @@ describe("Phase 11 commerce failure rehearsals", () => {
     }))
   })
 
+  it("keeps an indeterminate payment blocked when provider recovery finds zero matches", async () => {
+    const attempt = paymentAttempt()
+    const store = createPayloadStore({ attempts: [attempt] })
+
+    await expect(recoverMissingMolliePaymentReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMolliePayments: vi.fn(async () => []),
+    }, NOW)).resolves.toEqual({
+      examined: 1,
+      recoveredPaymentIds: [],
+    })
+
+    expect(attempt).toMatchObject({
+      state: "pending_provider",
+      reconciliationRequired: true,
+    })
+    expect(attempt).not.toHaveProperty("providerPaymentId")
+    expect(store.collections["operational-alerts"]).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        dedupeKey:
+          "commerce:payments:missing_mollie_webhook_or_reference:10",
+        metadata: {},
+      }),
+    )
+  })
+
   it("halts on duplicate provider matches instead of attaching an arbitrary payment", async () => {
     const attempt = paymentAttempt()
     const store = createPayloadStore({ attempts: [attempt] })

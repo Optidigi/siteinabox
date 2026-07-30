@@ -40,9 +40,7 @@ import {
   retrieveMollieMandate,
   retrieveMolliePayment,
   type MollieAmount,
-  type MollieChargeback,
   type MolliePayment,
-  type MollieRefund,
 } from "@/lib/payments/mollieAdapter"
 import {
   normalizeGenerationRunPaymentState,
@@ -50,6 +48,18 @@ import {
   type GenerationRunPaymentStatus,
 } from "@/lib/payments/generationRunPayment"
 import { frozenOrderAmounts } from "@/lib/payments/frozenOrderAmounts"
+import {
+  classifyMollieCreationError,
+  classifyMollieRefundError,
+  confirmedRefunds,
+  failedRefunds,
+  generationProjectionStatus,
+  mollieAmountMinor,
+  paymentStateFromMollie,
+  pendingRefunds,
+  targetAttemptState,
+  totalMollieAdjustmentMinor,
+} from "@/lib/payments/paymentDecisions"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import {
   ensureCommerceNotification,
@@ -133,13 +143,6 @@ const selectedDomainFromOrder = (value: unknown): string | null => {
 
 const isApproved = (run: SiteGenerationRun): boolean =>
   (run.clientApproval as { status?: unknown } | null | undefined)?.status === "approved"
-
-const minorAmount = (amount: MollieAmount | null | undefined): number | null => {
-  if (!amount || amount.currency !== "EUR" || !/^\d+\.\d{2}$/.test(amount.value)) return null
-  const [whole, fraction] = amount.value.split(".")
-  const value = Number(whole) * 100 + Number(fraction)
-  return Number.isSafeInteger(value) && value >= 0 ? value : null
-}
 
 const mollieAmount = (minor: number, currency: string): MollieAmount => {
   if (!Number.isSafeInteger(minor) || minor < 0) {
@@ -576,15 +579,13 @@ const markProviderWriteIndeterminate = async (
   error: unknown,
 ): Promise<void> => {
   const now = new Date().toISOString()
-  const knownRejected = error instanceof MollieApiError &&
-    error.status >= 400 &&
-    error.status < 500 &&
-    error.status !== 409
+  const classification = classifyMollieCreationError(error)
+  const knownRejected = classification.outcome === "deterministic_rejection"
   await updateAttempt(payload, attempt, {
     state: knownRejected ? "failed" : "pending_provider",
     reconciliationRequired: !knownRejected,
     failedAt: knownRejected ? now : undefined,
-    failureCode: knownRejected ? `mollie_http_${error.status}` : "provider_write_indeterminate",
+    failureCode: classification.providerCode,
     failureMessage: error instanceof Error ? error.message : "Mollie provider write failed.",
     stateHistory: stateHistory(
       attempt.stateHistory,
@@ -1202,10 +1203,8 @@ export async function createApplicationRecurringMolliePayment(
     return { paymentAttempt: attempt, reused: false }
   } catch (error) {
     await markProviderWriteIndeterminate(payload, attempt, error)
-    const knownRejected = error instanceof MollieApiError &&
-      error.status >= 400 &&
-      error.status < 500 &&
-      error.status !== 409
+    const classification = classifyMollieCreationError(error)
+    const knownRejected = classification.outcome === "deterministic_rejection"
     if (knownRejected && claimedAgreement.updatedAt) {
       await payload.update({
         collection: "billing-agreements",
@@ -1484,151 +1483,6 @@ export async function createMandateRecoveryMolliePayment(
   }
 }
 
-const paymentStateFromMollie = (status: string): PaymentAttemptState => {
-  if (status === "paid") return "paid"
-  if (status === "authorized") return "authorized"
-  if (status === "canceled") return "cancelled"
-  if (status === "expired") return "expired"
-  if (status === "failed") return "failed"
-  return "pending_provider"
-}
-
-const generationProjectionStatus = (state: PaymentAttemptState): GenerationRunPaymentStatus => {
-  if (["paid", "refund_pending", "partially_refunded", "refunded", "refund_failed", "chargeback"].includes(state)) {
-    return "completed"
-  }
-  if (state === "cancelled") return "canceled"
-  if (state === "expired") return "expired"
-  if (state === "failed") return "failed"
-  return "pending_provider"
-}
-
-const confirmedRefunds = (payment: MolliePayment): MollieRefund[] =>
-  (payment._embedded?.refunds ?? []).filter((refund) => refund.status === "refunded")
-
-const pendingRefunds = (payment: MolliePayment): MollieRefund[] =>
-  (payment._embedded?.refunds ?? []).filter((refund) =>
-    ["queued", "pending", "processing"].includes(refund.status),
-  )
-
-const failedRefunds = (payment: MolliePayment): MollieRefund[] =>
-  (payment._embedded?.refunds ?? []).filter((refund) =>
-    ["failed", "canceled"].includes(refund.status),
-  )
-
-const totalMinor = (
-  entries: Array<MollieRefund | MollieChargeback>,
-  expectedCurrency: string,
-): number =>
-  entries.reduce((total, entry) => {
-    const amount = minorAmount(entry.amount)
-    if (amount == null || entry.amount.currency !== expectedCurrency) {
-      throw new Error("Mollie adjustment amount does not match the payment currency.")
-    }
-    return total + amount
-  }, 0)
-
-const targetAttemptState = (
-  attempt: PaymentAttempt,
-  payment: MolliePayment,
-): {
-  state: PaymentAttemptState
-  refundedAmountMinor: number
-  chargebackAmountMinor: number
-  reconciliationRequired: boolean
-} => {
-  const refunds = confirmedRefunds(payment)
-  const refundsPending = pendingRefunds(payment)
-  const refundsFailed = failedRefunds(payment)
-  const chargebacks = payment._embedded?.chargebacks ?? []
-  const refundedAmountMinor = totalMinor(refunds, attempt.currency)
-  const chargebackAmountMinor = totalMinor(chargebacks, attempt.currency)
-  const amountInvalid =
-    refundedAmountMinor > attempt.grossAmountMinor ||
-    chargebackAmountMinor > attempt.grossAmountMinor ||
-    refundedAmountMinor + chargebackAmountMinor > attempt.grossAmountMinor
-  if (chargebackAmountMinor > 0) {
-    return {
-      state: "chargeback",
-      refundedAmountMinor,
-      chargebackAmountMinor,
-      reconciliationRequired: amountInvalid,
-    }
-  }
-  if (refundsPending.length > 0) {
-    return {
-      state: "refund_pending",
-      refundedAmountMinor,
-      chargebackAmountMinor,
-      reconciliationRequired: amountInvalid,
-    }
-  }
-  if (refundedAmountMinor >= attempt.grossAmountMinor && attempt.grossAmountMinor > 0) {
-    return {
-      state: "refunded",
-      refundedAmountMinor: Math.min(refundedAmountMinor, attempt.grossAmountMinor),
-      chargebackAmountMinor,
-      reconciliationRequired: amountInvalid,
-    }
-  }
-  if (refundedAmountMinor > 0) {
-    return {
-      state: "partially_refunded",
-      refundedAmountMinor,
-      chargebackAmountMinor,
-      reconciliationRequired: amountInvalid,
-    }
-  }
-  if (
-    refundsFailed.length > 0 &&
-    (attempt.state === "refund_pending" || attempt.state === "refund_failed")
-  ) {
-    return {
-      state: "refund_failed",
-      refundedAmountMinor,
-      chargebackAmountMinor,
-      reconciliationRequired: false,
-    }
-  }
-  if ([
-    "refund_pending",
-    "partially_refunded",
-    "refunded",
-    "refund_failed",
-    "chargeback",
-  ].includes(attempt.state)) {
-    return {
-      state: attempt.state,
-      refundedAmountMinor: attempt.refundedAmountMinor ?? refundedAmountMinor,
-      chargebackAmountMinor: attempt.chargebackAmountMinor ?? chargebackAmountMinor,
-      reconciliationRequired: true,
-    }
-  }
-  const providerState = paymentStateFromMollie(payment.status)
-  const capturedStates: PaymentAttemptState[] = [
-    "paid",
-    "refund_pending",
-    "partially_refunded",
-    "refunded",
-    "refund_failed",
-    "chargeback",
-  ]
-  if (capturedStates.includes(attempt.state) && providerState !== "paid") {
-    return {
-      state: attempt.state,
-      refundedAmountMinor,
-      chargebackAmountMinor,
-      reconciliationRequired: true,
-    }
-  }
-  return {
-    state: providerState,
-    refundedAmountMinor,
-    chargebackAmountMinor,
-    reconciliationRequired: false,
-  }
-}
-
 const transitionAttemptState = async (
   payload: Payload,
   attempt: PaymentAttempt,
@@ -1877,7 +1731,7 @@ const synchronizeBillingAgreement = async (
     })
     return
   }
-  const pendingRefundAmountMinor = totalMinor(
+  const pendingRefundAmountMinor = totalMollieAdjustmentMinor(
     pendingRefunds(payment),
     attempt.currency,
   )
@@ -2520,7 +2374,7 @@ const synchronizeAccountingEvidence = async (
     return
   }
   for (const refund of confirmedRefunds(payment)) {
-    const grossAmountMinor = minorAmount(refund.amount)
+    const grossAmountMinor = mollieAmountMinor(refund.amount)
     if (grossAmountMinor == null) continue
     const pendingDocumentId = refund.metadata?.accountingDocumentId
     if (typeof pendingDocumentId === "string" || typeof pendingDocumentId === "number") {
@@ -2633,7 +2487,7 @@ const synchronizeAccountingEvidence = async (
     })
   }
   for (const chargeback of payment._embedded?.chargebacks ?? []) {
-    const grossAmountMinor = minorAmount(chargeback.amount)
+    const grossAmountMinor = mollieAmountMinor(chargeback.amount)
     if (grossAmountMinor == null) continue
     if (duplicatePayment) {
       await ensureRefundPaymentAdjustment({
@@ -2762,7 +2616,7 @@ export async function synchronizeMolliePayment(
     throw new IgnorableMollieWebhookError("Payment attempt provider reference does not match Mollie.")
   }
   await assertProviderPaymentAuthority(payload, attempt, payment)
-  const providerAmountMinor = minorAmount(payment.amount)
+  const providerAmountMinor = mollieAmountMinor(payment.amount)
   if (
     providerAmountMinor == null ||
     providerAmountMinor !== attempt.grossAmountMinor ||
@@ -3268,11 +3122,9 @@ async function requestMollieRefundLocked(
     })
     return { document, providerRefundId: refund.id, reused: false }
   } catch (error) {
-    const safeRetry = error instanceof MollieApiError && error.status === 503
-    const knownRejected = error instanceof MollieApiError &&
-      error.status >= 400 &&
-      error.status < 500 &&
-      error.status !== 409
+    const classification = classifyMollieRefundError(error)
+    const safeRetry = classification.outcome === "confirmed_safe_retry"
+    const knownRejected = classification.outcome === "deterministic_rejection"
     document = await payload.update({
       collection: "accounting-documents",
       id: document.id,
@@ -3296,9 +3148,7 @@ async function requestMollieRefundLocked(
     await updateAttempt(payload, attempt, {
       state: knownRejected ? "refund_failed" : "refund_pending",
       reconciliationRequired: !knownRejected && !safeRetry,
-      failureCode: knownRejected
-        ? `mollie_http_${error.status}`
-        : safeRetry ? "refund_write_safe_retry" : "refund_write_indeterminate",
+      failureCode: classification.providerCode,
       failureMessage: error instanceof Error ? error.message : "Mollie refund creation failed.",
       lastSyncedAt: now,
       stateHistory: stateHistory(
