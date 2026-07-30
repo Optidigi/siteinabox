@@ -54,7 +54,8 @@ Site in a Box builds and hosts the website in its own system. Customers can edit
 ## Contact and company details
 
 - E-mail: info@siteinabox.nl
-- WhatsApp/phone: +31 6 25052591
+- Telefoon: 085 083 5858
+- WhatsApp: https://wa.me/31625052591
 - Company: Site in a Box, a trade name of Optidigi
 - Location: Roermond, the Netherlands
 - KvK: 99460165

@@ -130,6 +130,25 @@ test('interactive controls remain accessible', async ({ page }) => {
     (element) => getComputedStyle(element).animationDuration,
   );
   expect(marqueeDuration).not.toBe('0s');
+  const marqueeGeometry = await page.locator('.siab-marquee-track').evaluate((element) => {
+    const groups = Array.from(element.querySelectorAll<HTMLElement>('[data-marquee-group]'));
+    return {
+      groupWidths: groups.map((group) => group.getBoundingClientRect().width),
+      trackWidth: element.getBoundingClientRect().width,
+      trackMask: getComputedStyle(element).maskImage,
+      viewportMask: getComputedStyle(element.parentElement!).maskImage,
+      decorativeCopyHidden: element.parentElement?.getAttribute('aria-hidden'),
+    };
+  });
+  expect(marqueeGeometry.groupWidths).toHaveLength(2);
+  expect(Math.abs(marqueeGeometry.groupWidths[0] - marqueeGeometry.groupWidths[1])).toBeLessThan(0.1);
+  expect(Math.abs(
+    marqueeGeometry.trackWidth - marqueeGeometry.groupWidths[0] - marqueeGeometry.groupWidths[1],
+  )).toBeLessThan(0.1);
+  expect(marqueeGeometry.trackMask).toBe('none');
+  expect(marqueeGeometry.viewportMask).not.toBe('none');
+  expect(marqueeGeometry.decorativeCopyHidden).toBe('true');
+  await expect(page.getByText('Voor deze beroepen werken wij:', { exact: false })).toHaveClass(/sr-only/);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
   const reducedDuration = await page.locator('.siab-marquee-track').evaluate(
@@ -137,6 +156,44 @@ test('interactive controls remain accessible', async ({ page }) => {
   );
   expect(reducedDuration).toBeLessThanOrEqual(0.001);
   expect(runtimeErrors).toEqual([]);
+});
+
+test('call and WhatsApp channels stay distinct and trackable', async ({ page }) => {
+  await page.goto('/');
+
+  const footerCall = page.locator(
+    'a[data-analytics-action="contact_phone"][data-analytics-placement="footer_help"]',
+  );
+  await expect(footerCall).toHaveAttribute('href', 'tel:+31850835858');
+  await expect(footerCall).toContainText('Bel ons gerust');
+  await expect(footerCall).toContainText('085 083 5858');
+  await expect(footerCall).toHaveAttribute('data-analytics-destination', 'phone');
+  await expect(footerCall).toHaveAttribute('data-analytics-conversion-source', 'contact_click');
+
+  const footerWhatsApp = page.locator(
+    'a[data-analytics-action="contact_whatsapp"][data-analytics-placement="footer_help"]',
+  );
+  await expect(footerWhatsApp).toHaveAttribute('href', 'https://wa.me/31625052591');
+  await expect(footerWhatsApp).toContainText('Stuur ons een bericht');
+  await expect(footerWhatsApp).not.toContainText('085 083 5858');
+  await expect(footerWhatsApp).toHaveAttribute('data-analytics-destination', 'whatsapp');
+  await expect(footerWhatsApp).toHaveAttribute('data-analytics-conversion-source', 'contact_click');
+
+  await expect(page.locator('[data-consent-settings]')).toHaveCSS('cursor', 'pointer');
+
+  await page.goto('/contact');
+  const contactCall = page.locator(
+    'a[data-analytics-action="contact_phone"][data-analytics-placement="contact_page"]',
+  );
+  const contactWhatsApp = page.locator(
+    'a[data-analytics-action="contact_whatsapp"][data-analytics-placement="contact_page"]',
+  );
+  await expect(contactCall).toHaveAttribute('href', 'tel:+31850835858');
+  await expect(contactCall).toContainText('085 083 5858');
+  await expect(contactWhatsApp).toHaveAttribute('href', 'https://wa.me/31625052591');
+  await expect(contactWhatsApp).toContainText('Stuur ons een bericht');
+  await expect(contactCall).toHaveAttribute('data-analytics-conversion', 'true');
+  await expect(contactWhatsApp).toHaveAttribute('data-analytics-conversion', 'true');
 });
 
 test('compact header and process cards keep their responsive geometry', async ({ page }) => {

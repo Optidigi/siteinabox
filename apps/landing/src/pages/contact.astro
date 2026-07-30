@@ -8,9 +8,9 @@ import { Card } from '../components/ui/card';
 import { site } from '../content/site';
 
 const contacts = [
-  { label: 'E-mail', value: 'info@siteinabox.nl', href: 'mailto:info@siteinabox.nl', destination: 'email', action: 'contact_email', color: 'text-cyan', paths: ['M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'm3 7 9 6 9-6'] },
-  { label: 'WhatsApp', value: '+31 6 25052591', href: site.links.whatsapp, destination: 'whatsapp', action: 'contact_whatsapp', color: 'text-green', paths: ['M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z', 'M9 10v-1a.5.5 0 0 1 1 0v1a5 5 0 0 0 5 5'] },
-  { label: 'Telefoon', value: '+31 6 25052591', href: site.links.phone, destination: 'phone', action: 'contact_phone', color: 'text-orange', paths: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.95.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.86.58 2.81.7A2 2 0 0 1 22 16.92z'] },
+  { label: 'E-mail', value: site.contact.email, href: site.links.email, destination: 'email', action: 'contact_email', color: 'text-cyan', paths: ['M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'm3 7 9 6 9-6'] },
+  { label: 'WhatsApp', value: site.contact.whatsapp.display, href: site.links.whatsapp, destination: 'whatsapp', action: 'contact_whatsapp', color: 'text-green', paths: ['M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z', 'M9 10v-1a.5.5 0 0 1 1 0v1a5 5 0 0 0 5 5'] },
+  { label: 'Telefoon', value: site.contact.phone.display, href: site.links.phone, destination: 'phone', action: 'contact_phone', color: 'text-orange', paths: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.95.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.86.58 2.81.7A2 2 0 0 1 22 16.92z'] },
 ];
 ---
 
@@ -36,7 +36,7 @@ const contacts = [
           <p class="mb-5 font-head text-sm font-bold uppercase tracking-[.16em] text-muted-foreground">Direct contact</p>
           <div class="grid gap-1">
             {contacts.map((contact) => (
-              <a href={contact.href} class="flex min-h-14 items-center gap-4 py-2 font-medium hover:underline hover:underline-offset-4" data-analytics-component={`cta-${contact.action}-contact-page`} data-analytics-component-type="cta" data-analytics-component-role="contact" data-analytics-action={contact.action} data-analytics-placement="contact_page" data-analytics-destination={contact.destination}>
+              <a href={contact.href} class="flex min-h-14 items-center gap-4 py-2 font-medium hover:underline hover:underline-offset-4" data-analytics-component={`cta-${contact.action}-contact-page`} data-analytics-component-type="cta" data-analytics-component-role="contact" data-analytics-action={contact.action} data-analytics-placement="contact_page" data-analytics-destination={contact.destination} data-analytics-conversion="true" data-analytics-conversion-source="contact_click">
                 <svg class:list={['size-6 shrink-0', contact.color]} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">{contact.paths.map((path) => <path d={path}></path>)}</svg>
                 <span class="sr-only">{contact.label}: </span><span>{contact.value}</span>
               </a>

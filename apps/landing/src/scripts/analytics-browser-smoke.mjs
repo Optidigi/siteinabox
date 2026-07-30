@@ -200,10 +200,10 @@ try {
     assert.equal(consentChrome.borderRadius, "0px")
     assert.notEqual(consentChrome.boxShadow, "none")
     assert.equal(consentChrome.acceptBackground, "rgb(245, 233, 0)")
-    assert.equal(consentChrome.rejectBackground, "rgb(255, 255, 255)")
+    assert.equal(consentChrome.rejectBackground, "rgba(0, 0, 0, 0)")
     assert.notEqual(consentChrome.rejectBackground, consentChrome.acceptBackground)
-    assert.equal(consentChrome.rejectShadow, "none")
-    assert.notEqual(consentChrome.rejectShadow, consentChrome.acceptShadow)
+    assert.notEqual(consentChrome.rejectShadow, "none")
+    assert.notEqual(consentChrome.acceptShadow, "none")
     assert.equal(consentChrome.rejectHeight, consentChrome.acceptHeight)
     assert.equal(consentChrome.rejectWidth, consentChrome.acceptWidth)
     assert.ok(consentChrome.acceptHeight >= 44, "accept target remains at least 44px high")
@@ -375,7 +375,7 @@ try {
     await installLandingRoute(rejectedPage, publicOrigin, landingOrigin)
     await installGoogleAnalyticsRoute(rejectedPage, rejectedGoogleAnalyticsRequests)
     await rejectedPage.goto(`${publicOrigin}/?token=must-not-leak`, { waitUntil: "networkidle", timeout: 60_000 })
-    const mobileActions = await rejectedPage.locator(".siab-cookie-consent__actions").evaluate((element) => ({
+    const mobileActions = await rejectedPage.locator("[data-consent-actions]").evaluate((element) => ({
       display: getComputedStyle(element).display,
       columns: getComputedStyle(element).gridTemplateColumns,
       width: element.getBoundingClientRect().width,

@@ -1,0 +1,50 @@
+---
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../ui/card';
+import { Button } from '../ui/button';
+---
+
+<Card
+  as="aside"
+  className="fixed inset-x-4 bottom-4 z-[10000] mx-auto w-auto max-w-[58rem] overflow-visible p-4 shadow-lg [&[hidden]]:hidden sm:inset-x-6 sm:bottom-6 sm:p-5 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6"
+  data-siab-cookie-consent="true"
+  aria-labelledby="siab-cookie-consent-title"
+  aria-describedby="siab-cookie-consent-description"
+>
+  <div class="flex min-w-0 items-start gap-4 sm:items-center">
+    <span
+      class="hidden size-13 shrink-0 place-items-center border-2 border-border bg-yellow text-black shadow-sm min-[421px]:grid"
+      aria-hidden="true"
+    >
+      <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3a3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3 3 9 9 0 1 1-9-9Z"></path>
+        <path d="M8 8h.01M8 14h.01M14 14h.01M14 18h.01"></path>
+      </svg>
+    </span>
+    <CardHeader className="min-w-0 flex-1 gap-1.5 p-0">
+      <CardTitle id="siab-cookie-consent-title" className="font-head text-xl font-bold">
+        Cookies en privacy
+      </CardTitle>
+      <CardDescription id="siab-cookie-consent-description" className="text-sm leading-relaxed sm:text-[15px]">
+        We maken Site in a Box graag steeds beter. Met jouw toestemming gebruiken we daarvoor analytische cookies.
+        <a class="font-bold text-inherit underline decoration-dashed underline-offset-4" href="/privacy-en-cookieverklaring">Lees ons cookiebeleid</a>.
+      </CardDescription>
+    </CardHeader>
+  </div>
+  <CardFooter
+    className="mt-4 grid grid-cols-2 gap-3 border-0 bg-transparent p-0 md:mt-0 md:flex md:shrink-0"
+    data-consent-actions
+  >
+    <Button className="min-h-12 w-full px-5 text-sm md:w-32" variant="outline" type="button" data-consent-action="reject">
+      Weigeren
+    </Button>
+    <Button className="min-h-12 w-full px-5 text-sm md:w-32" type="button" data-consent-action="accept">
+      Accepteren
+    </Button>
+  </CardFooter>
+</Card>

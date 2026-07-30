@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import Seo from '../components/seo/Seo.astro';
 import JsonLdGraph from '../components/seo/JsonLdGraph.astro';
-import { Button } from '../components/ui/button';
+import CookieConsent from '../components/siab/CookieConsent.astro';
 import { site } from '../content/site';
 import { matchesApprovedPublicAnalyticsConsent, publicAnalyticsConsentApproval } from '@siteinabox/legal-content/consent-approval';
 
@@ -82,34 +82,7 @@ const analyticsConfig = posthogProjectToken && matchesApprovedPublicAnalyticsCon
       <slot />
     </div>
 
-    {analyticsConfig && (
-      <aside
-        class="siab-cookie-consent"
-        data-siab-cookie-consent="true"
-        aria-labelledby="siab-cookie-consent-title"
-        aria-describedby="siab-cookie-consent-description"
-      >
-        <div class="siab-cookie-consent__content">
-          <span class="siab-cookie-consent__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3a3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3 3 9 9 0 1 1-9-9Z" />
-              <path d="M8 8h.01M8 14h.01M14 14h.01M14 18h.01" />
-            </svg>
-          </span>
-          <div>
-            <strong id="siab-cookie-consent-title">Cookies en privacy</strong>
-            <p id="siab-cookie-consent-description">
-              Wij en onze partners gebruiken cookies en vergelijkbare technologieën om je ervaring te verbeteren en te analyseren hoe onze website wordt gebruikt.
-              <a href="/privacy-en-cookieverklaring">Lees ons cookiebeleid</a>.
-            </p>
-          </div>
-        </div>
-        <div class="siab-cookie-consent__actions">
-          <Button className="siab-cookie-consent__reject" variant="ghost" type="button" data-consent-action="reject">Weigeren</Button>
-          <Button className="siab-cookie-consent__accept" type="button" data-consent-action="accept">Accepteren</Button>
-        </div>
-      </aside>
-    )}
+    {analyticsConfig && <CookieConsent />}
 
     <script>
       import '../scripts/analytics';

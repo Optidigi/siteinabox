@@ -45,7 +45,10 @@ const canonicalPath = isCurrentAlias ? document.stablePath : document.permanentP
           </>
         )}
       </div>
-      <article class="legal-copy" set:html={document.html} />
+      <article
+        class="prose prose-lg max-w-none text-foreground dark:prose-invert prose-headings:font-head prose-headings:text-foreground prose-h1:mb-5 prose-h1:text-[clamp(2.6rem,7vw,5rem)] prose-h1:leading-none prose-h2:mt-14 prose-h2:border-t prose-h2:border-border prose-h2:pt-5 prose-h2:text-3xl prose-h3:mt-8 prose-h3:text-2xl prose-p:leading-[1.72] prose-li:leading-[1.72] prose-ul:list-square prose-table:my-6 prose-table:block prose-table:w-full prose-table:overflow-x-auto prose-th:min-w-45 prose-th:border prose-th:border-border prose-th:bg-card prose-th:px-3.5 prose-th:py-3 prose-th:text-left prose-th:align-top prose-td:min-w-45 prose-td:border prose-td:border-border prose-td:px-3.5 prose-td:py-3 prose-td:align-top"
+        set:html={document.html}
+      />
       <footer class="mt-16 border-t-2 border-border pt-5 text-xs text-muted-foreground">
         <p class="mb-2">Document-ID: {document.documentVersion}</p>
         <p class="mb-2 break-all">SHA-256: <code>{document.contentHash.replace('sha256:', '')}</code></p>

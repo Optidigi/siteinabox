@@ -2,14 +2,14 @@
 import { site } from '../../content/site';
 const year = new Date().getFullYear();
 const contacts = [
-  { title: 'Stuur een mail', value: 'info@siteinabox.nl', href: site.links.email, color: 'text-cyan', icon: 'mail', action: 'contact_email', destination: 'email', conversion: 'contact_click' },
-  { title: 'Chat via WhatsApp', value: '+31 6 25052591', href: site.links.whatsapp, color: 'text-green', icon: 'whatsapp', action: 'contact_whatsapp', destination: 'whatsapp', conversion: 'contact_click' },
-  { title: 'Start je website', value: 'Intakeformulier', href: site.links.intake, color: 'text-orange', icon: 'chat', action: 'start_intake', destination: 'intake', conversion: 'intake_handoff' },
+  { title: 'Stuur een mail', value: site.contact.email, href: site.links.email, color: 'text-cyan', icon: 'mail', action: 'contact_email', destination: 'email' },
+  { title: 'Chat via WhatsApp', value: site.contact.whatsapp.display, href: site.links.whatsapp, color: 'text-green', icon: 'whatsapp', action: 'contact_whatsapp', destination: 'whatsapp' },
+  { title: 'Bel ons gerust', value: site.contact.phone.display, href: site.links.phone, color: 'text-orange', icon: 'phone', action: 'contact_phone', destination: 'phone' },
 ];
 ---
 
 <footer class="relative z-10 overflow-hidden bg-black pb-[30px] pt-[60px] text-lg leading-[1.5] text-white/70 dark:bg-[#190713] lg:pb-20 lg:pt-[100px]" aria-label="Sitevoettekst" data-analytics-section="footer" data-analytics-position="9">
-  <div class="site-container site-container--legacy-lg">
+  <div class="site-container site-container--wide">
     <div class="mb-10 lg:mb-[90px]">
       <h2 class="mb-0 text-[35px] !font-semibold leading-[1.138] text-white min-[1200px]:mb-[30px] min-[1200px]:!text-[44px] min-[1400px]:!text-[62px]">Hulp nodig?</h2>
       <div class="grid gap-6 min-[1400px]:gap-12 lg:grid-cols-3">
@@ -23,14 +23,14 @@ const contacts = [
             data-analytics-placement="footer_help"
             data-analytics-destination={contact.destination}
             data-analytics-conversion="true"
-            data-analytics-conversion-source={contact.conversion}
+            data-analytics-conversion-source="contact_click"
             class="mt-[25px] flex min-h-[114px] items-center gap-5 border-2 border-white/60 bg-white/[.07] px-5 py-[25px] text-left text-inherit shadow-[4px_4px_0_rgba(255,255,255,.2)] transition-[transform,box-shadow,background-color] duration-150 hover:translate-x-0.5 hover:translate-y-0.5 hover:bg-white/[.12] hover:shadow-[2px_2px_0_rgba(255,255,255,.2)] dark:shadow-[4px_4px_0_#5a2b46] dark:hover:shadow-[2px_2px_0_#5a2b46] min-[1400px]:min-h-[150px] min-[1400px]:px-[35px] min-[1400px]:py-10"
           >
             <span class:list={['grid size-14 shrink-0 place-items-center rounded-full bg-white/[.12]', contact.color]} aria-hidden="true">
               <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 {contact.icon === 'mail' && <><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="m3 7 9 6 9-6"></path></>}
                 {contact.icon === 'whatsapp' && <><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z"></path><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1"></path></>}
-                {contact.icon === 'chat' && <><path d="M3 20l1.3-3.9a9 9 0 1 1 3.4 2.9z"></path><path d="M8 12h.01M12 12h.01M16 12h.01"></path></>}
+                {contact.icon === 'phone' && <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.95.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.86.58 2.81.7A2 2 0 0 1 22 16.92z"></path>}
               </svg>
             </span>
             <span class="min-w-0 text-white/75">
@@ -42,7 +42,7 @@ const contacts = [
       </div>
     </div>
 
-    <div class="siab-footer-links grid gap-10 md:grid-cols-3 lg:-mx-3 lg:flex lg:flex-wrap lg:justify-between lg:gap-0 [&_nav_a]:font-medium [&_nav_a]:leading-[50px]">
+    <div class="siab-footer-links grid gap-10 md:grid-cols-3 lg:-mx-3 lg:flex lg:flex-wrap lg:justify-between lg:gap-0 [&_nav_a]:font-medium [&_nav_a]:leading-[50px] [&_nav_button]:font-medium [&_nav_button]:leading-[50px]">
       <div class="lg:w-1/4 lg:px-3">
         <a href="/" aria-label="Site in a Box — naar homepage" data-analytics-action="navigate_home" data-analytics-placement="footer" data-analytics-destination="home">
           <img src="/theme/images/logo/siab_logo_dark.svg" alt="Site in a Box" width="160" height="80" class="h-[clamp(44px,3vw,56px)] w-auto" />
@@ -66,8 +66,8 @@ const contacts = [
         <h3 class="mb-[15px] text-base font-bold uppercase leading-6 !tracking-[.06em] text-white/75">Contact</h3>
         <ul class="text-white/75">
           <li><a class="hover:text-white hover:underline" href="/contact" data-analytics-action="open_contact_form" data-analytics-placement="footer_navigation" data-analytics-destination="contact_form">Contactformulier</a></li>
-          <li><a class="hover:text-white hover:underline" href={site.links.email} data-analytics-action="contact_email" data-analytics-placement="footer_navigation" data-analytics-destination="email">info@siteinabox.nl</a></li>
-          <li><a class="hover:text-white hover:underline" href={site.links.whatsapp} data-analytics-action="contact_whatsapp" data-analytics-placement="footer_navigation" data-analytics-destination="whatsapp">WhatsApp</a></li>
+          <li><a class="hover:text-white hover:underline" href={site.links.email} data-analytics-action="contact_email" data-analytics-placement="footer_navigation" data-analytics-destination="email" data-analytics-conversion="true" data-analytics-conversion-source="contact_click">info@siteinabox.nl</a></li>
+          <li><a class="hover:text-white hover:underline" href={site.links.whatsapp} data-analytics-action="contact_whatsapp" data-analytics-placement="footer_navigation" data-analytics-destination="whatsapp" data-analytics-conversion="true" data-analytics-conversion-source="contact_click">WhatsApp</a></li>
           {site.socials.instagram && <li><a class="hover:text-white hover:underline" href={site.socials.instagram} rel="noopener" target="_blank" data-analytics-action="open_instagram" data-analytics-placement="footer_navigation" data-analytics-destination="social">Instagram</a></li>}
         </ul>
       </nav>
@@ -76,7 +76,7 @@ const contacts = [
         <ul class="text-white/75">
           <li><a class="hover:text-white hover:underline" href="/algemene-voorwaarden" data-analytics-action="open_terms" data-analytics-placement="footer_legal" data-analytics-destination="legal">Algemene voorwaarden</a></li>
           <li><a class="hover:text-white hover:underline" href="/privacy-en-cookieverklaring" data-analytics-action="open_privacy" data-analytics-placement="footer_legal" data-analytics-destination="legal">Privacy en cookies</a></li>
-          <li><button type="button" class="hover:text-white hover:underline" data-consent-settings>Cookie-instellingen</button></li>
+          <li><button type="button" class="cursor-pointer text-left hover:text-white hover:underline" data-consent-settings>Cookie-instellingen</button></li>
         </ul>
       </nav>
     </div>
