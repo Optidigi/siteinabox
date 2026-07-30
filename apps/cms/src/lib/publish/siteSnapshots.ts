@@ -35,8 +35,6 @@ import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { isActivationPaymentSatisfied } from "@/lib/payments/generationRunPayment"
-import { hasVerifiedTenantSender } from "@/lib/tenants/emailSending"
-import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSendingRefresh"
 import type { PublicAnalyticsConfigInput } from "@/lib/analytics/config"
 import type { PageAnalyticsProjectionContext } from "@/lib/projection/pageToJson"
 import type { SettingsAnalyticsProjectionContext } from "@/lib/projection/settingsToJson"
@@ -183,10 +181,6 @@ export function canActivatePublishedSnapshot(
   const tenantAlreadyLive = options.tenant?.status === "active"
   if (options.tenant && domainVerificationStatus !== "verified" && !tenantAlreadyLive) {
     return { ok: false, reason: "Activation requires verified domain ownership." }
-  }
-
-  if (run && !hasVerifiedTenantSender(options.tenant)) {
-    return { ok: false, reason: "Generated-site activation requires verified tenant email sending." }
   }
 
   if (options.manualActivation) return { ok: true }
@@ -446,16 +440,13 @@ export async function activatePublishedSnapshot(
   })
   const tenantId = relationshipId(snapshotDoc.tenant)
   if (!tenantId) throw new Error("Published snapshot is missing a tenant.")
-  let tenant = await getTenant(payload, tenantId, options.req)
+  const tenant = await getTenant(payload, tenantId, options.req)
   if (normalizeRequestHost(snapshotDoc.domain) !== normalizeRequestHost(tenant.domain)) {
     throw new Error("Cannot activate a snapshot for a tenant domain that has changed.")
   }
 
   const runId = relationshipId(snapshotDoc.sourceGenerationRun)
   const run = await getGenerationRun(payload, runId, options.req)
-  if (run && !hasVerifiedTenantSender(tenant)) {
-    tenant = await refreshTenantEmailSendingFromCloudflare(payload, tenant)
-  }
   const gate = canActivatePublishedSnapshot(run, { manualActivation: options.manualActivation, tenant })
   if (!gate.ok) throw new Error(gate.reason)
 

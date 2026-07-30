@@ -36,6 +36,7 @@ export const reconcileCommerceTask: TaskConfig<{
       { recordCommerceAdminException, resolveCommerceAdminException },
       { reconcileCommerceEdgeRouting },
       { expireCloudflareSourceAuthorizations },
+      { reconcileTenantEmailSending },
       {
         alertOnStaleMollieSynchronization,
         recoverMissingMolliePaymentReferences,
@@ -51,6 +52,7 @@ export const reconcileCommerceTask: TaskConfig<{
       import("@/lib/commerce/alerts"),
       import("@/lib/domains/edgeRouting"),
       import("@/lib/domains/cloudflareSourceOAuth"),
+      import("@/lib/tenants/emailSendingRefresh"),
       import("@/lib/commerce/reconciliation"),
     ])
     const now = new Date()
@@ -58,6 +60,9 @@ export const reconcileCommerceTask: TaskConfig<{
     const edgeRoutingResult = providerWritesAllowed
       ? await reconcileCommerceEdgeRouting(req.payload)
       : null
+    if (providerWritesAllowed) {
+      await reconcileTenantEmailSending(req.payload)
+    }
     if (!providerWritesAllowed) {
       await resolveCommerceAdminException({
         payload: req.payload,

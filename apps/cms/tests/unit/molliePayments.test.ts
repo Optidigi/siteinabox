@@ -4107,14 +4107,10 @@ describe("Mollie payment flow", () => {
       emailSending: {
         provider: "cloudflare",
         mode: "subdomain",
-        status: "verified",
+        status: "not_configured",
         sendingDomain: `mail.${selectedDomain}`,
         senderEmail: `noreply@mail.${selectedDomain}`,
         cloudflareZoneId: "zone_123",
-        cloudflareSubdomainId: "subdomain_123",
-        returnPathDomain: `cf-bounce.mail.${selectedDomain}`,
-        dkimSelector: "cf-bounce",
-        lastError: null,
       },
     })
     expect(run.errors).toMatchObject({
@@ -4133,16 +4129,14 @@ describe("Mollie payment flow", () => {
       emailSending: expect.objectContaining({
         provider: "cloudflare",
         mode: "subdomain",
-        status: "verified",
+        status: "not_configured",
         sendingDomain: `mail.${selectedDomain}`,
         senderEmail: `noreply@mail.${selectedDomain}`,
         cloudflareZoneId: "zone_123",
-        cloudflareSubdomainId: "subdomain_123",
-        returnPathDomain: `cf-bounce.mail.${selectedDomain}`,
-        dkimSelector: "cf-bounce",
-        lastError: null,
       }),
     })
+    expect(vi.mocked(fetch).mock.calls.some(([url]) =>
+      String(url).includes("/email/sending/subdomains"))).toBe(false)
     expect(settings).toMatchObject({
       siteUrl: `https://${selectedDomain}`,
       aliases: [{ host: `www.${selectedDomain}` }],

@@ -93,7 +93,7 @@ describe("published snapshot activation gate", () => {
     vi.restoreAllMocks()
   })
 
-  it("requires verified tenant email sending for generated-site activation", () => {
+  it("treats pending tenant-branded email as optional for generated-site activation", () => {
     expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
       tenant: asTenant({
         ...verifiedTenant,
@@ -105,13 +105,10 @@ describe("published snapshot activation gate", () => {
           senderEmail: "noreply@mail.clientsite.nl",
         },
       }),
-    })).toEqual({
-      ok: false,
-      reason: "Generated-site activation requires verified tenant email sending.",
-    })
+    })).toEqual({ ok: true })
   })
 
-  it("does not let manual generated-site activation bypass tenant email verification", () => {
+  it("treats failed tenant-branded email as optional for manual activation", () => {
     expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
       manualActivation: true,
       tenant: asTenant({
@@ -124,10 +121,7 @@ describe("published snapshot activation gate", () => {
           senderEmail: "noreply@mail.clientsite.nl",
         },
       }),
-    })).toEqual({
-      ok: false,
-      reason: "Generated-site activation requires verified tenant email sending.",
-    })
+    })).toEqual({ ok: true })
   })
 
   it("allows generated-site activation after domain, sender, approval, and payment are all satisfied", () => {
@@ -136,7 +130,7 @@ describe("published snapshot activation gate", () => {
     })).toEqual({ ok: true })
   })
 
-  it("refreshes pending tenant email sending during activation and activates when Cloudflare reports verified", async () => {
+  it("activates without synchronously refreshing optional tenant-branded email", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({
       success: true,
@@ -154,22 +148,18 @@ describe("published snapshot activation gate", () => {
       status: "active",
     })
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://cloudflare.test/client/v4/zones/zone-123/email/sending/subdomains/subdomain-123",
-      expect.objectContaining({ method: "GET" }),
-    )
+    expect(fetch).not.toHaveBeenCalled()
     expect(tenant.emailSending).toMatchObject({
-      status: "verified",
+      status: "pending",
       sendingDomain: "mail.clientsite.nl",
       senderEmail: "noreply@mail.clientsite.nl",
       cloudflareZoneId: "zone-123",
       cloudflareSubdomainId: "subdomain-123",
-      lastError: null,
     })
     expect(snapshot.status).toBe("active")
   })
 
-  it("refreshes pending tenant email sending during activation and blocks when Cloudflare still reports pending", async () => {
+  it("activates while optional tenant-branded email remains pending", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({
       success: true,
@@ -182,20 +172,18 @@ describe("published snapshot activation gate", () => {
       },
     })))
 
-    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 })).rejects.toThrow(
-      "Generated-site activation requires verified tenant email sending.",
-    )
+    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 }))
+      .resolves.toMatchObject({ id: 10, status: "active" })
 
     expect(tenant.emailSending).toMatchObject({
       status: "pending",
       sendingDomain: "mail.clientsite.nl",
       cloudflareSubdomainId: "subdomain-123",
-      lastError: null,
     })
-    expect(snapshot.status).toBe("drafted")
+    expect(snapshot.status).toBe("active")
   })
 
-  it("records sanitized Cloudflare refresh errors and blocks activation with the existing gate reason", async () => {
+  it("does not contact optional email provider during snapshot activation", async () => {
     const { payload, tenant, snapshot } = createActivationPayload()
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({
       success: false,
@@ -203,21 +191,12 @@ describe("published snapshot activation gate", () => {
       result: null,
     }, { status: 200 })))
 
-    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 })).rejects.toThrow(
-      "Generated-site activation requires verified tenant email sending.",
-    )
+    await expect(activatePublishedSnapshot(payload, { snapshotId: 10 }))
+      .resolves.toMatchObject({ id: 10, status: "active" })
 
-    expect(tenant.emailSending).toMatchObject({
-      status: "failed",
-      cloudflareZoneId: "zone-123",
-      cloudflareSubdomainId: "subdomain-123",
-    })
-    expect(asMockDoc(tenant.emailSending).lastError).toBe(
-      "Cloudflare Email Sending subdomain get failed with HTTP 200.",
-    )
-    expect(asMockDoc(tenant.emailSending).lastError).not.toContain("cf-secret")
-    expect(asMockDoc(tenant.emailSending).lastError).not.toContain("Provider rejected")
-    expect(snapshot.status).toBe("drafted")
+    expect(fetch).not.toHaveBeenCalled()
+    expect(asMockDoc(tenant.emailSending).status).toBe("pending")
+    expect(snapshot.status).toBe("active")
   })
 
   it("keeps current-state manual activation without a generation run on the existing path", () => {

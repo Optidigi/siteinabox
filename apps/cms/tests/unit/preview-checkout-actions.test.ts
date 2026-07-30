@@ -47,6 +47,8 @@ const mocks = vi.hoisted(() => ({
   productionTldCapabilitiesAt: vi.fn(() => [{}]),
   loadCloudflareSourceAuthorization: vi.fn(),
   attachCloudflareSourceAuthorization: vi.fn(),
+  loadCustomerBillingAgreement: vi.fn(),
+  scheduleCancellationAtPeriodEnd: vi.fn(),
 }))
 
 vi.mock("@siteinabox/contracts/tld-capabilities", async (importOriginal) => {
@@ -206,6 +208,14 @@ vi.mock("@/lib/legal/checkoutEvidence", () => ({
 
 vi.mock("@/lib/legal/customerRequirements", () => ({
   satisfyRequirementsFromTransaction: mocks.satisfyRequirementsFromTransaction,
+}))
+
+vi.mock("@/lib/billing/customerBillingAgreement", () => ({
+  loadCustomerBillingAgreement: mocks.loadCustomerBillingAgreement,
+}))
+
+vi.mock("@/lib/billing/billingLifecycle", () => ({
+  scheduleCancellationAtPeriodEnd: mocks.scheduleCancellationAtPeriodEnd,
 }))
 
 const validPaymentForm = () => {
@@ -368,6 +378,7 @@ describe("preview checkout domain suggestion action", () => {
     })
     mocks.acquireAutomaticMigrationInputs.mockResolvedValue({ id: 100 })
     mocks.loadAcceptedCheckoutResume.mockResolvedValue(null)
+    mocks.loadCustomerBillingAgreement.mockResolvedValue(null)
     mocks.suggestAvailablePreviewDomainBatch.mockResolvedValue({
       suggestions: [{
         domain: "amicare-web.nl",
@@ -1984,5 +1995,76 @@ describe("preview checkout domain suggestion action", () => {
       { amount: "10.00", currency: "EUR" },
       { cursor: 5, batchSize: 5, existingDomains: ["amicare-web.nl"] },
     )
+  })
+
+  it("derives period-end cancellation only from authenticated checkout authority", async () => {
+    mocks.getSession.mockResolvedValue({
+      user: { id: "preview-user-7", email: "Customer@Example.com" },
+    })
+    const agreement = {
+      id: 88,
+      state: "active",
+      billingPeriod: "annual",
+      currentPeriodEndsAt: "2027-07-30T10:00:00.000Z",
+      cancelAt: null,
+      updatedAt: "2026-07-30T10:00:00.000Z",
+    }
+    mocks.loadCustomerBillingAgreement.mockResolvedValue(agreement)
+    mocks.scheduleCancellationAtPeriodEnd.mockResolvedValue({
+      ...agreement,
+      state: "cancellation_scheduled",
+      cancelAt: "2027-07-30T10:00:00.000Z",
+    })
+    const { schedulePreviewCheckoutCancellationAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    await expect(schedulePreviewCheckoutCancellationAction(
+      "ami-care",
+      { ok: false, status: "idle", message: "" },
+      new FormData(),
+    )).resolves.toMatchObject({
+      ok: true,
+      status: "scheduled",
+      agreement: {
+        id: 88,
+        state: "cancellation_scheduled",
+      },
+    })
+
+    expect(mocks.loadCustomerBillingAgreement).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        generationRunId: 500,
+        tenantId: 12,
+        customerEmail: "customer@example.com",
+      },
+    )
+    expect(mocks.scheduleCancellationAtPeriodEnd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agreementId: 88,
+        tenantId: 12,
+        actorUserId: "preview-user-7",
+        actorEmail: "customer@example.com",
+      }),
+    )
+  })
+
+  it("fails closed when preview cancellation has no authenticated actor", async () => {
+    mocks.getSession.mockResolvedValue(null)
+    const { schedulePreviewCheckoutCancellationAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    await expect(schedulePreviewCheckoutCancellationAction(
+      "ami-care",
+      { ok: false, status: "idle", message: "" },
+      new FormData(),
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "failed",
+    })
+    expect(mocks.loadCustomerBillingAgreement).not.toHaveBeenCalled()
+    expect(mocks.scheduleCancellationAtPeriodEnd).not.toHaveBeenCalled()
   })
 })

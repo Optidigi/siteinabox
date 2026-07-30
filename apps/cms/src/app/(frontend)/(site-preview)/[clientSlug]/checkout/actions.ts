@@ -80,7 +80,10 @@ import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayme
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { normalizeGenerationRunPaymentState } from "@/lib/payments/generationRunPayment"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
-import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
+import {
+  requirePreviewCheckoutActorContext,
+  requirePreviewCheckoutContext,
+} from "./previewCheckoutContext"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
@@ -91,6 +94,19 @@ import {
 } from "@/lib/domains/migration"
 import { domainMigrationSourceAuthorityHash } from
   "@/lib/domains/migrationEvidence"
+import {
+  loadCustomerBillingAgreement,
+  type CustomerBillingAgreementView,
+} from "@/lib/billing/customerBillingAgreement"
+import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
+import {
+  loadCustomerMigrationStatus,
+  type CustomerMigrationStatus,
+} from "@/lib/domains/migrationStatus"
+import {
+  loadCustomerProvisioningStatus,
+  type CustomerProvisioningStatus,
+} from "@/lib/domains/provisioningStatus"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -141,6 +157,20 @@ export type PreviewCheckoutSuggestionsState = {
   suggestions?: PreviewCheckoutDomainOption[]
   cursor?: number
   done?: boolean
+}
+
+export type PreviewCheckoutCancellationState = {
+  ok: boolean
+  status: "idle" | "scheduled" | "unavailable" | "failed"
+  message: string
+  agreement?: CustomerBillingAgreementView | null
+}
+
+export type PreviewCheckoutLiveStatus = {
+  paymentStatus: string
+  migrationStatus: CustomerMigrationStatus | null
+  provisioningStatus: CustomerProvisioningStatus | null
+  billingAgreement: CustomerBillingAgreementView | null
 }
 
 const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): string | null => {
@@ -1643,5 +1673,98 @@ export async function startPreviewCheckoutPaymentAction(
       })
     }
     return { ok: false, status: "payment_error", message: t("checkoutPaymentFailed") }
+  }
+}
+
+export async function schedulePreviewCheckoutCancellationAction(
+  clientSlug: string,
+  _previousState: PreviewCheckoutCancellationState,
+  _formData: FormData,
+): Promise<PreviewCheckoutCancellationState> {
+  const t = await getTranslations("preview")
+  try {
+    const context = await requirePreviewCheckoutActorContext(clientSlug)
+    const agreement = await loadCustomerBillingAgreement(context.payload, {
+      generationRunId: context.run.id,
+      tenantId: context.tenant.id,
+      customerEmail: context.customerEmail,
+    })
+    if (
+      !agreement ||
+      !["active", "past_due", "suspended", "cancellation_scheduled", "cancelled"]
+        .includes(agreement.state)
+    ) {
+      return {
+        ok: false,
+        status: "unavailable",
+        message: t("checkoutCancellationUnavailable"),
+        agreement,
+      }
+    }
+    const audit = await requestAudit()
+    const cancelled = await scheduleCancellationAtPeriodEnd({
+      payload: context.payload,
+      agreementId: agreement.id,
+      tenantId: context.tenant.id,
+      actorUserId: context.previewUserId,
+      actorEmail: context.customerEmail,
+      requestId: audit.requestId,
+      ipAddress: audit.ipAddress,
+      userAgent: audit.userAgent,
+    })
+    const view: CustomerBillingAgreementView = {
+      id: cancelled.id,
+      state: cancelled.state,
+      billingPeriod: cancelled.billingPeriod,
+      currentPeriodEndsAt: cancelled.currentPeriodEndsAt ?? null,
+      cancelAt: cancelled.cancelAt ?? null,
+      updatedAt: cancelled.updatedAt,
+    }
+    revalidatePath(`/${context.clientSlug}/checkout`)
+    return {
+      ok: true,
+      status: "scheduled",
+      message: t("checkoutCancellationScheduled"),
+      agreement: view,
+    }
+  } catch {
+    console.error("Preview checkout cancellation failed", {
+      operation: "schedule_cancellation",
+      code: "bounded_failure",
+    })
+    return {
+      ok: false,
+      status: "failed",
+      message: t("checkoutCancellationFailed"),
+    }
+  }
+}
+
+export async function loadPreviewCheckoutLiveStatusAction(
+  clientSlug: string,
+): Promise<PreviewCheckoutLiveStatus> {
+  const context = await requirePreviewCheckoutContext(clientSlug)
+  const [migrationStatus, provisioningStatus, billingAgreement] =
+    await Promise.all([
+      loadCustomerMigrationStatus(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerProvisioningStatus(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerBillingAgreement(context.payload, {
+        generationRunId: context.run.id,
+        tenantId: context.tenant.id,
+        customerEmail: context.customerEmail,
+      }),
+    ])
+  return {
+    paymentStatus:
+      normalizeGenerationRunPaymentState(context.run.payment).status,
+    migrationStatus,
+    provisioningStatus,
+    billingAgreement,
   }
 }

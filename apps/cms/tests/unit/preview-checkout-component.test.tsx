@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
+import {
+  checkoutStatusNeedsPolling,
+  PreviewCheckout,
+} from "@/components/preview/PreviewCheckout"
 
 const translate = Object.assign(
   (key: string, values?: Record<string, unknown>) =>
@@ -85,6 +88,42 @@ const quote = (billingPeriod: "monthly" | "annual") => {
     },
   }
 }
+
+const baseCheckoutProps = () => ({
+  clientSlug: "ami-care",
+  customerEmail: "owner@example.test",
+  currentDomain: "analytical-engines.nl",
+  domainReady: true,
+  initialProfile: profile,
+  initialDetails: profile,
+  initialQuotes: { monthly: quote("monthly"), annual: quote("annual") },
+  catalog: {
+    version: "2026-07-26.1",
+    currency: "EUR" as const,
+    vatRateBasisPoints: 2_100,
+    plans: {
+      monthly: { code: "siteinabox-monthly", netAmountMinor: 1_900 },
+      annual: { code: "siteinabox-annual", netAmountMinor: 19_000 },
+    },
+    domainIncludedAllowanceNetMinor: 1_000,
+    migrations: { automaticNetAmountMinor: 0 },
+  },
+  paymentStatus: "not_started",
+  previewHref: "/ami-care",
+  prewarmHref: "/ami-care/checkout/prewarm",
+  suggestionsHref: "/ami-care/checkout/suggestions",
+  checkDomainAction: vi.fn(),
+  saveProfileAction: vi.fn(),
+  startPaymentAction: vi.fn(),
+  termsHref: "https://www.siteinabox.nl/voorwaarden",
+  privacyHref: "https://www.siteinabox.nl/privacy",
+  termsVersion: "2026-07-07.1",
+  privacyVersion: "2026-07-18.1",
+  businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
+  businessUseDeclarationText:
+    "Ik sluit deze overeenkomst uitsluitend zakelijk.",
+  locale: "nl-NL",
+})
 
 describe("PreviewCheckout Phase 3 flow", () => {
   beforeEach(() => {
@@ -575,5 +614,255 @@ describe("PreviewCheckout Phase 3 flow", () => {
       name: "checkoutMigrationRecollectionSubmit",
     }) as HTMLButtonElement).disabled).toBe(false)
     expect(container.querySelectorAll("form form")).toHaveLength(0)
+  })
+})
+
+describe("PreviewCheckout live lifecycle status", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("polls serialized server projections without overlap and stops at activation", async () => {
+    vi.useFakeTimers()
+    const loadLiveStatusAction = vi.fn(async () => ({
+      paymentStatus: "completed",
+      migrationStatus: null,
+      provisioningStatus: {
+        domain: "analytical-engines.nl",
+        registrantVerificationDueAt: null,
+        updatedAt: "2026-07-30T10:00:00.000Z",
+        stages: [
+          { code: "payment" as const, status: "complete" as const },
+          { code: "activation" as const, status: "complete" as const },
+        ],
+      },
+      billingAgreement: null,
+    }))
+    const view = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        paymentReturn
+        paymentStatus="pending_provider"
+        loadLiveStatusAction={loadLiveStatusAction}
+      />,
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("checkoutPaymentReturnCompleted")).toBeTruthy()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+
+    view.unmount()
+  })
+
+  it("does not overlap a slow lifecycle status request", async () => {
+    vi.useFakeTimers()
+    let resolveStatus: ((value: {
+      paymentStatus: string
+      migrationStatus: null
+      provisioningStatus: null
+      billingAgreement: null
+    }) => void) | undefined
+    const pendingStatus = new Promise<{
+      paymentStatus: string
+      migrationStatus: null
+      provisioningStatus: null
+      billingAgreement: null
+    }>((resolve) => {
+      resolveStatus = resolve
+    })
+    const loadLiveStatusAction = vi.fn(() => pendingStatus)
+    render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        paymentReturn
+        paymentStatus="pending_provider"
+        loadLiveStatusAction={loadLiveStatusAction}
+      />,
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolveStatus?.({
+        paymentStatus: "failed",
+        migrationStatus: null,
+        provisioningStatus: null,
+        billingAgreement: null,
+      })
+      await pendingStatus
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+  })
+
+  it("stops polling for terminal payments and customer-action states", () => {
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "failed",
+      migrationStatus: null,
+      provisioningStatus: null,
+    })).toBe(false)
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "completed",
+      provisioningStatus: null,
+      migrationStatus: {
+        migrationId: 7,
+        domain: "existing.nl",
+        state: "awaiting_customer",
+        classification: "automatic",
+        sourceMechanism: "cloudflare_api_v1",
+        operatorAuthorization: "not_required",
+        supplementalProposal: null,
+        updatedAt: "2026-07-30T10:00:00.000Z",
+        actions: [{
+          action: "confirm_transfer",
+          status: "required",
+          deadlineAt: null,
+        }],
+      },
+    })).toBe(false)
+  })
+
+  it("restarts lifecycle polling after a customer migration action succeeds", async () => {
+    vi.useFakeTimers()
+    const submitMigrationTransferCodeAction = vi.fn(async () => ({
+      ok: true,
+      status: "saved" as const,
+      message: "checkoutMigrationActionSaved",
+    }))
+    const loadLiveStatusAction = vi.fn()
+      .mockResolvedValueOnce({
+        paymentStatus: "completed",
+        migrationStatus: {
+          migrationId: 7,
+          domain: "existing.nl",
+          state: "awaiting_provider" as const,
+          classification: "automatic" as const,
+          sourceMechanism: "cloudflare_api_v1" as const,
+          operatorAuthorization: "not_required" as const,
+          supplementalProposal: null,
+          updatedAt: "2026-07-30T10:01:00.000Z",
+          actions: [],
+        },
+        provisioningStatus: null,
+        billingAgreement: null,
+      })
+      .mockResolvedValueOnce({
+        paymentStatus: "completed",
+        migrationStatus: {
+          migrationId: 7,
+          domain: "existing.nl",
+          state: "completed" as const,
+          classification: "automatic" as const,
+          sourceMechanism: "cloudflare_api_v1" as const,
+          operatorAuthorization: "not_required" as const,
+          supplementalProposal: null,
+          updatedAt: "2026-07-30T10:02:00.000Z",
+          actions: [],
+        },
+        provisioningStatus: null,
+        billingAgreement: null,
+      })
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        paymentStatus="completed"
+        migrationStatus={{
+          migrationId: 7,
+          domain: "existing.nl",
+          state: "awaiting_customer",
+          classification: "automatic",
+          sourceMechanism: "cloudflare_api_v1",
+          operatorAuthorization: "not_required",
+          supplementalProposal: null,
+          updatedAt: "2026-07-30T10:00:00.000Z",
+          actions: [{
+            action: "provide_epp_code",
+            status: "required",
+            deadlineAt: null,
+          }],
+        }}
+        loadLiveStatusAction={loadLiveStatusAction}
+        submitMigrationTransferCodeAction={submitMigrationTransferCodeAction}
+      />,
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000)
+    })
+    expect(loadLiveStatusAction).not.toHaveBeenCalled()
+
+    const transferCode = container.querySelector<HTMLInputElement>(
+      'input[name="transferCode"]',
+    )
+    expect(transferCode).toBeTruthy()
+    fireEvent.change(transferCode!, { target: { value: "opaque-code" } })
+    await act(async () => {
+      fireEvent.submit(transferCode!.closest("form")!)
+      await Promise.resolve()
+    })
+    expect(submitMigrationTransferCodeAction).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(2)
+  })
+
+  it("offers authenticated period-end cancellation and shows its effective date", async () => {
+    const scheduleCancellationAction = vi.fn(async () => ({
+      ok: true,
+      status: "scheduled" as const,
+      message: "checkoutCancellationScheduled",
+      agreement: {
+        id: 8,
+        state: "cancellation_scheduled" as const,
+        billingPeriod: "annual" as const,
+        currentPeriodEndsAt: "2027-07-30T10:00:00.000Z",
+        cancelAt: "2027-07-30T10:00:00.000Z",
+        updatedAt: "2026-07-30T10:01:00.000Z",
+      },
+    }))
+    render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        billingAgreement={{
+          id: 8,
+          state: "active",
+          billingPeriod: "annual",
+          currentPeriodEndsAt: "2027-07-30T10:00:00.000Z",
+          cancelAt: null,
+          updatedAt: "2026-07-30T10:00:00.000Z",
+        }}
+        scheduleCancellationAction={scheduleCancellationAction}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "checkoutCancelAtPeriodEnd",
+    }))
+    await waitFor(() => {
+      expect(scheduleCancellationAction).toHaveBeenCalledTimes(1)
+    })
+    expect(await screen.findByText(/checkoutCancellationEffectiveAt/))
+      .toBeTruthy()
   })
 })

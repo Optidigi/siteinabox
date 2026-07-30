@@ -149,7 +149,7 @@ export function getCloudflareEmailSmtpToken() {
 
 export function getCloudflareEmailRestConfig(env: NodeJS.ProcessEnv = process.env) {
   const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
-  const token = env.CLOUDFLARE_API_TOKEN?.trim()
+  const token = env.CLOUDFLARE_EMAIL_API_TOKEN?.trim()
   if (!accountId || !token || (token.startsWith("<") && token.endsWith(">"))) return null
   return { accountId, token }
 }

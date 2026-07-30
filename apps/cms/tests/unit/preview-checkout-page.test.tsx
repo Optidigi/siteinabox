@@ -11,10 +11,13 @@ const mocks = vi.hoisted(() => ({
   loadLatestCheckoutProfile: vi.fn(),
   loadCustomerMigrationStatus: vi.fn(),
   loadCustomerProvisioningStatus: vi.fn(),
+  loadCustomerBillingAgreement: vi.fn(),
   loadAcceptedCheckoutResume: vi.fn(),
   checkDomainAction: vi.fn(),
   saveProfileAction: vi.fn(),
   startPaymentAction: vi.fn(),
+  loadLiveStatusAction: vi.fn(),
+  scheduleCancellationAction: vi.fn(),
   acceptMigrationSupplementalOrderAction: vi.fn(),
   recollectAcceptedMigrationInputAction: vi.fn(),
   submitMigrationTransferCodeAction: vi.fn(),
@@ -67,6 +70,8 @@ vi.mock("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions", () => (
   checkPreviewCheckoutDomainAction: mocks.checkDomainAction,
   savePreviewCheckoutProfileAction: mocks.saveProfileAction,
   startPreviewCheckoutPaymentAction: mocks.startPaymentAction,
+  loadPreviewCheckoutLiveStatusAction: mocks.loadLiveStatusAction,
+  schedulePreviewCheckoutCancellationAction: mocks.scheduleCancellationAction,
 }))
 
 vi.mock("@/lib/checkout/checkoutProfile", async (importOriginal) => {
@@ -89,6 +94,10 @@ vi.mock("@/lib/checkout/acceptedCheckoutResume", () => ({
   loadAcceptedCheckoutResume: mocks.loadAcceptedCheckoutResume,
 }))
 
+vi.mock("@/lib/billing/customerBillingAgreement", () => ({
+  loadCustomerBillingAgreement: mocks.loadCustomerBillingAgreement,
+}))
+
 type PreviewCheckoutProps = ComponentProps<typeof PreviewCheckout>
 
 const baseContext = (overrides: Record<string, unknown> = {}) => ({
@@ -96,6 +105,7 @@ const baseContext = (overrides: Record<string, unknown> = {}) => ({
   clientSlug: "ami-care",
   payload: {},
   tenant: {
+    id: 12,
     name: "Ami Care",
     domain: "ami-care.siteinabox.test",
   },
@@ -122,6 +132,7 @@ async function renderCheckoutProps(
   mocks.loadLatestCheckoutProfile.mockResolvedValue(profile)
   mocks.loadCustomerMigrationStatus.mockResolvedValue(null)
   mocks.loadCustomerProvisioningStatus.mockResolvedValue(null)
+  mocks.loadCustomerBillingAgreement.mockResolvedValue(null)
   mocks.loadAcceptedCheckoutResume.mockResolvedValue(acceptedResume)
 
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")

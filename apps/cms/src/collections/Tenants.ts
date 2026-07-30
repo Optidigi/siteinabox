@@ -146,7 +146,7 @@ export const Tenants: CollectionConfig = {
         { name: "notes", type: "textarea" }
       ] },
     { name: "emailSending", type: "group",
-      admin: { description: adminText("Tenant outbound email sender state. Provisioning workers verify this before generated sites can be activated; no secrets are stored here.", "Status van de uitgaande e-mailafzender van de klantomgeving. Inrichtingsworkers controleren dit voordat gegenereerde sites geactiveerd kunnen worden; hier worden geen geheimen opgeslagen.") },
+      admin: { description: adminText("Optional tenant-branded outbound sender state. Reconciliation verifies it asynchronously; platform mail remains available and no secrets are stored here.", "Status van de optionele uitgaande e-mailafzender met klantbranding. Reconciliatie verifieert deze asynchroon; platformmail blijft beschikbaar en hier worden geen geheimen opgeslagen.") },
       fields: [
         { name: "provider", type: "select", defaultValue: "cloudflare",
           options: [
@@ -168,7 +168,7 @@ export const Tenants: CollectionConfig = {
                 : value === "verified" ? adminText("Verified", "Geverifieerd") : adminText("Failed", "Mislukt"),
             value,
           })),
-          admin: { description: adminText("Activation requires verified status before generated-site mail can go live.", "Voor activatie moet de status geverifieerd zijn voordat e-mail van de gegenereerde site live kan gaan.") } },
+          admin: { description: adminText("Branded mail is used only after verification; website activation does not depend on it.", "Mail met klantbranding wordt pas na verificatie gebruikt; websiteactivatie is er niet van afhankelijk.") } },
         { name: "sendingDomain", type: "text", index: true,
           admin: { description: adminText("Cloudflare sending domain, normally mail.<tenant-domain>.", "Cloudflare-verzenddomein, normaal mail.<tenant-domain>.") } },
         { name: "senderEmail", type: "email",

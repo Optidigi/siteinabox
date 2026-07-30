@@ -31,8 +31,10 @@ import {
 } from "@/lib/checkout/checkoutQuote"
 import {
   checkPreviewCheckoutDomainAction,
+  loadPreviewCheckoutLiveStatusAction,
   recollectAcceptedMigrationInputAction,
   savePreviewCheckoutProfileAction,
+  schedulePreviewCheckoutCancellationAction,
   startPreviewCheckoutPaymentAction,
   submitMigrationTransferCodeAction,
 } from "./actions"
@@ -48,6 +50,7 @@ import {
   loadCloudflareSourceAuthorizationMetadata,
 } from "@/lib/domains/cloudflareSourceOAuth"
 import { relationshipId } from "@/lib/relationshipId"
+import { loadCustomerBillingAgreement } from "@/lib/billing/customerBillingAgreement"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("preview")
@@ -147,13 +150,18 @@ export default async function PreviewCheckoutPage({
     const selectedDomain = acceptedResume?.domain ??
       (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
     const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
-    const [migrationStatus, provisioningStatus] = await Promise.all([
+    const [migrationStatus, provisioningStatus, billingAgreement] = await Promise.all([
       loadCustomerMigrationStatus(context.payload, {
         generationRunId: context.run.id,
         customerEmail: context.customerEmail,
       }),
       loadCustomerProvisioningStatus(context.payload, {
         generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+      }),
+      loadCustomerBillingAgreement(context.payload, {
+        generationRunId: context.run.id,
+        tenantId: context.tenant.id,
         customerEmail: context.customerEmail,
       }),
     ])
@@ -213,6 +221,7 @@ export default async function PreviewCheckoutPage({
         }
         migrationStatus={migrationStatus}
         provisioningStatus={provisioningStatus}
+        billingAgreement={billingAgreement}
         acceptedOrderId={acceptedResume?.orderId ?? null}
         requiresMigrationRecollection={
           acceptedResume?.requiresMigrationRecollection ?? false
@@ -245,11 +254,20 @@ export default async function PreviewCheckoutPage({
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
+        loadLiveStatusAction={
+          loadPreviewCheckoutLiveStatusAction.bind(null, context.clientSlug)
+        }
         recollectAcceptedMigrationInputAction={
           recollectAcceptedMigrationInputAction.bind(null, context.clientSlug)
         }
         submitMigrationTransferCodeAction={
           submitMigrationTransferCodeAction.bind(null, context.clientSlug)
+        }
+        scheduleCancellationAction={
+          schedulePreviewCheckoutCancellationAction.bind(
+            null,
+            context.clientSlug,
+          )
         }
         termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
         privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}

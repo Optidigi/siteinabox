@@ -26,12 +26,10 @@ import {
 import {
   buildCloudflareDnsRecordRequests,
   createCloudflareZoneDnsRecords,
-  createOrReuseCloudflareEmailSendingSubdomain,
   createOrReuseCloudflareZone,
   CloudflareIndeterminateWriteError,
   getCloudflareSslVerification,
   listCloudflareDnsRecords,
-  listCloudflareEmailSendingSubdomains,
   listCloudflareZones,
 } from "@/lib/domains/cloudflare"
 import {
@@ -54,8 +52,7 @@ import { normalizeDomain } from "@/lib/domains/normalize"
 import type { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
-  buildFailedTenantEmailSending,
-  buildTenantEmailSendingFromCloudflareSubdomain,
+  buildDefaultTenantEmailSending,
   type TenantEmailSendingState,
 } from "@/lib/tenants/emailSending"
 import {
@@ -63,7 +60,6 @@ import {
   initialPaymentIsFinanciallySecured,
   registrarCommitStarted,
 } from "@/lib/payments/initialPaymentPolicy"
-import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import {
   verifyAuthoritativeDns,
   verifyHttpsEndpoint,
@@ -97,8 +93,6 @@ type ProvisioningDependencies = {
   createCloudflareZoneDnsRecords: typeof createCloudflareZoneDnsRecords
   listCloudflareDnsRecords: typeof listCloudflareDnsRecords
   buildCloudflareDnsRecordRequests: typeof buildCloudflareDnsRecordRequests
-  createOrReuseCloudflareEmailSendingSubdomain: typeof createOrReuseCloudflareEmailSendingSubdomain
-  listCloudflareEmailSendingSubdomains: typeof listCloudflareEmailSendingSubdomains
   getCloudflareSslVerification: typeof getCloudflareSslVerification
   verifyAuthoritativeDns: (
     domain: string,
@@ -120,8 +114,6 @@ const defaultDependencies: ProvisioningDependencies = {
   createCloudflareZoneDnsRecords,
   listCloudflareDnsRecords,
   buildCloudflareDnsRecordRequests,
-  createOrReuseCloudflareEmailSendingSubdomain,
-  listCloudflareEmailSendingSubdomains,
   getCloudflareSslVerification,
   verifyAuthoritativeDns,
   verifyHttpsEndpoint,
@@ -1186,45 +1178,17 @@ export async function provisionPaidDomainOrder(
     )
   }
 
-  let emailSending: TenantEmailSendingState
-  try {
-    const sendingDomain = `mail.${normalized.domain}`
-    const subdomain = initialFailureReason === "cloudflare_email_sending_write_indeterminate"
-      ? (await dependencies.listCloudflareEmailSendingSubdomains(zone.id))
-        .find((candidate) => candidate.name.toLowerCase() === sendingDomain)
-      : await dependencies.createOrReuseCloudflareEmailSendingSubdomain(zone.id, sendingDomain)
-    if (!subdomain) {
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare Email Sending creation remains indeterminate; no retry was sent.",
-      )
-    }
-    emailSending = buildTenantEmailSendingFromCloudflareSubdomain(
-      normalized.domain,
-      zone.id,
-      subdomain,
-    )
-  } catch (error) {
-    if (error instanceof CloudflareIndeterminateWriteError) {
-      managedDomain = await updateManagedDomain(payload, managedDomain, {
-        reconciliationRequired: true,
-        failureReason: "cloudflare_email_sending_write_indeterminate",
-      }, "cloudflare_email_sending_write_indeterminate", dependencies.now())
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare Email Sending creation is awaiting reconciliation.",
-      )
-    }
-    emailSending = buildFailedTenantEmailSending(
-      normalized.domain,
-      zone.id,
-      redactOperationalMessage(error),
-    )
-  }
+  const expectedSendingDomain = `mail.${normalized.domain}`
+  const currentEmailSending = tenant.emailSending
+  const emailSending: TenantEmailSendingState =
+    currentEmailSending?.cloudflareZoneId === zone.id &&
+    currentEmailSending.sendingDomain?.trim().toLowerCase() ===
+      expectedSendingDomain
+      ? currentEmailSending
+      : {
+          ...buildDefaultTenantEmailSending(normalized.domain),
+          cloudflareZoneId: zone.id,
+        }
   tenant = await payload.update({
     collection: "tenants",
     id: tenantId,
@@ -1277,28 +1241,6 @@ export async function provisionPaidDomainOrder(
     depth: 0,
     overrideAccess: true,
   })
-
-  if (tenant.emailSending?.status !== "verified") {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      reconciliationRequired: true,
-      failureReason: "tenant_email_sending_not_verified",
-    }, "tenant_email_sending_waiting", dependencies.now())
-    run = await compatibilityProjection(
-      payload,
-      run,
-      managedDomain,
-      "registration_requested",
-      "tenant_email_sending_not_verified",
-      registrant,
-      emailSending,
-    )
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Tenant email sending must be verified before publication.",
-    )
-  }
 
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     reconciliationRequired: false,

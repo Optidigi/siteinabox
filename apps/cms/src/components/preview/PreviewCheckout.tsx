@@ -35,6 +35,7 @@ import type { CheckoutQuoteSet } from "@/lib/checkout/checkoutQuote"
 import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import type { CustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
+import type { CustomerBillingAgreementView } from "@/lib/billing/customerBillingAgreement"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -107,6 +108,20 @@ export type MigrationCustomerActionState = {
   message: string
 }
 
+export type PreviewCheckoutCancellationState = {
+  ok: boolean
+  status: "idle" | "scheduled" | "unavailable" | "failed"
+  message: string
+  agreement?: CustomerBillingAgreementView | null
+}
+
+export type PreviewCheckoutLiveStatus = {
+  paymentStatus: string
+  migrationStatus: CustomerMigrationStatus | null
+  provisioningStatus: CustomerProvisioningStatus | null
+  billingAgreement: CustomerBillingAgreementView | null
+}
+
 type PreviewCheckoutAction = (
   previousState: PreviewCheckoutActionState,
   formData: FormData,
@@ -157,6 +172,7 @@ type PreviewCheckoutProps = {
   cloudflareSourceResult?: "connected" | "failed" | "provider-mismatch" | null
   migrationStatus?: CustomerMigrationStatus | null
   provisioningStatus?: CustomerProvisioningStatus | null
+  billingAgreement?: CustomerBillingAgreementView | null
   acceptedOrderId?: string | number | null
   requiresMigrationRecollection?: boolean
   catalog: PreviewCheckoutCatalog
@@ -167,12 +183,17 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
+  loadLiveStatusAction?: () => Promise<PreviewCheckoutLiveStatus>
   recollectAcceptedMigrationInputAction?: (
     formData: FormData,
   ) => Promise<MigrationCustomerActionState>
   submitMigrationTransferCodeAction?: (
     formData: FormData,
   ) => Promise<MigrationCustomerActionState>
+  scheduleCancellationAction?: (
+    previousState: PreviewCheckoutCancellationState,
+    formData: FormData,
+  ) => Promise<PreviewCheckoutCancellationState>
   termsHref: string
   privacyHref: string
   termsVersion: string
@@ -198,6 +219,51 @@ const initialMigrationActionState: MigrationCustomerActionState = {
   ok: false,
   status: "idle",
   message: "",
+}
+const initialCancellationState: PreviewCheckoutCancellationState = {
+  ok: false,
+  status: "idle",
+  message: "",
+}
+
+export const checkoutStatusNeedsPolling = (input: {
+  paymentReturn: boolean
+  paymentStatus: string
+  migrationStatus: CustomerMigrationStatus | null
+  provisioningStatus: CustomerProvisioningStatus | null
+}): boolean => {
+  if (!input.paymentReturn) return false
+  if (
+    ["failed", "canceled", "cancelled", "expired"].includes(
+      input.paymentStatus,
+    )
+  ) {
+    return false
+  }
+  if (
+    input.provisioningStatus?.stages.some(
+      (stage) =>
+        stage.status === "review" ||
+        (stage.code === "activation" && stage.status === "complete"),
+    )
+  ) {
+    return false
+  }
+  if (input.migrationStatus) {
+    if (
+      ["completed", "custom_quote_required", "failed", "rolled_back"]
+        .includes(input.migrationStatus.state)
+    ) {
+      return false
+    }
+    if (
+      input.migrationStatus.actions.some((action) =>
+        ["required", "failed", "overdue"].includes(action.status))
+    ) {
+      return false
+    }
+  }
+  return true
 }
 
 const placeholderSuggestionsForDomain = (domain: string): PreviewCheckoutDomainOption[] =>
@@ -247,8 +313,9 @@ export function PreviewCheckout({
   cloudflareSourceAuthorization = null,
   cloudflareSourceDomain = null,
   cloudflareSourceResult = null,
-  migrationStatus = null,
-  provisioningStatus = null,
+  migrationStatus: initialMigrationStatus = null,
+  provisioningStatus: initialProvisioningStatus = null,
+  billingAgreement: initialBillingAgreement = null,
   acceptedOrderId = null,
   requiresMigrationRecollection = false,
   catalog,
@@ -259,8 +326,10 @@ export function PreviewCheckout({
   checkDomainAction,
   saveProfileAction,
   startPaymentAction,
+  loadLiveStatusAction,
   recollectAcceptedMigrationInputAction,
   submitMigrationTransferCodeAction,
+  scheduleCancellationAction,
   termsHref,
   privacyHref,
   termsVersion,
@@ -306,6 +375,24 @@ export function PreviewCheckout({
         : initialMigrationActionState,
       initialMigrationActionState,
     )
+  const [cancellationState, cancellationAction, cancellationPending] =
+    useActionState(
+      async (
+        _previous: PreviewCheckoutCancellationState,
+        formData: FormData,
+      ) => scheduleCancellationAction
+        ? scheduleCancellationAction(_previous, formData)
+        : initialCancellationState,
+      initialCancellationState,
+    )
+  const [paymentStatusLive, setPaymentStatusLive] =
+    React.useState(paymentStatus)
+  const [migrationStatus, setMigrationStatus] =
+    React.useState(initialMigrationStatus)
+  const [provisioningStatus, setProvisioningStatus] =
+    React.useState(initialProvisioningStatus)
+  const [billingAgreement, setBillingAgreement] =
+    React.useState(initialBillingAgreement)
   const [details, setDetails] = React.useState<CheckoutProfileDraft>(
     initialProfile ?? initialDetails,
   )
@@ -378,6 +465,83 @@ export function PreviewCheckout({
   )
   const domainLooksCheckable =
     normalizedDomainValue.includes(".") && normalizedDomainValue.length >= 5
+
+  React.useEffect(() => {
+    if (cancellationState.agreement) {
+      setBillingAgreement(cancellationState.agreement)
+    }
+  }, [cancellationState.agreement])
+
+  React.useEffect(() => {
+    const customerActionJustSaved =
+      transferCodeState.ok && transferCodeState.status === "saved"
+    if (
+      !loadLiveStatusAction ||
+      (
+        !customerActionJustSaved &&
+        !checkoutStatusNeedsPolling({
+          paymentReturn: paymentReturn || customerActionJustSaved,
+          paymentStatus: paymentStatusLive,
+          migrationStatus,
+          provisioningStatus,
+        })
+      )
+    ) {
+      return
+    }
+
+    let stopped = false
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let attempts = 0
+    const schedule = (delay: number) => {
+      timeout = setTimeout(() => {
+        void poll()
+      }, delay)
+    }
+    const poll = async () => {
+      if (stopped) return
+      if (document.visibilityState === "hidden") {
+        schedule(5_000)
+        return
+      }
+      attempts += 1
+      try {
+        const next = await loadLiveStatusAction()
+        if (stopped) return
+        setPaymentStatusLive(next.paymentStatus)
+        setMigrationStatus(next.migrationStatus)
+        setProvisioningStatus(next.provisioningStatus)
+        setBillingAgreement(next.billingAgreement)
+        if (
+          attempts >= 30 ||
+          !checkoutStatusNeedsPolling({
+            paymentReturn: paymentReturn || customerActionJustSaved,
+            paymentStatus: next.paymentStatus,
+            migrationStatus: next.migrationStatus,
+            provisioningStatus: next.provisioningStatus,
+          })
+        ) {
+          return
+        }
+      } catch {
+        if (stopped || attempts >= 30) return
+      }
+      schedule(Math.min(3_000 + attempts * 750, 15_000))
+    }
+    schedule(1_500)
+    return () => {
+      stopped = true
+      if (timeout) clearTimeout(timeout)
+    }
+    // The bound server action is stable for this mounted checkout. Restarting
+    // the loop on every status projection would create overlapping polls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    loadLiveStatusAction,
+    paymentReturn,
+    transferCodeState.ok,
+    transferCodeState.status,
+  ])
 
   React.useEffect(() => {
     const controller = new AbortController()
@@ -851,11 +1015,11 @@ export function PreviewCheckout({
             <Info className="size-4" aria-hidden />
             <AlertTitle>{t("checkoutPaymentReturnTitle")}</AlertTitle>
             <AlertDescription>
-              {paymentStatus === "completed"
+              {paymentStatusLive === "completed"
                 ? t("checkoutPaymentReturnCompleted")
-                : paymentStatus === "pending_provider"
+                : paymentStatusLive === "pending_provider"
                   ? t("checkoutPaymentReturnPending")
-                  : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatus)
+                  : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive)
                     ? t("checkoutPaymentReturnFailed")
                     : t("checkoutPaymentReturnUnknown")}
             </AlertDescription>
@@ -1332,6 +1496,62 @@ export function PreviewCheckout({
                     )}
                   </form>
                 )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {billingAgreement && (
+          <Alert role="status" aria-live="polite">
+            <ReceiptText className="size-4" aria-hidden />
+            <AlertTitle>{t("checkoutSubscriptionStatusTitle")}</AlertTitle>
+            <AlertDescription className="grid gap-3">
+              {billingAgreement.state === "cancellation_scheduled" ? (
+                <p>
+                  {billingAgreement.cancelAt
+                    ? t("checkoutCancellationEffectiveAt", {
+                        date: new Intl.DateTimeFormat(locale, {
+                          dateStyle: "long",
+                        }).format(new Date(billingAgreement.cancelAt)),
+                      })
+                    : t("checkoutCancellationScheduled")}
+                </p>
+              ) : billingAgreement.state === "cancelled" ? (
+                <p>{t("checkoutCancellationCompleted")}</p>
+              ) : (
+                <p>{t("checkoutSubscriptionActiveDescription")}</p>
+              )}
+              {scheduleCancellationAction &&
+                ["active", "past_due", "suspended"].includes(
+                  billingAgreement.state,
+                ) && (
+                  <form action={cancellationAction}>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={cancellationPending}
+                    >
+                      {cancellationPending && (
+                        <Loader2
+                          className="size-4 animate-spin"
+                          aria-hidden
+                        />
+                      )}
+                      {t("checkoutCancelAtPeriodEnd")}
+                    </Button>
+                  </form>
+                )}
+              {cancellationState.message && (
+                <p
+                  role={cancellationState.ok ? "status" : "alert"}
+                  className={
+                    cancellationState.ok
+                      ? "text-sm text-foreground"
+                      : "text-sm text-destructive"
+                  }
+                >
+                  {cancellationState.message}
+                </p>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -2361,7 +2581,7 @@ export function PreviewCheckout({
         paymentStatus={
           paymentState.status === "payment_pending"
             ? "pending_provider"
-            : paymentStatus
+            : paymentStatusLive
         }
         navigationLocked={acceptedOrderId != null}
         legalAccepted={

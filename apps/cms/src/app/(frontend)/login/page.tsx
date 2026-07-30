@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { headers } from "next/headers"
 import { LoginForm } from "@/components/forms/LoginForm"
 import { AuthShell } from "@/components/auth-shell"
-import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
+import { getEnabledSocialAuthProvidersForHost } from "@/lib/socialAuth/providers"
 import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
 
 /**
@@ -17,9 +17,9 @@ import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
  *   - Right panel uses the real SVG logo with dark/light CSS switching.
  */
 export default async function LoginPage() {
-  const socialProviders = getEnabledSocialAuthProviders()
   const headerStore = await headers()
   const host = headerStore.get("host") || ""
+  const socialProviders = getEnabledSocialAuthProvidersForHost(host)
   const domain = stripAdminPrefix(host)
   const allowPasswordLogin = isSuperAdminDomain(domain, process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN)
 

@@ -25,13 +25,16 @@ BETTER_AUTH_KV_URL=
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS=
 
 MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 MICROSOFT_TENANT_ID=common
+SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS=
 
 APPLE_CLIENT_ID=
 APPLE_CLIENT_SECRET=
+SIAB_APPLE_OAUTH_CALLBACK_HOSTS=
 ```
 
 `BETTER_AUTH_SECRET` may fall back to `PAYLOAD_SECRET`, but a separate
@@ -40,7 +43,11 @@ scopes the separate customer-preview Better Auth instance; when omitted it falls
 back to `BETTER_AUTH_SECRET` or `PAYLOAD_SECRET`. Normal tenant admin hosts are
 accepted dynamically from Payload `tenants.domain`; use
 `BETTER_AUTH_ALLOWED_HOSTS` only for additional CMS auth hosts that must accept
-provider callbacks.
+auth traffic. Social OAuth is stricter: each provider button and endpoint is
+enabled only on an exact hostname in that provider's
+`SIAB_<PROVIDER>_OAUTH_CALLBACK_HOSTS` list. Add a hostname only after the
+provider application contains
+`https://<host>/api/auth/callback/<provider>`; wildcards are not evidence.
 Better Auth is configured with its dynamic `baseURL` option for `admin.*`
 hosts so provider redirects are built from the incoming admin host; SIAB's
 Payload-backed host gate still runs before Better Auth handles the request.

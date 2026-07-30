@@ -16,7 +16,6 @@ import {
   canActivatePublishedSnapshot,
   publishSiteSnapshot,
 } from "@/lib/publish/siteSnapshots"
-import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSendingRefresh"
 import {
   normalizeGenerationRunPaymentState,
   recordGenerationRunPostPaymentAutomationState,
@@ -108,9 +107,8 @@ export async function publishAndActivateAfterCompletedPayment(
   let tenant: Tenant
   try {
     tenant = await loadTenant(payload, run)
-    tenant = await refreshTenantEmailSendingFromCloudflare(payload, tenant)
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Post-payment provisioning status refresh failed."
+    const message = error instanceof Error ? error.message : "Post-payment tenant lookup failed."
     await recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
       status: "failed",
       step: "refresh_provisioning",
