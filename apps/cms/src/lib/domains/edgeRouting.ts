@@ -88,8 +88,8 @@ const uniqueSorted = (values: string[]): string[] =>
 
 /**
  * One inventory authority for both Tunnel reconciliation and its read-only
- * production preflight. The legacy bridge is explicit and disappears as soon
- * as any managed-domain record owns the hostname.
+ * production preflight. The legacy bridge is explicit and disappears once a
+ * managed-domain record owns the hostname.
  */
 export async function resolveCommerceEdgeRoutingInventory(
   payload: Payload,
