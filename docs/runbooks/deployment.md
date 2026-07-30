@@ -424,6 +424,7 @@ labels:
   - traefik.http.routers.siteinabox-site.rule=Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)
   - traefik.http.routers.siteinabox-site.entrypoints=websecure
   - traefik.http.routers.siteinabox-site.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-site.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.routers.siteinabox-site.middlewares=hsts@docker
   - traefik.http.routers.siteinabox-site.priority=100
   - traefik.http.routers.siteinabox-site.service=siteinabox-site
@@ -442,6 +443,7 @@ labels:
   - traefik.http.routers.siteinabox-intake.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
   - traefik.http.routers.siteinabox-intake.entrypoints=websecure
   - traefik.http.routers.siteinabox-intake.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-intake.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.routers.siteinabox-intake.middlewares=hsts@docker
   - traefik.http.routers.siteinabox-intake.priority=300
   - traefik.http.routers.siteinabox-intake.service=siteinabox-intake
@@ -459,18 +461,25 @@ labels:
   - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`preview.siteinabox.nl`)
   - traefik.http.routers.siteinabox-cms.entrypoints=websecure
   - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-cms.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
   - traefik.http.routers.siteinabox-cms.service=siteinabox-cms
   - traefik.http.routers.siteinabox-cms-intake-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/intake`)
   - traefik.http.routers.siteinabox-cms-intake-api.priority=250
+  - traefik.http.routers.siteinabox-cms-intake-api.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.routers.siteinabox-cms-contact-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/contact`)
   - traefik.http.routers.siteinabox-cms-contact-api.priority=250
+  - traefik.http.routers.siteinabox-cms-contact-api.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
 ```
 
 There is no renderer or customer-admin Traefik catch-all. The exclusive
 commerce reconciler installs exact Cloudflare Tunnel routes and blocks handoff
 until DNS, certificate coverage, Tunnel health, and service identity verify.
+The platform Traefik routes retain this architecture but authenticate
+Cloudflare with zone-level AOP. Follow
+[Platform origin authentication](./platform-origin-authentication.md) before
+deploying compose files that select `siteinabox-cloudflare-aop@file`.
 
 ## Step 7 — Verify health
 

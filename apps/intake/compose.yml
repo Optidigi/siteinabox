@@ -15,6 +15,7 @@ services:
       - traefik.http.routers.siteinabox-intake.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
       - traefik.http.routers.siteinabox-intake.entrypoints=websecure
       - traefik.http.routers.siteinabox-intake.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-intake.tls.options=siteinabox-cloudflare-aop@file
       - traefik.http.routers.siteinabox-intake.middlewares=hsts@docker
       - traefik.http.routers.siteinabox-intake.priority=300
       - traefik.http.routers.siteinabox-intake.service=siteinabox-intake

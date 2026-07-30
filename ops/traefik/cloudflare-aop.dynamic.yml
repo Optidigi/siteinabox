@@ -1,0 +1,9 @@
+tls:
+  options:
+    siteinabox-cloudflare-aop:
+      minVersion: VersionTLS12
+      sniStrict: true
+      clientAuth:
+        caFiles:
+          - /run/secrets/siteinabox-cloudflare-aop-ca.pem
+        clientAuthType: RequireAndVerifyClientCert

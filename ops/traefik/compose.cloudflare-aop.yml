@@ -1,0 +1,8 @@
+services:
+  traefik:
+    environment:
+      TRAEFIK_PROVIDERS_FILE_DIRECTORY: /etc/traefik/dynamic
+      TRAEFIK_PROVIDERS_FILE_WATCH: "true"
+    volumes:
+      - ./cloudflare-aop.dynamic.yml:/etc/traefik/dynamic/cloudflare-aop.yml:ro
+      - ${SIAB_CLOUDFLARE_AOP_CA_FILE:?required}:/run/secrets/siteinabox-cloudflare-aop-ca.pem:ro
