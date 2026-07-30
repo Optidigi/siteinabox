@@ -131,6 +131,8 @@ jobs:
         run: pnpm --dir apps/intake exec playwright install --with-deps chromium
       - name: Verify landing analytics consent lifecycle
         run: pnpm --dir apps/landing test:analytics-browser
+      - name: Verify landing UI, responsive, and accessibility contracts
+        run: pnpm --dir apps/landing test:ui
       - run: pnpm intake:build
       - run: pnpm intake:test
 

@@ -215,6 +215,7 @@ try {
     assert.equal(baselinePageviews.length, 1, "baseline captures one pageview")
     const baseline = baselinePageviews[0].properties
     assert.equal(baseline.analytics_tier, "baseline")
+    assert.equal(baseline.environment, "development")
     assert.equal(baseline.distinct_id, "$posthog_cookieless")
     assert.equal(baseline.$device_id, null)
     assert.equal(baseline.$cookieless_mode, true)
@@ -229,11 +230,86 @@ try {
       "PostHog creates no storage before consent",
     )
     assert.deepEqual(googleAnalyticsRequests, [], "Google Analytics does not load before consent")
+    await acceptedPage.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("siab:landing-analytics", {
+        detail: {
+          event: "site_journey_step",
+          properties: {
+            journey_name: "landing_conversion",
+            journey_step: "pre_consent_test",
+            visitor_email: "must-not-leak@example.test",
+          },
+        },
+      }))
+    })
+    await acceptedPage.waitForTimeout(100)
+    assert.equal(
+      acceptedEvents.some((event) => event.event === "site_journey_step"),
+      false,
+      "semantic analytics stays disabled before consent",
+    )
 
     await acceptedPage.click('[data-consent-action="accept"]')
     await waitFor(() => googleAnalyticsRequests.length === 1, "accepted consent did not load gtag.js")
     assert.match(googleAnalyticsRequests[0], /\/gtag\/js\?id=G-EM6YQ9893X$/)
     assert.equal(acceptedEvents.filter((event) => event.event === "$pageview").length, 1, "consent transition does not duplicate the current pageview")
+    await acceptedPage.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("siab:landing-analytics", {
+        detail: {
+          event: "site_journey_step",
+          properties: {
+            journey_name: "landing_conversion",
+            journey_step: "semantic_contract_test",
+            action_key: "hero_start",
+            visitor_email: "must-not-leak@example.test",
+          },
+        },
+      }))
+    })
+    await waitFor(
+      () => acceptedEvents.some((event) => event.event === "site_journey_step"),
+      "accepted consent did not send the semantic event to PostHog",
+    )
+    const semanticEvent = acceptedEvents.find((event) => event.event === "site_journey_step")
+    assert.equal(semanticEvent.properties.journey_step, "semantic_contract_test")
+    assert.equal(semanticEvent.properties.action_key, "hero_start")
+    assert.equal("visitor_email" in semanticEvent.properties, false, "semantic properties are allowlisted")
+    const semanticGoogleCommand = await acceptedPage.evaluate(() =>
+      (window.dataLayer ?? []).find((entry) => entry[0] === "event" && entry[1] === "site_journey_step"),
+    )
+    assert.equal(semanticGoogleCommand?.[2]?.journey_step, "semantic_contract_test")
+    assert.equal("visitor_email" in (semanticGoogleCommand?.[2] ?? {}), false, "GA4 receives the same sanitized payload")
+    await acceptedPage.evaluate(() => {
+      for (const conversion_source of ["contact_form", "contact_click", "intake_handoff"]) {
+        window.dispatchEvent(new CustomEvent("siab:landing-analytics", {
+          detail: {
+            event: "site_conversion_completed",
+            properties: {
+              conversion_source,
+              form_id: "platform_contact",
+              visitor_email: "must-not-leak@example.test",
+            },
+          },
+        }))
+      }
+    })
+    const googleKeyEvents = await acceptedPage.evaluate(() =>
+      (window.dataLayer ?? [])
+        .filter((entry) =>
+          entry[0] === "event"
+          && ["generate_lead", "direct_contact_clicked", "intake_started"].includes(entry[1]),
+        )
+        .map((entry) => ({ event: entry[1], properties: entry[2] })),
+    )
+    assert.deepEqual(
+      googleKeyEvents.map(({ event }) => event).sort(),
+      ["direct_contact_clicked", "generate_lead", "intake_started"],
+      "GA4 receives distinct business outcomes instead of one ambiguous key event",
+    )
+    assert.ok(
+      googleKeyEvents.every(({ properties }) => !("visitor_email" in properties)),
+      "GA4 key events keep the final semantic property allowlist",
+    )
     await acceptedPage.reload({ waitUntil: "networkidle", timeout: 60_000 })
     await waitFor(
       () => acceptedEvents.some((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented"),
@@ -285,6 +361,7 @@ try {
     assert.equal(pageleaves.length, 1, `one lifecycle must emit one $pageleave: ${JSON.stringify(pageleaves)}`)
     assert.equal(pageviews[0]?.properties?.analytics_surface, "site")
     assert.equal(pageviews[0]?.properties?.site_kind, "platform")
+    assert.equal(pageviews[0]?.properties?.environment, "development")
     assert.deepEqual(pageviews.map((event) => event.properties.analytics_tier), ["consented"])
     assert.equal(pageleaves[0]?.properties?.analytics_tier, "consented")
     assert.equal(typeof pageleaves[0]?.properties?.$prev_pageview_duration, "number")
@@ -329,6 +406,68 @@ try {
       0,
       "rejecting consent creates no PostHog storage",
     )
+    await rejectedPage.evaluate(() => {
+      document.querySelector("[data-consent-settings]")?.click()
+    })
+    assert.equal(
+      await rejectedPage.locator("[data-siab-cookie-consent]").isVisible(),
+      true,
+      "cookie settings reopens the consent choice",
+    )
+    assert.equal(
+      await rejectedPage.evaluate(() => document.activeElement?.hasAttribute("data-consent-action")),
+      true,
+      "reopened consent moves focus to its first action",
+    )
+    await rejectedPage.click('[data-consent-action="accept"]')
+    await waitFor(
+      () => rejectedGoogleAnalyticsRequests.length === 1,
+      "accepting from cookie settings did not enable GA4",
+    )
+    await rejectedPage.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("siab:landing-analytics", {
+        detail: {
+          event: "site_journey_step",
+          properties: {
+            journey_name: "consent_regression",
+            journey_step: "before_revocation",
+          },
+        },
+      }))
+    })
+    await waitFor(
+      () => rejectedEvents.some((event) =>
+        event.event === "site_journey_step"
+        && event.properties?.journey_step === "before_revocation"),
+      "accepted cookie settings did not enable semantic PostHog events",
+    )
+    const journeyEventsBeforeRevocation = rejectedEvents.filter((event) => event.event === "site_journey_step").length
+    await rejectedPage.evaluate(() => document.querySelector("[data-consent-settings]")?.click())
+    await rejectedPage.click('[data-consent-action="reject"]')
+    await rejectedPage.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("siab:landing-analytics", {
+        detail: {
+          event: "site_journey_step",
+          properties: {
+            journey_name: "consent_regression",
+            journey_step: "after_revocation",
+          },
+        },
+      }))
+    })
+    await rejectedPage.waitForTimeout(250)
+    assert.equal(
+      rejectedEvents.filter((event) => event.event === "site_journey_step").length,
+      journeyEventsBeforeRevocation,
+      "revocation stops subsequent semantic events",
+    )
+    const revokedGoogleConsent = await rejectedPage.evaluate(() =>
+      (window.dataLayer ?? []).some((entry) =>
+        entry[0] === "consent"
+        && entry[1] === "update"
+        && entry[2]?.analytics_storage === "denied"),
+    )
+    assert.equal(revokedGoogleConsent, true, "revocation updates GA4 consent to denied")
 
     console.log(JSON.stringify({
       pageviewsByTier: pageviews.map((event) => event.properties.analytics_tier),
@@ -337,7 +476,8 @@ try {
       nativeMaxScroll: pageleaves[0].properties.$prev_pageview_max_scroll,
       rejectedBaselinePageviews: rejectedPageviews.length,
       consentedGtagLoads: googleAnalyticsRequests.length,
-      rejectedGtagLoads: rejectedGoogleAnalyticsRequests.length,
+      settingsGtagLoads: rejectedGoogleAnalyticsRequests.length,
+      semanticDestinations: ["posthog", "ga4"],
     }))
   } finally {
     await browser.close()

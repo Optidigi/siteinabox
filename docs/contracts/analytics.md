@@ -10,7 +10,10 @@ names, ownership, governance, redaction, and queries remain canonical in:
 - `apps/cms/src/lib/analytics/identity.ts`
 - `apps/cms/src/lib/analytics/queries.ts`
 - `apps/cms/src/lib/analytics/variantRanking.ts`
+- `apps/landing/src/lib/landing-analytics.ts`
 - `apps/landing/src/scripts/analytics.ts`
+- `apps/landing/src/scripts/analytics/runtime.ts`
+- `apps/landing/src/scripts/analytics/tracking.ts`
 - `apps/renderer/src/client/analytics-runtime.ts`
 
 When this document and those sources disagree, treat the difference as a
@@ -103,6 +106,11 @@ pageview; the next navigation starts a fully consented native lifecycle.
 
 On `siteinabox.nl`, the same accepted choice loads `gtag.js`, grants only
 `analytics_storage`, and configures one GA4 pageview per landing-page load.
+The landing's approved semantic event vocabulary is sent to both PostHog and
+GA4 after consent, with the same stable identifiers and allowlisted
+properties. This covers section/component exposure, engagement, scroll
+milestones, CTA journeys, pricing and FAQ interactions, form intent, and
+conversion completion without sending DOM text or submitted values.
 Google advertising storage, ad user data, ad personalization, Google signals,
 and ad-personalization signals remain disabled. Pending and refused choices do
 not load Google code or send Google requests. Refusal/revocation applies denied
@@ -119,8 +127,8 @@ Public-site SDK controls keep:
 - `before_send` restricted to approved native event names and stripped of
   element text/chains.
 
-The operational PostHog configuration and provider-state checks live in
-`docs/runbooks/posthog.md`.
+The operational provider configuration and state checks live in
+`docs/runbooks/posthog.md` and `docs/runbooks/google-analytics.md`.
 
 ## Metadata and redaction
 
@@ -191,6 +199,17 @@ states remain PostHog-cookieless/minimized; acceptance enables the consented
 tier and, on the landing only, GA4. New generated tenants receive their
 PostHog behavior through the same manifest and snapshot projection, with no
 per-tenant code or configuration.
+
+Landing markup supplies only stable analytics metadata through
+`data-analytics-*` attributes. A typed browser dispatcher owns custom event
+emission, the provider runtime owns consent and redaction, and the tracking
+module owns delegated interactions and visibility observers. The runtime
+applies the final property allowlist before either provider receives an event.
+Visible-section/component observers and their pending dwell timers are started
+only after analytics consent and are torn down again on refusal, so pre-consent
+exposure cannot be replayed as consented behavioral history. Localhost,
+loopback, and `.test` traffic is labelled `development` and excluded from the
+production landing dashboards.
 
 The landing image bakes the public project token into its static build. The
 hosted image workflow therefore requires the user-scoped Actions secret

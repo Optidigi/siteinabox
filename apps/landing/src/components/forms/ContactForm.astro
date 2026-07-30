@@ -1,371 +1,237 @@
 ---
 import { site } from '../../content/site';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Field } from '../ui/field';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { NativeSelect } from '../ui/select';
+import { Textarea } from '../ui/textarea';
+import Turnstile from './Turnstile.astro';
 ---
 
-<section class="siab-contact-form-section" aria-label="Contactformulier">
-  <form
-    class="siab-contact-form"
-    action="/api/contact"
-    method="POST"
-    novalidate
-    data-siab-form
-    aria-describedby="siab-form-required-hint"
-  >
-    <p id="siab-form-required-hint" class="visually-hidden">Velden met een sterretje zijn verplicht.</p>
-
+<Card className="h-full p-6 shadow-md md:p-10 lg:min-h-[958px]">
+<section aria-label="Contactformulier" data-analytics-section="contact_form" data-analytics-position="3">
+  <form action="/api/contact" method="POST" novalidate data-siab-form aria-describedby="siab-form-required-hint">
+    <p id="siab-form-required-hint" class="sr-only">Velden met een sterretje zijn verplicht.</p>
     <input type="hidden" name="source" value={`${site.primaryDomain}/contact`} />
-
-    <div class="siab-form-summary" role="alert" hidden data-siab-summary>
+    <div class="mb-6 border-2 border-destructive bg-destructive/10 p-4 font-bold text-destructive" role="alert" hidden data-siab-summary>
       Er ging iets mis. Controleer de gemarkeerde velden hieronder.
     </div>
 
-    <div class="siab-field" data-siab-field>
-      <label for="siab-name">Naam <span aria-hidden="true">*</span></label>
-      <input id="siab-name" name="name" type="text" autocomplete="name" required aria-required="true" aria-describedby="siab-name-err" />
-      <p id="siab-name-err" class="siab-error" data-siab-error data-empty="Vul je naam in zodat we weten met wie we praten."></p>
-    </div>
+    <Field className="mb-6" data-siab-field data-analytics-field="name">
+      <Label className="mb-2 block font-bold" htmlFor="siab-name">Naam <span aria-hidden="true">*</span></Label>
+      <Input className="min-h-14 px-4 text-base" id="siab-name" name="name" type="text" autoComplete="name" required aria-required="true" aria-describedby="siab-name-err" />
+      <p id="siab-name-err" class="mt-2 hidden text-sm font-semibold text-destructive" data-siab-error data-empty="Vul je naam in zodat we weten met wie we praten."></p>
+    </Field>
 
-    <div class="siab-field" data-siab-field>
-      <label for="siab-email">E-mailadres <span aria-hidden="true">*</span></label>
-      <input id="siab-email" name="email" type="email" autocomplete="email" required aria-required="true" aria-describedby="siab-email-err" />
-      <p id="siab-email-err" class="siab-error" data-siab-error data-empty="Vul je e-mailadres in zodat we kunnen antwoorden." data-invalid="Dit lijkt geen geldig e-mailadres. Controleer 'm even."></p>
-    </div>
+    <Field className="mb-6" data-siab-field data-analytics-field="email">
+      <Label className="mb-2 block font-bold" htmlFor="siab-email">E-mailadres <span aria-hidden="true">*</span></Label>
+      <Input className="min-h-14 px-4 text-base" id="siab-email" name="email" type="email" autoComplete="email" required aria-required="true" aria-describedby="siab-email-err" />
+      <p id="siab-email-err" class="mt-2 hidden text-sm font-semibold text-destructive" data-siab-error data-empty="Vul je e-mailadres in zodat we kunnen antwoorden." data-invalid="Dit lijkt geen geldig e-mailadres. Controleer 'm even."></p>
+    </Field>
 
-    <div class="siab-field" data-siab-field>
-      <label for="siab-phone">Telefoon <span class="siab-optional">(optioneel)</span></label>
-      <input id="siab-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" aria-describedby="siab-phone-help" />
-      <p id="siab-phone-help" class="siab-field-help">We bellen alleen als dat sneller helpt dan een mail.</p>
-    </div>
+    <Field className="mb-6" data-siab-field data-analytics-field="phone">
+      <Label className="mb-2 block font-bold" htmlFor="siab-phone">Telefoon <span class="ml-2 font-body text-sm font-normal text-muted-foreground">(optioneel)</span></Label>
+      <Input className="min-h-14 px-4 text-base" id="siab-phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" aria-describedby="siab-phone-help" />
+      <p id="siab-phone-help" class="mt-2 text-sm text-muted-foreground">We bellen alleen als dat sneller helpt dan een mail.</p>
+    </Field>
 
-    <div class="siab-field" data-siab-field>
-      <label for="siab-subject">Onderwerp <span class="siab-optional">(optioneel)</span></label>
-      <select id="siab-subject" name="subject_topic" aria-describedby="siab-subject-help">
+    <Field className="mb-6" data-siab-field data-analytics-field="subject">
+      <Label className="mb-2 block font-bold" htmlFor="siab-subject">Onderwerp <span class="ml-2 font-body text-sm font-normal text-muted-foreground">(optioneel)</span></Label>
+      <NativeSelect id="siab-subject" name="subject_topic" aria-describedby="siab-subject-help">
         <option value="" disabled selected>Kies een onderwerp (optioneel)</option>
         <option value="kennismaking">Vrijblijvend kennismaken</option>
         <option value="pakket">Vraag over een pakket</option>
         <option value="overig">Iets anders</option>
-      </select>
-      <p id="siab-subject-help" class="siab-field-help">Helpt ons je vraag bij de juiste persoon te leggen.</p>
-    </div>
+      </NativeSelect>
+      <p id="siab-subject-help" class="mt-2 text-sm text-muted-foreground">Helpt ons je vraag bij de juiste persoon te leggen.</p>
+    </Field>
 
-    <div class="siab-field" data-siab-field>
-      <label for="siab-message">Bericht <span aria-hidden="true">*</span></label>
-      <textarea id="siab-message" name="message" rows="6" required aria-required="true" aria-describedby="siab-message-err"></textarea>
-      <p id="siab-message-err" class="siab-error" data-siab-error data-empty="Schrijf even kort waar je bericht over gaat."></p>
-    </div>
+    <Field className="mb-6" data-siab-field data-analytics-field="message">
+      <Label className="mb-2 block font-bold" htmlFor="siab-message">Bericht <span aria-hidden="true">*</span></Label>
+      <Textarea className="min-h-40 resize-y p-4 text-base" id="siab-message" name="message" rows={6} required aria-required="true" aria-describedby="siab-message-err" />
+      <p id="siab-message-err" class="mt-2 hidden text-sm font-semibold text-destructive" data-siab-error data-empty="Schrijf even kort waar je bericht over gaat."></p>
+    </Field>
 
-    <div class="siab-field siab-field--consent" data-siab-field>
-      <label for="siab-consent" class="siab-consent-label">
-        <input id="siab-consent" name="consent" type="checkbox" required aria-required="true" aria-describedby="siab-consent-err" />
-        <span>Ik ga akkoord dat Site in a Box mijn bericht en e-mailadres gebruikt om mij te antwoorden. <a href="/privacy-en-cookieverklaring">Zie onze privacy- en cookieverklaring</a>.</span>
-      </label>
-      <p id="siab-consent-err" class="siab-error" data-siab-error data-empty="Vink dit aan om je bericht te kunnen versturen."></p>
-    </div>
+    <Field className="mb-7" data-siab-field data-analytics-field="consent">
+      <Label className="flex cursor-pointer items-start gap-3 font-body leading-relaxed" htmlFor="siab-consent">
+        <Checkbox className="mt-1" id="siab-consent" name="consent" required aria-required="true" aria-describedby="siab-consent-err" />
+        <span>Ik ga akkoord dat Site in a Box mijn bericht en e-mailadres gebruikt om mij te antwoorden. <a class="font-bold underline decoration-dashed underline-offset-4" href="/privacy-en-cookieverklaring">Zie onze privacy- en cookieverklaring</a>.</span>
+      </Label>
+      <p id="siab-consent-err" class="mt-2 hidden text-sm font-semibold text-destructive" data-siab-error data-empty="Vink dit aan om je bericht te kunnen versturen."></p>
+    </Field>
 
-    <input type="checkbox" name="botcheck" class="siab-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
-    <input type="hidden" name="loadedAt" data-siab-loaded-at value="" />
-
-    <div class="siab-submit-row">
-      <button type="submit" class="btn-eighteen siab-submit">Verstuur bericht</button>
-      <p class="siab-sla m0">We reageren binnen 1 werkdag.</p>
+    <Turnstile />
+    <div class="flex flex-wrap items-center gap-5">
+      <Button type="submit" size="lg" className="min-h-14 min-w-56" data-siab-submit>Verstuur bericht</Button>
+      <p class="text-sm font-semibold text-muted-foreground">We reageren binnen 1 werkdag.</p>
     </div>
   </form>
 
-  <div class="siab-success" role="status" aria-live="polite" tabindex="-1" hidden data-siab-success>
-    <h2>Bedankt voor je bericht.</h2>
-    <p>We hebben je bericht ontvangen en komen er zo snel mogelijk op terug. Hou je e-mail in de gaten.</p>
+  <div role="status" aria-live="polite" tabindex="-1" hidden data-siab-success>
+    <h2 class="text-4xl">Bedankt voor je bericht.</h2>
+    <p class="mt-4 text-lg leading-relaxed text-muted-foreground">We hebben je bericht ontvangen en komen er zo snel mogelijk op terug. Hou je e-mail in de gaten.</p>
   </div>
 </section>
-
-<style>
-  .siab-contact-form-section {
-    background: var(--siab-bg-surface);
-    border: 2px solid var(--siab-border);
-    border-radius: 0;
-    padding: clamp(24px, 4vw, 48px);
-    box-shadow: 5px 5px var(--siab-shadow-color);
-    width: 100%;
-    height: 100%;
-  }
-
-  .siab-contact-form { display: block; }
-
-  .siab-field { display: block; margin-bottom: 22px; }
-  .siab-field:last-of-type { margin-bottom: 28px; }
-
-  .siab-field > label {
-    display: block;
-    margin-bottom: 8px;
-    font-family: 'Familjen Grotesk', sans-serif;
-    font-weight: 600;
-    font-size: 16px;
-    letter-spacing: -0.01em;
-    color: var(--siab-text);
-  }
-
-  .siab-optional {
-    font-family: 'Chivo', sans-serif;
-    font-weight: 400;
-    font-size: 14px;
-    color: var(--siab-text-muted);
-    margin-left: 6px;
-  }
-
-  .siab-field input[type='text'],
-  .siab-field input[type='email'],
-  .siab-field input[type='tel'],
-  .siab-field select,
-  .siab-field textarea {
-    width: 100%;
-    min-height: 56px;
-    padding: 14px 18px;
-    background: var(--siab-bg-surface);
-    color: var(--siab-text);
-    border: 2px solid var(--siab-border);
-    border-radius: 0;
-    font-family: 'Chivo', sans-serif;
-    font-weight: 400;
-    font-size: 17px;
-    line-height: 1.4;
-    transition: box-shadow .12s, transform .12s;
-  }
-
-  .siab-field select {
-    appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 18px center;
-    padding-right: 44px;
-  }
-
-  .siab-field textarea { min-height: 160px; resize: vertical; }
-
-  .siab-field input::placeholder,
-  .siab-field textarea::placeholder { color: var(--siab-text-muted); }
-
-  .siab-field input:focus-visible,
-  .siab-field select:focus-visible,
-  .siab-field textarea:focus-visible {
-    outline: 3px solid var(--siab-focus-ring);
-    outline-offset: 3px;
-  }
-
-  .siab-field[data-siab-invalid] input,
-  .siab-field[data-siab-invalid] textarea { border-color: var(--siab-form-err, #c8102e); }
-  .siab-field[data-siab-invalid] > label { color: var(--siab-form-err, #c8102e); }
-
-  .siab-error {
-    display: none;
-    margin: 8px 0 0;
-    color: var(--siab-form-err, #c8102e);
-    font-family: 'Chivo', sans-serif;
-    font-weight: 500;
-    font-size: 14px;
-    line-height: 1.4;
-  }
-  .siab-field[data-siab-invalid] .siab-error { display: block; }
-
-  .siab-field-help {
-    margin: 8px 0 0;
-    font-family: 'Chivo', sans-serif;
-    font-weight: 400;
-    font-size: 13px;
-    color: var(--siab-text-muted);
-    line-height: 1.4;
-  }
-
-  .siab-field--consent .siab-consent-label {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    font-family: 'Chivo', sans-serif;
-    font-weight: 400;
-    font-size: 15px;
-    line-height: 1.55;
-    color: var(--siab-text);
-    cursor: pointer;
-    margin-bottom: 0;
-  }
-  .siab-field--consent input[type='checkbox'] {
-    flex-shrink: 0;
-    width: 22px;
-    height: 22px;
-    margin-top: 2px;
-    border: 2px solid var(--siab-border);
-    border-radius: 0;
-    accent-color: #f5e900;
-    cursor: pointer;
-  }
-  .siab-field--consent input[type='checkbox']:focus-visible {
-    outline: 3px solid var(--siab-focus-ring);
-    outline-offset: 3px;
-  }
-  .siab-field--consent a { color: var(--siab-text); text-decoration: underline 2px dashed var(--siab-text-muted); text-underline-offset: 3px; }
-  .siab-field--consent a:hover { text-decoration-color: var(--siab-text); }
-
-  .siab-form-summary {
-    border: 2px solid var(--siab-form-err, #c8102e);
-    background: var(--siab-form-err-bg);
-    padding: 12px 16px;
-    margin-bottom: 22px;
-    color: var(--siab-form-err, #c8102e);
-    font-family: 'Chivo', sans-serif;
-    font-weight: 600;
-    font-size: 15px;
-  }
-
-  .siab-submit-row {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-  }
-  .siab-submit { min-width: 220px; }
-  .siab-sla {
-    font-family: 'Chivo', sans-serif;
-    font-weight: 500;
-    font-size: 15px;
-    color: var(--siab-text-muted);
-  }
-
-  .siab-honeypot {
-    position: absolute !important;
-    left: -9999px !important;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .siab-success:focus-visible { outline: none; }
-  .siab-success h2 {
-    font-family: 'Familjen Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: clamp(28px, 4vw, 44px);
-    line-height: 1.15;
-    letter-spacing: -0.5px;
-    margin: 0 0 16px;
-    color: var(--siab-text);
-  }
-  .siab-success p {
-    margin: 0;
-    font-family: 'Chivo', sans-serif;
-    font-size: 18px;
-    line-height: 1.65;
-    color: var(--siab-text-muted);
-  }
-
-  @media (max-width: 575px) {
-    .siab-contact-form-section { padding: 20px; box-shadow: 4px 4px var(--siab-shadow-color); }
-    .siab-submit { width: 100%; }
-    .siab-submit-row { gap: 16px; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .siab-field input,
-    .siab-field select,
-    .siab-field textarea { transition: none; }
-  }
-</style>
+</Card>
 
 <script>
+  import { captureLandingEvent } from '../../lib/landing-analytics';
+
   document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('[data-siab-form]') as HTMLFormElement | null;
+    const form = document.querySelector<HTMLFormElement>('[data-siab-form]');
     if (!form) return;
-
-    const loadedAtInput = form.querySelector<HTMLInputElement>('[data-siab-loaded-at]');
-    const loadedAt = Date.now();
-    if (loadedAtInput) loadedAtInput.value = String(loadedAt);
-
     const summary = form.querySelector<HTMLElement>('[data-siab-summary]');
     const success = document.querySelector<HTMLElement>('[data-siab-success]');
     const fields = Array.from(form.querySelectorAll<HTMLElement>('[data-siab-field]'));
+    const turnstileContainer = form.querySelector<HTMLElement>('[data-siab-turnstile]');
+    const turnstileError = form.querySelector<HTMLElement>('[data-siab-turnstile-error]');
+    const turnstileWindow = window as typeof window & {
+      turnstile?: { reset: () => void };
+    };
+    let formStarted = false;
 
-    const setInvalid = (fieldEl: HTMLElement, errKey: 'empty' | 'invalid') => {
-      const errP = fieldEl.querySelector<HTMLElement>('[data-siab-error]');
-      if (errP) errP.textContent = errP.dataset[errKey] ?? errP.dataset.empty ?? '';
-      fieldEl.setAttribute('data-siab-invalid', '');
-      const input = fieldEl.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
-      if (input) input.setAttribute('aria-invalid', 'true');
+    const captureFormJourney = (journeyStep: string, properties: Record<string, string | number | boolean | null> = {}) => {
+      captureLandingEvent('site_journey_step', {
+        journey_name: 'contact_form',
+        journey_step: journeyStep,
+        form_id: 'platform_contact',
+        form_type: 'contact',
+        ...properties,
+      });
     };
 
-    const clearInvalid = (fieldEl: HTMLElement) => {
-      fieldEl.removeAttribute('data-siab-invalid');
-      const input = fieldEl.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
-      if (input) input.removeAttribute('aria-invalid');
+    form.addEventListener('focusin', () => {
+      if (formStarted) return;
+      formStarted = true;
+      captureLandingEvent('site_form_started', {
+        form_id: 'platform_contact',
+        form_type: 'contact',
+        form_state: 'started',
+      });
+    });
+
+    const resetTurnstile = () => turnstileWindow.turnstile?.reset();
+
+    const showTurnstileError = (message?: string) => {
+      if (turnstileError) {
+        if (message) turnstileError.textContent = message;
+        turnstileError.classList.remove('hidden');
+      }
+      turnstileContainer?.focus();
     };
 
-    const validateField = (fieldEl: HTMLElement): boolean => {
-      const input = fieldEl.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
+    const clearTurnstileError = () => turnstileError?.classList.add('hidden');
+
+    const setInvalid = (field: HTMLElement, key: 'empty' | 'invalid') => {
+      const error = field.querySelector<HTMLElement>('[data-siab-error]');
+      if (error) {
+        error.textContent = error.dataset[key] ?? error.dataset.empty ?? '';
+        error.classList.remove('hidden');
+      }
+      field.querySelector<HTMLElement>('input, textarea, select')?.setAttribute('aria-invalid', 'true');
+    };
+    const clearInvalid = (field: HTMLElement) => {
+      field.querySelector<HTMLElement>('[data-siab-error]')?.classList.add('hidden');
+      field.querySelector<HTMLElement>('input, textarea, select')?.removeAttribute('aria-invalid');
+    };
+    const validate = (field: HTMLElement) => {
+      const input = field.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
       if (!input) return true;
-      if ((input as HTMLInputElement).type === 'checkbox') {
-        const box = input as HTMLInputElement;
-        if (box.required && !box.checked) { setInvalid(fieldEl, 'empty'); return false; }
-        clearInvalid(fieldEl);
-        return true;
+      if (input instanceof HTMLInputElement && input.type === 'checkbox') {
+        if (input.required && !input.checked) { setInvalid(field, 'empty'); return false; }
+      } else if (input.required && input.value.trim() === '') {
+        setInvalid(field, 'empty'); return false;
+      } else if (input instanceof HTMLInputElement && input.type === 'email' && input.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())) {
+        setInvalid(field, 'invalid'); return false;
       }
-      const required = (input as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).required;
-      if (required && (input.value ?? '').toString().trim() === '') {
-        setInvalid(fieldEl, 'empty');
-        return false;
-      }
-      if ((input as HTMLInputElement).type === 'email' && input.value.trim() !== '') {
-        const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim());
-        if (!ok) { setInvalid(fieldEl, 'invalid'); return false; }
-      }
-      clearInvalid(fieldEl);
+      clearInvalid(field);
       return true;
     };
 
-    fields.forEach((fieldEl) => {
-      const input = fieldEl.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
-      if (!input) return;
-      const reval = () => { if (fieldEl.hasAttribute('data-siab-invalid')) validateField(fieldEl); };
-      input.addEventListener('blur', () => validateField(fieldEl));
-      input.addEventListener('input', reval);
-      input.addEventListener('change', reval);
+    fields.forEach((field) => {
+      const control = field.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
+      control?.addEventListener('blur', () => validate(field));
+      control?.addEventListener('input', () => validate(field));
+      control?.addEventListener('change', () => validate(field));
     });
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
       let firstInvalid: HTMLElement | null = null;
-      let valid = true;
-      for (const fieldEl of fields) {
-        const ok = validateField(fieldEl);
-        if (!ok) { valid = false; if (!firstInvalid) firstInvalid = fieldEl; }
-      }
-      if (!valid) {
+      for (const field of fields) if (!validate(field) && !firstInvalid) firstInvalid = field;
+      if (firstInvalid) {
         if (summary) summary.hidden = false;
-        firstInvalid?.querySelector<HTMLElement>('input, textarea, select')?.focus();
+        captureFormJourney('validation_blocked', {
+          error_category: `field_${firstInvalid.dataset.analyticsField ?? 'unknown'}`,
+          form_state: 'invalid',
+        });
+        firstInvalid.querySelector<HTMLElement>('input, textarea, select')?.focus();
         return;
       }
       if (summary) summary.hidden = true;
-
-      if (Date.now() - loadedAt < 3000) return;
-      const hp = form.querySelector<HTMLInputElement>('.siab-honeypot');
-      if (hp && hp.checked) return;
-
-      const submitBtn = form.querySelector<HTMLButtonElement>('.siab-submit');
-      const originalLabel = submitBtn?.textContent ?? 'Verstuur bericht';
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Versturen…'; }
-
-      const showSuccess = () => {
+      const turnstileToken = form.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value.trim();
+      if (!turnstileToken) {
+        captureFormJourney('validation_blocked', {
+          error_category: 'turnstile_missing',
+          form_state: 'invalid',
+        });
+        showTurnstileError();
+        return;
+      }
+      clearTurnstileError();
+      captureLandingEvent('site_form_submitted', {
+        form_id: 'platform_contact',
+        form_type: 'contact',
+        form_state: 'submit_attempted',
+      });
+      const button = form.querySelector<HTMLButtonElement>('[data-siab-submit]');
+      if (button) { button.disabled = true; button.textContent = 'Versturen…'; }
+      let failureCategory = 'network_or_server';
+      try {
+        const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+        if (!response.ok) {
+          const responseBody: unknown = await response.json().catch(() => null);
+          const responseCode = responseBody
+            && typeof responseBody === 'object'
+            && 'code' in responseBody
+            && typeof responseBody.code === 'string'
+              ? responseBody.code
+              : '';
+          if (responseCode.startsWith('turnstile_')) {
+            failureCategory = response.status === 503 ? 'turnstile_unavailable' : 'turnstile_rejected';
+            showTurnstileError(
+              response.status === 503
+                ? 'De beveiligingscontrole is tijdelijk niet beschikbaar. Probeer het zo opnieuw.'
+                : 'De beveiligingscontrole is verlopen. Bevestig opnieuw dat je geen robot bent.',
+            );
+          }
+          else if (responseCode === 'rate_limited') failureCategory = 'rate_limited';
+          else if (responseCode === 'invalid_request') failureCategory = 'invalid_request';
+          else failureCategory = 'server_rejected';
+          throw new Error('submit-failed');
+        }
         form.hidden = true;
         if (success) { success.hidden = false; success.focus(); }
-      };
-
-      try {
-        const data = new FormData(form);
-        const res = await fetch(form.action, { method: 'POST', body: data });
-        if (!res.ok) throw new Error('submit-failed');
-        showSuccess();
+        captureLandingEvent('site_conversion_completed', {
+          form_id: 'platform_contact',
+          form_type: 'contact',
+          form_state: 'accepted',
+          conversion_source: 'contact_form',
+        });
       } catch {
-        if (summary) {
+        captureFormJourney('submit_failed', {
+          error_category: failureCategory,
+          form_state: 'failed',
+        });
+        resetTurnstile();
+        if (summary && turnstileError?.classList.contains('hidden') !== false) {
           summary.hidden = false;
           summary.textContent = 'Versturen lukte niet. Probeer het zo opnieuw, of stuur een mail naar info@siteinabox.nl.';
         }
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
+        if (button) { button.disabled = false; button.textContent = 'Verstuur bericht'; }
       }
     });
   });

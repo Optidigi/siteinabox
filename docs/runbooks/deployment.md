@@ -111,6 +111,8 @@ SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10
 SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60
 SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50
 SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600
+TURNSTILE_SECRET_KEY=<cloudflare-turnstile-secret>
+TURNSTILE_EXPECTED_HOSTNAMES=siteinabox.nl,www.siteinabox.nl
 SIAB_LEGAL_MANIFEST_URL=https://www.siteinabox.nl/.well-known/siab-legal-manifest.json
 SIAB_GIT_SHA=<deployed-git-sha>
 MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
@@ -159,6 +161,13 @@ POSTHOG_PERSONAL_API_KEY=
 POSTHOG_ORGANIZATION_ID=
 POSTHOG_ENVIRONMENT=production
 ```
+
+`TURNSTILE_SECRET_KEY` is the private key for the Cloudflare widget named
+`Site in a Box contact form`. Keep it only in the CMS stack secret environment;
+the landing image contains only the public site key. Contact submissions fail
+closed with `503` when the secret is absent, so set it before releasing the
+protected form. Use Cloudflare's dummy site key and dummy secret for local and
+browser tests rather than allowing localhost on the production widget.
 
 Apply and verify the PostHog privacy baseline after configuring the project:
 

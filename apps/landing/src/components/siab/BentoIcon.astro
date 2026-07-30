@@ -1,0 +1,35 @@
+---
+interface Props {
+  name: 'shield' | 'speed';
+}
+
+const { name } = Astro.props;
+---
+
+{name === 'shield' ? (
+  <svg class="h-[89px] w-20 text-black dark:text-white" viewBox="0 0 80 89" fill="none" aria-hidden="true">
+    <path
+      d="M71.3542 16.8378L43.0196 4.69451C41.0914 3.8681 38.9087 3.8681 36.9804 4.69451L8.64608 16.8378C5.50625 18.1835 3.63579 21.4444 4.05953 24.8341L6.99618 48.3273C7.9906 56.2828 11.97 63.5634 18.1291 68.6962L35.0928 82.8323C37.9357 85.2014 42.0644 85.2014 44.9072 82.8323L61.8709 68.6962C68.0299 63.5634 72.0096 56.2828 73.0037 48.3273L75.9404 24.8341C76.3644 21.4444 74.4936 18.1835 71.3542 16.8378Z"
+      stroke="#00C592"
+      stroke-width="7"
+      stroke-linecap="round"
+    />
+    <path
+      d="M25.6279 44.8538L37.934 57.1598C39.0028 58.2287 40.7826 58.0528 41.621 56.7948L59.1634 30.4814"
+      stroke="currentColor"
+      stroke-width="7"
+      stroke-linecap="round"
+    />
+  </svg>
+) : (
+  <svg class="h-[79px] w-[90px] text-black dark:text-white" viewBox="0 0 90 79" fill="none" aria-hidden="true">
+    <path
+      d="M16.7157 73.2841C11.1217 67.69 7.31201 60.5626 5.7686 52.8036C4.22519 45.0442 5.01735 37.0015 8.04481 29.6926C11.0723 22.3836 16.1992 16.1365 22.7772 11.7412C29.3551 7.34597 37.0885 5 44.9999 5C52.9114 5 60.6447 7.34597 67.2228 11.7412C73.8004 16.1365 78.9273 22.3836 81.9551 29.6926C84.9828 37.0015 85.7748 45.0442 84.2313 52.8036C82.6879 60.5626 78.8783 67.69 73.2842 73.2841"
+      stroke="#F96A00"
+      stroke-width="10"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path d="M45 44.9999L66.3333 34.3333" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+)}

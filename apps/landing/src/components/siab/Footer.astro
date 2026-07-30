@@ -1,119 +1,93 @@
 ---
 import { site } from '../../content/site';
 const year = new Date().getFullYear();
-const whatsappDisplay = '+31 6 25052591';
+const contacts = [
+  { title: 'Stuur een mail', value: 'info@siteinabox.nl', href: site.links.email, color: 'text-cyan', icon: 'mail', action: 'contact_email', destination: 'email', conversion: 'contact_click' },
+  { title: 'Chat via WhatsApp', value: '+31 6 25052591', href: site.links.whatsapp, color: 'text-green', icon: 'whatsapp', action: 'contact_whatsapp', destination: 'whatsapp', conversion: 'contact_click' },
+  { title: 'Start je website', value: 'Intakeformulier', href: site.links.intake, color: 'text-orange', icon: 'chat', action: 'start_intake', destination: 'intake', conversion: 'intake_handoff' },
+];
 ---
 
-<footer class="footer-three dark-version siab-footer" aria-label="Sitevoettekst">
-  <div class="container lg">
-    <div class="address-wrapper">
-      <h2>Hulp nodig?</h2>
+<footer class="relative z-10 overflow-hidden bg-black pb-[30px] pt-[60px] text-lg leading-[1.5] text-white/70 dark:bg-[#190713] lg:pb-20 lg:pt-[100px]" aria-label="Sitevoettekst" data-analytics-section="footer" data-analytics-position="9">
+  <div class="site-container site-container--legacy-lg">
+    <div class="mb-10 lg:mb-[90px]">
+      <h2 class="mb-0 text-[35px] !font-semibold leading-[1.138] text-white min-[1200px]:mb-[30px] min-[1200px]:!text-[44px] min-[1400px]:!text-[62px]">Hulp nodig?</h2>
+      <div class="grid gap-6 min-[1400px]:gap-12 lg:grid-cols-3">
+        {contacts.map((contact) => (
+          <a
+            href={contact.href}
+            data-analytics-component={`cta-${contact.action}-footer`}
+            data-analytics-component-type="cta"
+            data-analytics-component-role="contact"
+            data-analytics-action={contact.action}
+            data-analytics-placement="footer_help"
+            data-analytics-destination={contact.destination}
+            data-analytics-conversion="true"
+            data-analytics-conversion-source={contact.conversion}
+            class="mt-[25px] flex min-h-[114px] items-center gap-5 border-2 border-white/60 bg-white/[.07] px-5 py-[25px] text-left text-inherit shadow-[4px_4px_0_rgba(255,255,255,.2)] transition-[transform,box-shadow,background-color] duration-150 hover:translate-x-0.5 hover:translate-y-0.5 hover:bg-white/[.12] hover:shadow-[2px_2px_0_rgba(255,255,255,.2)] dark:shadow-[4px_4px_0_#5a2b46] dark:hover:shadow-[2px_2px_0_#5a2b46] min-[1400px]:min-h-[150px] min-[1400px]:px-[35px] min-[1400px]:py-10"
+          >
+            <span class:list={['grid size-14 shrink-0 place-items-center rounded-full bg-white/[.12]', contact.color]} aria-hidden="true">
+              <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                {contact.icon === 'mail' && <><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="m3 7 9 6 9-6"></path></>}
+                {contact.icon === 'whatsapp' && <><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z"></path><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1"></path></>}
+                {contact.icon === 'chat' && <><path d="M3 20l1.3-3.9a9 9 0 1 1 3.4 2.9z"></path><path d="M8 12h.01M12 12h.01M16 12h.01"></path></>}
+              </svg>
+            </span>
+            <span class="min-w-0 text-white/75">
+              <strong class="block font-head text-xl leading-tight text-white min-[1400px]:text-[22px]">{contact.title}</strong>
+              <span class="mt-1 block text-lg min-[1400px]:text-xl">{contact.value}</span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
 
-      <div class="row gx-xxl-5">
-        <!-- 1. Email -->
-        <div class="col-lg-4 d-flex">
-          <a href={site.links.email} class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--email">
-            <div class="icon d-flex align-items-center justify-content-center rounded-circle">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m3 7 9 6 9-6"/></svg>
-            </div>
-            <div class="text">
-              <div class="title">Stuur een mail</div>
-              <span class="fs-20">info@siteinabox.nl</span>
-            </div>
-          </a>
-        </div>
-        <!-- 2. WhatsApp -->
-        <div class="col-lg-4 d-flex">
-          <a href={site.links.whatsapp} class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--wa">
-            <div class="icon d-flex align-items-center justify-content-center rounded-circle">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
-            </div>
-            <div class="text">
-              <div class="title">Chat via WhatsApp</div>
-              <span class="fs-20">{whatsappDisplay}</span>
-            </div>
-          </a>
-        </div>
-        <!-- 3. Dedicated generation intake -->
-        <div class="col-lg-4 d-flex">
-          <a href={site.links.intake} class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--form">
-            <div class="icon d-flex align-items-center justify-content-center rounded-circle">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l1.3-3.9a9 9 0 1 1 3.4 2.9z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
-            </div>
-            <div class="text">
-              <div class="title">Start je website</div>
-              <span class="fs-20">Intakeformulier</span>
-            </div>
-          </a>
+    <div class="siab-footer-links grid gap-10 md:grid-cols-3 lg:-mx-3 lg:flex lg:flex-wrap lg:justify-between lg:gap-0 [&_nav_a]:font-medium [&_nav_a]:leading-[50px]">
+      <div class="lg:w-1/4 lg:px-3">
+        <a href="/" aria-label="Site in a Box — naar homepage" data-analytics-action="navigate_home" data-analytics-placement="footer" data-analytics-destination="home">
+          <img src="/theme/images/logo/siab_logo_dark.svg" alt="Site in a Box" width="160" height="80" class="h-[clamp(44px,3vw,56px)] w-auto" />
+        </a>
+        <p class="mb-[15px] mt-10 text-base font-normal text-white/75">Connect met ons</p>
+        <div class="flex gap-[18px]">
+          {site.socials.instagram && <a href={site.socials.instagram} aria-label="Site in a Box op Instagram" rel="noopener" target="_blank" class="p-1 text-white/80 hover:text-yellow" data-analytics-action="open_instagram" data-analytics-placement="footer_social" data-analytics-destination="social"><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3"></circle><path d="M16.5 7.5h.01"></path></svg></a>}
+          <a href={site.links.email} aria-label="E-mail" class="p-1 text-white/80 hover:text-yellow" data-analytics-action="contact_email" data-analytics-placement="footer_social" data-analytics-destination="email"><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="m3 7 9 6 9-6"></path></svg></a>
         </div>
       </div>
+      <nav class="lg:w-1/4 lg:px-3" aria-label="Voettekst navigatie">
+        <h3 class="mb-[15px] text-base font-bold uppercase leading-6 !tracking-[.06em] text-white/75">Navigatie</h3>
+        <ul class="text-white/75">
+          <li><a class="hover:text-white hover:underline" href="/#zo-werkt-het" data-analytics-action="view_how_it_works" data-analytics-placement="footer_navigation" data-analytics-destination="section">Hoe het werkt</a></li>
+          <li><a class="hover:text-white hover:underline" href="/#prijzen" data-analytics-action="view_pricing" data-analytics-placement="footer_navigation" data-analytics-destination="section">Prijzen</a></li>
+          <li><a class="hover:text-white hover:underline" href={site.links.intake} data-analytics-component="cta-start-intake-footer-navigation" data-analytics-component-type="cta" data-analytics-component-role="primary" data-analytics-action="start_intake" data-analytics-placement="footer_navigation" data-analytics-destination="intake" data-analytics-conversion="true" data-analytics-conversion-source="intake_handoff">Intake</a></li>
+          <li><a class="hover:text-white hover:underline" href="#faq" data-analytics-action="view_faq" data-analytics-placement="footer_navigation" data-analytics-destination="section">Veelgestelde vragen</a></li>
+        </ul>
+      </nav>
+      <nav class="lg:w-1/4 lg:px-3" aria-label="Contactlinks">
+        <h3 class="mb-[15px] text-base font-bold uppercase leading-6 !tracking-[.06em] text-white/75">Contact</h3>
+        <ul class="text-white/75">
+          <li><a class="hover:text-white hover:underline" href="/contact" data-analytics-action="open_contact_form" data-analytics-placement="footer_navigation" data-analytics-destination="contact_form">Contactformulier</a></li>
+          <li><a class="hover:text-white hover:underline" href={site.links.email} data-analytics-action="contact_email" data-analytics-placement="footer_navigation" data-analytics-destination="email">info@siteinabox.nl</a></li>
+          <li><a class="hover:text-white hover:underline" href={site.links.whatsapp} data-analytics-action="contact_whatsapp" data-analytics-placement="footer_navigation" data-analytics-destination="whatsapp">WhatsApp</a></li>
+          {site.socials.instagram && <li><a class="hover:text-white hover:underline" href={site.socials.instagram} rel="noopener" target="_blank" data-analytics-action="open_instagram" data-analytics-placement="footer_navigation" data-analytics-destination="social">Instagram</a></li>}
+        </ul>
+      </nav>
+      <nav class="lg:w-1/6 lg:px-3" aria-label="Juridische links">
+        <h3 class="mb-[15px] text-base font-bold uppercase leading-6 !tracking-[.06em] text-white/75">Juridisch</h3>
+        <ul class="text-white/75">
+          <li><a class="hover:text-white hover:underline" href="/algemene-voorwaarden" data-analytics-action="open_terms" data-analytics-placement="footer_legal" data-analytics-destination="legal">Algemene voorwaarden</a></li>
+          <li><a class="hover:text-white hover:underline" href="/privacy-en-cookieverklaring" data-analytics-action="open_privacy" data-analytics-placement="footer_legal" data-analytics-destination="legal">Privacy en cookies</a></li>
+          <li><button type="button" class="hover:text-white hover:underline" data-consent-settings>Cookie-instellingen</button></li>
+        </ul>
+      </nav>
     </div>
-    <!-- /.address-wrapper -->
-    <div class="position-relative">
-      <div class="row justify-content-between">
-        <div class="col-lg-3 order-lg-0">
-          <div class="logo mt-15">
-            <a href="/" aria-label="Site in a Box — naar homepage">
-              <img src="/theme/images/logo/siab_logo_dark.svg" alt="Site in a Box" />
-            </a>
-          </div>
-          <div class="fs-6 text-white mt-40 mb-15">Connect met ons</div>
-          <ul class="style-none d-flex align-items-center social-icon">
-            {site.socials.instagram && (
-              <li>
-                <a href={site.socials.instagram} aria-label="Site in a Box op Instagram" rel="noopener" target="_blank">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><line x1="16.5" y1="7.5" x2="16.501" y2="7.5"/></svg>
-                </a>
-              </li>
-            )}
-            <li>
-              <a href="mailto:info@siteinabox.nl" aria-label="E-mail">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m3 7 9 6 9-6"/></svg>
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div class="col-lg-3 col-md-4 order-lg-1">
-          <div class="footer-nav">
-            <div class="fs-6 text-white mb-15">Navigatie</div>
-            <ul class="footer-nav-link style-none">
-              {/* Root-absolute: these sections live on the homepage. #faq stays page-local — FaqSection renders on every page. */}
-              <li><a href="/#zo-werkt-het">Hoe het werkt</a></li>
-              <li><a href="/#prijzen">Prijzen</a></li>
-              <li><a href={site.links.intake}>Intake</a></li>
-              <li><a href="#faq">Veelgestelde vragen</a></li>
-            </ul>
-          </div>
-        </div>
-        <div class="col-lg-3 col-md-4 order-lg-2">
-          <div class="footer-nav">
-            <div class="fs-6 text-white mb-15">Contact</div>
-            <ul class="footer-nav-link style-none">
-              <li><a href="/contact">Contactformulier</a></li>
-              <li><a href={site.links.email}>info@siteinabox.nl</a></li>
-              <li><a href={site.links.whatsapp}>WhatsApp</a></li>
-            </ul>
-          </div>
-        </div>
-        <div class="col-lg-2 col-md-4 order-lg-3">
-          <div class="footer-nav">
-            <div class="fs-6 text-white mb-15">Juridisch</div>
-            <ul class="footer-nav-link style-none">
-              <li><a href="/algemene-voorwaarden">Algemene voorwaarden</a></li>
-              <li><a href="/privacy-en-cookieverklaring">Privacy en cookies</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- Wettelijk verplicht: Art. 3:15d BW + Art. 28 Handelsregisterwet 2007 -->
-      <p class="copyright-text siab-copyright-row text-center m0" aria-label="Bedrijfsgegevens en auteursrecht">
-        <span class="siab-cr-copy"><span class="text-white fw-500">&copy;{year} Site in a Box.</span> Alle rechten voorbehouden.</span>
-        <span class="siab-legal-meta__sep" aria-hidden="true">&middot;</span>
-        <span class="siab-cr-meta"><abbr title="Kamer van Koophandel">KvK</abbr>: 99460165</span>
-        <span class="siab-legal-meta__sep" aria-hidden="true">&middot;</span>
-        <span class="siab-cr-meta"><abbr title="BTW-identificatienummer">BTW-id</abbr>: NL869001073B01</span>
-      </p>
-    </div>
+
+    <p class="mt-10 flex flex-wrap justify-center gap-x-2.5 gap-y-1 border-t border-white/[.14] pt-6 text-center text-[13px] leading-[1.8] text-white/55 lg:mt-16 lg:pt-8" aria-label="Bedrijfsgegevens en auteursrecht">
+      <span>&copy;{year} Site in a Box. Alle rechten voorbehouden.</span>
+      <span aria-hidden="true">&middot;</span>
+      <span><abbr title="Kamer van Koophandel">KvK</abbr>: 99460165</span>
+      <span aria-hidden="true">&middot;</span>
+      <span><abbr title="BTW-identificatienummer">BTW-id</abbr>: NL869001073B01</span>
+    </p>
   </div>
-  <img src="/theme/images/shape/shape_82.svg" alt="" class="shapes shape_01" />
+  <img src="/theme/images/shape/shape_82.svg" alt="" width="770" height="654" class="pointer-events-none absolute right-[10%] top-[12%] -z-10 max-w-[52%]" />
 </footer>
