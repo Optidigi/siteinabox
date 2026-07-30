@@ -115,6 +115,7 @@ import { cloudflareTunnelTarget } from "@/lib/domains/cloudflareTunnels"
 import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { classifyMigrationEntry } from "@/lib/domains/migrationDecisions"
 
 const CUTOVER_VERIFICATION_MINUTES = 30
 const SOURCE_EVIDENCE_MAX_AGE_MS = 24 * 60 * 60_000
@@ -2832,35 +2833,13 @@ export async function prepareDomainMigration(
     depth: 0,
     overrideAccess: true,
   }) as DomainMigration
-  if (migration.state === "completed") {
-    return { status: "completed", migrationId: migration.id, message: "Migration is complete." }
-  }
-  if (migration.state === "rolled_back") {
-    return { status: "rolled_back", migrationId: migration.id, message: "Migration is rolled back." }
-  }
-  if (migration.state === "custom_quote_required") {
+  const entryDecision = classifyMigrationEntry(migration)
+  if (entryDecision.outcome !== "continue") {
     return {
-      status: "failed",
+      status: entryDecision.status,
       migrationId: migration.id,
-      message: "Complex migration requires a custom quote and cannot continue automatically.",
+      message: entryDecision.message,
     }
-  }
-  if (migration.state === "paused_supplemental_order") {
-    return waiting(migration, "Migration is paused for authorized operator work.")
-  }
-  if (migration.state === "awaiting_customer" && !migration.sourceZoneSnapshot) {
-    return waiting(migration, "A complete authoritative zone export and transfer code are required.")
-  }
-  if (
-    !migration.sourceZoneSnapshot ||
-    !migration.targetZoneSnapshot ||
-    !migration.rollbackEvidence ||
-    (
-      !migration.encryptedTransferCode &&
-      migration.providerTransferState !== "confirmed"
-    )
-  ) {
-    return waiting(migration, "Frozen migration preparation evidence is incomplete.")
   }
   const now = deps.now()
   let sourceEvidenceStale = sourceEvidenceIsStale(migration, now)
