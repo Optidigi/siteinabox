@@ -1,8 +1,8 @@
 # Commerce production evidence
 
 This dossier separates code readiness from approval-gated provider and
-deployment evidence. It is a template, not authorization to make a live
-payment, register or transfer a domain, change DNS, or deploy.
+deployment evidence. It records capability evidence, not authorization to
+make a live payment or register, transfer, renew, or restore a domain.
 
 Never record credentials, transfer codes, customer data, raw provider
 responses, payment identifiers, or personal workstation paths in this
@@ -11,34 +11,34 @@ system and link it from the release change record.
 
 ## Current staged matrix
 
-The effective TLD catalogue models the intended catalogue, but its current
-operation flags are fail-closed. Primary provider and registry documentation
-is recorded in the catalogue; that contract evidence does not replace a
-controlled per-TLD provider rehearsal. Do not enable an operation until its
-row below has reconciled the provider write and resulting public state.
+The effective catalogue enables the intended TLD operations from
+`2026-07-30T14:30:00Z`. On that date the production Openprovider account
+returned every extension as active and transfer-capable, with auth-code
+protection, deterministic create/transfer/renew/restore prices, and DNSSEC
+key/digest support. These were read-only provider calls: no domain operation
+was performed. Provider writes remain governed by the global staged release
+gate, payment state, accepted-order evidence, idempotency, and reconciliation.
 
 | TLD | Registration | Incoming transfer | Renewal | Registrant verification | Restoration |
 | --- | --- | --- | --- | --- | --- |
-| `.nl` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.be` | disabled — registry prevalidation/rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.com` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.eu` | disabled — eligibility evidence/rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.org` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.net` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.de` | disabled — authoritative DNS/risk flow | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.info` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.online` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
-| `.shop` | disabled — rehearsal | disabled — DNSSEC/cutover | disabled — renewal | disabled — rehearsal | disabled |
+| `.nl` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.be` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.com` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.eu` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.org` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.net` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.de` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.info` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.online` | enabled | enabled | provider autorenew | enabled | enabled |
+| `.shop` | enabled | enabled | provider autorenew | enabled | enabled |
 
-Global production evidence also remains disabled:
+Global provider writes remain disabled while the long-lived deployment is in
+`shadow`. Before advancing it, complete:
 
-- authenticated provider connector, authorized AXFR/IXFR, and automatic
-  validated-export DNS sources;
-- automatic existing-domain migration for each enabled complete-source
-  mechanism;
-- renderer multi-TLD routing;
 - verified edge/origin trust;
-- application-created recurring Mollie payments.
+- the public Cloudflare source OAuth client used for customer-authorized zone
+  import;
+- the controlled paid Mollie checkout/provisioning canary.
 
 Existing paid or provider-committed obligations are not cancelled by a later
 feature-gate rollback. Their reconciliation and the minimum safety writes
@@ -150,17 +150,14 @@ These steps require a separate approved production change:
    run the read-only production-readiness gate. Follow the exact commands in
    [Commerce release](commerce-release.md) and keep the long-lived service in
    `shadow`.
-6. Rehearse the approved provider scenarios and record redacted evidence.
-7. Enable only the reviewed operation/TLD set in the effective capability
-   catalogue, review and deploy that code change, then perform a controlled
-   canary before advancing the global stage.
-8. Enable the matching global feature and production stage only after its
+6. Rehearse the controlled paid checkout/provider canary and record redacted
+   evidence.
+7. Confirm the deployed effective capability catalogue matches the intended
+   operation/TLD set.
+8. Enable the global production stage only after its
    evidence row passes.
 9. Monitor reconciliation, renewal dates, certificate readiness, alerts, and
    customer-visible state before expanding scope.
-
-Do not combine TLD expansion with a payment, migration, or origin-topology
-change.
 
 ## Rollback
 

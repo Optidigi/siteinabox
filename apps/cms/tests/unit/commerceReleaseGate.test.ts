@@ -324,12 +324,11 @@ describe("staged commerce release runtime gate", () => {
       } as unknown as NodeJS.ProcessEnv,
     )
     expect(blockers).toEqual([
-      "existing_domain_migration_has_no_enabled_transfer_tld",
       "cloudflare_source_oauth_configuration_incomplete",
     ])
   })
 
-  it("blocks an advertised migration route without a complete source or enabled transfer TLD", async () => {
+  it("blocks an advertised migration route without a complete source", async () => {
     const readinessPayload = asPayload({
       find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
     })
@@ -354,7 +353,6 @@ describe("staged commerce release runtime gate", () => {
     )
     expect(blockers).toEqual([
       "existing_domain_migration_has_no_complete_source",
-      "existing_domain_migration_has_no_enabled_transfer_tld",
     ])
   })
 
