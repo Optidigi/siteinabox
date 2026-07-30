@@ -124,7 +124,7 @@ describe("effective TLD allowlist integration", () => {
   })
 
   it.each(["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"])(
-    "allows read-only current .%s checks but keeps registration fail-closed",
+    "allows current production registration checks for .%s",
     async (tld) => {
       openProviderMocks.checkAvailability.mockResolvedValue({
         status: "available",
@@ -143,8 +143,8 @@ describe("effective TLD allowlist integration", () => {
         { record: false, requireProductionCapability: false },
       )).resolves.toMatchObject({
         domain: `example.${tld}`,
-        messageKey: "checkoutDomainReleasePending",
-        productionOperationEnabled: false,
+        messageKey: "checkoutDomainAvailable",
+        productionOperationEnabled: true,
       })
       expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith(`example.${tld}`)
       openProviderMocks.checkAvailability.mockClear()
@@ -155,8 +155,12 @@ describe("effective TLD allowlist integration", () => {
         `example.${tld}`,
         null,
         { record: false },
-      )).rejects.toThrow("not enabled")
-      expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
+      )).resolves.toMatchObject({
+        domain: `example.${tld}`,
+        messageKey: "checkoutDomainAvailable",
+        productionOperationEnabled: true,
+      })
+      expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith(`example.${tld}`)
     },
   )
 })
