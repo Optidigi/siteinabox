@@ -24,9 +24,8 @@ import {
 } from "@/lib/checkout/checkoutProfile"
 import { loadAcceptedCheckoutResume } from "@/lib/checkout/acceptedCheckoutResume"
 import {
-  buildCheckoutQuote,
   decimalMoneyToMinor,
-  sealCheckoutQuote,
+  issueCheckoutQuoteSet,
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import {
@@ -307,9 +306,7 @@ function initialCheckoutQuotes(input: {
   if (!secret) throw new Error("PAYLOAD_SECRET is required to issue checkout quotes.")
   const providerPriceAmount = input.domainOrder.providerPriceAmount
   const providerQuotedAt = input.domainOrder.checkedAt
-  const issue = (billingPeriod: "monthly" | "annual") =>
-    sealCheckoutQuote(buildCheckoutQuote({
-      billingPeriod,
+  return issueCheckoutQuoteSet({
       providerOperationPriceNetMinor: decimalMoneyToMinor(
         providerPriceAmount,
       ),
@@ -317,11 +314,7 @@ function initialCheckoutQuotes(input: {
       providerQuotedAt,
       profileVersion: input.profileVersion,
       draftVersion: input.draftVersion,
-    }), secret)
-  return {
-    monthly: issue("monthly"),
-    annual: issue("annual"),
-  }
+    }, secret)
 }
 
 function deriveCheckoutDetails(input: {

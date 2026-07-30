@@ -30,10 +30,11 @@ import {
 import {
   buildCheckoutQuote,
   decimalMoneyToMinor,
+  issueCheckoutQuoteSet,
   openCheckoutQuote,
   sameCommercialCheckoutQuote,
-  sealCheckoutQuote,
   type CheckoutBillingPeriod,
+  type CheckoutQuoteInput,
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import {
@@ -121,6 +122,10 @@ import type {
   PreviewCheckoutProfileActionState,
   PreviewCheckoutSuggestionsState,
 } from "@/lib/checkout/previewCheckoutContract"
+import {
+  checkoutProfileConflict,
+  checkoutVersionConflict,
+} from "@/lib/checkout/previewCheckoutResults"
 
 export type {
   MigrationCustomerActionState,
@@ -162,9 +167,9 @@ const checkoutQuoteSigningSecret = (): string => {
   return secret
 }
 
-const issueCheckoutQuoteSet = (input: {
-  domain: string
-  providerPriceNetMinor: number
+const issuePreviewCheckoutQuoteSet = (input: {
+  domain: CheckoutQuoteInput["selectedDomain"]
+  providerPriceNetMinor: CheckoutQuoteInput["providerOperationPriceNetMinor"]
   providerQuotedAt: string
   profileVersion: number
   draftVersion: string
@@ -179,11 +184,8 @@ const issueCheckoutQuoteSet = (input: {
   migrationInputEnvelope?: string | null
   migrationSecretKey?: string | null
   now?: Date
-}): CheckoutQuoteSet => {
-  const secret = checkoutQuoteSigningSecret()
-  const issue = (billingPeriod: CheckoutBillingPeriod) =>
-    sealCheckoutQuote(buildCheckoutQuote({
-      billingPeriod,
+}): CheckoutQuoteSet =>
+  issueCheckoutQuoteSet({
       providerOperationPriceNetMinor: input.providerPriceNetMinor,
       selectedDomain: input.domain,
       providerQuotedAt: input.providerQuotedAt,
@@ -203,12 +205,7 @@ const issueCheckoutQuoteSet = (input: {
       migrationInputEnvelope: input.migrationInputEnvelope,
       migrationSecretKey: input.migrationSecretKey,
       now: input.now,
-    }), secret)
-  return {
-    monthly: issue("monthly"),
-    annual: issue("annual"),
-  }
-}
+    }, checkoutQuoteSigningSecret())
 
 const safeCheckoutErrorMessage = (
   error: unknown,
@@ -559,7 +556,7 @@ async function checkExistingDomainMigration(
       }
     }
     const profile = await loadLatestCheckoutProfile(context.payload, context.run.id)
-    const quotes = issueCheckoutQuoteSet({
+    const quotes = issuePreviewCheckoutQuoteSet({
       domain: assessment.domain,
       providerPriceNetMinor: providerPrice.netAmountMinor,
       providerQuotedAt: new Date().toISOString(),
@@ -702,7 +699,7 @@ export async function checkPreviewCheckoutDomainAction(
         throw new Error("Checkout domain price is unavailable for the commercial quote.")
       }
       const profile = await loadLatestCheckoutProfile(context.payload, context.run.id)
-      quotes = issueCheckoutQuoteSet({
+      quotes = issuePreviewCheckoutQuoteSet({
         domain: result.domain,
         providerPriceNetMinor: decimalMoneyToMinor(result.providerPriceAmount),
         providerQuotedAt: result.providerQuotedAt,
@@ -1248,7 +1245,7 @@ export async function savePreviewCheckoutProfileAction(
       ) {
         throw new Error("Existing-domain transfer price is not supported.")
       }
-      quotes = issueCheckoutQuoteSet({
+      quotes = issuePreviewCheckoutQuoteSet({
         domain: selectedDomain,
         providerPriceNetMinor: providerPrice.netAmountMinor,
         providerQuotedAt: new Date().toISOString(),
@@ -1291,7 +1288,7 @@ export async function savePreviewCheckoutProfileAction(
       refreshed.providerPriceAmount &&
       refreshed.providerPriceCurrency === COMMERCIAL_CATALOG.currency
     ) {
-      quotes = issueCheckoutQuoteSet({
+      quotes = issuePreviewCheckoutQuoteSet({
         domain: refreshed.domain,
         providerPriceNetMinor: decimalMoneyToMinor(refreshed.providerPriceAmount),
         providerQuotedAt: refreshed.providerQuotedAt,
@@ -1428,7 +1425,7 @@ export async function startPreviewCheckoutPaymentAction(
   const expectedProfileVersion = versionField(formData, "expectedProfileVersion")
   const expectedProfileKey = String(formData.get("expectedProfileKey") ?? "").trim()
   if (expectedProfileVersion == null || !expectedProfileKey) {
-    return { ok: false, status: "profile_conflict", message: t("checkoutProfileRequired") }
+    return checkoutProfileConflict(t("checkoutProfileRequired"))
   }
   const currentTerms = getCurrentLegalDocument("platform-terms", "nl")
   const currentPrivacy = getCurrentLegalDocument("platform-privacy", "nl")
@@ -1437,7 +1434,7 @@ export async function startPreviewCheckoutPaymentAction(
     String(formData.get("expectedPrivacyVersion") ?? "") !== currentPrivacy.documentVersion ||
     String(formData.get("expectedBusinessUseDeclarationVersion") ?? "") !== BUSINESS_USE_DECLARATION_VERSION
   ) {
-    return { ok: false, status: "version_conflict", message: t("checkoutLegalVersionConflict") }
+    return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
   }
   const billingPeriodValue = String(formData.get("billingPeriod") ?? "")
   if (billingPeriodValue !== "monthly" && billingPeriodValue !== "annual") {
@@ -1446,13 +1443,13 @@ export async function startPreviewCheckoutPaymentAction(
   const billingPeriod: CheckoutBillingPeriod = billingPeriodValue
   const quoteToken = String(formData.get("checkoutQuoteToken") ?? "").trim()
   if (!quoteToken) {
-    return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
+    return checkoutVersionConflict(t("checkoutQuoteVersionConflict"))
   }
   let acceptedQuote
   try {
     acceptedQuote = openCheckoutQuote(quoteToken, checkoutQuoteSigningSecret())
   } catch {
-    return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
+    return checkoutVersionConflict(t("checkoutQuoteVersionConflict"))
   }
   const acceptedOrderId = String(formData.get("acceptedOrderId") ?? "").trim()
   let resumesAcceptedOrder = false
@@ -1495,7 +1492,7 @@ export async function startPreviewCheckoutPaymentAction(
     ) ||
     (acceptedOrderId && !resumesAcceptedOrder)
   ) {
-    return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
+    return checkoutVersionConflict(t("checkoutQuoteVersionConflict"))
   }
   const checkoutProfile = await loadLatestCheckoutProfile(context.payload, context.run.id)
   if (
@@ -1505,19 +1502,12 @@ export async function startPreviewCheckoutPaymentAction(
     checkoutProfile.customerEmail.trim().toLowerCase() !==
       context.customerEmail.trim().toLowerCase()
   ) {
-    return {
-      ok: false,
-      status: "profile_conflict",
-      message: t("checkoutProfileConflict"),
+    return checkoutProfileConflict(t("checkoutProfileConflict"), {
       currentProfile: checkoutProfile ? checkoutProfileView(checkoutProfile) : undefined,
-    }
+    })
   }
   if (acceptedQuote.profileVersion !== checkoutProfile.profileVersion) {
-    return {
-      ok: false,
-      status: "version_conflict",
-      message: t("checkoutQuoteVersionConflict"),
-    }
+    return checkoutVersionConflict(t("checkoutQuoteVersionConflict"))
   }
   const registrant = domainRegistrantFromCheckoutProfile(checkoutProfile)
   let acceptedMigrationInput: ReturnType<
@@ -1679,7 +1669,7 @@ export async function startPreviewCheckoutPaymentAction(
         ok: false,
         status: "version_conflict",
         message: t("checkoutQuoteVersionConflict"),
-        quotes: issueCheckoutQuoteSet({
+        quotes: issuePreviewCheckoutQuoteSet({
           domain: readyDomain,
           providerPriceNetMinor: currentQuote.providerOperationPriceNetMinor,
           providerQuotedAt: currentQuote.providerQuotedAt,

@@ -73,7 +73,7 @@ export type CheckoutQuoteSet = Record<CheckoutBillingPeriod, CheckoutQuoteEnvelo
 
 const quoteTtlMs = 15 * 60 * 1_000
 
-export function buildCheckoutQuote(input: {
+export type CheckoutQuoteInput = {
   catalogVersion?: string
   billingPeriod: CheckoutBillingPeriod
   providerOperationPriceNetMinor: number
@@ -93,7 +93,9 @@ export function buildCheckoutQuote(input: {
   profileVersion?: number
   draftVersion: string
   now?: Date
-}): CheckoutQuote {
+}
+
+export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuote {
   const catalog = getCommercialCatalog(input.catalogVersion)
   if (
     input.migrationClassification &&
@@ -276,6 +278,18 @@ export function sealCheckoutQuote(quote: CheckoutQuote, secret: string): Checkou
   return {
     quote,
     token: `${encoded}.${quoteSignature(encoded, secret)}`,
+  }
+}
+
+export function issueCheckoutQuoteSet(
+  input: Omit<CheckoutQuoteInput, "billingPeriod">,
+  secret: string,
+): CheckoutQuoteSet {
+  const issue = (billingPeriod: CheckoutBillingPeriod) =>
+    sealCheckoutQuote(buildCheckoutQuote({ ...input, billingPeriod }), secret)
+  return {
+    monthly: issue("monthly"),
+    annual: issue("annual"),
   }
 }
 

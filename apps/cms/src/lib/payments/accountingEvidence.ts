@@ -9,6 +9,7 @@ import type {
 import type { RefundScenario } from "@siteinabox/contracts/commerce"
 
 import { findOneDoc } from "@/lib/payloadCollection"
+import { frozenOrderAmounts } from "@/lib/payments/frozenOrderAmounts"
 import { relationshipId } from "@/lib/relationshipId"
 
 const numericRelationshipId = (value: Parameters<typeof relationshipId>[0]): number | undefined => {
@@ -33,34 +34,14 @@ const customerSnapshot = (order: Order) => ({
   contractingPartyProfileVersion: order.contractingPartyProfileVersion ?? null,
 })
 
-const orderAmounts = (order: Order) => {
-  const netAmountMinor = order.subtotalNetMinor
-  const vatAmountMinor = order.vatAmountMinor
-  const grossAmountMinor = order.totalGrossMinor
-  if (
-    Number.isSafeInteger(netAmountMinor) &&
-    Number.isSafeInteger(vatAmountMinor) &&
-    Number.isSafeInteger(grossAmountMinor) &&
-    netAmountMinor != null &&
-    vatAmountMinor != null &&
-    grossAmountMinor != null
-  ) {
-    return { netAmountMinor, vatAmountMinor, grossAmountMinor }
-  }
-  const net = Math.round(Number(order.subtotalNet) * 100)
-  const vat = Math.round(Number(order.vatAmount) * 100)
-  const gross = Math.round(Number(order.totalGross) * 100)
-  if (![net, vat, gross].every((amount) => Number.isSafeInteger(amount) && amount >= 0)) {
-    throw new Error("Order is missing valid frozen accounting amounts.")
-  }
-  return { netAmountMinor: net, vatAmountMinor: vat, grossAmountMinor: gross }
-}
-
 export const allocateCreditAmounts = (
   order: Order,
   grossAmountMinor: number,
 ): { netAmountMinor: number; vatAmountMinor: number; grossAmountMinor: number } => {
-  const original = orderAmounts(order)
+  const original = frozenOrderAmounts(
+    order,
+    "Order is missing valid frozen accounting amounts.",
+  )
   if (
     !Number.isSafeInteger(grossAmountMinor) ||
     grossAmountMinor <= 0 ||
@@ -108,7 +89,10 @@ export async function ensureInvoiceEvidence(input: {
   const evidenceKey = `invoice:payment-attempt:${input.paymentAttempt.id}`
   const existing = await findAccountingDocument(input.payload, evidenceKey)
   if (existing) return existing
-  const amounts = orderAmounts(input.order)
+  const amounts = frozenOrderAmounts(
+    input.order,
+    "Order is missing valid frozen accounting amounts.",
+  )
   return createOrReloadAccountingDocument(input.payload, evidenceKey, () =>
     input.payload.create({
     collection: "accounting-documents",

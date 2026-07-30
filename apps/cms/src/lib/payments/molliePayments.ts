@@ -49,6 +49,7 @@ import {
   type GenerationRunPaymentState,
   type GenerationRunPaymentStatus,
 } from "@/lib/payments/generationRunPayment"
+import { frozenOrderAmounts } from "@/lib/payments/frozenOrderAmounts"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import {
   ensureCommerceNotification,
@@ -148,32 +149,6 @@ const mollieAmount = (minor: number, currency: string): MollieAmount => {
     currency,
     value: `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, "0")}`,
   }
-}
-
-const orderAmounts = (order: Order) => {
-  if (
-    Number.isSafeInteger(order.subtotalNetMinor) &&
-    Number.isSafeInteger(order.vatAmountMinor) &&
-    Number.isSafeInteger(order.totalGrossMinor) &&
-    order.subtotalNetMinor != null &&
-    order.vatAmountMinor != null &&
-    order.totalGrossMinor != null
-  ) {
-    return {
-      netAmountMinor: order.subtotalNetMinor,
-      vatAmountMinor: order.vatAmountMinor,
-      grossAmountMinor: order.totalGrossMinor,
-    }
-  }
-  const values = {
-    netAmountMinor: Math.round(Number(order.subtotalNet) * 100),
-    vatAmountMinor: Math.round(Number(order.vatAmount) * 100),
-    grossAmountMinor: Math.round(Number(order.totalGross) * 100),
-  }
-  if (!Object.values(values).every((value) => Number.isSafeInteger(value) && value >= 0)) {
-    throw new Error("Frozen order amounts are invalid.")
-  }
-  return values
 }
 
 const stateHistory = (
@@ -423,7 +398,7 @@ const createOrLoadAttempt = async (
   if (existingByBusinessTuple) {
     return { attempt: existingByBusinessTuple, created: false }
   }
-  const amounts = orderAmounts(input.order)
+  const amounts = frozenOrderAmounts(input.order)
   try {
     const attempt = await payload.create({
       collection: "payment-attempts",

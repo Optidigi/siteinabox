@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildCheckoutQuote,
+  issueCheckoutQuoteSet,
   openCheckoutQuote,
   sameCommercialCheckoutQuote,
   sealCheckoutQuote,
@@ -18,6 +19,42 @@ const quoteContext = {
 }
 
 describe("Phase 3 checkout quote", () => {
+  it("issues the same frozen authority for monthly and annual checkout", () => {
+    const quotes = issueCheckoutQuoteSet({
+      providerOperationPriceNetMinor: 1_250,
+      profileVersion: 4,
+      ...quoteContext,
+    }, "quote-test-secret")
+
+    expect(Object.keys(quotes)).toEqual(["monthly", "annual"])
+    expect(quotes.monthly.quote).toMatchObject({
+      billingPeriod: "monthly",
+      selectedDomain: "example.nl",
+      providerOperationPriceNetMinor: 1_250,
+      profileVersion: 4,
+      draftVersion: "draft-1",
+      providerQuotedAt: "2026-07-28T10:00:00.000Z",
+    })
+    expect(quotes.annual.quote).toMatchObject({
+      billingPeriod: "annual",
+      selectedDomain: "example.nl",
+      providerOperationPriceNetMinor: 1_250,
+      profileVersion: 4,
+      draftVersion: "draft-1",
+      providerQuotedAt: "2026-07-28T10:00:00.000Z",
+    })
+    expect(openCheckoutQuote(
+      quotes.monthly.token,
+      "quote-test-secret",
+      new Date("2026-07-28T10:01:00.000Z"),
+    )).toEqual(quotes.monthly.quote)
+    expect(openCheckoutQuote(
+      quotes.annual.token,
+      "quote-test-secret",
+      new Date("2026-07-28T10:01:00.000Z"),
+    )).toEqual(quotes.annual.quote)
+  })
+
   it("quotes monthly and annual subscriptions from the versioned catalog", () => {
     expect(buildCheckoutQuote({
       billingPeriod: "monthly",
