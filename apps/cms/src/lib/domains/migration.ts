@@ -2821,26 +2821,52 @@ async function rollbackCutover(
   }
 }
 
+type MigrationPhaseOutcome =
+  | { outcome: "continue"; migration: DomainMigration }
+  | {
+      outcome:
+        | "waiting"
+        | "customer_action_required"
+        | "provider_reconciliation_required"
+        | "manual_review"
+        | "rollback_required"
+        | "completed"
+      result: MigrationResult
+    }
+
+async function loadAndClassifyMigrationPhase(
+  payload: Payload,
+  migrationId: string | number,
+): Promise<MigrationPhaseOutcome> {
+  const migration = await payload.findByID({
+    collection: "domain-migrations",
+    id: migrationId,
+    depth: 0,
+    overrideAccess: true,
+  }) as DomainMigration
+  const decision = classifyMigrationEntry(migration)
+  if (decision.outcome === "continue") {
+    return { outcome: "continue", migration }
+  }
+  return {
+    outcome: decision.outcome,
+    result: {
+      status: decision.status,
+      migrationId: migration.id,
+      message: decision.message,
+    },
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
   dependencies: Partial<MigrationDependencies> = {},
 ): Promise<MigrationResult> {
   const deps = { ...defaultDependencies, ...dependencies }
-  let migration = await payload.findByID({
-    collection: "domain-migrations",
-    id: migrationId,
-    depth: 0,
-    overrideAccess: true,
-  }) as DomainMigration
-  const entryDecision = classifyMigrationEntry(migration)
-  if (entryDecision.outcome !== "continue") {
-    return {
-      status: entryDecision.status,
-      migrationId: migration.id,
-      message: entryDecision.message,
-    }
-  }
+  const loadOutcome = await loadAndClassifyMigrationPhase(payload, migrationId)
+  if (loadOutcome.outcome !== "continue") return loadOutcome.result
+  let migration = loadOutcome.migration
   const now = deps.now()
   let sourceEvidenceStale = sourceEvidenceIsStale(migration, now)
   if (
