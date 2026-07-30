@@ -36,7 +36,17 @@ describe("sendEmail", () => {
     mocks.sendMail.mockResolvedValue({ messageId: "test-message" })
     mocks.fetch.mockResolvedValue({
       ok: true,
-      json: vi.fn(async () => ({ success: true, errors: [], messages: [], result: { delivered: ["customer@example.com"] } })),
+      json: vi.fn(async () => ({
+        success: true,
+        errors: [],
+        messages: [],
+        result: {
+          delivered: ["customer@example.com"],
+          queued: [],
+          permanent_bounces: [],
+          message_id: "cf-message-123",
+        },
+      })),
     })
   })
 
@@ -212,9 +222,182 @@ describe("sendEmail", () => {
         flow: "auth.magic_link",
         status: "sent",
         provider: "cloudflare-rest",
+        providerMessageId: "cf-message-123",
         sentAt: "2026-07-01T12:03:00.000Z",
       }),
     })
+  })
+
+  it("accepts queued REST recipients and persists the provider message ID", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
+    mocks.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn(async () => ({
+        success: true,
+        result: {
+          delivered: [],
+          queued: ["customer@example.com"],
+          permanent_bounces: [],
+          message_id: "cf-queued-123",
+        },
+      })),
+    })
+    const payload = mockPayload()
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await expect(sendEmail({
+      intent: "preview.site_ready",
+      to: "customer@example.com",
+      subject: "Preview",
+      html: "<p>Preview</p>",
+      payload,
+    })).resolves.toEqual({
+      provider: "cloudflare-rest",
+      providerMessageId: "cf-queued-123",
+    })
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "mail-logs",
+      data: expect.objectContaining({
+        status: "sent",
+        providerMessageId: "cf-queued-123",
+      }),
+    }))
+  })
+
+  it("records a REST permanent bounce as a permanent failure", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
+    mocks.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn(async () => ({
+        success: true,
+        result: {
+          delivered: [],
+          queued: [],
+          permanent_bounces: ["customer@example.com"],
+          message_id: "cf-bounce-123",
+        },
+      })),
+    })
+    const payload = mockPayload()
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await expect(sendEmail({
+      intent: "preview.site_ready",
+      to: "customer@example.com",
+      subject: "Preview",
+      html: "<p>Preview</p>",
+      payload,
+    })).rejects.toThrow("permanent recipient bounce")
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "mail-logs",
+      data: expect.objectContaining({
+        status: "failed",
+        provider: "cloudflare-rest",
+        providerMessageId: "cf-bounce-123",
+        providerErrorCode: "E_CLOUDFLARE_PERMANENT_BOUNCE",
+        retryState: "permanent",
+      }),
+    }))
+  })
+
+  it.each([
+    {
+      name: "partial recipient disposition",
+      result: {
+        delivered: ["one@example.com"],
+        queued: [],
+        permanent_bounces: [],
+        message_id: "cf-partial-123",
+      },
+    },
+    {
+      name: "missing result evidence",
+      result: undefined,
+    },
+    {
+      name: "missing message ID",
+      result: {
+        delivered: ["one@example.com", "two@example.com"],
+        queued: [],
+        permanent_bounces: [],
+      },
+    },
+  ])("fails closed for a REST $name", async ({ result }) => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
+    mocks.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn(async () => ({ success: true, result })),
+    })
+    const payload = mockPayload()
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await expect(sendEmail({
+      intent: "preview.site_ready",
+      to: ["one@example.com", "two@example.com"],
+      subject: "Preview",
+      html: "<p>Preview</p>",
+      payload,
+    })).rejects.toThrow("Cloudflare Email REST API")
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "mail-logs",
+      data: expect.objectContaining({
+        status: "failed",
+        providerErrorCode: "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
+        retryState: "none",
+        ...(
+          result && "message_id" in result && typeof result.message_id === "string"
+            ? { providerMessageId: result.message_id }
+            : {}
+        ),
+      }),
+    }))
+  })
+
+  it("raises an immediate commerce alert for an unknown REST disposition", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
+    mocks.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn(async () => ({
+        success: true,
+        result: {
+          delivered: [],
+          queued: [],
+          permanent_bounces: [],
+          message_id: "cf-commerce-unknown",
+        },
+      })),
+    })
+    const payload = mockPayload()
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await expect(sendEmail({
+      intent: "commerce.domain",
+      tenant: 42,
+      to: "customer@example.com",
+      subject: "Domain status",
+      html: "<p>Status</p>",
+      payload,
+    })).rejects.toThrow("did not account for every requested recipient")
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "operational-alerts",
+      data: expect.objectContaining({
+        severity: "error",
+        source: "mail",
+        message: "Outbound mail failed for commerce.domain",
+      }),
+    }))
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "mail-logs",
+      data: expect.objectContaining({
+        providerMessageId: "cf-commerce-unknown",
+        retryState: "none",
+        status: "failed",
+      }),
+    }))
   })
 
   it("never reuses the DNS automation token for REST mail", async () => {
@@ -483,8 +666,8 @@ describe("sendEmail", () => {
       reason: "important_mail_failure",
       flow: "preview.site_ready",
       tenant: 42,
-      sender: "noreply@mail.tenant.example",
-      recipient: "customer@example.com",
+      senderRef: expect.stringMatching(/^[a-f0-9]{24}$/),
+      recipientRef: expect.stringMatching(/^[a-f0-9]{24}$/),
       provider: "cloudflare-smtp",
       providerErrorCode: "550",
       retryState: "permanent",
@@ -497,7 +680,7 @@ describe("sendEmail", () => {
         severity: "error",
         status: "open",
         source: "mail",
-        dedupeKey: "mail:important_mail_failure:preview.site_ready:42:noreply@mail.tenant.example:customer@example.com:cloudflare-smtp:550",
+        dedupeKey: expect.stringMatching(/^mail:important_mail_failure:preview\.site_ready:42:[a-f0-9]{24}:[a-f0-9]{24}:cloudflare-smtp:550$/),
         message: "Outbound mail failed for preview.site_ready",
         tenant: 42,
         occurrenceCount: 1,
@@ -505,6 +688,14 @@ describe("sendEmail", () => {
         lastSeenAt: "2026-07-01T12:10:00.000Z",
       }),
     })
+    const createCalls = payload.create.mock.calls as unknown as Array<[Record<string, unknown>]>
+    const alertCreate = createCalls.find(
+      ([call]) => call.collection === "operational-alerts",
+    )
+    expect(JSON.stringify(alertCreate)).not.toContain("noreply@mail.tenant.example")
+    expect(JSON.stringify(alertCreate)).not.toContain("customer@example.com")
+    expect(JSON.stringify(payload.logger.error.mock.calls)).not.toContain("noreply@mail.tenant.example")
+    expect(JSON.stringify(payload.logger.error.mock.calls)).not.toContain("customer@example.com")
     expect(JSON.stringify(payload.logger.error.mock.calls)).not.toContain("Your site is ready")
     expect(JSON.stringify(payload.logger.error.mock.calls)).not.toContain("Secret preview body")
     expect(JSON.stringify(payload.create.mock.calls)).not.toContain("Your site is ready")

@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto"
 import type { MailIntent, MailLogPayload, MailRetryState, MailTenantRef } from "@/lib/email/sendEmail"
 import type { OperationalAlert } from "@/payload-types"
 import type { Where } from "payload"
@@ -14,6 +15,8 @@ const importantFailureIntents = new Set<MailIntent>([
   "intake.internal_notification",
   "site.live_notice",
   "legal.reacceptance",
+  "commerce.billing",
+  "commerce.domain",
 ])
 
 export type MailAlertPayload = {
@@ -53,8 +56,8 @@ export async function recordMailFailureAlert(payload: MailAlertPayload | undefin
     reason,
     flow: input.flow,
     tenant: formatTenantRef(input.tenant) ?? undefined,
-    sender: input.sender,
-    recipient: input.recipient,
+    senderRef: mailAddressRef(input.sender),
+    recipientRef: mailAddressRef(input.recipient),
     provider: input.provider,
     providerErrorCode: input.providerErrorCode,
     retryState: input.retryState,
@@ -209,11 +212,20 @@ function buildDedupeKey(input: MailFailureAlertInput, reason: string) {
     reason,
     input.flow,
     formatTenantRef(input.tenant) ?? "platform",
-    input.sender,
-    input.recipient,
+    mailAddressRef(input.sender),
+    mailAddressRef(input.recipient),
     input.provider,
     input.providerErrorCode ?? input.retryState,
   ].join(":").toLowerCase()
+}
+
+function mailAddressRef(value: string) {
+  const key = process.env.SIAB_OPERATIONAL_HASH_KEY?.trim() || process.env.PAYLOAD_SECRET?.trim()
+  if (!key) return "address-redacted"
+  return createHmac("sha256", key)
+    .update(value.trim().toLowerCase())
+    .digest("hex")
+    .slice(0, 24)
 }
 
 function mailAlertMessage(input: MailFailureAlertInput, reason: string) {

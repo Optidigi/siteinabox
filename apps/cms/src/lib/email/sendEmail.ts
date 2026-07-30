@@ -95,6 +95,7 @@ export type MailProviderSuccess = {
 
 export type MailProviderError = {
   provider: string
+  providerMessageId?: string
   providerErrorCode?: string
   providerErrorMessage: string
   retryState: MailRetryState
@@ -226,11 +227,13 @@ export function createCloudflareRestProvider(config: { accountId: string; token:
           signal: controller.signal,
         })
         const body = await response.json().catch(() => null) as CloudflareRestResponse | null
-        if (!response.ok || body?.success === false) {
+        if (!response.ok || body?.success !== true) {
           throw cloudflareRestError(response.status, body)
         }
+        const disposition = validateCloudflareRestDisposition(input.to, body)
         return {
           provider: "cloudflare-rest",
+          providerMessageId: disposition.messageId,
         }
       } finally {
         clearTimeout(timeout)
@@ -262,6 +265,12 @@ export function createNodemailerProvider(transport: Pick<Transporter, "sendMail"
 type CloudflareRestResponse = {
   success?: boolean
   errors?: Array<{ code?: number; message?: string }>
+  result?: {
+    delivered?: string[]
+    message_id?: string
+    permanent_bounces?: string[]
+    queued?: string[]
+  }
 }
 
 function cloudflareRestError(status: number, body: CloudflareRestResponse | null) {
@@ -270,6 +279,71 @@ function cloudflareRestError(status: number, body: CloudflareRestResponse | null
   return Object.assign(new Error(message), {
     code: firstError?.code != null ? String(firstError.code) : String(status),
     responseCode: status,
+    response: message,
+  })
+}
+
+function validateCloudflareRestDisposition(
+  recipients: string | string[],
+  body: CloudflareRestResponse,
+) {
+  const result = body.result
+  const messageId = result?.message_id?.trim()
+  const delivered = normalizeEmailSet(result?.delivered)
+  const queued = normalizeEmailSet(result?.queued)
+  const permanentBounces = normalizeEmailSet(result?.permanent_bounces)
+  const requested = normalizeEmailSet(Array.isArray(recipients) ? recipients : [recipients])
+
+  if (
+    !messageId ||
+    !Array.isArray(result?.delivered) ||
+    !Array.isArray(result.queued) ||
+    !Array.isArray(result.permanent_bounces) ||
+    requested.size === 0
+  ) {
+    throw cloudflareDispositionError(
+      "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
+      "Cloudflare Email REST API returned incomplete delivery evidence",
+    )
+  }
+  if (permanentBounces.size > 0) {
+    throw cloudflareDispositionError(
+      "E_CLOUDFLARE_PERMANENT_BOUNCE",
+      "Cloudflare Email REST API reported a permanent recipient bounce",
+      400,
+      messageId,
+    )
+  }
+  const accepted = new Set([...delivered, ...queued])
+  if ([...requested].some((recipient) => !accepted.has(recipient))) {
+    throw cloudflareDispositionError(
+      "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
+      "Cloudflare Email REST API did not account for every requested recipient",
+      undefined,
+      messageId,
+    )
+  }
+  return { messageId }
+}
+
+function normalizeEmailSet(values: string[] | undefined) {
+  return new Set(
+    (values ?? [])
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+  )
+}
+
+function cloudflareDispositionError(
+  code: string,
+  message: string,
+  responseCode?: number,
+  providerMessageId?: string,
+) {
+  return Object.assign(new Error(message), {
+    code,
+    ...(responseCode ? { responseCode } : {}),
+    ...(providerMessageId ? { providerMessageId } : {}),
     response: message,
   })
 }
@@ -291,6 +365,7 @@ export function normalizeProviderError(error: unknown, provider = "cloudflare-sm
         response?: unknown
         responseCode?: unknown
         message?: unknown
+        providerMessageId?: unknown
       }
     : {}
   const responseCode = typeof err.responseCode === "number" ? err.responseCode : undefined
@@ -300,10 +375,14 @@ export function normalizeProviderError(error: unknown, provider = "cloudflare-sm
     ? err.message
     : "Unknown provider error"
   const providerErrorCode = rawCode || (responseCode ? String(responseCode) : undefined)
+  const providerMessageId = typeof err.providerMessageId === "string"
+    ? err.providerMessageId
+    : undefined
   const providerErrorMessage = trimProviderErrorMessage(redactOperationalMessage(response || message))
 
   return {
     provider,
+    ...(providerMessageId ? { providerMessageId } : {}),
     ...(providerErrorCode ? { providerErrorCode } : {}),
     providerErrorMessage,
     retryState: classifyRetryState({ provider, responseCode, code: rawCode, message: providerErrorMessage }),
@@ -372,6 +451,7 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
       recipient: formatRecipient(opts.to),
       status: "failed",
       provider: normalized.provider,
+      providerMessageId: normalized.providerMessageId,
       providerErrorCode: normalized.providerErrorCode,
       providerErrorMessage: normalized.providerErrorMessage,
       retryState: normalized.retryState,

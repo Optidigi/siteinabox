@@ -197,11 +197,14 @@ failure details, transfer codes, or full DNS evidence. Operators inspect:
   retrying customer mail;
 - operational alerts for manual-review or reconciliation exceptions.
 
-Before the live canary, confirm the production SMTP token and sender work with
-a non-customer transactional mail, the delivery worker is running, the
-provider balance/readiness check passes, and the chosen domain is deliberately
-approved for purchase. Do not use an availability check alone as authorization
-to register a real domain.
+Before the live canary, confirm the application-selected production mail
+transport and sender with a non-customer transactional message. Production
+normally selects Cloudflare REST and must record its provider message ID plus a
+recipient disposition of `delivered` or `queued`; an HTTP-success envelope
+alone is not delivery evidence. Also confirm the delivery worker is running,
+the provider balance/readiness check passes, and the chosen domain is
+deliberately approved for purchase. Do not use an availability check alone as
+authorization to register a real domain.
 
 ## Rollback
 
