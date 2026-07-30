@@ -136,6 +136,42 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
   })
 
+  it("lets a current release-pending recheck invalidate an older ready draft", async () => {
+    const checkDomainAction = vi.fn(async (
+      _state: unknown,
+      formData: FormData,
+    ) => ({
+      ok: false,
+      status: "release_pending" as const,
+      domain: "analytical-engines.nl",
+      domainMode: "new_registration" as const,
+      message: "example.nl is available, but registration is not released.",
+      requestToken: String(formData.get("requestToken") ?? ""),
+    }))
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "analytical-engines.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(1))
+    const status = await screen.findByRole("status")
+    expect(status.textContent).toContain("checkoutDomainReleasePendingTitle")
+    expect(status.textContent).toContain(
+      "example.nl is available, but registration is not released.",
+    )
+    expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
+    expect(screen.queryByText(/checkoutDomainAvailableDetail/)).toBeNull()
+  })
+
   it("shows the frozen transfer-renewal effect in the final review", () => {
     const monthly = quote("monthly")
     const annual = quote("annual")
@@ -435,6 +471,147 @@ describe("PreviewCheckout Phase 3 flow", () => {
     ).toBe("existing_domain")
     expect(container.querySelector('input[type="hidden"][name="transferCode"]'))
       .toBeNull()
+  })
+
+  it("turns a public transfer blocker into an alert and suppresses source controls", async () => {
+    const checkDomainAction = vi.fn(async (
+      _state: unknown,
+      formData: FormData,
+    ) => ({
+      ok: false,
+      status: "preflight_complete" as const,
+      domain: "example.com",
+      domainMode: "existing_domain" as const,
+      migrationReadiness: "unsupported" as const,
+      migrationClassification: null,
+      migrationPreflightOnly: true,
+      migrationPublicEvidence: {
+        checkedAt: "2026-07-30T12:00:00.000Z",
+        authoritativeNameservers: ["ns1.example.test"],
+        dnssecDsPresent: false,
+        dnssecDsRecords: [],
+        dnssecDsTtl: null,
+        probableDnsProvider: "cloudflare",
+        registrar: "Example Registrar",
+        registryStatuses: ["client transfer prohibited"],
+        registryTransferEvidence: "confirmed" as const,
+        transferBlockers: ["rdap_status:client_transfer_prohibited"],
+        supplementalOnly: true as const,
+      },
+      message: "Resolve the registrar lock before continuing.",
+      requestToken: String(formData.get("requestToken") ?? ""),
+    }))
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        currentDomain={null}
+        domainReady={false}
+        initialQuotes={null}
+        existingDomainMigrationEnabled
+        enabledMigrationSourceMethods={[
+          "cloudflare_api_v1",
+          "authorized_axfr_v1",
+        ]}
+        cloudflareSourceOAuthEnabled
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    }))
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.com" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    const alert = await screen.findByRole("alert")
+    expect(alert.textContent).toContain("checkoutMigrationTransferBlockedTitle")
+    expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
+    expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeNull()
+    expect(screen.queryByText("checkoutMigrationVerifySource")).toBeNull()
+    expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
+  })
+
+  it("keeps source credentials hidden while rechecking an unreleased transfer TLD", async () => {
+    const blocked = (requestToken: string) => ({
+      ok: false,
+      status: "preflight_complete" as const,
+      domain: "example.com",
+      domainMode: "existing_domain" as const,
+      migrationReadiness: "unsupported" as const,
+      migrationClassification: null,
+      migrationPreflightOnly: true,
+      migrationReleaseBlocked: true,
+      migrationPublicEvidence: {
+        checkedAt: "2026-07-30T12:00:00.000Z",
+        authoritativeNameservers: ["ns1.example.test"],
+        dnssecDsPresent: false,
+        dnssecDsRecords: [],
+        dnssecDsTtl: null,
+        probableDnsProvider: "cloudflare",
+        registrar: "Example Registrar",
+        registryStatuses: [],
+        registryTransferEvidence: "confirmed" as const,
+        transferBlockers: [],
+        supplementalOnly: true as const,
+      },
+      message: "This transfer TLD is not released.",
+      requestToken,
+    })
+    const deferred: {
+      resolve?: (value: ReturnType<typeof blocked>) => void
+    } = {}
+    const checkDomainAction = vi.fn((
+      _state: unknown,
+      formData: FormData,
+    ) => {
+      const result = blocked(String(formData.get("requestToken") ?? ""))
+      if (checkDomainAction.mock.calls.length === 1) {
+        return Promise.resolve(result)
+      }
+      return new Promise<ReturnType<typeof blocked>>((resolve) => {
+        deferred.resolve = resolve
+      })
+    })
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        currentDomain={null}
+        domainReady={false}
+        initialQuotes={null}
+        existingDomainMigrationEnabled
+        enabledMigrationSourceMethods={["authorized_axfr_v1"]}
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+    fireEvent.click(screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    }))
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.com" },
+    })
+    const form = container.querySelector<HTMLFormElement>(
+      "#checkout-domain-form",
+    )!
+    fireEvent.submit(form)
+    await screen.findByText("This transfer TLD is not released.")
+    expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
+
+    fireEvent.submit(form)
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
+    expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel"))
+      .toBeNull()
+
+    deferred.resolve?.(blocked(
+      String(checkDomainAction.mock.calls[1]?.[1].get("requestToken") ?? ""),
+    ))
+    await waitFor(() =>
+      expect(screen.getByText("This transfer TLD is not released.")).toBeTruthy())
+    expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
   })
 
   it("uses provider-directed Cloudflare OAuth while retaining safe source choices", async () => {

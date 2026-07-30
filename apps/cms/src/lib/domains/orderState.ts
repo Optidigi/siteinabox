@@ -57,6 +57,8 @@ export type DomainRegistrantDetails = {
   phoneAreaCode: string
   phoneSubscriberNumber: string
   locale: string
+  euEligibilityBasis?: "establishment" | "residence" | "citizenship"
+  euEligibilityCountry?: string
 }
 
 const isDomainOrderStatus = (value: unknown): value is DomainOrderStatus =>
@@ -178,6 +180,14 @@ export function normalizeDomainRegistrantDetails(value: unknown): DomainRegistra
     phoneAreaCode: required.phoneAreaCode!,
     phoneSubscriberNumber: required.phoneSubscriberNumber!,
     locale: cleanText(source.locale) ?? "nl_NL",
+    euEligibilityBasis:
+      source.euEligibilityBasis === "establishment" ||
+      source.euEligibilityBasis === "residence" ||
+      source.euEligibilityBasis === "citizenship"
+        ? source.euEligibilityBasis
+        : undefined,
+    euEligibilityCountry:
+      cleanText(source.euEligibilityCountry)?.toUpperCase(),
   }
 }
 

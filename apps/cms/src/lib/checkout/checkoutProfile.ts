@@ -35,6 +35,15 @@ export const checkoutProfileDraftSchema = z.object({
   phoneCountryCode: z.string().trim().regex(/^\+\d{1,3}$/, "Gebruik een landcode zoals +31."),
   phoneAreaCode: z.string().trim().regex(/^\d{1,6}$/, "Vul alleen cijfers in voor het netnummer."),
   phoneSubscriberNumber: z.string().trim().regex(/^\d{4,12}$/, "Vul alleen cijfers in voor het telefoonnummer."),
+  euEligibilityBasis: z.enum([
+    "establishment",
+    "residence",
+    "citizenship",
+  ]).or(z.literal("")).optional(),
+  euEligibilityCountry: z.string().trim().toUpperCase()
+    .regex(/^[A-Z]{2}$/, "Gebruik een tweecijferige landcode.")
+    .or(z.literal(""))
+    .optional(),
 }).strict().superRefine((draft, ctx) => {
   if (draft.partyType === "registered_business") {
     if (!draft.registeredBusinessName) {
@@ -85,6 +94,8 @@ type BillingAddress = {
   phoneCountryCode: string
   phoneAreaCode: string
   phoneSubscriberNumber: string
+  euEligibilityBasis?: "establishment" | "residence" | "citizenship" | ""
+  euEligibilityCountry?: string
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -104,6 +115,8 @@ const billingAddressFromDraft = (draft: CheckoutProfileDraft): BillingAddress =>
   phoneCountryCode: draft.phoneCountryCode,
   phoneAreaCode: draft.phoneAreaCode,
   phoneSubscriberNumber: draft.phoneSubscriberNumber,
+  euEligibilityBasis: draft.euEligibilityBasis,
+  euEligibilityCountry: draft.euEligibilityCountry,
 })
 
 const draftFromProfile = (profile: {
@@ -144,6 +157,13 @@ const draftFromProfile = (profile: {
     phoneCountryCode: String(address.phoneCountryCode ?? "+31"),
     phoneAreaCode: String(address.phoneAreaCode ?? ""),
     phoneSubscriberNumber: String(address.phoneSubscriberNumber ?? ""),
+    euEligibilityBasis:
+      address.euEligibilityBasis === "establishment" ||
+      address.euEligibilityBasis === "residence" ||
+      address.euEligibilityBasis === "citizenship"
+        ? address.euEligibilityBasis
+        : "",
+    euEligibilityCountry: String(address.euEligibilityCountry ?? ""),
   }
 }
 
@@ -279,6 +299,9 @@ export const checkoutProfileDraftFromFormData = (formData: FormData) =>
     phoneCountryCode: String(formData.get("phoneCountryCode") ?? "+31"),
     phoneAreaCode: String(formData.get("phoneAreaCode") ?? "").replace(/\D/g, ""),
     phoneSubscriberNumber: String(formData.get("phoneSubscriberNumber") ?? "").replace(/\D/g, ""),
+    euEligibilityBasis: String(formData.get("euEligibilityBasis") ?? ""),
+    euEligibilityCountry: String(formData.get("euEligibilityCountry") ?? "")
+      .toUpperCase(),
   })
 
 export type CheckoutProfileIdentity = Pick<
@@ -323,6 +346,8 @@ export function domainRegistrantFromCheckoutProfile(
     phoneAreaCode: draft.phoneAreaCode,
     phoneSubscriberNumber: draft.phoneSubscriberNumber,
     locale: "nl_NL",
+    euEligibilityBasis: draft.euEligibilityBasis || undefined,
+    euEligibilityCountry: draft.euEligibilityCountry || undefined,
   })
   if (!registrant) throw new Error("Authoritative checkout profile is incomplete for domain registration.")
   return registrant

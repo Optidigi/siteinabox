@@ -766,6 +766,14 @@ export function buildOpenProviderCustomerRequest(
   details: DomainRegistrantDetails,
   reference?: string,
 ): Record<string, unknown> {
+  if (
+    details.euEligibilityBasis === "citizenship" &&
+    details.companyName
+  ) {
+    throw new Error(
+      "OpenProvider .eu citizenship evidence is only valid for a natural person.",
+    )
+  }
   return {
     name: {
       first_name: details.firstName,
@@ -787,6 +795,18 @@ export function buildOpenProviderCustomerRequest(
       area_code: details.phoneAreaCode,
       subscriber_number: details.phoneSubscriberNumber,
     },
+    ...(details.euEligibilityBasis === "citizenship" &&
+      details.euEligibilityCountry
+      ? {
+          extension_additional_data: [{
+            name: "eu",
+            data: {
+              country_of_citizenship:
+                details.euEligibilityCountry.trim().toUpperCase(),
+            },
+          }],
+        }
+      : {}),
     locale: details.locale,
     ...(cleanEnv(reference) ? { comments: cleanEnv(reference) as string } : {}),
   }

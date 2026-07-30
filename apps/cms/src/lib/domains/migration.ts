@@ -60,6 +60,7 @@ import {
 import {
   MigrationSourceChangedError,
   MigrationSourceDnssecTransitionPendingError,
+  MigrationTransferEligibilityBlockedError,
   refreshAutomaticMigrationSource,
   type AutomaticMigrationSourceRefreshInput,
   type AutomaticMigrationSourceRefreshMode,
@@ -1636,6 +1637,20 @@ const refreshMigrationSourceAuthority = async (
         blocked: waiting(
           migration,
           "The old parent DS is still visible in fresh source evidence; source refresh remains paused.",
+        ),
+      }
+    }
+    if (error instanceof MigrationTransferEligibilityBlockedError) {
+      const updated = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        failureReason: "registry_transfer_blocked_before_provider_write",
+        reconciliationRequired: true,
+      }, "registry_transfer_blocked_before_provider_write", now)
+      return {
+        migration: updated,
+        blocked: waiting(
+          updated,
+          "Fresh registry evidence blocks the transfer; no registrar write was sent.",
         ),
       }
     }

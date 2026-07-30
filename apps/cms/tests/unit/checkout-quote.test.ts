@@ -6,6 +6,9 @@ import {
   sameCommercialCheckoutQuote,
   sealCheckoutQuote,
 } from "@/lib/checkout/checkoutQuote"
+import {
+  GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+} from "@siteinabox/contracts/tld-capabilities"
 
 const quoteContext = {
   selectedDomain: "example.nl",
@@ -61,6 +64,7 @@ describe("Phase 3 checkout quote", () => {
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "assisted_standard",
       migrationSourceZoneHash: "a".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
       migrationInputEnvelope: "encrypted-migration-input",
       domainMode: "existing_domain",
       ...quoteContext,
@@ -71,6 +75,7 @@ describe("Phase 3 checkout quote", () => {
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "assisted_standard",
       migrationSourceZoneHash: "a".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
       migrationInputEnvelope: "encrypted-migration-input",
       domainMode: "existing_domain",
       ...quoteContext,
@@ -105,6 +110,7 @@ describe("Phase 3 checkout quote", () => {
       migrationClassification: "automatic",
       migrationSourceMechanism: "validated_provider_export_v1",
       migrationSourceZoneHash: "a".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
       migrationInputEnvelope: "encrypted-a",
       domainMode: "existing_domain",
       ...quoteContext,
@@ -115,6 +121,7 @@ describe("Phase 3 checkout quote", () => {
       migrationClassification: "automatic",
       migrationSourceMechanism: "validated_provider_export_v1",
       migrationSourceZoneHash: "b".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
       migrationInputEnvelope: "encrypted-b",
       domainMode: "existing_domain",
       ...quoteContext,
@@ -130,6 +137,48 @@ describe("Phase 3 checkout quote", () => {
     })).toThrow("frozen migration input evidence")
   })
 
+  it("freezes the exact gTLD transfer eligibility acceptance in the signed quote", () => {
+    const input = {
+      billingPeriod: "annual" as const,
+      providerOperationPriceNetMinor: 800,
+      migrationClassification: "automatic" as const,
+      migrationSourceMechanism: "validated_provider_export_v1" as const,
+      migrationSourceZoneHash: "a".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
+      migrationInputEnvelope: "encrypted-a",
+      domainMode: "existing_domain" as const,
+      ...quoteContext,
+      selectedDomain: "example.com",
+    }
+    expect(() => buildCheckoutQuote(input)).toThrow(
+      "immutable eligibility acceptance",
+    )
+    const quote = buildCheckoutQuote({
+      ...input,
+      gtldTransferEligibilityDeclarationVersion:
+        GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+      gtldTransferEligibilityDeclarationText:
+        "I confirm the governed gTLD transfer conditions.",
+      gtldTransferEligibilityAccepted: true,
+    })
+    const opened = openCheckoutQuote(
+      sealCheckoutQuote(quote, "quote-test-secret").token,
+      "quote-test-secret",
+      new Date("2026-07-28T10:01:00.000Z"),
+    )
+    expect(opened).toMatchObject({
+      gtldTransferEligibilityDeclarationVersion:
+        GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
+      gtldTransferEligibilityDeclarationText:
+        "I confirm the governed gTLD transfer conditions.",
+      gtldTransferEligibilityAccepted: true,
+    })
+    expect(sameCommercialCheckoutQuote(quote, {
+      ...quote,
+      gtldTransferEligibilityDeclarationText: "Changed text",
+    })).toBe(false)
+  })
+
   it("discloses and freezes the governed .nl and .be transfer-renewal effects", () => {
     const existingDomainQuote = (selectedDomain: string) => buildCheckoutQuote({
       billingPeriod: "annual",
@@ -137,6 +186,7 @@ describe("Phase 3 checkout quote", () => {
       migrationClassification: "automatic",
       migrationSourceMechanism: "validated_provider_export_v1",
       migrationSourceZoneHash: "a".repeat(64),
+      migrationPublicEvidenceHash: "c".repeat(64),
       migrationInputEnvelope: "encrypted-source",
       domainMode: "existing_domain",
       ...quoteContext,

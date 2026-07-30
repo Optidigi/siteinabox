@@ -54,6 +54,7 @@ import {
 import {
   MigrationSourceChangedError,
   MigrationSourceDnssecTransitionPendingError,
+  MigrationTransferEligibilityBlockedError,
 } from "@/lib/domains/migrationSources/refresh"
 import {
   MigrationSourceRefreshRetryableError,
@@ -955,6 +956,76 @@ describe("automatic existing-domain migration", () => {
     })
     expect(JSON.stringify(store.collections["domain-migrations"]![0]))
       .not.toContain("customer-scoped-cloudflare-token")
+  })
+
+  it("persists a registry wait and sends no provider transfer when a fresh lock appears", async () => {
+    const store = createStore()
+    const automaticZone: CompleteZoneExport = {
+      ...zoneExport,
+      authority: {
+        mechanism: "cloudflare_api",
+        provider: "cloudflare",
+        complete: true,
+      },
+    }
+    const normalized = normalizeCompleteZone(automaticZone)
+    const sourceAuthorityHash = domainMigrationSourceAuthorityHash(normalized)
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "cloudflare_api_v1",
+        sourceZoneHash: sourceAuthorityHash,
+      },
+    }
+    const migration = await createAutomaticDomainMigration(store.payload, 600)
+    await acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: migration.id,
+      zoneExport: automaticZone,
+      transferCode: "opaque-nl-transfer-code",
+      sourceRefreshAuthority: {
+        schemaVersion: 1,
+        domain: "example.nl",
+        sourceMechanism: "cloudflare_api_v1",
+        acceptedSourceAuthorityHash: sourceAuthorityHash,
+        acceptedSourceContentHash: domainMigrationSourceContentHash(normalized),
+        credential: {
+          kind: "cloudflare_api_token",
+          token: "customer-scoped-cloudflare-token",
+          zoneId: "a".repeat(32),
+        },
+      },
+      now: "2026-07-28T08:00:00.000Z",
+      env: {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+        CLOUDFLARE_RENDERER_TUNNEL_ID:
+          "11111111-1111-4111-8111-111111111111",
+      } as unknown as NodeJS.ProcessEnv,
+    })
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        refreshAutomaticMigrationSource: vi.fn(async () => {
+          throw new MigrationTransferEligibilityBlockedError()
+        }),
+      }),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("no registrar write was sent"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      failureReason: "registry_transfer_blocked_before_provider_write",
+      reconciliationRequired: true,
+    })
   })
 
   it("waits without revoking authority while another OAuth refresh owns the claim", async () => {

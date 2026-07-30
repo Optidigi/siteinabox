@@ -81,6 +81,9 @@ const resumeQuote = (
     throw new Error("Accepted checkout order has an invalid domain mode.")
   }
   const migration = record(evidence.migration)
+  const transferEligibilityDeclaration = record(
+    migration?.transferEligibilityDeclaration,
+  )
   const migrationClassification = migration?.classification === "automatic" ||
     migration?.classification === "assisted_standard"
     ? migration.classification
@@ -88,6 +91,12 @@ const resumeQuote = (
   const migrationSourceZoneHash = typeof migration?.sourceZoneHash === "string"
     ? migration.sourceZoneHash
     : null
+  const migrationPublicEvidenceHash =
+    typeof evidence.migrationPublicEvidenceHash === "string"
+      ? evidence.migrationPublicEvidenceHash
+      : typeof migration?.publicEvidenceHash === "string"
+        ? migration.publicEvidenceHash
+        : null
   const migrationSourceMechanism =
     migration?.sourceMechanism === "customer_authorized_provider_export_v1" ||
       migration?.sourceMechanism === "cloudflare_api_v1" ||
@@ -135,6 +144,17 @@ const resumeQuote = (
     migrationClassification,
     migrationSourceMechanism,
     migrationSourceZoneHash,
+    migrationPublicEvidenceHash,
+    gtldTransferEligibilityDeclarationVersion:
+      typeof transferEligibilityDeclaration?.version === "string"
+        ? transferEligibilityDeclaration.version
+        : null,
+    gtldTransferEligibilityDeclarationText:
+      typeof transferEligibilityDeclaration?.text === "string"
+        ? transferEligibilityDeclaration.text
+        : null,
+    gtldTransferEligibilityAccepted:
+      transferEligibilityDeclaration?.accepted === true,
     migrationInputEnvelope,
     migrationSecretKey: typeof migration?.checkoutSecretKey === "string"
       ? migration.checkoutSecretKey
@@ -170,6 +190,13 @@ const resumeQuote = (
     migrationClassification: quote.migrationClassification,
     migrationSourceMechanism: quote.migrationSourceMechanism,
     migrationSourceZoneHash: quote.migrationSourceZoneHash,
+    migrationPublicEvidenceHash: quote.migrationPublicEvidenceHash,
+    gtldTransferEligibilityDeclarationVersion:
+      quote.gtldTransferEligibilityDeclarationVersion,
+    gtldTransferEligibilityDeclarationText:
+      quote.gtldTransferEligibilityDeclarationText,
+    gtldTransferEligibilityAccepted:
+      quote.gtldTransferEligibilityAccepted,
     migrationInputEnvelope: quote.migrationInputEnvelope,
     migrationSecretKey: quote.migrationSecretKey,
     transferRenewalEffect: quote.transferRenewalEffect,

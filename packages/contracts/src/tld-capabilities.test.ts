@@ -297,7 +297,11 @@ describe("effective-dated TLD capability catalog", () => {
     const nl = tldCapabilityAt("nl", CONTRACT_CORRECTION_EFFECTIVE_AT)!
     expect(validateTldTransferAuthorization(eu, "AB12-CD34-EF56-GH78")).toBe(true)
     expect(validateTldTransferAuthorization(eu, "ordinary-epp-code")).toBe(false)
-    expect(validateTldTransferAuthorization(de, "AuthInfo9")).toBe(true)
+    expect(validateTldTransferAuthorization(de, "AuthCde9")).toBe(true)
+    expect(validateTldTransferAuthorization(de, "Authicde9")).toBe(true)
+    expect(validateTldTransferAuthorization(de, "AuthInfo9")).toBe(false)
+    expect(validateTldTransferAuthorization(de, "AuthCde0")).toBe(false)
+    expect(validateTldTransferAuthorization(de, "AuthCde!")).toBe(false)
     expect(validateTldTransferAuthorization(de, "short")).toBe(false)
     expect(validateTldRegistrantPrerequisites(nl, {
       street: "Postbus 10",
@@ -314,6 +318,49 @@ describe("effective-dated TLD capability catalog", () => {
       phoneCountryCode: "1",
       phoneAreaCode: "212",
       phoneSubscriberNumber: "5550199",
+    })).toEqual({ valid: false, reason: "eu_eligibility_not_evidenced" })
+    expect(validateTldRegistrantPrerequisites(eu, {
+      street: "Main Street",
+      zipcode: "10001",
+      country: "US",
+      phoneCountryCode: "1",
+      phoneAreaCode: "212",
+      phoneSubscriberNumber: "5550199",
+      euEligibilityBasis: "citizenship",
+      euEligibilityCountry: "US",
+    })).toEqual({ valid: false, reason: "eu_eligibility_not_evidenced" })
+    expect(validateTldRegistrantPrerequisites(eu, {
+      street: "Markt",
+      zipcode: "1234AB",
+      country: "NL",
+      companyName: "Example B.V.",
+      phoneCountryCode: "31",
+      phoneAreaCode: "30",
+      phoneSubscriberNumber: "1234567",
+      euEligibilityBasis: "establishment",
+      euEligibilityCountry: "NL",
+    })).toEqual({ valid: true })
+    expect(validateTldRegistrantPrerequisites(eu, {
+      street: "Markt",
+      zipcode: "1234AB",
+      country: "NL",
+      companyName: "Example B.V.",
+      phoneCountryCode: "31",
+      phoneAreaCode: "30",
+      phoneSubscriberNumber: "1234567",
+      euEligibilityBasis: "citizenship",
+      euEligibilityCountry: "NL",
+    })).toEqual({ valid: false, reason: "eu_eligibility_not_evidenced" })
+    expect(validateTldRegistrantPrerequisites(eu, {
+      street: "Main Street",
+      zipcode: "10001",
+      country: "US",
+      companyName: null,
+      phoneCountryCode: "1",
+      phoneAreaCode: "212",
+      phoneSubscriberNumber: "5550199",
+      euEligibilityBasis: "residence",
+      euEligibilityCountry: "NL",
     })).toEqual({ valid: false, reason: "eu_eligibility_not_evidenced" })
   })
 })

@@ -1,6 +1,7 @@
 import "server-only"
 import {
   getTldCapabilityForProductionOperation,
+  tldCapabilityAt,
   validateTldRegistrationLabel,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
@@ -43,6 +44,7 @@ export type PreviewDomainOrderResult = {
     | "checkoutDomainUnavailable"
     | "checkoutDomainPremium"
     | "checkoutDomainCheckFailed"
+    | "checkoutDomainReleasePending"
     | "checkoutDomainAvailableExtraFee"
   domain: string
   included: boolean
@@ -51,6 +53,7 @@ export type PreviewDomainOrderResult = {
   providerPriceAmount: string | null
   providerPriceCurrency: string | null
   providerQuotedAt: string
+  productionOperationEnabled: boolean
   suggestions: PreviewDomainSuggestion[]
 }
 
@@ -185,17 +188,21 @@ export async function checkAndRecordPreviewDomainOrder(
     record?: boolean
     includedProviderPrice?: FixedDomainOrderPrice
     capabilityEffectiveAt?: string | Date
+    requireProductionCapability?: boolean
   },
 ): Promise<PreviewDomainOrderResult> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
     throw new Error(`Invalid domain: ${normalized.reason}`)
   }
-  const capability = getTldCapabilityForProductionOperation(
+  const productionCapability = getTldCapabilityForProductionOperation(
     normalized.extension,
     "registration",
     options?.capabilityEffectiveAt,
   )
+  const capability = options?.requireProductionCapability === false
+    ? tldCapabilityAt(normalized.extension, options?.capabilityEffectiveAt)
+    : productionCapability
   if (!capability) {
     throw new Error(`TLD .${normalized.extension} is not enabled for checkout.`)
   }
@@ -213,7 +220,8 @@ export async function checkAndRecordPreviewDomainOrder(
   const priceUsable = availability.status === "available" && providerPriceIsUsable(providerPrice, includedProviderPrice)
   const includedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, includedProviderPrice)
   const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
-  const status = priceUsable
+  const productionOperationEnabled = productionCapability !== null
+  const status = priceUsable && productionOperationEnabled
     ? "ready_to_register"
     : availability.status === "premium"
       ? "premium"
@@ -231,7 +239,9 @@ export async function checkAndRecordPreviewDomainOrder(
     maxProviderPrice: includedProviderPrice,
     registrant: registrant ?? normalizeDomainOrderState(run.domainOrder).registrant,
     reason: availability.internalReason
-      ?? (availability.status === "available" && !priceUsable
+      ?? (availability.status === "available" && !productionOperationEnabled
+        ? "registration_release_pending"
+        : availability.status === "available" && !priceUsable
         ? "provider_price_unavailable"
         : availability.status === "available" && !includedPrice
           ? "domain_cost_above_limit"
@@ -258,8 +268,11 @@ export async function checkAndRecordPreviewDomainOrder(
     providerPriceAmount: providerPrice?.amount ?? null,
     providerPriceCurrency: providerPrice?.currency ?? null,
     providerQuotedAt: now,
+    productionOperationEnabled,
     suggestions: [],
-    messageKey: includedPrice
+    messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled
+      ? "checkoutDomainReleasePending"
+      : includedPrice
       ? "checkoutDomainAvailable"
       : priceUsable
         ? "checkoutDomainAvailableExtraFee"
@@ -286,7 +299,10 @@ export async function requireReadyPreviewDomainOrder(
     run,
     normalized.domain,
     registrant,
-    options,
+    {
+      ...options,
+      requireProductionCapability: true,
+    },
   )
   if (result.messageKey !== "checkoutDomainAvailable" && result.messageKey !== "checkoutDomainAvailableExtraFee") {
     throw new Error(result.messageKey)

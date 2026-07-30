@@ -343,6 +343,21 @@ export async function createOrderAndAcceptanceEvidence(input: {
                   classification: input.quote.migrationClassification,
                   sourceMechanism: input.quote.migrationSourceMechanism,
                   sourceZoneHash: input.quote.migrationSourceZoneHash,
+                  publicEvidenceHash:
+                    input.quote.migrationPublicEvidenceHash,
+                  ...(input.quote.gtldTransferEligibilityAccepted
+                    ? {
+                        transferEligibilityDeclaration: {
+                          version:
+                            input.quote
+                              .gtldTransferEligibilityDeclarationVersion,
+                          text:
+                            input.quote
+                              .gtldTransferEligibilityDeclarationText,
+                          accepted: true,
+                        },
+                      }
+                    : {}),
                   checkoutSecretKey: input.quote.migrationSecretKey,
                   expectedOperatorTechnicalAction:
                     input.quote.migrationClassification === "assisted_standard",

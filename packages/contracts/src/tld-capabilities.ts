@@ -20,6 +20,23 @@ export const INTENDED_TLD_CATALOG = Object.freeze([
   "shop",
 ] as const)
 
+export const ICANN_GTLD_TRANSFER_POLICY_TLDS = Object.freeze([
+  "com",
+  "info",
+  "net",
+  "online",
+  "org",
+  "shop",
+] as const)
+
+export function tldUsesIcannTransferPolicy(tld: string): boolean {
+  return (ICANN_GTLD_TRANSFER_POLICY_TLDS as readonly string[])
+    .includes(tld.trim().toLowerCase())
+}
+
+export const GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION =
+  "gtld-transfer-eligibility-2026-07-30.1"
+
 export const transferRenewalEffects = [
   "unchanged",
   "extends_one_year",
@@ -958,7 +975,7 @@ export function validateTldTransferAuthorization(
     return /^[A-Za-z0-9]{4}(?:-[A-Za-z0-9]{4}){3}$/.test(value)
   }
   if (capability.transfer.authorizationFormat === "denic_authinfo_8_16") {
-    return /^[\x21-\x7E]{8,16}$/.test(value)
+    return /^(?=.{8,16}$)[A-HJ-NP-Za-km-np-z2-9+\-/*]+$/.test(value)
   }
   return value.length <= 255
 }
@@ -966,6 +983,7 @@ export function validateTldTransferAuthorization(
 export function validateTldRegistrantPrerequisites(
   capability: TldCapability,
   registrant: {
+    companyName?: string | null
     street: string
     zipcode: string
     country: string
@@ -992,22 +1010,50 @@ export function validateTldRegistrantPrerequisites(
     return { valid: false, reason: "nl_postal_box_not_allowed" }
   }
   if (
-    capability.registration.registryValidationProfile === "be" &&
-    !registrant.registryPrevalidationReference?.trim()
-  ) {
-    return { valid: false, reason: "be_registry_prevalidation_missing" }
-  }
-  if (
     capability.registration.eligibility ===
       "eu_eea_establishment_residence_or_citizenship" &&
     (
       !registrant.euEligibilityBasis ||
-      !registrant.euEligibilityCountry?.trim()
+      !isEuRegistryEligibilityCountry(registrant.euEligibilityCountry) ||
+      (
+        registrant.euEligibilityBasis === "establishment" &&
+        (
+          !registrant.companyName?.trim() ||
+          registrant.euEligibilityCountry?.trim().toUpperCase() !==
+            registrant.country.trim().toUpperCase()
+        )
+      ) ||
+      (
+        registrant.euEligibilityBasis === "residence" &&
+        (
+          Boolean(registrant.companyName?.trim()) ||
+          registrant.euEligibilityCountry?.trim().toUpperCase() !==
+            registrant.country.trim().toUpperCase()
+        )
+      ) ||
+      (
+        registrant.euEligibilityBasis === "citizenship" &&
+        Boolean(registrant.companyName?.trim())
+      )
     )
   ) {
     return { valid: false, reason: "eu_eligibility_not_evidenced" }
   }
   return { valid: true }
+}
+
+const EU_REGISTRY_ELIGIBILITY_COUNTRIES = new Set([
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DE", "DK", "EE", "ES",
+  "FI", "FR", "GR", "HU", "IE", "IS", "IT", "LI", "LT", "LU",
+  "LV", "MT", "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK",
+])
+
+export function isEuRegistryEligibilityCountry(
+  country: string | null | undefined,
+): boolean {
+  return EU_REGISTRY_ELIGIBILITY_COUNTRIES.has(
+    country?.trim().toUpperCase() ?? "",
+  )
 }
 
 export function validateTldRegistrationLabel(

@@ -124,7 +124,7 @@ describe("effective TLD allowlist integration", () => {
   })
 
   it.each(["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"])(
-    "keeps current .%s registration away from provider writes pending rehearsal evidence",
+    "allows read-only current .%s checks but keeps registration fail-closed",
     async (tld) => {
       openProviderMocks.checkAvailability.mockResolvedValue({
         status: "available",
@@ -134,6 +134,20 @@ describe("effective TLD allowlist integration", () => {
         price: { amount: "8.00", currency: "EUR" },
         internalReason: null,
       })
+
+      await expect(checkAndRecordPreviewDomainOrder(
+        asPayload({ update: vi.fn() }),
+        run,
+        `example.${tld}`,
+        null,
+        { record: false, requireProductionCapability: false },
+      )).resolves.toMatchObject({
+        domain: `example.${tld}`,
+        messageKey: "checkoutDomainReleasePending",
+        productionOperationEnabled: false,
+      })
+      expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith(`example.${tld}`)
+      openProviderMocks.checkAvailability.mockClear()
 
       await expect(checkAndRecordPreviewDomainOrder(
         asPayload({ update: vi.fn() }),

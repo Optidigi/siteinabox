@@ -710,6 +710,23 @@ describe("OpenProvider adapter", () => {
         subscriber_number: "1234567",
       },
     })
+    expect(buildOpenProviderCustomerRequest({
+      ...registrant,
+      companyName: null,
+      country: "US",
+      euEligibilityBasis: "citizenship",
+      euEligibilityCountry: "NL",
+    })).toMatchObject({
+      extension_additional_data: [{
+        name: "eu",
+        data: { country_of_citizenship: "NL" },
+      }],
+    })
+    expect(() => buildOpenProviderCustomerRequest({
+      ...registrant,
+      euEligibilityBasis: "citizenship",
+      euEligibilityCountry: "NL",
+    })).toThrow("only valid for a natural person")
     const fetchMock = vi.fn(async () => Response.json({ data: { handle: "OWNER-CLIENT" } }))
     await expect(createOpenProviderCustomerHandle(registrant, {
       env,
