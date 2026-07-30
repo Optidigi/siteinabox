@@ -1,26 +1,31 @@
 import { NextResponse } from "next/server"
 import {
   createCloudflareSourceAuthorization,
-  cloudflareSourceOAuthEnabled,
+  cloudflareSourceCheckoutEnabled,
 } from "@/lib/domains/cloudflareSourceOAuth"
-import {
-  automaticMigrationSourceEnabled,
-  inspectExistingDomainPublicEvidence,
-} from "@/lib/domains/migrationCheckout"
+import { inspectExistingDomainPublicEvidence } from "@/lib/domains/migrationCheckout"
 import { normalizeDomain } from "@/lib/domains/normalize"
-import { isPreviewHost } from "@/lib/preview/previewHost"
+import {
+  browserOriginMatchesAuthority,
+  canonicalRequestAuthority,
+  isPreviewRequestAuthority,
+} from "@/lib/requestAuthority"
 import { relationshipId } from "@/lib/relationshipId"
 import { requirePreviewCheckoutContext } from
   "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/previewCheckoutContext"
 
 export async function POST(request: Request): Promise<Response> {
   if (
-    !(await isPreviewHost()) ||
-    !cloudflareSourceOAuthEnabled() ||
-    !automaticMigrationSourceEnabled("cloudflare_api_v1")
+    !isPreviewRequestAuthority(request.headers) ||
+    !cloudflareSourceCheckoutEnabled()
   ) {
     return new Response("Not found", { status: 404 })
   }
+  if (!browserOriginMatchesAuthority(request.headers, { originRequired: true })) {
+    return new Response("Cross-origin request forbidden", { status: 403 })
+  }
+  const authority = canonicalRequestAuthority(request.headers)
+  if (!authority) return new Response("Invalid request authority", { status: 400 })
   const formData = await request.formData().catch(() => null)
   if (!formData) return new Response("Invalid request", { status: 400 })
   const clientSlug = String(formData.get("clientSlug") ?? "").trim()
@@ -43,7 +48,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.redirect(
       new URL(
         `/${encodeURIComponent(context.clientSlug)}/checkout?cloudflareSource=provider-mismatch`,
-        request.url,
+        authority.origin,
       ),
       303,
     )

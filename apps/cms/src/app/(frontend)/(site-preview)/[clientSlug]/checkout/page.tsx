@@ -46,7 +46,7 @@ import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGateCore"
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 import {
-  cloudflareSourceOAuthEnabled,
+  cloudflareSourceCheckoutEnabled,
   loadCloudflareSourceAuthorizationMetadata,
 } from "@/lib/domains/cloudflareSourceOAuth"
 import { relationshipId } from "@/lib/relationshipId"
@@ -105,7 +105,7 @@ export default async function PreviewCheckoutPage({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
     })
-    const oauthEnabled = cloudflareSourceOAuthEnabled()
+    const oauthEnabled = cloudflareSourceCheckoutEnabled()
     const tenantId = relationshipId(context.tenant)
     const sourceMetadata =
       oauthEnabled &&

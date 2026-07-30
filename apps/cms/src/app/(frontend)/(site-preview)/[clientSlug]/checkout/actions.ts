@@ -295,9 +295,12 @@ const acquireAutomaticMigrationSourceFromForm = async (
   },
 ): Promise<
   AcquiredMigrationSource & {
-    oauthAuthorization?: CloudflareSourceAuthorizationRecord
+  oauthAuthorization?: CloudflareSourceAuthorizationRecord
   }
 > => {
+  if (!commerceProviderReadsAllowed()) {
+    throw new Error("Migration source reads are blocked by the commerce release gate.")
+  }
   if (sourceMethod === "cloudflare_api_v1") {
     const authorizationKey = String(
       formData.get("cloudflareSourceAuthorization") ?? "",
@@ -370,9 +373,22 @@ async function checkExistingDomainMigration(
       requestToken,
     }
   }
+  if (!commerceProviderReadsAllowed()) {
+    return {
+      ok: false,
+      status: "service_error",
+      domain: normalized.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationPreflightOnly: true,
+      message:
+        "De domeinvoorcontrole is nog niet vrijgegeven. Er is niets verhuisd of besteld.",
+      requestToken,
+    }
+  }
 
   const migrationCheckoutEnabled =
-    existingDomainMigrationCheckoutEnabled() && commerceProviderReadsAllowed()
+    existingDomainMigrationCheckoutEnabled()
   const sourceMethod = String(formData.get("migrationSourceMethod") ?? "").trim()
   if (!migrationCheckoutEnabled || !sourceMethod) {
     try {
@@ -586,6 +602,16 @@ export async function checkPreviewCheckoutDomainAction(
   if (domainMode === "existing_domain") {
     return checkExistingDomainMigration(context, domain, formData, requestToken)
   }
+  if (!commerceProviderReadsAllowed()) {
+    return {
+      ok: false,
+      status: "service_error",
+      domain,
+      domainMode,
+      message: t("checkoutDomainServiceUnavailable"),
+      requestToken,
+    }
+  }
 
   try {
     const locale = await getLocale()
@@ -742,6 +768,9 @@ async function recollectAcceptedMigrationInput(
   clientSlug: string,
   formData: FormData,
 ): Promise<string> {
+  if (!commerceProviderReadsAllowed()) {
+    throw new MigrationCustomerActionError("retryable_service_error")
+  }
   const context = await requirePreviewCheckoutContext(clientSlug)
   const orderId = String(formData.get("acceptedOrderId") ?? "").trim()
   if (!/^\d+$/.test(orderId)) {
@@ -922,7 +951,10 @@ async function submitMigrationTransferCode(
       sourceMechanism &&
       sourceMechanism !== "customer_authorized_provider_export_v1"
     ) {
-      if (!automaticMigrationSourceEnabled(sourceMechanism)) {
+      if (
+        !commerceProviderReadsAllowed() ||
+        !automaticMigrationSourceEnabled(sourceMechanism)
+      ) {
         throw new MigrationCustomerActionError("retryable_service_error")
       }
       const publicEvidence = await inspectExistingDomainPublicEvidence(
@@ -1073,7 +1105,11 @@ export async function savePreviewCheckoutProfileAction(
     ? "existing_domain"
     : "new_registration"
   let quotes: CheckoutQuoteSet | undefined
-  if (selectedDomain && domainMode === "existing_domain") {
+  if (
+    selectedDomain &&
+    commerceProviderReadsAllowed() &&
+    domainMode === "existing_domain"
+  ) {
     try {
       const priorQuote = openCheckoutQuote(
         String(formData.get("existingMigrationQuoteToken") ?? ""),
@@ -1112,7 +1148,7 @@ export async function savePreviewCheckoutProfileAction(
     } catch {
       quotes = undefined
     }
-  } else if (selectedDomain) {
+  } else if (selectedDomain && commerceProviderReadsAllowed()) {
     const refreshed = await checkAndRecordPreviewDomainOrder(
       context.payload,
       context.run,
@@ -1179,6 +1215,9 @@ export async function suggestPreviewCheckoutDomainsAction(
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   if (!domain) return { ok: false, suggestions: [], cursor: 0, done: true }
+  if (!commerceProviderReadsAllowed()) {
+    return { ok: false, domain, suggestions: [], cursor: 0, done: true }
+  }
 
   try {
     const locale = await getLocale()
@@ -1373,6 +1412,7 @@ export async function startPreviewCheckoutPaymentAction(
       currentQuote = acceptedQuote
     } else if (acceptedQuote.domainMode === "existing_domain") {
       if (
+        !commerceProviderReadsAllowed() ||
         !existingDomainMigrationCheckoutEnabled() ||
         !acceptedQuote.migrationClassification ||
         !acceptedQuote.migrationSourceMechanism ||
@@ -1438,6 +1478,13 @@ export async function startPreviewCheckoutPaymentAction(
         draftVersion: acceptedQuote.draftVersion,
       })
     } else {
+      if (!commerceProviderReadsAllowed()) {
+        return {
+          ok: false,
+          status: "version_conflict",
+          message: t("checkoutQuoteVersionConflict"),
+        }
+      }
       const ready = await requireReadyPreviewDomainOrder(
         context.payload,
         context.run,

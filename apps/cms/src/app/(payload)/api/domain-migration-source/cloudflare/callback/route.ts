@@ -3,23 +3,26 @@ import { getPayload } from "payload"
 import { NextResponse } from "next/server"
 import {
   cloudflareOAuthCookieName,
-  cloudflareSourceOAuthEnabled,
+  cloudflareSourceCheckoutEnabled,
   cloudflareSourceAuthorizationContext,
   completeCloudflareSourceAuthorization,
 } from "@/lib/domains/cloudflareSourceOAuth"
-import { isPreviewHost } from "@/lib/preview/previewHost"
+import {
+  canonicalRequestAuthority,
+  isPreviewRequestAuthority,
+} from "@/lib/requestAuthority"
 import { relationshipId } from "@/lib/relationshipId"
 import { requirePreviewCheckoutContext } from
   "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/previewCheckoutContext"
 
 const safeCheckoutRedirect = (
-  request: Request,
+  origin: string,
   clientSlug: string,
   result: string,
 ): NextResponse => NextResponse.redirect(
   new URL(
     `/${encodeURIComponent(clientSlug)}/checkout?cloudflareSource=${encodeURIComponent(result)}`,
-    request.url,
+    origin,
   ),
   303,
 )
@@ -40,9 +43,14 @@ const clearCorrelationCookie = (
 }
 
 export async function GET(request: Request): Promise<Response> {
-  if (!(await isPreviewHost()) || !cloudflareSourceOAuthEnabled()) {
+  if (
+    !isPreviewRequestAuthority(request.headers) ||
+    !cloudflareSourceCheckoutEnabled()
+  ) {
     return new Response("Not found", { status: 404 })
   }
+  const authority = canonicalRequestAuthority(request.headers)
+  if (!authority) return new Response("Invalid request authority", { status: 400 })
   const url = new URL(request.url)
   const state = url.searchParams.get("state")?.trim() ?? ""
   const code = url.searchParams.get("code")?.trim() ?? ""
@@ -75,7 +83,7 @@ export async function GET(request: Request): Promise<Response> {
     !browserBinding
   ) {
     const response = safeCheckoutRedirect(
-      request,
+      authority.origin,
       authorityContext.clientSlug,
       "failed",
     )
@@ -96,7 +104,7 @@ export async function GET(request: Request): Promise<Response> {
     })
     const redirect = new URL(
       `/${encodeURIComponent(completed.clientSlug)}/checkout`,
-      request.url,
+      authority.origin,
     )
     redirect.searchParams.set("cloudflareSource", completed.authorizationKey)
     const response = NextResponse.redirect(redirect, 303)
@@ -105,7 +113,7 @@ export async function GET(request: Request): Promise<Response> {
     return response
   } catch {
     const response = safeCheckoutRedirect(
-      request,
+      authority.origin,
       authorityContext.clientSlug,
       "failed",
     )

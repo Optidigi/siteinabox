@@ -44,6 +44,7 @@ const mocks = vi.hoisted(() => ({
   acquireCloudflareSource: vi.fn(),
   acquireValidatedProviderExport: vi.fn(),
   cloudflareSourceOAuthEnabled: vi.fn(() => false),
+  commerceProviderReadsAllowed: vi.fn(() => true),
   productionTldCapabilitiesAt: vi.fn(() => [{}]),
   loadCloudflareSourceAuthorization: vi.fn(),
   attachCloudflareSourceAuthorization: vi.fn(),
@@ -139,7 +140,7 @@ vi.mock("@/lib/commerce/releaseGate", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/commerce/releaseGate")>()
   return {
     ...original,
-    commerceProviderReadsAllowed: () => true,
+    commerceProviderReadsAllowed: mocks.commerceProviderReadsAllowed,
   }
 })
 
@@ -310,6 +311,7 @@ describe("preview checkout domain suggestion action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.cloudflareSourceOAuthEnabled.mockReturnValue(false)
+    mocks.commerceProviderReadsAllowed.mockReturnValue(true)
     mocks.productionTldCapabilitiesAt.mockReturnValue([{}])
     vi.spyOn(console, "info").mockImplementation(() => {})
     vi.spyOn(console, "error").mockImplementation(() => {})
@@ -326,6 +328,7 @@ describe("preview checkout domain suggestion action", () => {
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("PAYLOAD_SECRET", "checkout-test-secret")
     vi.stubEnv("DOMAIN_MIGRATION_ENCRYPTION_KEY", Buffer.alloc(32, 9).toString("base64"))
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "shadow")
     vi.stubEnv("COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED", "1")
     vi.stubEnv("COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED", "1")
     vi.stubEnv("COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED", "1")
@@ -943,6 +946,94 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
     expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("performs no existing-domain source read while commerce reads are disabled", async () => {
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "disabled")
+    mocks.commerceProviderReadsAllowed.mockReturnValue(false)
+    const { checkPreviewCheckoutDomainAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("domainMode", "existing_domain")
+    formData.set("requestToken", "existing-disabled-1")
+
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "service_error",
+      domainMode: "existing_domain",
+      migrationPreflightOnly: true,
+    })
+    expect(mocks.inspectExistingDomainPublicEvidence).not.toHaveBeenCalled()
+    expect(mocks.loadCloudflareSourceAuthorization).not.toHaveBeenCalled()
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
+  })
+
+  it("performs no new-domain provider read or repricing while commerce reads are disabled", async () => {
+    mocks.commerceProviderReadsAllowed.mockReturnValue(false)
+    const {
+      checkPreviewCheckoutDomainAction,
+      savePreviewCheckoutProfileAction,
+      startPreviewCheckoutPaymentAction,
+      suggestPreviewCheckoutDomainsAction,
+    } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const check = new FormData()
+    check.set("domain", "ami-care.nl")
+    check.set("domainMode", "new_registration")
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      check,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "service_error",
+    })
+
+    const suggestions = new FormData()
+    suggestions.set("domain", "ami-care.nl")
+    await expect(suggestPreviewCheckoutDomainsAction(
+      "ami-care",
+      { ok: false },
+      suggestions,
+    )).resolves.toMatchObject({
+      ok: false,
+      suggestions: [],
+      done: true,
+    })
+
+    const profileForm = validProfileForm()
+    profileForm.set("domain", "ami-care.nl")
+    profileForm.set("domainMode", "new_registration")
+    await expect(savePreviewCheckoutProfileAction(
+      "ami-care",
+      { ok: false, message: "" },
+      profileForm,
+    )).resolves.toMatchObject({
+      ok: true,
+      status: "saved",
+      quotes: undefined,
+    })
+
+    await expect(startPreviewCheckoutPaymentAction(
+      "ami-care",
+      { ok: false, message: "" },
+      validPaymentForm(),
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "version_conflict",
+    })
+
+    expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
+    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
+    expect(mocks.requireReadyPreviewDomainOrder).not.toHaveBeenCalled()
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
   })
 
   it("keeps existing-domain payment disabled without complete DNSSEC evidence", async () => {

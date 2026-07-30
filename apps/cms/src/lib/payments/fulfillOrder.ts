@@ -25,6 +25,7 @@ import {
   initialPaymentBlocksNewFulfillment,
   initialPaymentIsFinanciallySecured,
 } from "@/lib/payments/initialPaymentPolicy"
+import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
 export type FulfillOrderResult = {
@@ -34,6 +35,15 @@ export type FulfillOrderResult = {
 }
 
 export async function fulfillPaidOrder(
+  payload: Payload,
+  input: { orderId: string | number; paymentAttemptId: string | number },
+): Promise<FulfillOrderResult> {
+  return withCommerceOrderLock(payload, input.orderId, () =>
+    fulfillPaidOrderLocked(payload, input),
+  )
+}
+
+async function fulfillPaidOrderLocked(
   payload: Payload,
   input: { orderId: string | number; paymentAttemptId: string | number },
 ): Promise<FulfillOrderResult> {

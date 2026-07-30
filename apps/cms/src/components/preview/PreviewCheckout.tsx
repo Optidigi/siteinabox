@@ -447,6 +447,24 @@ export function PreviewCheckout({
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
+  const detectedMigrationDnsProvider =
+    checkState.migrationPublicEvidence?.probableDnsProvider ??
+    migrationPreflight?.publicEvidence?.probableDnsProvider ??
+    null
+  const availableMigrationSourceMethods = React.useMemo(
+    () => enabledMigrationSourceMethods.filter((method) =>
+      method !== "cloudflare_api_v1" ||
+      (
+        cloudflareSourceOAuthEnabled &&
+        detectedMigrationDnsProvider === "cloudflare"
+      )
+    ),
+    [
+      cloudflareSourceOAuthEnabled,
+      detectedMigrationDnsProvider,
+      enabledMigrationSourceMethods,
+    ],
+  )
   const checkTokenIsCurrent = !checkState.requestToken ||
     checkState.requestToken === latestDomainRequestTokenRef.current
   const checkMechanismIsCurrent =
@@ -585,27 +603,17 @@ export function PreviewCheckout({
         domain: checkState.domain,
         publicEvidence: checkState.migrationPublicEvidence,
       })
-      if (existingDomainMigrationEnabled && cloudflareSourceOAuthEnabled) {
-        const detectedProvider =
-          checkState.migrationPublicEvidence?.probableDnsProvider
-        if (
-          detectedProvider === "cloudflare" &&
-          enabledMigrationSourceMethods.includes("cloudflare_api_v1")
-        ) {
-          setMigrationSourceMethod("cloudflare_api_v1")
-        } else if (
-          enabledMigrationSourceMethods.includes("authorized_axfr_v1")
-        ) {
-          setMigrationSourceMethod("authorized_axfr_v1")
-        }
+      if (existingDomainMigrationEnabled) {
+        setMigrationSourceMethod(
+          availableMigrationSourceMethods[0] ?? "",
+        )
       }
     }
   }, [
     checkState,
     checkTokenIsCurrent,
-    cloudflareSourceOAuthEnabled,
+    availableMigrationSourceMethods,
     domainMode,
-    enabledMigrationSourceMethods,
     existingDomainMigrationEnabled,
     normalizedDomainValue,
   ])
@@ -1110,11 +1118,8 @@ export function PreviewCheckout({
                       cloudflareSourceMatchesAcceptedOrder ? (
                         <>
                           <Alert role="status">
-                            <AlertTitle>Cloudflare is opnieuw gekoppeld</AlertTitle>
-                            <AlertDescription>
-                              De volledige DNS-bron is opnieuw gecontroleerd
-                              voor deze geaccepteerde bestelling.
-                            </AlertDescription>
+                            <AlertTitle>{t("checkoutMigrationCloudflareReconnectedTitle")}</AlertTitle>
+                            <AlertDescription>{t("checkoutMigrationCloudflareReconnectedOrderDescription")}</AlertDescription>
                           </Alert>
                           <input
                             type="hidden"
@@ -1128,18 +1133,13 @@ export function PreviewCheckout({
                           form="accepted-cloudflare-source-reconnect-form"
                           className="w-fit"
                         >
-                          Cloudflare opnieuw koppelen
+                          {t("checkoutMigrationCloudflareReconnect")}
                         </Button>
                       )
                     ) : (
                       <Alert variant="destructive" role="alert">
-                        <AlertTitle>
-                          Veilige Cloudflare-koppeling is niet beschikbaar
-                        </AlertTitle>
-                        <AlertDescription>
-                          De bestelling blijft veilig gepauzeerd totdat de
-                          gedelegeerde koppeling beschikbaar is.
-                        </AlertDescription>
+                        <AlertTitle>{t("checkoutMigrationCloudflareUnavailableTitle")}</AlertTitle>
+                        <AlertDescription>{t("checkoutMigrationCloudflareUnavailableOrderDescription")}</AlertDescription>
                       </Alert>
                     )
                   )}
@@ -1342,13 +1342,8 @@ export function PreviewCheckout({
                                   migrationStatus.domain ? (
                                   <>
                                     <Alert role="status">
-                                      <AlertTitle>
-                                        Cloudflare is opnieuw gekoppeld
-                                      </AlertTitle>
-                                      <AlertDescription>
-                                        Sla de nieuwe bronmachtiging op om de
-                                        automatische migratie te hervatten.
-                                      </AlertDescription>
+                                      <AlertTitle>{t("checkoutMigrationCloudflareReconnectedTitle")}</AlertTitle>
+                                      <AlertDescription>{t("checkoutMigrationCloudflareReconnectedMigrationDescription")}</AlertDescription>
                                     </Alert>
                                     <input
                                       type="hidden"
@@ -1362,18 +1357,13 @@ export function PreviewCheckout({
                                     form="migration-cloudflare-source-reconnect-form"
                                     className="w-fit"
                                   >
-                                    Cloudflare opnieuw koppelen
+                                    {t("checkoutMigrationCloudflareReconnect")}
                                   </Button>
                                 )
                               ) : (
                                 <Alert variant="destructive" role="alert">
-                                  <AlertTitle>
-                                    Veilige Cloudflare-koppeling is niet beschikbaar
-                                  </AlertTitle>
-                                  <AlertDescription>
-                                    De migratie blijft veilig gepauzeerd totdat
-                                    de gedelegeerde koppeling beschikbaar is.
-                                  </AlertDescription>
+                                  <AlertTitle>{t("checkoutMigrationCloudflareUnavailableTitle")}</AlertTitle>
+                                  <AlertDescription>{t("checkoutMigrationCloudflareUnavailableMigrationDescription")}</AlertDescription>
                                 </Alert>
                               )
                             )}
@@ -1571,19 +1561,14 @@ export function PreviewCheckout({
             <CardContent className="grid gap-5">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
-                  <AlertTitle>Cloudflare-koppeling niet voltooid</AlertTitle>
-                  <AlertDescription>
-                    Probeer de koppeling opnieuw. Er is niets besteld,
-                    betaald of verhuisd.
-                  </AlertDescription>
+                  <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
+                  <AlertDescription>{t("checkoutMigrationCloudflareFailedDescription")}</AlertDescription>
                 </Alert>
               )}
               {cloudflareSourceResult === "provider-mismatch" && (
                 <Alert role="status">
-                  <AlertTitle>Dit domein gebruikt geen Cloudflare-DNS</AlertTitle>
-                  <AlertDescription>
-                    Kies de getoonde geautoriseerde DNS-bron voor dit domein.
-                  </AlertDescription>
+                  <AlertTitle>{t("checkoutMigrationCloudflareMismatchTitle")}</AlertTitle>
+                  <AlertDescription>{t("checkoutMigrationCloudflareMismatchDescription")}</AlertDescription>
                 </Alert>
               )}
               <fieldset className="grid gap-3">
@@ -1690,22 +1675,7 @@ export function PreviewCheckout({
                   ) && (
                   <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
                     {!cloudflareSourceAuthorization &&
-                      cloudflareSourceOAuthEnabled && (
-                    <div className="grid gap-2">
-                      <p className="font-medium">
-                        {t("checkoutMigrationSourceLegend")}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {migrationSourceMethod === "cloudflare_api_v1"
-                          ? "Cloudflare is als DNS-provider herkend. Koppel je account veilig om de volledige zone automatisch te controleren."
-                          : migrationSourceMethod === "authorized_axfr_v1"
-                            ? "Voor deze DNS-provider gebruiken we een geautoriseerde volledige zoneoverdracht (AXFR)."
-                            : t("checkoutMigrationSourceHelp")}
-                      </p>
-                    </div>
-                    )}
-                    {!cloudflareSourceAuthorization &&
-                      !cloudflareSourceOAuthEnabled && (
+                      availableMigrationSourceMethods.length > 0 && (
                         <fieldset className="grid gap-3">
                           <legend className="font-medium">
                             {t("checkoutMigrationSourceLegend")}
@@ -1719,7 +1689,7 @@ export function PreviewCheckout({
                             ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
                           ] as const)
                             .filter(([value]) =>
-                              enabledMigrationSourceMethods.includes(value))
+                              availableMigrationSourceMethods.includes(value))
                             .map(([value, label]) => (
                               <label
                                 key={value}
@@ -1739,16 +1709,21 @@ export function PreviewCheckout({
                             ))}
                         </fieldset>
                       )}
+                    {!cloudflareSourceAuthorization &&
+                      availableMigrationSourceMethods.length === 0 && (
+                        <Alert variant="destructive" role="alert">
+                          <AlertTitle>{t("checkoutMigrationNoAutomaticSourceTitle")}</AlertTitle>
+                          <AlertDescription>
+                            {t("checkoutMigrationNoAutomaticSourceDescription")}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     {migrationSourceMethod === "cloudflare_api_v1" && (
                       cloudflareSourceOAuthEnabled ? (
                         cloudflareSourceAuthorization ? (
                           <Alert role="status">
-                            <AlertTitle>Cloudflare is veilig gekoppeld</AlertTitle>
-                            <AlertDescription>
-                              De volledige DNS-zone is gecontroleerd. Vul alleen
-                              nog de verhuiscode in; de verhuizing start pas na
-                              een geslaagde betaling.
-                            </AlertDescription>
+                            <AlertTitle>{t("checkoutMigrationCloudflareConnectedTitle")}</AlertTitle>
+                            <AlertDescription>{t("checkoutMigrationCloudflareConnectedDescription")}</AlertDescription>
                             <input
                               type="hidden"
                               name="cloudflareSourceAuthorization"
@@ -1761,18 +1736,13 @@ export function PreviewCheckout({
                             form="checkout-cloudflare-source-connect-form"
                             className="w-fit"
                           >
-                            Cloudflare veilig koppelen
+                            {t("checkoutMigrationCloudflareConnect")}
                           </Button>
                         )
                       ) : (
                         <Alert variant="destructive" role="alert">
-                          <AlertTitle>
-                            Veilige Cloudflare-koppeling is niet beschikbaar
-                          </AlertTitle>
-                          <AlertDescription>
-                            Deze bronroute blijft uitgeschakeld; er wordt geen
-                            API-token in checkout geaccepteerd.
-                          </AlertDescription>
+                          <AlertTitle>{t("checkoutMigrationCloudflareUnavailableTitle")}</AlertTitle>
+                          <AlertDescription>{t("checkoutMigrationCloudflareUnavailableDescription")}</AlertDescription>
                         </Alert>
                       )
                     )}
@@ -1921,13 +1891,13 @@ export function PreviewCheckout({
                     {checkState.migrationPublicEvidence && (
                       <span className="mt-2 block text-sm">
                         {t("checkoutMigrationPublicEvidence", {
-                          registrar: checkState.migrationPublicEvidence.registrar ?? "onbekend",
+                          registrar: checkState.migrationPublicEvidence.registrar ?? t("checkoutUnknown"),
                           provider:
                             checkState.migrationPublicEvidence.probableDnsProvider ??
-                            "onbekend",
+                            t("checkoutUnknown"),
                           nameservers:
                             checkState.migrationPublicEvidence.authoritativeNameservers.join(", ") ||
-                            "onbekend",
+                            t("checkoutUnknown"),
                           dnssec: checkState.migrationPublicEvidence.dnssecDsPresent
                             ? t("checkoutMigrationDnssecPresent")
                             : t("checkoutMigrationDnssecAbsent"),
@@ -2430,8 +2400,34 @@ export function PreviewCheckout({
                         selectedQuote.quote.currency,
                       )}
                     />
+                    {selectedQuote.quote.domainMode === "existing_domain" &&
+                      selectedQuote.quote.transferRenewalEffect && (
+                      <ReviewRow
+                        label={t("checkoutTransferRenewalEffect")}
+                        value={
+                          selectedQuote.quote.transferRenewalEffect === "unchanged"
+                            ? t("checkoutTransferRenewalEffectUnchanged")
+                            : selectedQuote.quote.transferRenewalEffect === "extends_one_year"
+                              ? t("checkoutTransferRenewalEffectExtendsOneYear")
+                              : selectedQuote.quote.transferRenewalEffect ===
+                                  "restarts_from_transfer_date"
+                                ? t("checkoutTransferRenewalEffectRestartsFromTransferDate")
+                                : t("checkoutTransferRenewalEffectProviderDetermined")
+                        }
+                      />
+                    )}
                     <p className="text-sm text-muted-foreground">
-                      {selectedQuote.quote.domainRenewalExplanation}
+                      {selectedQuote.quote.transferRenewalEffect === "unchanged"
+                        ? t("checkoutDomainRenewalExplanationUnchanged")
+                        : selectedQuote.quote.transferRenewalEffect === "extends_one_year"
+                          ? t("checkoutDomainRenewalExplanationExtendsOneYear")
+                          : selectedQuote.quote.transferRenewalEffect ===
+                              "restarts_from_transfer_date"
+                            ? t("checkoutDomainRenewalExplanationRestartsFromTransferDate")
+                            : selectedQuote.quote.transferRenewalEffect ===
+                                "provider_determined"
+                              ? t("checkoutDomainRenewalExplanationProviderDetermined")
+                              : t("checkoutDomainRenewalExplanationGeneric")}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t("checkoutQuoteValidUntil", {

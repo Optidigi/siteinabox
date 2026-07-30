@@ -262,6 +262,43 @@ describe("staged commerce release runtime gate", () => {
     ])
   })
 
+  it("blocks production while a resumable order has legacy checkout quote evidence", async () => {
+    const readinessPayload = asPayload({
+      find: vi.fn(async ({ collection }: { collection: string }) =>
+        collection === "orders"
+          ? {
+              docs: [{
+                id: 41,
+                state: "fulfillment_pending",
+                quoteEvidence: { schemaVersion: 3 },
+              }],
+              totalDocs: 1,
+            }
+          : { docs: [], totalDocs: 0 }),
+    })
+    const blockers = await commerceProductionReadinessBlockers(
+      readinessPayload,
+      {
+        COMMERCE_RELEASE_STAGE: "production",
+        COMMERCE_RELEASE_EVIDENCE_VERSION:
+          "commerce-production-readiness-2026-07-30.1",
+        COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
+        COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
+        NODE_ENV: "production",
+        MOLLIE_API_KEY: "live_fixture",
+        OPENPROVIDER_USERNAME: "provider-user",
+        OPENPROVIDER_PASSWORD: "provider-password",
+        CLOUDFLARE_API_TOKEN: "cloudflare-token",
+        CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+        DOMAIN_MIGRATION_ENCRYPTION_KEY:
+          Buffer.alloc(32, 1).toString("base64"),
+      } as unknown as NodeJS.ProcessEnv,
+    )
+    expect(blockers).toContain(
+      "pending_order_uses_legacy_checkout_quote_evidence",
+    )
+  })
+
   it("blocks production readiness when Cloudflare source OAuth is incomplete", async () => {
     const readinessPayload = asPayload({
       find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),

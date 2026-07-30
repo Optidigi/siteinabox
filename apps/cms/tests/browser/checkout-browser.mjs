@@ -133,6 +133,105 @@ try {
     true,
   )
   await pendingPage.close()
+
+  const unsupportedPage = await browser.newPage({
+    viewport: { width: 320, height: 700 },
+  })
+  unsupportedPage.setDefaultTimeout(5_000)
+  await unsupportedPage.goto(`${origin}?existing=unsupported`, {
+    waitUntil: "networkidle",
+  })
+  await unsupportedPage.getByRole("radio", {
+    name: /I already have a domain/,
+  }).click()
+  await unsupportedPage.getByLabel("Domain name").fill("existing-example.nl")
+  await unsupportedPage.getByRole("button", { name: "Check domain" }).click()
+  await unsupportedPage.getByRole("alert").filter({
+    hasText: "No safe automatic DNS source is available",
+  }).waitFor()
+  assert.equal(
+    await unsupportedPage.getByRole("button", {
+      name: "Connect Cloudflare securely",
+    }).count(),
+    0,
+  )
+  assert.equal(await unsupportedPage.getByLabel("Domain name").isEnabled(), true)
+  assert.equal(
+    await unsupportedPage.evaluate(() =>
+      document.documentElement.scrollWidth <= innerWidth),
+    true,
+    "Unsupported existing-domain state overflows a 320px viewport.",
+  )
+  await unsupportedPage.close()
+
+  const axfrPage = await browser.newPage({
+    viewport: { width: 320, height: 760 },
+  })
+  axfrPage.setDefaultTimeout(5_000)
+  await axfrPage.goto(`${origin}?existing=axfr`, { waitUntil: "networkidle" })
+  await axfrPage.getByRole("radio", {
+    name: /I already have a domain/,
+  }).click()
+  await axfrPage.getByLabel("Domain name").fill("existing-example.nl")
+  await axfrPage.getByRole("button", { name: "Check domain" }).click()
+  await axfrPage.getByLabel("Authorized nameserver").waitFor()
+  await axfrPage.getByLabel(/Transfer code/).fill("browser-transfer-code")
+  await axfrPage.getByLabel(
+    /I am authorized to transfer this customer-owned domain/,
+  ).check()
+  await axfrPage.getByRole("button", {
+    name: "Verify complete DNS source",
+  }).click()
+  await axfrPage.getByRole("button", { name: "Continue" }).click()
+  await axfrPage.getByRole("heading", { name: "Review your details" }).waitFor()
+  await axfrPage.getByRole("button", { name: "Continue" }).click()
+  await axfrPage.getByRole("heading", {
+    name: "Subscription & review",
+  }).waitFor()
+  assert.equal(
+    await axfrPage.getByText(
+      "Effect of the domain transfer on renewal",
+    ).isVisible(),
+    true,
+  )
+  assert.equal(
+    await axfrPage.getByText(
+      "The current renewal date remains unchanged.",
+    ).isVisible(),
+    true,
+  )
+  assert.equal(
+    await axfrPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+    "AXFR checkout overflows a 320px viewport.",
+  )
+  await axfrPage.close()
+
+  const cloudflarePage = await browser.newPage({
+    viewport: { width: 320, height: 760 },
+  })
+  cloudflarePage.setDefaultTimeout(5_000)
+  await cloudflarePage.goto(`${origin}?existing=cloudflare`, {
+    waitUntil: "networkidle",
+  })
+  await cloudflarePage.getByText("Cloudflare connected securely").waitFor()
+  assert.equal(
+    await cloudflarePage.getByText(/temporary zone-scoped token/).count(),
+    0,
+  )
+  await cloudflarePage.getByLabel(/Transfer code/).fill("browser-transfer-code")
+  await cloudflarePage.getByLabel(
+    /I am authorized to transfer this customer-owned domain/,
+  ).check()
+  await cloudflarePage.getByRole("button", { name: "Check domain" }).click()
+  await cloudflarePage.getByRole("button", { name: "Continue" }).waitFor()
+  assert.equal(
+    await cloudflarePage.evaluate(() =>
+      document.documentElement.scrollWidth <= innerWidth),
+    true,
+    "Cloudflare transfer checkout overflows a 320px viewport.",
+  )
+  await cloudflarePage.close()
   process.stdout.write("Checkout Chromium contract passed.\n")
 } finally {
   await browser?.close()

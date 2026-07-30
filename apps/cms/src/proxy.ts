@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { RateLimiterMemory } from "rate-limiter-flexible"
 import { stripAdminPrefix, isSuperAdminDomain } from "@/lib/hostToTenant"
+import {
+  browserOriginMatchesAuthority,
+  canonicalRequestAuthority,
+} from "@/lib/requestAuthority"
 
 // Pass-through for everything that isn't an authenticated app route.
 // Specifically skip:
@@ -362,20 +366,7 @@ const unsafeMethod = (method: string): boolean =>
   ["POST", "PUT", "PATCH", "DELETE"].includes(method)
 
 const browserOriginMatchesRequest = (req: NextRequest): boolean => {
-  const origin = req.headers.get("origin")
-  if (!origin) return true
-  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
-  const host = forwardedHost || req.headers.get("host")
-  if (!host) return false
-  const forwardedProto = req.headers.get("x-forwarded-proto")
-    ?.split(",")[0]?.trim().toLowerCase()
-  const protocol = forwardedProto ||
-    (process.env.NODE_ENV === "development" ? "http" : "https")
-  try {
-    return new URL(origin).origin === `${protocol}://${host}`
-  } catch {
-    return false
-  }
+  return browserOriginMatchesAuthority(req.headers)
 }
 
 const buildCrossOriginMutationResponse = (
@@ -399,6 +390,9 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   // scripts automatically.
   const nonce = buildNonce()
 
+  if (!canonicalRequestAuthority(req.headers)) {
+    return buildCrossOriginMutationResponse(req.nextUrl.pathname, nonce)
+  }
   if (unsafeMethod(req.method) && !browserOriginMatchesRequest(req)) {
     return buildCrossOriginMutationResponse(req.nextUrl.pathname, nonce)
   }

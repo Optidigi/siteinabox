@@ -75,4 +75,53 @@ describe("middleware CSP nonce", () => {
     expect(csp).toMatch(/connect-src[^;]*https:\/\/r\.siteinabox\.nl/)
     expect(csp).toMatch(/connect-src[^;]*https:\/\/eu\.posthog\.com/)
   })
+
+  it("permits the server-to-server Mollie webhook without an Origin header", async () => {
+    const mw = await importMiddleware()
+    const response = await mw(new NextRequest(
+      "https://preview.siteinabox.nl/api/payments/mollie/webhook",
+      {
+        method: "POST",
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
+        },
+      },
+    ))
+
+    expect(response.status).not.toBe(403)
+  })
+
+  it("rejects a request whose forwarded authority disagrees with Host", async () => {
+    const mw = await importMiddleware()
+    const response = await mw(new NextRequest(
+      "https://preview.siteinabox.nl/api/payments/mollie/webhook",
+      {
+        method: "POST",
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "attacker.example",
+        },
+      },
+    ))
+
+    expect(response.status).toBe(403)
+  })
+
+  it("rejects cross-origin browser mutations", async () => {
+    const mw = await importMiddleware()
+    const response = await mw(new NextRequest(
+      "https://preview.siteinabox.nl/acme/checkout",
+      {
+        method: "POST",
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
+          origin: "https://attacker.example",
+        },
+      },
+    ))
+
+    expect(response.status).toBe(403)
+  })
 })

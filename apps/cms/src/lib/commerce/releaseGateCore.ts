@@ -7,6 +7,7 @@ import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilit
 import type { Payload } from "payload"
 import type { Tenant } from "@/payload-types"
 import { resolvePreCommerceRoutingAdoption } from "@/lib/domains/preCommerceRoutingAdoption"
+import { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
 
 const clean = (value: string | undefined): string | null => {
   const normalized = value?.trim()
@@ -127,6 +128,25 @@ export async function commerceProductionReadinessBlockers(
   })
   if (criticalAlerts.totalDocs > 0 || criticalAlerts.docs.length > 0) {
     blockers.push("production_has_open_critical_commerce_alerts")
+  }
+  const pendingOrders = await payload.find({
+    collection: "orders",
+    where: {
+      state: { in: ["accepted", "fulfillment_pending", "exception"] },
+    },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (pendingOrders.docs.some((order) => {
+    const quoteEvidence = order.quoteEvidence
+    return !quoteEvidence ||
+      typeof quoteEvidence !== "object" ||
+      Array.isArray(quoteEvidence) ||
+      (quoteEvidence as Record<string, unknown>).schemaVersion !==
+        CHECKOUT_QUOTE_SCHEMA_VERSION
+  })) {
+    blockers.push("pending_order_uses_legacy_checkout_quote_evidence")
   }
   blockers.push(...await commerceEdgeInventoryBlockers(payload, true))
   return [...new Set(blockers)]

@@ -54,7 +54,7 @@ const quote = (billingPeriod: "monthly" | "annual") => {
   return {
     token: `signed-${billingPeriod}`,
     quote: {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       catalogVersion: "2026-07-26.1",
       packageCode: `siteinabox-${billingPeriod}`,
       billingPeriod,
@@ -80,6 +80,7 @@ const quote = (billingPeriod: "monthly" | "annual") => {
       quoteExpiresAt: "2026-07-28T10:15:00.000Z",
       profileVersion: 1,
       draftVersion: "draft-1",
+      transferRenewalEffect: null,
       domainRenewalExplanation: "renewal",
       currency: "EUR" as const,
       netAmountMinor,
@@ -133,6 +134,45 @@ describe("PreviewCheckout Phase 3 flow", () => {
       unobserve() {}
       disconnect() {}
     })
+  })
+
+  it("shows the frozen transfer-renewal effect in the final review", () => {
+    const monthly = quote("monthly")
+    const annual = quote("annual")
+    const existing = {
+      monthly: {
+        ...monthly,
+        quote: {
+          ...monthly.quote,
+          domainMode: "existing_domain" as const,
+          transferRenewalEffect: "unchanged" as const,
+          domainRenewalExplanation:
+            "De domeintransfer wijzigt de huidige verlengdatum niet.",
+        },
+      },
+      annual: {
+        ...annual,
+        quote: {
+          ...annual.quote,
+          domainMode: "existing_domain" as const,
+          transferRenewalEffect: "unchanged" as const,
+          domainRenewalExplanation:
+            "De domeintransfer wijzigt de huidige verlengdatum niet.",
+        },
+      },
+    }
+    render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      initialQuotes={existing}
+      initialStep="overview"
+    />)
+
+    expect(screen.getByText("checkoutTransferRenewalEffect")).toBeTruthy()
+    expect(screen.getByText("checkoutTransferRenewalEffectUnchanged")).toBeTruthy()
+    expect(screen.getByText("checkoutDomainRenewalExplanationUnchanged")).toBeTruthy()
+    expect(screen.queryByText(
+      "De domeintransfer wijzigt de huidige verlengdatum niet.",
+    )).toBeNull()
   })
 
   it("exposes three named steps and submits no registrant identity in the final hidden form", async () => {
@@ -397,7 +437,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       .toBeNull()
   })
 
-  it("uses a provider-directed Cloudflare connection without token or source-choice controls", async () => {
+  it("uses provider-directed Cloudflare OAuth while retaining safe source choices", async () => {
     const checkDomainAction = vi.fn(async (
       _state: unknown,
       formData: FormData,
@@ -480,7 +520,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )
 
     const connect = await screen.findByRole("button", {
-      name: "Cloudflare veilig koppelen",
+      name: "checkoutMigrationCloudflareConnect",
     })
     const connectForm = container.querySelector<HTMLFormElement>(
       `#${connect.getAttribute("form")}`,
@@ -491,9 +531,12 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )
     expect(container.querySelectorAll("form form")).toHaveLength(0)
     expect(screen.queryByLabelText("checkoutMigrationSourceTokenLabel")).toBeNull()
-    expect(screen.queryByRole("radio", {
+    expect(screen.getByRole("radio", {
       name: "checkoutMigrationSourceCloudflare",
-    })).toBeNull()
+    })).toBeTruthy()
+    expect(screen.getByRole("radio", {
+      name: "checkoutMigrationSourceAxfr",
+    })).toBeTruthy()
     expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
 
     rerender(<PreviewCheckout
@@ -502,12 +545,74 @@ describe("PreviewCheckout Phase 3 flow", () => {
       cloudflareSourceDomain="example.nl"
       cloudflareSourceResult="connected"
     />)
-    expect(screen.getByText("Cloudflare is veilig gekoppeld")).toBeTruthy()
+    expect(screen.getByText("checkoutMigrationCloudflareConnectedTitle")).toBeTruthy()
     expect(container.querySelector<HTMLInputElement>(
       'input[name="cloudflareSourceAuthorization"]',
     )?.value).toBe("opaque-source-handle")
     expect(screen.getByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
     expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
+  })
+
+  it("explains why a non-Cloudflare domain has no enabled automatic source", async () => {
+    const checkDomainAction = vi.fn(async (
+      _state: unknown,
+      formData: FormData,
+    ) => ({
+      ok: true,
+      status: "preflight_complete" as const,
+      domain: "example.nl",
+      domainMode: "existing_domain" as const,
+      migrationReadiness: "unsupported" as const,
+      migrationClassification: null,
+      migrationPreflightOnly: true,
+      migrationPublicEvidence: {
+        checkedAt: "2026-07-30T12:00:00.000Z",
+        authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
+        dnssecDsPresent: false,
+        dnssecDsRecords: [],
+        dnssecDsTtl: null,
+        probableDnsProvider: "example-dns",
+        registrar: "Example Registrar",
+        supplementalOnly: true as const,
+      },
+      message: "Preflight complete.",
+      requestToken: String(formData.get("requestToken") ?? ""),
+    }))
+    const props = baseCheckoutProps()
+    const { container } = render(<PreviewCheckout
+      {...props}
+      currentDomain={null}
+      domainReady={false}
+      initialQuotes={null}
+      existingDomainMigrationEnabled
+      cloudflareSourceOAuthEnabled
+      enabledMigrationSourceMethods={["cloudflare_api_v1"]}
+      checkDomainAction={checkDomainAction}
+    />)
+
+    fireEvent.click(screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    }))
+    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+      target: { value: "example.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    expect(await screen.findByText(
+      "checkoutMigrationNoAutomaticSourceTitle",
+    )).toBeTruthy()
+    expect(screen.getByText(
+      "checkoutMigrationNoAutomaticSourceDescription",
+    )).toBeTruthy()
+    expect(screen.queryByRole("button", {
+      name: "checkoutMigrationCloudflareConnect",
+    })).toBeNull()
+    expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
+    expect(
+      (screen.getByLabelText("checkoutDomainLabel") as HTMLInputElement).disabled,
+    ).toBe(false)
   })
 
   it("recollects an accepted Cloudflare source only through a bound OAuth handle", () => {
@@ -524,6 +629,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
           migrationSourceMechanism: "cloudflare_api_v1" as const,
           migrationSourceZoneHash: "zone-hash",
           migrationSecretKey: "secret-key",
+          transferRenewalEffect: "unchanged" as const,
+          domainRenewalExplanation:
+            "De domeintransfer wijzigt de huidige verlengdatum niet.",
         },
       },
       monthly: {
@@ -536,6 +644,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
           migrationSourceMechanism: "cloudflare_api_v1" as const,
           migrationSourceZoneHash: "zone-hash",
           migrationSecretKey: "secret-key",
+          transferRenewalEffect: "unchanged" as const,
+          domainRenewalExplanation:
+            "De domeintransfer wijzigt de huidige verlengdatum niet.",
         },
       },
     }
@@ -584,7 +695,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
 
     expect(container.querySelector("#accepted-cloudflare-source-token")).toBeNull()
     const reconnect = screen.getByRole("button", {
-      name: "Cloudflare opnieuw koppelen",
+      name: "checkoutMigrationCloudflareReconnect",
     })
     expect(reconnect.getAttribute("form")).toBe(
       "accepted-cloudflare-source-reconnect-form",

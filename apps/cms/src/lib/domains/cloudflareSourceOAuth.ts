@@ -13,8 +13,11 @@ import {
   sealMigrationSecret,
 } from "@/lib/domains/migrationSecrets"
 import {
+  automaticMigrationSourceEnabled,
+  existingDomainMigrationCheckoutEnabled,
   inspectExistingDomainPublicEvidence,
 } from "@/lib/domains/migrationCheckout"
+import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGateCore"
 import { acquireCloudflareSource } from "@/lib/domains/migrationSources/cloudflare"
 import {
   MigrationSourceAuthorizationError,
@@ -175,6 +178,14 @@ export const cloudflareSourceOAuthEnabled = (
     return false
   }
 }
+
+export const cloudflareSourceCheckoutEnabled = (
+  env: NodeJS.ProcessEnv = process.env,
+): boolean =>
+  commerceProviderReadsAllowed(env) &&
+  existingDomainMigrationCheckoutEnabled(env) &&
+  automaticMigrationSourceEnabled("cloudflare_api_v1", env) &&
+  cloudflareSourceOAuthEnabled(env)
 
 const tokenResponse = async (
   form: URLSearchParams,

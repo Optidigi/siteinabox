@@ -30,6 +30,9 @@ import {
   resolveCommerceAdminException,
 } from "@/lib/commerce/alerts"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
+import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
+import { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
+import { initialPaymentIsFinanciallySecured } from "@/lib/payments/initialPaymentPolicy"
 
 import {
   CloudflareIndeterminateWriteError,
@@ -559,6 +562,9 @@ async function updateManagedDomain(
 
 const migrationEvidenceFromOrder = (order: Order) => {
   const quoteEvidence = readObject(order.quoteEvidence)
+  if (quoteEvidence.schemaVersion !== CHECKOUT_QUOTE_SCHEMA_VERSION) {
+    throw new Error("Accepted order does not use the current checkout quote evidence schema.")
+  }
   const migration = readObject(quoteEvidence.migration)
   const sourceMechanism = String(migration.sourceMechanism)
   if (
@@ -580,7 +586,9 @@ const migrationEvidenceFromOrder = (order: Order) => {
   if (
     !capability ||
     capability.tld !== tldEvidence.tld ||
-    !tldCapabilityOperationFlagEnabled(capability, "incoming_transfer")
+    !tldCapabilityOperationFlagEnabled(capability, "incoming_transfer") ||
+    quoteEvidence.transferRenewalEffect !== capability.transfer.renewalEffect ||
+    tldEvidence.transferRenewalEffect !== capability.transfer.renewalEffect
   ) {
     throw new Error("Accepted order has invalid frozen TLD capability evidence.")
   }
@@ -1863,6 +1871,92 @@ async function stopMigrationForRevokedPaymentBeforeRegistrarCommit(
     status: "failed",
     migrationId: migration.id,
     message: "Payment authority was revoked before registrar transfer; no provider write was sent.",
+  }
+}
+
+async function loadSecuredInitialPaymentAuthority(
+  payload: Payload,
+  orderId: string | number,
+): Promise<{ order: Order; attempt: PaymentAttempt | null; secured: boolean }> {
+  const order = await payload.findByID({
+    collection: "orders",
+    id: orderId,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  if (!order.providerPaymentId) return { order, attempt: null, secured: false }
+  const attempts = await payload.find({
+    collection: "payment-attempts",
+    where: {
+      and: [
+        { order: { equals: order.id } },
+        { purpose: { equals: "first_payment" } },
+        { providerPaymentId: { equals: order.providerPaymentId } },
+        { state: { in: ["paid", "refund_failed"] } },
+      ],
+    },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (attempts.docs.length !== 1) {
+    return { order, attempt: null, secured: false }
+  }
+  const attempt = attempts.docs[0] as PaymentAttempt
+  return {
+    order,
+    attempt,
+    secured: initialPaymentIsFinanciallySecured(order, attempt),
+  }
+}
+
+async function stopMigrationForRevokedPaymentAfterRegistrarCommit(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  order: Order,
+  now: string,
+): Promise<MigrationResult> {
+  await revokeMigrationSourceAuthority(payload, migration, now)
+  await recordCommerceAdminException({
+    payload,
+    source: "domains",
+    code: "payment_authority_revoked_after_registrar_commit",
+    message:
+      "Payment authority changed after registrar commitment; customer domain custody and DNS continuity remain preserved while website entitlement is blocked.",
+    tenant: managedDomain.tenant,
+    subjectId: migration.id,
+    severity: "critical",
+    now,
+  })
+  await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    entitlementStatus: "blocked",
+    customerStatus: "manual_review",
+    reconciliationRequired: false,
+    failureReason: "payment_authority_revoked_after_registrar_commit",
+  }, "payment_authority_revoked_after_registrar_commit", now)
+  migration = await updateMigration(payload, migration, {
+    state: "failed",
+    ...clearedMigrationCredentials(now),
+    reconciliationRequired: false,
+    failureReason: "payment_authority_revoked_after_registrar_commit",
+  }, "payment_authority_revoked_after_registrar_commit", now)
+  if (order.state === "fulfillment_pending") {
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "exception" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+  }
+  return {
+    status: "failed",
+    migrationId: migration.id,
+    message:
+      "Payment authority changed after registrar commitment; customer domain custody and DNS continuity remain preserved without website activation.",
   }
 }
 
@@ -3319,141 +3413,134 @@ export async function prepareDomainMigration(
         "Source DNSSEC chain could not be reauthenticated immediately before transfer.",
       )
     }
-    const [currentOrder, capturedPayments] = await Promise.all([
-      payload.findByID({
-        collection: "orders",
-        id: order.id,
-        depth: 0,
-        overrideAccess: true,
-      }) as Promise<Order>,
-      payload.find({
-        collection: "payment-attempts",
-        where: {
-          and: [
-            { order: { equals: order.id } },
-            { purpose: { equals: "first_payment" } },
-            { state: { equals: "paid" } },
-          ],
-        },
-        limit: 2,
-        depth: 0,
-        overrideAccess: true,
-      }),
-    ])
-    if (
-      currentOrder.paymentStatus !== "paid" ||
-      currentOrder.state !== "fulfillment_pending" ||
-      capturedPayments.docs.length !== 1
-    ) {
-      return stopMigrationForRevokedPaymentBeforeRegistrarCommit(
-        payload,
-        migration,
-        managedDomain,
-        currentOrder,
-        deps.now(),
-      )
-    }
-    if (!deps.forwardProviderWritesAllowed()) {
-      return waiting(
-        migration,
-        "Domain transfer is prepared but forward provider writes are release-blocked.",
-      )
-    }
-    migration = await updateMigration(payload, migration, {
-      providerTransferState: "prepared",
-      transferRequestedAt: deps.now(),
-      reconciliationRequired: true,
-    }, "provider_transfer_write_prepared", deps.now())
-    const encryptedTransferCode = migration.encryptedTransferCode
-    if (!encryptedTransferCode) {
-      return waiting(migration, "The encrypted transfer code is no longer available.")
-    }
-    const transferCode = openMigrationSecret(
-      encryptedTransferCode,
-      migration.idempotencyKey,
-    )
-    try {
-      const transfer = await deps.transferOpenProviderDomain(migration.domainNameAscii, {
-        token,
-        authCode: transferCode,
-        ownerHandle: customerHandle,
-        nameServers: source.authoritativeNameservers.map((name) => ({ name })),
-        dnssecKeys: source.dnssec.status === "signed"
-          ? sourceDnskeys(source)
-          : undefined,
-        autorenew: transferAutorenewMode(capability),
-        reference: migration.idempotencyKey,
-        acceptedCapabilityVersion: capability.capabilityVersion,
-      })
-      actions = transferConfirmationAction(
-        actionStates(migration.customerActions, deps.now()),
-        capability,
-        "required",
-        deps.now(),
-      )
-      migration = await updateMigration(payload, migration, {
-        providerTransferId: String(transfer.id),
-        customerActions: actions,
-      }, `provider_transfer_${transfer.status}`, deps.now())
-    } catch (error) {
-      try {
-        providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
-      } catch {
-        // The prepared write remains authoritative until reconciliation succeeds.
-      }
-      if (!providerDomain && error instanceof OpenProviderIndeterminateWriteError) {
-        actions = transferConfirmationAction(
-          actionStates(migration.customerActions, deps.now()),
-          capability,
-          "required",
-          deps.now(),
-        )
-        migration = await updateMigration(payload, migration, {
-          state: "awaiting_provider",
-          providerTransferState: "indeterminate",
-          customerActions: actions,
-          reconciliationRequired: true,
-          failureReason: "openprovider_transfer_indeterminate",
-        }, "provider_transfer_indeterminate", deps.now())
-        return waiting(migration, "Domain transfer is awaiting provider reconciliation.")
-      }
-      if (!providerDomain && providerRejectedTransferAuthorization(error)) {
-        actions = withAction(
-          actionStates(migration.customerActions, deps.now()),
-          "provide_epp_code",
-          "failed",
-          deps.now(),
-          "provider_rejected_authorization",
-        )
-        migration = await updateMigration(payload, migration, {
-          state: "awaiting_customer",
-          providerTransferState: "not_started",
-          encryptedTransferCode: null,
-          transferCodeDeletedAt: deps.now(),
-          customerActions: actions,
-          reconciliationRequired: false,
-          failureReason: "provider_rejected_transfer_authorization",
-        }, "provider_rejected_transfer_authorization", deps.now())
-        return waiting(migration, "The provider rejected the transfer authorization.")
-      }
-      if (
-        !providerDomain &&
-        error instanceof OpenProviderApiError &&
-        error.status >= 400 &&
-        error.status < 500
-      ) {
-        return stopMigrationForProviderManualReview(
+    const transferResult = await withCommerceOrderLock(
+      payload,
+      order.id,
+      async (): Promise<MigrationResult | null> => {
+        const paymentAuthority = await loadSecuredInitialPaymentAuthority(
           payload,
-          migration,
-          managedDomain,
-          "openprovider_transfer_rejected_non_authorization",
-          deps.now(),
-          "The provider rejected a paid transfer for immediate operator review.",
+          order.id,
         )
-      }
-      if (!providerDomain) throw error
-    }
-    providerDomain ??= await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
+        if (
+          !paymentAuthority.secured ||
+          paymentAuthority.order.state !== "fulfillment_pending"
+        ) {
+          return stopMigrationForRevokedPaymentBeforeRegistrarCommit(
+            payload,
+            migration,
+            managedDomain,
+            paymentAuthority.order,
+            deps.now(),
+          )
+        }
+        if (!deps.forwardProviderWritesAllowed()) {
+          return waiting(
+            migration,
+            "Domain transfer is prepared but forward provider writes are release-blocked.",
+          )
+        }
+        migration = await updateMigration(payload, migration, {
+          providerTransferState: "prepared",
+          transferRequestedAt: deps.now(),
+          reconciliationRequired: true,
+        }, "provider_transfer_write_prepared", deps.now())
+        const encryptedTransferCode = migration.encryptedTransferCode
+        if (!encryptedTransferCode) {
+          return waiting(migration, "The encrypted transfer code is no longer available.")
+        }
+        const transferCode = openMigrationSecret(
+          encryptedTransferCode,
+          migration.idempotencyKey,
+        )
+        try {
+          const transfer = await deps.transferOpenProviderDomain(migration.domainNameAscii, {
+            token,
+            authCode: transferCode,
+            ownerHandle: customerHandle,
+            nameServers: source.authoritativeNameservers.map((name) => ({ name })),
+            dnssecKeys: source.dnssec.status === "signed"
+              ? sourceDnskeys(source)
+              : undefined,
+            autorenew: transferAutorenewMode(capability),
+            reference: migration.idempotencyKey,
+            acceptedCapabilityVersion: capability.capabilityVersion,
+          })
+          actions = transferConfirmationAction(
+            actionStates(migration.customerActions, deps.now()),
+            capability,
+            "required",
+            deps.now(),
+          )
+          migration = await updateMigration(payload, migration, {
+            providerTransferId: String(transfer.id),
+            customerActions: actions,
+          }, `provider_transfer_${transfer.status}`, deps.now())
+        } catch (error) {
+          try {
+            providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
+          } catch {
+            // The prepared write remains authoritative until reconciliation succeeds.
+          }
+          if (!providerDomain && error instanceof OpenProviderIndeterminateWriteError) {
+            actions = transferConfirmationAction(
+              actionStates(migration.customerActions, deps.now()),
+              capability,
+              "required",
+              deps.now(),
+            )
+            migration = await updateMigration(payload, migration, {
+              state: "awaiting_provider",
+              providerTransferState: "indeterminate",
+              customerActions: actions,
+              reconciliationRequired: true,
+              failureReason: "openprovider_transfer_indeterminate",
+            }, "provider_transfer_indeterminate", deps.now())
+            return waiting(migration, "Domain transfer is awaiting provider reconciliation.")
+          }
+          if (!providerDomain && providerRejectedTransferAuthorization(error)) {
+            actions = withAction(
+              actionStates(migration.customerActions, deps.now()),
+              "provide_epp_code",
+              "failed",
+              deps.now(),
+              "provider_rejected_authorization",
+            )
+            migration = await updateMigration(payload, migration, {
+              state: "awaiting_customer",
+              providerTransferState: "not_started",
+              encryptedTransferCode: null,
+              transferCodeDeletedAt: deps.now(),
+              customerActions: actions,
+              reconciliationRequired: false,
+              failureReason: "provider_rejected_transfer_authorization",
+            }, "provider_rejected_transfer_authorization", deps.now())
+            return waiting(migration, "The provider rejected the transfer authorization.")
+          }
+          if (
+            !providerDomain &&
+            error instanceof OpenProviderApiError &&
+            error.status >= 400 &&
+            error.status < 500
+          ) {
+            return stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "openprovider_transfer_rejected_non_authorization",
+              deps.now(),
+              "The provider rejected a paid transfer for immediate operator review.",
+            )
+          }
+          if (!providerDomain) throw error
+        }
+        providerDomain ??= await deps.findOpenProviderDomain(
+          migration.domainNameAscii,
+          { token },
+        )
+        return null
+      },
+    )
+    if (transferResult) return transferResult
   }
   if (!providerDomain || !activeProviderDomain(
     providerDomain,
@@ -3543,6 +3630,19 @@ export async function prepareDomainMigration(
       providerDomain,
       "transfer_did_not_retain_old_nameservers",
       deps,
+    )
+  }
+  const postTransferPayment = await loadSecuredInitialPaymentAuthority(
+    payload,
+    order.id,
+  )
+  if (!postTransferPayment.secured) {
+    return stopMigrationForRevokedPaymentAfterRegistrarCommit(
+      payload,
+      migration,
+      managedDomain,
+      postTransferPayment.order,
+      deps.now(),
     )
   }
   const registrantVerification = verificationStatus(providerDomain)
@@ -3861,8 +3961,30 @@ export async function prepareDomainMigration(
   migration = targetDnssec.migration
   providerDomain = targetDnssec.providerDomain
   if (targetDnssec.result) return targetDnssec.result
+  if (!providerDomain) {
+    return waiting(
+      migration,
+      "Transferred domain authority awaits provider reconciliation before publication.",
+    )
+  }
+  const publicationProviderDomain = providerDomain
 
-  const tenant = await payload.update({
+  return withCommerceOrderLock(payload, order.id, async () => {
+    const prePublicationPayment = await loadSecuredInitialPaymentAuthority(
+      payload,
+      order.id,
+    )
+    if (!prePublicationPayment.secured) {
+      return stopMigrationForRevokedPaymentAfterRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        prePublicationPayment.order,
+        deps.now(),
+      )
+    }
+
+    const tenant = await payload.update({
     collection: "tenants",
     id: relationshipId(migration.tenant) as string | number,
     data: {
@@ -3882,7 +4004,7 @@ export async function prepareDomainMigration(
       payload,
       migration,
       managedDomain,
-      providerDomain,
+      publicationProviderDomain,
       "migration_order_generation_run_missing",
       deps,
     )
@@ -3898,7 +4020,7 @@ export async function prepareDomainMigration(
       payload,
       migration,
       managedDomain,
-      providerDomain,
+      publicationProviderDomain,
       "migration_order_tenant_mismatch",
       deps,
     )
@@ -3909,7 +4031,7 @@ export async function prepareDomainMigration(
       payload,
       migration,
       managedDomain,
-      providerDomain,
+      publicationProviderDomain,
       `approved_snapshot_activation_failed:${activation.message}`,
       deps,
     )
@@ -3945,9 +4067,10 @@ export async function prepareDomainMigration(
     overrideAccess: true,
     context: { legalOrderLifecycleMutation: true },
   })
-  return {
-    status: "completed",
-    migrationId: migration.id,
-    message: "Automatic existing-domain migration completed.",
-  }
+    return {
+      status: "completed",
+      migrationId: migration.id,
+      message: "Automatic existing-domain migration completed.",
+    }
+  })
 }

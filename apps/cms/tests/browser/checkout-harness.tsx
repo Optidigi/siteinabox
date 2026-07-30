@@ -37,13 +37,19 @@ const profile = {
 const quote = (
   billingPeriod: "monthly" | "annual",
   selectedDomain = "analytical-engines.nl",
+  existing?: {
+    sourceMechanism:
+      | "cloudflare_api_v1"
+      | "authorized_axfr_v1"
+      | "validated_provider_export_v1"
+  },
 ) => {
   const planPriceNetMinor = billingPeriod === "annual" ? 19_000 : 1_900
   const vatAmountMinor = billingPeriod === "annual" ? 3_990 : 399
   return {
     token: `browser-${billingPeriod}`,
     quote: {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       catalogVersion: "2026-07-26.1",
       packageCode: `siteinabox-${billingPeriod}`,
       billingPeriod,
@@ -57,23 +63,26 @@ const quote = (
       providerOperationPriceNetMinor: 1_000,
       domainSurchargeNetMinor: 0,
       migrationServiceFeeNetMinor: 0,
-      migrationClassification: null,
-      migrationSourceMechanism: null,
-      migrationSourceZoneHash: null,
-      migrationInputEnvelope: null,
-      migrationSecretKey: null,
+      migrationClassification: existing ? "automatic" as const : null,
+      migrationSourceMechanism: existing?.sourceMechanism ?? null,
+      migrationSourceZoneHash: existing ? "browser-zone-hash" : null,
+      migrationInputEnvelope: existing ? "browser-encrypted-input" : null,
+      migrationSecretKey: existing ? "browser-secret-key" : null,
       planPriceNetMinor,
       vatRateBasisPoints: 2_100 as const,
       futureSubscriptionNetMinor: planPriceNetMinor,
       futureSubscriptionVatMinor: vatAmountMinor,
       futureSubscriptionGrossMinor: planPriceNetMinor + vatAmountMinor,
       selectedDomain,
-      domainMode: "new_registration" as const,
+      domainMode: existing
+        ? "existing_domain" as const
+        : "new_registration" as const,
       providerQuotedAt: "2026-07-28T10:00:00.000Z",
       quoteIssuedAt: "2026-07-28T10:00:00.000Z",
       quoteExpiresAt: "2099-07-28T10:15:00.000Z",
       profileVersion: 1,
       draftVersion: "draft-1",
+      transferRenewalEffect: existing ? "unchanged" as const : null,
       domainRenewalExplanation: "Renewal is charged separately before the safe cutoff.",
       currency: "EUR" as const,
       netAmountMinor: planPriceNetMinor,
@@ -83,8 +92,15 @@ const quote = (
   }
 }
 
+const searchParams = new URLSearchParams(window.location.search)
+const pending = searchParams.get("payment") === "pending"
+const existingScenario = searchParams.get("existing")
+const existingDomain = existingScenario ? "existing-example.nl" : null
+const cloudflareConnected = existingScenario === "cloudflare"
+const initialDomain = pending ? "analytical-engines.nl" : null
+
 const saveProfileAction = async (_previous: unknown, formData: FormData) => {
-  if (formData.get("firstName") === "Ada") {
+  if (!existingScenario && formData.get("firstName") === "Ada") {
     return {
       ok: false,
       status: "invalid" as const,
@@ -97,12 +113,22 @@ const saveProfileAction = async (_previous: unknown, formData: FormData) => {
     status: "saved" as const,
     message: "Saved.",
     profile,
-    quotes: { monthly: quote("monthly"), annual: quote("annual") },
+    quotes: existingScenario
+      ? {
+          monthly: quote("monthly", existingDomain ?? "existing-example.nl", {
+            sourceMechanism: cloudflareConnected
+              ? "cloudflare_api_v1"
+              : "authorized_axfr_v1",
+          }),
+          annual: quote("annual", existingDomain ?? "existing-example.nl", {
+            sourceMechanism: cloudflareConnected
+              ? "cloudflare_api_v1"
+              : "authorized_axfr_v1",
+          }),
+        }
+      : { monthly: quote("monthly"), annual: quote("annual") },
   }
 }
-
-const pending = new URLSearchParams(window.location.search).get("payment") === "pending"
-const initialDomain = pending ? "analytical-engines.nl" : null
 
 createRoot(document.getElementById("root")!).render(
   <NextIntlClientProvider locale="en" messages={{ preview: messages.preview }}>
@@ -119,6 +145,20 @@ createRoot(document.getElementById("root")!).render(
           }
         : null}
       initialStep={pending ? "overview" : "domain"}
+      existingDomainMigrationEnabled={Boolean(existingScenario)}
+      cloudflareSourceOAuthEnabled={Boolean(existingScenario)}
+      enabledMigrationSourceMethods={
+        existingScenario === "unsupported"
+          ? ["cloudflare_api_v1"]
+          : existingScenario
+            ? ["cloudflare_api_v1", "authorized_axfr_v1"]
+            : []
+      }
+      cloudflareSourceAuthorization={
+        cloudflareConnected ? "browser-cloudflare-source-handle" : null
+      }
+      cloudflareSourceDomain={cloudflareConnected ? existingDomain : null}
+      cloudflareSourceResult={cloudflareConnected ? "connected" : null}
       catalog={{
         version: "2026-07-26.1",
         currency: "EUR",
@@ -138,6 +178,61 @@ createRoot(document.getElementById("root")!).render(
       suggestionsHref="/suggestions"
       checkDomainAction={async (_previous, formData) => {
         const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
+        const domainMode = String(formData.get("domainMode") ?? "new_registration")
+        if (domainMode === "existing_domain") {
+          const sourceMechanism = String(
+            formData.get("migrationSourceMethod") ?? "",
+          ) as
+            | ""
+            | "cloudflare_api_v1"
+            | "authorized_axfr_v1"
+            | "validated_provider_export_v1"
+          const probableDnsProvider = existingScenario === "cloudflare"
+            ? "cloudflare"
+            : "example-dns"
+          const publicEvidence = {
+            checkedAt: "2026-07-30T12:00:00.000Z",
+            authoritativeNameservers: [
+              "ns1.existing-example.test",
+              "ns2.existing-example.test",
+            ],
+            dnssecDsPresent: false,
+            dnssecDsRecords: [],
+            dnssecDsTtl: null,
+            probableDnsProvider,
+            registrar: "Example Registrar",
+            supplementalOnly: true as const,
+          }
+          if (!sourceMechanism) {
+            return {
+              ok: true,
+              status: "preflight_complete" as const,
+              domain,
+              domainMode: "existing_domain" as const,
+              migrationReadiness: "unsupported" as const,
+              migrationClassification: null,
+              migrationPreflightOnly: true,
+              migrationPublicEvidence: publicEvidence,
+              message: "Public preflight completed without a provider write.",
+            }
+          }
+          return {
+            ok: true,
+            status: "available" as const,
+            domain,
+            domainMode: "existing_domain" as const,
+            migrationReadiness: "ready_automatic" as const,
+            migrationClassification: "automatic" as const,
+            migrationSourceMechanism: sourceMechanism,
+            migrationPreflightOnly: false,
+            migrationPublicEvidence: publicEvidence,
+            message: "The complete DNS source is ready for automatic migration.",
+            quotes: {
+              monthly: quote("monthly", domain, { sourceMechanism }),
+              annual: quote("annual", domain, { sourceMechanism }),
+            },
+          }
+        }
         if (domain === "service-error.nl") {
           return {
             ok: false,

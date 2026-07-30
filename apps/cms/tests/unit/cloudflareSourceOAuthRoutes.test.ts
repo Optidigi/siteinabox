@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
-  isPreviewHost: vi.fn(async () => true),
-  oauthEnabled: vi.fn(() => true),
-  sourceEnabled: vi.fn(() => true),
+  sourceCheckoutEnabled: vi.fn(() => true),
   inspectPublicEvidence: vi.fn(),
   createAuthorization: vi.fn(),
   authorizationContext: vi.fn(),
@@ -14,15 +12,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/payload.config", () => ({ default: {} }))
 vi.mock("payload", () => ({ getPayload: mocks.getPayload }))
-vi.mock("@/lib/preview/previewHost", () => ({
-  isPreviewHost: mocks.isPreviewHost,
-}))
 vi.mock("@/lib/domains/migrationCheckout", () => ({
-  automaticMigrationSourceEnabled: mocks.sourceEnabled,
   inspectExistingDomainPublicEvidence: mocks.inspectPublicEvidence,
 }))
 vi.mock("@/lib/domains/cloudflareSourceOAuth", () => ({
-  cloudflareSourceOAuthEnabled: mocks.oauthEnabled,
+  cloudflareSourceCheckoutEnabled: mocks.sourceCheckoutEnabled,
   createCloudflareSourceAuthorization: mocks.createAuthorization,
   cloudflareSourceAuthorizationContext: mocks.authorizationContext,
   completeCloudflareSourceAuthorization: mocks.completeAuthorization,
@@ -47,9 +41,7 @@ const checkoutContext = {
 describe("Cloudflare source OAuth routes", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.isPreviewHost.mockResolvedValue(true)
-    mocks.oauthEnabled.mockReturnValue(true)
-    mocks.sourceEnabled.mockReturnValue(true)
+    mocks.sourceCheckoutEnabled.mockReturnValue(true)
     mocks.requireCheckoutContext.mockResolvedValue(checkoutContext)
     mocks.inspectPublicEvidence.mockResolvedValue({
       probableDnsProvider: "cloudflare",
@@ -77,6 +69,11 @@ describe("Cloudflare source OAuth routes", () => {
       "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/start",
       {
         method: "POST",
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
+          origin: "https://preview.siteinabox.nl",
+        },
         body: new URLSearchParams({
           clientSlug: "example",
           domain: "example.nl",
@@ -112,11 +109,16 @@ describe("Cloudflare source OAuth routes", () => {
     const { POST } = await import(
       "@/app/(payload)/api/domain-migration-source/cloudflare/start/route"
     )
-    mocks.oauthEnabled.mockReturnValue(false)
+    mocks.sourceCheckoutEnabled.mockReturnValue(false)
     const request = () => new Request(
       "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/start",
       {
         method: "POST",
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
+          origin: "https://preview.siteinabox.nl",
+        },
         body: new URLSearchParams({
           clientSlug: "example",
           domain: "example.nl",
@@ -126,7 +128,7 @@ describe("Cloudflare source OAuth routes", () => {
     const disabled = await POST(request())
     expect(disabled.status).toBe(404)
 
-    mocks.oauthEnabled.mockReturnValue(true)
+    mocks.sourceCheckoutEnabled.mockReturnValue(true)
     mocks.inspectPublicEvidence.mockResolvedValue({
       probableDnsProvider: "other",
     })
@@ -147,6 +149,8 @@ describe("Cloudflare source OAuth routes", () => {
       `https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${state}&code=one-time-code`,
       {
         headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
           cookie: `siab_cf_source_${state.slice(0, 12)}=browser-binding`,
         },
       },
@@ -185,9 +189,68 @@ describe("Cloudflare source OAuth routes", () => {
     mocks.authorizationContext.mockResolvedValue(null)
     const response = await GET(new Request(
       `https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${"a".repeat(43)}&code=code`,
+      {
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
+        },
+      },
     ))
 
     expect(response.status).toBe(400)
+    expect(mocks.completeAuthorization).not.toHaveBeenCalled()
+  })
+
+  it("rejects host disagreement and missing or cross-site OAuth start origins", async () => {
+    const { POST } = await import(
+      "@/app/(payload)/api/domain-migration-source/cloudflare/start/route"
+    )
+    const request = (headers: Record<string, string>) => new Request(
+      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/start",
+      {
+        method: "POST",
+        headers,
+        body: new URLSearchParams({
+          clientSlug: "example",
+          domain: "example.nl",
+        }),
+      },
+    )
+
+    expect((await POST(request({
+      host: "preview.siteinabox.nl",
+      "x-forwarded-host": "attacker.example",
+      origin: "https://attacker.example",
+    }))).status).toBe(404)
+    expect((await POST(request({
+      host: "preview.siteinabox.nl",
+      "x-forwarded-host": "preview.siteinabox.nl",
+    }))).status).toBe(403)
+    expect((await POST(request({
+      host: "preview.siteinabox.nl",
+      "x-forwarded-host": "preview.siteinabox.nl",
+      origin: "https://attacker.example",
+    }))).status).toBe(403)
+    expect(mocks.createAuthorization).not.toHaveBeenCalled()
+  })
+
+  it("blocks callback work when the complete source gate is disabled", async () => {
+    const { GET } = await import(
+      "@/app/(payload)/api/domain-migration-source/cloudflare/callback/route"
+    )
+    mocks.sourceCheckoutEnabled.mockReturnValue(false)
+    const response = await GET(new Request(
+      `https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${"a".repeat(43)}&code=code`,
+      {
+        headers: {
+          host: "preview.siteinabox.nl",
+          "x-forwarded-host": "preview.siteinabox.nl",
+        },
+      },
+    ))
+
+    expect(response.status).toBe(404)
+    expect(mocks.getPayload).not.toHaveBeenCalled()
     expect(mocks.completeAuthorization).not.toHaveBeenCalled()
   })
 })

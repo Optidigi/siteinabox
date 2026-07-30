@@ -11,8 +11,14 @@ import {
   type MigrationClassification,
 } from "@siteinabox/contracts/commerce"
 import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
+import {
+  tldCapabilityAt,
+  type TransferRenewalEffect,
+} from "@siteinabox/contracts/tld-capabilities"
+import { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
 
 export type CheckoutBillingPeriod = "monthly" | "annual"
+export { CHECKOUT_QUOTE_SCHEMA_VERSION } from "@/lib/checkout/checkoutQuoteSchema"
 
 export type CheckoutQuoteLineItem = {
   code: string
@@ -22,7 +28,7 @@ export type CheckoutQuoteLineItem = {
 }
 
 export type CheckoutQuote = CommercialAmount & {
-  schemaVersion: 3
+  schemaVersion: typeof CHECKOUT_QUOTE_SCHEMA_VERSION
   catalogVersion: string
   packageCode: string
   billingPeriod: CheckoutBillingPeriod
@@ -48,6 +54,7 @@ export type CheckoutQuote = CommercialAmount & {
   quoteExpiresAt: string
   profileVersion: number
   draftVersion: string
+  transferRenewalEffect: TransferRenewalEffect | null
   domainRenewalExplanation: string
 }
 
@@ -71,6 +78,7 @@ export function buildCheckoutQuote(input: {
   migrationSecretKey?: string | null
   selectedDomain: string
   domainMode?: "new_registration" | "existing_domain"
+  transferRenewalEffect?: TransferRenewalEffect | null
   providerQuotedAt: string
   profileVersion?: number
   draftVersion: string
@@ -97,6 +105,18 @@ export function buildCheckoutQuote(input: {
         : null
     )
   const domainMode = input.domainMode ?? "new_registration"
+  const tld = input.selectedDomain.split(".").at(-1)?.toLowerCase() ?? ""
+  const transferRenewalEffect = domainMode === "existing_domain"
+    ? input.transferRenewalEffect ??
+      tldCapabilityAt(tld, new Date(input.providerQuotedAt))?.transfer.renewalEffect ??
+      null
+    : null
+  if (domainMode === "existing_domain" && !transferRenewalEffect) {
+    throw new Error("Existing-domain checkout requires governed transfer-renewal evidence.")
+  }
+  if (domainMode === "new_registration" && input.transferRenewalEffect != null) {
+    throw new Error("New-domain checkout cannot contain transfer-renewal evidence.")
+  }
   if (
     domainMode === "existing_domain" &&
     (
@@ -159,7 +179,7 @@ export function buildCheckoutQuote(input: {
   const now = input.now ?? new Date()
   const futureSubscriptionVatMinor = calculateDutchVatMinor(subscription.netAmountMinor)
   return {
-    schemaVersion: 3,
+    schemaVersion: CHECKOUT_QUOTE_SCHEMA_VERSION,
     catalogVersion: catalog.catalogVersion,
     packageCode: subscription.code,
     billingPeriod: input.billingPeriod,
@@ -187,8 +207,16 @@ export function buildCheckoutQuote(input: {
     quoteExpiresAt: new Date(now.getTime() + quoteTtlMs).toISOString(),
     profileVersion: input.profileVersion ?? 0,
     draftVersion: input.draftVersion,
-    domainRenewalExplanation:
-      "Domeinverlenging wordt afzonderlijk gedekt volgens de actuele providerprijs en veilige registrar-cutoff.",
+    transferRenewalEffect,
+    domainRenewalExplanation: transferRenewalEffect === "unchanged"
+      ? "De domeintransfer wijzigt de huidige verlengdatum niet. Toekomstige verlenging wordt afzonderlijk gedekt volgens de actuele providerprijs en veilige registrar-cutoff."
+      : transferRenewalEffect === "extends_one_year"
+        ? "De domeintransfer verlengt de registratie met één jaar. Een latere verlenging wordt afzonderlijk gedekt volgens de actuele providerprijs en veilige registrar-cutoff."
+        : transferRenewalEffect === "restarts_from_transfer_date"
+          ? "De domeintransfer start een nieuwe registratieperiode vanaf de transferdatum. Een latere verlenging wordt afzonderlijk gedekt volgens de actuele providerprijs en veilige registrar-cutoff."
+          : transferRenewalEffect === "provider_determined"
+            ? "De provider bepaalt het effect van de domeintransfer op de verlengdatum; dit wordt na de transfer gecontroleerd. Toekomstige verlenging wordt afzonderlijk gedekt volgens de actuele providerprijs en veilige registrar-cutoff."
+            : "Domeinverlenging wordt afzonderlijk gedekt volgens de actuele providerprijs en veilige registrar-cutoff.",
     ...amount,
   }
 }
@@ -224,11 +252,21 @@ export function openCheckoutQuote(
   }
   const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as CheckoutQuote
   if (
-    parsed.schemaVersion !== 3 ||
+    parsed.schemaVersion !== CHECKOUT_QUOTE_SCHEMA_VERSION ||
     parsed.currency !== "EUR" ||
     !parsed.selectedDomain ||
     !["monthly", "annual"].includes(parsed.billingPeriod) ||
     !["new_registration", "existing_domain"].includes(parsed.domainMode) ||
+    (
+      parsed.domainMode === "new_registration"
+        ? parsed.transferRenewalEffect !== null
+        : ![
+            "unchanged",
+            "extends_one_year",
+            "restarts_from_transfer_date",
+            "provider_determined",
+          ].includes(parsed.transferRenewalEffect ?? "")
+    ) ||
     !Number.isSafeInteger(parsed.grossAmountMinor)
   ) {
     throw new Error("Checkout quote token has invalid evidence.")
@@ -280,6 +318,7 @@ export function sameCommercialCheckoutQuote(
     "futureSubscriptionGrossMinor",
     "selectedDomain",
     "domainMode",
+    "transferRenewalEffect",
   ] as const
   return fields.every((field) => accepted[field] === current[field])
 }
