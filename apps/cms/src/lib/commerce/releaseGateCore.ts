@@ -6,7 +6,7 @@ import {
 import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { Tenant } from "@/payload-types"
-import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
+import { resolvePreCommerceRoutingAdoption } from "@/lib/domains/preCommerceRoutingAdoption"
 
 const clean = (value: string | undefined): string | null => {
   const normalized = value?.trim()
@@ -181,14 +181,14 @@ export async function commerceEdgeInventoryBlockers(
         overrideAccess: true,
       })
       const adoption = anyManagedDomain.docs.length === 0
-        ? await resolveLegacyEdgeAdoption(payload, domain)
+        ? await resolvePreCommerceRoutingAdoption(payload, domain)
         : null
-      const auditedLegacyBridge = adoption?.tenantId === String(tenant.id) &&
-        (!requireActiveRouting ||
-          (adoption.rendererApexReady &&
-            adoption.rendererWwwReady &&
-            adoption.cmsAdminReady))
-      if (auditedLegacyBridge) continue
+      const auditedPreCommerceAdoption =
+        adoption?.tenantId === String(tenant.id) &&
+        adoption.rendererApexReady &&
+        adoption.rendererWwwReady &&
+        adoption.cmsAdminReady
+      if (auditedPreCommerceAdoption) continue
       blockers.push(
         requireActiveRouting
           ? `active_tenant_edge_routing_unready:${tenant.id}`

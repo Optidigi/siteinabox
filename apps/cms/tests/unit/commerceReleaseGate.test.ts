@@ -33,7 +33,7 @@ const taskPayload = asPayload({
   })),
 })
 
-const legacyEdgeInventoryPayload = (
+const adoptedEdgeInventoryPayload = (
   options: {
     activeSnapshot?: boolean
     snapshotStatus?: "active" | "superseded"
@@ -44,6 +44,7 @@ const legacyEdgeInventoryPayload = (
     duplicateTenant?: boolean
     foreignWwwAlias?: boolean
     wwwCanonicalConflict?: boolean
+    adoptionState?: "adopted" | "not_adopted" | "revoked"
   } = {},
 ) => {
   const tenant = {
@@ -51,6 +52,25 @@ const legacyEdgeInventoryPayload = (
     status: "active",
     domain: "ami-care.nl",
     domainVerification: { status: "verified" },
+    preCommerceRoutingAdoption: {
+      state: options.adoptionState ?? "adopted",
+      adoptedDomain:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "ami-care.nl",
+      evidenceVersion:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "pre-commerce-routing-v1",
+      adoptedAt:
+        options.adoptionState === "not_adopted"
+          ? null
+          : "2026-07-30T09:59:23.000Z",
+      revokedAt:
+        options.adoptionState === "revoked"
+          ? "2026-07-30T10:00:00.000Z"
+          : null,
+    },
     activeSnapshot: options.activeSnapshot === false ? null : 154,
   }
   return asPayload({
@@ -320,9 +340,9 @@ describe("staged commerce release runtime gate", () => {
     ])
   })
 
-  it("accepts only the audited verified legacy domain in edge inventory", async () => {
+  it("accepts only a durably adopted verified domain in edge inventory", async () => {
     await expect(
-      commerceEdgeInventoryBlockers(legacyEdgeInventoryPayload(), true),
+      commerceEdgeInventoryBlockers(adoptedEdgeInventoryPayload(), true),
     ).resolves.toEqual([])
   })
 
@@ -337,13 +357,33 @@ describe("staged commerce release runtime gate", () => {
     ["duplicate tenant", { duplicateTenant: true }],
     ["foreign www alias owner", { foreignWwwAlias: true }],
     ["canonical www owner", { wwwCanonicalConflict: true }],
-  ] as const)("blocks the audited legacy inventory with %s", async (_label, options) => {
+    ["missing adoption", { adoptionState: "not_adopted" }],
+    ["revoked adoption", { adoptionState: "revoked" }],
+  ] as const)("blocks the adopted inventory with %s", async (_label, options) => {
     await expect(
       commerceEdgeInventoryBlockers(
-        legacyEdgeInventoryPayload(options),
+        adoptedEdgeInventoryPayload(options),
         true,
       ),
     ).resolves.toEqual(["active_tenant_edge_routing_unready:1"])
+    await expect(
+      commerceEdgeInventoryBlockers(
+        adoptedEdgeInventoryPayload(options),
+        false,
+      ),
+    ).resolves.toEqual([
+      "active_tenant_managed_domain_inventory_invalid:1",
+    ])
+  })
+
+  it("blocks edge bootstrap until every adopted route is ready", async () => {
+    await expect(
+      commerceEdgeBootstrapBlockers(
+        adoptedEdgeInventoryPayload({ wwwAliasCount: 0 }),
+      ),
+    ).resolves.toEqual([
+      "active_tenant_managed_domain_inventory_invalid:1",
+    ])
   })
 
   it("blocks scoped edge bootstrap on invalid inventory or critical commerce alerts", async () => {

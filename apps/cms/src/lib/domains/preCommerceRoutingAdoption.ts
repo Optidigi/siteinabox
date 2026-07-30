@@ -1,12 +1,12 @@
-import {
-  isLegacyRendererDomainAdoptionHost,
-  normalizePublicDomainHost,
-} from "@siteinabox/contracts"
+import { normalizePublicDomainHost } from "@siteinabox/contracts"
 import type { Payload, Where } from "payload"
 import type { SiteSetting, Tenant } from "@/payload-types"
 import { relationshipId } from "@/lib/relationshipId"
 
-export type LegacyEdgeAdoption = {
+export const PRE_COMMERCE_ROUTING_EVIDENCE_VERSION =
+  "pre-commerce-routing-v1" as const
+
+export type PreCommerceRoutingAdoption = {
   domain: string
   tenantId: string
   rendererApexReady: boolean
@@ -15,16 +15,16 @@ export type LegacyEdgeAdoption = {
 }
 
 /**
- * Evaluates the temporary, explicit adoption bridge for sites that predate
- * managed-domain commerce records. Runtime routing and release inventory both
- * consume this result so the deployment gate cannot be weaker than routing.
+ * Evaluates durable, routing-only evidence for sites that predate managed-
+ * domain commerce records. Runtime routing and release inventory both consume
+ * this result so the deployment gate cannot be weaker than routing.
  */
-export async function resolveLegacyEdgeAdoption(
+export async function resolvePreCommerceRoutingAdoption(
   payload: Payload,
   rawDomain: string,
-): Promise<LegacyEdgeAdoption | null> {
+): Promise<PreCommerceRoutingAdoption | null> {
   const domain = normalizePublicDomainHost(rawDomain)
-  if (!domain || !isLegacyRendererDomainAdoptionHost(domain)) return null
+  if (!domain) return null
 
   const tenants = await payload.find({
     collection: "tenants",
@@ -39,11 +39,28 @@ export async function resolveLegacyEdgeAdoption(
   const tenantId = String(tenant.id)
   if (
     normalizePublicDomainHost(tenant.domain) !== domain ||
+    tenant.preCommerceRoutingAdoption?.state !== "adopted" ||
+    normalizePublicDomainHost(
+      tenant.preCommerceRoutingAdoption.adoptedDomain,
+    ) !== domain ||
+    tenant.preCommerceRoutingAdoption.evidenceVersion !==
+      PRE_COMMERCE_ROUTING_EVIDENCE_VERSION ||
+    !tenant.preCommerceRoutingAdoption.adoptedAt ||
+    tenant.preCommerceRoutingAdoption.revokedAt ||
     tenant.domainVerification?.status !== "verified" ||
     tenant.status === "archived"
   ) {
     return null
   }
+  const managedDomains = await payload.find({
+    collection: "managed-domains",
+    where: { domainNameAscii: { equals: domain } },
+    limit: 1,
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (managedDomains.docs.length > 0) return null
 
   let activeSnapshot = false
   const activeSnapshotId = relationshipId(tenant.activeSnapshot)

@@ -355,17 +355,34 @@ otherwise.
 
 For an existing production CMS, take an operator-approved Postgres backup and
 record the current CMS image ID before pulling or restarting the new image.
-Do not hand-edit migration state or run ad hoc SQL. The expected production
-sequence is:
+Do not hand-edit migration state or run ad hoc SQL. Keep the old compatible CMS
+service running while the reviewed new image applies migrations as a one-off.
+This prevents a data-sensitive migration guard from turning into an application
+restart loop. The expected production sequence is:
 
 1. Operator verifies the redacted `.env` key inventory and fills required
    values.
 2. Operator creates a timestamped Postgres backup.
 3. Operator records the current `siteinabox-cms` image ID/tag for rollback.
-4. Operator pulls the reviewed CMS image and starts the stack.
-5. `migrate-on-boot` applies pending committed migrations.
-6. Operator reviews logs and health before proceeding to renderer or smoke
-   phases.
+4. Operator pulls the reviewed CMS image without replacing the running service.
+5. Operator applies pending committed migrations from that exact image, with
+   jobs disabled:
+
+   ```bash
+   docker compose pull siteinabox-cms
+   docker compose run --rm --no-deps \
+     --entrypoint node \
+     -e PAYLOAD_DISABLE_JOBS_AUTORUN=1 \
+     siteinabox-cms \
+     /app/dist-runtime/migrate-on-boot.bundled.mjs
+   ```
+
+6. Operator runs any migration-specific read-only inventory check. For the
+   durable pre-commerce routing adoption migration, run the bundled
+   `check-commerce-edge-inventory` command from the same image before Tunnel
+   reconciliation or service replacement.
+7. Operator replaces the CMS service, then reviews logs and health before
+   proceeding to renderer or smoke phases.
 
 Final production smoke/review remains blocked until the operator has set the
 required production env values and explicitly approved the production deploy.
@@ -376,9 +393,9 @@ What this means in practice:
   `docker logs siteinabox-cms` to see `[migrate-on-boot] N migration(s) applied`.
 - **Existing DB:** subsequent boots log `[migrate-on-boot] no pending
   migrations` (sub-second) and proceed to the Next standalone server.
-- **Migration failure:** the script exits non-zero, the container restarts
-  per `restart: unless-stopped`, and the loop is visible in
-  `docker compose ps`. Inspect `docker logs siteinabox-cms` for the SQL error.
+- **Migration failure:** the one-off command exits non-zero and its transaction
+  rolls back. Do not replace the long-lived service. Correct the evidence or
+  code and rerun the reviewed image; do not bypass the guard.
 
 Future schema changes flow:
 
@@ -711,8 +728,12 @@ snapshot. There is no inferred `www` mapping or canonical-domain redirect.
 
 The production renderer owns generated-site tenant domains. `ami-care.nl` is
 served from the same canonical provider-block snapshot contract as every other
-tenant; `amicare.optidigi.nl` may be used only as an alias/staging host for that
-snapshot. The exact approval-gated Cloudflare setup, probes, rotation
+tenant. Its historical route is authorized by the system-owned,
+migration-backed `preCommerceRoutingAdoption` record—not a static hostname
+allowlist and not fabricated commerce history. Any future managed-domain row
+for the hostname permanently supersedes that routing-only adoption.
+`amicare.optidigi.nl` may be used only as an alias/staging host for that
+snapshot. The exact migration check, approval-gated Cloudflare setup, probes, rotation
 constraints, and rollback sequence are in
 [Renderer origin isolation](./renderer-origin-isolation.md). Keep
 `COMMERCE_ORIGIN_ISOLATION_VERIFIED` unset until that runbook's evidence is

@@ -11,6 +11,9 @@ import {
 import { tenantEmailSendingStatuses } from "@/lib/tenants/emailSending"
 import { manifestSchema } from "@/lib/richText/manifest"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
+import {
+  PRE_COMMERCE_ROUTING_EVIDENCE_VERSION,
+} from "@/lib/domains/preCommerceRoutingAdoption"
 
 // FN-2026-0004 — server-side slug format guard. The /sites/new + /edit
 // forms enforce this regex client-side via zod, but a direct PATCH (browser
@@ -87,6 +90,130 @@ export const protectBillingSuspensionMetadata: CollectionBeforeChangeHook = ({
   return data
 }
 
+type PreCommerceRoutingAdoptionInput = {
+  state?: unknown
+  adoptedDomain?: unknown
+  evidenceVersion?: unknown
+  adoptedAt?: unknown
+  revokedAt?: unknown
+  reason?: unknown
+}
+
+const validDateText = (value: unknown): boolean =>
+  typeof value === "string" && Number.isFinite(Date.parse(value))
+
+const normalizedTenantDomain = (value: unknown): string =>
+  typeof value === "string"
+    ? value.trim().toLowerCase().replace(/\.$/, "")
+    : ""
+
+export const protectPreCommerceRoutingAdoption: CollectionBeforeChangeHook = ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}) => {
+  if (!data) return data
+  const originalAdoption = originalDoc?.preCommerceRoutingAdoption as
+    | PreCommerceRoutingAdoptionInput
+    | null
+    | undefined
+  const originalState = originalAdoption?.state ?? "not_adopted"
+  const originalDomain = normalizedTenantDomain(originalDoc?.domain)
+  const nextDomain = normalizedTenantDomain(data.domain ?? originalDoc?.domain)
+  if (
+    operation === "update" &&
+    (originalState === "adopted" || originalState === "revoked") &&
+    "domain" in data &&
+    nextDomain !== originalDomain
+  ) {
+    throw new Error(
+      "A tenant with routing adoption cannot change its domain.",
+    )
+  }
+  if (!("preCommerceRoutingAdoption" in data)) return data
+  const adoption = data.preCommerceRoutingAdoption as
+    | PreCommerceRoutingAdoptionInput
+    | null
+    | undefined
+  const state = adoption?.state ?? "not_adopted"
+  const pristineNotAdopted =
+    state === "not_adopted" &&
+    originalState === "not_adopted" &&
+    !adoption?.evidenceVersion &&
+    !adoption?.adoptedDomain &&
+    !adoption?.adoptedAt &&
+    !adoption?.revokedAt
+  if (operation === "create" && !pristineNotAdopted) {
+    throw new Error("A tenant cannot be created with routing adoption.")
+  }
+  if (
+    !pristineNotAdopted &&
+    req.context?.preCommerceRoutingAdoptionMutation !== true
+  ) {
+    throw new Error("Pre-commerce routing adoption is system-owned.")
+  }
+  if (
+    operation === "update" &&
+    originalState !== "not_adopted" &&
+    state === "not_adopted"
+  ) {
+    throw new Error("Pre-commerce routing adoption is monotonic.")
+  }
+  if (state === "not_adopted") {
+    if (
+      adoption?.evidenceVersion ||
+      adoption?.adoptedDomain ||
+      adoption?.adoptedAt ||
+      adoption?.revokedAt
+    ) {
+      throw new Error("An unadopted tenant cannot carry routing evidence.")
+    }
+    return data
+  }
+  if (
+    adoption?.evidenceVersion !== PRE_COMMERCE_ROUTING_EVIDENCE_VERSION ||
+    adoption.adoptedDomain !== nextDomain ||
+    !validDateText(adoption.adoptedAt)
+  ) {
+    throw new Error("Pre-commerce routing adoption evidence is incomplete.")
+  }
+  if (state === "adopted" && adoption.revokedAt) {
+    throw new Error("An adopted routing record cannot have a revocation date.")
+  }
+  if (state === "revoked" && !validDateText(adoption.revokedAt)) {
+    throw new Error("A revoked routing record requires a revocation date.")
+  }
+  if (state !== "adopted" && state !== "revoked") {
+    throw new Error("Invalid pre-commerce routing adoption state.")
+  }
+  if (operation === "update") {
+    const validTransition =
+      (originalState === "not_adopted" && state === "adopted") ||
+      (originalState === "adopted" &&
+        (state === "adopted" || state === "revoked")) ||
+      (originalState === "revoked" && state === "revoked")
+    if (!validTransition) {
+      throw new Error("Pre-commerce routing adoption is monotonic.")
+    }
+    if (
+      originalState !== "not_adopted" &&
+      (
+        originalAdoption?.adoptedDomain !== adoption.adoptedDomain ||
+        originalAdoption?.evidenceVersion !== adoption.evidenceVersion ||
+        originalAdoption?.adoptedAt !== adoption.adoptedAt ||
+        (
+          originalState === "revoked" &&
+          originalAdoption?.revokedAt !== adoption.revokedAt
+        )
+      )
+    ) {
+      throw new Error("Pre-commerce routing adoption evidence is immutable.")
+    }
+  }
+  return data
+}
+
 export const Tenants: CollectionConfig = {
   slug: "tenants",
   labels: { singular: { en: "Tenant", nl: "Klantomgeving" }, plural: { en: "Tenants", nl: "Klantomgevingen" } },
@@ -145,6 +272,44 @@ export const Tenants: CollectionConfig = {
         { name: "checkedBy", type: "relationship", relationTo: "users" },
         { name: "notes", type: "textarea" }
       ] },
+    {
+      name: "preCommerceRoutingAdoption",
+      type: "group",
+      admin: {
+        readOnly: true,
+        description: adminText(
+          "System-owned routing-only evidence for verified tenants that predate commerce records. It grants no provider, billing, renewal, transfer, or registrant authority.",
+          "Systeembeheerd bewijs uitsluitend voor routering van geverifieerde klantomgevingen die ouder zijn dan de handelsrecords. Het verleent geen bevoegdheid voor providers, facturatie, verlenging, overdracht of registranthouderschap.",
+        ),
+      },
+      fields: [
+        {
+          name: "state",
+          type: "select",
+          defaultValue: "not_adopted",
+          index: true,
+          options: [
+            { label: adminText("Not adopted", "Niet geadopteerd"), value: "not_adopted" },
+            { label: adminText("Adopted", "Geadopteerd"), value: "adopted" },
+            { label: adminText("Revoked", "Ingetrokken"), value: "revoked" },
+          ],
+        },
+        { name: "adoptedDomain", type: "text" },
+        { name: "evidenceVersion", type: "text" },
+        { name: "adoptedAt", type: "date" },
+        { name: "revokedAt", type: "date" },
+        {
+          name: "reason",
+          type: "textarea",
+          admin: {
+            description: adminText(
+              "Redacted operational rationale only; never store customer data, provider payloads, or credentials.",
+              "Alleen een geredigeerde operationele reden; sla nooit klantgegevens, providerpayloads of inloggegevens op.",
+            ),
+          },
+        },
+      ],
+    },
     { name: "emailSending", type: "group",
       admin: { description: adminText("Optional tenant-branded outbound sender state. Reconciliation verifies it asynchronously; platform mail remains available and no secrets are stored here.", "Status van de optionele uitgaande e-mailafzender met klantbranding. Reconciliatie verifieert deze asynchroon; platformmail blijft beschikbaar en hier worden geen geheimen opgeslagen.") },
       fields: [
@@ -211,7 +376,10 @@ export const Tenants: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [protectBillingSuspensionMetadata],
+    beforeChange: [
+      protectBillingSuspensionMetadata,
+      protectPreCommerceRoutingAdoption,
+    ],
     afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir, enrollTenantAnalytics],
     afterDelete: [removeTenantDir, clearTenantCookieIfStale]
   }

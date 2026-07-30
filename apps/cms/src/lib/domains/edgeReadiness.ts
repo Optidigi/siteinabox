@@ -6,7 +6,7 @@ import {
 import type { Payload } from "payload"
 import type { ManagedDomain, Tenant } from "@/payload-types"
 import { managedDomainIsEdgeEligible } from "@/lib/domains/edgeRouting"
-import { resolveLegacyEdgeAdoption } from "@/lib/domains/legacyEdgeAdoption"
+import { resolvePreCommerceRoutingAdoption } from "@/lib/domains/preCommerceRoutingAdoption"
 import { relationshipId } from "@/lib/relationshipId"
 
 export type EdgeReadinessIdentity = {
@@ -23,13 +23,13 @@ export function canonicalEdgeRequestHost(headers: Pick<Headers, "get">): string 
   return host && forwarded === host ? host : null
 }
 
-async function resolveLegacyEdgeIdentity(
+async function resolvePreCommerceEdgeIdentity(
   payload: Payload,
   domain: string,
   host: string,
   surface: "renderer" | "cms",
 ): Promise<EdgeReadinessIdentity | null> {
-  const adoption = await resolveLegacyEdgeAdoption(payload, domain)
+  const adoption = await resolvePreCommerceRoutingAdoption(payload, domain)
   if (!adoption) return null
   const ready = surface === "cms"
     ? host === `admin.${domain}` && adoption.cmsAdminReady
@@ -91,7 +91,7 @@ export async function resolveManagedDomainEdgeIdentity(
       overrideAccess: true,
     })
     if (anyManagedDomain.docs.length > 0) return null
-    return resolveLegacyEdgeIdentity(payload, domain, host, surface)
+    return resolvePreCommerceEdgeIdentity(payload, domain, host, surface)
   }
   if (domains.docs.length !== 1) return null
   const managedDomain = domains.docs[0] as ManagedDomain

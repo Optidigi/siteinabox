@@ -44,6 +44,14 @@ const pendingTenant = {
   },
 }
 
+const adoptedPreCommerceRouting = {
+  state: "adopted" as const,
+  adoptedDomain: "ami-care.nl",
+  evidenceVersion: "pre-commerce-routing-v1",
+  adoptedAt: "2026-07-30T09:59:23.000Z",
+  revokedAt: null,
+}
+
 const createActivationPayload = (input?: { tenant?: MockDoc; run?: MockDoc }) => {
   const tenant: MockDoc = { ...(input?.tenant ?? pendingTenant) }
   const run: MockDoc = { ...(input?.run ?? approvedPaidRun) }
@@ -560,6 +568,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 44,
       siteManifest: null,
       domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const settings = {
       id: 101,
@@ -567,20 +576,30 @@ describe("published snapshot theme serving", () => {
       aliases: [{ host: `www.${tenant.domain}` }],
     }
     const payload = {
-      find: vi.fn(async ({ collection }: MockFindArgs) => ({
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
         docs: collection === "tenants"
-          ? [tenant]
+          ? JSON.stringify(where).includes(`www.${tenant.domain}`)
+            ? []
+            : [tenant]
           : collection === "site-settings"
             ? [settings]
             : [],
       })),
       findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
         if (
+          collection === "tenants" &&
+          String(id) === String(tenant.id)
+        ) {
+          return tenant
+        }
+        if (
           collection === "published-site-snapshots" &&
           String(id) === String(tenant.activeSnapshot)
         ) {
           return {
             id: tenant.activeSnapshot,
+            tenant: tenant.id,
+            domain: tenant.domain,
             status: "active",
             snapshot: amicarePublishedSiteSnapshot,
           }
@@ -597,6 +616,83 @@ describe("published snapshot theme serving", () => {
         activeHosts: [tenant.domain, `www.${tenant.domain}`],
       },
     })
+    await expect(
+      resolvePublishedSnapshotByHost(
+        asPayload(payload),
+        `www.${tenant.domain}`,
+      ),
+    ).resolves.toMatchObject({
+      tenant: { id: tenant.id },
+      routing: {
+        requestedHost: `www.${tenant.domain}`,
+        activeHosts: [tenant.domain, `www.${tenant.domain}`],
+      },
+    })
+  })
+
+  it("does not serve or advertise an ambiguous adopted www alias", async () => {
+    const tenant = {
+      id: 404,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 405,
+      siteManifest: null,
+      domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
+    }
+    const settings = {
+      id: 406,
+      tenant: tenant.id,
+      aliases: [
+        { host: `www.${tenant.domain}` },
+        { host: `www.${tenant.domain}.` },
+      ],
+    }
+    const payload = {
+      find: vi.fn(async ({ collection, where }: MockFindArgs) => ({
+        docs: collection === "tenants"
+          ? JSON.stringify(where).includes(`www.${tenant.domain}`)
+            ? []
+            : [tenant]
+          : collection === "site-settings"
+            ? [settings]
+            : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+        if (
+          collection === "tenants" &&
+          String(id) === String(tenant.id)
+        ) {
+          return tenant
+        }
+        if (
+          collection === "published-site-snapshots" &&
+          String(id) === String(tenant.activeSnapshot)
+        ) {
+          return {
+            id: tenant.activeSnapshot,
+            tenant: tenant.id,
+            domain: tenant.domain,
+            status: "active",
+            snapshot: amicarePublishedSiteSnapshot,
+          }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    await expect(
+      resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain),
+    ).resolves.toMatchObject({
+      routing: { activeHosts: [tenant.domain] },
+    })
+    await expect(
+      resolvePublishedSnapshotByHost(
+        asPayload(payload),
+        `www.${tenant.domain}`,
+      ),
+    ).resolves.toBeNull()
   })
 
   it("blocks an unverified pre-commerce tenant without managed-domain evidence", async () => {
@@ -608,6 +704,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 55,
       siteManifest: null,
       domainVerification: { status: "pending" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const payload = {
       find: vi.fn(async ({ collection }: MockFindArgs) => ({
@@ -620,7 +717,7 @@ describe("published snapshot theme serving", () => {
     ).resolves.toBeNull()
   })
 
-  it("does not treat a newly verified tenant as a legacy commerce bypass", async () => {
+  it("does not treat a newly verified tenant as a pre-commerce routing bypass", async () => {
     const tenant = {
       id: 6,
       slug: "new-tenant",
@@ -650,6 +747,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 77,
       siteManifest: null,
       domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const alias = "shop.ami-care.nl"
     const settings = {
@@ -808,7 +906,7 @@ describe("published snapshot theme serving", () => {
     ).resolves.toBeNull()
   })
 
-  it("lets any canonical managed-domain row suppress the legacy fallback", async () => {
+  it("lets any canonical managed-domain row suppress pre-commerce adoption", async () => {
     const tenant = {
       id: 9,
       slug: amicarePublishedSiteSnapshot.tenantSlug,
@@ -817,6 +915,7 @@ describe("published snapshot theme serving", () => {
       activeSnapshot: 99,
       siteManifest: null,
       domainVerification: { status: "verified" },
+      preCommerceRoutingAdoption: adoptedPreCommerceRouting,
     }
     const settings = { id: 104, tenant: tenant.id, aliases: [] }
     const payload = {
