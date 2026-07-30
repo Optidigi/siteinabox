@@ -1,4 +1,5 @@
 import type { Payload } from "payload"
+import { vi } from "vitest"
 
 export type MockDoc = Record<string, unknown> & { id?: number | string }
 export type StoredDoc = MockDoc & { id: number }
@@ -46,6 +47,11 @@ export type MockUpdateArgs = {
   context?: Record<string, unknown>
 }
 
+export type MutableMockUpdateArgs = Omit<MockUpdateArgs, "id"> & {
+  id?: number | string
+  where?: MockWhere
+}
+
 export type MockFindByIdArgs = MockFindArgs & { id: number | string }
 
 export function matchesWhere(doc: MockDoc, where: MockWhere | undefined): boolean {
@@ -81,6 +87,11 @@ export function matchesWhere(doc: MockDoc, where: MockWhere | undefined): boolea
     if (condition && typeof condition === "object" && "less_than" in condition) {
       return String(doc[field]) < String(
         (condition as { less_than?: unknown }).less_than,
+      )
+    }
+    if (condition && typeof condition === "object" && "greater_than_equal" in condition) {
+      return String(doc[field]) >= String(
+        (condition as { greater_than_equal?: unknown }).greater_than_equal,
       )
     }
     return doc[field] === condition
@@ -123,4 +134,139 @@ export function mockPaginatedFind(corpus: MockDoc[]) {
     }
   }
   return { find, calls }
+}
+
+export type MutablePayloadUniqueConstraint = {
+  collection: string
+  fields: string[]
+}
+
+export type MutablePayloadStoreHooks = {
+  beforeCreate?: (
+    args: MockCreateArgs,
+    collections: Record<string, MockDoc[]>,
+  ) => void | Promise<void>
+  beforeUpdate?: (
+    args: MutableMockUpdateArgs,
+    collections: Record<string, MockDoc[]>,
+  ) => void | Promise<void>
+}
+
+export function createMutablePayloadStore(input: {
+  collections: Record<string, MockDoc[]>
+  nextId?: number
+  unique?: MutablePayloadUniqueConstraint[]
+  hooks?: MutablePayloadStoreHooks
+}) {
+  const collections = input.collections
+  let nextId = input.nextId ?? 1_000
+  let transactionSnapshot: Record<string, MockDoc[]> | null = null
+
+  const find = vi.fn(async ({ collection, where, sort, limit }: MockFindArgs) => {
+    let docs = (collections[collection] ?? []).filter((doc) =>
+      matchesWhere(doc, where))
+    if (sort) {
+      const descending = sort.startsWith("-")
+      const field = descending ? sort.slice(1) : sort
+      docs = [...docs].sort((left, right) => {
+        const leftValue = left[field]
+        const rightValue = right[field]
+        const compared =
+          typeof leftValue === "number" && typeof rightValue === "number"
+            ? leftValue - rightValue
+            : String(leftValue ?? "").localeCompare(String(rightValue ?? ""))
+        return descending ? -compared : compared
+      })
+    }
+    if (limit != null) docs = docs.slice(0, limit)
+    return { docs, totalDocs: docs.length }
+  })
+
+  const findByID = vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+    const doc = (collections[collection] ?? []).find(
+      (entry) => String(entry.id) === String(id),
+    )
+    if (!doc) throw new Error(`Missing ${collection} ${id}`)
+    return doc
+  })
+
+  const create = vi.fn(async (args: MockCreateArgs) => {
+    await input.hooks?.beforeCreate?.(args, collections)
+    const constraints = (input.unique ?? []).filter(
+      (constraint) => constraint.collection === args.collection,
+    )
+    for (const constraint of constraints) {
+      const duplicate = (collections[args.collection] ?? []).some((doc) =>
+        constraint.fields.every(
+          (field) => String(doc[field]) === String(args.data[field]),
+        ))
+      if (duplicate) {
+        throw new Error(
+          `duplicate key value violates ${args.collection}.${constraint.fields.join("_")}`,
+        )
+      }
+    }
+    const doc = { id: nextId++, ...args.data }
+    ;(collections[args.collection] ??= []).push(doc)
+    return doc
+  })
+
+  const update = vi.fn(async (args: MutableMockUpdateArgs) => {
+    await input.hooks?.beforeUpdate?.(args, collections)
+    if (args.where) {
+      const docs = (collections[args.collection] ?? []).filter((doc) =>
+        matchesWhere(doc, args.where))
+      for (const doc of docs) Object.assign(doc, args.data)
+      return { docs, totalDocs: docs.length }
+    }
+    if (args.id == null) {
+      throw new Error(`Update for ${args.collection} requires id or where.`)
+    }
+    const doc = (collections[args.collection] ?? []).find(
+      (entry) => String(entry.id) === String(args.id),
+    )
+    if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
+    Object.assign(doc, args.data)
+    return doc
+  })
+
+  const beginTransaction = vi.fn(async () => {
+    if (transactionSnapshot) throw new Error("A test transaction is already active.")
+    transactionSnapshot = structuredClone(collections)
+    return "test-transaction"
+  })
+  const commitTransaction = vi.fn(async () => {
+    if (!transactionSnapshot) throw new Error("No test transaction is active.")
+    transactionSnapshot = null
+  })
+  const rollbackTransaction = vi.fn(async () => {
+    if (!transactionSnapshot) throw new Error("No test transaction is active.")
+    for (const collection of Object.keys(collections)) delete collections[collection]
+    Object.assign(collections, transactionSnapshot)
+    transactionSnapshot = null
+  })
+
+  return {
+    collections,
+    payload: asPayload({
+      find,
+      findByID,
+      create,
+      update,
+      db: {
+        beginTransaction,
+        commitTransaction,
+        rollbackTransaction,
+      },
+      jobs: { queue: vi.fn() },
+      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
+    }),
+    find,
+    findByID,
+    create,
+    update,
+    beginTransaction,
+    commitTransaction,
+    rollbackTransaction,
+  }
 }

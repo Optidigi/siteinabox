@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import {
+  createMutablePayloadStore,
+  type MockDoc,
+} from "../_helpers/mockPayload"
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createApplicationRecurringMolliePayment: vi.fn(async () => ({
@@ -30,32 +33,6 @@ import {
 import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePayments"
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
-
-const compare = (actual: unknown, condition: Record<string, unknown>): boolean => {
-  if ("equals" in condition) return String(actual) === String(condition.equals)
-  if ("in" in condition) return (condition.in as unknown[]).map(String).includes(String(actual))
-  if ("not_in" in condition) return !(condition.not_in as unknown[]).map(String).includes(String(actual))
-  if ("exists" in condition) return condition.exists ? actual != null : actual == null
-  if ("less_than_equal" in condition) return String(actual) <= String(condition.less_than_equal)
-  if ("greater_than_equal" in condition) return String(actual) >= String(condition.greater_than_equal)
-  return false
-}
-
-const matches = (doc: MockDoc, where: Record<string, unknown> | undefined): boolean => {
-  if (!where) return true
-  if (Array.isArray(where.and)) {
-    return where.and.every((entry) => matches(doc, entry as Record<string, unknown>))
-  }
-  if (Array.isArray(where.or)) {
-    return where.or.some((entry) => matches(doc, entry as Record<string, unknown>))
-  }
-  return Object.entries(where).every(([field, condition]) => {
-    if (field === "and" || field === "or") return true
-    return condition && typeof condition === "object"
-      ? compare(doc[field], condition as Record<string, unknown>)
-      : doc[field] === condition
-  })
-}
 
 const baseDomain = {
   id: 950,
@@ -159,53 +136,13 @@ const createStore = (input: {
     orders,
     "payment-attempts": attempts,
   }
-  let nextId = 1_000
-  const find = vi.fn(async ({ collection, where, sort }: MockFindArgs) => {
-    let docs = (collections[collection] ?? []).filter((doc) => matches(doc, where))
-    if (sort === "providerRenewalDate") {
-      docs = [...docs].sort(
-        (a, b) => String(a.providerRenewalDate).localeCompare(String(b.providerRenewalDate)),
-      )
-    }
-    if (sort === "-createdAt") {
-      docs = [...docs].sort(
-        (a, b) => String(b.createdAt).localeCompare(String(a.createdAt)),
-      )
-    }
-    if (sort === "attemptNumber") {
-      docs = [...docs].sort(
-        (a, b) => Number(a.attemptNumber ?? 0) - Number(b.attemptNumber ?? 0),
-      )
-    }
-    return { docs, totalDocs: docs.length }
-  })
-  const findByID = vi.fn(async ({ collection, id }: { collection: string; id: string | number }) => {
-    const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    return doc
-  })
-  const create = vi.fn(async ({ collection, data }: { collection: string; data: Record<string, unknown> }) => {
-    if (collection === "domain-renewal-cycles") {
-      const duplicate = cycles.find((entry) =>
-        String(entry.managedDomain) === String(data.managedDomain) &&
-        entry.providerRenewalDate === data.providerRenewalDate)
-      if (duplicate) throw new Error("unique violation")
-    }
-    const doc = { id: nextId++, ...data }
-    ;(collections[collection] ??= []).push(doc)
-    return doc
-  })
-  const update = vi.fn(async (args: MockUpdateArgs & { where?: Record<string, unknown> }) => {
-    const { collection, id, data, where } = args
-    if (where) {
-      const docs = (collections[collection] ?? []).filter((entry) => matches(entry, where))
-      for (const doc of docs) Object.assign(doc, data)
-      return { docs, totalDocs: docs.length }
-    }
-    const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    Object.assign(doc, data)
-    return doc
+  const store = createMutablePayloadStore({
+    collections,
+    nextId: 1_000,
+    unique: [{
+      collection: "domain-renewal-cycles",
+      fields: ["managedDomain", "providerRenewalDate"],
+    }],
   })
   return {
     domain,
@@ -213,14 +150,7 @@ const createStore = (input: {
     cycles,
     orders,
     attempts,
-    payload: asPayload({
-      find,
-      findByID,
-      create,
-      update,
-      jobs: { queue: vi.fn() },
-      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-    }),
+    payload: store.payload,
   }
 }
 
