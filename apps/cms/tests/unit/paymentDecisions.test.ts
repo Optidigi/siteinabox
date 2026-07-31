@@ -52,7 +52,7 @@ describe("payment decisions", () => {
     expect(generationProjectionStatus("authorized")).toBe("pending_provider")
   })
 
-  it("distinguishes deterministic, safe-retry and indeterminate writes", () => {
+  it("distinguishes deterministic rejection from indeterminate writes", () => {
     expect(classifyMollieCreationError(
       new MollieApiError("create", 422),
     )).toEqual({
@@ -68,8 +68,8 @@ describe("payment decisions", () => {
     expect(classifyMollieRefundError(
       new MollieApiError("refund", 503),
     )).toEqual({
-      outcome: "confirmed_safe_retry",
-      providerCode: "refund_write_safe_retry",
+      outcome: "indeterminate",
+      providerCode: "refund_write_indeterminate",
     })
     expect(classifyMollieRefundError(new Error("connection lost"))).toEqual({
       outcome: "indeterminate",

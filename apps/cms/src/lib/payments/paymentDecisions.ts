@@ -16,7 +16,6 @@ export type MollieCreationErrorClassification =
 
 export type MollieRefundErrorClassification =
   | { outcome: "deterministic_rejection"; providerCode: string }
-  | { outcome: "confirmed_safe_retry"; providerCode: "refund_write_safe_retry" }
   | { outcome: "indeterminate"; providerCode: "refund_write_indeterminate" }
 
 export function classifyMollieCreationError(
@@ -44,12 +43,6 @@ export function classifyMollieRefundError(
 ): MollieRefundErrorClassification {
   const creation = classifyMollieCreationError(error)
   if (creation.outcome === "deterministic_rejection") return creation
-  if (error instanceof MollieApiError && error.status === 503) {
-    return {
-      outcome: "confirmed_safe_retry",
-      providerCode: "refund_write_safe_retry",
-    }
-  }
   return {
     outcome: "indeterminate",
     providerCode: "refund_write_indeterminate",

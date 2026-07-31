@@ -593,12 +593,27 @@ const bindConfirmedMollieCustomer = async (
   )
 }
 
-const markMollieCustomerWriteIndeterminate = async (
+const persistMollieCustomerWriteFailure = async (
   payload: Payload,
   agreement: BillingAgreement,
+  attempt: PaymentAttempt,
   error: unknown,
   now: string,
 ): Promise<void> => {
+  const classification = classifyMollieCreationError(error)
+  const knownRejected = classification.outcome === "deterministic_rejection"
+  if (knownRejected) {
+    await updateAttempt(payload, attempt, {
+      state: "failed",
+      reconciliationRequired: false,
+      failedAt: now,
+      failureCode: classification.providerCode,
+      failureMessage: error instanceof Error
+        ? error.message
+        : "Mollie customer creation was rejected.",
+      stateHistory: stateHistory(attempt.stateHistory, "failed", now),
+    })
+  }
   await payload.update({
     collection: "billing-agreements",
     where: {
@@ -609,6 +624,7 @@ const markMollieCustomerWriteIndeterminate = async (
       ],
     },
     data: {
+      reconciliationRequired: !knownRejected,
       failureReason: error instanceof Error
         ? error.message
         : "Mollie customer creation failed.",
@@ -682,6 +698,7 @@ const claimAndCreateFirstPaymentMollieCustomer = async (
   payload: Payload,
   input: {
     agreement: BillingAgreement
+    attempt: PaymentAttempt
     profile: CheckoutProfile
     order: Order
     email: string
@@ -720,9 +737,10 @@ const claimAndCreateFirstPaymentMollieCustomer = async (
       input.now,
     ) as MollieCustomerAgreement
   } catch (error) {
-    await markMollieCustomerWriteIndeterminate(
+    await persistMollieCustomerWriteFailure(
       payload,
       claimedAgreement,
+      input.attempt,
       error,
       input.now,
     )
@@ -1063,6 +1081,7 @@ export async function createMollieCheckoutForGenerationRun(
     payload,
     {
       agreement,
+      attempt,
       profile,
       order,
       email,
@@ -3409,14 +3428,13 @@ async function requestMollieRefundLocked(
     return { document, providerRefundId: refund.id, reused: false }
   } catch (error) {
     const classification = classifyMollieRefundError(error)
-    const safeRetry = classification.outcome === "confirmed_safe_retry"
     const knownRejected = classification.outcome === "deterministic_rejection"
     document = await payload.update({
       collection: "accounting-documents",
       id: document.id,
       data: {
         state: knownRejected ? "failed" : "pending_provider",
-        reconciliationRequired: !knownRejected && !safeRetry,
+        reconciliationRequired: !knownRejected,
         failedAt: knownRejected ? now : undefined,
         failureMessage: error instanceof Error ? error.message : "Mollie refund creation failed.",
         lastSyncedAt: now,
@@ -3433,7 +3451,7 @@ async function requestMollieRefundLocked(
     }) as AccountingDocument
     await updateAttempt(payload, attempt, {
       state: knownRejected ? "refund_failed" : "refund_pending",
-      reconciliationRequired: !knownRejected && !safeRetry,
+      reconciliationRequired: !knownRejected,
       failureCode: classification.providerCode,
       failureMessage: error instanceof Error ? error.message : "Mollie refund creation failed.",
       lastSyncedAt: now,
@@ -3443,11 +3461,9 @@ async function requestMollieRefundLocked(
         now,
       ),
     })
-    if (knownRejected || safeRetry) {
+    if (knownRejected) {
       await releaseRefundAgreementClaim(
-        knownRejected
-          ? "Mollie rejected the full refund request."
-          : "Mollie confirmed that the full refund write can be retried safely.",
+        "Mollie rejected the full refund request.",
       )
     }
     throw error
