@@ -33,6 +33,7 @@ import {
   getCloudflareSslVerification,
   listCloudflareDnsRecords,
   listCloudflareZones,
+  type CloudflareZoneResult,
 } from "@/lib/domains/cloudflare"
 import {
   checkOpenProviderDomainAvailability,
@@ -123,6 +124,17 @@ type OpenProviderCustomerReconciliationOutcome =
   | {
       outcome: "continue"
       customerHandle: string
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome: "provider_reconciliation_required" | "manual_review"
+      result: ProvisionPaidDomainResult
+    }
+
+type CloudflareZoneReconciliationOutcome =
+  | {
+      outcome: "continue"
+      zone: CloudflareZoneResult
       managedDomain: ManagedDomain
     }
   | {
@@ -971,6 +983,118 @@ async function reconcileOpenProviderCustomerPhase(
   }
 }
 
+async function reconcileCloudflareZonePhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+    initialFailureReason: ManagedDomain["failureReason"]
+  },
+): Promise<CloudflareZoneReconciliationOutcome> {
+  let managedDomain = context.managedDomain
+  const visibleZones = await dependencies.listCloudflareZones(
+    context.normalized.domain,
+  )
+  const persistedZones = managedDomain.cloudflareZoneId
+    ? visibleZones.filter((candidate) =>
+        candidate.id === managedDomain.cloudflareZoneId)
+    : []
+  const zoneLookup = classifyCloudflareZoneLookup(
+    context.normalized.domain,
+    persistedZones.length > 0 ? persistedZones : visibleZones,
+  )
+  if (zoneLookup.outcome === "ambiguous") {
+    return {
+      outcome: "manual_review",
+      result: await stopProvisioningForProviderAmbiguity(
+        payload,
+        run,
+        managedDomain,
+        context.registrant,
+        "cloudflare_zone_lookup_ambiguous",
+        "Multiple exact Cloudflare zones match the accepted registration authority.",
+        dependencies.now(),
+      ),
+    }
+  }
+  let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
+  if (!zone) {
+    if (
+      context.initialFailureReason ===
+      "cloudflare_zone_creation_indeterminate"
+    ) {
+      return {
+        outcome: "provider_reconciliation_required",
+        result: waiting(
+          context.normalized.domain,
+          run,
+          managedDomain,
+          "Cloudflare zone creation remains indeterminate; no retry was sent.",
+        ),
+      }
+    }
+    try {
+      await assertInitialDomainFinancialAuthority(payload, {
+        orderId: input.order.id,
+        paymentAttemptId: input.paymentAttemptId,
+      })
+      zone = await dependencies.createOrReuseCloudflareZone(
+        context.normalized.domain,
+      )
+    } catch (error) {
+      if (error instanceof CloudflareAmbiguousZoneLookupError) {
+        return {
+          outcome: "manual_review",
+          result: await stopProvisioningForProviderAmbiguity(
+            payload,
+            run,
+            managedDomain,
+            context.registrant,
+            "cloudflare_zone_lookup_ambiguous",
+            "Multiple exact Cloudflare zones match the accepted registration authority.",
+            dependencies.now(),
+          ),
+        }
+      }
+      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      }, "cloudflare_zone_creation_indeterminate", dependencies.now())
+      return {
+        outcome: "provider_reconciliation_required",
+        result: waiting(
+          context.normalized.domain,
+          run,
+          managedDomain,
+          "Cloudflare zone creation is awaiting reconciliation.",
+        ),
+      }
+    }
+  }
+  if (
+    managedDomain.cloudflareZoneId !== zone.id ||
+    managedDomain.cloudflareZoneStatus !== zone.status
+  ) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      cloudflareZoneId: zone.id,
+      cloudflareNameservers: zone.nameServers,
+      cloudflareZoneStatus: zone.status,
+      reconciliationRequired: false,
+      failureReason: null,
+    }, "cloudflare_zone_persisted", dependencies.now())
+  }
+  return {
+    outcome: "continue",
+    zone,
+    managedDomain,
+  }
+}
+
 export async function provisionPaidDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
@@ -1127,79 +1251,23 @@ export async function provisionPaidDomainOrder(
   const customerHandle = customerOutcome.customerHandle
   managedDomain = customerOutcome.managedDomain
 
-  const visibleZones = await dependencies.listCloudflareZones(normalized.domain)
-  const persistedZones = managedDomain.cloudflareZoneId
-    ? visibleZones.filter((candidate) =>
-        candidate.id === managedDomain.cloudflareZoneId)
-    : []
-  const zoneLookup = classifyCloudflareZoneLookup(
-    normalized.domain,
-    persistedZones.length > 0 ? persistedZones : visibleZones,
-  )
-  if (zoneLookup.outcome === "ambiguous") {
-    return stopProvisioningForProviderAmbiguity(
-      payload,
-      run,
-      managedDomain,
+  const zoneOutcome = await reconcileCloudflareZonePhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      normalized,
       registrant,
-      "cloudflare_zone_lookup_ambiguous",
-      "Multiple exact Cloudflare zones match the accepted registration authority.",
-      dependencies.now(),
-    )
+      managedDomain,
+      initialFailureReason,
+    },
+  )
+  if (zoneOutcome.outcome !== "continue") {
+    return zoneOutcome.result
   }
-  let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
-  if (!zone) {
-    if (initialFailureReason === "cloudflare_zone_creation_indeterminate") {
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare zone creation remains indeterminate; no retry was sent.",
-      )
-    }
-    try {
-      await assertInitialDomainFinancialAuthority(payload, {
-        orderId: input.order.id,
-        paymentAttemptId: input.paymentAttemptId,
-      })
-      zone = await dependencies.createOrReuseCloudflareZone(normalized.domain)
-    } catch (error) {
-      if (error instanceof CloudflareAmbiguousZoneLookupError) {
-        return stopProvisioningForProviderAmbiguity(
-          payload,
-          run,
-          managedDomain,
-          registrant,
-          "cloudflare_zone_lookup_ambiguous",
-          "Multiple exact Cloudflare zones match the accepted registration authority.",
-          dependencies.now(),
-        )
-      }
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
-      managedDomain = await updateManagedDomain(payload, managedDomain, {
-        reconciliationRequired: true,
-        failureReason: "cloudflare_zone_creation_indeterminate",
-      }, "cloudflare_zone_creation_indeterminate", dependencies.now())
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare zone creation is awaiting reconciliation.",
-      )
-    }
-  }
-  if (
-    managedDomain.cloudflareZoneId !== zone.id ||
-    managedDomain.cloudflareZoneStatus !== zone.status
-  ) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      cloudflareZoneId: zone.id,
-      cloudflareNameservers: zone.nameServers,
-      cloudflareZoneStatus: zone.status,
-      reconciliationRequired: false,
-      failureReason: null,
-    }, "cloudflare_zone_persisted", dependencies.now())
-  }
+  const zone = zoneOutcome.zone
+  managedDomain = zoneOutcome.managedDomain
 
   if (!providerDomain) {
     const claimedAt = dependencies.now()
