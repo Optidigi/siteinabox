@@ -3012,6 +3012,14 @@ type MigrationStoppedPhaseOutcome = Exclude<
   { outcome: "continue" }
 >
 
+type NonRollbackMigrationStoppedPhaseOutcome = {
+  outcome: Exclude<
+    MigrationStoppedPhaseOutcome["outcome"],
+    "rollback_required"
+  >
+  result: MigrationResult
+}
+
 type SourceAuthorityPhaseOutcome =
   | {
       outcome: "continue"
@@ -3094,6 +3102,20 @@ type RegistrantVerificationProjectionPhaseOutcome =
       outcome: "rollback_required"
       migration: DomainMigration
       managedDomain: ManagedDomain
+      reason: string
+    }
+
+type SourceDnssecAndNameserverCutoverPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      providerDomain: OpenProviderDomainRecord
+    }
+  | NonRollbackMigrationStoppedPhaseOutcome
+  | {
+      outcome: "rollback_required"
+      migration: DomainMigration
+      providerDomain: OpenProviderDomainRecord
       reason: string
     }
 
@@ -4616,6 +4638,216 @@ async function projectRegistrantVerificationAndCustomerActionPhase(
   }
 }
 
+const sourceDnssecAndCutoverBlockedOutcome = (
+  migration: DomainMigration,
+  result: MigrationResult,
+): NonRollbackMigrationStoppedPhaseOutcome => ({
+  outcome: result.status === "failed"
+    ? "manual_review"
+    : migration.state === "awaiting_customer"
+      ? "customer_action_required"
+      : migration.reconciliationRequired
+        ? "provider_reconciliation_required"
+        : "waiting",
+  result,
+})
+
+async function prepareSourceDnssecAndNameserverCutoverPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  managedDomain: ManagedDomain,
+  initialProviderDomain: OpenProviderDomainRecord,
+  source: ReturnType<typeof migrationSource>,
+  sourceEvidenceStale: boolean,
+  zone: Awaited<
+    ReturnType<MigrationDependencies["listCloudflareZones"]>
+  >[number],
+  token: string,
+  deps: MigrationDependencies,
+): Promise<SourceDnssecAndNameserverCutoverPhaseOutcome> {
+  let migration = initialMigration
+  let providerDomain = initialProviderDomain
+  const dnssecCutover = await prepareDnssecForCutover(
+    payload,
+    migration,
+    managedDomain,
+    providerDomain,
+    source,
+    token,
+    deps,
+  )
+  migration = dnssecCutover.migration
+  providerDomain = dnssecCutover.providerDomain
+  if (dnssecCutover.result) {
+    return sourceDnssecAndCutoverBlockedOutcome(
+      migration,
+      dnssecCutover.result,
+    )
+  }
+  if (
+    migration.state === "preparing" ||
+    migration.state === "awaiting_provider"
+  ) {
+    migration = await updateMigration(payload, migration, {
+      state: "ready_for_cutover",
+    }, "migration_ready_for_cutover", deps.now())
+  }
+
+  if (
+    migration.rollbackRequestedAt ||
+    migration.rollbackWriteState !== "not_started"
+  ) {
+    return {
+      outcome: "rollback_required",
+      migration,
+      providerDomain,
+      reason: migration.failureReason ?? "automatic_rollback_reconciliation",
+    }
+  }
+
+  if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
+    if (
+      migration.cutoverWriteState === "indeterminate" &&
+      migration.verificationDeadlineAt &&
+      Date.parse(deps.now()) >= Date.parse(migration.verificationDeadlineAt)
+    ) {
+      return {
+        outcome: "rollback_required",
+        migration,
+        providerDomain,
+        reason: "cutover_provider_outcome_unresolved",
+      }
+    }
+    if (
+      migration.cutoverWriteState === "indeterminate" ||
+      (
+        migration.cutoverWriteState === "prepared" &&
+        !providerWriteClaimLeaseElapsed(
+          migration.cutoverRequestedAt,
+          deps.now(),
+        )
+      )
+    ) {
+      return sourceDnssecAndCutoverBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Nameserver cutover outcome awaits reconciliation.",
+        ),
+      )
+    }
+    if (
+      ["cloudflare_api_v1", "authorized_axfr_v1"].includes(
+        migration.sourceMechanism,
+      )
+    ) {
+      const refreshed = await refreshMigrationSourceAuthority(
+        payload,
+        migration,
+        sourceRefreshModeForMigration(migration),
+        deps,
+      )
+      migration = refreshed.migration
+      if (refreshed.blocked) {
+        return sourceDnssecAndCutoverBlockedOutcome(
+          migration,
+          refreshed.blocked,
+        )
+      }
+    } else if (sourceEvidenceStale) {
+      return sourceDnssecAndCutoverBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "source_evidence_stale_before_cutover",
+          deps.now(),
+          "Frozen source evidence expired before nameserver cutover; reviewed fresh authority is required.",
+        ),
+      )
+    }
+    if (!deps.forwardProviderWritesAllowed()) {
+      return sourceDnssecAndCutoverBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Nameserver cutover is prepared but forward provider writes are release-blocked.",
+        ),
+      )
+    }
+    migration = await updateMigration(payload, migration, {
+      state: "cutover_in_progress",
+      cutoverWriteState: "prepared",
+      cutoverRequestedAt: deps.now(),
+      verificationDeadlineAt: migration.verificationDeadlineAt ?? new Date(
+        new Date(deps.now()).getTime() +
+          CUTOVER_VERIFICATION_MINUTES * 60_000,
+      ).toISOString(),
+      reconciliationRequired: true,
+    }, "nameserver_cutover_write_prepared", deps.now())
+    try {
+      await deps.updateOpenProviderDomainNameservers(
+        providerDomain.id,
+        zone.nameServers.map((name) => ({ name })),
+        { token },
+      )
+      migration = await updateMigration(payload, migration, {
+        cutoverWriteState: "indeterminate",
+        reconciliationRequired: true,
+      }, "nameserver_cutover_write_dispatched", deps.now())
+    } catch (error) {
+      if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        cutoverWriteState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "openprovider_cutover_indeterminate",
+      }, "nameserver_cutover_indeterminate", deps.now())
+      return sourceDnssecAndCutoverBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Nameserver cutover is awaiting provider reconciliation.",
+        ),
+      )
+    }
+    providerDomain = await deps.findOpenProviderDomain(
+      migration.domainNameAscii,
+      { token },
+    ) ?? providerDomain
+    if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
+      return sourceDnssecAndCutoverBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Openprovider has not confirmed the Cloudflare nameservers yet.",
+        ),
+      )
+    }
+  }
+  if (migration.state === "ready_for_cutover") {
+    migration = await updateMigration(payload, migration, {
+      state: "cutover_in_progress",
+      cutoverRequestedAt: migration.cutoverRequestedAt ?? deps.now(),
+      verificationDeadlineAt: migration.verificationDeadlineAt ?? new Date(
+        new Date(deps.now()).getTime() +
+          CUTOVER_VERIFICATION_MINUTES * 60_000,
+      ).toISOString(),
+    }, "nameserver_cutover_reconciled", deps.now())
+  }
+  migration = await updateMigration(payload, migration, {
+    state: "verifying",
+    cutoverWriteState: "confirmed",
+    cutoverConfirmedAt: migration.cutoverConfirmedAt ?? deps.now(),
+    reconciliationRequired: true,
+  }, "post_cutover_verification_started", deps.now())
+  return {
+    outcome: "continue",
+    migration,
+    providerDomain,
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -4779,140 +5011,33 @@ export async function prepareDomainMigration(
   migration = registrantVerificationOutcome.migration
   managedDomain = registrantVerificationOutcome.managedDomain
 
-  const dnssecCutover = await prepareDnssecForCutover(
-    payload,
-    migration,
-    managedDomain,
-    providerDomain,
-    source,
-    token,
-    deps,
-  )
-  migration = dnssecCutover.migration
-  providerDomain = dnssecCutover.providerDomain
-  if (dnssecCutover.result) return dnssecCutover.result
-  if (migration.state === "preparing" || migration.state === "awaiting_provider") {
-    migration = await updateMigration(payload, migration, {
-      state: "ready_for_cutover",
-    }, "migration_ready_for_cutover", deps.now())
-  }
-
-  if (
-    migration.rollbackRequestedAt ||
-    migration.rollbackWriteState !== "not_started"
-  ) {
-    return rollbackCutover(
+  const sourceDnssecAndCutoverOutcome =
+    await prepareSourceDnssecAndNameserverCutoverPhase(
       payload,
       migration,
       managedDomain,
       providerDomain,
-      migration.failureReason ?? "automatic_rollback_reconciliation",
+      source,
+      sourceEvidenceStale,
+      zone,
+      token,
+      deps,
+    )
+  if (sourceDnssecAndCutoverOutcome.outcome === "rollback_required") {
+    return rollbackCutover(
+      payload,
+      sourceDnssecAndCutoverOutcome.migration,
+      managedDomain,
+      sourceDnssecAndCutoverOutcome.providerDomain,
+      sourceDnssecAndCutoverOutcome.reason,
       deps,
     )
   }
-
-  if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
-    if (
-      migration.cutoverWriteState === "indeterminate" &&
-      migration.verificationDeadlineAt &&
-      Date.parse(deps.now()) >= Date.parse(migration.verificationDeadlineAt)
-    ) {
-      return rollbackCutover(
-        payload,
-        migration,
-        managedDomain,
-        providerDomain,
-        "cutover_provider_outcome_unresolved",
-        deps,
-      )
-    }
-    if (
-      migration.cutoverWriteState === "indeterminate" ||
-      (
-        migration.cutoverWriteState === "prepared" &&
-        !providerWriteClaimLeaseElapsed(migration.cutoverRequestedAt, deps.now())
-      )
-    ) {
-      return waiting(migration, "Nameserver cutover outcome awaits reconciliation.")
-    }
-    if (
-      ["cloudflare_api_v1", "authorized_axfr_v1"].includes(
-        migration.sourceMechanism,
-      )
-    ) {
-      const refreshed = await refreshMigrationSourceAuthority(
-        payload,
-        migration,
-        sourceRefreshModeForMigration(migration),
-        deps,
-      )
-      migration = refreshed.migration
-      if (refreshed.blocked) return refreshed.blocked
-    } else if (sourceEvidenceStale) {
-      return stopMigrationForProviderManualReview(
-        payload,
-        migration,
-        managedDomain,
-        "source_evidence_stale_before_cutover",
-        deps.now(),
-        "Frozen source evidence expired before nameserver cutover; reviewed fresh authority is required.",
-      )
-    }
-    if (!deps.forwardProviderWritesAllowed()) {
-      return waiting(
-        migration,
-        "Nameserver cutover is prepared but forward provider writes are release-blocked.",
-      )
-    }
-    migration = await updateMigration(payload, migration, {
-      state: "cutover_in_progress",
-      cutoverWriteState: "prepared",
-      cutoverRequestedAt: deps.now(),
-      verificationDeadlineAt: migration.verificationDeadlineAt ?? new Date(
-        new Date(deps.now()).getTime() + CUTOVER_VERIFICATION_MINUTES * 60_000,
-      ).toISOString(),
-      reconciliationRequired: true,
-    }, "nameserver_cutover_write_prepared", deps.now())
-    try {
-      await deps.updateOpenProviderDomainNameservers(
-        providerDomain.id,
-        zone.nameServers.map((name) => ({ name })),
-        { token },
-      )
-      migration = await updateMigration(payload, migration, {
-        cutoverWriteState: "indeterminate",
-        reconciliationRequired: true,
-      }, "nameserver_cutover_write_dispatched", deps.now())
-    } catch (error) {
-      if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
-      migration = await updateMigration(payload, migration, {
-        cutoverWriteState: "indeterminate",
-        reconciliationRequired: true,
-        failureReason: "openprovider_cutover_indeterminate",
-      }, "nameserver_cutover_indeterminate", deps.now())
-      return waiting(migration, "Nameserver cutover is awaiting provider reconciliation.")
-    }
-    providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token }) ??
-      providerDomain
-    if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
-      return waiting(migration, "Openprovider has not confirmed the Cloudflare nameservers yet.")
-    }
+  if (sourceDnssecAndCutoverOutcome.outcome !== "continue") {
+    return sourceDnssecAndCutoverOutcome.result
   }
-  if (migration.state === "ready_for_cutover") {
-    migration = await updateMigration(payload, migration, {
-      state: "cutover_in_progress",
-      cutoverRequestedAt: migration.cutoverRequestedAt ?? deps.now(),
-      verificationDeadlineAt: migration.verificationDeadlineAt ?? new Date(
-        new Date(deps.now()).getTime() + CUTOVER_VERIFICATION_MINUTES * 60_000,
-      ).toISOString(),
-    }, "nameserver_cutover_reconciled", deps.now())
-  }
-  migration = await updateMigration(payload, migration, {
-    state: "verifying",
-    cutoverWriteState: "confirmed",
-    cutoverConfirmedAt: migration.cutoverConfirmedAt ?? deps.now(),
-    reconciliationRequired: true,
-  }, "post_cutover_verification_started", deps.now())
+  migration = sourceDnssecAndCutoverOutcome.migration
+  providerDomain = sourceDnssecAndCutoverOutcome.providerDomain
 
   const postCutoverRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   const postCutoverComparison = semanticZoneComparison(
