@@ -8,6 +8,7 @@ import {
   getCurrentLegalDocument,
 } from "@siteinabox/legal-content"
 import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
+import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
@@ -198,6 +199,9 @@ export default async function PreviewCheckoutPage({
         initialProfile={initialProfile}
         initialDetails={initialDetails}
         initialQuotes={initialQuotes}
+        supportedDomainExtensions={productionTldCapabilitiesAt("registration").map(
+          (capability) => capability.tld,
+        )}
         initialStep={
           paymentReturn && initialProfile && initialQuotes
             ? "overview"

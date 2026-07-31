@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
 
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
+import { ThemeProvider } from "@/components/theme-provider"
 import messages from "@/locales/en.json"
 import "@/styles/globals.css"
 
@@ -131,7 +132,8 @@ const saveProfileAction = async (_previous: unknown, formData: FormData) => {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <NextIntlClientProvider locale="en" messages={{ preview: messages.preview }}>
+  <NextIntlClientProvider locale="en" messages={{ common: messages.common, preview: messages.preview }}>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
     <PreviewCheckout
       customerEmail="owner@example.test"
       currentDomain={initialDomain}
@@ -144,6 +146,7 @@ createRoot(document.getElementById("root")!).render(
             annual: quote("annual", initialDomain),
           }
         : null}
+      supportedDomainExtensions={["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"]}
       initialStep={pending ? "overview" : "domain"}
       existingDomainMigrationEnabled={Boolean(existingScenario)}
       cloudflareSourceOAuthEnabled={Boolean(existingScenario)}
@@ -242,6 +245,24 @@ createRoot(document.getElementById("root")!).render(
             message: "The live domain check is temporarily unavailable.",
           }
         }
+        if (domain === "analytical-engines.com") {
+          return {
+            ok: false,
+            status: "unavailable",
+            domain,
+            domainMode: "new_registration",
+            message: `${domain} is unavailable.`,
+          }
+        }
+        if (domain === "analytical-engines.eu") {
+          return {
+            ok: false,
+            status: "premium",
+            domain,
+            domainMode: "new_registration",
+            message: `${domain} is premium.`,
+          }
+        }
         return {
           ok: true,
           status: "available",
@@ -271,5 +292,6 @@ createRoot(document.getElementById("root")!).render(
       businessUseDeclarationText="I enter this agreement exclusively for business use."
       locale="en-NL"
     />
+    </ThemeProvider>
   </NextIntlClientProvider>,
 )
