@@ -680,6 +680,90 @@ describe("Openprovider renewal_date cycles", () => {
     })
   })
 
+  it("restarts a prepared autorenew operation only after exact absence and its grace boundary", async () => {
+    const requestedAt = "2027-06-26T00:00:00.000Z"
+    const preparedCycle = {
+      id: 960,
+      idempotencyKey: "cycle-960",
+      managedDomain: 950,
+      billingAgreement: 900,
+      tenant: 1,
+      state: "cancelled",
+      coverageStartsAt: "2027-07-26T00:00:00.000Z",
+      coverageEndsAt: "2028-07-26T00:00:00.000Z",
+      providerRenewalDate: "2027-07-26T00:00:00.000Z",
+      providerSafeCutoffAt: "2027-07-24T00:00:00.000Z",
+      renewalIntentSnapshot: false,
+      providerRenewalMode: "provider_autorenew",
+      providerAutorenew: "on",
+      providerOperationId:
+        "openprovider:domain:9001:autorenew:off:renewal:2027-07-26T00:00:00.000Z",
+      providerWriteState: "prepared",
+      providerWriteRequestedAt: requestedAt,
+      currency: "EUR",
+      providerOperationPriceNetMinor: 800,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 0,
+      financialCoverageState: "uncovered",
+      pricingEvidence: {},
+      netAmountMinor: 0,
+      vatAmountMinor: 0,
+      grossAmountMinor: 0,
+      cancelledAt: requestedAt,
+      reconciliationRequired: true,
+      stateHistory: [],
+      createdAt: "2027-06-01T00:00:00.000Z",
+    }
+    const store = createStore({
+      domain: { renewalIntent: false },
+      agreement: { state: "cancellation_scheduled", renewalIntent: false },
+      cycles: [preparedCycle],
+    })
+    const beforeGrace = dependencies({
+      now: new Date(
+        Date.parse(requestedAt) + PROVIDER_WRITE_RECONCILIATION_GRACE_MS - 1,
+      ).toISOString(),
+      provider: { autorenew: "on" },
+    })
+
+    await expect(reconcileManagedDomainRenewal(
+      store.payload,
+      950,
+      beforeGrace.deps,
+    )).resolves.toMatchObject({ status: "waiting", cycleId: 960 })
+    expect(beforeGrace.deps.findOpenProviderDomain).toHaveBeenCalledOnce()
+    expect(beforeGrace.setAutorenew).not.toHaveBeenCalled()
+    expect(preparedCycle).toMatchObject({
+      providerWriteState: "prepared",
+      providerAutorenew: "on",
+      reconciliationRequired: true,
+    })
+
+    const atGrace = dependencies({
+      now: new Date(
+        Date.parse(requestedAt) + PROVIDER_WRITE_RECONCILIATION_GRACE_MS,
+      ).toISOString(),
+      provider: { autorenew: "on" },
+    })
+    await expect(reconcileManagedDomainRenewal(
+      store.payload,
+      950,
+      atGrace.deps,
+    )).resolves.toMatchObject({ status: "cancelled", cycleId: 960 })
+
+    expect(atGrace.setAutorenew).toHaveBeenCalledOnce()
+    expect(atGrace.setAutorenew).toHaveBeenCalledWith(9001, "off", {
+      token: "token",
+    })
+    expect(atGrace.deps.findOpenProviderDomain).toHaveBeenCalledTimes(2)
+    expect(preparedCycle).toMatchObject({
+      providerWriteState: "confirmed",
+      providerAutorenew: "off",
+      reconciliationRequired: false,
+      failureReason: null,
+    })
+  })
+
   it("coalesces one retry after an indeterminate autorenew write remains unapplied", async () => {
     const store = createStore({
       domain: { renewalIntent: false },
