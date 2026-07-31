@@ -5,6 +5,11 @@ import test from "node:test"
 import inventory from "./inventory.json" with { type: "json" }
 import exclusions from "./exclusions.json" with { type: "json" }
 import bindings from "./bindings.json" with { type: "json" }
+import {
+  SHADCNUI_BLOCK_VARIANTS,
+  SHADCNUI_CHROME_VARIANTS,
+  SHADCNUI_SYSTEM_TEMPLATES,
+} from "../../../../contracts/src/generated/shadcnui-blocks.ts"
 
 const root = new URL("../../../../../", import.meta.url)
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`
@@ -51,6 +56,34 @@ test("every active structured slot has one explicit literal or direct binding", 
     for (const [field, slot] of Object.entries(variant.slots)) {
       if (slot.status === "inactive") assert.ok(slot.reason, `${variant.id}.${field} inactive reason`)
     }
+  }
+})
+
+test("sparse runtime and dense audit catalogs agree exactly", () => {
+  const runtimeVariants = [
+    ...SHADCNUI_BLOCK_VARIANTS,
+    ...SHADCNUI_CHROME_VARIANTS,
+    ...SHADCNUI_SYSTEM_TEMPLATES,
+  ]
+  assert.equal(SHADCNUI_BLOCK_VARIANTS.length, 132)
+  assert.equal(SHADCNUI_CHROME_VARIANTS.length, chromeVariants.length)
+  assert.equal(SHADCNUI_SYSTEM_TEMPLATES.length, systemVariants.length)
+  assert.deepEqual(
+    runtimeVariants.map((variant) => variant.id).sort(),
+    inventory.variants.map((variant) => variant.id).sort(),
+  )
+  for (const runtimeVariant of runtimeVariants) {
+    const auditVariant = inventory.variants.find((variant) => variant.id === runtimeVariant.id)
+    assert.ok(auditVariant, runtimeVariant.id)
+    assert.equal(runtimeVariant.blockType, auditVariant.blockType, `${runtimeVariant.id} block type`)
+    const activeSlots = Object.fromEntries(
+      Object.entries(auditVariant.slots).filter(([, slot]) => slot.status !== "inactive"),
+    )
+    const forbiddenFields = Object.entries(auditVariant.slots)
+      .filter(([, slot]) => slot.status === "inactive")
+      .map(([field]) => field)
+    assert.deepEqual(runtimeVariant.activeSlots, activeSlots, `${runtimeVariant.id} active slots`)
+    assert.deepEqual(runtimeVariant.forbiddenFields, forbiddenFields, `${runtimeVariant.id} forbidden fields`)
   }
 })
 

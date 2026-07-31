@@ -76,13 +76,13 @@ const prose = (value: string): RtBlockRoot => ({
 })
 
 const active = (variant: ProviderBlockVariant, field: string) =>
-  (variant.slots as Record<string, { status: "required" | "optional" | "inactive" }>)[field]?.status !== "inactive"
+  field in variant.activeSlots
 
 const optional = <T>(variant: ProviderBlockVariant, field: string, value: T) =>
   active(variant, field) ? { [field]: value } : {}
 
 const fitRepeated = <T>(variant: ProviderBlockVariant, field: string, values: T[]) => {
-  const slot = (variant.slots as Record<string, { minItems?: number; maxItems?: number }>)[field]
+  const slot = (variant.activeSlots as Record<string, { minItems?: number; maxItems?: number }>)[field]
   const fitted = values.slice(0, slot?.maxItems ?? values.length)
   if (fitted.length < (slot?.minItems ?? 0)) throw new Error(`${variant.id} requires more ${field} fixture items.`)
   return fitted

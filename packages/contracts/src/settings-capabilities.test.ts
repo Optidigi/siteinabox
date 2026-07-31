@@ -20,23 +20,20 @@ describe("canonical settings and provider capabilities", () => {
     expect(SITE_SETTING_DISPOSITIONS.every((entry) => entry.consumer.trim().length > 4)).toBe(true)
   })
 
-  it("gives every imported chrome feature a disposition and every inactive feature a reason", () => {
+  it("gives every imported chrome feature a sparse runtime disposition", () => {
     expect(SHADCNUI_CHROME_VARIANTS).toHaveLength(16)
     for (const variant of SHADCNUI_CHROME_VARIANTS) {
-      for (const [name, slot] of Object.entries(variant.slots)) {
-        expect(["required", "optional", "inactive"]).toContain(slot.status)
-        if (slot.status === "inactive") expect("reason" in slot && slot.reason?.trim(), `${variant.id}.${name}`).toBeTruthy()
-      }
+      expect(new Set([...Object.keys(variant.activeSlots), ...variant.forbiddenFields]).size).toBe(
+        Object.keys(variant.activeSlots).length + variant.forbiddenFields.length,
+      )
     }
   })
 
-  it("publishes every imported variant and explains every inactive structured slot", () => {
+  it("publishes every imported variant with disjoint active and forbidden fields", () => {
     const variants = [...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_CHROME_VARIANTS, ...SHADCNUI_SYSTEM_TEMPLATES]
     expect(variants).toHaveLength(156)
     for (const variant of variants) {
-      for (const [name, slot] of Object.entries(variant.slots)) {
-        if (slot.status === "inactive") expect("reason" in slot && slot.reason?.trim(), `${variant.id}.${name}`).toBeTruthy()
-      }
+      expect(Object.keys(variant.activeSlots).every((name) => !(variant.forbiddenFields as readonly string[]).includes(name))).toBe(true)
     }
   })
 

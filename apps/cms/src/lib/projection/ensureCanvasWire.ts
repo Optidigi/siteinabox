@@ -80,9 +80,7 @@ function sanitizeCanvasWireBlockRecord(block: unknown): Record<string, unknown> 
     candidate.blockType === next.blockType && candidate.id === designVariant,
   )
   if (variant) {
-    for (const [field, slot] of Object.entries(variant.slots)) {
-      if (slot.status === "inactive") delete next[field]
-    }
+    for (const field of variant.forbiddenFields) delete next[field]
   }
 
   return next

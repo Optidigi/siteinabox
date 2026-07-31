@@ -31,7 +31,9 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     const cmsValidation = validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" })
 
     expect(parsed.success, parsed.success ? undefined : parsed.error.message).toBe(true)
-    expect(cmsValidation).toEqual({ valid: true, issues: [] })
+    expect(cmsValidation.valid).toBe(true)
+    expect(cmsValidation.issues).toEqual([])
+    if (cmsValidation.valid) expect(cmsValidation.data).toEqual(spec)
     expect(spec.pages).toHaveLength(5)
     expect(spec.pages.map((page) => page.slug)).toEqual([
       "index",

@@ -1,4 +1,5 @@
 import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_BLOCK_VARIANTS } from "./generated/shadcnui-blocks"
+import { validateProviderBlockCore } from "./provider-validation"
 import type { Block } from "./site"
 
 export type ProviderBlockValidationIssue = {
@@ -10,13 +11,6 @@ export type ProviderBlockValidationIssue = {
 const blockVariants = new Map([...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_SYSTEM_BLOCK_VARIANTS].map((variant) => [`${variant.blockType}:${variant.id}`, variant]))
 const chromeVariants = new Map(SHADCNUI_CHROME_VARIANTS.map((variant) => [`${variant.area}:${variant.id}`, variant]))
 const clean = (value: string | null | undefined) => value?.trim() || undefined
-const hasValue = (value: unknown): boolean => {
-  if (value == null) return false
-  if (typeof value === "string") return value.trim().length > 0
-  if (Array.isArray(value)) return value.length > 0
-  if (typeof value === "object") return Object.values(value as Record<string, unknown>).some(hasValue)
-  return true
-}
 
 export const isProviderVariantIdentifier = (value: string | null | undefined) => clean(value)?.startsWith("shadcnui-blocks.") ?? false
 export const getProviderBlockVariant = (block: Pick<Block, "blockType" | "designVariant">) => {
@@ -30,22 +24,24 @@ export const getProviderChromeVariant = (area: "header" | "footer" | "banner", i
 
 export function validateProviderBlockInstance(block: Block): ProviderBlockValidationIssue[] {
   const id = clean(block.designVariant)
-  if (!id) return [{ code: "missing_provider_variant", message: `Block type "${block.blockType}" requires an approved explicit provider variant.`, path: ["designVariant"] }]
-  const variant = getProviderBlockVariant(block)
-  if (!variant) return [{ code: "unresolved_provider_variant", message: `Unresolved provider block variant "${id}" for block type "${block.blockType}".`, path: ["designVariant"] }]
+  const core = validateProviderBlockCore({ ...block, designVariant: id }, {
+    includeSystemBlockVariants: true,
+    validateSystemBlockSlots: true,
+  })
+  const coreIssues = core.issues.map((entry): ProviderBlockValidationIssue => {
+    if (entry.code === "missing_provider_variant") return { code: entry.code, message: `Block type "${block.blockType}" requires an approved explicit provider variant.`, path: entry.path }
+    if (entry.code === "unresolved_provider_variant") return { code: entry.code, message: `Unresolved provider block variant "${entry.variantId}" for block type "${block.blockType}".`, path: entry.path }
+    if (entry.code === "missing_required_slot") return { code: entry.code, message: `Provider variant "${entry.variantId}" requires slot "${entry.field}".`, path: entry.path }
+    if (entry.code === "inactive_slot_value") return { code: entry.code, message: `Provider variant "${entry.variantId}" does not expose slot "${entry.field}".`, path: entry.path }
+    return { code: entry.code, message: `Provider variant "${entry.variantId}" requires an image for every logo.`, path: entry.path.map(String) }
+  })
+  if (!core.variant || !id) return coreIssues
   const record = block as unknown as Record<string, unknown>
-  const issues: ProviderBlockValidationIssue[] = []
-  for (const [field, slot] of Object.entries(variant.slots)) {
+  const issues = [...coreIssues]
+  for (const [field, slot] of Object.entries(core.variant.activeSlots)) {
     const value = record[field]
-    if (slot.status === "required" && !hasValue(value)) issues.push({ code: "missing_required_slot", message: `Provider variant "${id}" requires slot "${field}".`, path: [field] })
-    if (slot.status === "inactive" && hasValue(value)) issues.push({ code: "inactive_slot_value", message: `Provider variant "${id}" does not expose slot "${field}".`, path: [field] })
     if (Array.isArray(value) && "minItems" in slot && typeof slot.minItems === "number" && value.length < slot.minItems) issues.push({ code: "slot_count_out_of_range", message: `Provider variant "${id}" requires at least ${slot.minItems} items in "${field}".`, path: [field] })
     if (Array.isArray(value) && "maxItems" in slot && typeof slot.maxItems === "number" && value.length > slot.maxItems) issues.push({ code: "slot_count_out_of_range", message: `Provider variant "${id}" allows at most ${slot.maxItems} items in "${field}".`, path: [field] })
-  }
-  if (block.blockType === "logoCloud") {
-    block.logos.forEach((logo, index) => {
-      if (!logo.image) issues.push({ code: "missing_required_media", message: `Provider variant "${id}" requires an image for every logo.`, path: ["logos", String(index), "image"] })
-    })
   }
   return issues
 }
