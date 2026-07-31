@@ -337,6 +337,7 @@ const createPayloadStub = () => {
 
 const installProviderFetch = () => {
   let cloudflareZoneCreated = false
+  let openproviderCustomerCreated = false
   let openproviderDomainRegistered = false
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     if (
@@ -384,8 +385,19 @@ const installProviderFetch = () => {
     }
     if (url.includes("api.openprovider.eu/v1beta/customers")) {
       if (init?.method === "GET") {
-        return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+        const reference = new URL(url).searchParams.get("comment_pattern")
+        return new Response(JSON.stringify({
+          data: {
+            results: openproviderCustomerCreated
+              ? [{
+                  handle: "OWNER-FLOW",
+                  comments: reference,
+                }]
+              : [],
+          },
+        }), { status: 200 })
       }
+      openproviderCustomerCreated = true
       return new Response(JSON.stringify({ data: { handle: "OWNER-FLOW" } }), { status: 200 })
     }
     if (url.includes("api.openprovider.eu/v1beta/domains")) {

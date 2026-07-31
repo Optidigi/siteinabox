@@ -262,6 +262,7 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
   }
   let nextId = 1_000
   let transactionSnapshot: Record<string, MockDoc[]> | null = null
+  let commitResponseLosses = 0
   const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
     const docs = (collections[collection] ?? []).filter((doc) => {
       if (!where) return true
@@ -363,6 +364,10 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
   const commitTransaction = vi.fn(async () => {
     if (!transactionSnapshot) throw new Error("No test transaction is active.")
     transactionSnapshot = null
+    if (commitResponseLosses > 0) {
+      commitResponseLosses -= 1
+      throw new Error("Injected commit response loss after commit.")
+    }
   })
   const rollbackTransaction = vi.fn(async () => {
     if (!transactionSnapshot) throw new Error("No test transaction is active.")
@@ -391,11 +396,15 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
           })),
         },
       },
-      jobs: { queue: vi.fn() },
+      jobs: { queue: vi.fn(async () => ({ id: "queued-job" })) },
+      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
     }),
     beginTransaction,
     commitTransaction,
     rollbackTransaction,
+    loseNextCommitResponse: () => {
+      commitResponseLosses += 1
+    },
   }
 }
 
@@ -657,6 +666,7 @@ const workflowDependencies = (input?: {
       snapshotId: 10,
     })),
     queueDeferredPostPaymentLiveHandoff: vi.fn(async () => "queued" as const),
+    ensureTenantPostHogEnrollment: vi.fn(async () => "updated" as const),
     activateManagedDomainEntitlement: vi.fn(async (
       payload: ReturnType<typeof createStore>["payload"],
       domain: MockDoc,
@@ -2494,6 +2504,8 @@ describe("automatic existing-domain migration", () => {
     })
     expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
       .not.toHaveBeenCalled()
+    expect(fixture.dependencies.ensureTenantPostHogEnrollment)
+      .not.toHaveBeenCalled()
   })
 
   it("defers customer handoff until transactional publication commits", async () => {
@@ -2530,6 +2542,18 @@ describe("automatic existing-domain migration", () => {
         fixture.dependencies.queueDeferredPostPaymentLiveHandoff
           .mock.invocationCallOrder[0] as number,
       )
+    expect(store.commitTransaction.mock.invocationCallOrder[0])
+      .toBeLessThan(
+        fixture.dependencies.ensureTenantPostHogEnrollment
+          .mock.invocationCallOrder[0] as number,
+      )
+    expect(store.payload.update).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "tenants",
+      context: { skipProjection: true },
+      req: expect.objectContaining({
+        transactionID: "migration-publication-transaction",
+      }),
+    }))
     expect(store.collections.tenants![0]).toMatchObject({
       domain: "example.nl",
     })
@@ -2538,6 +2562,96 @@ describe("automatic existing-domain migration", () => {
       entitlementStatus: "active",
       customerStatus: "active",
     })
+    expect(store.collections.orders![0]).toMatchObject({ state: "fulfilled" })
+  })
+
+  it("never starts provider rollback when the publication commit response is lost", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    store.loseNextCommitResponse()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("commit is indeterminate"),
+    })
+
+    expect(store.rollbackTransaction).not.toHaveBeenCalled()
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .not.toHaveBeenCalled()
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+    })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "migration_publication_commit_indeterminate",
+    })
+    expect(store.collections.orders![0]).toMatchObject({
+      state: "fulfillment_pending",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("keeps migration and order pending until durable live handoff is queued", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.queueDeferredPostPaymentLiveHandoff
+      .mockRejectedValueOnce(new Error("injected queue failure"))
+      .mockResolvedValueOnce("queued")
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("handoff remains pending"),
+    })
+
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "migration_live_handoff_pending",
+    })
+    expect(store.collections.orders![0]).toMatchObject({
+      state: "fulfillment_pending",
+    })
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .toHaveBeenCalledTimes(2)
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
     expect(store.collections.orders![0]).toMatchObject({ state: "fulfilled" })
   })
 

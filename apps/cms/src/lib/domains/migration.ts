@@ -122,6 +122,7 @@ import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliat
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
+import { ensureTenantPostHogEnrollment } from "@/lib/analytics/projectEnrollment"
 import { classifyMigrationEntry } from "@/lib/domains/migrationDecisions"
 import {
   migrationRegistrantVerification,
@@ -187,6 +188,7 @@ type MigrationDependencies = {
   verifyHttpsEndpoint: typeof verifyHttpsEndpoint
   publishAndActivateAfterCompletedPayment: typeof publishAndActivateAfterCompletedPayment
   queueDeferredPostPaymentLiveHandoff: typeof queueDeferredPostPaymentLiveHandoff
+  ensureTenantPostHogEnrollment: typeof ensureTenantPostHogEnrollment
   activateManagedDomainEntitlement: typeof activateManagedDomainEntitlement
   refreshAutomaticMigrationSource: typeof refreshAutomaticMigrationSource
   resolveCloudflareOAuthCredential: typeof resolveCloudflareOAuthCredential
@@ -219,6 +221,7 @@ const defaultDependencies: MigrationDependencies = {
   verifyHttpsEndpoint,
   publishAndActivateAfterCompletedPayment,
   queueDeferredPostPaymentLiveHandoff,
+  ensureTenantPostHogEnrollment,
   activateManagedDomainEntitlement,
   refreshAutomaticMigrationSource,
   resolveCloudflareOAuthCredential,
@@ -3158,6 +3161,10 @@ type PublicationActivationPhaseOutcome =
       result: MigrationResult
     }
   | {
+      outcome: "provider_reconciliation_required"
+      result: MigrationResult
+    }
+  | {
       outcome: "rollback_required"
       migration: DomainMigration
       managedDomain: ManagedDomain
@@ -5109,6 +5116,7 @@ async function publishActivateAndCompleteMigrationPhase(
   const req = { transactionID } as PayloadRequest
   let snapshotId: string | number
   const publicationAt = deps.now()
+  let commitAttempted = false
   try {
     await payload.update({
       collection: "tenants",
@@ -5124,6 +5132,7 @@ async function publishActivateAndCompleteMigrationPhase(
       },
       depth: 0,
       overrideAccess: true,
+      context: { skipProjection: true },
       ...payloadRequestArgs(req),
     })
     managedDomain = await updateManagedDomain(payload, managedDomain, {
@@ -5159,9 +5168,28 @@ async function publishActivateAndCompleteMigrationPhase(
       )
     }
     snapshotId = activation.snapshotId
+    commitAttempted = true
     await payload.db.commitTransaction(transactionID)
   } catch (error) {
-    await payload.db.rollbackTransaction(transactionID).catch(() => undefined)
+    if (commitAttempted) {
+      migration = await updateMigration(payload, migration, {
+        reconciliationRequired: true,
+        failureReason: "migration_publication_commit_indeterminate",
+      }, "migration_publication_commit_indeterminate", deps.now())
+      try {
+        await queueCommerceReconciliation(payload)
+      } catch {
+        // The persisted checkpoint remains eligible for scheduled reconciliation.
+      }
+      return {
+        outcome: "provider_reconciliation_required",
+        result: waiting(
+          migration,
+          "Migration publication commit is indeterminate and requires exact local reconciliation; provider and DNS rollback was not started.",
+        ),
+      }
+    }
+    await payload.db.rollbackTransaction(transactionID)
     return {
       outcome: "rollback_required",
       migration,
@@ -5174,19 +5202,54 @@ async function publishActivateAndCompleteMigrationPhase(
   }
 
   try {
-    await deps.queueDeferredPostPaymentLiveHandoff(
+    const tenant = await payload.findByID({
+      collection: "tenants",
+      id: relationshipId(migration.tenant) as string | number,
+      depth: 0,
+      overrideAccess: true,
+    }) as Tenant
+    await deps.ensureTenantPostHogEnrollment(tenant)
+  } catch (error) {
+    payload.logger.warn({
+      migration: migration.id,
+      error: redactOperationalMessage(error),
+    }, "[domain-migration] analytics enrollment remains available through the operator sync command")
+  }
+
+  let handoffOutcome: Awaited<
+    ReturnType<MigrationDependencies["queueDeferredPostPaymentLiveHandoff"]>
+  > = "failed"
+  try {
+    handoffOutcome = await deps.queueDeferredPostPaymentLiveHandoff(
       payload,
       run,
       snapshotId,
       publicationAt,
     )
   } catch (error) {
-    await queueCommerceReconciliation(payload).catch(() => undefined)
     payload.logger.warn({
       migration: migration.id,
       snapshot: snapshotId,
       error: redactOperationalMessage(error),
     }, "[domain-migration] live handoff queueing deferred to reconciliation")
+  }
+  if (handoffOutcome !== "queued" && handoffOutcome !== "sent") {
+    migration = await updateMigration(payload, migration, {
+      reconciliationRequired: true,
+      failureReason: "migration_live_handoff_pending",
+    }, "migration_live_handoff_pending", deps.now())
+    try {
+      await queueCommerceReconciliation(payload)
+    } catch {
+      // The nonterminal migration remains eligible for scheduled reconciliation.
+    }
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        migration,
+        "Migration publication is committed, but durable customer handoff remains pending reconciliation.",
+      ),
+    }
   }
 
   const revocation = await revokeMigrationSourceAuthority(
