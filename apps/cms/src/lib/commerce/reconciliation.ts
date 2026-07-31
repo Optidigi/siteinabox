@@ -247,23 +247,178 @@ export async function recoverMissingMollieCustomerReferences(
   return { examined: agreements.length, recovered }
 }
 
-const paymentMatchesAttempt = (
+type PaymentRecoveryClassification =
+  | { outcome: "absent"; relatedCandidateCount: 0 }
+  | { outcome: "exact"; payment: MolliePayment; relatedCandidateCount: 1 }
+  | {
+      outcome: "ambiguous"
+      exactMatchCount: number
+      relatedCandidateCount: number
+    }
+
+const isCurrentPaymentAuthority = (attempt: PaymentAttempt): boolean =>
+  /:authority-v\d+(?::|$)/.test(attempt.idempotencyKey) ||
+  attempt.idempotencyKey.startsWith("mollie:mandate-recovery:")
+
+const metadataAuthorityMatches = (
+  payment: MolliePayment,
+  field: string,
+  expected: string,
+  required: boolean,
+): boolean => {
+  const actual = metadataId(payment, field)
+  return actual == null ? !required : actual === expected
+}
+
+const providerAuthorityMatches = (
+  actual: string | null | undefined,
+  expected: string,
+  required: boolean,
+): boolean =>
+  actual == null ? !required : actual === expected
+
+const paymentIsRelatedToAttempt = (
   payment: MolliePayment,
   attempt: PaymentAttempt,
 ): boolean => {
   const attemptId = metadataId(payment, "paymentAttemptId")
   const idempotencyKey = metadataId(payment, "idempotencyKey")
-  const orderId = relationshipId(attempt.order)
-  const metadataOrderId = metadataId(payment, "orderId")
   return (
-    (
-      attemptId === String(attempt.id) ||
-      idempotencyKey === attempt.idempotencyKey
-    ) &&
-    metadataOrderId === String(orderId) &&
-    mollieAmountMinor(payment) === attempt.grossAmountMinor &&
-    payment.amount?.currency === attempt.currency
+    attemptId === String(attempt.id) ||
+    idempotencyKey === attempt.idempotencyKey
   )
+}
+
+const paymentExactlyMatchesAttempt = (
+  payment: MolliePayment,
+  attempt: PaymentAttempt,
+  agreement: BillingAgreement | null,
+): boolean => {
+  const strictAuthority = isCurrentPaymentAuthority(attempt)
+  const attemptId = metadataId(payment, "paymentAttemptId")
+  const idempotencyKey = metadataId(payment, "idempotencyKey")
+  const orderId = relationshipId(attempt.order)
+  if (
+    !orderId ||
+    !paymentIsRelatedToAttempt(payment, attempt) ||
+    (attemptId != null && attemptId !== String(attempt.id)) ||
+    (idempotencyKey != null && idempotencyKey !== attempt.idempotencyKey) ||
+    (strictAuthority &&
+      (
+        attemptId !== String(attempt.id) ||
+        idempotencyKey !== attempt.idempotencyKey
+      )) ||
+    metadataId(payment, "orderId") !== String(orderId)
+  ) return false
+  if (
+    mollieAmountMinor(payment) !== attempt.grossAmountMinor ||
+    payment.amount?.currency !== attempt.currency ||
+    !metadataAuthorityMatches(
+      payment,
+      "purpose",
+      attempt.purpose,
+      strictAuthority,
+    )
+  ) return false
+
+  const expectedSequence = attempt.sequenceType
+  if (strictAuthority && !expectedSequence) return false
+  if (
+    expectedSequence &&
+    (
+      !providerAuthorityMatches(
+        payment.sequenceType,
+        expectedSequence,
+        strictAuthority,
+      ) ||
+      !metadataAuthorityMatches(
+        payment,
+        "sequenceType",
+        expectedSequence,
+        strictAuthority,
+      )
+    )
+  ) return false
+
+  const agreementId = relationshipId(attempt.billingAgreement)
+  if (!agreementId) {
+    return !strictAuthority || attempt.purpose === "supplemental"
+  }
+  if (
+    !agreement ||
+    !metadataAuthorityMatches(
+      payment,
+      "billingAgreementId",
+      String(agreementId),
+      strictAuthority,
+    )
+  ) return false
+  if (strictAuthority && !agreement.providerCustomerId) return false
+  if (
+    agreement.providerCustomerId &&
+    (
+      !providerAuthorityMatches(
+        payment.customerId,
+        agreement.providerCustomerId,
+        strictAuthority,
+      ) ||
+      !metadataAuthorityMatches(
+        payment,
+        "mollieCustomerId",
+        agreement.providerCustomerId,
+        strictAuthority,
+      )
+    )
+  ) return false
+  if (
+    strictAuthority &&
+    attempt.sequenceType === "recurring" &&
+    !agreement.providerMandateId
+  ) return false
+  if (
+    attempt.sequenceType === "recurring" &&
+    agreement.providerMandateId &&
+    (
+      !providerAuthorityMatches(
+        payment.mandateId,
+        agreement.providerMandateId,
+        strictAuthority,
+      ) ||
+      !metadataAuthorityMatches(
+        payment,
+        "mandateId",
+        agreement.providerMandateId,
+        strictAuthority,
+      )
+    )
+  ) return false
+  return true
+}
+
+const classifyPaymentRecoveryCandidates = (
+  payments: MolliePayment[],
+  attempt: PaymentAttempt,
+  agreement: BillingAgreement | null,
+): PaymentRecoveryClassification => {
+  const related = payments.filter((payment) =>
+    paymentIsRelatedToAttempt(payment, attempt))
+  if (related.length === 0) {
+    return { outcome: "absent", relatedCandidateCount: 0 }
+  }
+  const exact = related.filter((payment) =>
+    paymentExactlyMatchesAttempt(payment, attempt, agreement))
+  if (related.length === 1 && exact.length === 1) {
+    return {
+      outcome: "exact",
+      payment: exact[0]!,
+      relatedCandidateCount: 1,
+    }
+  }
+  return {
+    outcome: "ambiguous",
+    exactMatchCount: exact.length,
+    relatedCandidateCount: related.length,
+  }
 }
 
 export async function recoverMissingMolliePaymentReferences(
@@ -321,25 +476,50 @@ export async function recoverMissingMolliePaymentReferences(
   }
   const recoveredPaymentIds: string[] = []
   for (const attempt of attempts) {
-    const matches = payments.filter((payment) =>
-      paymentMatchesAttempt(payment, attempt),
+    const relatedPayments = payments.filter((payment) =>
+      paymentIsRelatedToAttempt(payment, attempt))
+    const agreementId = relationshipId(attempt.billingAgreement)
+    const agreement = relatedPayments.length > 0 && agreementId
+      ? await payload.findByID({
+          collection: "billing-agreements",
+          id: agreementId,
+          depth: 0,
+          overrideAccess: true,
+        }) as BillingAgreement
+      : null
+    const classification = classifyPaymentRecoveryCandidates(
+      payments,
+      attempt,
+      agreement,
     )
-    if (matches.length > 1) {
+    if (classification.outcome === "ambiguous") {
+      const duplicateExactMatches =
+        classification.exactMatchCount > 1 &&
+        classification.exactMatchCount === classification.relatedCandidateCount
       await recordCommerceAdminException({
         payload,
         source: "payments",
-        code: "duplicate_provider_payments_for_attempt",
-        message: "Multiple Mollie payments match one internal idempotency authority.",
+        code: duplicateExactMatches
+          ? "duplicate_provider_payments_for_attempt"
+          : "mollie_payment_recovery_authority_ambiguous",
+        message: duplicateExactMatches
+          ? "Multiple Mollie payments match one internal idempotency authority."
+          : "Related Mollie payments do not prove one exact frozen payment authority.",
         tenant: attempt.tenant,
         subjectId: attempt.id,
-        metadata: { matchCount: matches.length },
+        metadata: duplicateExactMatches
+          ? { matchCount: classification.exactMatchCount }
+          : {
+              exactMatchCount: classification.exactMatchCount,
+              relatedCandidateCount: classification.relatedCandidateCount,
+            },
         severity: "critical",
         now: nowDate.toISOString(),
       })
       continue
     }
-    const match = matches[0]
-    if (match) {
+    if (classification.outcome === "exact") {
+      const match = classification.payment
       const existingOwner = await providerReferenceOwner(
         payload,
         "payment-attempts",
@@ -397,6 +577,13 @@ export async function recoverMissingMolliePaymentReferences(
           await resolveCommerceAdminException({
             payload,
             source: "payments",
+            code: "mollie_payment_recovery_authority_ambiguous",
+            subjectId: attempt.id,
+            now: nowDate.toISOString(),
+          })
+          await resolveCommerceAdminException({
+            payload,
+            source: "payments",
             code: "missing_mollie_webhook_or_reference",
             subjectId: attempt.id,
             now: nowDate.toISOString(),
@@ -417,6 +604,13 @@ export async function recoverMissingMolliePaymentReferences(
         })
         continue
       }
+      await resolveCommerceAdminException({
+        payload,
+        source: "payments",
+        code: "mollie_payment_recovery_authority_ambiguous",
+        subjectId: attempt.id,
+        now: nowDate.toISOString(),
+      })
       await resolveCommerceAdminException({
         payload,
         source: "payments",

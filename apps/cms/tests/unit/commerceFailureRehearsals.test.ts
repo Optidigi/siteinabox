@@ -17,6 +17,7 @@ import {
   type MockDoc,
   type MockFindArgs,
   type MockUpdateArgs,
+  type MutableMockUpdateArgs,
 } from "../_helpers/mockPayload"
 
 const NOW = new Date("2026-07-28T12:00:00.000Z")
@@ -62,7 +63,19 @@ const createPayloadStore = (input?: {
     ;(collections[collection] ??= []).push(doc)
     return doc
   })
-  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+  const update = vi.fn(async ({
+    collection,
+    id,
+    where,
+    data,
+  }: MutableMockUpdateArgs) => {
+    if (where) {
+      const docs = (collections[collection] ?? []).filter((candidate) =>
+        matchesWhere(candidate, where)
+      )
+      for (const doc of docs) Object.assign(doc, data)
+      return { docs, totalDocs: docs.length }
+    }
     const doc = (collections[collection] ?? []).find(
       (candidate) => String(candidate.id) === String(id),
     )
@@ -70,12 +83,26 @@ const createPayloadStore = (input?: {
     Object.assign(doc, data)
     return doc
   })
+  const findByID = vi.fn(async ({
+    collection,
+    id,
+  }: {
+    collection: string
+    id: string | number
+  }) => {
+    const doc = (collections[collection] ?? []).find(
+      (candidate) => String(candidate.id) === String(id),
+    )
+    if (!doc) throw new Error(`Missing ${collection} ${id}`)
+    return doc
+  })
   return {
     collections,
     find,
+    findByID,
     create,
     update,
-    payload: asPayload({ find, create, update }),
+    payload: asPayload({ find, findByID, create, update }),
   }
 }
 
@@ -336,6 +363,201 @@ describe("Phase 11 commerce failure rehearsals", () => {
         metadata: { matchCount: 2 },
       }),
     )
+  })
+
+  it.each([
+    ["payment-attempt id", { paymentAttemptId: 999 }, {}],
+    ["idempotency key", { idempotencyKey: "wrong-key" }, {}],
+    ["order", { orderId: 999 }, {}],
+    ["purpose", { purpose: "domain_renewal" }, {}],
+    ["metadata sequence", { sequenceType: "first" }, {}],
+    ["provider sequence", {}, { sequenceType: "first" }],
+    ["billing agreement", { billingAgreementId: 999 }, {}],
+    ["customer metadata", { mollieCustomerId: "cst_wrong" }, {}],
+    ["provider customer", {}, { customerId: "cst_wrong" }],
+    ["mandate metadata", { mandateId: "mdt_wrong" }, {}],
+    ["provider mandate", {}, { mandateId: "mdt_wrong" }],
+    ["amount", {}, { amount: { currency: "EUR", value: "23.00" } }],
+    ["currency", {}, { amount: { currency: "USD", value: "22.99" } }],
+  ])(
+    "keeps a current recurring write blocked when related provider %s mismatches",
+    async (_label, metadataOverride, paymentOverride) => {
+      const attempt: MockDoc = {
+        ...paymentAttempt(),
+        idempotencyKey:
+          "mollie:recurring:order:20:authority-v2:attempt-1",
+        billingAgreement: 40,
+        purpose: "recurring",
+        sequenceType: "recurring",
+      }
+      const agreement: MockDoc = {
+        id: 40,
+        tenant: 1,
+        provider: "mollie",
+        state: "active",
+        providerCustomerId: "cst_expected",
+        providerMandateId: "mdt_expected",
+        renewalIntent: true,
+        reconciliationRequired: true,
+        lastPaymentAttemptAt: attempt.createdAt,
+        updatedAt: "2026-07-28T11:00:01.000Z",
+      }
+      const store = createPayloadStore({
+        attempts: [attempt],
+        agreements: [agreement],
+      })
+      const metadata = {
+        paymentAttemptId: 10,
+        orderId: 20,
+        idempotencyKey: attempt.idempotencyKey,
+        purpose: "recurring",
+        sequenceType: "recurring",
+        billingAgreementId: 40,
+        mollieCustomerId: "cst_expected",
+        mandateId: "mdt_expected",
+        ...metadataOverride,
+      }
+
+      await expect(recoverMissingMolliePaymentReferences(store.payload, {
+        providerReadsAllowed: () => true,
+        listRecentMolliePayments: vi.fn(async () => [{
+          id: "tr_related_mismatch",
+          status: "open",
+          amount: { currency: "EUR", value: "22.99" },
+          customerId: "cst_expected",
+          mandateId: "mdt_expected",
+          sequenceType: "recurring",
+          metadata,
+          ...paymentOverride,
+        }]),
+      }, NOW)).resolves.toEqual({
+        examined: 1,
+        recoveredPaymentIds: [],
+      })
+
+      expect(attempt).toMatchObject({
+        reconciliationRequired: true,
+      })
+      expect(attempt).not.toHaveProperty("providerPaymentId")
+      expect(agreement).toMatchObject({
+        reconciliationRequired: true,
+        lastPaymentAttemptAt: attempt.createdAt,
+      })
+      expect(store.collections["operational-alerts"]).toContainEqual(
+        expect.objectContaining({
+          severity: "critical",
+          dedupeKey:
+            "commerce:payments:mollie_payment_recovery_authority_ambiguous:10",
+          metadata: {
+            exactMatchCount: 0,
+            relatedCandidateCount: 1,
+          },
+        }),
+      )
+    },
+  )
+
+  it("recovers one current recurring payment only when its complete frozen authority matches", async () => {
+    const attempt: MockDoc = {
+      ...paymentAttempt(),
+      idempotencyKey:
+        "mollie:recurring:order:20:authority-v2:attempt-1",
+      billingAgreement: 40,
+      purpose: "recurring",
+      sequenceType: "recurring",
+    }
+    const agreement: MockDoc = {
+      id: 40,
+      tenant: 1,
+      provider: "mollie",
+      state: "active",
+      providerCustomerId: "cst_expected",
+      providerMandateId: "mdt_expected",
+      renewalIntent: true,
+      reconciliationRequired: true,
+      lastPaymentAttemptAt: attempt.createdAt,
+      updatedAt: "2026-07-28T11:00:01.000Z",
+    }
+    const store = createPayloadStore({
+      attempts: [attempt],
+      agreements: [agreement],
+    })
+
+    await expect(recoverMissingMolliePaymentReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMolliePayments: vi.fn(async () => [{
+        id: "tr_exact",
+        status: "open",
+        amount: { currency: "EUR", value: "22.99" },
+        customerId: "cst_expected",
+        mandateId: "mdt_expected",
+        sequenceType: "recurring",
+        metadata: {
+          paymentAttemptId: 10,
+          orderId: 20,
+          idempotencyKey: attempt.idempotencyKey,
+          purpose: "recurring",
+          sequenceType: "recurring",
+          billingAgreementId: 40,
+          mollieCustomerId: "cst_expected",
+          mandateId: "mdt_expected",
+        },
+      }]),
+    }, NOW)).resolves.toEqual({
+      examined: 1,
+      recoveredPaymentIds: ["tr_exact"],
+    })
+
+    expect(attempt).toMatchObject({
+      providerPaymentId: "tr_exact",
+      reconciliationRequired: true,
+    })
+    expect(store.collections["operational-alerts"]).toHaveLength(0)
+  })
+
+  it("opens a recurring retry only when the provider result is truly absent", async () => {
+    const attempt: MockDoc = {
+      ...paymentAttempt(),
+      idempotencyKey:
+        "mollie:recurring:order:20:authority-v2:attempt-1",
+      billingAgreement: 40,
+      purpose: "recurring",
+      sequenceType: "recurring",
+    }
+    const agreement: MockDoc = {
+      id: 40,
+      tenant: 1,
+      provider: "mollie",
+      state: "active",
+      providerCustomerId: "cst_expected",
+      providerMandateId: "mdt_expected",
+      renewalIntent: true,
+      reconciliationRequired: true,
+      lastPaymentAttemptAt: attempt.createdAt,
+      updatedAt: "2026-07-28T11:00:01.000Z",
+    }
+    const store = createPayloadStore({
+      attempts: [attempt],
+      agreements: [agreement],
+    })
+
+    await expect(recoverMissingMolliePaymentReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMolliePayments: vi.fn(async () => []),
+    }, NOW)).resolves.toEqual({
+      examined: 1,
+      recoveredPaymentIds: [],
+    })
+
+    expect(attempt).toMatchObject({
+      state: "pending_provider",
+      reconciliationRequired: false,
+      failureCode: "provider_absence_reconciled",
+    })
+    expect(agreement).toMatchObject({
+      reconciliationRequired: false,
+      lastPaymentAttemptAt: null,
+    })
   })
 
   it("reports an internally owned payment reference and continues later recovery", async () => {
