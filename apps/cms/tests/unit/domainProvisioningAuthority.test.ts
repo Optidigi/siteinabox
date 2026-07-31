@@ -7,6 +7,7 @@ import {
   OpenProviderAmbiguousCustomerReferenceLookupError,
   OpenProviderAmbiguousDomainLookupError,
   OpenProviderCustomerReferenceLookupIncompleteError,
+  OpenProviderIndeterminateWriteError,
 } from "@/lib/domains/openprovider"
 import type {
   CheckoutProfile,
@@ -356,6 +357,80 @@ describe("new-domain provider authority", () => {
       },
     })
     expect(createCustomer).not.toHaveBeenCalled()
+    expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("recovers an indeterminate customer creation by exact reference without a second POST", async () => {
+    const store = fixture()
+    let customerLookupCount = 0
+    const createCustomer = vi.fn(async () => {
+      throw new OpenProviderIndeterminateWriteError(
+        "customer creation response was lost",
+      )
+    })
+    const createZone = vi.fn()
+    const register = vi.fn()
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => {
+          customerLookupCount += 1
+          return customerLookupCount === 1
+            ? null
+            : {
+                handle: "OWNER-CLIENT",
+                comments: "domain-registration:order:600:v1",
+                raw: {},
+              }
+        }),
+        createOpenProviderCustomerHandle: createCustomer,
+        listCloudflareZones: vi.fn(async () => [
+          {
+            id: "zone-1",
+            name: "example.nl",
+            nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+          {
+            id: "zone-2",
+            name: "example.nl",
+            nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+        ]),
+        createOrReuseCloudflareZone: createZone,
+        registerOpenProviderDomain: register,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_indeterminate",
+        },
+      })
+    expect(createCustomer).toHaveBeenCalledOnce()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          providerCustomerHandle: "OWNER-CLIENT",
+          failureReason: "cloudflare_zone_lookup_ambiguous",
+        },
+      })
+    expect(createCustomer).toHaveBeenCalledOnce()
     expect(createZone).not.toHaveBeenCalled()
     expect(register).not.toHaveBeenCalled()
   })

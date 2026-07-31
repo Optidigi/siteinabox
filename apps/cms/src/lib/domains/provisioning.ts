@@ -119,6 +119,17 @@ type ProvisioningInitialAuthorityOutcome =
       result: ProvisionPaidDomainResult
     }
 
+type OpenProviderCustomerReconciliationOutcome =
+  | {
+      outcome: "continue"
+      customerHandle: string
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome: "provider_reconciliation_required" | "manual_review"
+      result: ProvisionPaidDomainResult
+    }
+
 type ProvisioningDependencies = {
   now: () => string
   loginOpenProvider: typeof loginOpenProvider
@@ -858,6 +869,108 @@ async function loadAndClassifyProvisioningAuthorityPhase(
   }
 }
 
+async function reconcileOpenProviderCustomerPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    token: string
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+    initialFailureReason: ManagedDomain["failureReason"]
+  },
+): Promise<OpenProviderCustomerReconciliationOutcome> {
+  let managedDomain = context.managedDomain
+  let customerHandle = managedDomain.providerCustomerHandle ?? null
+  if (!customerHandle) {
+    let existingCustomer: Awaited<
+      ReturnType<ProvisioningDependencies["findOpenProviderCustomerByReference"]>
+    >
+    try {
+      existingCustomer = await dependencies.findOpenProviderCustomerByReference(
+        managedDomain.provisioningIdempotencyKey,
+        { token: context.token },
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
+        throw error
+      }
+      return {
+        outcome: "manual_review",
+        result: await stopProvisioningForProviderAmbiguity(
+          payload,
+          run,
+          managedDomain,
+          context.registrant,
+          "openprovider_customer_reference_ambiguous",
+          "Multiple exact Openprovider customers match the accepted registration reference.",
+          dependencies.now(),
+        ),
+      }
+    }
+    if (existingCustomer) {
+      customerHandle = existingCustomer.handle
+    } else {
+      if (
+        context.initialFailureReason ===
+        "openprovider_customer_handle_indeterminate"
+      ) {
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider customer-handle creation remains indeterminate; no retry was sent.",
+          ),
+        }
+      }
+      try {
+        await assertInitialDomainFinancialAuthority(payload, {
+          orderId: input.order.id,
+          paymentAttemptId: input.paymentAttemptId,
+        })
+        customerHandle = (await dependencies.createOpenProviderCustomerHandle(
+          context.registrant,
+          {
+            token: context.token,
+            reference: managedDomain.provisioningIdempotencyKey,
+          },
+        )).handle
+      } catch (error) {
+        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_indeterminate",
+        }, "openprovider_customer_handle_indeterminate", dependencies.now())
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider customer-handle creation is awaiting reconciliation.",
+          ),
+        }
+      }
+    }
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      providerCustomerHandle: customerHandle,
+      providerRegistrationState: "not_started",
+      reconciliationRequired: false,
+      failureReason: null,
+    }, "provider_customer_handle_persisted", dependencies.now())
+  }
+  return {
+    outcome: "continue",
+    customerHandle,
+    managedDomain,
+  }
+}
+
 export async function provisionPaidDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
@@ -995,72 +1108,24 @@ export async function provisionPaidDomainOrder(
     }
   }
 
-  let customerHandle = managedDomain.providerCustomerHandle ?? null
-  if (!customerHandle) {
-    let existingCustomer: Awaited<
-      ReturnType<ProvisioningDependencies["findOpenProviderCustomerByReference"]>
-    >
-    try {
-      existingCustomer = await dependencies.findOpenProviderCustomerByReference(
-        managedDomain.provisioningIdempotencyKey,
-        { token },
-      )
-    } catch (error) {
-      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
-        throw error
-      }
-      return stopProvisioningForProviderAmbiguity(
-        payload,
-        run,
-        managedDomain,
-        registrant,
-        "openprovider_customer_reference_ambiguous",
-        "Multiple exact Openprovider customers match the accepted registration reference.",
-        dependencies.now(),
-      )
-    }
-    if (existingCustomer) {
-      customerHandle = existingCustomer.handle
-    } else {
-      if (initialFailureReason === "openprovider_customer_handle_indeterminate") {
-        return waiting(
-          normalized.domain,
-          run,
-          managedDomain,
-          "Openprovider customer-handle creation remains indeterminate; no retry was sent.",
-        )
-      }
-      try {
-        await assertInitialDomainFinancialAuthority(payload, {
-          orderId: input.order.id,
-          paymentAttemptId: input.paymentAttemptId,
-        })
-        customerHandle = (await dependencies.createOpenProviderCustomerHandle(registrant, {
-          token,
-          reference: managedDomain.provisioningIdempotencyKey,
-        })).handle
-      } catch (error) {
-        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
-        managedDomain = await updateManagedDomain(payload, managedDomain, {
-          providerRegistrationState: "indeterminate",
-          reconciliationRequired: true,
-          failureReason: "openprovider_customer_handle_indeterminate",
-        }, "openprovider_customer_handle_indeterminate", dependencies.now())
-        return waiting(
-          normalized.domain,
-          run,
-          managedDomain,
-          "Openprovider customer-handle creation is awaiting reconciliation.",
-        )
-      }
-    }
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      providerCustomerHandle: customerHandle,
-      providerRegistrationState: "not_started",
-      reconciliationRequired: false,
-      failureReason: null,
-    }, "provider_customer_handle_persisted", dependencies.now())
+  const customerOutcome = await reconcileOpenProviderCustomerPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      token,
+      normalized,
+      registrant,
+      managedDomain,
+      initialFailureReason,
+    },
+  )
+  if (customerOutcome.outcome !== "continue") {
+    return customerOutcome.result
   }
+  const customerHandle = customerOutcome.customerHandle
+  managedDomain = customerOutcome.managedDomain
 
   const visibleZones = await dependencies.listCloudflareZones(normalized.domain)
   const persistedZones = managedDomain.cloudflareZoneId
