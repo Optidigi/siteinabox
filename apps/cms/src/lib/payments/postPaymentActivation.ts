@@ -30,7 +30,6 @@ export type PostPaymentActivationResult =
   | { status: "blocked" | "failed"; message: string }
 
 export type PostPaymentAutomationRetryStep =
-  | "mollie_subscription"
   | "domain_provisioning"
   | "refresh_provisioning"
   | "activation_gate"
@@ -218,14 +217,6 @@ export async function queueDeferredPostPaymentLiveHandoff(
   })
 }
 
-async function retryMollieSubscription(payload: Payload, run: SiteGenerationRun): Promise<SiteGenerationRun> {
-  return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
-    status: "blocked",
-    step: "mollie_subscription",
-    message: "Long-lived Mollie subscription creation is disabled.",
-  }))
-}
-
 async function retryDomainProvisioning(payload: Payload, run: SiteGenerationRun): Promise<SiteGenerationRun> {
   const payment = normalizeGenerationRunPaymentState(run.payment)
   if (!payment.selectedDomain) {
@@ -325,13 +316,6 @@ export async function retryPostPaymentAutomation(
   step: PostPaymentAutomationRetryStep,
 ): Promise<PostPaymentActivationResult> {
   let run = await loadRun(payload, runId)
-
-  if (step === "mollie_subscription") {
-    run = await retryMollieSubscription(payload, run)
-    if (!normalizeGenerationRunPaymentState(run.payment).mollieSubscriptionId) {
-      return automationResultFromRun(run)
-    }
-  }
 
   if (step === "domain_provisioning") {
     run = await retryDomainProvisioning(payload, run)
