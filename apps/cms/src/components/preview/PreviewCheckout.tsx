@@ -1134,7 +1134,7 @@ export function PreviewCheckout({
           />
         )}
 
-        {fulfilmentActive && (
+        {(fulfilmentActive || (requiresMigrationRecollection && acceptedOrderId != null)) && (
           <Card data-checkout-main-card className="overflow-hidden shadow-none">
             <CardContent className="grid gap-3 p-3 sm:p-4">
         {paymentReturn && (
