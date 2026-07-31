@@ -2087,6 +2087,18 @@ async function prepareDnssecForCutover(
   const expectedSourceKeys = sourceDnskeys(source)
 
   if (source.dnssec.status === "unsigned") {
+    if ([
+      "target_signing",
+      "target_ds_publication",
+      "target_chain_verifying",
+      "target_secure",
+      "rollback_target_ds_removal",
+      "rollback_target_ds_cache_wait",
+      "rollback_old_authority",
+      "rollback_source_ds_publication",
+    ].includes(migration.dnssecPhase)) {
+      return { migration, providerDomain, result: null }
+    }
     const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
     if (parentDs.status !== "absent") {
       return {
@@ -2095,7 +2107,7 @@ async function prepareDnssecForCutover(
         result: waiting(migration, "Unsigned source still has an unsafe parent DS state."),
       }
     }
-    if (migration.dnssecPhase !== "unsigned_cutover_ready") {
+    if (migration.dnssecPhase === "source_unsigned") {
       migration = await updateMigration(payload, migration, {
         dnssecPhase: "unsigned_cutover_ready",
         dnssecWriteState: "confirmed",
@@ -2544,6 +2556,29 @@ async function secureTargetDnssec(
     reconciliationRequired: !targetVerified,
   }, targetVerified ? "target_dnssec_chain_verified" : "target_dnssec_chain_pending", deps.now())
   if (!targetVerified) {
+    const verificationDeadlineReached = migration.verificationDeadlineAt
+      ? Date.parse(deps.now()) >= Date.parse(migration.verificationDeadlineAt)
+      : false
+    if (verificationDeadlineReached) {
+      const reason = "target_dnssec_verification_deadline_exceeded"
+      migration = await updateMigration(payload, migration, {
+        rollbackRequestedAt: migration.rollbackRequestedAt ?? deps.now(),
+        reconciliationRequired: true,
+        failureReason: reason,
+      }, reason, deps.now())
+      return {
+        migration,
+        providerDomain,
+        result: await rollbackCutover(
+          payload,
+          migration,
+          managedDomain,
+          providerDomain,
+          reason,
+          deps,
+        ),
+      }
+    }
     return {
       migration,
       providerDomain,

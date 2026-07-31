@@ -30,7 +30,10 @@ import {
   transferConfirmationStatus,
   transferAutorenewMode,
 } from "@/lib/domains/migration"
-import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
+import {
+  CloudflareIndeterminateWriteError,
+  type CloudflareDnssecResult,
+} from "@/lib/domains/cloudflare"
 import {
   OpenProviderAmbiguousCustomerReferenceLookupError,
   OpenProviderAmbiguousDomainLookupError,
@@ -74,6 +77,31 @@ import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from 
 const ENCRYPTION_KEY = Buffer.alloc(32, 9).toString("base64")
 const OLD_NAMESERVERS = ["ns1.legacy.example", "ns2.legacy.example"]
 const CLOUDFLARE_NAMESERVERS = ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"]
+const TARGET_DNSKEY = {
+  flags: 257,
+  protocol: 3 as const,
+  alg: 13,
+  pub_key: "AQID",
+}
+const TARGET_DS = "12345 13 2 " + "AB".repeat(32)
+const activeTargetDnssec = () => ({
+  status: "active" as const,
+  flags: TARGET_DNSKEY.flags,
+  algorithm: TARGET_DNSKEY.alg,
+  publicKey: TARGET_DNSKEY.pub_key,
+  ds: TARGET_DS,
+  dsTtl: 3600,
+  raw: {},
+})
+const disabledTargetDnssec = () => ({
+  status: "disabled" as const,
+  flags: null,
+  algorithm: null,
+  publicKey: null,
+  ds: null,
+  dsTtl: null,
+  raw: {},
+})
 
 const zoneExport: CompleteZoneExport = {
   schemaVersion: 1,
@@ -405,13 +433,6 @@ const workflowDependencies = (input?: {
     verificationEmailDescription: string
     raw: Record<string, never>
   } | null = null
-  const targetDnskey = {
-    flags: 257,
-    protocol: 3 as const,
-    alg: 13,
-    pub_key: "AQID",
-  }
-  const targetDs = "12345 13 2 " + "AB".repeat(32)
   let targetDsVisible = true
   const records: Array<{ id: string; record: NormalizedMigrationDnsRecord; raw: unknown }> = []
   let recordId = 1
@@ -502,22 +523,23 @@ const workflowDependencies = (input?: {
       recordQuota: 200,
       recordUsage: records.length,
     })),
-    getCloudflareDnssec: vi.fn(async () => ({
+    getCloudflareDnssec: vi.fn(async (): Promise<CloudflareDnssecResult> => ({
       status: providerDomain?.dnssecEnabled && targetDsVisible
         ? "active" as const
         : "pending" as const,
-      flags: targetDnskey.flags,
-      algorithm: targetDnskey.alg,
-      publicKey: targetDnskey.pub_key,
-      ds: targetDs,
+      flags: TARGET_DNSKEY.flags,
+      algorithm: TARGET_DNSKEY.alg,
+      publicKey: TARGET_DNSKEY.pub_key,
+      ds: TARGET_DS,
+      dsTtl: 3600,
       raw: {},
     })),
     enableCloudflareDnssec: vi.fn(async () => ({
       status: "pending" as const,
-      flags: targetDnskey.flags,
-      algorithm: targetDnskey.alg,
-      publicKey: targetDnskey.pub_key,
-      ds: targetDs,
+      flags: TARGET_DNSKEY.flags,
+      algorithm: TARGET_DNSKEY.alg,
+      publicKey: TARGET_DNSKEY.pub_key,
+      ds: TARGET_DS,
       raw: {},
     })),
     createOrReuseCloudflareMigrationDnsRecord: vi.fn(async (
@@ -538,8 +560,8 @@ const workflowDependencies = (input?: {
       const parentRecords = providerDomain == null
         ? input?.sourceParentDsRecords ?? []
         : providerDomain.dnssecEnabled
-          ? providerKey?.pub_key === targetDnskey.pub_key
-            ? targetDsVisible ? [targetDs] : []
+          ? providerKey?.pub_key === TARGET_DNSKEY.pub_key
+            ? targetDsVisible ? [TARGET_DS] : []
             : input?.sourceParentDsRecords ?? []
           : []
       return parentRecords.length > 0
@@ -1530,6 +1552,202 @@ describe("automatic existing-domain migration", () => {
       dnssecVerification: {
         verified: true,
       },
+    })
+  })
+
+  it("recovers target signing after a prepared checkpoint without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    let signingVisible = false
+    fixture.dependencies.getCloudflareDnssec.mockImplementation(async () =>
+      signingVisible ? activeTargetDnssec() : disabledTargetDnssec()
+    )
+    fixture.dependencies.enableCloudflareDnssec.mockImplementationOnce(
+      async () => {
+        signingVisible = true
+        throw new Error("worker stopped after target signing dispatch")
+      },
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).rejects.toThrow("worker stopped after target signing dispatch")
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_signing",
+      dnssecWriteState: "prepared",
+      reconciliationRequired: true,
+      verificationDeadlineAt: "2026-07-28T09:30:00.000Z",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.enableCloudflareDnssec).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      dnssecWriteState: "confirmed",
+    })
+  })
+
+  it("recovers an indeterminate target-signing response through readback without retry", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    let signingVisible = false
+    fixture.dependencies.getCloudflareDnssec.mockImplementation(async () =>
+      signingVisible ? activeTargetDnssec() : disabledTargetDnssec()
+    )
+    fixture.dependencies.enableCloudflareDnssec.mockRejectedValueOnce(
+      new CloudflareIndeterminateWriteError(
+        "Cloudflare target DNSSEC enablement",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_signing",
+      dnssecWriteState: "indeterminate",
+      reconciliationRequired: true,
+    })
+
+    signingVisible = true
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.enableCloudflareDnssec).toHaveBeenCalledTimes(1)
+  })
+
+  it("recovers target DS publication after a prepared checkpoint without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.updateOpenProviderDomainDnssec.mockImplementationOnce(
+      async (_id, input) => {
+        const providerDomain = fixture.getProviderDomain()
+        if (!providerDomain) throw new Error("provider domain missing")
+        providerDomain.dnssecEnabled = input.enabled
+        providerDomain.dnssecKeys = input.enabled ? input.keys : []
+        throw new Error("worker stopped after target DS dispatch")
+      },
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).rejects.toThrow("worker stopped after target DS dispatch")
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_ds_publication",
+      dnssecWriteState: "prepared",
+      reconciliationRequired: true,
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(1)
+  })
+
+  it("recovers an indeterminate target DS response through readback without retry", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.updateOpenProviderDomainDnssec.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError(
+        "OpenProvider target DS publication",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_ds_publication",
+      dnssecWriteState: "indeterminate",
+      reconciliationRequired: true,
+    })
+
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("provider domain missing")
+    providerDomain.dnssecEnabled = true
+    providerDomain.dnssecKeys = [TARGET_DNSKEY]
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(1)
+  })
+
+  it("persists rollback when target DNSSEC remains unverified at the cutover deadline", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.setTargetDsVisible(false)
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_chain_verifying",
+      dnssecWriteState: "indeterminate",
+      verificationDeadlineAt: "2026-07-28T09:30:00.000Z",
+    })
+
+    fixture.setNow("2026-07-28T09:30:01.000Z")
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "rollback_target_ds_cache_wait",
+      dnssecWriteState: "confirmed",
+      rollbackRequestedAt: "2026-07-28T09:30:01.000Z",
+      failureReason: "target_dnssec_verification_deadline_exceeded",
+      reconciliationRequired: true,
+    })
+    const dnssecWrites = fixture.dependencies.updateOpenProviderDomainDnssec
+      .mock.calls.length
+    expect(dnssecWrites).toBe(2)
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(dnssecWrites)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      dnssecPhase: "rollback_target_ds_cache_wait",
+      rollbackRequestedAt: "2026-07-28T09:30:01.000Z",
     })
   })
 
