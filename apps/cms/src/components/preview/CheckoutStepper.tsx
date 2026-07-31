@@ -27,9 +27,8 @@ export function CheckoutStepper<T extends string = string>({
     : steps.length === 3
       ? "grid-cols-3"
       : "grid-cols-2"
-
   return (
-    <ol className={cn("grid min-w-0 rounded-full border bg-background p-1", columns)}>
+    <ol className={cn("grid min-w-0 gap-0.5 rounded-md border bg-muted p-0.5", columns)}>
       {steps.map((entry, index) => {
         const Icon = entry.icon
         const active = index === activeIndex
@@ -40,29 +39,24 @@ export function CheckoutStepper<T extends string = string>({
             key={entry.id}
             aria-label={entry.label}
             aria-current={active ? "step" : undefined}
-            className={cn(
-              "flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full px-1 py-1 text-sm font-medium text-muted-foreground sm:gap-2 sm:px-3",
-              (active || complete) && "bg-primary text-primary-foreground",
-              complete && index + 1 === activeIndex && "rounded-r-none",
-              active && index > 0 && "rounded-l-none",
-            )}
+            className={cn("flex min-h-8 min-w-0 items-center justify-center rounded-[calc(var(--radius)-2px)] px-1 text-[0.625rem] font-semibold text-muted-foreground sm:text-xs", active && "bg-card text-foreground shadow-xs", complete && "text-foreground")}
           >
             {reachable && !active && onStepSelect ? (
               <Button
                 type="button"
                 variant="ghost"
-                className="h-11 min-w-11 gap-1 px-1 text-inherit hover:bg-transparent hover:text-inherit sm:gap-2"
+                className="flex min-h-8 min-w-0 items-center justify-center gap-1.5 bg-transparent px-1 text-inherit"
                 onClick={() => onStepSelect(entry.id)}
               >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                <span className="whitespace-normal text-center text-xs leading-tight sm:text-sm">
+                <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border bg-background", complete && "border-primary bg-primary text-primary-foreground")}><Icon className="size-3" aria-hidden /></span>
+                <span className="truncate text-center">
                   {entry.label}
                 </span>
               </Button>
             ) : (
               <>
-                <Icon className="size-4 shrink-0" aria-hidden />
-                <span className="whitespace-normal text-center text-xs leading-tight sm:text-sm">
+                <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border bg-background", complete && "border-primary bg-primary text-primary-foreground")}><Icon className="size-3" aria-hidden /></span>
+                <span className="truncate text-center">
                   {entry.label}
                 </span>
               </>

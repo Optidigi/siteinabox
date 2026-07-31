@@ -48,6 +48,11 @@ try {
     "Subscription & review",
   )
   assert.equal(await page.locator("[aria-live]").count() > 0, true)
+  const phoneProgress = await page.locator("ol").first().evaluate((node) => {
+    const box = node.getBoundingClientRect()
+    return { height: box.height, left: box.left, right: box.right }
+  })
+  assert.ok(phoneProgress.height <= 56, "The phone progress indicator must stay compact.")
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
@@ -188,6 +193,7 @@ try {
   const compactGeometry = await compactPage.evaluate(() => {
     const shell = document.querySelector("[data-checkout-shell]")
     const card = document.querySelector("[data-checkout-main-card]")
+    const progress = shell?.querySelector("ol")
     const action = document.querySelector("[data-checkout-action-bar]")
     return {
       fits: document.documentElement.scrollWidth <= innerWidth,
@@ -195,6 +201,9 @@ try {
       shellRight: shell?.getBoundingClientRect().right,
       cardLeft: card?.getBoundingClientRect().left,
       cardRight: card?.getBoundingClientRect().right,
+      progressLeft: progress?.getBoundingClientRect().left,
+      progressRight: progress?.getBoundingClientRect().right,
+      progressHeight: progress?.getBoundingClientRect().height,
       actionPosition: action ? getComputedStyle(action).position : null,
       actionVisible: action
         ? action.getBoundingClientRect().top < innerHeight &&
@@ -209,13 +218,33 @@ try {
   assert.ok(compactGeometry.cardLeft >= compactGeometry.shellLeft)
   assert.ok(compactGeometry.shellRight != null && compactGeometry.cardRight != null)
   assert.ok(compactGeometry.cardRight <= compactGeometry.shellRight)
+  assert.equal(compactGeometry.progressLeft, compactGeometry.cardLeft)
+  assert.equal(compactGeometry.progressRight, compactGeometry.cardRight)
+  assert.ok(compactGeometry.progressHeight != null && compactGeometry.progressHeight <= 56)
   assert.ok(
     Math.abs(compactGeometry.cardLeft - (320 - compactGeometry.cardRight)) <= 1,
     "The checkout card must use balanced shell gutters at 320px.",
   )
+  await compactPage.locator("[data-checkout-shell]").evaluate((node) => {
+    node.scrollTop = node.scrollHeight
+  })
+  const nonOverlayGeometry = await compactPage.evaluate(() => {
+    const card = document.querySelector("[data-checkout-main-card]")
+    const action = document.querySelector("[data-checkout-action-bar]")
+    return {
+      cardBottom: card?.getBoundingClientRect().bottom,
+      actionTop: action?.getBoundingClientRect().top,
+    }
+  })
+  assert.ok(
+    nonOverlayGeometry.cardBottom != null &&
+      nonOverlayGeometry.actionTop != null &&
+      nonOverlayGeometry.cardBottom <= nonOverlayGeometry.actionTop + 1,
+    "The fixed phone action row must not cover checkout content at the end of the workspace.",
+  )
   await compactPage.close()
 
-  const tabletPage = await browser.newPage({ viewport: { width: 768, height: 720 } })
+  const tabletPage = await browser.newPage({ viewport: { width: 880, height: 720 } })
   tabletPage.setDefaultTimeout(5_000)
   await tabletPage.goto(origin, { waitUntil: "networkidle" })
   assert.equal(
@@ -224,6 +253,23 @@ try {
     ),
     "fixed",
     "The mobile action pattern must not disappear in the tablet breakpoint gap.",
+  )
+  assert.equal(
+    await tabletPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+    "Checkout overflows at the 880px responsive boundary.",
+  )
+  assert.equal(
+    await tabletPage.locator("[data-checkout-summary]").isVisible(),
+    true,
+    "The compact summary must occupy the second column once the two-column layout begins.",
+  )
+  assert.equal(
+    await tabletPage.locator("[data-checkout-summary]").evaluate(
+      (node) => getComputedStyle(node).position,
+    ),
+    "sticky",
+    "The 880px two-column summary must remain sticky.",
   )
   await tabletPage.close()
 
@@ -248,6 +294,29 @@ try {
   await desktopPage.getByRole("heading", { name: "Domain name" }).waitFor()
   await assertStickySummary("domain")
   await desktopPage.close()
+
+  const fulfilledPage = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  fulfilledPage.setDefaultTimeout(5_000)
+  await fulfilledPage.goto(`${origin}?state=fulfilled`, { waitUntil: "networkidle" })
+  await fulfilledPage.getByText("analytical-engines.nl", { exact: false }).first().waitFor()
+  assert.equal(
+    await fulfilledPage.locator("[data-checkout-action-bar]").count(),
+    0,
+    "Fulfilment must replace the editable checkout action state.",
+  )
+  assert.equal(await fulfilledPage.locator("ol > li").count(), 6)
+  assert.equal(await fulfilledPage.locator('[role="checkbox"]').count(), 0)
+  assert.equal(
+    await fulfilledPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+    "Fulfilment overflows a 390px phone viewport.",
+  )
+  assert.equal(
+    await fulfilledPage.locator("label button, a button, button a").count(),
+    0,
+    "Fulfilment must not introduce nested interactive controls.",
+  )
+  await fulfilledPage.close()
 
   const themePage = await browser.newPage({ viewport: { width: 320, height: 568 } })
   themePage.setDefaultTimeout(5_000)

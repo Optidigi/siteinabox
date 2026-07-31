@@ -95,6 +95,7 @@ const quote = (
 
 const searchParams = new URLSearchParams(window.location.search)
 const pending = searchParams.get("payment") === "pending"
+const fulfilled = searchParams.get("state") === "fulfilled"
 const existingScenario = searchParams.get("existing")
 const existingDomain = existingScenario ? "existing-example.nl" : null
 const cloudflareConnected = existingScenario === "cloudflare"
@@ -175,7 +176,21 @@ createRoot(document.getElementById("root")!).render(
           automaticNetAmountMinor: 0,
         },
       }}
-      paymentStatus={pending ? "pending_provider" : "not_started"}
+      paymentStatus={fulfilled ? "completed" : pending ? "pending_provider" : "not_started"}
+      paymentReturn={fulfilled}
+      provisioningStatus={fulfilled ? {
+        domain: "analytical-engines.nl",
+        stages: [
+          { code: "payment", status: "complete" },
+          { code: "registration", status: "complete" },
+          { code: "registrant_verification", status: "complete" },
+          { code: "dns", status: "complete" },
+          { code: "https", status: "pending" },
+          { code: "activation", status: "pending" },
+        ],
+        registrantVerificationDueAt: null,
+        updatedAt: "2026-07-30T12:00:00.000Z",
+      } : null}
       previewHref="/preview"
       prewarmHref="/prewarm"
       suggestionsHref="/suggestions"
