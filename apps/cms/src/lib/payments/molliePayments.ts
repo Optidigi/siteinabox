@@ -922,43 +922,68 @@ type RecurringAgreementAuthority = BillingAgreement & {
   providerMandateId: string
 }
 
+type CustomerAgreementAuthority = BillingAgreement & {
+  providerCustomerId: string
+}
+
+type BillingAgreementProviderWriteKind =
+  | "recurring_collection"
+  | "mandate_recovery"
+
 const hasRecurringAgreementAuthority = (
   agreement: BillingAgreement | undefined,
 ): agreement is RecurringAgreementAuthority =>
   Boolean(agreement?.providerCustomerId && agreement.providerMandateId)
 
-const claimRecurringProviderWrite = async (
+const hasCustomerAgreementAuthority = (
+  agreement: BillingAgreement | undefined,
+): agreement is CustomerAgreementAuthority =>
+  Boolean(agreement?.providerCustomerId)
+
+const claimBillingAgreementProviderWrite = async (
   payload: Payload,
   agreement: BillingAgreement,
   claimedAt: string,
-): Promise<RecurringAgreementAuthority | null> => {
+  kind: BillingAgreementProviderWriteKind,
+): Promise<BillingAgreement | null> => {
   let candidate = agreement
   for (let retry = 0; retry < 3; retry += 1) {
+    const recurringCollection = kind === "recurring_collection"
+    const allowedStates = recurringCollection
+      ? ["active", "past_due"]
+      : ["past_due", "suspended", "cancellation_scheduled"]
     if (
-      !["active", "past_due"].includes(candidate.state) ||
-      !candidate.renewalIntent ||
+      !allowedStates.includes(candidate.state) ||
       candidate.reconciliationRequired ||
       !candidate.providerCustomerId ||
-      !candidate.providerMandateId
+      (recurringCollection &&
+        (!candidate.renewalIntent || !candidate.providerMandateId))
     ) return null
     if (!candidate.updatedAt) {
       throw new Error("Billing agreement is missing its concurrency version.")
     }
+    const authorityPredicates: Where[] = recurringCollection
+      ? [
+          { state: { in: ["active", "past_due"] } },
+          { renewalIntent: { equals: true } },
+        ]
+      : [{ state: { in: ["past_due", "suspended", "cancellation_scheduled"] } }]
     const result = await payload.update({
       collection: "billing-agreements",
       where: {
         and: [
           { id: { equals: candidate.id } },
           { updatedAt: { equals: candidate.updatedAt } },
-          { state: { in: ["active", "past_due"] } },
-          { renewalIntent: { equals: true } },
+          ...authorityPredicates,
           { reconciliationRequired: { equals: false } },
         ],
       },
       data: {
         lastPaymentAttemptAt: claimedAt,
         reconciliationRequired: true,
-        failureReason: "A recurring Mollie provider write is in progress.",
+        failureReason: recurringCollection
+          ? "A recurring Mollie provider write is in progress."
+          : "A mandate-recovery Mollie provider write is in progress.",
       },
       depth: 0,
       overrideAccess: true,
@@ -967,7 +992,7 @@ const claimRecurringProviderWrite = async (
     const claimed = Array.isArray(result.docs)
       ? result.docs[0] as BillingAgreement | undefined
       : undefined
-    if (hasRecurringAgreementAuthority(claimed)) return claimed
+    if (claimed) return claimed
     candidate = await payload.findByID({
       collection: "billing-agreements",
       id: candidate.id,
@@ -976,6 +1001,36 @@ const claimRecurringProviderWrite = async (
     }) as BillingAgreement
   }
   return null
+}
+
+const claimRecurringProviderWrite = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  claimedAt: string,
+): Promise<RecurringAgreementAuthority | null> => {
+  const claimed = await claimBillingAgreementProviderWrite(
+    payload,
+    agreement,
+    claimedAt,
+    "recurring_collection",
+  )
+  if (!claimed || !hasRecurringAgreementAuthority(claimed)) return null
+  return claimed
+}
+
+const claimMandateRecoveryProviderWrite = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  claimedAt: string,
+): Promise<CustomerAgreementAuthority | null> => {
+  const claimed = await claimBillingAgreementProviderWrite(
+    payload,
+    agreement,
+    claimedAt,
+    "mandate_recovery",
+  )
+  if (!claimed || !hasCustomerAgreementAuthority(claimed)) return null
+  return claimed
 }
 
 const markProviderWriteIndeterminate = async (
@@ -1264,6 +1319,32 @@ export async function createApplicationRecurringMolliePayment(
   if (!sameRelationshipId(agreement.tenant, order.tenant)) {
     throw new Error("Recurring order and billing agreement belong to different tenants.")
   }
+  const purpose = input.purpose ?? "recurring"
+  const attemptNumber = input.attemptNumber ?? 1
+  if (!Number.isSafeInteger(attemptNumber) || attemptNumber < 1) {
+    throw new Error("Recurring Mollie attempt number must be a positive safe integer.")
+  }
+  const idempotencyKey =
+    `mollie:${purpose}:order:${order.id}:authority-v2:attempt-${attemptNumber}`
+  if (agreement.reconciliationRequired) {
+    const existingByKey = await findOneDoc(payload, "payment-attempts", {
+      idempotencyKey: { equals: idempotencyKey },
+    })
+    const existingByBusinessTuple = existingByKey ?? await findOneDoc(
+      payload,
+      "payment-attempts",
+      {
+        and: [
+          { order: { equals: order.id } },
+          { purpose: { equals: purpose } },
+          { attemptNumber: { equals: attemptNumber } },
+        ],
+      },
+    )
+    if (existingByBusinessTuple?.providerPaymentId) {
+      return { paymentAttempt: existingByBusinessTuple, reused: true }
+    }
+  }
   if (
     !["active", "past_due"].includes(agreement.state) ||
     !agreement.renewalIntent ||
@@ -1287,18 +1368,13 @@ export async function createApplicationRecurringMolliePayment(
       status: "invalid",
     }
   }
-  const purpose = input.purpose ?? "recurring"
-  const attemptNumber = input.attemptNumber ?? 1
-  if (!Number.isSafeInteger(attemptNumber) || attemptNumber < 1) {
-    throw new Error("Recurring Mollie attempt number must be a positive safe integer.")
-  }
   const now = new Date().toISOString()
   const attemptResult = await createOrLoadAttempt(payload, {
     order,
     billingAgreement: agreement,
     purpose,
     sequenceType: "recurring",
-    idempotencyKey: `mollie:${purpose}:order:${order.id}:authority-v2:attempt-${attemptNumber}`,
+    idempotencyKey,
     attemptNumber,
     now,
   })
@@ -1471,34 +1547,6 @@ export async function createApplicationRecurringMolliePayment(
       lastSyncedAt: now,
       stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now, payment.status),
     })
-    const releaseClaim = await payload.update({
-      collection: "billing-agreements",
-      where: {
-        and: [
-          { id: { equals: claimedAgreement.id } },
-          { updatedAt: { equals: claimedAgreement.updatedAt } },
-          { lastPaymentAttemptAt: { equals: attempt.createdAt } },
-          { reconciliationRequired: { equals: true } },
-        ],
-      },
-      data: {
-        reconciliationRequired: false,
-        failureReason: null,
-        lastSyncedAt: now,
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { billingAgreementLifecycleMutation: true },
-    })
-    if (!Array.isArray(releaseClaim.docs) || releaseClaim.docs.length !== 1) {
-      await updateAttempt(payload, attempt, {
-        reconciliationRequired: true,
-        failureCode: "agreement_provider_write_release_conflict",
-        failureMessage:
-          "The recurring provider write succeeded but its agreement claim requires reconciliation.",
-        lastSyncedAt: now,
-      })
-    }
     await payload.update({
       collection: "orders",
       id: order.id,
@@ -1554,8 +1602,7 @@ export async function createMandateRecoveryMolliePayment(
   if (
     !sameRelationshipId(agreement.tenant, input.tenantId) ||
     !["past_due", "suspended", "cancellation_scheduled"].includes(agreement.state) ||
-    !agreement.providerCustomerId ||
-    agreement.reconciliationRequired
+    !agreement.providerCustomerId
   ) {
     throw new Error("Billing recovery is not available for this agreement.")
   }
@@ -1578,6 +1625,17 @@ export async function createMandateRecoveryMolliePayment(
       Date.parse(right.createdAt ?? "") - Date.parse(left.createdAt ?? "")
     return createdDelta || right.attemptNumber - left.attemptNumber
   })
+  const agreementReconciliationBlocked = agreement.reconciliationRequired
+  if (agreementReconciliationBlocked) {
+    const existingRecoveryClaim = attempts.some((attempt) =>
+      attempt.idempotencyKey.startsWith("mollie:mandate-recovery:") &&
+      attempt.state === "pending_provider" &&
+      !attempt.providerPaymentId &&
+      attempt.reconciliationRequired)
+    if (existingRecoveryClaim) {
+      throw new Error("Billing recovery payment is already claimed or requires reconciliation.")
+    }
+  }
   const recoverable = attempts.find((attempt) =>
     (
       (
@@ -1589,6 +1647,9 @@ export async function createMandateRecoveryMolliePayment(
     !attempt.reconciliationRequired)
   const orderId = relationshipId(recoverable?.order)
   if (!recoverable || !orderId) {
+    if (agreementReconciliationBlocked) {
+      throw new Error("Billing recovery is not available for this agreement.")
+    }
     throw new Error("Billing recovery requires a reconciled failed or charged-back payment.")
   }
   const order = await payload.findByID({
@@ -1635,6 +1696,9 @@ export async function createMandateRecoveryMolliePayment(
       checkoutUrl: reusable.checkoutUrl,
       reused: true,
     }
+  }
+  if (agreementReconciliationBlocked) {
+    throw new Error("Billing recovery is not available for this agreement.")
   }
   const highestAttemptNumber = attempts
     .filter((attempt) => sameRelationshipId(attempt.order, order.id))
@@ -1705,29 +1769,18 @@ export async function createMandateRecoveryMolliePayment(
     attempt = claimedAttempt
   }
   requireCommerceProviderWritesAllowed("Mollie mandate-recovery payment creation")
-  if (!agreement.updatedAt) {
-    throw new Error("Billing agreement is missing its concurrency version.")
-  }
-  const agreementClaim = await payload.update({
+  agreement = await payload.findByID({
     collection: "billing-agreements",
-    where: {
-      and: [
-        { id: { equals: agreement.id } },
-        { updatedAt: { equals: agreement.updatedAt } },
-        { state: { equals: agreement.state } },
-      ],
-    },
-    data: {
-      lastPaymentAttemptAt: attempt.createdAt,
-    },
+    id: agreement.id,
     depth: 0,
     overrideAccess: true,
-    context: { billingAgreementLifecycleMutation: true },
-  })
-  const claimedAgreement = Array.isArray(agreementClaim.docs)
-    ? agreementClaim.docs[0] as BillingAgreement | undefined
-    : undefined
-  if (!claimedAgreement?.providerCustomerId) {
+  }) as BillingAgreement
+  const claimedAgreement = await claimMandateRecoveryProviderWrite(
+    payload,
+    agreement,
+    attempt.createdAt,
+  )
+  if (!claimedAgreement) {
     await updateAttempt(payload, attempt, {
       state: "cancelled",
       reconciliationRequired: false,
@@ -1739,10 +1792,7 @@ export async function createMandateRecoveryMolliePayment(
   }
   agreement = claimedAgreement
   try {
-    const providerCustomerId = agreement.providerCustomerId
-    if (!providerCustomerId) {
-      throw new Error("Billing recovery lost its Mollie customer authority.")
-    }
+    const providerCustomerId = claimedAgreement.providerCustomerId
     const payment = await createMolliePayment({
       amount: mollieAmount(attempt.grossAmountMinor, attempt.currency),
       customerId: providerCustomerId,
@@ -1786,6 +1836,30 @@ export async function createMandateRecoveryMolliePayment(
     return { paymentAttempt: attempt, checkoutUrl, reused: false }
   } catch (error) {
     await markProviderWriteIndeterminate(payload, attempt, error)
+    const classification = classifyMollieCreationError(error)
+    const knownRejected = classification.outcome === "deterministic_rejection"
+    if (knownRejected && claimedAgreement.updatedAt) {
+      await payload.update({
+        collection: "billing-agreements",
+        where: {
+          and: [
+            { id: { equals: claimedAgreement.id } },
+            { updatedAt: { equals: claimedAgreement.updatedAt } },
+            { lastPaymentAttemptAt: { equals: attempt.createdAt } },
+            { reconciliationRequired: { equals: true } },
+          ],
+        },
+        data: {
+          reconciliationRequired: false,
+          lastPaymentAttemptAt: null,
+          failureReason: "Mollie rejected the mandate-recovery provider write.",
+          lastSyncedAt: now,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+    }
     throw error
   }
 }
