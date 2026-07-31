@@ -50,6 +50,11 @@ export type MockUpdateArgs = {
 export type MutableMockUpdateArgs = Omit<MockUpdateArgs, "id"> & {
   id?: number | string
   where?: MockWhere
+  optimistic?: {
+    equals: number | string
+    field?: string
+    increment?: boolean
+  }
 }
 
 export type MockFindByIdArgs = MockFindArgs & { id: number | string }
@@ -161,6 +166,8 @@ export function createMutablePayloadStore(input: {
   const collections = input.collections
   let nextId = input.nextId ?? 1_000
   let transactionSnapshot: Record<string, MockDoc[]> | null = null
+  const createFailures: Array<(args: MockCreateArgs) => Error | undefined> = []
+  const updateFailures: Array<(args: MutableMockUpdateArgs) => Error | undefined> = []
 
   const find = vi.fn(async ({ collection, where, sort, limit }: MockFindArgs) => {
     let docs = (collections[collection] ?? []).filter((doc) =>
@@ -191,6 +198,8 @@ export function createMutablePayloadStore(input: {
   })
 
   const create = vi.fn(async (args: MockCreateArgs) => {
+    const injectedFailure = createFailures.shift()?.(args)
+    if (injectedFailure) throw injectedFailure
     await input.hooks?.beforeCreate?.(args, collections)
     const constraints = (input.unique ?? []).filter(
       (constraint) => constraint.collection === args.collection,
@@ -212,6 +221,8 @@ export function createMutablePayloadStore(input: {
   })
 
   const update = vi.fn(async (args: MutableMockUpdateArgs) => {
+    const injectedFailure = updateFailures.shift()?.(args)
+    if (injectedFailure) throw injectedFailure
     await input.hooks?.beforeUpdate?.(args, collections)
     if (args.where) {
       const docs = (collections[args.collection] ?? []).filter((doc) =>
@@ -226,6 +237,23 @@ export function createMutablePayloadStore(input: {
       (entry) => String(entry.id) === String(args.id),
     )
     if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
+    if (args.optimistic) {
+      const field = args.optimistic.field ?? "version"
+      if (String(doc[field]) !== String(args.optimistic.equals)) {
+        throw new Error(
+          `Optimistic update conflict for ${args.collection} ${args.id} at ${field}.`,
+        )
+      }
+      if (args.optimistic.increment !== false) {
+        const current = doc[field]
+        if (typeof current !== "number") {
+          throw new Error(
+            `Optimistic update field ${args.collection}.${field} is not numeric.`,
+          )
+        }
+        doc[field] = current + 1
+      }
+    }
     Object.assign(doc, args.data)
     return doc
   })
@@ -245,6 +273,30 @@ export function createMutablePayloadStore(input: {
     Object.assign(collections, transactionSnapshot)
     transactionSnapshot = null
   })
+  const transaction = async <Result>(
+    operation: (transactionID: string) => Promise<Result>,
+  ): Promise<Result> => {
+    const transactionID = await beginTransaction()
+    try {
+      const result = await operation(transactionID)
+      await commitTransaction()
+      return result
+    } catch (error) {
+      await rollbackTransaction()
+      throw error
+    }
+  }
+
+  const injectCreateFailureOnce = (
+    failure: Error | ((args: MockCreateArgs) => Error | undefined),
+  ) => {
+    createFailures.push(typeof failure === "function" ? failure : () => failure)
+  }
+  const injectUpdateFailureOnce = (
+    failure: Error | ((args: MutableMockUpdateArgs) => Error | undefined),
+  ) => {
+    updateFailures.push(typeof failure === "function" ? failure : () => failure)
+  }
 
   return {
     collections,
@@ -268,5 +320,8 @@ export function createMutablePayloadStore(input: {
     beginTransaction,
     commitTransaction,
     rollbackTransaction,
+    transaction,
+    injectCreateFailureOnce,
+    injectUpdateFailureOnce,
   }
 }
