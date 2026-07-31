@@ -15,7 +15,8 @@ import {
   type SiteBlockCatalogVariant,
 } from "./block-catalog"
 import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "./site"
-import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_SYSTEM_TEMPLATES, type ShadcnUiSystemTemplateId } from "./generated/shadcnui-blocks"
+import { SHADCNUI_SYSTEM_TEMPLATES, type ShadcnUiSystemTemplateId } from "./generated/shadcnui-blocks"
+import { validateProviderBlockCore } from "./provider-validation"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "./intake-legal"
 import type {
   AnalyticsBlockMetadata,
@@ -728,13 +729,6 @@ const refineBlockVariant = (
     })
     return
   }
-  if (designVariant && !isSupportedBlockVariant(block.blockType, designVariant)) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["designVariant"],
-      message: `Unsupported design variant "${designVariant}" for block type "${block.blockType}"`,
-    })
-  }
   refineProviderContentSlots(block, ctx)
 }
 
@@ -745,22 +739,18 @@ function refineProviderContentSlots(
   },
   ctx: z.RefinementCtx,
 ) {
-  const designVariant = typeof block.designVariant === "string" ? block.designVariant : ""
-  const definition = SHADCNUI_BLOCK_VARIANTS.find((variant) => variant.id === designVariant && variant.blockType === block.blockType)
-  if (!definition) return
-  const record = block as Record<string, unknown>
-  for (const [field, slot] of Object.entries(definition.slots)) {
-    const value = record[field]
-    const present = value != null && (typeof value !== "string" || value.trim().length > 0) && (!Array.isArray(value) || value.length > 0)
-    if (slot.status === "required" && !present) ctx.addIssue({ code: "custom", path: [field], message: `Provider variant "${designVariant}" requires slot "${field}"` })
-    if (slot.status === "inactive" && present) ctx.addIssue({ code: "custom", path: [field], message: `Provider variant "${designVariant}" does not expose slot "${field}"` })
-  }
-  if (block.blockType === "logoCloud" && Array.isArray(record.logos)) {
-    record.logos.forEach((logo, index) => {
-      if (!logo || typeof logo !== "object" || !(logo as Record<string, unknown>).image) {
-        ctx.addIssue({ code: "custom", path: ["logos", index, "image"], message: `Provider variant "${designVariant}" requires an image for every logo` })
-      }
-    })
+  const core = validateProviderBlockCore(block, { includeSystemBlockVariants: true })
+  for (const entry of core.issues) {
+    if (entry.code === "missing_provider_variant") continue
+    if (entry.code === "unresolved_provider_variant") {
+      ctx.addIssue({ code: "custom", path: entry.path, message: `Unsupported design variant "${entry.variantId}" for block type "${block.blockType}"` })
+    } else if (entry.code === "missing_required_slot") {
+      ctx.addIssue({ code: "custom", path: entry.path, message: `Provider variant "${entry.variantId}" requires slot "${entry.field}"` })
+    } else if (entry.code === "inactive_slot_value") {
+      ctx.addIssue({ code: "custom", path: entry.path, message: `Provider variant "${entry.variantId}" does not expose slot "${entry.field}"` })
+    } else {
+      ctx.addIssue({ code: "custom", path: entry.path, message: `Provider variant "${entry.variantId}" requires an image for every logo` })
+    }
   }
 }
 

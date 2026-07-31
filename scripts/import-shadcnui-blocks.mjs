@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import { runImport } from "./shadcnui-blocks/import.mjs"
+import { emitRuntimeCatalog, runImport } from "./shadcnui-blocks/import.mjs"
 import { runScaffold } from "./shadcnui-blocks/scaffold-typed.mjs"
 
 const scaffoldArg = process.argv.find((arg) => arg.startsWith("--scaffold="))
-if (scaffoldArg) {
+if (process.argv.includes("--runtime-catalog-only")) {
+  await emitRuntimeCatalog()
+} else if (scaffoldArg) {
   const upstreamName = scaffoldArg.slice("--scaffold=".length)
   const force = process.argv.includes("--force")
   const dryRun = process.argv.includes("--dry-run")

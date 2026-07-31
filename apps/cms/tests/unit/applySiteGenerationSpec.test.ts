@@ -620,6 +620,7 @@ describe("applySiteGenerationSpec", () => {
     const report = validateSiteGenerationSpecForCms(spec)
 
     expect(report.valid).toBe(true)
+    if (report.valid) expect(report.data.pages[0]!.blocks[0]!.source).toBe("ai")
   })
 
   it("requires canonical provider IDs in every generation scope", () => {

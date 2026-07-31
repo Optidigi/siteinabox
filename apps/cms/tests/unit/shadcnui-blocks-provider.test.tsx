@@ -24,10 +24,10 @@ describe("shadcnui-blocks canonical provider catalog", () => {
   it("records required, optional, inactive and repeated slots", () => {
     const hero = SHADCNUI_BLOCK_VARIANTS.find((variant) => variant.id === "shadcnui-blocks.hero-01")!
     const heroWithLogos = SHADCNUI_BLOCK_VARIANTS.find((variant) => variant.id === "shadcnui-blocks.hero-08")!
-    expect(hero.slots.headline.status).toBe("required")
-    expect(hero.slots.image.status).toBe("inactive")
-    expect(hero.slots.features.status).toBe("inactive")
-    expect(heroWithLogos.slots.logos.repeated).toBe(true)
+    expect(hero.activeSlots.headline.status).toBe("required")
+    expect(hero.forbiddenFields).toContain("image")
+    expect(hero.forbiddenFields).toContain("features")
+    expect(heroWithLogos.activeSlots.logos.repeated).toBe(true)
   })
   it("fails closed for missing and unknown variants", () => {
     const block = cast<Block>({ blockType: "hero", headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Hello" }] } })
@@ -48,7 +48,7 @@ describe("shadcnui-blocks canonical provider catalog", () => {
       expect(new Set(required)).toEqual(new Set(Object.keys(props)))
       const variant = SHADCNUI_BLOCK_VARIANTS.find((entry) => entry.id === asMockDoc(props.designVariant).const)!
       const exposed = Object.keys(props).filter((field) => !["blockType", "designVariant", "anchor"].includes(field))
-      expect(exposed.sort()).toEqual(Object.entries(variant.slots).filter(([, slot]) => slot.status !== "inactive").map(([field]) => field).sort())
+      expect(exposed.sort()).toEqual(Object.keys(variant.activeSlots).sort())
     }
   })
 })

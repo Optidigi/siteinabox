@@ -1,6 +1,6 @@
 import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
 
-export const SITE_GENERATION_PROMPT_VERSION = "site-generation-v1"
+export const SITE_GENERATION_PROMPT_VERSION = "site-generation-v2"
 
 export const SITE_GENERATION_SYSTEM_PROMPT = [
   "You generate Site in a Box CMS draft data.",

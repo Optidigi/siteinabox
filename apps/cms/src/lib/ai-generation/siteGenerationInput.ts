@@ -23,6 +23,9 @@ export type SiteGenerationModelInput = {
       kind: string
       status: string
       exposed: boolean
+      repeated: boolean
+      minItems?: number
+      maxItems?: number
     }>
   }>
   approvedChromeVariants: Array<{
@@ -50,13 +53,14 @@ export const buildSiteGenerationModelInput = (
       variantId: variant.id,
       providerVariantId: variant.id,
       slots: Object.fromEntries(
-        Object.entries(variant.slots)
+        Object.entries(variant.activeSlots)
           .map(([name, slot]) => [
             name,
             {
               kind: slot.kind,
               status: slot.status,
-              exposed: slot.status !== "inactive",
+              exposed: true,
+              repeated: slot.repeated,
               ...("minItems" in slot && slot.minItems != null ? { minItems: slot.minItems } : {}),
               ...("maxItems" in slot && slot.maxItems != null ? { maxItems: slot.maxItems } : {}),
             },

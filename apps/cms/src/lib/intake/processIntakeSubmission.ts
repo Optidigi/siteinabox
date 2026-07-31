@@ -3,6 +3,7 @@ import {
   NormalizedIntakeSchema,
   type PublicIntakeSubmission,
   type SiteGenerationSpec,
+  type ValidationReport,
 } from "@siteinabox/contracts/generation"
 import type { Payload, Where } from "payload"
 import type { Config, IntakeSubmission, SiteGenerationRun } from "@/payload-types"
@@ -249,9 +250,13 @@ const processStoredIntakeGeneration = async (
 
     run = await setRunStatus(payload, run, "validating")
     intake = await setIntakeStatus(payload, intake, "validating")
-    const validation = sourceValidation.valid
+    const validationResult = sourceValidation.valid
       ? validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve", allowSystemPages: true })
       : sourceValidation
+    const validation: ValidationReport = {
+      valid: validationResult.valid,
+      issues: validationResult.issues,
+    }
     if (!validation.valid) {
       const failure = { message: "Generated SiteGenerationSpec failed validation", validation }
       run = await setRunStatus(payload, run, "failed", { validation, errors: failure })

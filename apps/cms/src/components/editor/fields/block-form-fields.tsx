@@ -80,7 +80,12 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({
   const allSpecs = getBlockElementSpecs(blockType, manifest)
   const { content, advanced } = partitionBlockElementSpecs(
     allSpecs,
-    providerVariant?.slots as Record<string, { status: string }> | undefined,
+    providerVariant
+      ? {
+          ...Object.fromEntries(Object.entries(providerVariant.activeSlots).map(([field, slot]) => [field, { status: slot.status }])),
+          ...Object.fromEntries(providerVariant.forbiddenFields.map((field) => [field, { status: "inactive" }])),
+        }
+      : undefined,
   )
   const inspectorFonts = useCspStyleRule(
     "block-form-inspector-fonts",

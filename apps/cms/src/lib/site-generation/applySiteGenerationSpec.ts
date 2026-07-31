@@ -9,7 +9,6 @@ import type {
   SiteGenerationSpec,
   ThemeTokenSpec,
   ValidationIssue,
-  ValidationReport,
 } from "@siteinabox/contracts/generation"
 import {
   contractValidationReport,
@@ -94,6 +93,10 @@ export type SiteGenerationValidationOptions = {
   variantScope?: "tenant-aware" | "self-serve"
   allowSystemPages?: boolean
 }
+
+export type SiteGenerationValidationResult =
+  | { valid: false; issues: ValidationIssue[] }
+  | { valid: true; issues: ValidationIssue[]; data: SiteGenerationSpec }
 
 export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
   mediaMode?: "skip-generated-placeholders" | "upload-generated-media"
@@ -204,7 +207,7 @@ const chromeVariantScopeIssue = (
 export const validateSiteGenerationSpecForCms = (
   spec: CmsSiteGenerationSpec,
   options: SiteGenerationValidationOptions = {},
-): ValidationReport => {
+): SiteGenerationValidationResult => {
   const issues: ValidationIssue[] = []
   const validationScope = options.variantScope ?? "tenant-aware"
   const supportedBlockSlugs = SUPPORTED_BLOCK_SLUGS
@@ -434,10 +437,10 @@ export const validateSiteGenerationSpecForCms = (
     }
   })
 
-  return {
-    valid: !issues.some((entry) => entry.severity === "error"),
-    issues,
+  if (issues.some((entry) => entry.severity === "error") || !parsedContract.success) {
+    return { valid: false, issues }
   }
+  return { valid: true, issues, data: parsedContract.data }
 }
 
 const findOne = async <T>(
@@ -1085,15 +1088,14 @@ export async function applySiteGenerationSpec(
     return { ok: false, validation: sourceValidation }
   }
   const canonicalSpec = materializeTenantPrivacyPage(canonicalizeSiteGenerationSpecForCms(spec))
-  const validation = validateSiteGenerationSpecForCms(canonicalSpec, { ...options, allowSystemPages: true })
-  if (!validation.valid) {
-    return { ok: false, validation }
+  const transformedValidation = validateSiteGenerationSpecForCms(canonicalSpec, { ...options, allowSystemPages: true })
+  if (!transformedValidation.valid) {
+    return { ok: false, validation: transformedValidation }
   }
-  const parsedContractSpec = SiteGenerationSpecSchema.parse(canonicalSpec)
-  const parsedSpec = parsedContractSpec as unknown as SiteGenerationSpec
+  const { data: parsedSpec, ...validation } = transformedValidation
 
-  const idempotencyKey = siteGenerationSpecHash(parsedContractSpec)
-  const theme = themeToCmsTokens(parsedContractSpec.theme)
+  const idempotencyKey = siteGenerationSpecHash(parsedSpec)
+  const theme = themeToCmsTokens(parsedSpec.theme)
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
   const tenantId = tenant.doc.id as string | number

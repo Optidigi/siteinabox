@@ -653,12 +653,12 @@ const selfServeBlockJsonSchemas = SHADCNUI_BLOCK_VARIANTS.filter((variant) => se
     throw new Error(`Missing structured generation schema for ${variant.blockType}:${variant.id}.`)
   }
   const source = schema.properties as Record<string, unknown>
-  const activeFields = new Set(Object.entries(variant.slots).filter(([, slot]) => slot.status !== "inactive").map(([field]) => field))
+  const activeFields = new Set(Object.keys(variant.activeSlots))
   const missing = [...activeFields].filter((field) => !(field in source))
   if (missing.length) throw new Error(`Generation schema is missing active slots for ${variant.id}: ${missing.join(", ")}.`)
   const properties = Object.fromEntries(Object.entries(source).filter(([field]) => ["blockType", "designVariant", "anchor"].includes(field) || activeFields.has(field)).map(([field, value]) => {
     const property = JSON.parse(JSON.stringify(value)) as Record<string, unknown>
-    const slot = (variant.slots as Record<string, { status: string; repeated: boolean; minItems?: number; maxItems?: number }>)[field]
+    const slot = (variant.activeSlots as Record<string, { status: string; repeated: boolean; minItems?: number; maxItems?: number }>)[field]
     if (slot?.repeated && property.type === "array") {
       property.minItems = slot.minItems ?? (slot.status === "required" ? 1 : 0)
       if (typeof slot.maxItems === "number") property.maxItems = slot.maxItems

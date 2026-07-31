@@ -139,18 +139,17 @@ const providerRuntime: BlockSourceRuntimeRequirement = {
   docs: ["packages/site-renderer/src/providers/shadcnui-blocks/inventory.json"],
   notes: "Provider primitives are namespaced in @siteinabox/ui; no second components.json is used.",
 }
-type ProviderCatalogSource = { id: string; upstreamName: string; entryFile: string; sourceHash: string }
+type ProviderCatalogSource = { id: string; upstreamName: string }
 const provenanceFor = (variant: ProviderCatalogSource): BlockVariantProvenance => ({
   sourceName: "akash3444/shadcn-ui-blocks", url: "https://github.com/akash3444/shadcn-ui-blocks",
   licenseStatus: "MIT", licenseCompatibility: "compatible", approvalStatus: "approved", sourceAvailability: "free-public",
   upstreamBlockName: variant.upstreamName, upstreamId: variant.id, sourceAccessType: "public-github-source",
-  sourceAccess: `Pinned commit 46c2e50bb538c9bc7a8927979d38bae178ae4452 / registry-radix.json / ${variant.upstreamName}`,
+  sourceAccess: "Pinned provider inventory.",
   implementation: variant.upstreamName === "legal-content-01" ? "siab-owned" : "adapted-exact-style",
-  sourcePath: variant.upstreamName === "legal-content-01" ? "packages/site-renderer/src/providers/shadcnui-blocks/system-views.tsx" : `packages/site-renderer/src/providers/shadcnui-blocks/variants/${variant.upstreamName}/${variant.entryFile}`,
-  retrieval: "scripts/import-shadcnui-blocks.mjs verifies the pinned commit, records original SHA-256 hashes, and generates one runtime literal tree.",
+  retrieval: "Detailed retrieval and source hashes are recorded in the provider inventory.",
   verifiedAt: "2026-07-16", visualExactnessStatus: variant.upstreamName === "legal-content-01" ? "reviewed-adapted-exact-style" : "needs-browser-comparison",
   visualSourceNotes: variant.upstreamName === "legal-content-01" ? "Provider-token long-form system layout for generated legal content." : "Pinned literal source; true upstream browser comparison is required before exact parity can be claimed.",
-  runtime: providerRuntime, notes: `Aggregate source hash ${variant.sourceHash}.`,
+  runtime: providerRuntime, notes: "See the provider inventory for source evidence.",
 })
 const grouped = new Map<string, SiteBlockCatalogVariant[]>()
 for (const source of [...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_SYSTEM_BLOCK_VARIANTS]) {
@@ -177,7 +176,7 @@ export const SITE_GENERATION_BLOCK_CATALOG_BY_SLUG = SITE_BLOCK_CATALOG_BY_SLUG 
 export const SITE_BLOCK_MANIFEST_FROM_CATALOG = SITE_GENERATION_BLOCK_CATALOG.map((entry) => ({ slug: entry.slug, label: entry.label, fields: entry.cmsEditableFields }))
 
 const chromeField = (area: SiteChromeCatalogArea, source?: (typeof SHADCNUI_CHROME_VARIANTS)[number]): SiteBlockEditorField[] => {
-  const active = (name: string) => !source || (source.slots as Record<string, { status: string }>)[name]?.status !== "inactive"
+  const active = (name: string) => !source || name in source.activeSlots
   if (area === "header") return [
     active("logo") && image("chrome.header.logo"),
     active("links") && array("navHeader", [text("label"), text("href"), text("description"), text("icon")]),
