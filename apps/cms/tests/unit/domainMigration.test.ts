@@ -398,6 +398,7 @@ const workflowDependencies = (input?: {
       pub_key: string
     }>
     renewalDate: string
+    registryExpiryDate?: string | null
     autorenew: "on"
     verificationEmailStatus: string
     verificationEmailExpiresAt: string
@@ -2671,6 +2672,96 @@ describe("automatic existing-domain migration", () => {
       encryptedTransferCode: null,
       failureReason: "provider_transfer_outcome_unresolved",
     })
+  })
+
+  it("preserves recovery evidence across registrar ambiguity and resumes exact reads without a second transfer", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      sourceRefreshAuthorityExpiresAt: "2026-08-20T09:00:00.000Z",
+    })
+    const fixture = workflowDependencies()
+    fixture.dependencies.transferOpenProviderDomain.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError("OpenProvider domain transfer"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(stored).toMatchObject({
+      providerTransferState: "indeterminate",
+      encryptedTransferCode: expect.any(String),
+    })
+
+    fixture.dependencies.findOpenProviderDomain.mockRejectedValueOnce(
+      new OpenProviderAmbiguousDomainLookupError("example.nl"),
+    )
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("requires provider reconciliation"),
+    })
+    expect(stored).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      encryptedTransferCode: expect.any(String),
+      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      sourceZoneSnapshot: expect.any(Object),
+      targetZoneSnapshot: expect.any(Object),
+      rollbackEvidence: expect.any(Object),
+      reconciliationRequired: true,
+      failureReason: "openprovider_domain_lookup_ambiguous",
+    })
+    expect(revokeCloudflareSourceAuthorization).not.toHaveBeenCalled()
+
+    fixture.dependencies.findOpenProviderDomain.mockResolvedValue({
+      id: 9001,
+      domain: "example.nl",
+      status: "PENDING",
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: null,
+      nameServers: OLD_NAMESERVERS,
+      dnssecEnabled: false,
+      dnssecKeys: [],
+      renewalDate: "2027-07-28T00:00:00.000Z",
+      registryExpiryDate: null,
+      autorenew: "on",
+      verificationEmailStatus: "verified",
+      verificationEmailExpiresAt: "2026-08-10 12:30:00",
+      verificationEmailDescription: "verified",
+      raw: {},
+    })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("still processing"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
+    expect(stored).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      encryptedTransferCode: expect.any(String),
+      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      failureReason: null,
+    })
+    expect(store.collections["operational-alerts"]).toEqual([
+      expect.objectContaining({
+        dedupeKey: expect.stringContaining(
+          "openprovider_domain_lookup_ambiguous",
+        ),
+        status: "resolved",
+      }),
+    ])
   })
 
   it("rolls back an indeterminate cutover after its safety deadline", async () => {

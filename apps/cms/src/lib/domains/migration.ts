@@ -1775,6 +1775,41 @@ async function stopMigrationForProviderManualReview(
   }
 }
 
+async function pauseMigrationForRegistrarAmbiguity(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  now: string,
+): Promise<MigrationResult> {
+  migration = await updateMigration(payload, migration, {
+    state: "awaiting_provider",
+    reconciliationRequired: true,
+    failureReason: "openprovider_domain_lookup_ambiguous",
+  }, "openprovider_domain_lookup_ambiguous", now)
+  await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    entitlementStatus: "blocked",
+    customerStatus: "manual_review",
+    reconciliationRequired: true,
+    failureReason: "openprovider_domain_lookup_ambiguous",
+  }, "openprovider_domain_lookup_ambiguous", now)
+  await recordCommerceAdminException({
+    payload,
+    source: "domains",
+    code: "openprovider_domain_lookup_ambiguous",
+    message:
+      "Multiple exact Openprovider domains match a prepared or committed migration transfer.",
+    tenant: migration.tenant,
+    subjectId: migration.id,
+    severity: "critical",
+    now,
+  })
+  return waiting(
+    migration,
+    "Registrar domain authority is ambiguous and requires provider reconciliation.",
+  )
+}
+
 async function stopUnfulfillableMigrationBeforeRegistrarCommit(
   payload: Payload,
   migration: DomainMigration,
@@ -3368,6 +3403,14 @@ export async function prepareDomainMigration(
     )
   } catch (error) {
     if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
+    if (migration.providerTransferState !== "not_started") {
+      return pauseMigrationForRegistrarAmbiguity(
+        payload,
+        migration,
+        managedDomain,
+        deps.now(),
+      )
+    }
     return stopMigrationForProviderManualReview(
       payload,
       migration,
@@ -3376,6 +3419,32 @@ export async function prepareDomainMigration(
       deps.now(),
       "Multiple exact Openprovider domains match the migration authority.",
     )
+  }
+  if (
+    providerDomain &&
+    (
+      migration.failureReason === "openprovider_domain_lookup_ambiguous" ||
+      managedDomain.failureReason === "openprovider_domain_lookup_ambiguous"
+    )
+  ) {
+    await resolveCommerceAdminException({
+      payload,
+      source: "domains",
+      code: "openprovider_domain_lookup_ambiguous",
+      subjectId: migration.id,
+      now: deps.now(),
+    })
+    migration = await updateMigration(payload, migration, {
+      failureReason: null,
+      reconciliationRequired: true,
+    }, "openprovider_domain_lookup_ambiguity_resolved", deps.now())
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      state: "transfer_pending",
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+      reconciliationRequired: true,
+      failureReason: null,
+    }, "openprovider_domain_lookup_ambiguity_resolved", deps.now())
   }
   if (!providerDomain) {
     if (
