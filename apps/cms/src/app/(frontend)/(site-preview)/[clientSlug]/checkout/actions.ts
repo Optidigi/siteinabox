@@ -41,7 +41,7 @@ import {
   loadAcceptedCheckoutResume,
   sameAcceptedCheckoutAuthority,
 } from "@/lib/checkout/acceptedCheckoutResume"
-import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
+import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
 import {
   assessExistingDomainMigrationInput,
   automaticMigrationSourceEnabled,
@@ -480,7 +480,6 @@ async function checkExistingDomainMigration(
       ![
         "cloudflare_api_v1",
         "authorized_axfr_v1",
-        "validated_provider_export_v1",
       ].includes(sourceMethod) ||
       !automaticMigrationSourceEnabled(sourceMethod as MigrationSourceMechanism)
     ) {
@@ -1324,64 +1323,6 @@ export async function submitMigrationTransferCodeAction(
     }
   } catch (error) {
     return migrationCustomerActionFailure(error)
-  }
-}
-
-export async function suggestPreviewCheckoutDomainsAction(
-  clientSlug: string,
-  previousState: PreviewCheckoutSuggestionsState,
-  formData: FormData,
-): Promise<PreviewCheckoutSuggestionsState> {
-  await requirePreviewCheckoutContext(clientSlug)
-
-  const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
-  if (!domain) return { ok: false, suggestions: [], cursor: 0, done: true }
-  if (!commerceProviderReadsAllowed()) {
-    return { ok: false, domain, suggestions: [], cursor: 0, done: true }
-  }
-
-  try {
-    const locale = await getLocale()
-    const previousSuggestions = previousState.domain === domain ? previousState.suggestions ?? [] : []
-    if (previousSuggestions.length >= 5 || (previousState.domain === domain && previousState.done)) {
-      return { ok: true, domain, suggestions: previousSuggestions.slice(0, 5), cursor: previousState.cursor ?? 0, done: true }
-    }
-    const batch = await suggestAvailablePreviewDomainBatch(domain, catalogDomainAllowance(), {
-      cursor: previousState.domain === domain ? previousState.cursor ?? 0 : 0,
-      batchSize: 5,
-      existingDomains: previousSuggestions.map((suggestion) => suggestion.domain),
-    })
-    const nextSuggestions = [
-      ...previousSuggestions,
-      ...batch.suggestions.map((suggestion) => {
-        const suggestionExtraFee = suggestion.extraFeeAmount && suggestion.extraFeeCurrency
-          ? { amount: suggestion.extraFeeAmount, currency: suggestion.extraFeeCurrency }
-          : null
-        return {
-          ...suggestion,
-          extraFeeLabel: formatMoney(locale, suggestionExtraFee),
-        }
-      }),
-    ].slice(0, 5)
-    return {
-      ok: true,
-      domain,
-      suggestions: nextSuggestions,
-      cursor: batch.nextCursor,
-      done: batch.done || nextSuggestions.length >= 5,
-    }
-  } catch {
-    console.error("Preview checkout operation failed", {
-      operation: "domain_suggestions",
-      code: "unexpected_failure",
-    })
-    return {
-      ok: false,
-      domain,
-      suggestions: previousState.domain === domain ? previousState.suggestions ?? [] : [],
-      cursor: previousState.domain === domain ? previousState.cursor ?? 0 : 0,
-      done: true,
-    }
   }
 }
 

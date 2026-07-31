@@ -1294,7 +1294,6 @@
     "checkoutMigrationSourceHelp": "The source is captured twice and compared semantically. Public DNS results are never treated as a complete zone.",
     "checkoutMigrationSourceCloudflare": "My DNS is on Cloudflare — authorize read-only access for this domain through Cloudflare",
     "checkoutMigrationSourceAxfr": "My DNS provider permits an authorized AXFR",
-    "checkoutMigrationSourceExport": "I will upload a complete BIND zone export from my DNS provider",
     "checkoutMigrationCloudflareFailedTitle": "Cloudflare connection not completed",
     "checkoutMigrationCloudflareFailedDescription": "Try connecting again. Nothing has been ordered, paid, or transferred.",
     "checkoutMigrationCloudflareMismatchTitle": "This domain does not use Cloudflare DNS",

@@ -1294,7 +1294,6 @@
     "checkoutMigrationSourceHelp": "De bron wordt twee keer ingelezen en semantisch vergeleken. Publieke DNS-resultaten gelden nooit als volledige zone.",
     "checkoutMigrationSourceCloudflare": "Mijn DNS staat bij Cloudflare — machtig alleen-lezen toegang voor dit domein via Cloudflare",
     "checkoutMigrationSourceAxfr": "Mijn DNS-provider staat een geautoriseerde AXFR toe",
-    "checkoutMigrationSourceExport": "Ik upload een volledige BIND-zone-export van mijn DNS-provider",
     "checkoutMigrationCloudflareFailedTitle": "Cloudflare-koppeling niet voltooid",
     "checkoutMigrationCloudflareFailedDescription": "Probeer de koppeling opnieuw. Er is niets besteld, betaald of verhuisd.",
     "checkoutMigrationCloudflareMismatchTitle": "Dit domein gebruikt geen Cloudflare-DNS",

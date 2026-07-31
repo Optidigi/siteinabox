@@ -1111,71 +1111,11 @@ export function PreviewCheckout({
                       </Alert>
                     )
                   )}
-                  {migrationSourceMethod === "authorized_axfr_v1" && (
-                    <>
-                      <CheckoutTextField
-                        id="accepted-axfr-nameserver"
-                        name="axfrNameserver"
-                        label={t("checkoutMigrationAxfrNameserverLabel")}
-                        description={t("checkoutMigrationAxfrNameserverHelp")}
-                        value={undefined}
-                        autoComplete="off"
-                        required
-                      />
-                      <CheckoutTextField
-                        id="accepted-axfr-tsig-name"
-                        name="axfrTsigName"
-                        label={t("checkoutMigrationAxfrTsigNameLabel")}
-                        description={t("checkoutMigrationAxfrTsigHelp")}
-                        value={undefined}
-                        autoComplete="off"
-                      />
-                      <CheckoutTextField
-                        id="accepted-axfr-tsig-secret"
-                        name="axfrTsigSecret"
-                        type="password"
-                        label={t("checkoutMigrationAxfrTsigSecretLabel")}
-                        value={undefined}
-                        autoComplete="off"
-                      />
-                    </>
-                  )}
-                  {migrationSourceMethod === "validated_provider_export_v1" && (
-                    <>
-                      <CheckoutTextField
-                        id="accepted-source-provider"
-                        name="sourceProviderName"
-                        label={t("checkoutMigrationSourceProviderLabel")}
-                        description={t("checkoutMigrationSourceProviderHelp")}
-                        value={undefined}
-                        required
-                      />
-                      <Label htmlFor="accepted-migration-zone-export">
-                        {t("checkoutMigrationZoneExportLabel")}
-                      </Label>
-                      <Input
-                        id="accepted-migration-zone-export"
-                        name="zoneExport"
-                        type="file"
-                        accept="text/plain,.zone,.bind,.txt"
-                        required
-                      />
-                    </>
-                  )}
-                  {!migrationSourceMethod && (
-                    <>
-                      <Label htmlFor="accepted-migration-zone-export">
-                        {t("checkoutMigrationLegacyZoneExportLabel")}
-                      </Label>
-                      <Input
-                        id="accepted-migration-zone-export"
-                        name="zoneExport"
-                        type="file"
-                        accept="application/json,.json"
-                        required
-                      />
-                    </>
-                  )}
+                  <MigrationSourceEvidenceFields
+                    mechanism={migrationSourceMethod || null}
+                    idPrefix="accepted"
+                    legacyWhenMissing
+                  />
                   <Label htmlFor="accepted-migration-transfer-code">
                     {t("checkoutMigrationTransferCodeLabel")}
                   </Label>
@@ -1335,74 +1275,10 @@ export function PreviewCheckout({
                                 </Alert>
                               )
                             )}
-                          {migrationStatus.sourceMechanism ===
-                            "authorized_axfr_v1" && (
-                              <>
-                                <CheckoutTextField
-                                  id="migration-replacement-axfr-nameserver"
-                                  name="axfrNameserver"
-                                  label={t("checkoutMigrationAxfrNameserverLabel")}
-                                  description={t("checkoutMigrationAxfrNameserverHelp")}
-                                  value={undefined}
-                                  autoComplete="off"
-                                  required
-                                />
-                                <CheckoutTextField
-                                  id="migration-replacement-axfr-tsig-name"
-                                  name="axfrTsigName"
-                                  label={t("checkoutMigrationAxfrTsigNameLabel")}
-                                  description={t("checkoutMigrationAxfrTsigHelp")}
-                                  value={undefined}
-                                  autoComplete="off"
-                                />
-                                <CheckoutTextField
-                                  id="migration-replacement-axfr-tsig-secret"
-                                  name="axfrTsigSecret"
-                                  type="password"
-                                  label={t("checkoutMigrationAxfrTsigSecretLabel")}
-                                  value={undefined}
-                                  autoComplete="off"
-                                />
-                              </>
-                            )}
-                          {migrationStatus.sourceMechanism ===
-                            "validated_provider_export_v1" && (
-                              <>
-                                <CheckoutTextField
-                                  id="migration-replacement-source-provider"
-                                  name="sourceProviderName"
-                                  label={t("checkoutMigrationSourceProviderLabel")}
-                                  description={t("checkoutMigrationSourceProviderHelp")}
-                                  value={undefined}
-                                  required
-                                />
-                                <Label htmlFor="migration-replacement-zone-export">
-                                  {t("checkoutMigrationZoneExportLabel")}
-                                </Label>
-                                <Input
-                                  id="migration-replacement-zone-export"
-                                  name="zoneExport"
-                                  type="file"
-                                  accept="text/plain,.zone,.bind,.txt"
-                                  required
-                                />
-                              </>
-                            )}
-                          {migrationStatus.sourceMechanism ===
-                            "customer_authorized_provider_export_v1" && (
-                              <>
-                                <Label htmlFor="migration-replacement-zone-export">
-                                  {t("checkoutMigrationLegacyZoneExportLabel")}
-                                </Label>
-                                <Input
-                                  id="migration-replacement-zone-export"
-                                  name="zoneExport"
-                                  type="file"
-                                  accept="application/json,.json"
-                                  required
-                                />
-                              </>
-                            )}
+                          <MigrationSourceEvidenceFields
+                            mechanism={migrationStatus.sourceMechanism}
+                            idPrefix="migration-replacement"
+                          />
                         </>
                       )}
                     {migrationStatus.actions.some((action) =>
@@ -1656,7 +1532,6 @@ export function PreviewCheckout({
                           {([
                             ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
                             ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
-                            ["validated_provider_export_v1", "checkoutMigrationSourceExport"],
                           ] as const)
                             .filter(([value]) =>
                               availableMigrationSourceMethods.includes(value))
@@ -3009,6 +2884,93 @@ function AcceptanceCheckbox({
       </span>
     </label>
   )
+}
+
+function MigrationSourceEvidenceFields({
+  mechanism,
+  idPrefix,
+  legacyWhenMissing = false,
+}: {
+  mechanism: MigrationSourceMechanism | null | undefined
+  idPrefix: string
+  legacyWhenMissing?: boolean
+}) {
+  const t = useTranslations("preview")
+  if (mechanism === "authorized_axfr_v1") {
+    return (
+      <>
+        <CheckoutTextField
+          id={`${idPrefix}-axfr-nameserver`}
+          name="axfrNameserver"
+          label={t("checkoutMigrationAxfrNameserverLabel")}
+          description={t("checkoutMigrationAxfrNameserverHelp")}
+          value={undefined}
+          autoComplete="off"
+          required
+        />
+        <CheckoutTextField
+          id={`${idPrefix}-axfr-tsig-name`}
+          name="axfrTsigName"
+          label={t("checkoutMigrationAxfrTsigNameLabel")}
+          description={t("checkoutMigrationAxfrTsigHelp")}
+          value={undefined}
+          autoComplete="off"
+        />
+        <CheckoutTextField
+          id={`${idPrefix}-axfr-tsig-secret`}
+          name="axfrTsigSecret"
+          type="password"
+          label={t("checkoutMigrationAxfrTsigSecretLabel")}
+          value={undefined}
+          autoComplete="off"
+        />
+      </>
+    )
+  }
+  if (mechanism === "validated_provider_export_v1") {
+    return (
+      <>
+        <CheckoutTextField
+          id={`${idPrefix}-source-provider`}
+          name="sourceProviderName"
+          label={t("checkoutMigrationSourceProviderLabel")}
+          description={t("checkoutMigrationSourceProviderHelp")}
+          value={undefined}
+          required
+        />
+        <Label htmlFor={`${idPrefix}-zone-export`}>
+          {t("checkoutMigrationZoneExportLabel")}
+        </Label>
+        <Input
+          id={`${idPrefix}-zone-export`}
+          name="zoneExport"
+          type="file"
+          accept="text/plain,.zone,.bind,.txt"
+          required
+        />
+      </>
+    )
+  }
+  if (
+    mechanism === "customer_authorized_provider_export_v1" ||
+    (!mechanism && legacyWhenMissing)
+  ) {
+    return (
+      <>
+        <Label htmlFor={`${idPrefix}-zone-export`}>
+          {t("checkoutMigrationLegacyZoneExportLabel")}
+        </Label>
+        <Input
+          id={`${idPrefix}-zone-export`}
+          name="zoneExport"
+          type="file"
+          accept="application/json,.json"
+          required
+        />
+      </>
+    )
+  }
+  return null
 }
 
 function ExistingDomainMigrationInfo({

@@ -367,7 +367,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       enabledMigrationSourceMethods: [
         "cloudflare_api_v1" as const,
         "authorized_axfr_v1" as const,
-        "validated_provider_export_v1" as const,
       ],
       catalog: {
         version: "2026-07-26.1",
@@ -441,15 +440,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )
     await screen.findByText("checkoutMigrationSourceLegend")
     expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
-    fireEvent.click(screen.getByRole("radio", {
+    expect(screen.queryByRole("radio", {
       name: "checkoutMigrationSourceExport",
-    }))
-    expect((screen.getByLabelText(
-      "checkoutMigrationZoneExportLabel",
-    ) as HTMLInputElement).type).toBe("file")
-    expect((screen.getByLabelText(
-      "checkoutMigrationTransferCodeLabel",
-    ) as HTMLInputElement).type).toBe("password")
+    })).toBeNull()
     expect(screen.queryByRole("radio", {
       name: "checkoutMigrationAutomaticChoice",
     })).toBeNull()
@@ -462,7 +455,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
     )
     await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(3))
-    expect(screen.getByLabelText("checkoutMigrationZoneExportLabel")).toBeTruthy()
+    expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
     expect(screen.getByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
     expect(
       container.querySelector<HTMLInputElement>(

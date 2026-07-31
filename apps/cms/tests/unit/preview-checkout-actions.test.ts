@@ -34,8 +34,6 @@ const mocks = vi.hoisted(() => ({
   createOrderAndAcceptanceEvidence: vi.fn(),
   satisfyRequirementsFromTransaction: vi.fn(),
   createMollieCheckoutForGenerationRun: vi.fn(),
-  createSupplementalMigrationMollieCheckout: vi.fn(),
-  requestMigrationOperatorWork: vi.fn(),
   persistMigrationCheckoutSecret: vi.fn(),
   attachMigrationCheckoutSecret: vi.fn(),
   openAttachedMigrationCheckoutSecret: vi.fn(),
@@ -203,12 +201,6 @@ vi.mock("@/lib/domains/cloudflareSourceOAuth", async (importOriginal) => {
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createMollieCheckoutForGenerationRun: mocks.createMollieCheckoutForGenerationRun,
-  createSupplementalMigrationMollieCheckout:
-    mocks.createSupplementalMigrationMollieCheckout,
-}))
-
-vi.mock("@/lib/domains/assistedMigration", () => ({
-  requestMigrationOperatorWork: mocks.requestMigrationOperatorWork,
 }))
 
 vi.mock("@/lib/checkout/checkoutProfile", async (importOriginal) => {
@@ -484,9 +476,6 @@ describe("preview checkout domain suggestion action", () => {
     })
     mocks.createMollieCheckoutForGenerationRun.mockResolvedValue({
       checkoutUrl: "https://payments.example.test/checkout",
-    })
-    mocks.createSupplementalMigrationMollieCheckout.mockResolvedValue({
-      checkoutUrl: "https://payments.example.test/supplemental",
     })
     mocks.persistMigrationCheckoutSecret.mockResolvedValue({
       id: 99,
@@ -1163,7 +1152,6 @@ describe("preview checkout domain suggestion action", () => {
       checkPreviewCheckoutDomainAction,
       savePreviewCheckoutProfileAction,
       startPreviewCheckoutPaymentAction,
-      suggestPreviewCheckoutDomainsAction,
     } = await import(
       "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
     )
@@ -1177,18 +1165,6 @@ describe("preview checkout domain suggestion action", () => {
     )).resolves.toMatchObject({
       ok: false,
       status: "service_error",
-    })
-
-    const suggestions = new FormData()
-    suggestions.set("domain", "ami-care.nl")
-    await expect(suggestPreviewCheckoutDomainsAction(
-      "ami-care",
-      { ok: false },
-      suggestions,
-    )).resolves.toMatchObject({
-      ok: false,
-      suggestions: [],
-      done: true,
     })
 
     const profileForm = validProfileForm()
@@ -1840,54 +1816,6 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
-  it("loads alternatives through the authenticated preview grant without mutating checkout state", async () => {
-    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-    const result = await suggestPreviewCheckoutDomainsAction("ami-care", { ok: false }, formData)
-
-    expect(result).toMatchObject({
-      ok: true,
-      domain: "ami-care.nl",
-      suggestions: [{
-        domain: "amicare-web.nl",
-        included: false,
-        extraFeeAmount: "20.00",
-        extraFeeCurrency: "EUR",
-        extraFeeLabel: expect.stringContaining("20"),
-      }],
-      cursor: 5,
-      done: false,
-    })
-    expect(mocks.loadPreviewGrantContext).toHaveBeenCalledWith({
-      clientSlug: "ami-care",
-      email: "Customer@Example.com",
-    })
-    expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomainBatch).toHaveBeenCalledWith(
-      "ami-care.nl",
-      { amount: "10.00", currency: "EUR" },
-      { cursor: 0, batchSize: 5, existingDomains: [] },
-    )
-    const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
-    expect(context.payload.update).not.toHaveBeenCalled()
-  })
-
-  it("requires preview login before querying alternatives", async () => {
-    mocks.getSession.mockResolvedValue(null)
-    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-
-    await expect(suggestPreviewCheckoutDomainsAction("ami-care", { ok: false }, formData))
-      .rejects.toThrow("Preview login required")
-    expect(mocks.loadPreviewGrantContext).not.toHaveBeenCalled()
-    expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
-  })
-
   it("binds transfer-code correction to the authenticated run, tenant, and customer", async () => {
     const context = await mocks.loadPreviewGrantContext()
     context.payload.findByID = vi.fn()
@@ -2460,43 +2388,6 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
     expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
     expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
-  })
-
-  it("marks suggestion provider failures terminal for the current typed domain", async () => {
-    mocks.suggestAvailablePreviewDomainBatch.mockRejectedValue(new Error("provider unavailable"))
-    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-    const result = await suggestPreviewCheckoutDomainsAction(
-      "ami-care",
-      {
-        ok: true,
-        domain: "ami-care.nl",
-        cursor: 5,
-        done: false,
-        suggestions: [{
-          domain: "amicare-web.nl",
-          included: true,
-          extraFeeAmount: null,
-          extraFeeCurrency: null,
-        }],
-      },
-      formData,
-    )
-
-    expect(result).toMatchObject({
-      ok: false,
-      domain: "ami-care.nl",
-      cursor: 5,
-      done: true,
-      suggestions: [{ domain: "amicare-web.nl" }],
-    })
-    expect(mocks.suggestAvailablePreviewDomainBatch).toHaveBeenCalledWith(
-      "ami-care.nl",
-      { amount: "10.00", currency: "EUR" },
-      { cursor: 5, batchSize: 5, existingDomains: ["amicare-web.nl"] },
-    )
   })
 
   it("derives period-end cancellation only from authenticated checkout authority", async () => {
