@@ -3,6 +3,8 @@ import {
   buildCloudflareEdgeDnsRecordRequests,
   buildCloudflareDnsRecordRequests,
   assertCloudflareEdgeDnsRecordsReconciliable,
+  classifyCloudflareZoneLookup,
+  CloudflareAmbiguousZoneLookupError,
   CloudflareDnsRecordConflictError,
   CloudflareIndeterminateWriteError,
   createCloudflareEmailSendingSubdomain,
@@ -41,6 +43,27 @@ const env = {
 } as unknown as NodeJS.ProcessEnv
 
 describe("Cloudflare domain adapter", () => {
+  it("classifies exact zone authority as absent, exact, or ambiguous", () => {
+    const zone = {
+      id: "zone-123",
+      name: "example.nl",
+      status: "active" as const,
+      nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      raw: {},
+    }
+    expect(classifyCloudflareZoneLookup("example.nl", [])).toEqual({
+      outcome: "absent",
+    })
+    expect(classifyCloudflareZoneLookup("example.nl", [zone])).toEqual({
+      outcome: "exact",
+      zone,
+    })
+    expect(classifyCloudflareZoneLookup("example.nl", [
+      zone,
+      { ...zone, id: "zone-456" },
+    ])).toEqual({ outcome: "ambiguous" })
+  })
+
   it("reads and enables zone DNSSEC without inventing a separate permission", async () => {
     const fetchMock = vi.fn(async (
       _input: string | URL | Request,
@@ -169,6 +192,32 @@ describe("Cloudflare domain adapter", () => {
       "https://cloudflare.test/client/v4/zones?account.id=account-123&name=example.nl&match=all&per_page=5",
       expect.objectContaining({ method: "GET" }),
     )
+  })
+
+  it("fails closed without creating a zone when exact lookup is ambiguous", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: true,
+      result: [
+        {
+          id: "zone-123",
+          name: "example.nl",
+          status: "active",
+          name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+        },
+        {
+          id: "zone-456",
+          name: "example.nl",
+          status: "active",
+          name_servers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+        },
+      ],
+    }))
+
+    await expect(createOrReuseCloudflareZone("example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toBeInstanceOf(CloudflareAmbiguousZoneLookupError)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it("classifies a non-JSON gateway failure after a zone write as indeterminate", async () => {

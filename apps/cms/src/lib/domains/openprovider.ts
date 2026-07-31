@@ -127,6 +127,16 @@ export type OpenProviderCustomerRecord = {
   raw: unknown
 }
 
+export type OpenProviderDomainLookup =
+  | { outcome: "absent" }
+  | { outcome: "exact"; domain: OpenProviderDomainRecord }
+  | { outcome: "ambiguous" }
+
+export type OpenProviderCustomerReferenceLookup =
+  | { outcome: "absent" }
+  | { outcome: "exact"; customer: OpenProviderCustomerRecord }
+  | { outcome: "ambiguous" }
+
 export type OpenProviderResellerBalance = {
   availableAmount: number
   reservedAmount: number
@@ -139,6 +149,20 @@ type OpenProviderOptions = {
   env?: NodeJS.ProcessEnv
   fetchImpl?: FetchLike
   token?: string
+}
+
+export class OpenProviderAmbiguousDomainLookupError extends Error {
+  constructor(readonly domain: string) {
+    super(`OpenProvider domain lookup for ${domain} returned multiple exact matches.`)
+    this.name = "OpenProviderAmbiguousDomainLookupError"
+  }
+}
+
+export class OpenProviderAmbiguousCustomerReferenceLookupError extends Error {
+  constructor(readonly reference: string) {
+    super("OpenProvider customer lookup returned multiple exact reference matches.")
+    this.name = "OpenProviderAmbiguousCustomerReferenceLookupError"
+  }
 }
 
 type OpenProviderAvailabilityOptions = OpenProviderOptions & {
@@ -946,6 +970,29 @@ const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord
   }
 }
 
+export function classifyOpenProviderDomainLookup(
+  domainInput: string,
+  records: readonly OpenProviderDomainRecord[],
+): OpenProviderDomainLookup {
+  const domain = splitDomain(domainInput).domain
+  const exact = records.filter((record) => record.domain === domain)
+  if (exact.length === 0) return { outcome: "absent" }
+  if (exact.length === 1) return { outcome: "exact", domain: exact[0]! }
+  return { outcome: "ambiguous" }
+}
+
+export function classifyOpenProviderCustomerReferenceLookup(
+  reference: string,
+  records: readonly OpenProviderCustomerRecord[],
+): OpenProviderCustomerReferenceLookup {
+  const normalizedReference = reference.trim()
+  const exact = records.filter((record) =>
+    record.comments === normalizedReference)
+  if (exact.length === 0) return { outcome: "absent" }
+  if (exact.length === 1) return { outcome: "exact", customer: exact[0]! }
+  return { outcome: "ambiguous" }
+}
+
 const providerPriceMinor = (value: unknown): number | null => {
   const normalized = typeof value === "number"
     ? value.toFixed(2)
@@ -1075,9 +1122,16 @@ export async function findOpenProviderDomain(
   if (!response.ok) throw new OpenProviderApiError("OpenProvider domain lookup", response.status)
   const data = dataObject(await json(response))
   const results = Array.isArray(data.results) ? data.results : []
-  return results
+  const lookup = classifyOpenProviderDomainLookup(
+    domain.domain,
+    results
     .map(parseOpenProviderDomainRecord)
-    .find((entry): entry is OpenProviderDomainRecord => entry?.domain === domain.domain) ?? null
+    .filter((entry): entry is OpenProviderDomainRecord => entry != null),
+  )
+  if (lookup.outcome === "ambiguous") {
+    throw new OpenProviderAmbiguousDomainLookupError(domain.domain)
+  }
+  return lookup.outcome === "exact" ? lookup.domain : null
 }
 
 export async function findOpenProviderCustomerByReference(
@@ -1096,15 +1150,22 @@ export async function findOpenProviderCustomerByReference(
   if (!response.ok) throw new OpenProviderApiError("OpenProvider customer lookup", response.status)
   const data = dataObject(await json(response))
   const results = Array.isArray(data.results) ? data.results : []
-  for (const result of results) {
+  const customers = results.flatMap((result): OpenProviderCustomerRecord[] => {
     const source = readObject(result)
     const handle = typeof source.handle === "string" ? source.handle : null
     const comments = typeof source.comments === "string" ? source.comments : null
-    if (handle && comments === normalizedReference) {
-      return { handle, comments, raw: result }
-    }
+    return handle ? [{ handle, comments, raw: result }] : []
+  })
+  const lookup = classifyOpenProviderCustomerReferenceLookup(
+    normalizedReference,
+    customers,
+  )
+  if (lookup.outcome === "ambiguous") {
+    throw new OpenProviderAmbiguousCustomerReferenceLookupError(
+      normalizedReference,
+    )
   }
-  return null
+  return lookup.outcome === "exact" ? lookup.customer : null
 }
 
 export async function getOpenProviderResellerBalance(
