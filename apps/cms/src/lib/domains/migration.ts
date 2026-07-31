@@ -496,6 +496,22 @@ const migrationHistoryEventAt = (
   return null
 }
 
+const sourceAuthorityRevocationIsPending = (
+  migration: DomainMigration,
+): boolean => {
+  const history = Array.isArray(migration.stateHistory)
+    ? migration.stateHistory
+    : []
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index]
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue
+    const reason = (entry as Record<string, unknown>).reason
+    if (reason === "source_authority_revocation_confirmed") return false
+    if (reason === "source_authority_revocation_pending") return true
+  }
+  return false
+}
+
 async function updateMigration(
   payload: Payload,
   migration: DomainMigration,
@@ -518,31 +534,50 @@ async function updateMigration(
   }) as Promise<DomainMigration>
 }
 
-const clearedMigrationCredentials = (now: string) => ({
+const clearedMigrationCredentials = (
+  now: string,
+  sourceAuthorityRevoked = true,
+) => ({
   encryptedTransferCode: null,
   transferCodeDeletedAt: now,
-  encryptedSourceRefreshAuthority: null,
-  sourceRefreshAuthorityDeletedAt: now,
+  ...(sourceAuthorityRevoked
+    ? {
+        encryptedSourceRefreshAuthority: null,
+        sourceRefreshAuthorityDeletedAt: now,
+      }
+    : {}),
 })
 
 const revokeMigrationSourceAuthority = async (
   payload: Payload,
   migration: DomainMigration,
   now: string,
-): Promise<void> => {
-  if (!migration.encryptedSourceRefreshAuthority) return
+): Promise<{
+  migration: DomainMigration
+  confirmed: boolean
+}> => {
+  if (!migration.encryptedSourceRefreshAuthority) {
+    return { migration, confirmed: true }
+  }
   const authority = openAutomaticSourceRefreshAuthority(
     migration.encryptedSourceRefreshAuthority,
     migration.idempotencyKey,
     migration.domainNameAscii,
   )
   if (authority.credential.kind === "cloudflare_oauth") {
-    await revokeCloudflareSourceAuthorization(
+    const confirmed = await revokeCloudflareSourceAuthorization(
       payload,
       authority.credential,
       { now: new Date(now) },
     )
+    if (!confirmed) {
+      const pendingMigration = await updateMigration(payload, migration, {
+        reconciliationRequired: true,
+      }, "source_authority_revocation_pending", now)
+      return { migration: pendingMigration, confirmed: false }
+    }
   }
+  return { migration, confirmed: true }
 }
 
 async function updateManagedDomain(
@@ -1491,7 +1526,19 @@ const sourceRefreshReauthorization = async (
   now: string,
   reason: string,
 ): Promise<DomainMigration> => {
-  await revokeMigrationSourceAuthority(payload, migration, now)
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    now,
+  )
+  migration = revocation.migration
+  if (!revocation.confirmed) {
+    return updateMigration(payload, migration, {
+      state: "awaiting_provider",
+      reconciliationRequired: true,
+      failureReason: "source_authority_revocation_pending",
+    }, "source_authority_revocation_pending", now)
+  }
   const actions = withAction(
     actionStates(migration.customerActions, now),
     "authorize_provider",
@@ -1744,10 +1791,15 @@ async function stopMigrationForProviderManualReview(
   now: string,
   message: string,
 ): Promise<MigrationResult> {
-  await revokeMigrationSourceAuthority(payload, migration, now)
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    now,
+  )
+  migration = revocation.migration
   migration = await updateMigration(payload, migration, {
     state: "failed",
-    ...clearedMigrationCredentials(now),
+    ...clearedMigrationCredentials(now, revocation.confirmed),
     reconciliationRequired: true,
     failureReason: code,
   }, code, now)
@@ -1818,11 +1870,16 @@ async function stopUnfulfillableMigrationBeforeRegistrarCommit(
   code: string,
   now: string,
 ): Promise<MigrationResult> {
-  await revokeMigrationSourceAuthority(payload, migration, now)
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    now,
+  )
+  migration = revocation.migration
   migration = await updateMigration(payload, migration, {
     state: "failed",
-    ...clearedMigrationCredentials(now),
-    reconciliationRequired: false,
+    ...clearedMigrationCredentials(now, revocation.confirmed),
+    reconciliationRequired: !revocation.confirmed,
     failureReason: code,
   }, code, now)
   await updateManagedDomain(payload, managedDomain, {
@@ -1886,11 +1943,16 @@ async function stopMigrationForRevokedPaymentBeforeRegistrarCommit(
   order: Order,
   now: string,
 ): Promise<MigrationResult> {
-  await revokeMigrationSourceAuthority(payload, migration, now)
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    now,
+  )
+  migration = revocation.migration
   migration = await updateMigration(payload, migration, {
     state: "failed",
-    ...clearedMigrationCredentials(now),
-    reconciliationRequired: false,
+    ...clearedMigrationCredentials(now, revocation.confirmed),
+    reconciliationRequired: !revocation.confirmed,
     failureReason: "payment_authority_revoked_before_registrar_commit",
   }, "payment_authority_revoked_before_registrar_commit", now)
   await updateManagedDomain(payload, managedDomain, {
@@ -1960,7 +2022,12 @@ async function stopMigrationForRevokedPaymentAfterRegistrarCommit(
   order: Order,
   now: string,
 ): Promise<MigrationResult> {
-  await revokeMigrationSourceAuthority(payload, migration, now)
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    now,
+  )
+  migration = revocation.migration
   await recordCommerceAdminException({
     payload,
     source: "domains",
@@ -1981,8 +2048,8 @@ async function stopMigrationForRevokedPaymentAfterRegistrarCommit(
   }, "payment_authority_revoked_after_registrar_commit", now)
   migration = await updateMigration(payload, migration, {
     state: "failed",
-    ...clearedMigrationCredentials(now),
-    reconciliationRequired: false,
+    ...clearedMigrationCredentials(now, revocation.confirmed),
+    reconciliationRequired: !revocation.confirmed,
     failureReason: "payment_authority_revoked_after_registrar_commit",
   }, "payment_authority_revoked_after_registrar_commit", now)
   if (order.state === "fulfillment_pending") {
@@ -2820,14 +2887,19 @@ async function rollbackCutover(
     reconciliationRequired: false,
     failureReason: redactOperationalMessage(reason),
   }, "migration_automatically_rolled_back", deps.now())
-  await revokeMigrationSourceAuthority(payload, migration, deps.now())
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    deps.now(),
+  )
+  migration = revocation.migration
   migration = await updateMigration(payload, migration, {
     state: "rolled_back",
     rollbackWriteState: "confirmed",
     rollbackConfirmedAt: deps.now(),
     rolledBackAt: deps.now(),
-    ...clearedMigrationCredentials(deps.now()),
-    reconciliationRequired: false,
+    ...clearedMigrationCredentials(deps.now(), revocation.confirmed),
+    reconciliationRequired: !revocation.confirmed,
     failureReason: redactOperationalMessage(reason),
   }, "automatic_rollback_confirmed", deps.now())
   const orderId = relationshipId(migration.originatingOrder)
@@ -2904,13 +2976,52 @@ const sourceAuthorityBlockedOutcome = (
 async function loadAndClassifyMigrationPhase(
   payload: Payload,
   migrationId: string | number,
+  deps: Pick<MigrationDependencies, "now">,
 ): Promise<MigrationPhaseOutcome> {
-  const migration = await payload.findByID({
+  let migration = await payload.findByID({
     collection: "domain-migrations",
     id: migrationId,
     depth: 0,
     overrideAccess: true,
   }) as DomainMigration
+  if (
+    ["completed", "failed", "rolled_back"].includes(migration.state) &&
+    migration.encryptedSourceRefreshAuthority &&
+    sourceAuthorityRevocationIsPending(migration)
+  ) {
+    const now = deps.now()
+    const revocation = await revokeMigrationSourceAuthority(
+      payload,
+      migration,
+      now,
+    )
+    migration = revocation.migration
+    if (!revocation.confirmed) {
+      return {
+        outcome: "provider_reconciliation_required",
+        result: waiting(
+          migration,
+          "Source authorization revocation remains pending reconciliation.",
+        ),
+      }
+    }
+    const managedDomainId = relationshipId(migration.managedDomain)
+    const managedDomain = managedDomainId
+      ? await payload.findByID({
+          collection: "managed-domains",
+          id: managedDomainId,
+          depth: 0,
+          overrideAccess: true,
+        }) as ManagedDomain
+      : null
+    migration = await updateMigration(payload, migration, {
+      encryptedSourceRefreshAuthority: null,
+      sourceRefreshAuthorityDeletedAt: now,
+      reconciliationRequired: managedDomain
+        ? Boolean(managedDomain.reconciliationRequired)
+        : migration.state === "failed",
+    }, "source_authority_revocation_confirmed", now)
+  }
   const decision = classifyMigrationEntry(migration)
   if (decision.outcome === "continue") {
     return { outcome: "continue", migration }
@@ -2932,6 +3043,28 @@ async function refreshSourceAuthorityAndCustomerReadinessPhase(
 ): Promise<SourceAuthorityPhaseOutcome> {
   let migration = initialMigration
   const now = deps.now()
+  if (
+    migration.failureReason === "source_authority_revocation_pending" &&
+    migration.encryptedSourceRefreshAuthority
+  ) {
+    migration = await sourceRefreshReauthorization(
+      payload,
+      migration,
+      now,
+      "source_authority_revocation_confirmed",
+    )
+    return {
+      outcome: migration.failureReason === "source_authority_revocation_pending"
+        ? "provider_reconciliation_required"
+        : "customer_action_required",
+      result: waiting(
+        migration,
+        migration.failureReason === "source_authority_revocation_pending"
+          ? "Source authorization revocation remains pending reconciliation."
+          : "The previous source authorization was revoked; fresh customer authority is required.",
+      ),
+    }
+  }
   let sourceEvidenceStale = sourceEvidenceIsStale(migration, now)
   if (
     sourceEvidenceStale &&
@@ -3194,7 +3327,11 @@ export async function prepareDomainMigration(
   dependencies: Partial<MigrationDependencies> = {},
 ): Promise<MigrationResult> {
   const deps = { ...defaultDependencies, ...dependencies }
-  const loadOutcome = await loadAndClassifyMigrationPhase(payload, migrationId)
+  const loadOutcome = await loadAndClassifyMigrationPhase(
+    payload,
+    migrationId,
+    deps,
+  )
   if (loadOutcome.outcome !== "continue") return loadOutcome.result
   const sourceAuthorityOutcome =
     await refreshSourceAuthorityAndCustomerReadinessPhase(
@@ -3328,15 +3465,19 @@ export async function prepareDomainMigration(
     ).some((record) =>
       semanticZoneComparison(target.records, [record]).unexpected.length > 0)
     if (unexpectedExisting) {
-      await revokeMigrationSourceAuthority(
+      const revocation = await revokeMigrationSourceAuthority(
         payload,
         migration,
         deps.now(),
       )
+      migration = revocation.migration
       migration = await updateMigration(payload, migration, {
         state: "failed",
         semanticComparison: comparison,
-        ...clearedMigrationCredentials(deps.now()),
+        ...clearedMigrationCredentials(deps.now(), revocation.confirmed),
+        ...(!revocation.confirmed
+          ? { reconciliationRequired: true }
+          : {}),
         failureReason: "cloudflare_zone_contains_unexpected_records",
       }, "automatic_zone_preparation_stopped", deps.now())
       return {
@@ -4317,12 +4458,17 @@ export async function prepareDomainMigration(
     failureReason: null,
   }, "migration_cutover_verified", deps.now())
   managedDomain = await deps.activateManagedDomainEntitlement(payload, managedDomain, deps.now())
-  await revokeMigrationSourceAuthority(payload, migration, deps.now())
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    deps.now(),
+  )
+  migration = revocation.migration
   migration = await updateMigration(payload, migration, {
     state: "completed",
     completedAt: deps.now(),
-    ...clearedMigrationCredentials(deps.now()),
-    reconciliationRequired: false,
+    ...clearedMigrationCredentials(deps.now(), revocation.confirmed),
+    reconciliationRequired: !revocation.confirmed,
     failureReason: null,
   }, "automatic_migration_completed", deps.now())
   await payload.update({

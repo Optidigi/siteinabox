@@ -1927,7 +1927,7 @@ describe("automatic existing-domain migration", () => {
     },
   )
 
-  it("revokes attached Cloudflare OAuth authority when payment fails after transfer", async () => {
+  it("retains uncertain Cloudflare OAuth revocation authority and clears it after confirmed recovery", async () => {
     const store = createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
@@ -1968,6 +1968,9 @@ describe("automatic existing-domain migration", () => {
       now: "2026-07-28T08:00:00.000Z",
     })
     const fixture = workflowDependencies()
+    revokeCloudflareSourceAuthorization
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
     withCommerceOrderLock.mockImplementationOnce(async (
       _payload: unknown,
       _orderId: string | number,
@@ -1996,7 +1999,8 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({ status: "failed" })
 
-    expect(revokeCloudflareSourceAuthorization).toHaveBeenCalledWith(
+    expect(revokeCloudflareSourceAuthorization).toHaveBeenCalledOnce()
+    expect(revokeCloudflareSourceAuthorization).toHaveBeenLastCalledWith(
       store.payload,
       expect.objectContaining({
         kind: "cloudflare_oauth",
@@ -2004,6 +2008,48 @@ describe("automatic existing-domain migration", () => {
       }),
       expect.objectContaining({ now: expect.any(Date) }),
     )
+    const stored = store.collections["domain-migrations"]![0]!
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "payment_authority_revoked_after_registrar_commit",
+      encryptedTransferCode: null,
+      encryptedSourceRefreshAuthority: expect.any(String),
+      sourceRefreshAuthorityDeletedAt: null,
+      reconciliationRequired: true,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "source_authority_revocation_pending",
+        }),
+      ]),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining(
+        "Frozen migration preparation evidence is incomplete",
+      ),
+    })
+
+    expect(revokeCloudflareSourceAuthorization).toHaveBeenCalledTimes(2)
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "payment_authority_revoked_after_registrar_commit",
+      encryptedTransferCode: null,
+      encryptedSourceRefreshAuthority: null,
+      sourceRefreshAuthorityDeletedAt: "2026-07-28T09:00:00.000Z",
+      reconciliationRequired: false,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "source_authority_revocation_confirmed",
+        }),
+      ]),
+    })
   })
 
   it("blocks publication without rolling back customer DNS when payment changes after cutover", async () => {
