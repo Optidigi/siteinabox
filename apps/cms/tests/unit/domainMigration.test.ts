@@ -3413,6 +3413,65 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("recovers indeterminate customer creation from one exact reference without repeating the POST", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        suffix: null,
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        handle: "OWNER-CLIENT",
+        comments: "domain-migration:order:600:v1",
+        raw: {},
+      })
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError(
+        "OpenProvider customer creation",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    const customerRecovery = await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    expect(customerRecovery).toEqual({
+      status: "completed",
+      migrationId: migration.id,
+      message: "Automatic existing-domain migration completed.",
+    })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      providerCustomerHandle: "OWNER-CLIENT",
+      providerTransferState: "confirmed",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      providerCustomerHandle: "OWNER-CLIENT",
+    })
+  })
+
   it("stops for manual review when exact customer-reference authority is ambiguous", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)

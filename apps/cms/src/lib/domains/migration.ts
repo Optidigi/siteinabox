@@ -3021,6 +3021,16 @@ type EdgeReadinessPhaseOutcome =
       message: string
     }
 
+type OpenProviderCustomerPreparationPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      managedDomain: ManagedDomain
+      token: string
+      customerHandle: string
+    }
+  | MigrationStoppedPhaseOutcome
+
 const sourceAuthorityBlockedOutcome = (
   migration: DomainMigration,
   result: MigrationResult,
@@ -3671,6 +3681,139 @@ const evaluateEdgeReadinessPhase = (
   }
 }
 
+const openProviderCustomerPreparationBlockedOutcome = (
+  migration: DomainMigration,
+  result: MigrationResult,
+): MigrationStoppedPhaseOutcome => ({
+  outcome: result.status === "failed"
+    ? "manual_review"
+    : migration.reconciliationRequired
+      ? "provider_reconciliation_required"
+      : "waiting",
+  result,
+})
+
+async function prepareOpenProviderCustomerPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  initialManagedDomain: ManagedDomain,
+  profile: CheckoutProfile,
+  deps: MigrationDependencies,
+): Promise<OpenProviderCustomerPreparationPhaseOutcome> {
+  let migration = initialMigration
+  let managedDomain = initialManagedDomain
+  const token = await deps.loginOpenProvider()
+  let customerHandle = migration.providerCustomerHandle ?? null
+  if (!customerHandle) {
+    let existingCustomer: Awaited<
+      ReturnType<MigrationDependencies["findOpenProviderCustomerByReference"]>
+    >
+    try {
+      existingCustomer = await deps.findOpenProviderCustomerByReference(
+        migration.idempotencyKey,
+        { token },
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
+        throw error
+      }
+      return openProviderCustomerPreparationBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "openprovider_customer_reference_ambiguous",
+          deps.now(),
+          "Multiple exact Openprovider customers match the migration reference.",
+        ),
+      )
+    }
+    if (existingCustomer) {
+      customerHandle = existingCustomer.handle
+    } else if (
+      migration.providerTransferState === "indeterminate" &&
+      migrationHistoryEventAt(
+        migration,
+        "openprovider_customer_handle_indeterminate",
+      )
+    ) {
+      if (
+        providerWriteReconciliationTimedOut(
+          migrationHistoryEventAt(
+            migration,
+            "openprovider_customer_handle_indeterminate",
+          ),
+          deps.now(),
+        )
+      ) {
+        return openProviderCustomerPreparationBlockedOutcome(
+          migration,
+          await stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "openprovider_customer_handle_outcome_unresolved",
+            deps.now(),
+            "Openprovider customer creation exceeded the reconciliation window.",
+          ),
+        )
+      }
+      return openProviderCustomerPreparationBlockedOutcome(
+        migration,
+        waiting(migration, "Customer-handle creation remains indeterminate."),
+      )
+    } else {
+      if (!deps.forwardProviderWritesAllowed()) {
+        return openProviderCustomerPreparationBlockedOutcome(
+          migration,
+          waiting(
+            migration,
+            "Registrant preparation is ready but forward provider writes are release-blocked.",
+          ),
+        )
+      }
+      try {
+        customerHandle = (await deps.createOpenProviderCustomerHandle(
+          domainRegistrantFromCheckoutProfile(profile),
+          { token, reference: migration.idempotencyKey },
+        )).handle
+      } catch (error) {
+        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          providerTransferState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_indeterminate",
+        }, "openprovider_customer_handle_indeterminate", deps.now())
+        return openProviderCustomerPreparationBlockedOutcome(
+          migration,
+          waiting(
+            migration,
+            "Customer-handle creation is awaiting reconciliation.",
+          ),
+        )
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      providerCustomerHandle: customerHandle,
+      providerTransferState: "not_started",
+      reconciliationRequired: false,
+      failureReason: null,
+    }, "provider_customer_handle_persisted", deps.now())
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      providerCustomerHandle: customerHandle,
+    }, "provider_customer_handle_persisted", deps.now())
+  }
+  return {
+    outcome: "continue",
+    migration,
+    managedDomain,
+    token,
+    customerHandle,
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -3757,91 +3900,20 @@ export async function prepareDomainMigration(
     )
   }
 
-  const token = await deps.loginOpenProvider()
-  let customerHandle = migration.providerCustomerHandle ?? null
-  if (!customerHandle) {
-    let existingCustomer: Awaited<
-      ReturnType<MigrationDependencies["findOpenProviderCustomerByReference"]>
-    >
-    try {
-      existingCustomer = await deps.findOpenProviderCustomerByReference(
-        migration.idempotencyKey,
-        { token },
-      )
-    } catch (error) {
-      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
-        throw error
-      }
-      return stopMigrationForProviderManualReview(
-        payload,
-        migration,
-        managedDomain,
-        "openprovider_customer_reference_ambiguous",
-        deps.now(),
-        "Multiple exact Openprovider customers match the migration reference.",
-      )
-    }
-    if (existingCustomer) {
-      customerHandle = existingCustomer.handle
-    } else if (
-      migration.providerTransferState === "indeterminate" &&
-      migrationHistoryEventAt(
-        migration,
-        "openprovider_customer_handle_indeterminate",
-      )
-    ) {
-      if (
-        providerWriteReconciliationTimedOut(
-          migrationHistoryEventAt(
-            migration,
-            "openprovider_customer_handle_indeterminate",
-          ),
-          deps.now(),
-        )
-      ) {
-        return stopMigrationForProviderManualReview(
-          payload,
-          migration,
-          managedDomain,
-          "openprovider_customer_handle_outcome_unresolved",
-          deps.now(),
-          "Openprovider customer creation exceeded the reconciliation window.",
-        )
-      }
-      return waiting(migration, "Customer-handle creation remains indeterminate.")
-    } else {
-      if (!deps.forwardProviderWritesAllowed()) {
-        return waiting(
-          migration,
-          "Registrant preparation is ready but forward provider writes are release-blocked.",
-        )
-      }
-      try {
-        customerHandle = (await deps.createOpenProviderCustomerHandle(
-          domainRegistrantFromCheckoutProfile(profile),
-          { token, reference: migration.idempotencyKey },
-        )).handle
-      } catch (error) {
-        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
-        migration = await updateMigration(payload, migration, {
-          state: "awaiting_provider",
-          providerTransferState: "indeterminate",
-          reconciliationRequired: true,
-          failureReason: "openprovider_customer_handle_indeterminate",
-        }, "openprovider_customer_handle_indeterminate", deps.now())
-        return waiting(migration, "Customer-handle creation is awaiting reconciliation.")
-      }
-    }
-    migration = await updateMigration(payload, migration, {
-      providerCustomerHandle: customerHandle,
-      providerTransferState: "not_started",
-      reconciliationRequired: false,
-      failureReason: null,
-    }, "provider_customer_handle_persisted", deps.now())
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      providerCustomerHandle: customerHandle,
-    }, "provider_customer_handle_persisted", deps.now())
+  const customerPreparationOutcome = await prepareOpenProviderCustomerPhase(
+    payload,
+    migration,
+    managedDomain,
+    profile,
+    deps,
+  )
+  if (customerPreparationOutcome.outcome !== "continue") {
+    return customerPreparationOutcome.result
   }
+  migration = customerPreparationOutcome.migration
+  managedDomain = customerPreparationOutcome.managedDomain
+  const token = customerPreparationOutcome.token
+  const customerHandle = customerPreparationOutcome.customerHandle
 
   let providerDomain: Awaited<
     ReturnType<MigrationDependencies["findOpenProviderDomain"]>
