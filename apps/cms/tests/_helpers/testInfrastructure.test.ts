@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
 
+import { classifyMigrationEntry } from "../../src/lib/domains/migrationDecisions"
+import {
+  setOpenProviderDomainAutorenew,
+  updateOpenProviderDomainDnssec,
+  updateOpenProviderDomainNameservers,
+} from "../../src/lib/domains/openprovider"
 import {
   validBillingAgreement,
   validDomainMigration,
@@ -36,7 +42,12 @@ describe("commerce test builders", () => {
       originatingOrder: 600,
       sourceMechanism: "cloudflare_api_v1",
       providerTransferState: "not_started",
+      managedDomain: {
+        initialOperation: "transfer",
+        providerRegistrationState: "not_started",
+      },
     })
+    expect(classifyMigrationEntry(migration)).toEqual({ outcome: "continue" })
     expect(renewal).toMatchObject({
       managedDomain: 950,
       providerWriteState: "not_required",
@@ -148,6 +159,59 @@ describe("stateful provider routers", () => {
       data: { results: [{ domain: "example.nl", status: "PENDING" }] },
     })
     expect(openProvider.operationCount("transfer_domain")).toBe(1)
+  })
+
+  it("routes real OpenProvider domain PUTs by body and mutates provider state", async () => {
+    const openProvider = createOpenProviderMockRouter()
+    const domain = {
+      id: "9001",
+      status: "ACT",
+      domain: { name: "example", extension: "nl" },
+      autorenew: "off",
+      name_servers: [
+        { name: "ns1.source.example" },
+        { name: "ns2.source.example" },
+      ],
+      is_dnssec_enabled: false,
+      dnssec_keys: [],
+    }
+    openProvider.state.domains.set(domain.id, domain)
+    const options = {
+      env: {
+        OPENPROVIDER_API_BASE_URL: "https://api.openprovider.test/v1beta",
+      } as unknown as NodeJS.ProcessEnv,
+      fetchImpl: openProvider.fetch,
+      token: "mock-token",
+    }
+
+    await expect(setOpenProviderDomainAutorenew("9001", "on", options))
+      .rejects.toThrow("OpenProvider domain autorenew update")
+    expect(openProvider.state.domains.get("9001")).toMatchObject({ autorenew: "off" })
+
+    openProvider.allow("set_autorenew", "update_nameservers", "set_dnssec")
+    await expect(setOpenProviderDomainAutorenew("9001", "on", options))
+      .resolves.toMatchObject({ id: "9001", autorenew: "on", status: "ACT" })
+    await expect(updateOpenProviderDomainNameservers("9001", [
+      { name: "Ada.NS.Cloudflare.com." },
+      { name: "bob.ns.cloudflare.com" },
+    ], options)).resolves.toMatchObject({ id: "9001", status: "ACT" })
+    await expect(updateOpenProviderDomainDnssec("9001", {
+      enabled: true,
+      keys: [{ flags: 257, protocol: 3, alg: 13, pub_key: "AQID" }],
+    }, options)).resolves.toMatchObject({ id: "9001", status: "ACT" })
+
+    expect(openProvider.operationCount("set_autorenew")).toBe(2)
+    expect(openProvider.operationCount("update_nameservers")).toBe(1)
+    expect(openProvider.operationCount("set_dnssec")).toBe(1)
+    expect(openProvider.state.domains.get("9001")).toMatchObject({
+      autorenew: "on",
+      name_servers: [
+        { name: "ada.ns.cloudflare.com" },
+        { name: "bob.ns.cloudflare.com" },
+      ],
+      is_dnssec_enabled: true,
+      dnssec_keys: [{ flags: 257, protocol: 3, alg: 13, pub_key: "AQID" }],
+    })
   })
 
   it("requires separate Cloudflare zone and record write opt-ins", async () => {

@@ -6,7 +6,7 @@ type ProviderCall<Operation extends string> = {
 }
 
 type ProviderRouterOptions<Operation extends string> = {
-  classify: (method: string, url: URL) => Operation | undefined
+  classify: (method: string, url: URL, body: unknown) => Operation | undefined
   perform: (
     operation: Operation,
     request: { method: string; url: URL; body: unknown },
@@ -47,11 +47,11 @@ const createProviderRouter = <Operation extends string>(
       : input.url)
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET"))
       .toUpperCase()
-    const operation = options.classify(method, url)
+    const body = await requestBody(init)
+    const operation = options.classify(method, url, body)
     if (!operation) {
       return failure(provider, `unmatched:${method}:${url.pathname}`)
     }
-    const body = await requestBody(init)
     calls.push({ operation, method, url: url.toString(), body })
     if (!enabled.has(operation)) return failure(provider, operation)
     const response = await options.perform(operation, { method, url, body })
@@ -168,6 +168,7 @@ export type OpenProviderMockOperation =
   | "read_domain"
   | "transfer_domain"
   | "update_nameservers"
+  | "set_dnssec"
   | "set_autorenew"
 
 export const createOpenProviderMockRouter = () => {
@@ -177,7 +178,7 @@ export const createOpenProviderMockRouter = () => {
   const domains = new Map<string, Record<string, unknown>>()
 
   const router = createProviderRouter<OpenProviderMockOperation>("OpenProvider", {
-    classify(method, url) {
+    classify(method, url, body) {
       if (method === "POST" && url.pathname.endsWith("/auth/login")) return "login"
       if (method === "POST" && url.pathname.endsWith("/customers")) return "create_customer"
       if (method === "GET" && url.pathname.endsWith("/customers")) return "search_customers"
@@ -185,8 +186,14 @@ export const createOpenProviderMockRouter = () => {
       if (method === "POST" && url.pathname.endsWith("/domains")) return "create_domain"
       if (method === "GET" && url.pathname.endsWith("/domains")) return "search_domains"
       if (method === "GET" && /\/domains\/[^/]+$/.test(url.pathname)) return "read_domain"
-      if (method === "PUT" && url.pathname.endsWith("/autorenew")) return "set_autorenew"
-      if (method === "PUT" && url.pathname.endsWith("/nameservers")) return "update_nameservers"
+      if (method === "PUT" && /\/domains\/[^/]+$/.test(url.pathname)) {
+        const input = body && typeof body === "object"
+          ? body as Record<string, unknown>
+          : {}
+        if ("autorenew" in input) return "set_autorenew"
+        if ("name_servers" in input) return "update_nameservers"
+        if ("is_dnssec_enabled" in input || "dnssec_keys" in input) return "set_dnssec"
+      }
       return undefined
     },
     perform(operation, request) {
@@ -216,12 +223,17 @@ export const createOpenProviderMockRouter = () => {
       if (operation === "search_domains") {
         return Response.json({ data: { results: [...domains.values()] } })
       }
-      const segments = request.url.pathname.split("/")
-      const id = segments.at(operation === "read_domain" ? -1 : -2) ?? ""
+      const id = request.url.pathname.split("/").at(-1) ?? ""
       const domain = domains.get(id)
       if (!domain) return Response.json({ code: 404 }, { status: 404 })
       if (operation === "set_autorenew") domain.autorenew = body.autorenew ?? "on"
-      if (operation === "update_nameservers") domain.nameServers = body.nameServers ?? []
+      if (operation === "update_nameservers") {
+        domain.name_servers = body.name_servers ?? []
+      }
+      if (operation === "set_dnssec") {
+        domain.is_dnssec_enabled = body.is_dnssec_enabled
+        domain.dnssec_keys = body.dnssec_keys ?? []
+      }
       return Response.json({ data: domain })
     },
   })
