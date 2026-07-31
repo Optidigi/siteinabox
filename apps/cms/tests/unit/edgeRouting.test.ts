@@ -134,6 +134,130 @@ describe("automatic Cloudflare edge routing", () => {
     })
   })
 
+  it("does not project edge readiness when only the apex HTTPS probe is ready", async () => {
+    const fixture = setup()
+    const verifyHttps = vi.fn(async (hostname: string) =>
+      hostname === "example.nl"
+        ? {
+            status: "verified" as const,
+            httpStatus: 200,
+            reason: null,
+          }
+        : {
+            status: "pending" as const,
+            httpStatus: null,
+            reason: hostname === "www.example.nl"
+              ? "www_edge_pending"
+              : "admin_edge_pending",
+          })
+
+    const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
+      now: () => "2026-07-29T20:00:00.000Z",
+      reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
+      buildDnsRecords: vi.fn(() => fixture.records),
+      assertDnsRecordsReconciliable: vi.fn(async () => ({
+        unownedMatchingRecordIds: [],
+      })),
+      reconcileDnsRecord: vi.fn(async (_zoneId, record) => ({
+        id: `edge-${record.name}`,
+        ...record,
+        raw: null,
+        ownershipDisposition: "created" as const,
+      })),
+      getHostnameCertificate: vi.fn(async (_zoneId, hostname) => ({
+        hostname,
+        universalSslEnabled: true,
+        covered: true,
+        certificateStatuses: ["active"],
+        raw: null,
+      })),
+      verifyHttps,
+    })
+
+    expect(result).toEqual({ examined: 1, active: 0, pending: 1, failed: 0 })
+    expect(verifyHttps).toHaveBeenCalledTimes(3)
+    expect(fixture.stored).toMatchObject({
+      edgeRoutingStatus: "configured",
+      httpsStatus: "pending",
+      adminHttpsStatus: "pending",
+      reconciliationRequired: true,
+      edgeRoutingEvidence: {
+        probes: {
+          apex: { status: "verified" },
+          www: { status: "pending", reason: "www_edge_pending" },
+          admin: { status: "pending", reason: "admin_edge_pending" },
+        },
+      },
+    })
+  })
+
+  it("does not probe or project readiness while any hostname certificate is pending", async () => {
+    const fixture = setup()
+    const verifyHttps = vi.fn()
+    const getHostnameCertificate = vi.fn(async (
+      _zoneId: string,
+      hostname: string,
+    ) => ({
+      hostname,
+      universalSslEnabled: true,
+      covered: hostname !== "www.example.nl",
+      certificateStatuses: hostname === "www.example.nl"
+        ? ["pending_validation"]
+        : ["active"],
+      raw: null,
+    }))
+
+    const result = await reconcileCommerceEdgeRouting(fixture.payload, {
+      providerWritesAllowed: () => true,
+      now: () => "2026-07-29T20:00:00.000Z",
+      reconcileTunnel: vi.fn(async (kind) => tunnel(kind)),
+      buildDnsRecords: vi.fn(() => fixture.records),
+      assertDnsRecordsReconciliable: vi.fn(async () => ({
+        unownedMatchingRecordIds: [],
+      })),
+      reconcileDnsRecord: vi.fn(async (_zoneId, record) => ({
+        id: `edge-${record.name}`,
+        ...record,
+        raw: null,
+        ownershipDisposition: "created" as const,
+      })),
+      getHostnameCertificate,
+      verifyHttps,
+    })
+
+    expect(result).toEqual({ examined: 1, active: 0, pending: 1, failed: 0 })
+    expect(getHostnameCertificate).toHaveBeenCalledTimes(3)
+    expect(verifyHttps).not.toHaveBeenCalled()
+    expect(fixture.stored).toMatchObject({
+      edgeRoutingStatus: "configured",
+      httpsStatus: "pending",
+      adminHttpsStatus: "pending",
+      reconciliationRequired: true,
+      edgeRoutingEvidence: {
+        certificates: {
+          apex: { covered: true, statuses: ["active"] },
+          www: { covered: false, statuses: ["pending_validation"] },
+          admin: { covered: true, statuses: ["active"] },
+        },
+        probes: {
+          apex: {
+            status: "pending",
+            reason: "edge_tunnel_or_certificate_pending",
+          },
+          www: {
+            status: "pending",
+            reason: "edge_tunnel_or_certificate_pending",
+          },
+          admin: {
+            status: "pending",
+            reason: "edge_tunnel_or_certificate_pending",
+          },
+        },
+      },
+    })
+  })
+
   it("persists provider/tunnel outages as resumable pending state", async () => {
     const fixture = setup()
     const result = await reconcileCommerceEdgeRouting(fixture.payload, {
