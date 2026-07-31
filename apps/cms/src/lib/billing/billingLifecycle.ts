@@ -27,20 +27,14 @@ import {
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePayments"
 import { findOneDoc } from "@/lib/payloadCollection"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import {
+  numericRelationshipId,
+  relationshipId,
+  sameRelationshipId,
+} from "@/lib/relationshipId"
 
 const DAY_MS = 24 * 60 * 60_000
 const TERMINAL_ATTEMPT_STATES = ["failed", "cancelled", "expired", "chargeback"]
-
-const numericRelationshipId = (
-  value: Parameters<typeof relationshipId>[0],
-): number | undefined => {
-  const id = relationshipId(value)
-  if (id == null) return undefined
-  const numeric = Number(id)
-  if (!Number.isSafeInteger(numeric)) throw new Error("Expected a numeric Payload relationship id.")
-  return numeric
-}
 
 const relationIds = (value: unknown): number[] => {
   if (!Array.isArray(value)) return []

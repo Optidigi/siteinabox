@@ -10,15 +10,7 @@ import type { RefundScenario } from "@siteinabox/contracts/commerce"
 
 import { findOneDoc } from "@/lib/payloadCollection"
 import { frozenOrderAmounts } from "@/lib/payments/frozenOrderAmounts"
-import { relationshipId } from "@/lib/relationshipId"
-
-const numericRelationshipId = (value: Parameters<typeof relationshipId>[0]): number | undefined => {
-  const id = relationshipId(value)
-  if (id == null) return undefined
-  const numeric = Number(id)
-  if (!Number.isSafeInteger(numeric)) throw new Error("Expected a numeric Payload relationship id.")
-  return numeric
-}
+import { numericRelationshipId, relationshipId } from "@/lib/relationshipId"
 
 const stateEntry = (
   state: AccountingDocument["state"],

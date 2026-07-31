@@ -71,7 +71,11 @@ import { requireCommerceProviderWritesAllowed } from "@/lib/commerce/releaseGate
 import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import {
+  numericRelationshipId,
+  relationshipId,
+  sameRelationshipId,
+} from "@/lib/relationshipId"
 import { verifyCheckoutEvidence } from "@/lib/legal/checkoutEvidence"
 import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
 import {
@@ -117,14 +121,6 @@ export const isIgnorableMollieWebhookError = (error: unknown): boolean =>
   (error instanceof MollieApiError && error.status === 404)
 
 const normalizeEmail = (value: string): string => value.trim().toLowerCase()
-
-const numericRelationshipId = (value: Parameters<typeof relationshipId>[0]): number | undefined => {
-  const id = relationshipId(value)
-  if (id == null) return undefined
-  const numeric = Number(id)
-  if (!Number.isSafeInteger(numeric)) throw new Error("Expected a numeric Payload relationship id.")
-  return numeric
-}
 
 const cleanDomain = (value: unknown): string | null => {
   if (typeof value !== "string") return null
