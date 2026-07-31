@@ -7,7 +7,9 @@ const {
   recordCommerceAdminException,
   queueDomainMigrationPreparation,
   queueDomainRenewal,
+  queueMolliePaymentSync,
   queueOrderFulfillment,
+  recoverMissingMolliePaymentReferences,
   commerceProviderWritesAllowed,
 } = vi.hoisted(() => ({
   reconcileCommerceEdgeRouting: vi.fn(async () => ({
@@ -19,7 +21,12 @@ const {
   recordCommerceAdminException: vi.fn(),
   queueDomainMigrationPreparation: vi.fn(),
   queueDomainRenewal: vi.fn(),
+  queueMolliePaymentSync: vi.fn(),
   queueOrderFulfillment: vi.fn(),
+  recoverMissingMolliePaymentReferences: vi.fn(async () => ({
+    examined: 0,
+    recoveredPaymentIds: [] as string[],
+  })),
   commerceProviderWritesAllowed: vi.fn(() => true),
 }))
 
@@ -36,7 +43,7 @@ vi.mock("@/lib/jobs/renewDomainTask", () => ({
   queueDomainRenewal,
 }))
 vi.mock("@/lib/jobs/syncMolliePaymentTask", () => ({
-  queueMolliePaymentSync: vi.fn(),
+  queueMolliePaymentSync,
 }))
 vi.mock("@/lib/billing/billingLifecycle", () => ({
   processBillingAgreement: vi.fn(),
@@ -55,6 +62,10 @@ vi.mock("@/lib/commerce/releaseGateCore", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/commerce/releaseGateCore")>()),
   commerceProviderWritesAllowed,
 }))
+vi.mock("@/lib/commerce/reconciliation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/commerce/reconciliation")>()),
+  recoverMissingMolliePaymentReferences,
+}))
 
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
 
@@ -62,6 +73,10 @@ describe("commerce reconciliation migration scheduling", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     commerceProviderWritesAllowed.mockReturnValue(true)
+    recoverMissingMolliePaymentReferences.mockResolvedValue({
+      examined: 0,
+      recoveredPaymentIds: [],
+    })
   })
 
   it("performs no edge writes or blocking alert when provider writes are intentionally disabled", async () => {
@@ -110,6 +125,28 @@ describe("commerce reconciliation migration scheduling", () => {
     expect(find).toHaveBeenCalledWith(expect.objectContaining({
       collection: "payment-attempts",
     }))
+  })
+
+  it("queues an exact recovered payment reference for scheduled synchronization", async () => {
+    recoverMissingMolliePaymentReferences.mockResolvedValueOnce({
+      examined: 1,
+      recoveredPaymentIds: ["tr_recovered_missing_webhook"],
+    })
+    const payload = asPayload({
+      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
+    })
+    const handler = reconcileCommerceTask.handler as unknown as (
+      args: { req: { payload: typeof payload } }
+    ) => Promise<{ output: { examined: number; queued: number } }>
+
+    const result = await handler({ req: { payload } })
+
+    expect(queueMolliePaymentSync).toHaveBeenCalledTimes(1)
+    expect(queueMolliePaymentSync).toHaveBeenCalledWith(
+      payload,
+      "tr_recovered_missing_webhook",
+    )
+    expect(result.output).toEqual({ examined: 1, queued: 1 })
   })
 
   it("serializes and coalesces overlapping global reconciliation passes", () => {

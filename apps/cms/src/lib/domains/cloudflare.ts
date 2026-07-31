@@ -15,6 +15,11 @@ export type CloudflareZoneResult = {
   raw: unknown
 }
 
+export type CloudflareZoneLookup =
+  | { outcome: "absent" }
+  | { outcome: "exact"; zone: CloudflareZoneResult }
+  | { outcome: "ambiguous" }
+
 export type CloudflareDnsRecordType = "A" | "CNAME"
 export type CloudflareDnsRecordReadableType = CloudflareDnsRecordType | "AAAA"
 
@@ -117,6 +122,25 @@ export class CloudflareIndeterminateWriteError extends Error {
     this.name = "CloudflareIndeterminateWriteError"
     this.operation = operation
   }
+}
+
+export class CloudflareAmbiguousZoneLookupError extends Error {
+  constructor(readonly domain: string) {
+    super(`Cloudflare zone lookup for ${domain} returned multiple exact matches.`)
+    this.name = "CloudflareAmbiguousZoneLookupError"
+  }
+}
+
+export function classifyCloudflareZoneLookup(
+  domainInput: string,
+  zones: readonly CloudflareZoneResult[],
+): CloudflareZoneLookup {
+  const domain = splitDomain(domainInput).domain
+  const exact = zones.filter((zone) =>
+    zone.name.trim().toLowerCase().replace(/\.$/, "") === domain)
+  if (exact.length === 0) return { outcome: "absent" }
+  if (exact.length === 1) return { outcome: "exact", zone: exact[0]! }
+  return { outcome: "ambiguous" }
 }
 
 export class CloudflareDnsRecordConflictError extends Error {
@@ -287,16 +311,28 @@ export async function createOrReuseCloudflareZone(
   options?: CloudflareOptions,
 ): Promise<CloudflareZoneResult> {
   const domain = splitDomain(domainInput).domain
-  const existing = (await listCloudflareZones(domain, options))[0]
-  if (existing) return existing
+  const existing = classifyCloudflareZoneLookup(
+    domain,
+    await listCloudflareZones(domain, options),
+  )
+  if (existing.outcome === "exact") return existing.zone
+  if (existing.outcome === "ambiguous") {
+    throw new CloudflareAmbiguousZoneLookupError(domain)
+  }
   try {
     return await createCloudflareZone(domain, options)
   } catch (error) {
+    let reconciledZones: CloudflareZoneResult[]
     try {
-      const reconciled = (await listCloudflareZones(domain, options))[0]
-      if (reconciled) return reconciled
+      reconciledZones = await listCloudflareZones(domain, options)
     } catch {
       // Preserve the original write outcome classification.
+      throw error
+    }
+    const reconciled = classifyCloudflareZoneLookup(domain, reconciledZones)
+    if (reconciled.outcome === "exact") return reconciled.zone
+    if (reconciled.outcome === "ambiguous") {
+      throw new CloudflareAmbiguousZoneLookupError(domain)
     }
     throw error
   }

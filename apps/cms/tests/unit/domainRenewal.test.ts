@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import {
+  createMutablePayloadStore,
+  type MockDoc,
+} from "../_helpers/mockPayload"
+import {
+  validBillingAgreement,
+  validManagedDomain,
+  validOrder,
+} from "../_helpers/commerceBuilders"
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createApplicationRecurringMolliePayment: vi.fn(async () => ({
@@ -18,6 +26,7 @@ vi.mock("@/lib/commerce/alerts", () => ({
 }))
 
 import {
+  decideRenewalCancellationObligation,
   normalizeOpenProviderRenewalDate,
   PROVIDER_RENEWAL_ADVANCE_GRACE_MS,
   PROVIDER_WRITE_RECONCILIATION_GRACE_MS,
@@ -31,114 +40,47 @@ import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePa
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
 
-const compare = (actual: unknown, condition: Record<string, unknown>): boolean => {
-  if ("equals" in condition) return String(actual) === String(condition.equals)
-  if ("in" in condition) return (condition.in as unknown[]).map(String).includes(String(actual))
-  if ("not_in" in condition) return !(condition.not_in as unknown[]).map(String).includes(String(actual))
-  if ("exists" in condition) return condition.exists ? actual != null : actual == null
-  if ("less_than_equal" in condition) return String(actual) <= String(condition.less_than_equal)
-  if ("greater_than_equal" in condition) return String(actual) >= String(condition.greater_than_equal)
-  return false
-}
-
-const matches = (doc: MockDoc, where: Record<string, unknown> | undefined): boolean => {
-  if (!where) return true
-  if (Array.isArray(where.and)) {
-    return where.and.every((entry) => matches(doc, entry as Record<string, unknown>))
-  }
-  if (Array.isArray(where.or)) {
-    return where.or.some((entry) => matches(doc, entry as Record<string, unknown>))
-  }
-  return Object.entries(where).every(([field, condition]) => {
-    if (field === "and" || field === "or") return true
-    return condition && typeof condition === "object"
-      ? compare(doc[field], condition as Record<string, unknown>)
-      : doc[field] === condition
-  })
-}
-
-const baseDomain = {
-  id: 950,
-  domainNameAscii: "example.nl",
-  tld: "nl",
+const baseDomain = validManagedDomain({
   provisioningIdempotencyKey: "domain-registration:order:600:v1",
-  originatingOrder: 600,
-  registrantProfile: 800,
-  tenant: 1,
-  state: "active",
-  initialOperation: "registration",
-  registrantOwnership: "customer",
-  provider: "openprovider",
-  providerDomainId: "9001",
-  providerRegistrationState: "confirmed",
-  registrantVerificationStatus: "verified",
-  authoritativeDnsStatus: "verified",
-  httpsStatus: "verified",
-  entitlementStatus: "active",
-  customerStatus: "active",
-  renewalIntent: true,
-  providerAutorenew: "on",
-  reconciliationRequired: false,
-  stateHistory: [],
   createdAt: "2026-07-01T00:00:00.000Z",
-}
+  updatedAt: "2026-07-01T00:00:00.000Z",
+})
 
-const baseAgreement = {
-  id: 900,
+const baseAgreement = validBillingAgreement({
   idempotencyKey: "agreement-900",
-  originatingOrder: 600,
-  checkoutProfile: 800,
-  tenant: 1,
   state: "active",
-  provider: "mollie",
   providerCustomerId: "cst_test",
   providerMandateId: "mdt_test",
-  catalogVersion: "2026-07-26.1",
   packageCode: "siteinabox-annual",
   billingPeriod: "annual",
-  currency: "EUR",
   recurringNetAmountMinor: 19_000,
-  renewalIntent: true,
   nextChargeAt: "2027-08-01T00:00:00.000Z",
   currentPeriodStartsAt: "2026-08-01T00:00:00.000Z",
   currentPeriodEndsAt: "2027-08-01T00:00:00.000Z",
-  serviceSuspensionStatus: "none",
-  reconciliationRequired: false,
-  stateHistory: [],
   createdAt: "2026-08-01T00:00:00.000Z",
-}
+  updatedAt: "2026-08-01T00:00:00.000Z",
+})
 
-const baseOrder = {
-  id: 600,
-  orderNumber: "SIAB-500-TEST",
-  tenant: 1,
-  generationRun: 500,
+const baseOrder = validOrder({
   state: "fulfilled",
   checkoutProfileKey: "profile-1",
-  catalogVersion: "2026-07-26.1",
-  contractingPartyProfileVersion: 1,
   termsVersion: "terms-v1",
   privacyVersion: "privacy-v1",
   businessUseDeclarationVersion: "business-v1",
-  customerName: "Ada Lovelace",
-  customerEmail: "client@example.com",
-  companyName: "Acme Studio",
-  billingAddress: { country: "NL" },
   packageCode: "siteinabox-annual",
   billingPeriod: "annual",
   renewalTerms: "Renews annually.",
-  lineItems: [],
-  currency: "EUR",
+  subtotalNetMinor: 19_000,
+  vatAmountMinor: 3_990,
+  totalGrossMinor: 22_990,
   subtotalNet: 190,
   vatAmount: 39.9,
   totalGross: 229.9,
-  domain: "example.nl",
   domainRegistrant: { email: "client@example.com" },
-  legalDocuments: [10, 11],
   paymentStatus: "paid",
-  paymentProvider: "mollie",
   createdAt: "2026-08-01T00:00:00.000Z",
-}
+  updatedAt: "2026-08-01T00:00:00.000Z",
+})
 
 const createStore = (input: {
   domain?: Record<string, unknown>
@@ -159,53 +101,13 @@ const createStore = (input: {
     orders,
     "payment-attempts": attempts,
   }
-  let nextId = 1_000
-  const find = vi.fn(async ({ collection, where, sort }: MockFindArgs) => {
-    let docs = (collections[collection] ?? []).filter((doc) => matches(doc, where))
-    if (sort === "providerRenewalDate") {
-      docs = [...docs].sort(
-        (a, b) => String(a.providerRenewalDate).localeCompare(String(b.providerRenewalDate)),
-      )
-    }
-    if (sort === "-createdAt") {
-      docs = [...docs].sort(
-        (a, b) => String(b.createdAt).localeCompare(String(a.createdAt)),
-      )
-    }
-    if (sort === "attemptNumber") {
-      docs = [...docs].sort(
-        (a, b) => Number(a.attemptNumber ?? 0) - Number(b.attemptNumber ?? 0),
-      )
-    }
-    return { docs, totalDocs: docs.length }
-  })
-  const findByID = vi.fn(async ({ collection, id }: { collection: string; id: string | number }) => {
-    const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    return doc
-  })
-  const create = vi.fn(async ({ collection, data }: { collection: string; data: Record<string, unknown> }) => {
-    if (collection === "domain-renewal-cycles") {
-      const duplicate = cycles.find((entry) =>
-        String(entry.managedDomain) === String(data.managedDomain) &&
-        entry.providerRenewalDate === data.providerRenewalDate)
-      if (duplicate) throw new Error("unique violation")
-    }
-    const doc = { id: nextId++, ...data }
-    ;(collections[collection] ??= []).push(doc)
-    return doc
-  })
-  const update = vi.fn(async (args: MockUpdateArgs & { where?: Record<string, unknown> }) => {
-    const { collection, id, data, where } = args
-    if (where) {
-      const docs = (collections[collection] ?? []).filter((entry) => matches(entry, where))
-      for (const doc of docs) Object.assign(doc, data)
-      return { docs, totalDocs: docs.length }
-    }
-    const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    Object.assign(doc, data)
-    return doc
+  const store = createMutablePayloadStore({
+    collections,
+    nextId: 1_000,
+    unique: [{
+      collection: "domain-renewal-cycles",
+      fields: ["managedDomain", "providerRenewalDate"],
+    }],
   })
   return {
     domain,
@@ -213,14 +115,7 @@ const createStore = (input: {
     cycles,
     orders,
     attempts,
-    payload: asPayload({
-      find,
-      findByID,
-      create,
-      update,
-      jobs: { queue: vi.fn() },
-      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-    }),
+    payload: store.payload,
   }
 }
 
@@ -310,6 +205,105 @@ describe("Openprovider renewal_date cycles", () => {
   it("normalizes provider dates as UTC instead of machine-local time", () => {
     expect(normalizeOpenProviderRenewalDate("2027-07-26 00:00:00"))
       .toBe("2027-07-26T00:00:00.000Z")
+  })
+
+  it.each([
+    {
+      label: "uncovered active renewal",
+      input: {
+        cycleState: "scheduled" as const,
+        paymentSecuredAt: null,
+        domainRenewalIntent: true,
+        agreementState: "active" as const,
+        agreementRenewalIntent: true,
+        cutoffReached: false,
+        providerAutorenew: "on" as const,
+      },
+      expected: {
+        paymentRequestEligible: true,
+        obligation: {
+          outcome: "disable_autorenew",
+          renewalCancelled: false,
+          cancelCycleAfterAutorenewOff: false,
+          settledStatus: "payment_required",
+        },
+      },
+    },
+    {
+      label: "cancelled uncovered future cycle",
+      input: {
+        cycleState: "scheduled" as const,
+        paymentSecuredAt: null,
+        domainRenewalIntent: false,
+        agreementState: "cancellation_scheduled" as const,
+        agreementRenewalIntent: false,
+        cutoffReached: false,
+        providerAutorenew: "on" as const,
+      },
+      expected: {
+        paymentRequestEligible: false,
+        obligation: {
+          outcome: "disable_autorenew",
+          renewalCancelled: true,
+          cancelCycleAfterAutorenewOff: true,
+          settledStatus: "cancelled",
+        },
+      },
+    },
+    ...(["payment_committed", "provider_requested"] as const).map(
+      (cycleState) => ({
+        label: `${cycleState} obligation after cancellation`,
+        input: {
+          cycleState,
+          paymentSecuredAt: null,
+          domainRenewalIntent: false,
+          agreementState: "cancellation_scheduled" as const,
+          agreementRenewalIntent: false,
+          cutoffReached: true,
+          providerAutorenew: "off" as const,
+        },
+        expected: {
+          paymentRequestEligible: false,
+          obligation: { outcome: "continue_committed_obligation" },
+        },
+      }),
+    ),
+    {
+      label: "paid obligation after cancellation",
+      input: {
+        cycleState: "payment_required" as const,
+        paymentSecuredAt: "2027-06-01T00:00:00.000Z",
+        domainRenewalIntent: false,
+        agreementState: "cancellation_scheduled" as const,
+        agreementRenewalIntent: false,
+        cutoffReached: true,
+        providerAutorenew: "off" as const,
+      },
+      expected: {
+        paymentRequestEligible: false,
+        obligation: { outcome: "continue_committed_obligation" },
+      },
+    },
+    {
+      label: "uncovered cutoff with autorenew on",
+      input: {
+        cycleState: "payment_required" as const,
+        paymentSecuredAt: null,
+        domainRenewalIntent: true,
+        agreementState: "active" as const,
+        agreementRenewalIntent: true,
+        cutoffReached: true,
+        providerAutorenew: "on" as const,
+      },
+      expected: {
+        paymentRequestEligible: false,
+        obligation: {
+          outcome: "manual_review_uncovered_at_cutoff",
+        },
+      },
+    },
+  ])("decides $label without effects", ({ input, expected }) => {
+    expect(decideRenewalCancellationObligation(input)).toEqual(expected)
   })
 
   it("blocks disabled-stage discovery but permits committed-cycle safety reconciliation", async () => {
@@ -683,6 +677,90 @@ describe("Openprovider renewal_date cycles", () => {
       providerWriteState: "confirmed",
       providerAutorenew: "off",
       reconciliationRequired: false,
+    })
+  })
+
+  it("restarts a prepared autorenew operation only after exact absence and its grace boundary", async () => {
+    const requestedAt = "2027-06-26T00:00:00.000Z"
+    const preparedCycle = {
+      id: 960,
+      idempotencyKey: "cycle-960",
+      managedDomain: 950,
+      billingAgreement: 900,
+      tenant: 1,
+      state: "cancelled",
+      coverageStartsAt: "2027-07-26T00:00:00.000Z",
+      coverageEndsAt: "2028-07-26T00:00:00.000Z",
+      providerRenewalDate: "2027-07-26T00:00:00.000Z",
+      providerSafeCutoffAt: "2027-07-24T00:00:00.000Z",
+      renewalIntentSnapshot: false,
+      providerRenewalMode: "provider_autorenew",
+      providerAutorenew: "on",
+      providerOperationId:
+        "openprovider:domain:9001:autorenew:off:renewal:2027-07-26T00:00:00.000Z",
+      providerWriteState: "prepared",
+      providerWriteRequestedAt: requestedAt,
+      currency: "EUR",
+      providerOperationPriceNetMinor: 800,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 0,
+      financialCoverageState: "uncovered",
+      pricingEvidence: {},
+      netAmountMinor: 0,
+      vatAmountMinor: 0,
+      grossAmountMinor: 0,
+      cancelledAt: requestedAt,
+      reconciliationRequired: true,
+      stateHistory: [],
+      createdAt: "2027-06-01T00:00:00.000Z",
+    }
+    const store = createStore({
+      domain: { renewalIntent: false },
+      agreement: { state: "cancellation_scheduled", renewalIntent: false },
+      cycles: [preparedCycle],
+    })
+    const beforeGrace = dependencies({
+      now: new Date(
+        Date.parse(requestedAt) + PROVIDER_WRITE_RECONCILIATION_GRACE_MS - 1,
+      ).toISOString(),
+      provider: { autorenew: "on" },
+    })
+
+    await expect(reconcileManagedDomainRenewal(
+      store.payload,
+      950,
+      beforeGrace.deps,
+    )).resolves.toMatchObject({ status: "waiting", cycleId: 960 })
+    expect(beforeGrace.deps.findOpenProviderDomain).toHaveBeenCalledOnce()
+    expect(beforeGrace.setAutorenew).not.toHaveBeenCalled()
+    expect(preparedCycle).toMatchObject({
+      providerWriteState: "prepared",
+      providerAutorenew: "on",
+      reconciliationRequired: true,
+    })
+
+    const atGrace = dependencies({
+      now: new Date(
+        Date.parse(requestedAt) + PROVIDER_WRITE_RECONCILIATION_GRACE_MS,
+      ).toISOString(),
+      provider: { autorenew: "on" },
+    })
+    await expect(reconcileManagedDomainRenewal(
+      store.payload,
+      950,
+      atGrace.deps,
+    )).resolves.toMatchObject({ status: "cancelled", cycleId: 960 })
+
+    expect(atGrace.setAutorenew).toHaveBeenCalledOnce()
+    expect(atGrace.setAutorenew).toHaveBeenCalledWith(9001, "off", {
+      token: "token",
+    })
+    expect(atGrace.deps.findOpenProviderDomain).toHaveBeenCalledTimes(2)
+    expect(preparedCycle).toMatchObject({
+      providerWriteState: "confirmed",
+      providerAutorenew: "off",
+      reconciliationRequired: false,
+      failureReason: null,
     })
   })
 

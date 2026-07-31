@@ -51,6 +51,7 @@ export type PublishSiteOptions = {
   manualActivation?: boolean
   publishedBy?: string | number | null
   activationReason?: string | null
+  deferLiveHandoff?: boolean
   req?: PayloadRequest
 }
 
@@ -60,6 +61,7 @@ export type ActivateSnapshotOptions = {
   activatedBy?: string | number | null
   activationReason?: string | null
   rollback?: boolean
+  deferLiveHandoff?: boolean
   req?: PayloadRequest
 }
 
@@ -511,14 +513,16 @@ export async function activatePublishedSnapshot(
     ...payloadRequestArgs(options.req),
   })
 
-  await queueLiveHandoffAfterActivation(payload, {
-    tenant,
-    run,
-    snapshotDoc: handoffSnapshotDoc,
-    rollback: options.rollback,
-    allowDirectFallback: options.manualActivation === true,
-    eventAt: now,
-  })
+  if (!options.deferLiveHandoff) {
+    await queueLiveHandoffAfterActivation(payload, {
+      tenant,
+      run,
+      snapshotDoc: handoffSnapshotDoc,
+      rollback: options.rollback,
+      allowDirectFallback: options.manualActivation === true,
+      eventAt: now,
+    })
+  }
 
   await prunePublishedSnapshotsForTenant(payload, tenantId, { keepSnapshotId: snapshotDoc.id, req: options.req })
 
@@ -566,6 +570,7 @@ export async function publishSiteSnapshot(
     manualActivation: options.manualActivation,
     activatedBy: options.publishedBy,
     activationReason: options.activationReason,
+    deferLiveHandoff: options.deferLiveHandoff,
     req: options.req,
   })
   return { snapshot: activated, activated: true }

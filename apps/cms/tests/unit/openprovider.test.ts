@@ -13,7 +13,10 @@ import {
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
   normalizeOpenProviderTimestamp,
+  OpenProviderAmbiguousCustomerReferenceLookupError,
+  OpenProviderAmbiguousDomainLookupError,
   OpenProviderApiError,
+  OpenProviderCustomerReferenceLookupIncompleteError,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   setOpenProviderDomainAutorenew,
@@ -129,6 +132,36 @@ describe("OpenProvider adapter", () => {
     }))
     },
   )
+
+  it("returns absence and fails closed on ambiguous exact domain lookup", async () => {
+    const empty = vi.fn(async () => Response.json({
+      code: 0,
+      data: { results: [] },
+    }))
+    await expect(findOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: empty as typeof fetch,
+    })).resolves.toBeNull()
+
+    const ambiguous = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        results: [9001, 9002].map((id) => ({
+          id,
+          domain: { name: "example", extension: "nl" },
+          status: "ACT",
+          owner_handle: "OWNER-CLIENT",
+          name_servers: [],
+        })),
+      },
+    }))
+    await expect(findOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: ambiguous as typeof fetch,
+    })).rejects.toBeInstanceOf(OpenProviderAmbiguousDomainLookupError)
+  })
 
   it("quotes the reseller transfer operation independently from renewal", async () => {
     const fetchMock = vi.fn(async () => Response.json({
@@ -907,8 +940,95 @@ describe("OpenProvider adapter", () => {
       fetchImpl: fetchMock as typeof fetch,
     })).resolves.toMatchObject({ handle: "OWNER-CLIENT" })
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://openprovider.test/v1beta/customers?comment_pattern=domain-registration%3Aorder%3A600%3Av1&limit=2",
+      "https://openprovider.test/v1beta/customers?comment_pattern=domain-registration%3Aorder%3A600%3Av1&limit=1000&offset=0",
       expect.objectContaining({ method: "GET" }),
+    )
+  })
+
+  it("returns absence and fails closed on ambiguous exact customer reference", async () => {
+    const empty = vi.fn(async () => Response.json({
+      code: 0,
+      data: { results: [] },
+    }))
+    await expect(findOpenProviderCustomerByReference(
+      "domain-registration:order:600:v1",
+      {
+        env,
+        token: "token-123",
+        fetchImpl: empty as typeof fetch,
+      },
+    )).resolves.toBeNull()
+
+    const ambiguous = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        results: ["OWNER-ONE", "OWNER-TWO"].map((handle) => ({
+          handle,
+          comments: "domain-registration:order:600:v1",
+        })),
+      },
+    }))
+    await expect(findOpenProviderCustomerByReference(
+      "domain-registration:order:600:v1",
+      {
+        env,
+        token: "token-123",
+        fetchImpl: ambiguous as typeof fetch,
+      },
+    )).rejects.toBeInstanceOf(
+      OpenProviderAmbiguousCustomerReferenceLookupError,
+    )
+  })
+
+  it("paginates partial customer matches and rejects a later exact duplicate", async () => {
+    const reference = "domain-registration:order:600:v1"
+    const firstPage = [
+      ...Array.from({ length: 999 }, (_, index) => ({
+        handle: `PARTIAL-${index}`,
+        comments: `${reference}:partial:${index}`,
+      })),
+      { handle: "OWNER-ONE", comments: reference },
+    ]
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url.endsWith("&offset=0")) {
+        return Response.json({ code: 0, data: { results: firstPage } })
+      }
+      if (url.endsWith("&offset=1000")) {
+        return Response.json({
+          code: 0,
+          data: {
+            results: [{ handle: "OWNER-TWO", comments: reference }],
+          },
+        })
+      }
+      throw new Error(`Unexpected customer lookup ${url}`)
+    })
+
+    await expect(findOpenProviderCustomerByReference(reference, {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toBeInstanceOf(
+      OpenProviderAmbiguousCustomerReferenceLookupError,
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("fails closed when customer-reference search completeness is malformed", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: {},
+    }))
+    await expect(findOpenProviderCustomerByReference(
+      "domain-registration:order:600:v1",
+      {
+        env,
+        token: "token-123",
+        fetchImpl: fetchMock as typeof fetch,
+      },
+    )).rejects.toBeInstanceOf(
+      OpenProviderCustomerReferenceLookupIncompleteError,
     )
   })
 

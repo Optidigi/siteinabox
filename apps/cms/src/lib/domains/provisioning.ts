@@ -9,7 +9,7 @@ import {
   validateTldRegistrationLabel,
   validateTldRegistrantPrerequisites,
 } from "@siteinabox/contracts/tld-capabilities"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import type {
   CheckoutProfile,
   ManagedDomain,
@@ -19,18 +19,21 @@ import type {
   Tenant,
 } from "@/payload-types"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 import {
   ensureCommerceNotification,
   queueCommerceNotification,
 } from "@/lib/commerce/notifications"
 import {
   buildCloudflareDnsRecordRequests,
+  classifyCloudflareZoneLookup,
   createCloudflareZoneDnsRecords,
   createOrReuseCloudflareZone,
-  CloudflareIndeterminateWriteError,
+  CloudflareApiError,
   getCloudflareSslVerification,
   listCloudflareDnsRecords,
   listCloudflareZones,
+  type CloudflareZoneResult,
 } from "@/lib/domains/cloudflare"
 import {
   checkOpenProviderDomainAvailability,
@@ -39,6 +42,9 @@ import {
   findOpenProviderDomain,
   loginOpenProvider,
   normalizeOpenProviderTimestamp,
+  OpenProviderAmbiguousCustomerReferenceLookupError,
+  OpenProviderAmbiguousDomainLookupError,
+  OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   type OpenProviderDomainRecord,
@@ -47,8 +53,12 @@ import {
   createDomainOrderState,
   normalizeDomainOrderState,
   normalizeDomainRegistrantDetails,
+  type DomainRegistrantDetails,
 } from "@/lib/domains/orderState"
-import { normalizeDomain } from "@/lib/domains/normalize"
+import {
+  normalizeDomain,
+  type NormalizedDomain,
+} from "@/lib/domains/normalize"
 import type { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
@@ -67,6 +77,10 @@ import {
   type HttpsVerification,
 } from "@/lib/domains/verification"
 import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
+import {
+  registrationRegistrantVerification,
+  storedRegistrantVerification,
+} from "@/lib/domains/registrantVerification"
 
 type ManagedDomainLifecycleData = Partial<ManagedDomain> & Record<string, unknown>
 
@@ -79,6 +93,207 @@ export type ProvisionPaidDomainResult = {
 }
 
 export type InitialDomainFinancialAuthority = "paid" | "custody_only"
+
+type ProvisionPaidDomainInput = {
+  order: Order
+  paymentAttemptId: string | number
+  selectedDomain?: string | null
+  dependencies?: Partial<ProvisioningDependencies>
+}
+
+type ProvisioningInitialAuthorityContext = {
+  order: Order
+  normalized: Extract<NormalizedDomain, { ok: true }>
+  capability: TldCapability
+  tenantId: string | number
+  tenant: Tenant
+  registrant: DomainRegistrantDetails
+  managedDomain: ManagedDomain
+  initialProviderRegistrationState: ManagedDomain["providerRegistrationState"]
+  initialFailureReason: ManagedDomain["failureReason"]
+  now: string
+}
+
+type ProvisioningInitialAuthorityOutcome =
+  | { outcome: "continue"; context: ProvisioningInitialAuthorityContext }
+  | {
+      outcome: "waiting" | "unfulfillable" | "completed"
+      result: ProvisionPaidDomainResult
+    }
+
+type OpenProviderCustomerReconciliationOutcome =
+  | {
+      outcome: "continue"
+      customerHandle: string
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome:
+        | "provider_reconciliation_required"
+        | "manual_review"
+        | "unfulfillable"
+      result: ProvisionPaidDomainResult
+    }
+
+type OpenProviderCustomerReferenceLookup =
+  | { outcome: "absent" }
+  | {
+      outcome: "exact"
+      customer: NonNullable<Awaited<ReturnType<
+        ProvisioningDependencies["findOpenProviderCustomerByReference"]
+      >>>
+    }
+  | { outcome: "ambiguous" }
+
+type CloudflareZoneReconciliationOutcome =
+  | {
+      outcome: "continue"
+      zone: CloudflareZoneResult
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome: "provider_reconciliation_required" | "manual_review"
+      result: ProvisionPaidDomainResult
+    }
+
+type RegistrarRegistrationOutcome =
+  | {
+      outcome: "continue"
+      providerDomain: OpenProviderDomainRecord
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome:
+        | "waiting"
+        | "provider_reconciliation_required"
+        | "manual_review"
+        | "unfulfillable"
+      result: ProvisionPaidDomainResult
+    }
+
+type RegistrantVerificationPhaseOutcome =
+  | { outcome: "continue"; managedDomain: ManagedDomain }
+  | {
+      outcome: "customer_action_required"
+      result: ProvisionPaidDomainResult
+    }
+
+type ProvisioningReadinessPhaseOutcome =
+  | {
+      outcome: "continue"
+      managedDomain: ManagedDomain
+      zone: CloudflareZoneResult
+    }
+  | { outcome: "waiting"; result: ProvisionPaidDomainResult }
+
+type ProvisioningActivationPhaseOutcome =
+  | { outcome: "completed"; result: ProvisionPaidDomainResult }
+  | { outcome: "waiting"; result: ProvisionPaidDomainResult }
+
+type RegistrarWriteErrorClassification = "rejected" | "indeterminate"
+
+type OpenProviderCustomerWriteErrorClassification =
+  | "rejected"
+  | "indeterminate"
+
+type CloudflareZoneWriteErrorClassification = "rejected" | "indeterminate"
+
+const OPENPROVIDER_CUSTOMER_WRITE_CLAIM_LEASE_MS = 5 * 60_000
+const CLOUDFLARE_ZONE_WRITE_CLAIM_LEASE_MS = 5 * 60_000
+
+const customerWriteCheckpointReasons = new Set([
+  "openprovider_customer_handle_claimed",
+  "openprovider_customer_handle_indeterminate",
+  "openprovider_customer_handle_readback_indeterminate",
+  "openprovider_customer_handle_readback_pending",
+])
+
+const latestCustomerWriteCheckpointAt = (
+  domain: ManagedDomain,
+): string | null => {
+  const history = Array.isArray(domain.stateHistory) ? domain.stateHistory : []
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = readObject(history[index])
+    const reason = typeof entry?.reason === "string" ? entry.reason : null
+    const at = typeof entry?.at === "string" ? entry.at : null
+    if (reason && at && customerWriteCheckpointReasons.has(reason)) return at
+  }
+  return null
+}
+
+const customerWriteAbsenceLeaseExpired = (
+  domain: ManagedDomain,
+  now: string,
+): boolean => {
+  const checkpointAt = latestCustomerWriteCheckpointAt(domain)
+  if (!checkpointAt) return false
+  const checkpointTime = new Date(checkpointAt).getTime()
+  const currentTime = new Date(now).getTime()
+  return Number.isFinite(checkpointTime) &&
+    Number.isFinite(currentTime) &&
+    currentTime - checkpointTime >= OPENPROVIDER_CUSTOMER_WRITE_CLAIM_LEASE_MS
+}
+
+const classifyOpenProviderCustomerWriteError = (
+  error: unknown,
+): OpenProviderCustomerWriteErrorClassification =>
+  error instanceof OpenProviderApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+    ? "rejected"
+    : "indeterminate"
+
+const classifyCloudflareZoneWriteError = (
+  error: unknown,
+): CloudflareZoneWriteErrorClassification =>
+  error instanceof CloudflareApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+    ? "rejected"
+    : "indeterminate"
+
+const cloudflareZoneWriteCheckpointReasons = new Set([
+  "cloudflare_zone_creation_claimed",
+  "cloudflare_zone_creation_indeterminate",
+  "cloudflare_zone_creation_readback_indeterminate",
+  "cloudflare_zone_creation_readback_pending",
+])
+
+const cloudflareZoneWriteAbsenceLeaseExpired = (
+  domain: ManagedDomain,
+  now: string,
+): boolean => {
+  const history = Array.isArray(domain.stateHistory) ? domain.stateHistory : []
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = readObject(history[index])
+    const reason = typeof entry?.reason === "string" ? entry.reason : null
+    const at = typeof entry?.at === "string" ? entry.at : null
+    if (!reason || !at || !cloudflareZoneWriteCheckpointReasons.has(reason)) {
+      continue
+    }
+    const checkpointTime = new Date(at).getTime()
+    const currentTime = new Date(now).getTime()
+    return Number.isFinite(checkpointTime) &&
+      Number.isFinite(currentTime) &&
+      currentTime - checkpointTime >= CLOUDFLARE_ZONE_WRITE_CLAIM_LEASE_MS
+  }
+  return false
+}
+
+const classifyRegistrarWriteError = (
+  error: unknown,
+): RegistrarWriteErrorClassification =>
+  error instanceof OpenProviderApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+    ? "rejected"
+    : "indeterminate"
 
 type ProvisioningDependencies = {
   now: () => string
@@ -529,41 +744,6 @@ const registrationIsActive = (
   status.trim().toUpperCase(),
 )
 
-const registrantVerification = (
-  record: OpenProviderDomainRecord | null,
-  capability: TldCapability,
-): {
-  status: "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed"
-  description: string
-} => {
-  const status = record?.verificationEmailStatus?.trim().toLowerCase() ?? ""
-  const description = record?.verificationEmailDescription?.trim() ||
-    (
-      status
-        ? `Provider reports no registrant verification requirement for .${capability.tld}.`
-        : `Provider registrant verification status is not available yet for .${capability.tld}.`
-    )
-  if (!status) {
-    return { status: "pending", description }
-  }
-  if (["not applicable", "not required", "n/a"].includes(status)) {
-    return { status: "not_required", description }
-  }
-  if (["verified", "valid", "completed"].includes(status)) {
-    return { status: "verified", description }
-  }
-  if (status.includes("suspend")) {
-    return { status: "suspended", description }
-  }
-  if (status.includes("overdue") || status.includes("expired")) {
-    return { status: "overdue", description }
-  }
-  if (status.includes("fail") || status.includes("reject")) {
-    return { status: "failed", description }
-  }
-  return { status: "pending", description }
-}
-
 const canonicalDnsValue = (value: string): string =>
   value.trim().toLowerCase().replace(/\.$/, "")
 
@@ -589,17 +769,62 @@ const waiting = (
   message,
 })
 
-export async function provisionPaidDomainOrder(
+const providerManualReconciliationCodes = new Set([
+  "cloudflare_zone_creation_reconciliation_timeout",
+  "cloudflare_zone_creation_write_rejected",
+  "cloudflare_zone_lookup_ambiguous",
+  "openprovider_customer_reference_ambiguous",
+  "openprovider_customer_handle_reconciliation_timeout",
+  "openprovider_domain_lookup_ambiguous",
+])
+
+async function stopProvisioningForProviderManualReview(
   payload: Payload,
   run: SiteGenerationRun,
-  input: {
-    order: Order
-    paymentAttemptId: string | number
-    selectedDomain?: string | null
-    dependencies?: Partial<ProvisioningDependencies>
-  },
+  managedDomain: ManagedDomain,
+  registrant: ReturnType<typeof domainRegistrantFromCheckoutProfile>,
+  code: string,
+  message: string,
+  now: string,
 ): Promise<ProvisionPaidDomainResult> {
-  const dependencies = { ...defaultDependencies, ...input.dependencies }
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    customerStatus: "manual_review",
+    reconciliationRequired: true,
+    failureReason: code,
+  }, code, now)
+  await recordCommerceAdminException({
+    payload,
+    source: "domains",
+    code,
+    message,
+    tenant: managedDomain.tenant,
+    subjectId: managedDomain.id,
+    severity: "critical",
+    now,
+  })
+  run = await compatibilityProjection(
+    payload,
+    run,
+    managedDomain,
+    "failed",
+    code,
+    registrant,
+  )
+  return waiting(
+    managedDomain.domainNameAscii,
+    run,
+    managedDomain,
+    message,
+  )
+}
+
+async function loadAndClassifyProvisioningAuthorityPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+): Promise<ProvisioningInitialAuthorityOutcome> {
   const financialAuthority = await assertInitialDomainFinancialAuthority(payload, {
     orderId: input.order.id,
     paymentAttemptId: input.paymentAttemptId,
@@ -607,8 +832,13 @@ export async function provisionPaidDomainOrder(
   input.order = financialAuthority.order
   const selectedDomain = input.selectedDomain ?? input.order.domain
   const normalized = normalizeDomain(selectedDomain)
-  if (!normalized.ok) throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
-  const capability = capabilityForAcceptedOrder(input.order, normalized.extension)
+  if (!normalized.ok) {
+    throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
+  }
+  const capability = capabilityForAcceptedOrder(
+    input.order,
+    normalized.extension,
+  )
   if (!validateTldRegistrationLabel(capability, normalized.name)) {
     throw new Error(`Domain label is not supported for .${normalized.extension}.`)
   }
@@ -621,7 +851,7 @@ export async function provisionPaidDomainOrder(
   if (!tenantId || !sameRelationshipId(input.order.tenant, tenantId)) {
     throw new Error("Paid order, generation run, and tenant must match.")
   }
-  let tenant = await payload.findByID({
+  const tenant = await payload.findByID({
     collection: "tenants",
     id: tenantId,
     depth: 0,
@@ -634,21 +864,30 @@ export async function provisionPaidDomainOrder(
   const profile = await checkoutProfileForOrder(payload, input.order)
   const registrant = normalizeDomainRegistrantDetails(input.order.domainRegistrant)
   if (!registrant) {
-    throw new Error("Paid domain fulfillment requires the frozen accepted registrant evidence.")
+    throw new Error(
+      "Paid domain fulfillment requires the frozen accepted registrant evidence.",
+    )
   }
   if (!capability.registrant.supportedPartyTypes.includes(profile.partyType)) {
-    throw new Error(`Contracting-party type is not supported for .${capability.tld}.`)
+    throw new Error(
+      `Contracting-party type is not supported for .${capability.tld}.`,
+    )
   }
   for (const field of capability.registrant.requiredFields) {
     if (!registrant[field]) {
-      throw new Error(`Authoritative registrant field ${field} is required for .${capability.tld}.`)
+      throw new Error(
+        `Authoritative registrant field ${field} is required for .${capability.tld}.`,
+      )
     }
   }
   if (profile.partyType === "registered_business" && !registrant.companyName) {
-    throw new Error(`Authoritative registrant field companyName is required for .${capability.tld}.`)
+    throw new Error(
+      `Authoritative registrant field companyName is required for .${capability.tld}.`,
+    )
   }
   const now = dependencies.now()
-  const currentSafetyCapability = tldCapabilityAt(capability.tld, now) ?? capability
+  const currentSafetyCapability = tldCapabilityAt(capability.tld, now) ??
+    capability
   const registrantPrerequisites = validateTldRegistrantPrerequisites(
     currentSafetyCapability,
     registrant,
@@ -670,18 +909,39 @@ export async function provisionPaidDomainOrder(
     !sameRelationshipId(managedDomain.originatingOrder, input.order.id) ||
     !sameRelationshipId(managedDomain.registrantProfile, profile.id)
   ) {
-    throw new Error("Managed domain is already bound to different accepted evidence or ownership.")
+    throw new Error(
+      "Managed domain is already bound to different accepted evidence or ownership.",
+    )
   }
-  const initialProviderRegistrationState = managedDomain.providerRegistrationState
+  const initialProviderRegistrationState =
+    managedDomain.providerRegistrationState
   const initialFailureReason = managedDomain.failureReason
+  if (
+    managedDomain.state === "manual_review" &&
+    providerManualReconciliationCodes.has(initialFailureReason ?? "")
+  ) {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        normalized.domain,
+        run,
+        managedDomain,
+        "Provider authority requires manual reconciliation.",
+      ),
+    }
+  }
   if (
     managedDomain.state === "manual_review" &&
     (
       [
+        "openprovider_customer_handle_write_rejected",
+        "openprovider_registration_write_rejected",
         "paid_domain_became_unavailable_before_provider_commit",
         "provider_domain_owner_mismatch",
       ].includes(initialFailureReason ?? "") ||
-      initialFailureReason?.startsWith("current_tld_safety_contract_unmet:") === true
+      initialFailureReason?.startsWith(
+        "current_tld_safety_contract_unmet:",
+      ) === true
     )
   ) {
     run = await compatibilityProjection(
@@ -693,11 +953,14 @@ export async function provisionPaidDomainOrder(
       registrant,
     )
     return {
-      status: "unfulfillable",
-      domain: normalized.domain,
-      run,
-      managedDomain,
-      message: "The managed domain remains in terminal manual review.",
+      outcome: "unfulfillable",
+      result: {
+        status: "unfulfillable",
+        domain: normalized.domain,
+        run,
+        managedDomain,
+        message: "The managed domain remains in terminal manual review.",
+      },
     }
   }
   const currentSafetyFailure = !validateTldRegistrationLabel(
@@ -726,14 +989,21 @@ export async function provisionPaidDomainOrder(
       registrant,
     )
     return {
-      status: "unfulfillable",
-      domain: normalized.domain,
-      run,
-      managedDomain,
-      message: "The accepted order no longer satisfies the current registry safety contract.",
+      outcome: "unfulfillable",
+      result: {
+        status: "unfulfillable",
+        domain: normalized.domain,
+        run,
+        managedDomain,
+        message:
+          "The accepted order no longer satisfies the current registry safety contract.",
+      },
     }
   }
-  if (managedDomain.state === "active" && managedDomain.entitlementStatus === "active") {
+  if (
+    managedDomain.state === "active" &&
+    managedDomain.entitlementStatus === "active"
+  ) {
     run = await compatibilityProjection(
       payload,
       run,
@@ -743,12 +1013,1159 @@ export async function provisionPaidDomainOrder(
       registrant,
     )
     return {
-      status: "already_active",
-      domain: normalized.domain,
+      outcome: "completed",
+      result: {
+        status: "already_active",
+        domain: normalized.domain,
+        run,
+        managedDomain,
+      },
+    }
+  }
+  return {
+    outcome: "continue",
+    context: {
+      order: input.order,
+      normalized,
+      capability,
+      tenantId,
+      tenant,
+      registrant,
+      managedDomain,
+      initialProviderRegistrationState,
+      initialFailureReason,
+      now,
+    },
+  }
+}
+
+async function lookupOpenProviderCustomerReference(
+  dependencies: ProvisioningDependencies,
+  reference: string,
+  token: string,
+): Promise<OpenProviderCustomerReferenceLookup> {
+  try {
+    const customer = await dependencies.findOpenProviderCustomerByReference(
+      reference,
+      { token },
+    )
+    return customer
+      ? { outcome: "exact", customer }
+      : { outcome: "absent" }
+  } catch (error) {
+    if (error instanceof OpenProviderAmbiguousCustomerReferenceLookupError) {
+      return { outcome: "ambiguous" }
+    }
+    throw error
+  }
+}
+
+async function claimOpenProviderCustomerWrite(
+  payload: Payload,
+  domain: ManagedDomain,
+  now: string,
+): Promise<{ claimed: boolean; managedDomain: ManagedDomain }> {
+  const currentFailureReason = domain.failureReason ?? null
+  const claim = await payload.update({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { id: { equals: domain.id } },
+        { providerCustomerHandle: { exists: false } },
+        {
+          providerRegistrationState: {
+            equals: domain.providerRegistrationState,
+          },
+        },
+        currentFailureReason
+          ? { failureReason: { equals: currentFailureReason } }
+          : { failureReason: { exists: false } },
+      ],
+    },
+    data: {
+      providerRegistrationState: "prepared",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_prepared",
+      stateHistory: historyWith(
+        domain,
+        now,
+        domain.state,
+        "openprovider_customer_handle_claimed",
+      ),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { managedDomainLifecycleMutation: true },
+  })
+  const claimedDomain = Array.isArray(claim.docs)
+    ? claim.docs[0] as ManagedDomain | undefined
+    : undefined
+  if (claimedDomain) return { claimed: true, managedDomain: claimedDomain }
+  const winner = await payload.findByID({
+    collection: "managed-domains",
+    id: domain.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as ManagedDomain
+  return { claimed: false, managedDomain: winner }
+}
+
+async function reconcileOpenProviderCustomerPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    token: string
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+  },
+): Promise<OpenProviderCustomerReconciliationOutcome> {
+  let managedDomain = context.managedDomain
+  let customerHandle = managedDomain.providerCustomerHandle ?? null
+  if (customerHandle) {
+    return { outcome: "continue", customerHandle, managedDomain }
+  }
+
+  const stopForAmbiguity = async (): Promise<OpenProviderCustomerReconciliationOutcome> => ({
+    outcome: "manual_review",
+    result: await stopProvisioningForProviderManualReview(
+      payload,
       run,
+      managedDomain,
+      context.registrant,
+      "openprovider_customer_reference_ambiguous",
+      "Multiple exact Openprovider customers match the accepted registration reference.",
+      dependencies.now(),
+    ),
+  })
+  const persistExactCustomer = async (
+    exactHandle: string,
+  ): Promise<OpenProviderCustomerReconciliationOutcome> => {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      providerCustomerHandle: exactHandle,
+      providerRegistrationState: "not_started",
+      reconciliationRequired: false,
+      failureReason: null,
+    }, "provider_customer_handle_persisted", dependencies.now())
+    return {
+      outcome: "continue",
+      customerHandle: exactHandle,
       managedDomain,
     }
   }
+  const persistIndeterminate = async (
+    reason: string,
+    message: string,
+  ): Promise<OpenProviderCustomerReconciliationOutcome> => {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      providerRegistrationState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_indeterminate",
+    }, reason, dependencies.now())
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        message,
+      ),
+    }
+  }
+
+  const initialLookup = await lookupOpenProviderCustomerReference(
+    dependencies,
+    managedDomain.provisioningIdempotencyKey,
+    context.token,
+  )
+  if (initialLookup.outcome === "ambiguous") return stopForAmbiguity()
+  if (initialLookup.outcome === "exact") {
+    return persistExactCustomer(initialLookup.customer.handle)
+  }
+
+  const now = dependencies.now()
+  const resumableCheckpoint =
+    managedDomain.providerRegistrationState === "prepared" ||
+    managedDomain.providerRegistrationState === "indeterminate"
+  if (
+    resumableCheckpoint &&
+    !customerWriteAbsenceLeaseExpired(managedDomain, now)
+  ) {
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider customer-handle creation remains claimed or indeterminate; the exact-absence lease has not elapsed.",
+      ),
+    }
+  }
+  if (resumableCheckpoint) {
+    return {
+      outcome: "manual_review",
+      result: await stopProvisioningForProviderManualReview(
+        payload,
+        run,
+        managedDomain,
+        context.registrant,
+        "openprovider_customer_handle_reconciliation_timeout",
+        "Openprovider customer-handle creation remains absent after the reconciliation timeout; operator review is required and no retry was sent.",
+        now,
+      ),
+    }
+  }
+  if (
+    managedDomain.providerRegistrationState !== "not_started"
+  ) {
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider customer-handle state requires reconciliation before creation.",
+      ),
+    }
+  }
+
+  await assertInitialDomainFinancialAuthority(payload, {
+    orderId: input.order.id,
+    paymentAttemptId: input.paymentAttemptId,
+  })
+  const claim = await claimOpenProviderCustomerWrite(payload, managedDomain, now)
+  managedDomain = claim.managedDomain
+  if (!claim.claimed) {
+    if (managedDomain.providerCustomerHandle) {
+      return {
+        outcome: "continue",
+        customerHandle: managedDomain.providerCustomerHandle,
+        managedDomain,
+      }
+    }
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider customer-handle creation is owned by another worker.",
+      ),
+    }
+  }
+
+  let writeFailed = false
+  let writeError: unknown = null
+  try {
+    await dependencies.createOpenProviderCustomerHandle(
+      context.registrant,
+      {
+        token: context.token,
+        reference: managedDomain.provisioningIdempotencyKey,
+      },
+    )
+  } catch (error) {
+    writeFailed = true
+    writeError = error
+  }
+
+  let readback: OpenProviderCustomerReferenceLookup | null = null
+  try {
+    readback = await lookupOpenProviderCustomerReference(
+      dependencies,
+      managedDomain.provisioningIdempotencyKey,
+      context.token,
+    )
+  } catch {
+    return persistIndeterminate(
+      "openprovider_customer_handle_readback_indeterminate",
+      "Openprovider customer-handle readback is awaiting reconciliation; no retry was sent.",
+    )
+  }
+  if (readback.outcome === "ambiguous") return stopForAmbiguity()
+  if (readback.outcome === "exact") {
+    return persistExactCustomer(readback.customer.handle)
+  }
+
+  if (writeFailed) {
+    if (classifyOpenProviderCustomerWriteError(writeError) === "rejected") {
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        state: "manual_review",
+        customerStatus: "manual_review",
+        providerRegistrationState: "not_started",
+        reconciliationRequired: false,
+        failureReason: "openprovider_customer_handle_write_rejected",
+      }, "openprovider_customer_handle_write_rejected", dependencies.now())
+      return {
+        outcome: "unfulfillable",
+        result: {
+          status: "unfulfillable",
+          domain: context.normalized.domain,
+          run,
+          managedDomain,
+          message:
+            "Openprovider deterministically rejected the customer-handle creation.",
+        },
+      }
+    }
+    return persistIndeterminate(
+      "openprovider_customer_handle_indeterminate",
+      "Openprovider customer-handle creation is awaiting reconciliation; no retry was sent.",
+    )
+  }
+
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    providerRegistrationState: "prepared",
+    reconciliationRequired: true,
+    failureReason: "openprovider_customer_handle_readback_pending",
+  }, "openprovider_customer_handle_readback_pending", dependencies.now())
+  return {
+    outcome: "provider_reconciliation_required",
+    result: waiting(
+      context.normalized.domain,
+      run,
+      managedDomain,
+      "Openprovider accepted customer-handle creation but exact readback is still pending; no retry was sent.",
+    ),
+  }
+}
+
+async function claimCloudflareZoneWrite(
+  payload: Payload,
+  domain: ManagedDomain,
+  now: string,
+): Promise<{ claimed: boolean; managedDomain: ManagedDomain }> {
+  const currentFailureReason = domain.failureReason ?? null
+  const claim = await payload.update({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { id: { equals: domain.id } },
+        { cloudflareZoneId: { exists: false } },
+        currentFailureReason
+          ? { failureReason: { equals: currentFailureReason } }
+          : { failureReason: { exists: false } },
+      ],
+    },
+    data: {
+      reconciliationRequired: true,
+      failureReason: "cloudflare_zone_creation_prepared",
+      stateHistory: historyWith(
+        domain,
+        now,
+        domain.state,
+        "cloudflare_zone_creation_claimed",
+      ),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { managedDomainLifecycleMutation: true },
+  })
+  const claimedDomain = Array.isArray(claim.docs)
+    ? claim.docs[0] as ManagedDomain | undefined
+    : undefined
+  if (claimedDomain) return { claimed: true, managedDomain: claimedDomain }
+  const winner = await payload.findByID({
+    collection: "managed-domains",
+    id: domain.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as ManagedDomain
+  return { claimed: false, managedDomain: winner }
+}
+
+async function reconcileCloudflareZonePhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+  },
+): Promise<CloudflareZoneReconciliationOutcome> {
+  let managedDomain = context.managedDomain
+  const stopForAmbiguity = async (): Promise<CloudflareZoneReconciliationOutcome> => ({
+    outcome: "manual_review",
+    result: await stopProvisioningForProviderManualReview(
+      payload,
+      run,
+      managedDomain,
+      context.registrant,
+      "cloudflare_zone_lookup_ambiguous",
+      "Multiple exact Cloudflare zones match the accepted registration authority.",
+      dependencies.now(),
+    ),
+  })
+  const persistExactZone = async (
+    zone: CloudflareZoneResult,
+  ): Promise<CloudflareZoneReconciliationOutcome> => {
+    if (
+      managedDomain.cloudflareZoneId !== zone.id ||
+      managedDomain.cloudflareZoneStatus !== zone.status ||
+      managedDomain.failureReason
+    ) {
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        cloudflareZoneId: zone.id,
+        cloudflareNameservers: zone.nameServers,
+        cloudflareZoneStatus: zone.status,
+        reconciliationRequired: false,
+        failureReason: null,
+      }, "cloudflare_zone_persisted", dependencies.now())
+    }
+    return {
+      outcome: "continue",
+      zone,
+      managedDomain,
+    }
+  }
+  const persistIndeterminate = async (
+    reason: string,
+    message: string,
+  ): Promise<CloudflareZoneReconciliationOutcome> => {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      reconciliationRequired: true,
+      failureReason: "cloudflare_zone_creation_indeterminate",
+    }, reason, dependencies.now())
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(context.normalized.domain, run, managedDomain, message),
+    }
+  }
+  const classifyVisibleZones = (
+    visibleZones: CloudflareZoneResult[],
+  ): ReturnType<typeof classifyCloudflareZoneLookup> => {
+    const persistedZones = managedDomain.cloudflareZoneId
+      ? visibleZones.filter((candidate) =>
+          candidate.id === managedDomain.cloudflareZoneId)
+      : []
+    return classifyCloudflareZoneLookup(
+      context.normalized.domain,
+      persistedZones.length > 0 ? persistedZones : visibleZones,
+    )
+  }
+
+  const initialLookup = classifyVisibleZones(
+    await dependencies.listCloudflareZones(context.normalized.domain),
+  )
+  if (initialLookup.outcome === "ambiguous") return stopForAmbiguity()
+  if (initialLookup.outcome === "exact") {
+    return persistExactZone(initialLookup.zone)
+  }
+
+  const now = dependencies.now()
+  const unresolvedCheckpoint = [
+    "cloudflare_zone_creation_prepared",
+    "cloudflare_zone_creation_indeterminate",
+    "cloudflare_zone_creation_readback_pending",
+  ].includes(managedDomain.failureReason ?? "")
+  if (
+    unresolvedCheckpoint &&
+    !cloudflareZoneWriteAbsenceLeaseExpired(managedDomain, now)
+  ) {
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Cloudflare zone creation remains prepared or indeterminate; no retry was sent.",
+      ),
+    }
+  }
+  if (unresolvedCheckpoint) {
+    return {
+      outcome: "manual_review",
+      result: await stopProvisioningForProviderManualReview(
+        payload,
+        run,
+        managedDomain,
+        context.registrant,
+        "cloudflare_zone_creation_reconciliation_timeout",
+        "Cloudflare zone creation remains absent after the reconciliation timeout; operator review is required and no retry was sent.",
+        now,
+      ),
+    }
+  }
+
+  await assertInitialDomainFinancialAuthority(payload, {
+    orderId: input.order.id,
+    paymentAttemptId: input.paymentAttemptId,
+  })
+  const claim = await claimCloudflareZoneWrite(payload, managedDomain, now)
+  managedDomain = claim.managedDomain
+  if (!claim.claimed) {
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Cloudflare zone creation is owned by another worker.",
+      ),
+    }
+  }
+
+  let writeError: unknown = null
+  try {
+    await dependencies.createOrReuseCloudflareZone(context.normalized.domain)
+  } catch (error) {
+    writeError = error
+  }
+
+  let readback: ReturnType<typeof classifyCloudflareZoneLookup>
+  try {
+    readback = classifyVisibleZones(
+      await dependencies.listCloudflareZones(context.normalized.domain),
+    )
+  } catch {
+    return persistIndeterminate(
+      "cloudflare_zone_creation_readback_indeterminate",
+      "Cloudflare zone readback is awaiting reconciliation; no retry was sent.",
+    )
+  }
+  if (readback.outcome === "ambiguous") return stopForAmbiguity()
+  if (readback.outcome === "exact") return persistExactZone(readback.zone)
+
+  if (writeError) {
+    if (classifyCloudflareZoneWriteError(writeError) === "rejected") {
+      const code = "cloudflare_zone_creation_write_rejected"
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        state: "manual_review",
+        customerStatus: "manual_review",
+        reconciliationRequired: false,
+        failureReason: code,
+      }, code, dependencies.now())
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code,
+        message: "Cloudflare deterministically rejected zone creation.",
+        tenant: managedDomain.tenant,
+        subjectId: managedDomain.id,
+        severity: "critical",
+        now: dependencies.now(),
+      })
+      run = await compatibilityProjection(
+        payload,
+        run,
+        managedDomain,
+        "failed",
+        code,
+        context.registrant,
+      )
+      return {
+        outcome: "manual_review",
+        result: waiting(
+          context.normalized.domain,
+          run,
+          managedDomain,
+          "Cloudflare deterministically rejected zone creation; operator review is required.",
+        ),
+      }
+    }
+    return persistIndeterminate(
+      "cloudflare_zone_creation_indeterminate",
+      "Cloudflare zone creation is awaiting reconciliation; no retry was sent.",
+    )
+  }
+
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    reconciliationRequired: true,
+    failureReason: "cloudflare_zone_creation_readback_pending",
+  }, "cloudflare_zone_creation_readback_pending", dependencies.now())
+  return {
+    outcome: "provider_reconciliation_required",
+    result: waiting(
+      context.normalized.domain,
+      run,
+      managedDomain,
+      "Cloudflare accepted zone creation but exact readback is still pending; no retry was sent.",
+    ),
+  }
+}
+
+async function claimAndReconcileRegistrarRegistrationPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    token: string
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    capability: TldCapability
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+    providerDomain: OpenProviderDomainRecord | null
+    customerHandle: string
+    zone: CloudflareZoneResult
+  },
+): Promise<RegistrarRegistrationOutcome> {
+  let managedDomain = context.managedDomain
+  let providerDomain = context.providerDomain
+  if (!providerDomain) {
+    const claimedAt = dependencies.now()
+    const claimedDomain = await claimRegistrarCommit(payload, {
+      order: input.order,
+      paymentAttemptId: input.paymentAttemptId,
+      managedDomain,
+      now: claimedAt,
+    })
+    if (!claimedDomain) {
+      return {
+        outcome: "waiting",
+        result: waiting(
+          context.normalized.domain,
+          run,
+          managedDomain,
+          "Payment authority changed before registrar commitment; no registration was sent.",
+        ),
+      }
+    }
+    managedDomain = claimedDomain
+    let registrationFailed = false
+    let registrationError: unknown = null
+    try {
+      const registration = await dependencies.registerOpenProviderDomain(
+        context.normalized.domain,
+        {
+          token: context.token,
+          ownerHandle: context.customerHandle,
+          nameServers: context.zone.nameServers.map((name) => ({ name })),
+          nsGroup: null,
+          period: context.capability.registration.periodYears,
+          autorenew:
+            context.capability.renewal.executionMode ===
+              "provider_autorenew" &&
+            tldCapabilityOperationFlagEnabled(
+              context.capability,
+              "renewal_provider_autorenew",
+            )
+              ? "on"
+              : "off",
+          reference: managedDomain.provisioningIdempotencyKey,
+          acceptedCapabilityVersion: context.capability.capabilityVersion,
+        },
+      )
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        providerDomainId: registration.id == null
+          ? managedDomain.providerDomainId
+          : String(registration.id),
+        providerRegistrationState: "prepared",
+        reconciliationRequired: true,
+        failureReason: "openprovider_registration_readback_pending",
+      }, `provider_registration_response_${registration.status}`, dependencies.now())
+      // A successful POST is not registrant-verification evidence. Always
+      // reconcile through OpenProvider's authoritative domain read before DNS
+      // or publication may advance.
+      try {
+        providerDomain = await dependencies.findOpenProviderDomain(
+          context.normalized.domain,
+          { token: context.token },
+        )
+      } catch (readError) {
+        if (readError instanceof OpenProviderAmbiguousDomainLookupError) {
+          return {
+            outcome: "manual_review",
+            result: await stopProvisioningForProviderManualReview(
+              payload,
+              run,
+              managedDomain,
+              context.registrant,
+              "openprovider_domain_lookup_ambiguous",
+              "Multiple exact Openprovider domains match the accepted registration authority.",
+              dependencies.now(),
+            ),
+          }
+        }
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        }, "openprovider_registration_readback_indeterminate", dependencies.now())
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider registration readback is awaiting reconciliation; no retry was sent.",
+          ),
+        }
+      }
+    } catch (error) {
+      registrationFailed = true
+      registrationError = error
+    }
+    if (registrationFailed) {
+      let reconciled: OpenProviderDomainRecord | null = null
+      let reconciliationReadFailed = false
+      let reconciliationError: unknown = null
+      try {
+        reconciled = await dependencies.findOpenProviderDomain(
+          context.normalized.domain,
+          { token: context.token },
+        )
+      } catch (readError) {
+        // The original indeterminate write remains authoritative until a read succeeds.
+        reconciliationReadFailed = true
+        reconciliationError = readError
+      }
+      if (reconciliationError instanceof OpenProviderAmbiguousDomainLookupError) {
+        return {
+          outcome: "manual_review",
+          result: await stopProvisioningForProviderManualReview(
+            payload,
+            run,
+            managedDomain,
+            context.registrant,
+            "openprovider_domain_lookup_ambiguous",
+            "Multiple exact Openprovider domains match the accepted registration authority.",
+            dependencies.now(),
+          ),
+        }
+      }
+      if (reconciliationReadFailed) {
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        }, "openprovider_registration_readback_indeterminate", dependencies.now())
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider registration readback is awaiting reconciliation; no retry was sent.",
+          ),
+        }
+      }
+      if (reconciled) {
+        providerDomain = reconciled
+      } else if (classifyRegistrarWriteError(registrationError) === "rejected") {
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          state: "manual_review",
+          customerStatus: "manual_review",
+          providerRegistrationState: "not_started",
+          reconciliationRequired: false,
+          failureReason: "openprovider_registration_write_rejected",
+        }, "openprovider_registration_write_rejected", dependencies.now())
+        return {
+          outcome: "unfulfillable",
+          result: {
+            status: "unfulfillable",
+            domain: context.normalized.domain,
+            run,
+            managedDomain,
+            message: "Openprovider deterministically rejected the domain registration.",
+          },
+        }
+      } else {
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        }, "openprovider_registration_indeterminate", dependencies.now())
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider registration is awaiting reconciliation; no retry was sent.",
+          ),
+        }
+      }
+    }
+  }
+
+  if (!providerDomain) {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider is still processing the domain registration.",
+      ),
+    }
+  }
+  if (providerDomain.ownerHandle !== context.customerHandle) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      state: "manual_review",
+      customerStatus: "manual_review",
+      reconciliationRequired: false,
+      failureReason: "provider_domain_owner_mismatch",
+    }, "provider_domain_owner_mismatch", dependencies.now())
+    return {
+      outcome: "unfulfillable",
+      result: {
+        status: "unfulfillable",
+        domain: context.normalized.domain,
+        run,
+        managedDomain,
+        message:
+          "Openprovider returned the domain under a different registrant handle.",
+      },
+    }
+  }
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    providerDomainId: String(providerDomain.id),
+    providerRegistrationState: "confirmed",
+    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    providerRenewalDate: normalizeOpenProviderTimestamp(
+      providerDomain.renewalDate,
+    ),
+    registryExpiryDate: normalizeOpenProviderTimestamp(
+      providerDomain.registryExpiryDate,
+    ),
+    registeredAt: registrationIsActive(providerDomain.status, context.capability)
+      ? managedDomain.registeredAt ?? dependencies.now()
+      : managedDomain.registeredAt,
+    reconciliationRequired: !registrationIsActive(
+      providerDomain.status,
+      context.capability,
+    ),
+    failureReason: null,
+  }, "provider_registration_reconciled", dependencies.now())
+  if (!registrationIsActive(providerDomain.status, context.capability)) {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider has accepted the registration and is still processing it.",
+      ),
+    }
+  }
+
+  return {
+    outcome: "continue",
+    providerDomain,
+    managedDomain,
+  }
+}
+
+async function projectRegistrantVerificationPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    capability: TldCapability
+    tenantId: string | number
+    managedDomain: ManagedDomain
+    providerDomain: OpenProviderDomainRecord
+  },
+): Promise<RegistrantVerificationPhaseOutcome> {
+  const verification = registrationRegistrantVerification(
+    context.providerDomain,
+    context.capability.tld,
+  )
+  const storedVerification = storedRegistrantVerification(
+    verification.status,
+    context.managedDomain.registrantVerificationStatus,
+  )
+  const verificationStatus = storedVerification.status
+  const verificationActionRequired = storedVerification.customerActionRequired
+  const managedDomain = await updateManagedDomain(
+    payload,
+    context.managedDomain,
+    {
+      registrantVerificationStatus: verificationStatus,
+      registrantVerificationCheckedAt: dependencies.now(),
+      registrantVerificationDueAt: normalizeOpenProviderTimestamp(
+        context.providerDomain.verificationEmailExpiresAt,
+      ) ?? context.managedDomain.registrantVerificationDueAt,
+      registrantVerificationRecoveredAt: storedVerification.recovered
+        ? dependencies.now()
+        : undefined,
+      registrantVerificationDescription: verification.description,
+      customerStatus: verificationActionRequired
+        ? "verification_required"
+        : "provisioning",
+      reconciliationRequired: verificationActionRequired,
+      failureReason: verificationActionRequired
+        ? `registrant_verification_${verificationStatus}`
+        : null,
+    },
+    `registrant_verification_${verificationStatus}`,
+    dependencies.now(),
+  )
+  if (["overdue", "suspended", "failed"].includes(verificationStatus)) {
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: `registrant_verification_${verificationStatus}`,
+      message:
+        "Provider-reported registrant verification requires immediate customer recovery.",
+      tenant: managedDomain.tenant,
+      subjectId: managedDomain.id,
+      severity: verificationStatus === "suspended" ? "critical" : "error",
+      now: dependencies.now(),
+    })
+  }
+  if (verificationActionRequired) {
+    const agreements = await payload.find({
+      collection: "billing-agreements",
+      where: { originatingOrder: { equals: input.order.id } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (agreements.docs.length === 1) {
+      const delivery = await ensureCommerceNotification({
+        payload,
+        kind: "domain_verification_required",
+        tenantId: context.tenantId,
+        recipient: input.order.customerEmail,
+        businessEventKey: `registration:${managedDomain.id}`,
+        eventAt:
+          managedDomain.registrantVerificationDueAt ??
+          managedDomain.registrationRequestedAt ??
+          managedDomain.createdAt,
+        billingAgreementId: agreements.docs[0]!.id,
+      })
+      await queueCommerceNotification(payload, delivery.id)
+    }
+    return {
+      outcome: "customer_action_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Customer registrant verification is required before activation.",
+      ),
+    }
+  }
+
+  return { outcome: "continue", managedDomain }
+}
+
+async function verifyProvisioningReadinessPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    managedDomain: ManagedDomain
+    zone: CloudflareZoneResult
+  },
+): Promise<ProvisioningReadinessPhaseOutcome> {
+  let managedDomain = context.managedDomain
+  const refreshedZone = (await dependencies.listCloudflareZones(
+    context.normalized.domain,
+  )).find((candidate) => candidate.id === context.zone.id) ?? context.zone
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    cloudflareZoneStatus: refreshedZone.status,
+  }, "cloudflare_zone_reconciled", dependencies.now())
+  if (refreshedZone.status !== "active") {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Cloudflare is waiting for authoritative nameserver activation.",
+      ),
+    }
+  }
+
+  const authoritativeDns = await dependencies.verifyAuthoritativeDns(
+    context.normalized.domain,
+    refreshedZone.nameServers,
+  )
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    authoritativeDnsStatus: authoritativeDns.status === "verified"
+      ? "verified"
+      : "pending",
+    authoritativeDnsCheckedAt: dependencies.now(),
+    authoritativeDnsEvidence: authoritativeDns,
+    reconciliationRequired: authoritativeDns.status !== "verified",
+  }, `authoritative_dns_${authoritativeDns.status}`, dependencies.now())
+  if (authoritativeDns.status !== "verified") {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Authoritative DNS delegation is not verified yet.",
+      ),
+    }
+  }
+
+  if (
+    managedDomain.edgeRoutingStatus !== "active" ||
+    managedDomain.httpsStatus !== "verified" ||
+    managedDomain.adminHttpsStatus !== "verified"
+  ) {
+    await queueCommerceReconciliation(payload)
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      reconciliationRequired: true,
+      failureReason: null,
+    }, "edge_routing_reconciliation_queued", dependencies.now())
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Automatic website and administration routing is awaiting Cloudflare activation.",
+      ),
+    }
+  }
+
+  return {
+    outcome: "continue",
+    managedDomain,
+    zone: refreshedZone,
+  }
+}
+
+async function projectProvisioningActivationPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    tenantId: string | number
+    tenant: Tenant
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+    zone: CloudflareZoneResult
+  },
+): Promise<ProvisioningActivationPhaseOutcome> {
+  let managedDomain = context.managedDomain
+  const expectedSendingDomain = `mail.${context.normalized.domain}`
+  const currentEmailSending = context.tenant.emailSending
+  const emailSending: TenantEmailSendingState =
+    currentEmailSending?.cloudflareZoneId === context.zone.id &&
+    currentEmailSending.sendingDomain?.trim().toLowerCase() ===
+      expectedSendingDomain
+      ? currentEmailSending
+      : {
+          ...buildDefaultTenantEmailSending(context.normalized.domain),
+          cloudflareZoneId: context.zone.id,
+        }
+  await payload.update({
+    collection: "tenants",
+    id: context.tenantId,
+    data: {
+      domain: context.normalized.domain,
+      domainVerification: {
+        status: "verified",
+        checkedAt: dependencies.now(),
+        notes:
+          "Verified from active Cloudflare zone and authoritative nameserver response.",
+      },
+      emailSending,
+    },
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  const settingsResult = await payload.find({
+    collection: "site-settings",
+    where: { tenant: { equals: context.tenantId } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (settingsResult.docs.length !== 1) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      reconciliationRequired: true,
+      failureReason: "site_settings_not_unique",
+    }, "site_settings_not_unique", dependencies.now())
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Exactly one tenant site-settings record is required before publication.",
+      ),
+    }
+  }
+  const siteSettings = settingsResult.docs[0]!
+  const wwwHost = `www.${context.normalized.domain}`
+  const existingAliases = (siteSettings.aliases ?? [])
+    .map((alias) => alias?.host?.trim().toLowerCase())
+    .filter((host): host is string => Boolean(host))
+  await payload.update({
+    collection: "site-settings",
+    id: siteSettings.id,
+    data: {
+      siteUrl: `https://${context.normalized.domain}`,
+      aliases: [...new Set([...existingAliases, wwwHost])].map((host) => ({
+        host,
+      })),
+    },
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    reconciliationRequired: false,
+    failureReason: null,
+    customerStatus: "provisioning",
+  }, "domain_ready_for_entitlement_activation", dependencies.now())
+  run = await compatibilityProjection(
+    payload,
+    run,
+    managedDomain,
+    "registered",
+    "domain_ready_for_entitlement_activation",
+    context.registrant,
+    emailSending,
+  )
+  return {
+    outcome: "completed",
+    result: {
+      status: "ready_for_activation",
+      domain: context.normalized.domain,
+      run,
+      managedDomain,
+    },
+  }
+}
+
+export async function provisionPaidDomainOrder(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+): Promise<ProvisionPaidDomainResult> {
+  const dependencies = { ...defaultDependencies, ...input.dependencies }
+  const authorityOutcome = await loadAndClassifyProvisioningAuthorityPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+  )
+  if (authorityOutcome.outcome !== "continue") {
+    return authorityOutcome.result
+  }
+  const {
+    order,
+    normalized,
+    capability,
+    tenantId,
+    tenant: initialTenant,
+    registrant,
+    managedDomain: initialManagedDomain,
+    initialProviderRegistrationState,
+    initialFailureReason,
+    now,
+  } = authorityOutcome.context
+  input.order = order
+  const tenant = initialTenant
+  let managedDomain = initialManagedDomain
   if (managedDomain.state === "pending" || managedDomain.state === "manual_review") {
     managedDomain = await updateManagedDomain(payload, managedDomain, {
       state: "registration_pending",
@@ -767,7 +2184,24 @@ export async function provisionPaidDomainOrder(
   )
 
   const token = await dependencies.loginOpenProvider()
-  let providerDomain = await dependencies.findOpenProviderDomain(normalized.domain, { token })
+  let providerDomain: OpenProviderDomainRecord | null
+  try {
+    providerDomain = await dependencies.findOpenProviderDomain(
+      normalized.domain,
+      { token },
+    )
+  } catch (error) {
+    if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
+    return stopProvisioningForProviderManualReview(
+      payload,
+      run,
+      managedDomain,
+      registrant,
+      "openprovider_domain_lookup_ambiguous",
+      "Multiple exact Openprovider domains match the accepted registration authority.",
+      dependencies.now(),
+    )
+  }
   if (
     providerDomain &&
     managedDomain.providerCustomerHandle &&
@@ -799,7 +2233,10 @@ export async function provisionPaidDomainOrder(
   if (
     !providerDomain &&
     (initialFailureReason === "openprovider_registration_indeterminate" ||
-      initialProviderRegistrationState === "prepared")
+      (
+        initialProviderRegistrationState === "prepared" &&
+        initialFailureReason?.startsWith("openprovider_customer_handle_") !== true
+      ))
   ) {
     return waiting(
       normalized.domain,
@@ -839,452 +2276,225 @@ export async function provisionPaidDomainOrder(
     }
   }
 
-  let customerHandle = managedDomain.providerCustomerHandle ?? null
-  if (!customerHandle) {
-    const existingCustomer = await dependencies.findOpenProviderCustomerByReference(
-      managedDomain.provisioningIdempotencyKey,
-      { token },
-    )
-    if (existingCustomer) {
-      customerHandle = existingCustomer.handle
-    } else {
-      if (initialFailureReason === "openprovider_customer_handle_indeterminate") {
-        return waiting(
-          normalized.domain,
-          run,
-          managedDomain,
-          "Openprovider customer-handle creation remains indeterminate; no retry was sent.",
-        )
-      }
-      try {
-        await assertInitialDomainFinancialAuthority(payload, {
-          orderId: input.order.id,
-          paymentAttemptId: input.paymentAttemptId,
-        })
-        customerHandle = (await dependencies.createOpenProviderCustomerHandle(registrant, {
-          token,
-          reference: managedDomain.provisioningIdempotencyKey,
-        })).handle
-      } catch (error) {
-        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
-        managedDomain = await updateManagedDomain(payload, managedDomain, {
-          providerRegistrationState: "indeterminate",
-          reconciliationRequired: true,
-          failureReason: "openprovider_customer_handle_indeterminate",
-        }, "openprovider_customer_handle_indeterminate", dependencies.now())
-        return waiting(
-          normalized.domain,
-          run,
-          managedDomain,
-          "Openprovider customer-handle creation is awaiting reconciliation.",
-        )
-      }
-    }
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      providerCustomerHandle: customerHandle,
-      providerRegistrationState: "not_started",
-      reconciliationRequired: false,
-      failureReason: null,
-    }, "provider_customer_handle_persisted", dependencies.now())
-  }
-
-  const visibleZones = await dependencies.listCloudflareZones(normalized.domain)
-  let zone = managedDomain.cloudflareZoneId
-    ? visibleZones.find((candidate) => candidate.id === managedDomain.cloudflareZoneId) ?? null
-    : visibleZones[0] ?? null
-  if (!zone) {
-    if (initialFailureReason === "cloudflare_zone_creation_indeterminate") {
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare zone creation remains indeterminate; no retry was sent.",
-      )
-    }
-    try {
-      await assertInitialDomainFinancialAuthority(payload, {
-        orderId: input.order.id,
-        paymentAttemptId: input.paymentAttemptId,
-      })
-      zone = await dependencies.createOrReuseCloudflareZone(normalized.domain)
-    } catch (error) {
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
-      managedDomain = await updateManagedDomain(payload, managedDomain, {
-        reconciliationRequired: true,
-        failureReason: "cloudflare_zone_creation_indeterminate",
-      }, "cloudflare_zone_creation_indeterminate", dependencies.now())
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Cloudflare zone creation is awaiting reconciliation.",
-      )
-    }
-  }
-  if (
-    managedDomain.cloudflareZoneId !== zone.id ||
-    managedDomain.cloudflareZoneStatus !== zone.status
-  ) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      cloudflareZoneId: zone.id,
-      cloudflareNameservers: zone.nameServers,
-      cloudflareZoneStatus: zone.status,
-      reconciliationRequired: false,
-      failureReason: null,
-    }, "cloudflare_zone_persisted", dependencies.now())
-  }
-
-  if (!providerDomain) {
-    const claimedAt = dependencies.now()
-    const claimedDomain = await claimRegistrarCommit(payload, {
-      order: input.order,
-      paymentAttemptId: input.paymentAttemptId,
-      managedDomain,
-      now: claimedAt,
-    })
-    if (!claimedDomain) {
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Payment authority changed before registrar commitment; no registration was sent.",
-      )
-    }
-    managedDomain = claimedDomain
-    try {
-      const registration = await dependencies.registerOpenProviderDomain(normalized.domain, {
-        token,
-        ownerHandle: customerHandle,
-        nameServers: zone.nameServers.map((name) => ({ name })),
-        nsGroup: null,
-        period: capability.registration.periodYears,
-        autorenew:
-          capability.renewal.executionMode === "provider_autorenew" &&
-          tldCapabilityOperationFlagEnabled(
-            capability,
-            "renewal_provider_autorenew",
-          )
-            ? "on"
-            : "off",
-        reference: managedDomain.provisioningIdempotencyKey,
-        acceptedCapabilityVersion: capability.capabilityVersion,
-      })
-      managedDomain = await updateManagedDomain(payload, managedDomain, {
-        providerDomainId: registration.id == null
-          ? managedDomain.providerDomainId
-          : String(registration.id),
-        providerRegistrationState: "confirmed",
-        registeredAt: registration.status === "registered"
-          ? managedDomain.registeredAt ?? dependencies.now()
-          : managedDomain.registeredAt,
-        reconciliationRequired: registration.status !== "registered",
-        failureReason: null,
-      }, `provider_registration_${registration.status}`, dependencies.now())
-      // A successful POST is not registrant-verification evidence. Always
-      // reconcile through OpenProvider's authoritative domain read before DNS
-      // or publication may advance.
-      providerDomain = await dependencies.findOpenProviderDomain(
-        normalized.domain,
-        { token },
-      )
-    } catch (error) {
-      let reconciled: OpenProviderDomainRecord | null = null
-      try {
-        reconciled = await dependencies.findOpenProviderDomain(normalized.domain, { token })
-      } catch {
-        // The original indeterminate write remains authoritative until a read succeeds.
-      }
-      if (reconciled?.ownerHandle === customerHandle) {
-        providerDomain = reconciled
-      } else if (error instanceof OpenProviderIndeterminateWriteError) {
-        managedDomain = await updateManagedDomain(payload, managedDomain, {
-          providerRegistrationState: "indeterminate",
-          reconciliationRequired: true,
-          failureReason: "openprovider_registration_indeterminate",
-        }, "openprovider_registration_indeterminate", dependencies.now())
-        return waiting(
-          normalized.domain,
-          run,
-          managedDomain,
-          "Openprovider registration is awaiting reconciliation; no retry was sent.",
-        )
-      } else {
-        throw error
-      }
-    }
-  }
-
-  if (!providerDomain) {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Openprovider is still processing the domain registration.",
-    )
-  }
-  if (providerDomain.ownerHandle !== customerHandle) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      state: "manual_review",
-      customerStatus: "manual_review",
-      reconciliationRequired: false,
-      failureReason: "provider_domain_owner_mismatch",
-    }, "provider_domain_owner_mismatch", dependencies.now())
-    return {
-      status: "unfulfillable",
-      domain: normalized.domain,
-      run,
-      managedDomain,
-      message: "Openprovider returned the domain under a different registrant handle.",
-    }
-  }
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    providerDomainId: String(providerDomain.id),
-    providerRegistrationState: "confirmed",
-    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
-    providerRenewalDate: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
-    registryExpiryDate: normalizeOpenProviderTimestamp(providerDomain.registryExpiryDate),
-    registeredAt: registrationIsActive(providerDomain.status, capability)
-      ? managedDomain.registeredAt ?? dependencies.now()
-      : managedDomain.registeredAt,
-    reconciliationRequired: !registrationIsActive(providerDomain.status, capability),
-    failureReason: null,
-  }, "provider_registration_reconciled", dependencies.now())
-  if (!registrationIsActive(providerDomain.status, capability)) {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Openprovider has accepted the registration and is still processing it.",
-    )
-  }
-
-  const verification = registrantVerification(providerDomain, capability)
-  const recovered = verification.status === "verified" &&
-    ["pending", "overdue", "suspended", "failed"].includes(
-      managedDomain.registrantVerificationStatus,
-    )
-  const verificationStatus = recovered ? "recovered" : verification.status
-  const verificationActionRequired = [
-    "pending",
-    "overdue",
-    "suspended",
-    "failed",
-  ].includes(verificationStatus)
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    registrantVerificationStatus: verificationStatus,
-    registrantVerificationCheckedAt: dependencies.now(),
-    registrantVerificationDueAt: normalizeOpenProviderTimestamp(
-      providerDomain.verificationEmailExpiresAt,
-    ) ?? managedDomain.registrantVerificationDueAt,
-    registrantVerificationRecoveredAt: recovered ? dependencies.now() : undefined,
-    registrantVerificationDescription: verification.description,
-    customerStatus: verificationActionRequired
-      ? "verification_required"
-      : "provisioning",
-    reconciliationRequired: verificationActionRequired,
-    failureReason: verificationActionRequired ? `registrant_verification_${verificationStatus}` : null,
-  }, `registrant_verification_${verificationStatus}`, dependencies.now())
-  if (["overdue", "suspended", "failed"].includes(verificationStatus)) {
-    await recordCommerceAdminException({
-      payload,
-      source: "domains",
-      code: `registrant_verification_${verificationStatus}`,
-      message: "Provider-reported registrant verification requires immediate customer recovery.",
-      tenant: managedDomain.tenant,
-      subjectId: managedDomain.id,
-      severity: verificationStatus === "suspended" ? "critical" : "error",
-      now: dependencies.now(),
-    })
-  }
-  if (verificationActionRequired) {
-    const agreements = await payload.find({
-      collection: "billing-agreements",
-      where: { originatingOrder: { equals: input.order.id } },
-      limit: 2,
-      depth: 0,
-      overrideAccess: true,
-    })
-    if (agreements.docs.length === 1) {
-      const delivery = await ensureCommerceNotification({
-        payload,
-        kind: "domain_verification_required",
-        tenantId,
-        recipient: input.order.customerEmail,
-        businessEventKey: `registration:${managedDomain.id}`,
-        eventAt:
-          managedDomain.registrantVerificationDueAt ??
-          managedDomain.registrationRequestedAt ??
-          managedDomain.createdAt,
-        billingAgreementId: agreements.docs[0]!.id,
-      })
-      await queueCommerceNotification(payload, delivery.id)
-    }
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Customer registrant verification is required before activation.",
-    )
-  }
-
-  const refreshedZone = (await dependencies.listCloudflareZones(normalized.domain))
-    .find((candidate) => candidate.id === zone?.id) ?? zone
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    cloudflareZoneStatus: refreshedZone.status,
-  }, "cloudflare_zone_reconciled", dependencies.now())
-  if (refreshedZone.status !== "active") {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Cloudflare is waiting for authoritative nameserver activation.",
-    )
-  }
-
-  const authoritativeDns = await dependencies.verifyAuthoritativeDns(
-    normalized.domain,
-    refreshedZone.nameServers,
-  )
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    authoritativeDnsStatus: authoritativeDns.status === "verified" ? "verified" : "pending",
-    authoritativeDnsCheckedAt: dependencies.now(),
-    authoritativeDnsEvidence: authoritativeDns,
-    reconciliationRequired: authoritativeDns.status !== "verified",
-  }, `authoritative_dns_${authoritativeDns.status}`, dependencies.now())
-  if (authoritativeDns.status !== "verified") {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Authoritative DNS delegation is not verified yet.",
-    )
-  }
-
-  if (
-    managedDomain.edgeRoutingStatus !== "active" ||
-    managedDomain.httpsStatus !== "verified" ||
-    managedDomain.adminHttpsStatus !== "verified"
-  ) {
-    await queueCommerceReconciliation(payload)
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      reconciliationRequired: true,
-      failureReason: null,
-    }, "edge_routing_reconciliation_queued", dependencies.now())
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Automatic website and administration routing is awaiting Cloudflare activation.",
-    )
-  }
-
-  const expectedSendingDomain = `mail.${normalized.domain}`
-  const currentEmailSending = tenant.emailSending
-  const emailSending: TenantEmailSendingState =
-    currentEmailSending?.cloudflareZoneId === zone.id &&
-    currentEmailSending.sendingDomain?.trim().toLowerCase() ===
-      expectedSendingDomain
-      ? currentEmailSending
-      : {
-          ...buildDefaultTenantEmailSending(normalized.domain),
-          cloudflareZoneId: zone.id,
-        }
-  tenant = await payload.update({
-    collection: "tenants",
-    id: tenantId,
-    data: {
-      domain: normalized.domain,
-      domainVerification: {
-        status: "verified",
-        checkedAt: dependencies.now(),
-        notes: "Verified from active Cloudflare zone and authoritative nameserver response.",
-      },
-      emailSending,
-    },
-    depth: 0,
-    overrideAccess: true,
-  }) as Tenant
-
-  const settingsResult = await payload.find({
-    collection: "site-settings",
-    where: { tenant: { equals: tenantId } },
-    limit: 2,
-    depth: 0,
-    overrideAccess: true,
-  })
-  if (settingsResult.docs.length !== 1) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      reconciliationRequired: true,
-      failureReason: "site_settings_not_unique",
-    }, "site_settings_not_unique", dependencies.now())
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Exactly one tenant site-settings record is required before publication.",
-    )
-  }
-  const siteSettings = settingsResult.docs[0]!
-  const wwwHost = `www.${normalized.domain}`
-  const existingAliases = (siteSettings.aliases ?? [])
-    .map((alias) => alias?.host?.trim().toLowerCase())
-    .filter((host): host is string => Boolean(host))
-  await payload.update({
-    collection: "site-settings",
-    id: siteSettings.id,
-    data: {
-      siteUrl: `https://${normalized.domain}`,
-      aliases: [...new Set([...existingAliases, wwwHost])].map((host) => ({
-        host,
-      })),
-    },
-    depth: 0,
-    overrideAccess: true,
-  })
-
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    reconciliationRequired: false,
-    failureReason: null,
-    customerStatus: "provisioning",
-  }, "domain_ready_for_entitlement_activation", dependencies.now())
-  run = await compatibilityProjection(
+  const customerOutcome = await reconcileOpenProviderCustomerPhase(
     payload,
     run,
-    managedDomain,
-    "registered",
-    "domain_ready_for_entitlement_activation",
-    registrant,
-    emailSending,
+    input,
+    dependencies,
+    {
+      token,
+      normalized,
+      registrant,
+      managedDomain,
+    },
   )
-  return {
-    status: "ready_for_activation",
-    domain: normalized.domain,
-    run,
-    managedDomain,
+  if (customerOutcome.outcome !== "continue") {
+    return customerOutcome.result
   }
+  const customerHandle = customerOutcome.customerHandle
+  managedDomain = customerOutcome.managedDomain
+
+  const zoneOutcome = await reconcileCloudflareZonePhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      normalized,
+      registrant,
+      managedDomain,
+    },
+  )
+  if (zoneOutcome.outcome !== "continue") {
+    return zoneOutcome.result
+  }
+  const zone = zoneOutcome.zone
+  managedDomain = zoneOutcome.managedDomain
+
+  const registrationOutcome = await claimAndReconcileRegistrarRegistrationPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      token,
+      normalized,
+      capability,
+      registrant,
+      managedDomain,
+      providerDomain,
+      customerHandle,
+      zone,
+    },
+  )
+  if (registrationOutcome.outcome !== "continue") {
+    return registrationOutcome.result
+  }
+  providerDomain = registrationOutcome.providerDomain
+  managedDomain = registrationOutcome.managedDomain
+
+  const verificationOutcome = await projectRegistrantVerificationPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      normalized,
+      capability,
+      tenantId,
+      managedDomain,
+      providerDomain,
+    },
+  )
+  if (verificationOutcome.outcome !== "continue") {
+    return verificationOutcome.result
+  }
+  managedDomain = verificationOutcome.managedDomain
+
+  const readinessOutcome = await verifyProvisioningReadinessPhase(
+    payload,
+    run,
+    dependencies,
+    { normalized, managedDomain, zone },
+  )
+  if (readinessOutcome.outcome !== "continue") {
+    return readinessOutcome.result
+  }
+  managedDomain = readinessOutcome.managedDomain
+
+  const activationOutcome = await projectProvisioningActivationPhase(
+    payload,
+    run,
+    dependencies,
+    {
+      normalized,
+      tenantId,
+      tenant,
+      registrant,
+      managedDomain,
+      zone: readinessOutcome.zone,
+    },
+  )
+  return activationOutcome.result
 }
 
 export async function activateManagedDomainEntitlement(
   payload: Payload,
   domain: ManagedDomain,
   now = new Date().toISOString(),
+  options: { req?: PayloadRequest } = {},
 ): Promise<ManagedDomain> {
+  const authoritativeDomain = await payload.findByID({
+    collection: "managed-domains",
+    id: domain.id,
+    depth: 0,
+    overrideAccess: true,
+    ...payloadRequestArgs(options.req),
+  }) as ManagedDomain
+  const activationAuthoritySatisfied = (candidate: ManagedDomain): boolean =>
+    candidate.custodyStatus === "managed" &&
+    candidate.providerRegistrationState === "confirmed" &&
+    ["not_required", "verified", "recovered"].includes(
+      candidate.registrantVerificationStatus,
+    ) &&
+    Boolean(candidate.cloudflareZoneId) &&
+    candidate.cloudflareZoneStatus === "active" &&
+    candidate.authoritativeDnsStatus === "verified" &&
+    candidate.httpsStatus === "verified" &&
+    candidate.adminHttpsStatus === "verified" &&
+    candidate.edgeRoutingStatus === "active" &&
+    candidate.reconciliationRequired === false &&
+    candidate.failureReason == null
+
   if (
-    domain.authoritativeDnsStatus !== "verified" ||
-    domain.httpsStatus !== "verified" ||
-    domain.adminHttpsStatus !== "verified" ||
-    domain.edgeRoutingStatus !== "active"
+    !activationAuthoritySatisfied(authoritativeDomain) ||
+    (
+      authoritativeDomain.entitlementStatus !== "pending" &&
+      authoritativeDomain.entitlementStatus !== "active"
+    ) ||
+    (
+      authoritativeDomain.customerStatus !== "provisioning" &&
+      authoritativeDomain.customerStatus !== "active"
+    )
   ) {
     throw new Error(
-      "Managed-domain entitlement requires verified authoritative DNS, website HTTPS, and administration routing.",
+      "Managed-domain entitlement requires current registrar, registrant, DNS, HTTPS, edge, custody, and reconciliation authority.",
     )
   }
-  return updateManagedDomain(payload, domain, {
-    state: "active",
-    entitlementStatus: "active",
-    entitlementActivatedAt: domain.entitlementActivatedAt ?? now,
-    customerStatus: "active",
-    reconciliationRequired: false,
-    failureReason: null,
-  }, "entitlement_activated", now)
+  if (
+    authoritativeDomain.state === "active" &&
+    authoritativeDomain.entitlementStatus === "active" &&
+    authoritativeDomain.customerStatus === "active"
+  ) {
+    return authoritativeDomain
+  }
+
+  const activated = await payload.update({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { id: { equals: authoritativeDomain.id } },
+        { updatedAt: { equals: authoritativeDomain.updatedAt } },
+        { custodyStatus: { equals: "managed" } },
+        { providerRegistrationState: { equals: "confirmed" } },
+        {
+          registrantVerificationStatus: {
+            in: ["not_required", "verified", "recovered"],
+          },
+        },
+        { cloudflareZoneId: { exists: true } },
+        { cloudflareZoneStatus: { equals: "active" } },
+        { authoritativeDnsStatus: { equals: "verified" } },
+        { httpsStatus: { equals: "verified" } },
+        { adminHttpsStatus: { equals: "verified" } },
+        { edgeRoutingStatus: { equals: "active" } },
+        { entitlementStatus: { equals: "pending" } },
+        { customerStatus: { equals: "provisioning" } },
+        { reconciliationRequired: { equals: false } },
+        { failureReason: { exists: false } },
+      ],
+    },
+    data: {
+      state: "active",
+      entitlementStatus: "active",
+      entitlementActivatedAt:
+        authoritativeDomain.entitlementActivatedAt ?? now,
+      customerStatus: "active",
+      reconciliationRequired: false,
+      failureReason: null,
+      stateHistory: historyWith(
+        authoritativeDomain,
+        now,
+        "active",
+        "entitlement_activated",
+      ),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { managedDomainLifecycleMutation: true },
+    ...payloadRequestArgs(options.req),
+  })
+  const claimed = Array.isArray(activated.docs)
+    ? activated.docs[0] as ManagedDomain | undefined
+    : undefined
+  if (claimed) return claimed
+
+  const winner = await payload.findByID({
+    collection: "managed-domains",
+    id: authoritativeDomain.id,
+    depth: 0,
+    overrideAccess: true,
+    ...payloadRequestArgs(options.req),
+  }) as ManagedDomain
+  if (
+    activationAuthoritySatisfied(winner) &&
+    winner.state === "active" &&
+    winner.entitlementStatus === "active" &&
+    winner.customerStatus === "active"
+  ) {
+    return winner
+  }
+  throw new Error(
+    "Managed-domain entitlement authority changed during activation.",
+  )
 }

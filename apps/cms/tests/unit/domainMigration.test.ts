@@ -30,8 +30,13 @@ import {
   transferConfirmationStatus,
   transferAutorenewMode,
 } from "@/lib/domains/migration"
-import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
 import {
+  CloudflareIndeterminateWriteError,
+  type CloudflareDnssecResult,
+} from "@/lib/domains/cloudflare"
+import {
+  OpenProviderAmbiguousCustomerReferenceLookupError,
+  OpenProviderAmbiguousDomainLookupError,
   OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
 } from "@/lib/domains/openprovider"
@@ -72,6 +77,31 @@ import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from 
 const ENCRYPTION_KEY = Buffer.alloc(32, 9).toString("base64")
 const OLD_NAMESERVERS = ["ns1.legacy.example", "ns2.legacy.example"]
 const CLOUDFLARE_NAMESERVERS = ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"]
+const TARGET_DNSKEY = {
+  flags: 257,
+  protocol: 3 as const,
+  alg: 13,
+  pub_key: "AQID",
+}
+const TARGET_DS = "12345 13 2 " + "AB".repeat(32)
+const activeTargetDnssec = () => ({
+  status: "active" as const,
+  flags: TARGET_DNSKEY.flags,
+  algorithm: TARGET_DNSKEY.alg,
+  publicKey: TARGET_DNSKEY.pub_key,
+  ds: TARGET_DS,
+  dsTtl: 3600,
+  raw: {},
+})
+const disabledTargetDnssec = () => ({
+  status: "disabled" as const,
+  flags: null,
+  algorithm: null,
+  publicKey: null,
+  ds: null,
+  dsTtl: null,
+  raw: {},
+})
 
 const zoneExport: CompleteZoneExport = {
   schemaVersion: 1,
@@ -231,6 +261,8 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
     "managed-domains": [],
   }
   let nextId = 1_000
+  let transactionSnapshot: Record<string, MockDoc[]> | null = null
+  let commitResponseLosses = 0
   const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
     const docs = (collections[collection] ?? []).filter((doc) => {
       if (!where) return true
@@ -324,6 +356,25 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
     Object.assign(doc, data)
     return doc
   })
+  const beginTransaction = vi.fn(async () => {
+    if (transactionSnapshot) throw new Error("A test transaction is already active.")
+    transactionSnapshot = structuredClone(collections)
+    return "migration-publication-transaction"
+  })
+  const commitTransaction = vi.fn(async () => {
+    if (!transactionSnapshot) throw new Error("No test transaction is active.")
+    transactionSnapshot = null
+    if (commitResponseLosses > 0) {
+      commitResponseLosses -= 1
+      throw new Error("Injected commit response loss after commit.")
+    }
+  })
+  const rollbackTransaction = vi.fn(async () => {
+    if (!transactionSnapshot) throw new Error("No test transaction is active.")
+    for (const key of Object.keys(collections)) delete collections[key]
+    Object.assign(collections, structuredClone(transactionSnapshot))
+    transactionSnapshot = null
+  })
   return {
     collections,
     payload: asPayload({
@@ -332,6 +383,9 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
       create,
       update,
       db: {
+        beginTransaction,
+        commitTransaction,
+        rollbackTransaction,
         drizzle: {
           execute: vi.fn(async () => ({ rows: [{ id: 1_000 }] })),
         },
@@ -342,8 +396,15 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
           })),
         },
       },
-      jobs: { queue: vi.fn() },
+      jobs: { queue: vi.fn(async () => ({ id: "queued-job" })) },
+      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
     }),
+    beginTransaction,
+    commitTransaction,
+    rollbackTransaction,
+    loseNextCommitResponse: () => {
+      commitResponseLosses += 1
+    },
   }
 }
 
@@ -396,19 +457,13 @@ const workflowDependencies = (input?: {
       pub_key: string
     }>
     renewalDate: string
+    registryExpiryDate?: string | null
     autorenew: "on"
     verificationEmailStatus: string
     verificationEmailExpiresAt: string
     verificationEmailDescription: string
     raw: Record<string, never>
   } | null = null
-  const targetDnskey = {
-    flags: 257,
-    protocol: 3 as const,
-    alg: 13,
-    pub_key: "AQID",
-  }
-  const targetDs = "12345 13 2 " + "AB".repeat(32)
   let targetDsVisible = true
   const records: Array<{ id: string; record: NormalizedMigrationDnsRecord; raw: unknown }> = []
   let recordId = 1
@@ -499,22 +554,23 @@ const workflowDependencies = (input?: {
       recordQuota: 200,
       recordUsage: records.length,
     })),
-    getCloudflareDnssec: vi.fn(async () => ({
+    getCloudflareDnssec: vi.fn(async (): Promise<CloudflareDnssecResult> => ({
       status: providerDomain?.dnssecEnabled && targetDsVisible
         ? "active" as const
         : "pending" as const,
-      flags: targetDnskey.flags,
-      algorithm: targetDnskey.alg,
-      publicKey: targetDnskey.pub_key,
-      ds: targetDs,
+      flags: TARGET_DNSKEY.flags,
+      algorithm: TARGET_DNSKEY.alg,
+      publicKey: TARGET_DNSKEY.pub_key,
+      ds: TARGET_DS,
+      dsTtl: 3600,
       raw: {},
     })),
     enableCloudflareDnssec: vi.fn(async () => ({
       status: "pending" as const,
-      flags: targetDnskey.flags,
-      algorithm: targetDnskey.alg,
-      publicKey: targetDnskey.pub_key,
-      ds: targetDs,
+      flags: TARGET_DNSKEY.flags,
+      algorithm: TARGET_DNSKEY.alg,
+      publicKey: TARGET_DNSKEY.pub_key,
+      ds: TARGET_DS,
       raw: {},
     })),
     createOrReuseCloudflareMigrationDnsRecord: vi.fn(async (
@@ -535,8 +591,8 @@ const workflowDependencies = (input?: {
       const parentRecords = providerDomain == null
         ? input?.sourceParentDsRecords ?? []
         : providerDomain.dnssecEnabled
-          ? providerKey?.pub_key === targetDnskey.pub_key
-            ? targetDsVisible ? [targetDs] : []
+          ? providerKey?.pub_key === TARGET_DNSKEY.pub_key
+            ? targetDsVisible ? [TARGET_DS] : []
             : input?.sourceParentDsRecords ?? []
           : []
       return parentRecords.length > 0
@@ -602,10 +658,15 @@ const workflowDependencies = (input?: {
       httpStatus: 404,
       reason: null,
     })),
-    publishAndActivateAfterCompletedPayment: vi.fn(async () => ({
-      status: "activated" as const,
+    publishAndActivateAfterCompletedPayment: vi.fn(async (): Promise<
+      | { status: "activated"; snapshotId: string | number | null }
+      | { status: "blocked" | "failed"; message: string }
+    > => ({
+      status: "activated",
       snapshotId: 10,
     })),
+    queueDeferredPostPaymentLiveHandoff: vi.fn(async () => "queued" as const),
+    ensureTenantPostHogEnrollment: vi.fn(async () => "updated" as const),
     activateManagedDomainEntitlement: vi.fn(async (
       payload: ReturnType<typeof createStore>["payload"],
       domain: MockDoc,
@@ -1406,6 +1467,55 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("fails before OpenProvider customer preparation when edge readiness fails and preserves per-surface evidence", async () => {
+    const store = createStore({ managedDomainEdgeReady: false })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    const managedDomain = store.collections["managed-domains"]![0]!
+    Object.assign(managedDomain, {
+      edgeRoutingStatus: "failed",
+      httpsStatus: "pending",
+      httpsEvidence: {
+        apex: { status: "verified" },
+        www: { status: "pending", reason: "www_edge_pending" },
+      },
+      adminHttpsStatus: "pending",
+      adminHttpsEvidence: {
+        admin: { status: "pending", reason: "admin_edge_pending" },
+      },
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "failed" })
+
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(managedDomain).toMatchObject({
+      state: "manual_review",
+      failureReason: "automatic_edge_routing_conflict",
+      httpsStatus: "pending",
+      httpsEvidence: {
+        apex: { status: "verified" },
+        www: { status: "pending", reason: "www_edge_pending" },
+      },
+      adminHttpsStatus: "pending",
+      adminHttpsEvidence: {
+        admin: { status: "pending", reason: "admin_edge_pending" },
+      },
+    })
+  })
+
   it("alerts after the governed transfer wait window without repeating the registrar write", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -1527,6 +1637,202 @@ describe("automatic existing-domain migration", () => {
       dnssecVerification: {
         verified: true,
       },
+    })
+  })
+
+  it("recovers target signing after a prepared checkpoint without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    let signingVisible = false
+    fixture.dependencies.getCloudflareDnssec.mockImplementation(async () =>
+      signingVisible ? activeTargetDnssec() : disabledTargetDnssec()
+    )
+    fixture.dependencies.enableCloudflareDnssec.mockImplementationOnce(
+      async () => {
+        signingVisible = true
+        throw new Error("worker stopped after target signing dispatch")
+      },
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).rejects.toThrow("worker stopped after target signing dispatch")
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_signing",
+      dnssecWriteState: "prepared",
+      reconciliationRequired: true,
+      verificationDeadlineAt: "2026-07-28T09:30:00.000Z",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.enableCloudflareDnssec).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      dnssecWriteState: "confirmed",
+    })
+  })
+
+  it("recovers an indeterminate target-signing response through readback without retry", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    let signingVisible = false
+    fixture.dependencies.getCloudflareDnssec.mockImplementation(async () =>
+      signingVisible ? activeTargetDnssec() : disabledTargetDnssec()
+    )
+    fixture.dependencies.enableCloudflareDnssec.mockRejectedValueOnce(
+      new CloudflareIndeterminateWriteError(
+        "Cloudflare target DNSSEC enablement",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_signing",
+      dnssecWriteState: "indeterminate",
+      reconciliationRequired: true,
+    })
+
+    signingVisible = true
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.enableCloudflareDnssec).toHaveBeenCalledTimes(1)
+  })
+
+  it("recovers target DS publication after a prepared checkpoint without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.updateOpenProviderDomainDnssec.mockImplementationOnce(
+      async (_id, input) => {
+        const providerDomain = fixture.getProviderDomain()
+        if (!providerDomain) throw new Error("provider domain missing")
+        providerDomain.dnssecEnabled = input.enabled
+        providerDomain.dnssecKeys = input.enabled ? input.keys : []
+        throw new Error("worker stopped after target DS dispatch")
+      },
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).rejects.toThrow("worker stopped after target DS dispatch")
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_ds_publication",
+      dnssecWriteState: "prepared",
+      reconciliationRequired: true,
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(1)
+  })
+
+  it("recovers an indeterminate target DS response through readback without retry", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.updateOpenProviderDomainDnssec.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError(
+        "OpenProvider target DS publication",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_ds_publication",
+      dnssecWriteState: "indeterminate",
+      reconciliationRequired: true,
+    })
+
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("provider domain missing")
+    providerDomain.dnssecEnabled = true
+    providerDomain.dnssecKeys = [TARGET_DNSKEY]
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(1)
+  })
+
+  it("persists rollback when target DNSSEC remains unverified at the cutover deadline", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.setTargetDsVisible(false)
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "target_chain_verifying",
+      dnssecWriteState: "indeterminate",
+      verificationDeadlineAt: "2026-07-28T09:30:00.000Z",
+    })
+
+    fixture.setNow("2026-07-28T09:30:01.000Z")
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      dnssecPhase: "rollback_target_ds_cache_wait",
+      dnssecWriteState: "confirmed",
+      rollbackRequestedAt: "2026-07-28T09:30:01.000Z",
+      failureReason: "target_dnssec_verification_deadline_exceeded",
+      reconciliationRequired: true,
+    })
+    const dnssecWrites = fixture.dependencies.updateOpenProviderDomainDnssec
+      .mock.calls.length
+    expect(dnssecWrites).toBe(2)
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.updateOpenProviderDomainDnssec)
+      .toHaveBeenCalledTimes(dnssecWrites)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      dnssecPhase: "rollback_target_ds_cache_wait",
+      rollbackRequestedAt: "2026-07-28T09:30:01.000Z",
     })
   })
 
@@ -1773,10 +2079,31 @@ describe("automatic existing-domain migration", () => {
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       state: "failed",
       failureReason: "dnssec_parent_state_changed_since_source_capture",
+      reconciliationRequired: false,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          state: "failed",
+          reason: "dnssec_parent_state_changed_since_source_capture",
+        }),
+      ]),
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "manual_review",
+      entitlementStatus: "blocked",
+      failureReason: "dnssec_parent_state_changed_since_source_capture",
+    })
+    expect(store.collections.orders![0]).toMatchObject({
+      state: "exception",
     })
     expect(store.payload.jobs.queue).toHaveBeenCalledWith(expect.objectContaining({
       task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: String(store.collections["payment-attempts"]![0]!.id),
+        scenario: "unfulfillable_before_provider_commit",
+      },
     }))
+    expect(fixture.dependencies.verifyParentDsAbsent).toHaveBeenCalledOnce()
+    expect(fixture.dependencies.verifyDnssecChain).not.toHaveBeenCalled()
     expect(fixture.dependencies.listCloudflareZones).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
   })
@@ -1903,7 +2230,7 @@ describe("automatic existing-domain migration", () => {
     },
   )
 
-  it("revokes attached Cloudflare OAuth authority when payment fails after transfer", async () => {
+  it("retains uncertain Cloudflare OAuth revocation authority and clears it after confirmed recovery", async () => {
     const store = createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
@@ -1944,6 +2271,9 @@ describe("automatic existing-domain migration", () => {
       now: "2026-07-28T08:00:00.000Z",
     })
     const fixture = workflowDependencies()
+    revokeCloudflareSourceAuthorization
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
     withCommerceOrderLock.mockImplementationOnce(async (
       _payload: unknown,
       _orderId: string | number,
@@ -1972,7 +2302,8 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({ status: "failed" })
 
-    expect(revokeCloudflareSourceAuthorization).toHaveBeenCalledWith(
+    expect(revokeCloudflareSourceAuthorization).toHaveBeenCalledOnce()
+    expect(revokeCloudflareSourceAuthorization).toHaveBeenLastCalledWith(
       store.payload,
       expect.objectContaining({
         kind: "cloudflare_oauth",
@@ -1980,6 +2311,48 @@ describe("automatic existing-domain migration", () => {
       }),
       expect.objectContaining({ now: expect.any(Date) }),
     )
+    const stored = store.collections["domain-migrations"]![0]!
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "payment_authority_revoked_after_registrar_commit",
+      encryptedTransferCode: null,
+      encryptedSourceRefreshAuthority: expect.any(String),
+      sourceRefreshAuthorityDeletedAt: null,
+      reconciliationRequired: true,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "source_authority_revocation_pending",
+        }),
+      ]),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining(
+        "Frozen migration preparation evidence is incomplete",
+      ),
+    })
+
+    expect(revokeCloudflareSourceAuthorization).toHaveBeenCalledTimes(2)
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "payment_authority_revoked_after_registrar_commit",
+      encryptedTransferCode: null,
+      encryptedSourceRefreshAuthority: null,
+      sourceRefreshAuthorityDeletedAt: "2026-07-28T09:00:00.000Z",
+      reconciliationRequired: false,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "source_authority_revocation_confirmed",
+        }),
+      ]),
+    })
   })
 
   it("blocks publication without rolling back customer DNS when payment changes after cutover", async () => {
@@ -2058,6 +2431,230 @@ describe("automatic existing-domain migration", () => {
       .not.toHaveBeenCalled()
   })
 
+  it("prevalidates the generation run before projecting the target tenant domain", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    store.collections.orders![0]!.generationRun = null
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.activateManagedDomainEntitlement)
+      .not.toHaveBeenCalled()
+    expect(store.beginTransaction).not.toHaveBeenCalled()
+  })
+
+  it("prevalidates generation-run tenant authority before publication", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    store.collections["site-generation-runs"]![0]!.tenant = 2
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.activateManagedDomainEntitlement)
+      .not.toHaveBeenCalled()
+    expect(store.beginTransaction).not.toHaveBeenCalled()
+  })
+
+  it("rolls back tenant and entitlement projection when snapshot activation fails", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.publishAndActivateAfterCompletedPayment
+      .mockResolvedValue({
+        status: "failed",
+        message: "injected activation failure",
+      })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(store.rollbackTransaction).toHaveBeenCalledOnce()
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+    })
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.ensureTenantPostHogEnrollment)
+      .not.toHaveBeenCalled()
+  })
+
+  it("defers customer handoff until transactional publication commits", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .toHaveBeenCalledWith(
+        store.payload,
+        expect.objectContaining({ id: 500, tenant: 1 }),
+        expect.objectContaining({
+          deferLiveHandoff: true,
+          req: expect.objectContaining({
+            transactionID: "migration-publication-transaction",
+          }),
+        }),
+      )
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .toHaveBeenCalledWith(
+        store.payload,
+        expect.objectContaining({ id: 500 }),
+        10,
+        "2026-07-28T09:00:00.000Z",
+      )
+    expect(store.commitTransaction.mock.invocationCallOrder[0])
+      .toBeLessThan(
+        fixture.dependencies.queueDeferredPostPaymentLiveHandoff
+          .mock.invocationCallOrder[0] as number,
+      )
+    expect(store.commitTransaction.mock.invocationCallOrder[0])
+      .toBeLessThan(
+        fixture.dependencies.ensureTenantPostHogEnrollment
+          .mock.invocationCallOrder[0] as number,
+      )
+    expect(store.payload.update).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "tenants",
+      context: { skipProjection: true },
+      req: expect.objectContaining({
+        transactionID: "migration-publication-transaction",
+      }),
+    }))
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    })
+    expect(store.collections.orders![0]).toMatchObject({ state: "fulfilled" })
+  })
+
+  it("never starts provider rollback when the publication commit response is lost", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    store.loseNextCommitResponse()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("commit is indeterminate"),
+    })
+
+    expect(store.rollbackTransaction).not.toHaveBeenCalled()
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .not.toHaveBeenCalled()
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+    })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "migration_publication_commit_indeterminate",
+    })
+    expect(store.collections.orders![0]).toMatchObject({
+      state: "fulfillment_pending",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("keeps migration and order pending until durable live handoff is queued", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.queueDeferredPostPaymentLiveHandoff
+      .mockRejectedValueOnce(new Error("injected queue failure"))
+      .mockResolvedValueOnce("queued")
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("handoff remains pending"),
+    })
+
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "migration_live_handoff_pending",
+    })
+    expect(store.collections.orders![0]).toMatchObject({
+      state: "fulfillment_pending",
+    })
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .toHaveBeenCalledTimes(2)
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(store.collections.orders![0]).toMatchObject({ state: "fulfilled" })
+  })
+
   it("requires fresh source evidence before the first provider write", async () => {
     const store = createStore()
     const order = store.collections.orders![0]!
@@ -2129,6 +2726,48 @@ describe("automatic existing-domain migration", () => {
       encryptedTransferCode: expect.any(String),
       failureReason: null,
     })
+  })
+
+  it("returns customer action before Phase 3 when the transfer code expired", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      transferCodeExpiresAt: "2026-07-28T08:30:00.000Z",
+    })
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("transfer code expired"),
+    })
+    expect(stored).toMatchObject({
+      state: "awaiting_customer",
+      encryptedTransferCode: null,
+      transferCodeDeletedAt: "2026-07-28T09:00:00.000Z",
+      failureReason: "transfer_code_expired",
+      customerActions: {
+        provide_epp_code: {
+          status: "required",
+          evidence: "expired",
+        },
+      },
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          state: "awaiting_customer",
+          reason: "transfer_code_expired",
+        }),
+      ]),
+    })
+    expect(fixture.dependencies.listCloudflareZones).not.toHaveBeenCalled()
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
   })
 
   it("stops before every new provider write when previously prepared source evidence expires", async () => {
@@ -2671,6 +3310,96 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("preserves recovery evidence across registrar ambiguity and resumes exact reads without a second transfer", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      sourceRefreshAuthorityExpiresAt: "2026-08-20T09:00:00.000Z",
+    })
+    const fixture = workflowDependencies()
+    fixture.dependencies.transferOpenProviderDomain.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError("OpenProvider domain transfer"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(stored).toMatchObject({
+      providerTransferState: "indeterminate",
+      encryptedTransferCode: expect.any(String),
+    })
+
+    fixture.dependencies.findOpenProviderDomain.mockRejectedValueOnce(
+      new OpenProviderAmbiguousDomainLookupError("example.nl"),
+    )
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("requires provider reconciliation"),
+    })
+    expect(stored).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      encryptedTransferCode: expect.any(String),
+      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      sourceZoneSnapshot: expect.any(Object),
+      targetZoneSnapshot: expect.any(Object),
+      rollbackEvidence: expect.any(Object),
+      reconciliationRequired: true,
+      failureReason: "openprovider_domain_lookup_ambiguous",
+    })
+    expect(revokeCloudflareSourceAuthorization).not.toHaveBeenCalled()
+
+    fixture.dependencies.findOpenProviderDomain.mockResolvedValue({
+      id: 9001,
+      domain: "example.nl",
+      status: "PENDING",
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: null,
+      nameServers: OLD_NAMESERVERS,
+      dnssecEnabled: false,
+      dnssecKeys: [],
+      renewalDate: "2027-07-28T00:00:00.000Z",
+      registryExpiryDate: null,
+      autorenew: "on",
+      verificationEmailStatus: "verified",
+      verificationEmailExpiresAt: "2026-08-10 12:30:00",
+      verificationEmailDescription: "verified",
+      raw: {},
+    })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("still processing"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
+    expect(stored).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      encryptedTransferCode: expect.any(String),
+      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      failureReason: null,
+    })
+    expect(store.collections["operational-alerts"]).toEqual([
+      expect.objectContaining({
+        dedupeKey: expect.stringContaining(
+          "openprovider_domain_lookup_ambiguous",
+        ),
+        status: "resolved",
+      }),
+    ])
+  })
+
   it("rolls back an indeterminate cutover after its safety deadline", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -2741,6 +3470,87 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("recovers an indeterminate Cloudflare zone creation from an exact read without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{
+        id: "zone-1",
+        name: "example.nl",
+        nameServers: CLOUDFLARE_NAMESERVERS,
+        status: "active",
+        raw: {},
+      }])
+    fixture.dependencies.createOrReuseCloudflareZone.mockRejectedValueOnce(
+      new CloudflareIndeterminateWriteError("Cloudflare zone creation"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    const recovered = await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    expect(recovered).toEqual({
+      status: "completed",
+      migrationId: migration.id,
+      message: "Automatic existing-domain migration completed.",
+    })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledOnce()
+    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+      .toHaveBeenCalledTimes(zoneExport.records.length)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      cloudflareZoneId: "zone-1",
+      cloudflareZoneState: "confirmed",
+    })
+  })
+
+  it("stops for manual review when exact Cloudflare zone authority is ambiguous", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([
+      {
+        id: "zone-1",
+        name: "example.nl",
+        nameServers: CLOUDFLARE_NAMESERVERS,
+        status: "active",
+        raw: {},
+      },
+      {
+        id: "zone-2",
+        name: "example.nl",
+        nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+        status: "active",
+        raw: {},
+      },
+    ])
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("Multiple exact Cloudflare zones"),
+    })
+    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "cloudflare_zone_lookup_ambiguous",
+      reconciliationRequired: true,
+    })
+  })
+
   it("escalates indeterminate Cloudflare DNS creation without repeating records", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -2769,6 +3579,48 @@ describe("automatic existing-domain migration", () => {
       state: "failed",
       encryptedTransferCode: null,
       failureReason: "cloudflare_dns_outcome_unresolved",
+    })
+  })
+
+  it("fails closed on unexpected existing Cloudflare records before any DNS or registrar write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.records.push({
+      id: "foreign-record",
+      record: {
+        type: "A",
+        name: "unexpected.example.nl",
+        ttl: 300,
+        content: "192.0.2.200",
+        proxied: false,
+      },
+      raw: {},
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("unexpected records"),
+    })
+
+    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "cloudflare_zone_contains_unexpected_records",
+      encryptedTransferCode: null,
+      semanticComparison: {
+        equivalent: false,
+        unexpected: expect.arrayContaining([
+          expect.stringContaining("unexpected.example.nl"),
+        ]),
+      },
     })
   })
 
@@ -2818,6 +3670,477 @@ describe("automatic existing-domain migration", () => {
       state: "failed",
       encryptedTransferCode: null,
       failureReason: "openprovider_customer_handle_outcome_unresolved",
+    })
+  })
+
+  it("waits through a crashed customer-create claim lease and retries only after exact absence", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        suffix: null,
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockResolvedValue({
+      handle: "OWNER-CLIENT",
+      raw: {},
+    })
+    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
+    type ConditionalMigrationUpdateArgs = MockUpdateArgs & {
+      where?: MockFindArgs["where"]
+    }
+    const originalUpdate = update.getMockImplementation() as (
+      args: ConditionalMigrationUpdateArgs,
+    ) => Promise<unknown>
+    let crashAfterClaim = true
+    update.mockImplementation(async (args: ConditionalMigrationUpdateArgs) => {
+      const result = await originalUpdate(args)
+      const history = Array.isArray(args.data.stateHistory)
+        ? args.data.stateHistory
+        : []
+      const lastHistory = history.at(-1) as Record<string, unknown> | undefined
+      if (
+        crashAfterClaim &&
+        args.collection === "domain-migrations" &&
+        args.where &&
+        lastHistory?.reason === "openprovider_customer_handle_write_prepared"
+      ) {
+        crashAfterClaim = false
+        throw new Error("worker stopped after customer claim")
+      }
+      return result
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).rejects.toThrow("worker stopped after customer claim")
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      providerTransferState: "prepared",
+      reconciliationRequired: true,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "openprovider_customer_handle_write_prepared",
+        }),
+      ]),
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T09:02:00.000Z",
+      }),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("claim lease"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T09:06:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.findOpenProviderCustomerByReference)
+      .toHaveBeenCalledTimes(3)
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("allows only one concurrent customer-create effect after the optimistic claim", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    const createGate: {
+      release?: (value: { handle: string; raw: object }) => void
+    } = {}
+    let signalCreateStarted: (() => void) | null = null
+    const createStarted = new Promise<void>((resolve) => {
+      signalCreateStarted = resolve
+    })
+    fixture.dependencies.createOpenProviderCustomerHandle.mockImplementation(
+      () => new Promise((resolve) => {
+        createGate.release = resolve
+        signalCreateStarted?.()
+      }),
+    )
+
+    const first = prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    await createStarted
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("claim lease"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+
+    createGate.release?.({ handle: "OWNER-CLIENT", raw: {} })
+    await expect(first).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("does not interpret a registrar prepared checkpoint as customer-create authority", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      providerCustomerHandle: null,
+      providerTransferState: "prepared",
+      transferRequestedAt: "2026-07-28T08:50:00.000Z",
+      stateHistory: [
+        ...(Array.isArray(stored.stateHistory) ? stored.stateHistory : []),
+        {
+          state: stored.state,
+          at: "2026-07-28T08:50:00.000Z",
+          reason: "provider_transfer_write_prepared",
+        },
+      ],
+    })
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("conflicts with a registrar"),
+    })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_customer_handle_checkpoint_conflict",
+    })
+  })
+
+  it("persists deterministic customer-create rejection as terminal manual review without retry", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new OpenProviderApiError(
+        "OpenProvider customer creation",
+        422,
+        "CUSTOMER_VALIDATION_FAILED",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("full governed refund was queued"),
+    })
+
+    const stored = store.collections["domain-migrations"]![0]!
+    expect(stored).toMatchObject({
+      state: "failed",
+      providerTransferState: "not_started",
+      reconciliationRequired: false,
+      failureReason: "openprovider_customer_handle_write_rejected",
+      encryptedTransferCode: null,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "openprovider_customer_handle_write_rejected",
+        }),
+      ]),
+    })
+    expect(store.payload.jobs.queue).toHaveBeenCalledWith({
+      task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: String(store.collections["payment-attempts"]![0]!.id),
+        scenario: "unfulfillable_before_provider_commit",
+      },
+      queue: "default",
+      overrideAccess: true,
+    })
+    expect(store.collections.orders![0]).toMatchObject({ state: "exception" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("conservatively checkpoints a local failure after customer claim as indeterminate", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new Error("local response decoding failed"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_local_failure_indeterminate",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("remains indeterminate"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("treats a customer-create provider 503 as indeterminate instead of rejected", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new OpenProviderApiError(
+        "OpenProvider customer creation",
+        503,
+        "PROVIDER_UNAVAILABLE",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_indeterminate",
+    })
+    expect(store.payload.jobs.queue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ task: "request-mollie-refund" }),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("remains indeterminate"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("recovers indeterminate customer creation from one exact reference without repeating the POST", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        suffix: null,
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        handle: "OWNER-CLIENT",
+        comments: "domain-migration:order:600:v1",
+        raw: {},
+      })
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError(
+        "OpenProvider customer creation",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    const customerRecovery = await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    expect(customerRecovery).toEqual({
+      status: "completed",
+      migrationId: migration.id,
+      message: "Automatic existing-domain migration completed.",
+    })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      providerCustomerHandle: "OWNER-CLIENT",
+      providerTransferState: "confirmed",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      providerCustomerHandle: "OWNER-CLIENT",
+    })
+  })
+
+  it("stops for manual review when exact customer-reference authority is ambiguous", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockRejectedValue(
+      new OpenProviderAmbiguousCustomerReferenceLookupError(
+        "domain-migration:order:600:v1",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("Multiple exact Openprovider customers"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_customer_reference_ambiguous",
+      reconciliationRequired: true,
+    })
+  })
+
+  it("stops for manual review when exact registrar domain authority is ambiguous", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderDomain.mockRejectedValue(
+      new OpenProviderAmbiguousDomainLookupError("example.nl"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("Multiple exact Openprovider domains"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_domain_lookup_ambiguous",
+      reconciliationRequired: true,
     })
   })
 
