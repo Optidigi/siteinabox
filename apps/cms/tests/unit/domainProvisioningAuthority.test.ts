@@ -397,7 +397,7 @@ describe("new-domain provider authority", () => {
         checkOpenProviderDomainAvailability: vi.fn(async () => available),
         findOpenProviderCustomerByReference: vi.fn(async () => {
           customerLookupCount += 1
-          return customerLookupCount === 1
+          return customerLookupCount <= 2
             ? null
             : {
                 handle: "OWNER-CLIENT",
@@ -446,6 +446,437 @@ describe("new-domain provider authority", () => {
           failureReason: "cloudflare_zone_lookup_ambiguous",
         },
       })
+    expect(createCustomer).toHaveBeenCalledOnce()
+    expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("requires exact customer readback after a usable create response", async () => {
+    const store = fixture()
+    let customerVisible = false
+    const createCustomer = vi.fn(async () => {
+      expect(store.collections["managed-domains"]?.[0]).toMatchObject({
+        providerRegistrationState: "prepared",
+        reconciliationRequired: true,
+        failureReason: "openprovider_customer_handle_prepared",
+      })
+      customerVisible = true
+      return { handle: "UNTRUSTED-RESPONSE", raw: {} }
+    })
+    const createZone = vi.fn()
+    const register = vi.fn()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () =>
+          customerVisible
+            ? {
+                handle: "OWNER-CLIENT",
+                comments: "domain-registration:order:600:v1",
+                raw: {},
+              }
+            : null),
+        createOpenProviderCustomerHandle: createCustomer,
+        listCloudflareZones: vi.fn(async () => [
+          {
+            id: "zone-1",
+            name: "example.nl",
+            nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+          {
+            id: "zone-2",
+            name: "example.nl",
+            nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+        ]),
+        createOrReuseCloudflareZone: createZone,
+        registerOpenProviderDomain: register,
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        providerCustomerHandle: "OWNER-CLIENT",
+        providerRegistrationState: "not_started",
+        failureReason: "cloudflare_zone_lookup_ambiguous",
+      },
+    })
+    expect(createCustomer).toHaveBeenCalledOnce()
+    expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("persists uncertainty when customer readback fails after a usable response", async () => {
+    const store = fixture()
+    let lookupCount = 0
+    const createCustomer = vi.fn(async () => ({
+      handle: "UNTRUSTED-RESPONSE",
+      raw: {},
+    }))
+    const createZone = vi.fn()
+    const register = vi.fn()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => {
+          lookupCount += 1
+          if (lookupCount === 1) return null
+          throw new Error("readback unavailable")
+        }),
+        createOpenProviderCustomerHandle: createCustomer,
+        listCloudflareZones: vi.fn(),
+        createOrReuseCloudflareZone: createZone,
+        registerOpenProviderDomain: register,
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        providerCustomerHandle: null,
+        providerRegistrationState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "openprovider_customer_handle_indeterminate",
+      },
+    })
+    expect(createCustomer).toHaveBeenCalledOnce()
+    expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("keeps a successful customer write prepared until exact readback appears", async () => {
+    const store = fixture()
+    let customerVisible = false
+    const createCustomer = vi.fn(async () => ({
+      handle: "OWNER-CLIENT",
+      raw: {},
+    }))
+    const createZone = vi.fn()
+    const register = vi.fn()
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () =>
+          customerVisible
+            ? {
+                handle: "OWNER-CLIENT",
+                comments: "domain-registration:order:600:v1",
+                raw: {},
+              }
+            : null),
+        createOpenProviderCustomerHandle: createCustomer,
+        listCloudflareZones: vi.fn(async () => [
+          {
+            id: "zone-1",
+            name: "example.nl",
+            nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+          {
+            id: "zone-2",
+            name: "example.nl",
+            nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+        ]),
+        createOrReuseCloudflareZone: createZone,
+        registerOpenProviderDomain: register,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          providerCustomerHandle: null,
+          providerRegistrationState: "prepared",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_readback_pending",
+        },
+      })
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        message: expect.stringContaining("lease has not elapsed"),
+      })
+    expect(createCustomer).toHaveBeenCalledOnce()
+    expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+
+    customerVisible = true
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        managedDomain: { providerCustomerHandle: "OWNER-CLIENT" },
+      })
+    expect(createCustomer).toHaveBeenCalledOnce()
+  })
+
+  it("sends concurrent lease-expired checkpoints to manual review without retry", async () => {
+    const store = fixture()
+    let now = NOW
+    const createCustomer = vi.fn(async () => {
+      throw new Error("local uncertainty after dispatch")
+    })
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => now,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => null),
+        createOpenProviderCustomerHandle: createCustomer,
+        listCloudflareZones: vi.fn(async () => [
+          {
+            id: "zone-1",
+            name: "example.nl",
+            nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+          {
+            id: "zone-2",
+            name: "example.nl",
+            nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+            status: "active" as const,
+            raw: {},
+          },
+        ]),
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          providerRegistrationState: "indeterminate",
+          failureReason: "openprovider_customer_handle_indeterminate",
+        },
+      })
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        message: expect.stringContaining("lease has not elapsed"),
+      })
+    expect(createCustomer).toHaveBeenCalledOnce()
+
+    now = "2026-07-30T10:06:00.000Z"
+    const results = await Promise.all([
+      provisionPaidDomainOrder(store.payload, store.run, input),
+      provisionPaidDomainOrder(store.payload, store.run, input),
+    ])
+    expect(results).toEqual([
+      expect.objectContaining({
+        status: "waiting",
+        managedDomain: expect.objectContaining({
+          state: "manual_review",
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_reconciliation_timeout",
+        }),
+      }),
+      expect.objectContaining({
+        status: "waiting",
+        managedDomain: expect.objectContaining({
+          state: "manual_review",
+          failureReason: "openprovider_customer_handle_reconciliation_timeout",
+        }),
+      }),
+    ])
+    expect(createCustomer).toHaveBeenCalledOnce()
+  })
+
+  it("terminally rejects a deterministic customer write after exact absence", async () => {
+    const store = fixture()
+    const createCustomer = vi.fn(async () => {
+      throw new OpenProviderApiError(
+        "OpenProvider customer handle creation",
+        422,
+      )
+    })
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => null),
+        createOpenProviderCustomerHandle: createCustomer,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "unfulfillable",
+        managedDomain: {
+          state: "manual_review",
+          providerRegistrationState: "not_started",
+          reconciliationRequired: false,
+          failureReason: "openprovider_customer_handle_write_rejected",
+        },
+      })
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "unfulfillable",
+        managedDomain: {
+          failureReason: "openprovider_customer_handle_write_rejected",
+        },
+      })
+    expect(createCustomer).toHaveBeenCalledOnce()
+  })
+
+  it("keeps HTTP 503 customer writes indeterminate after exact absence", async () => {
+    const store = fixture()
+    const createCustomer = vi.fn(async () => {
+      throw new OpenProviderApiError(
+        "OpenProvider customer handle creation",
+        503,
+      )
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => null),
+        createOpenProviderCustomerHandle: createCustomer,
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        providerRegistrationState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "openprovider_customer_handle_indeterminate",
+      },
+    })
+    expect(createCustomer).toHaveBeenCalledOnce()
+  })
+
+  it("keeps HTTP 429 customer writes indeterminate after exact absence", async () => {
+    const store = fixture()
+    const createCustomer = vi.fn(async () => {
+      throw new OpenProviderApiError(
+        "OpenProvider customer handle creation",
+        429,
+      )
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => null),
+        createOpenProviderCustomerHandle: createCustomer,
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        providerRegistrationState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "openprovider_customer_handle_indeterminate",
+      },
+    })
+    expect(createCustomer).toHaveBeenCalledOnce()
+  })
+
+  it("lets concurrent workers dispatch one customer create after shared absence", async () => {
+    const store = fixture()
+    let customerVisible = false
+    let initialLookups = 0
+    let releaseInitialLookups!: () => void
+    const bothInitialLookups = new Promise<void>((resolve) => {
+      releaseInitialLookups = resolve
+    })
+    const findCustomer = vi.fn(async () => {
+      if (customerVisible) {
+        return {
+          handle: "OWNER-CLIENT",
+          comments: "domain-registration:order:600:v1",
+          raw: {},
+        }
+      }
+      initialLookups += 1
+      if (initialLookups === 2) releaseInitialLookups()
+      await bothInitialLookups
+      return null
+    })
+    const createCustomer = vi.fn(async () => {
+      customerVisible = true
+      return { handle: "OWNER-CLIENT", raw: {} }
+    })
+    const createZone = vi.fn()
+    const register = vi.fn()
+    const dependencies = {
+      now: () => NOW,
+      loginOpenProvider: vi.fn(async () => "token"),
+      findOpenProviderDomain: vi.fn(async () => null),
+      checkOpenProviderDomainAvailability: vi.fn(async () => available),
+      findOpenProviderCustomerByReference: findCustomer,
+      createOpenProviderCustomerHandle: createCustomer,
+      listCloudflareZones: vi.fn(async () => [
+        {
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        },
+        {
+          id: "zone-2",
+          name: "example.nl",
+          nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        },
+      ]),
+      createOrReuseCloudflareZone: createZone,
+      registerOpenProviderDomain: register,
+    }
+
+    const results = await Promise.all([
+      provisionPaidDomainOrder(store.payload, store.run, {
+        order: store.order,
+        paymentAttemptId: 700,
+        dependencies,
+      }),
+      provisionPaidDomainOrder(store.payload, store.run, {
+        order: store.order,
+        paymentAttemptId: 700,
+        dependencies,
+      }),
+    ])
+
+    expect(results).toHaveLength(2)
     expect(createCustomer).toHaveBeenCalledOnce()
     expect(createZone).not.toHaveBeenCalled()
     expect(register).not.toHaveBeenCalled()

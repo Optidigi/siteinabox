@@ -5344,6 +5344,7 @@ describe("Mollie payment flow", () => {
       },
     })
     let cloudflareZoneCreated = false
+    let openproviderCustomerCreated = false
     let openproviderDomainRegistered = false
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/email/sending/subdomains")) {
@@ -5414,8 +5415,18 @@ describe("Mollie payment flow", () => {
       }
       if (url.includes("api.openprovider.eu/v1beta/customers")) {
         if (init?.method === "GET") {
-          return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+          return new Response(JSON.stringify({
+            data: {
+              results: openproviderCustomerCreated
+                ? [{
+                    handle: "OWNER-CLIENT",
+                    comments: "domain-registration:order:600:v1",
+                  }]
+                : [],
+            },
+          }), { status: 200 })
         }
+        openproviderCustomerCreated = true
         return new Response(JSON.stringify({ data: { handle: "OWNER-CLIENT" } }), { status: 200 })
       }
       if (url.includes("api.openprovider.eu/v1beta/domains")) {
@@ -5890,6 +5901,7 @@ describe("Mollie payment flow", () => {
       },
     })
     let cloudflareZoneCreated = false
+    let openproviderCustomerCreated = false
     let registrationPosts = 0
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/auth/login")) return Response.json({ data: { token: "op-token" } })
@@ -5900,9 +5912,19 @@ describe("Mollie payment flow", () => {
         return Response.json({ data: { results: [] } })
       }
       if (url.includes("/customers?") && init?.method === "GET") {
-        return Response.json({ data: { results: [] } })
+        return Response.json({
+          data: {
+            results: openproviderCustomerCreated
+              ? [{
+                  handle: "OWNER-CLIENT",
+                  comments: "domain-registration:order:600:v1",
+                }]
+              : [],
+          },
+        })
       }
       if (url.endsWith("/customers") && init?.method === "POST") {
+        openproviderCustomerCreated = true
         return Response.json({ data: { handle: "OWNER-CLIENT" } })
       }
       if (url.includes("api.cloudflare.com/client/v4/zones?")) {

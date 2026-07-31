@@ -128,9 +128,22 @@ type OpenProviderCustomerReconciliationOutcome =
       managedDomain: ManagedDomain
     }
   | {
-      outcome: "provider_reconciliation_required" | "manual_review"
+      outcome:
+        | "provider_reconciliation_required"
+        | "manual_review"
+        | "unfulfillable"
       result: ProvisionPaidDomainResult
     }
+
+type OpenProviderCustomerReferenceLookup =
+  | { outcome: "absent" }
+  | {
+      outcome: "exact"
+      customer: NonNullable<Awaited<ReturnType<
+        ProvisioningDependencies["findOpenProviderCustomerByReference"]
+      >>>
+    }
+  | { outcome: "ambiguous" }
 
 type CloudflareZoneReconciliationOutcome =
   | {
@@ -178,6 +191,56 @@ type ProvisioningActivationPhaseOutcome =
   | { outcome: "waiting"; result: ProvisionPaidDomainResult }
 
 type RegistrarWriteErrorClassification = "rejected" | "indeterminate"
+
+type OpenProviderCustomerWriteErrorClassification =
+  | "rejected"
+  | "indeterminate"
+
+const OPENPROVIDER_CUSTOMER_WRITE_CLAIM_LEASE_MS = 5 * 60_000
+
+const customerWriteCheckpointReasons = new Set([
+  "openprovider_customer_handle_claimed",
+  "openprovider_customer_handle_indeterminate",
+  "openprovider_customer_handle_readback_indeterminate",
+  "openprovider_customer_handle_readback_pending",
+])
+
+const latestCustomerWriteCheckpointAt = (
+  domain: ManagedDomain,
+): string | null => {
+  const history = Array.isArray(domain.stateHistory) ? domain.stateHistory : []
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = readObject(history[index])
+    const reason = typeof entry?.reason === "string" ? entry.reason : null
+    const at = typeof entry?.at === "string" ? entry.at : null
+    if (reason && at && customerWriteCheckpointReasons.has(reason)) return at
+  }
+  return null
+}
+
+const customerWriteAbsenceLeaseExpired = (
+  domain: ManagedDomain,
+  now: string,
+): boolean => {
+  const checkpointAt = latestCustomerWriteCheckpointAt(domain)
+  if (!checkpointAt) return false
+  const checkpointTime = new Date(checkpointAt).getTime()
+  const currentTime = new Date(now).getTime()
+  return Number.isFinite(checkpointTime) &&
+    Number.isFinite(currentTime) &&
+    currentTime - checkpointTime >= OPENPROVIDER_CUSTOMER_WRITE_CLAIM_LEASE_MS
+}
+
+const classifyOpenProviderCustomerWriteError = (
+  error: unknown,
+): OpenProviderCustomerWriteErrorClassification =>
+  error instanceof OpenProviderApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+    ? "rejected"
+    : "indeterminate"
 
 const classifyRegistrarWriteError = (
   error: unknown,
@@ -664,13 +727,14 @@ const waiting = (
   message,
 })
 
-const providerAuthorityAmbiguityCodes = new Set([
+const providerManualReconciliationCodes = new Set([
   "cloudflare_zone_lookup_ambiguous",
   "openprovider_customer_reference_ambiguous",
+  "openprovider_customer_handle_reconciliation_timeout",
   "openprovider_domain_lookup_ambiguous",
 ])
 
-async function stopProvisioningForProviderAmbiguity(
+async function stopProvisioningForProviderManualReview(
   payload: Payload,
   run: SiteGenerationRun,
   managedDomain: ManagedDomain,
@@ -810,7 +874,7 @@ async function loadAndClassifyProvisioningAuthorityPhase(
   const initialFailureReason = managedDomain.failureReason
   if (
     managedDomain.state === "manual_review" &&
-    providerAuthorityAmbiguityCodes.has(initialFailureReason ?? "")
+    providerManualReconciliationCodes.has(initialFailureReason ?? "")
   ) {
     return {
       outcome: "waiting",
@@ -818,7 +882,7 @@ async function loadAndClassifyProvisioningAuthorityPhase(
         normalized.domain,
         run,
         managedDomain,
-        "Provider authority remains ambiguous and requires manual reconciliation.",
+        "Provider authority requires manual reconciliation.",
       ),
     }
   }
@@ -826,6 +890,7 @@ async function loadAndClassifyProvisioningAuthorityPhase(
     managedDomain.state === "manual_review" &&
     (
       [
+        "openprovider_customer_handle_write_rejected",
         "openprovider_registration_write_rejected",
         "paid_domain_became_unavailable_before_provider_commit",
         "provider_domain_owner_mismatch",
@@ -930,6 +995,77 @@ async function loadAndClassifyProvisioningAuthorityPhase(
   }
 }
 
+async function lookupOpenProviderCustomerReference(
+  dependencies: ProvisioningDependencies,
+  reference: string,
+  token: string,
+): Promise<OpenProviderCustomerReferenceLookup> {
+  try {
+    const customer = await dependencies.findOpenProviderCustomerByReference(
+      reference,
+      { token },
+    )
+    return customer
+      ? { outcome: "exact", customer }
+      : { outcome: "absent" }
+  } catch (error) {
+    if (error instanceof OpenProviderAmbiguousCustomerReferenceLookupError) {
+      return { outcome: "ambiguous" }
+    }
+    throw error
+  }
+}
+
+async function claimOpenProviderCustomerWrite(
+  payload: Payload,
+  domain: ManagedDomain,
+  now: string,
+): Promise<{ claimed: boolean; managedDomain: ManagedDomain }> {
+  const currentFailureReason = domain.failureReason ?? null
+  const claim = await payload.update({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { id: { equals: domain.id } },
+        { providerCustomerHandle: { exists: false } },
+        {
+          providerRegistrationState: {
+            equals: domain.providerRegistrationState,
+          },
+        },
+        currentFailureReason
+          ? { failureReason: { equals: currentFailureReason } }
+          : { failureReason: { exists: false } },
+      ],
+    },
+    data: {
+      providerRegistrationState: "prepared",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_prepared",
+      stateHistory: historyWith(
+        domain,
+        now,
+        domain.state,
+        "openprovider_customer_handle_claimed",
+      ),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { managedDomainLifecycleMutation: true },
+  })
+  const claimedDomain = Array.isArray(claim.docs)
+    ? claim.docs[0] as ManagedDomain | undefined
+    : undefined
+  if (claimedDomain) return { claimed: true, managedDomain: claimedDomain }
+  const winner = await payload.findByID({
+    collection: "managed-domains",
+    id: domain.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as ManagedDomain
+  return { claimed: false, managedDomain: winner }
+}
+
 async function reconcileOpenProviderCustomerPhase(
   payload: Payload,
   run: SiteGenerationRun,
@@ -940,95 +1076,215 @@ async function reconcileOpenProviderCustomerPhase(
     normalized: Extract<NormalizedDomain, { ok: true }>
     registrant: DomainRegistrantDetails
     managedDomain: ManagedDomain
-    initialFailureReason: ManagedDomain["failureReason"]
   },
 ): Promise<OpenProviderCustomerReconciliationOutcome> {
   let managedDomain = context.managedDomain
   let customerHandle = managedDomain.providerCustomerHandle ?? null
-  if (!customerHandle) {
-    let existingCustomer: Awaited<
-      ReturnType<ProvisioningDependencies["findOpenProviderCustomerByReference"]>
-    >
-    try {
-      existingCustomer = await dependencies.findOpenProviderCustomerByReference(
-        managedDomain.provisioningIdempotencyKey,
-        { token: context.token },
-      )
-    } catch (error) {
-      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
-        throw error
-      }
-      return {
-        outcome: "manual_review",
-        result: await stopProvisioningForProviderAmbiguity(
-          payload,
-          run,
-          managedDomain,
-          context.registrant,
-          "openprovider_customer_reference_ambiguous",
-          "Multiple exact Openprovider customers match the accepted registration reference.",
-          dependencies.now(),
-        ),
-      }
-    }
-    if (existingCustomer) {
-      customerHandle = existingCustomer.handle
-    } else {
-      if (
-        context.initialFailureReason ===
-        "openprovider_customer_handle_indeterminate"
-      ) {
-        return {
-          outcome: "provider_reconciliation_required",
-          result: waiting(
-            context.normalized.domain,
-            run,
-            managedDomain,
-            "Openprovider customer-handle creation remains indeterminate; no retry was sent.",
-          ),
-        }
-      }
-      try {
-        await assertInitialDomainFinancialAuthority(payload, {
-          orderId: input.order.id,
-          paymentAttemptId: input.paymentAttemptId,
-        })
-        customerHandle = (await dependencies.createOpenProviderCustomerHandle(
-          context.registrant,
-          {
-            token: context.token,
-            reference: managedDomain.provisioningIdempotencyKey,
-          },
-        )).handle
-      } catch (error) {
-        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
-        managedDomain = await updateManagedDomain(payload, managedDomain, {
-          providerRegistrationState: "indeterminate",
-          reconciliationRequired: true,
-          failureReason: "openprovider_customer_handle_indeterminate",
-        }, "openprovider_customer_handle_indeterminate", dependencies.now())
-        return {
-          outcome: "provider_reconciliation_required",
-          result: waiting(
-            context.normalized.domain,
-            run,
-            managedDomain,
-            "Openprovider customer-handle creation is awaiting reconciliation.",
-          ),
-        }
-      }
-    }
+  if (customerHandle) {
+    return { outcome: "continue", customerHandle, managedDomain }
+  }
+
+  const stopForAmbiguity = async (): Promise<OpenProviderCustomerReconciliationOutcome> => ({
+    outcome: "manual_review",
+    result: await stopProvisioningForProviderManualReview(
+      payload,
+      run,
+      managedDomain,
+      context.registrant,
+      "openprovider_customer_reference_ambiguous",
+      "Multiple exact Openprovider customers match the accepted registration reference.",
+      dependencies.now(),
+    ),
+  })
+  const persistExactCustomer = async (
+    exactHandle: string,
+  ): Promise<OpenProviderCustomerReconciliationOutcome> => {
     managedDomain = await updateManagedDomain(payload, managedDomain, {
-      providerCustomerHandle: customerHandle,
+      providerCustomerHandle: exactHandle,
       providerRegistrationState: "not_started",
       reconciliationRequired: false,
       failureReason: null,
     }, "provider_customer_handle_persisted", dependencies.now())
+    return {
+      outcome: "continue",
+      customerHandle: exactHandle,
+      managedDomain,
+    }
   }
+  const persistIndeterminate = async (
+    reason: string,
+    message: string,
+  ): Promise<OpenProviderCustomerReconciliationOutcome> => {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      providerRegistrationState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_indeterminate",
+    }, reason, dependencies.now())
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        message,
+      ),
+    }
+  }
+
+  const initialLookup = await lookupOpenProviderCustomerReference(
+    dependencies,
+    managedDomain.provisioningIdempotencyKey,
+    context.token,
+  )
+  if (initialLookup.outcome === "ambiguous") return stopForAmbiguity()
+  if (initialLookup.outcome === "exact") {
+    return persistExactCustomer(initialLookup.customer.handle)
+  }
+
+  const now = dependencies.now()
+  const resumableCheckpoint =
+    managedDomain.providerRegistrationState === "prepared" ||
+    managedDomain.providerRegistrationState === "indeterminate"
+  if (
+    resumableCheckpoint &&
+    !customerWriteAbsenceLeaseExpired(managedDomain, now)
+  ) {
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider customer-handle creation remains claimed or indeterminate; the exact-absence lease has not elapsed.",
+      ),
+    }
+  }
+  if (resumableCheckpoint) {
+    return {
+      outcome: "manual_review",
+      result: await stopProvisioningForProviderManualReview(
+        payload,
+        run,
+        managedDomain,
+        context.registrant,
+        "openprovider_customer_handle_reconciliation_timeout",
+        "Openprovider customer-handle creation remains absent after the reconciliation timeout; operator review is required and no retry was sent.",
+        now,
+      ),
+    }
+  }
+  if (
+    managedDomain.providerRegistrationState !== "not_started"
+  ) {
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider customer-handle state requires reconciliation before creation.",
+      ),
+    }
+  }
+
+  await assertInitialDomainFinancialAuthority(payload, {
+    orderId: input.order.id,
+    paymentAttemptId: input.paymentAttemptId,
+  })
+  const claim = await claimOpenProviderCustomerWrite(payload, managedDomain, now)
+  managedDomain = claim.managedDomain
+  if (!claim.claimed) {
+    if (managedDomain.providerCustomerHandle) {
+      return {
+        outcome: "continue",
+        customerHandle: managedDomain.providerCustomerHandle,
+        managedDomain,
+      }
+    }
+    return {
+      outcome: "provider_reconciliation_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider customer-handle creation is owned by another worker.",
+      ),
+    }
+  }
+
+  let writeFailed = false
+  let writeError: unknown = null
+  try {
+    await dependencies.createOpenProviderCustomerHandle(
+      context.registrant,
+      {
+        token: context.token,
+        reference: managedDomain.provisioningIdempotencyKey,
+      },
+    )
+  } catch (error) {
+    writeFailed = true
+    writeError = error
+  }
+
+  let readback: OpenProviderCustomerReferenceLookup | null = null
+  try {
+    readback = await lookupOpenProviderCustomerReference(
+      dependencies,
+      managedDomain.provisioningIdempotencyKey,
+      context.token,
+    )
+  } catch {
+    return persistIndeterminate(
+      "openprovider_customer_handle_readback_indeterminate",
+      "Openprovider customer-handle readback is awaiting reconciliation; no retry was sent.",
+    )
+  }
+  if (readback.outcome === "ambiguous") return stopForAmbiguity()
+  if (readback.outcome === "exact") {
+    return persistExactCustomer(readback.customer.handle)
+  }
+
+  if (writeFailed) {
+    if (classifyOpenProviderCustomerWriteError(writeError) === "rejected") {
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        state: "manual_review",
+        customerStatus: "manual_review",
+        providerRegistrationState: "not_started",
+        reconciliationRequired: false,
+        failureReason: "openprovider_customer_handle_write_rejected",
+      }, "openprovider_customer_handle_write_rejected", dependencies.now())
+      return {
+        outcome: "unfulfillable",
+        result: {
+          status: "unfulfillable",
+          domain: context.normalized.domain,
+          run,
+          managedDomain,
+          message:
+            "Openprovider deterministically rejected the customer-handle creation.",
+        },
+      }
+    }
+    return persistIndeterminate(
+      "openprovider_customer_handle_indeterminate",
+      "Openprovider customer-handle creation is awaiting reconciliation; no retry was sent.",
+    )
+  }
+
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    providerRegistrationState: "prepared",
+    reconciliationRequired: true,
+    failureReason: "openprovider_customer_handle_readback_pending",
+  }, "openprovider_customer_handle_readback_pending", dependencies.now())
   return {
-    outcome: "continue",
-    customerHandle,
-    managedDomain,
+    outcome: "provider_reconciliation_required",
+    result: waiting(
+      context.normalized.domain,
+      run,
+      managedDomain,
+      "Openprovider accepted customer-handle creation but exact readback is still pending; no retry was sent.",
+    ),
   }
 }
 
@@ -1059,7 +1315,7 @@ async function reconcileCloudflareZonePhase(
   if (zoneLookup.outcome === "ambiguous") {
     return {
       outcome: "manual_review",
-      result: await stopProvisioningForProviderAmbiguity(
+      result: await stopProvisioningForProviderManualReview(
         payload,
         run,
         managedDomain,
@@ -1098,7 +1354,7 @@ async function reconcileCloudflareZonePhase(
       if (error instanceof CloudflareAmbiguousZoneLookupError) {
         return {
           outcome: "manual_review",
-          result: await stopProvisioningForProviderAmbiguity(
+          result: await stopProvisioningForProviderManualReview(
             payload,
             run,
             managedDomain,
@@ -1226,7 +1482,7 @@ async function claimAndReconcileRegistrarRegistrationPhase(
         if (readError instanceof OpenProviderAmbiguousDomainLookupError) {
           return {
             outcome: "manual_review",
-            result: await stopProvisioningForProviderAmbiguity(
+            result: await stopProvisioningForProviderManualReview(
               payload,
               run,
               managedDomain,
@@ -1273,7 +1529,7 @@ async function claimAndReconcileRegistrarRegistrationPhase(
       if (reconciliationError instanceof OpenProviderAmbiguousDomainLookupError) {
         return {
           outcome: "manual_review",
-          result: await stopProvisioningForProviderAmbiguity(
+          result: await stopProvisioningForProviderManualReview(
             payload,
             run,
             managedDomain,
@@ -1748,7 +2004,7 @@ export async function provisionPaidDomainOrder(
     )
   } catch (error) {
     if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
-    return stopProvisioningForProviderAmbiguity(
+    return stopProvisioningForProviderManualReview(
       payload,
       run,
       managedDomain,
@@ -1789,7 +2045,10 @@ export async function provisionPaidDomainOrder(
   if (
     !providerDomain &&
     (initialFailureReason === "openprovider_registration_indeterminate" ||
-      initialProviderRegistrationState === "prepared")
+      (
+        initialProviderRegistrationState === "prepared" &&
+        initialFailureReason?.startsWith("openprovider_customer_handle_") !== true
+      ))
   ) {
     return waiting(
       normalized.domain,
@@ -1839,7 +2098,6 @@ export async function provisionPaidDomainOrder(
       normalized,
       registrant,
       managedDomain,
-      initialFailureReason,
     },
   )
   if (customerOutcome.outcome !== "continue") {
