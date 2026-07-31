@@ -512,6 +512,163 @@ const updateAgreement = (
     context: { billingAgreementLifecycleMutation: true },
   }) as Promise<BillingAgreement>
 
+const claimMollieCustomerProviderWrite = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  now: string,
+): Promise<BillingAgreement | null> => {
+  if (
+    agreement.providerCustomerId ||
+    agreement.reconciliationRequired
+  ) return null
+  if (!agreement.updatedAt) {
+    throw new Error("Billing agreement is missing its concurrency version.")
+  }
+  const result = await payload.update({
+    collection: "billing-agreements",
+    where: {
+      and: [
+        { id: { equals: agreement.id } },
+        { updatedAt: { equals: agreement.updatedAt } },
+        { providerCustomerId: { exists: false } },
+        { reconciliationRequired: { equals: false } },
+      ],
+    },
+    data: {
+      reconciliationRequired: true,
+      failureReason: "A Mollie customer provider write is in progress.",
+      lastSyncedAt: now,
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { billingAgreementLifecycleMutation: true },
+  })
+  return Array.isArray(result.docs)
+    ? (result.docs[0] as BillingAgreement | undefined) ?? null
+    : null
+}
+
+const bindConfirmedMollieCustomer = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  providerCustomerId: string,
+  now: string,
+): Promise<BillingAgreement> => {
+  if (!agreement.updatedAt) {
+    throw new Error("Claimed billing agreement is missing its concurrency version.")
+  }
+  const result = await payload.update({
+    collection: "billing-agreements",
+    where: {
+      and: [
+        { id: { equals: agreement.id } },
+        { updatedAt: { equals: agreement.updatedAt } },
+        { providerCustomerId: { exists: false } },
+        { reconciliationRequired: { equals: true } },
+      ],
+    },
+    data: {
+      providerCustomerId,
+      reconciliationRequired: false,
+      failureReason: null,
+      lastSyncedAt: now,
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { billingAgreementLifecycleMutation: true },
+  })
+  const bound = Array.isArray(result.docs)
+    ? result.docs[0] as BillingAgreement | undefined
+    : undefined
+  if (bound) return bound
+  const current = await payload.findByID({
+    collection: "billing-agreements",
+    id: agreement.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as BillingAgreement
+  if (current.providerCustomerId === providerCustomerId) return current
+  throw new Error(
+    "Mollie customer creation succeeded but its billing-agreement claim requires reconciliation.",
+  )
+}
+
+const markMollieCustomerWriteIndeterminate = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  error: unknown,
+  now: string,
+): Promise<void> => {
+  await payload.update({
+    collection: "billing-agreements",
+    where: {
+      and: [
+        { id: { equals: agreement.id } },
+        { providerCustomerId: { exists: false } },
+        { reconciliationRequired: { equals: true } },
+      ],
+    },
+    data: {
+      failureReason: error instanceof Error
+        ? error.message
+        : "Mollie customer creation failed.",
+      lastSyncedAt: now,
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { billingAgreementLifecycleMutation: true },
+  })
+}
+
+const claimFirstPaymentProviderWrite = async (
+  payload: Payload,
+  attempt: PaymentAttempt,
+  now: string,
+): Promise<PaymentAttempt | null> => {
+  if (
+    attempt.state !== "created" ||
+    attempt.purpose !== "first_payment" ||
+    attempt.sequenceType !== "first" ||
+    attempt.providerPaymentId ||
+    attempt.reconciliationRequired
+  ) return null
+  if (!attempt.updatedAt) {
+    throw new Error("Payment attempt is missing its concurrency version.")
+  }
+  const result = await payload.update({
+    collection: "payment-attempts",
+    where: {
+      and: [
+        { id: { equals: attempt.id } },
+        { updatedAt: { equals: attempt.updatedAt } },
+        { state: { equals: "created" } },
+        { purpose: { equals: "first_payment" } },
+        { sequenceType: { equals: "first" } },
+        { providerPaymentId: { exists: false } },
+        { reconciliationRequired: { equals: false } },
+      ],
+    },
+    data: {
+      state: "pending_provider",
+      reconciliationRequired: true,
+      stateHistory: [
+        ...(Array.isArray(attempt.stateHistory) ? attempt.stateHistory : []),
+        {
+          state: "pending_provider",
+          at: now,
+          reason: "mollie_customer_authority_confirmed",
+        },
+      ],
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { paymentAttemptLifecycleMutation: true },
+  })
+  return Array.isArray(result.docs)
+    ? (result.docs[0] as PaymentAttempt | undefined) ?? null
+    : null
+}
+
 type RecurringAgreementAuthority = BillingAgreement & {
   providerCustomerId: string
   providerMandateId: string
@@ -669,7 +826,7 @@ export async function createMollieCheckoutForGenerationRun(
   if (attempt.reconciliationRequired) {
     throw new Error("Mollie payment creation requires reconciliation before retry.")
   }
-  if (!attemptResult.created) {
+  if (attempt.state !== "created") {
     throw new Error("Mollie payment creation is already claimed or requires reconciliation.")
   }
   requireCommerceProviderWritesAllowed("Mollie first-payment creation")
@@ -679,6 +836,15 @@ export async function createMollieCheckoutForGenerationRun(
     if (currentAgreement.reconciliationRequired) {
       throw new Error("Mollie customer creation requires reconciliation before retry.")
     }
+    const claimedAgreement = await claimMollieCustomerProviderWrite(
+      payload,
+      currentAgreement,
+      now,
+    )
+    if (!claimedAgreement) {
+      throw new Error("Mollie customer creation is already claimed or requires reconciliation.")
+    }
+    currentAgreement = claimedAgreement
     try {
       const customer = await createMollieCustomer({
         name: profile.contractingPartyName || profile.customerName,
@@ -690,27 +856,32 @@ export async function createMollieCheckoutForGenerationRun(
           tenantId: relationshipId(order.tenant),
         },
       })
-      currentAgreement = await updateAgreement(payload, currentAgreement, {
-        providerCustomerId: customer.id,
-        lastSyncedAt: now,
-      })
+      currentAgreement = await bindConfirmedMollieCustomer(
+        payload,
+        currentAgreement,
+        customer.id,
+        now,
+      )
     } catch (error) {
-      await updateAgreement(payload, currentAgreement, {
-        reconciliationRequired: true,
-        failureReason: error instanceof Error ? error.message : "Mollie customer creation failed.",
-        lastSyncedAt: now,
-      })
+      await markMollieCustomerWriteIndeterminate(
+        payload,
+        currentAgreement,
+        error,
+        now,
+      )
       throw error
     }
   }
 
-  if (attempt.state === "created") {
-    attempt = await updateAttempt(payload, attempt, {
-      state: "pending_provider",
-      reconciliationRequired: true,
-      stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now),
-    })
+  const claimedAttempt = await claimFirstPaymentProviderWrite(
+    payload,
+    attempt,
+    now,
+  )
+  if (!claimedAttempt) {
+    throw new Error("Mollie payment creation is already claimed or requires reconciliation.")
   }
+  attempt = claimedAttempt
   if (currentAgreement.state === "pending_first_payment") {
     currentAgreement = await updateAgreement(payload, currentAgreement, {
       state: "mandate_pending",

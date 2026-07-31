@@ -111,6 +111,83 @@ describe("Phase 11 commerce failure rehearsals", () => {
     })
   })
 
+  it("keeps an indeterminate Mollie customer blocked when recovery proves no match", async () => {
+    const agreement: MockDoc = {
+      id: 40,
+      idempotencyKey: "billing-agreement:order:20:v1",
+      originatingOrder: 20,
+      tenant: 1,
+      provider: "mollie",
+      state: "pending_first_payment",
+      reconciliationRequired: true,
+      failureReason: "A Mollie customer provider write is in progress.",
+    }
+    const store = createPayloadStore({ agreements: [agreement] })
+
+    await expect(recoverMissingMollieCustomerReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMollieCustomers: vi.fn(async () => []),
+    }, NOW.toISOString())).resolves.toEqual({ examined: 1, recovered: 0 })
+
+    expect(agreement).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "A Mollie customer provider write is in progress.",
+    })
+    expect(agreement).not.toHaveProperty("providerCustomerId")
+    expect(store.collections["operational-alerts"]).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        dedupeKey:
+          "commerce:payments:missing_mollie_customer_reference:40",
+        metadata: { matchCount: 0 },
+      }),
+    )
+  })
+
+  it("requires critical manual review for ambiguous Mollie customer recovery", async () => {
+    const agreement: MockDoc = {
+      id: 40,
+      idempotencyKey: "billing-agreement:order:20:v1",
+      originatingOrder: 20,
+      tenant: 1,
+      provider: "mollie",
+      state: "pending_first_payment",
+      reconciliationRequired: true,
+      failureReason: "A Mollie customer provider write is in progress.",
+    }
+    const store = createPayloadStore({ agreements: [agreement] })
+    const matchingMetadata = {
+      billingAgreementId: 40,
+      orderId: 20,
+      tenantId: 1,
+    }
+
+    await expect(recoverMissingMollieCustomerReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMollieCustomers: vi.fn(async () => [{
+        id: "cst_ambiguous_1",
+        metadata: matchingMetadata,
+      }, {
+        id: "cst_ambiguous_2",
+        metadata: matchingMetadata,
+      }]),
+    }, NOW.toISOString())).resolves.toEqual({ examined: 1, recovered: 0 })
+
+    expect(agreement).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "A Mollie customer provider write is in progress.",
+    })
+    expect(agreement).not.toHaveProperty("providerCustomerId")
+    expect(store.collections["operational-alerts"]).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        dedupeKey:
+          "commerce:payments:duplicate_provider_customers_for_agreement:40",
+        metadata: { matchCount: 2 },
+      }),
+    )
+  })
+
   it("reports an internally owned customer reference and continues later recovery", async () => {
     const conflicted: MockDoc = {
       id: 40,

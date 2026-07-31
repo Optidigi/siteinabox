@@ -63,7 +63,10 @@ import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
 import { syncMolliePaymentTask } from "@/lib/jobs/syncMolliePaymentTask"
 import { retryPostPaymentAutomation } from "@/lib/payments/postPaymentActivation"
-import { recoverMissingMolliePaymentReferences } from "@/lib/commerce/reconciliation"
+import {
+  recoverMissingMollieCustomerReferences,
+  recoverMissingMolliePaymentReferences,
+} from "@/lib/commerce/reconciliation"
 import { processBillingAgreement } from "@/lib/billing/billingLifecycle"
 import { POST as mollieWebhookPOST } from "@/app/(payload)/api/payments/mollie/webhook/route"
 
@@ -560,6 +563,10 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         const doc = {
           id: base + docs.length,
           ...data,
+          ...(collection === "billing-agreements" ||
+            collection === "payment-attempts"
+            ? { updatedAt: data.createdAt }
+            : {}),
           ...(collection === "managed-domains"
             ? {
                 edgeRoutingStatus: "active",
@@ -669,7 +676,29 @@ describe("Mollie payment flow", () => {
 
   it("creates approved-run checkout with run, tenant, customer, and idempotency metadata", async () => {
     enableSandboxCommerceRelease()
-    const { payload, update } = createPayloadStub()
+    const { payload, update, billingAgreements } = createPayloadStub()
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "https://api.mollie.com/v2/customers") {
+        expect(billingAgreements[0]).not.toHaveProperty("providerCustomerId")
+        expect(billingAgreements[0]).toMatchObject({
+          reconciliationRequired: true,
+          failureReason: "A Mollie customer provider write is in progress.",
+        })
+        return new Response(JSON.stringify({
+          id: "cst_test_123",
+          name: "Acme Studio",
+          email: "client@example.com",
+        }), { status: 201 })
+      }
+      return new Response(JSON.stringify({
+        id: "tr_test_123",
+        status: "open",
+        amount: { currency: "EUR", value: "499.00" },
+        _links: {
+          checkout: { href: "https://www.mollie.com/checkout/test" },
+        },
+      }), { status: 201 })
+    }))
 
     const result = await createMollieCheckoutForGenerationRun(payload, {
       runId: 500,
@@ -681,6 +710,11 @@ describe("Mollie payment flow", () => {
 
     expect(result.checkoutUrl).toBe("https://www.mollie.com/checkout/test")
     expect(result.reused).toBe(false)
+    expect(billingAgreements[0]).toMatchObject({
+      providerCustomerId: "cst_test_123",
+      reconciliationRequired: false,
+      failureReason: null,
+    })
     expect(fetch).toHaveBeenCalledWith("https://api.mollie.com/v2/customers", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({
@@ -731,6 +765,252 @@ describe("Mollie payment flow", () => {
         }),
       },
     }))
+  })
+
+  it("persists an indeterminate customer write and never dispatches it again", async () => {
+    enableSandboxCommerceRelease()
+    const { payload, billingAgreements } = createPayloadStub()
+    const providerWrite = vi.fn(async (url: string) => {
+      expect(url).toBe("https://api.mollie.com/v2/customers")
+      expect(billingAgreements[0]).toMatchObject({
+        reconciliationRequired: true,
+        failureReason: "A Mollie customer provider write is in progress.",
+      })
+      throw new TypeError("connection closed after customer acceptance")
+    })
+    vi.stubGlobal("fetch", providerWrite)
+    const input = {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    }
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("connection closed")
+    expect(providerWrite).toHaveBeenCalledTimes(1)
+    expect(billingAgreements[0]).toMatchObject({
+      reconciliationRequired: true,
+      failureReason: "connection closed after customer acceptance",
+    })
+    expect(billingAgreements[0]).not.toHaveProperty("providerCustomerId")
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("customer creation requires reconciliation")
+    expect(providerWrite).toHaveBeenCalledTimes(1)
+  })
+
+  it("resumes an exact recovered customer with one payment POST", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      billingAgreements,
+      paymentAttempts,
+    } = createPayloadStub()
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("connection closed after customer acceptance")
+    }))
+    const input = {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    }
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("connection closed")
+    const agreement = billingAgreements[0]!
+    await expect(recoverMissingMollieCustomerReferences(payload, {
+      providerReadsAllowed: () => true,
+      listRecentMollieCustomers: vi.fn(async () => [{
+        id: "cst_recovered_after_timeout",
+        metadata: {
+          billingAgreementId: agreement.id,
+          orderId: 600,
+          tenantId: 1,
+        },
+      }]),
+    })).resolves.toEqual({ examined: 1, recovered: 1 })
+    expect(agreement).toMatchObject({
+      providerCustomerId: "cst_recovered_after_timeout",
+      reconciliationRequired: false,
+      failureReason: null,
+    })
+
+    const providerWrite = vi.fn(async (url: string) => {
+      expect(url).toBe("https://api.mollie.com/v2/payments")
+      return new Response(JSON.stringify({
+        id: "tr_after_customer_recovery",
+        status: "open",
+        _links: {
+          checkout: {
+            href: "https://www.mollie.com/checkout/after-customer-recovery",
+          },
+        },
+      }), { status: 201 })
+    })
+    vi.stubGlobal("fetch", providerWrite)
+    const results = await Promise.allSettled([
+      createMollieCheckoutForGenerationRun(payload, input),
+      createMollieCheckoutForGenerationRun(payload, input),
+    ])
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+    expect(providerWrite).toHaveBeenCalledTimes(1)
+    expect(paymentAttempts).toHaveLength(1)
+    expect(paymentAttempts[0]).toMatchObject({
+      idempotencyKey:
+        "mollie:first-payment:order:600:authority-v3:attempt-1",
+      attemptNumber: 1,
+      state: "pending_provider",
+      providerPaymentId: "tr_after_customer_recovery",
+      reconciliationRequired: false,
+    })
+    expect(paymentAttempts[0]?.stateHistory).toContainEqual(
+      expect.objectContaining({
+        state: "pending_provider",
+        reason: "mollie_customer_authority_confirmed",
+      }),
+    )
+  })
+
+  it("lets only one worker dispatch after customer authority is confirmed", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      billingAgreements,
+      paymentAttempts,
+      update,
+    } = createPayloadStub()
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Expected Payload update implementation.")
+    let customerBound!: () => void
+    let releaseOriginal!: () => void
+    const customerBoundPromise = new Promise<void>((resolve) => {
+      customerBound = resolve
+    })
+    const releaseOriginalPromise = new Promise<void>((resolve) => {
+      releaseOriginal = resolve
+    })
+    update.mockImplementation(async (args) => {
+      const result = await originalUpdate(args)
+      if (
+        args.collection === "billing-agreements" &&
+        typeof args.data?.providerCustomerId === "string"
+      ) {
+        customerBound()
+        await releaseOriginalPromise
+      }
+      return result
+    })
+    const providerWrite = vi.fn(async (url: string) => {
+      if (url === "https://api.mollie.com/v2/customers") {
+        return new Response(JSON.stringify({
+          id: "cst_confirmed_race",
+        }), { status: 201 })
+      }
+      expect(url).toBe("https://api.mollie.com/v2/payments")
+      return new Response(JSON.stringify({
+        id: "tr_confirmed_race",
+        status: "open",
+        _links: {
+          checkout: { href: "https://www.mollie.com/checkout/confirmed-race" },
+        },
+      }), { status: 201 })
+    })
+    vi.stubGlobal("fetch", providerWrite)
+    const input = {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    }
+
+    const originalWorker = createMollieCheckoutForGenerationRun(payload, input)
+    await customerBoundPromise
+    expect(billingAgreements[0]).toMatchObject({
+      providerCustomerId: "cst_confirmed_race",
+      reconciliationRequired: false,
+    })
+    const resumedWorker = createMollieCheckoutForGenerationRun(payload, input)
+    await vi.waitFor(() =>
+      expect(providerWrite.mock.calls.filter(([url]) =>
+        url === "https://api.mollie.com/v2/payments",
+      )).toHaveLength(1)
+    )
+    releaseOriginal()
+    const results = await Promise.allSettled([originalWorker, resumedWorker])
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+    expect(providerWrite.mock.calls.filter(([url]) =>
+      url === "https://api.mollie.com/v2/customers",
+    )).toHaveLength(1)
+    expect(providerWrite.mock.calls.filter(([url]) =>
+      url === "https://api.mollie.com/v2/payments",
+    )).toHaveLength(1)
+    expect(paymentAttempts).toHaveLength(1)
+    expect(paymentAttempts[0]).toMatchObject({
+      state: "pending_provider",
+      providerPaymentId: "tr_confirmed_race",
+      reconciliationRequired: false,
+    })
+  })
+
+  it("does not redispatch after restart from a reclaimed payment attempt", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      billingAgreements,
+      paymentAttempts,
+    } = createPayloadStub()
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("connection closed after customer acceptance")
+    }))
+    const input = {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    }
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("connection closed")
+    const agreement = billingAgreements[0]!
+    await recoverMissingMollieCustomerReferences(payload, {
+      providerReadsAllowed: () => true,
+      listRecentMollieCustomers: vi.fn(async () => [{
+        id: "cst_recovered_before_restart",
+        metadata: {
+          billingAgreementId: agreement.id,
+          orderId: 600,
+          tenantId: 1,
+        },
+      }]),
+    })
+    const providerWrite = vi.fn(async () => {
+      throw new TypeError("connection closed after payment acceptance")
+    })
+    vi.stubGlobal("fetch", providerWrite)
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("connection closed after payment acceptance")
+    expect(paymentAttempts[0]).toMatchObject({
+      state: "pending_provider",
+      reconciliationRequired: true,
+      failureCode: "provider_write_indeterminate",
+    })
+    expect(paymentAttempts[0]?.stateHistory).toContainEqual(
+      expect.objectContaining({
+        state: "pending_provider",
+        reason: "mollie_customer_authority_confirmed",
+      }),
+    )
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("requires reconciliation")
+    expect(providerWrite).toHaveBeenCalledTimes(1)
   })
 
   it("creates one new stable attempt after a cancelled first-payment attempt", async () => {
