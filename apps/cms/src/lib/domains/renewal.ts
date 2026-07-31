@@ -387,6 +387,67 @@ async function findCycle(
   } satisfies Where)
 }
 
+const renewalPricingProjection = (input: {
+  price: OpenProviderDomainPrice
+  capability: TldCapability
+  agreement: BillingAgreement | null
+  domain: Pick<ManagedDomain, "renewalIntent">
+  providerRenewalDate: string
+  now: string
+  actionable: boolean
+}) => {
+  if (input.price.currency !== "EUR") {
+    throw new Error("Openprovider renewal price must be quoted in EUR.")
+  }
+  const { initialState, ...financial } = renewalFinancialCoverage(
+    input.price.netAmountMinor,
+  )
+  const amount = commercialAmountFromNet(financial.surchargeNetMinor)
+  const paidSubscriptionCoversRenewal = Boolean(
+    input.agreement?.currentPeriodEndsAt &&
+    new Date(input.agreement.currentPeriodEndsAt) >=
+      new Date(input.providerRenewalDate) &&
+    ["active", "cancellation_scheduled"].includes(input.agreement.state),
+  )
+  const allowanceSecured = input.actionable &&
+    financial.surchargeNetMinor === 0 &&
+    paidSubscriptionCoversRenewal
+  const renewalIntent = input.domain.renewalIntent &&
+    input.agreement?.renewalIntent !== false
+  const state: DomainRenewalCycle["state"] = !renewalIntent
+    ? "cancelled"
+    : !input.actionable
+      ? "scheduled"
+      : allowanceSecured ? "payment_committed" : "payment_required"
+  return {
+    state,
+    renewalIntent,
+    allowanceSecured,
+    cycleData: {
+      ...financial,
+      financialCoverageState: allowanceSecured
+        ? "payment_secured" as const
+        : initialState,
+      pricingEvidence: {
+        version: 1,
+        provider: "openprovider" as const,
+        tld: input.capability.tld,
+        tldCapabilityVersion: input.capability.capabilityVersion,
+        operation: "renew" as const,
+        quotedAt: input.now,
+        premium: input.price.premium,
+        currency: input.price.currency,
+        providerOperationPriceNetMinor: input.price.netAmountMinor,
+        includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
+        surchargeNetMinor: financial.surchargeNetMinor,
+      },
+      netAmountMinor: amount.netAmountMinor,
+      vatAmountMinor: amount.vatAmountMinor,
+      grossAmountMinor: amount.grossAmountMinor,
+    },
+  }
+}
+
 async function createCycle(input: {
   payload: Payload
   domain: ManagedDomain
@@ -397,10 +458,6 @@ async function createCycle(input: {
   capability: TldCapability
   now: string
 }): Promise<DomainRenewalCycle> {
-  if (input.price.currency !== "EUR") {
-    throw new Error("Openprovider renewal price must be quoted in EUR.")
-  }
-  const financial = renewalFinancialCoverage(input.price.netAmountMinor)
   const providerSafeCutoff = providerSafeCutoffAt(
     input.providerRenewalDate,
     input.capability.renewal.providerSafeCutoffLeadDays,
@@ -418,23 +475,8 @@ async function createCycle(input: {
     input.providerDomain.registryExpiryDate,
   ) ?? undefined
   const coverageEndsAt = addBillingPeriod(input.providerRenewalDate, "annual")
-  const paidSubscriptionCoversRenewal = Boolean(
-    input.agreement &&
-    input.agreement.currentPeriodEndsAt &&
-    new Date(input.agreement.currentPeriodEndsAt) >= new Date(input.providerRenewalDate) &&
-    ["active", "cancellation_scheduled"].includes(input.agreement.state),
-  )
   const pricingIsActionable = new Date(input.now) >= new Date(paymentChargeAt)
-  const allowanceSecured = pricingIsActionable &&
-    financial.surchargeNetMinor === 0 &&
-    paidSubscriptionCoversRenewal
-  const renewalIntent = input.domain.renewalIntent &&
-    input.agreement?.renewalIntent !== false
-  const state: DomainRenewalCycle["state"] = !renewalIntent
-    ? "cancelled"
-    : !pricingIsActionable
-      ? "scheduled"
-      : allowanceSecured ? "payment_committed" : "payment_required"
+  const pricing = renewalPricingProjection({ ...input, actionable: pricingIsActionable })
   const idempotencyKey = `openprovider:renewal:${input.domain.id}:${input.providerRenewalDate}`
   try {
     return await input.payload.create({
@@ -444,7 +486,7 @@ async function createCycle(input: {
         managedDomain: Number(input.domain.id),
         billingAgreement: input.agreement ? Number(input.agreement.id) : undefined,
         tenant: numericRelationshipId(input.domain.tenant),
-        state,
+        state: pricing.state,
         coverageStartsAt: input.providerRenewalDate,
         coverageEndsAt,
         providerRenewalDate: input.providerRenewalDate,
@@ -452,43 +494,22 @@ async function createCycle(input: {
         registrarSafeCutoffAt: providerSafeCutoff,
         paymentChargeAt,
         providerSafeCutoffAt: providerSafeCutoff,
-        renewalIntentSnapshot: renewalIntent,
+        renewalIntentSnapshot: pricing.renewalIntent,
         providerRenewalMode: input.capability.renewal.executionMode,
         providerAutorenew: input.providerDomain.autorenew,
         providerWriteState: "not_required",
         currency: "EUR",
-        providerOperationPriceNetMinor: financial.providerOperationPriceNetMinor,
-        includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
-        surchargeNetMinor: financial.surchargeNetMinor,
-        financialCoverageState: allowanceSecured
-          ? "payment_secured"
-          : financial.initialState,
-        pricingEvidence: {
-          version: 1,
-          provider: "openprovider",
-          tld: input.capability.tld,
-          tldCapabilityVersion: input.capability.capabilityVersion,
-          operation: "renew",
-          quotedAt: input.now,
-          premium: input.price.premium,
-          currency: input.price.currency,
-          providerOperationPriceNetMinor: input.price.netAmountMinor,
-          includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
-          surchargeNetMinor: financial.surchargeNetMinor,
-        },
-        netAmountMinor: financial.surchargeNetMinor,
-        vatAmountMinor: commercialAmountFromNet(financial.surchargeNetMinor).vatAmountMinor,
-        grossAmountMinor: commercialAmountFromNet(financial.surchargeNetMinor).grossAmountMinor,
-        paymentSecuredAt: allowanceSecured ? input.now : undefined,
-        cancelledAt: state === "cancelled" ? input.now : undefined,
-        failureReason: state === "cancelled" ? "renewal_intent_off" : undefined,
+        ...pricing.cycleData,
+        paymentSecuredAt: pricing.allowanceSecured ? input.now : undefined,
+        cancelledAt: pricing.state === "cancelled" ? input.now : undefined,
+        failureReason: pricing.state === "cancelled" ? "renewal_intent_off" : undefined,
         reconciliationRequired: false,
         lastSyncedAt: input.now,
-        stateHistory: cycleHistory(null, state, input.now, allowanceSecured
+        stateHistory: cycleHistory(null, pricing.state, input.now, pricing.allowanceSecured
           ? "paid_subscription_included_allowance"
-          : state === "cancelled"
+          : pricing.state === "cancelled"
             ? "renewal_intent_off"
-            : state === "scheduled"
+            : pricing.state === "scheduled"
               ? "indicative_renewal_price_recorded"
               : "financial_coverage_required"),
         createdAt: input.now,
@@ -528,61 +549,31 @@ async function activateScheduledCycle(input: {
     input.domain.domainNameAscii,
     { token: input.token },
   )
-  if (price.currency !== "EUR") {
-    throw new Error("Openprovider renewal price must be quoted in EUR.")
-  }
-  const financial = renewalFinancialCoverage(price.netAmountMinor)
-  const amount = commercialAmountFromNet(financial.surchargeNetMinor)
-  const paidSubscriptionCoversRenewal = Boolean(
-    input.agreement &&
-    input.agreement.currentPeriodEndsAt &&
-    new Date(input.agreement.currentPeriodEndsAt) >= new Date(input.cycle.providerRenewalDate) &&
-    ["active", "cancellation_scheduled"].includes(input.agreement.state),
-  )
-  const allowanceSecured = financial.surchargeNetMinor === 0 && paidSubscriptionCoversRenewal
-  const renewalIntent = input.domain.renewalIntent &&
-    input.agreement?.renewalIntent !== false
-  const state: DomainRenewalCycle["state"] = !renewalIntent
-    ? "cancelled"
-    : allowanceSecured ? "payment_committed" : "payment_required"
+  const pricing = renewalPricingProjection({
+    ...input,
+    price,
+    providerRenewalDate: input.cycle.providerRenewalDate,
+    actionable: true,
+  })
   await updateManagedDomain(input.payload, input.domain, {
     providerRenewalPriceNetMinor: price.netAmountMinor,
     providerRenewalPriceCurrency: price.currency,
     providerRenewalPriceQuotedAt: input.now,
   })
   return updateCycle(input.payload, input.cycle, {
-    state,
-    providerOperationPriceNetMinor: financial.providerOperationPriceNetMinor,
-    includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
-    surchargeNetMinor: financial.surchargeNetMinor,
-    financialCoverageState: allowanceSecured ? "payment_secured" : financial.initialState,
-    pricingEvidence: {
-      version: 1,
-      provider: "openprovider",
-      tld: input.capability.tld,
-      tldCapabilityVersion: input.capability.capabilityVersion,
-      operation: "renew",
-      quotedAt: input.now,
-      premium: price.premium,
-      currency: price.currency,
-      providerOperationPriceNetMinor: price.netAmountMinor,
-      includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
-      surchargeNetMinor: financial.surchargeNetMinor,
-    },
-    netAmountMinor: amount.netAmountMinor,
-    vatAmountMinor: amount.vatAmountMinor,
-    grossAmountMinor: amount.grossAmountMinor,
-    paymentSecuredAt: allowanceSecured ? input.now : null,
-    cancelledAt: state === "cancelled" ? input.now : null,
-    failureReason: state === "cancelled" ? "renewal_intent_off" : null,
+    state: pricing.state,
+    ...pricing.cycleData,
+    paymentSecuredAt: pricing.allowanceSecured ? input.now : null,
+    cancelledAt: pricing.state === "cancelled" ? input.now : null,
+    failureReason: pricing.state === "cancelled" ? "renewal_intent_off" : null,
     lastSyncedAt: input.now,
     stateHistory: cycleHistory(
       input.cycle,
-      state,
+      pricing.state,
       input.now,
-      allowanceSecured
+      pricing.allowanceSecured
         ? "actionable_price_with_paid_subscription_allowance"
-        : state === "cancelled"
+        : pricing.state === "cancelled"
           ? "renewal_intent_off"
           : "actionable_price_requires_financial_coverage",
     ),
