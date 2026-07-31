@@ -36,8 +36,8 @@ import { initialPaymentIsFinanciallySecured } from "@/lib/payments/initialPaymen
 
 import {
   CloudflareIndeterminateWriteError,
+  batchCreateCloudflareMigrationDnsRecords,
   classifyCloudflareZoneLookup,
-  createOrReuseCloudflareMigrationDnsRecord,
   createOrReuseCloudflareZone,
   enableCloudflareDnssec,
   getCloudflareDnssec,
@@ -176,7 +176,7 @@ type MigrationDependencies = {
   listCloudflareZones: typeof listCloudflareZones
   createOrReuseCloudflareZone: typeof createOrReuseCloudflareZone
   listCloudflareMigrationDnsRecords: typeof listCloudflareMigrationDnsRecords
-  createOrReuseCloudflareMigrationDnsRecord: typeof createOrReuseCloudflareMigrationDnsRecord
+  batchCreateCloudflareMigrationDnsRecords: typeof batchCreateCloudflareMigrationDnsRecords
   getCloudflareDnsRecordUsage: typeof getCloudflareDnsRecordUsage
   getCloudflareDnssec: typeof getCloudflareDnssec
   enableCloudflareDnssec: typeof enableCloudflareDnssec
@@ -209,7 +209,7 @@ const defaultDependencies: MigrationDependencies = {
   listCloudflareZones,
   createOrReuseCloudflareZone,
   listCloudflareMigrationDnsRecords,
-  createOrReuseCloudflareMigrationDnsRecord,
+  batchCreateCloudflareMigrationDnsRecords,
   getCloudflareDnsRecordUsage,
   getCloudflareDnssec,
   enableCloudflareDnssec,
@@ -3742,25 +3742,34 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
         ),
       )
     }
-    try {
-      for (const record of target.records) {
-        await deps.createOrReuseCloudflareMigrationDnsRecord(zone.id, record)
-      }
-    } catch (error) {
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+    const missingRecords = target.records.filter((record) => !semanticZoneComparison(
+      [record],
+      migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
+    ).equivalent)
+    if (missingRecords.length > 0) {
       migration = await updateMigration(payload, migration, {
-        state: "awaiting_provider",
-        cloudflareZoneState: "indeterminate",
+        cloudflareZoneState: "prepared",
         reconciliationRequired: true,
-        failureReason: "cloudflare_dns_write_indeterminate",
-      }, "cloudflare_dns_write_indeterminate", deps.now())
-      return cloudflarePreparationBlockedOutcome(
-        migration,
-        waiting(
+        failureReason: "cloudflare_dns_write_prepared",
+      }, "cloudflare_dns_write_prepared", deps.now())
+      try {
+        await deps.batchCreateCloudflareMigrationDnsRecords(zone.id, missingRecords)
+      } catch (error) {
+        if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          cloudflareZoneState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "cloudflare_dns_write_indeterminate",
+        }, "cloudflare_dns_write_indeterminate", deps.now())
+        return cloudflarePreparationBlockedOutcome(
           migration,
-          "Cloudflare DNS preparation is awaiting reconciliation.",
-        ),
-      )
+          waiting(
+            migration,
+            "Cloudflare DNS preparation is awaiting reconciliation.",
+          ),
+        )
+      }
     }
     cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
     comparison = semanticZoneComparison(

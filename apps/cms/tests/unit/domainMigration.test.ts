@@ -573,13 +573,13 @@ const workflowDependencies = (input?: {
       ds: TARGET_DS,
       raw: {},
     })),
-    createOrReuseCloudflareMigrationDnsRecord: vi.fn(async (
+    batchCreateCloudflareMigrationDnsRecords: vi.fn(async (
       _zoneId: string,
-      record: NormalizedMigrationDnsRecord,
+      nextRecords: readonly NormalizedMigrationDnsRecord[],
     ) => {
-      const result = { id: `record-${recordId++}`, record, raw: {} }
-      records.push(result)
-      return result
+      for (const record of nextRecords) {
+        records.push({ id: `record-${recordId++}`, record, raw: {} })
+      }
     }),
     getCloudflareSslVerification: vi.fn(async () => ({
       status: "active" as const,
@@ -2795,7 +2795,7 @@ describe("automatic existing-domain migration", () => {
     })
 
     expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
       .not.toHaveBeenCalled()
     expect(fixture.dependencies.createOpenProviderCustomerHandle)
       .not.toHaveBeenCalled()
@@ -3504,8 +3504,10 @@ describe("automatic existing-domain migration", () => {
     })
 
     expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledOnce()
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
-      .toHaveBeenCalledTimes(zoneExport.records.length)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .toHaveBeenCalledTimes(1)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .toHaveBeenCalledWith("zone-1", expect.any(Array))
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       state: "completed",
       cloudflareZoneId: "zone-1",
@@ -3555,8 +3557,8 @@ describe("automatic existing-domain migration", () => {
     const store = createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
-    fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord.mockRejectedValue(
-      new CloudflareIndeterminateWriteError("Cloudflare DNS record creation"),
+    fixture.dependencies.batchCreateCloudflareMigrationDnsRecords.mockRejectedValue(
+      new CloudflareIndeterminateWriteError("Cloudflare DNS batch creation"),
     )
 
     await expect(prepareDomainMigration(
@@ -3573,7 +3575,7 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({ status: "failed" })
 
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
       .toHaveBeenCalledTimes(1)
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       state: "failed",
@@ -3607,7 +3609,7 @@ describe("automatic existing-domain migration", () => {
       message: expect.stringContaining("unexpected records"),
     })
 
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
       .not.toHaveBeenCalled()
     expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()

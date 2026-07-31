@@ -1466,7 +1466,6 @@ describe("new-domain provider authority", () => {
   it("alerts and blocks DNS effects when registrar verification is suspended", async () => {
     const store = fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
-    const createDnsRecords = vi.fn()
 
     await expect(provisionPaidDomainOrder(store.payload, store.run, {
       order: store.order,
@@ -1488,7 +1487,6 @@ describe("new-domain provider authority", () => {
           status: "active" as const,
           raw: {},
         }]),
-        createCloudflareZoneDnsRecords: createDnsRecords,
       },
     })).resolves.toMatchObject({
       status: "waiting",
@@ -1502,7 +1500,6 @@ describe("new-domain provider authority", () => {
         failureReason: "registrant_verification_suspended",
       },
     })
-    expect(createDnsRecords).not.toHaveBeenCalled()
     expect(store.collections["operational-alerts"]).toContainEqual(
       expect.objectContaining({
         dedupeKey: expect.stringContaining("registrant_verification_suspended"),

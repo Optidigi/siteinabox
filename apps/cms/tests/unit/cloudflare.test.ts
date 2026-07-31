@@ -12,9 +12,8 @@ import {
   createOrReuseCloudflareDnsRecord,
   createOrReuseCloudflareZone,
   createCloudflareZone,
-  createCloudflareZoneDnsRecords,
+  batchCreateCloudflareMigrationDnsRecords,
   enableCloudflareDnssec,
-  createCloudflareMigrationDnsRecord,
   createOrReuseCloudflareEmailSendingSubdomain,
   getCloudflareEmailSendingSubdomain,
   getCloudflareDnsRecordUsage,
@@ -480,7 +479,7 @@ describe("Cloudflare domain adapter", () => {
     } as unknown as NodeJS.ProcessEnv)).toThrow("SIAB_RENDERER_TARGET_HOST or SIAB_RENDERER_TARGET_IP")
   })
 
-  it("creates individual and batched DNS records", async () => {
+  it("creates an individual edge DNS record", async () => {
     const fetchMock = vi.fn(async (_url: string, init: RequestInit = {}) => {
       if (init.method === "GET") {
         return Response.json({ success: true, result: [] })
@@ -514,11 +513,6 @@ describe("Cloudflare domain adapter", () => {
       content: "renderer.siteinabox.nl",
       proxied: true,
     })
-
-    await expect(createCloudflareZoneDnsRecords("zone-123", "example.nl", {
-      env,
-      fetchImpl: fetchMock as typeof fetch,
-    })).resolves.toHaveLength(2)
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://cloudflare.test/client/v4/zones/zone-123/dns_records",
@@ -749,7 +743,14 @@ describe("Cloudflare domain adapter", () => {
       expect.objectContaining({ record: expect.objectContaining({ type: "SRV", target: "sip.example.net" }) }),
     ])
 
-    await expect(createCloudflareMigrationDnsRecord("zone-123", {
+    await expect(batchCreateCloudflareMigrationDnsRecords("zone-123", [{
+      type: "MX",
+      name: "example.nl",
+      ttl: 3600,
+      priority: 10,
+      target: "mail.example.net",
+      proxied: false,
+    }, {
       type: "SRV",
       name: "_sip._tcp.example.nl",
       ttl: 3600,
@@ -758,25 +759,34 @@ describe("Cloudflare domain adapter", () => {
       port: 5060,
       target: "sip.example.net",
       proxied: false,
-    }, {
+    }], {
       env,
       fetchImpl: fetchMock as typeof fetch,
-    })).resolves.toMatchObject({ id: "srv-1" })
+    })).resolves.toBeUndefined()
     expect(fetchMock).toHaveBeenLastCalledWith(
-      "https://cloudflare.test/client/v4/zones/zone-123/dns_records",
+      "https://cloudflare.test/client/v4/zones/zone-123/dns_records/batch",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          type: "SRV",
-          name: "_sip._tcp.example.nl",
-          ttl: 3600,
-          proxied: false,
-          data: {
+          posts: [{
+            type: "MX",
+            name: "example.nl",
+            ttl: 3600,
+            proxied: false,
+            content: "mail.example.net",
             priority: 10,
-            weight: 20,
-            port: 5060,
-            target: "sip.example.net",
-          },
+          }, {
+            type: "SRV",
+            name: "_sip._tcp.example.nl",
+            ttl: 3600,
+            proxied: false,
+            data: {
+              priority: 10,
+              weight: 20,
+              port: 5060,
+              target: "sip.example.net",
+            },
+          }],
         }),
       }),
     )

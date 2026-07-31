@@ -5644,7 +5644,6 @@ describe("Mollie payment flow", () => {
     const findDomain = vi.fn()
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(providerDomain)
-    const createDns = vi.fn()
     const dependencies = {
       now: () => "2026-07-29T12:00:00.000Z",
       loginOpenProvider: vi.fn(async () => "op-token"),
@@ -5677,7 +5676,6 @@ describe("Mollie payment flow", () => {
         status: "registered" as const,
         raw: {},
       })),
-      createCloudflareZoneDnsRecords: createDns,
     }
 
     await expect(provisionPaidDomainOrder(payload, cast(run), {
@@ -5690,7 +5688,6 @@ describe("Mollie payment flow", () => {
       message: expect.stringContaining("verification is required"),
     })
     expect(findDomain).toHaveBeenCalledTimes(2)
-    expect(createDns).not.toHaveBeenCalled()
     expect(managedDomains[0]).toMatchObject({
       providerRegistrationState: "confirmed",
       registrantVerificationStatus: "pending",

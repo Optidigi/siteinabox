@@ -25,13 +25,10 @@ import {
   queueCommerceNotification,
 } from "@/lib/commerce/notifications"
 import {
-  buildCloudflareDnsRecordRequests,
   classifyCloudflareZoneLookup,
-  createCloudflareZoneDnsRecords,
   createOrReuseCloudflareZone,
   CloudflareApiError,
   getCloudflareSslVerification,
-  listCloudflareDnsRecords,
   listCloudflareZones,
   type CloudflareZoneResult,
 } from "@/lib/domains/cloudflare"
@@ -305,9 +302,6 @@ type ProvisioningDependencies = {
   registerOpenProviderDomain: typeof registerOpenProviderDomain
   createOrReuseCloudflareZone: typeof createOrReuseCloudflareZone
   listCloudflareZones: typeof listCloudflareZones
-  createCloudflareZoneDnsRecords: typeof createCloudflareZoneDnsRecords
-  listCloudflareDnsRecords: typeof listCloudflareDnsRecords
-  buildCloudflareDnsRecordRequests: typeof buildCloudflareDnsRecordRequests
   getCloudflareSslVerification: typeof getCloudflareSslVerification
   verifyAuthoritativeDns: (
     domain: string,
@@ -326,9 +320,6 @@ const defaultDependencies: ProvisioningDependencies = {
   registerOpenProviderDomain,
   createOrReuseCloudflareZone,
   listCloudflareZones,
-  createCloudflareZoneDnsRecords,
-  listCloudflareDnsRecords,
-  buildCloudflareDnsRecordRequests,
   getCloudflareSslVerification,
   verifyAuthoritativeDns,
   verifyHttpsEndpoint,
@@ -743,18 +734,6 @@ const registrationIsActive = (
 ): boolean => capability.registration.confirmation.activeStatuses.includes(
   status.trim().toUpperCase(),
 )
-
-const canonicalDnsValue = (value: string): string =>
-  value.trim().toLowerCase().replace(/\.$/, "")
-
-const matchingDnsRecord = (
-  records: Awaited<ReturnType<typeof listCloudflareDnsRecords>>,
-  requested: ReturnType<typeof buildCloudflareDnsRecordRequests>[number],
-) => records.find((record) =>
-  record.type === requested.type &&
-  canonicalDnsValue(record.name) === canonicalDnsValue(requested.name) &&
-  canonicalDnsValue(record.content) === canonicalDnsValue(requested.content) &&
-  record.proxied === requested.proxied)
 
 const waiting = (
   domain: string,
