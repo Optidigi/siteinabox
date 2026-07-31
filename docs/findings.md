@@ -220,46 +220,35 @@ SIAB-004, and SIAB-005 are tracked together in
   IDs are stringified before snapshot writes, or current-state/live parity
   regresses.
 
-## SIAB-014 — Commerce compatibility paths remain evidence-gated
+## SIAB-014 — Commerce compatibility cleanup is runtime-complete
 
-- **Classification:** Unknown for historical/provider liveness; intentional
-  retention pending evidence.
-- **Confidence:** High for the static references below; no approved production
-  data or provider inventory was used.
-- **Scope:** Historical checkout, payment synchronization, domain projections,
-  routing adoption, and migration recovery.
-- **Static inventory:**
-  - assisted-migration supplemental checkout remains implemented by
-    `createSupplementalMigrationMollieCheckout` and is exercised by the
-    supplemental payment and synchronization tests;
-  - the generation-run payment compatibility projection remains consumed by
-    checkout, fulfillment, publishing, preview, administration, and
-    post-payment automation;
-  - the generation-run domain-order compatibility projection remains written
-    by domain provisioning and consumed by current activation/status surfaces;
-  - `applyMollieWebhookPayment` remains a public compatibility alias used by
-    payment, supplemental synchronization, and intake-to-live tests;
-  - the `mollie_subscription` retry step remains an accepted, fail-closed
-    post-payment automation input;
-  - Mollie synchronization still supports metadata-based attempt attachment
-    and the historical order-only `mollie:legacy-payment:<provider-id>`
-    backfill;
-  - migration secrets still accept the historical assisted-source envelope
-    alongside the automatic-source authority;
-  - `preCommerceRoutingAdoption` remains migration-backed routing evidence
-    consumed by release gating, edge readiness, snapshot activation, tenant
-    lifecycle hooks, and deployment/origin-isolation procedures;
-  - provider-reference fallbacks remain in payment backfill and the
-    generation-run domain-order projection.
-- **Schema note:** Domain migration customer-handle progress currently shares
-  `providerTransferState`. Renaming or splitting that persisted checkpoint is
-  outside this structural refactor and requires a separately approved schema
-  and migration task.
-- **Required evidence before any removal:** a complete static reference
-  inventory at the reviewed SHA; operator-supplied read-only database counts
-  and state distributions; provider evidence where references can remain live;
-  audit and retention disposition; historical replay characterization; and a
-  rollback plus forward-recovery plan.
-- **Next:** Treat every listed path as live. Remove candidates one at a time
-  only through a separately approved, evidence-backed task; do not infer
-  provider absence or historical irrelevance from repository references.
+- **Classification:** Runtime cleanup complete; persisted schema cleanup remains
+  separately gated.
+- **Confidence:** High for static reachability and owner-confirmed absence of
+  customers on the retired routes. No production database or provider inventory
+  was queried by the coding task.
+- **Removed runtime routes:** assisted-migration supplemental checkout and
+  synchronization, the `applyMollieWebhookPayment` alias, the
+  `mollie_subscription` retry input, order-only Mollie attempt synthesis,
+  provider-export checkout/recollection, and schema-v1 assisted checkout-secret
+  compatibility. Current checkout accepts only new-domain registration or an
+  automatic transfer backed by Cloudflare OAuth or authorized AXFR.
+- **Retained live projections:** the generation-run payment projection remains
+  consumed by checkout, fulfillment, publishing, preview, administration, and
+  post-payment automation. The generation-run domain-order projection remains
+  written by provisioning and consumed by activation/status. The
+  `preCommerceRoutingAdoption` evidence remains required by release gating,
+  edge readiness, snapshot activation, tenant lifecycle hooks, and deployment
+  origin-isolation procedures. These paths earn their presence through current
+  runtime consumers and were not compatibility-only candidates.
+- **Persisted residue:** generated Payload types, collection fields, enum values,
+  constraints, and committed migrations still describe historical supplemental,
+  assisted/custom-quote, and provider-export values. They are not reachable from
+  current checkout or provider dispatch. Removing them changes the database
+  schema and audit history and therefore requires a separately approved
+  high-risk schema/migration task. The shared migration customer-handle and
+  `providerTransferState` concern has the same boundary.
+- **Next:** If physical schema removal is desired, inventory the affected rows
+  through the approved read-only operator process, define retention/replay
+  disposition, and rehearse a committed migration against disposable
+  PostgreSQL. Do not delete or rewrite historical migrations.
