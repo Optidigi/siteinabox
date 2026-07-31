@@ -3284,6 +3284,7 @@ describe("automatic existing-domain migration", () => {
         name: "unexpected.example.nl",
         ttl: 300,
         content: "192.0.2.200",
+        proxied: false,
       },
       raw: {},
     })

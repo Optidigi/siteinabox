@@ -2996,6 +2996,17 @@ type MigrationValidationContextPhaseOutcome =
     }
   | MigrationStoppedPhaseOutcome
 
+type CloudflarePreparationPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      managedDomain: ManagedDomain
+      zone: Awaited<
+        ReturnType<MigrationDependencies["listCloudflareZones"]>
+      >[number]
+    }
+  | MigrationStoppedPhaseOutcome
+
 const sourceAuthorityBlockedOutcome = (
   migration: DomainMigration,
   result: MigrationResult,
@@ -3356,6 +3367,271 @@ async function validateCapabilityFinancialAndDnssecContextPhase(
   }
 }
 
+const cloudflarePreparationBlockedOutcome = (
+  migration: DomainMigration,
+  result: MigrationResult,
+): MigrationStoppedPhaseOutcome => ({
+  outcome: result.status === "failed"
+    ? "manual_review"
+    : migration.reconciliationRequired
+      ? "provider_reconciliation_required"
+      : "waiting",
+  result,
+})
+
+async function prepareCloudflareZoneAndSemanticRecordsPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  initialManagedDomain: ManagedDomain,
+  order: Order,
+  target: ReturnType<typeof migrationTarget>,
+  deps: MigrationDependencies,
+): Promise<CloudflarePreparationPhaseOutcome> {
+  let migration = initialMigration
+  let managedDomain = initialManagedDomain
+  const visibleZones = await deps.listCloudflareZones(migration.domainNameAscii)
+  const persistedZone = migration.cloudflareZoneId
+    ? visibleZones.filter((entry) => entry.id === migration.cloudflareZoneId)
+    : []
+  const zoneLookup = classifyCloudflareZoneLookup(
+    migration.domainNameAscii,
+    persistedZone.length > 0 ? persistedZone : visibleZones,
+  )
+  if (zoneLookup.outcome === "ambiguous") {
+    return cloudflarePreparationBlockedOutcome(
+      migration,
+      await stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "cloudflare_zone_lookup_ambiguous",
+        deps.now(),
+        "Multiple exact Cloudflare zones match the migration authority.",
+      ),
+    )
+  }
+  let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
+  if (!zone) {
+    if (migration.cloudflareZoneState === "indeterminate") {
+      if (
+        providerWriteReconciliationTimedOut(
+          migrationHistoryEventAt(
+            migration,
+            "cloudflare_zone_write_indeterminate",
+          ),
+          deps.now(),
+        )
+      ) {
+        return cloudflarePreparationBlockedOutcome(
+          migration,
+          await stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "cloudflare_zone_outcome_unresolved",
+            deps.now(),
+            "Cloudflare zone creation exceeded the reconciliation window.",
+          ),
+        )
+      }
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(migration, "Cloudflare zone creation remains indeterminate."),
+      )
+    }
+    if (!deps.forwardProviderWritesAllowed()) {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Cloudflare zone creation is prepared but forward provider writes are release-blocked.",
+        ),
+      )
+    }
+    migration = await updateMigration(payload, migration, {
+      cloudflareZoneState: "prepared",
+      reconciliationRequired: true,
+    }, "cloudflare_zone_write_prepared", deps.now())
+    try {
+      zone = await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
+    } catch (error) {
+      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        cloudflareZoneState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      }, "cloudflare_zone_write_indeterminate", deps.now())
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Cloudflare zone creation is awaiting reconciliation.",
+        ),
+      )
+    }
+  }
+  const dnsWriteAwaitingReconciliation =
+    migration.cloudflareZoneState === "indeterminate" &&
+    migration.failureReason === "cloudflare_dns_write_indeterminate"
+  const zoneCreationRecoveredByExactRead =
+    migration.cloudflareZoneState === "indeterminate" &&
+    migration.failureReason === "cloudflare_zone_creation_indeterminate"
+  migration = await updateMigration(payload, migration, {
+    cloudflareZoneId: zone.id,
+    cloudflareNameservers: zone.nameServers,
+    ...(zoneCreationRecoveredByExactRead
+      ? { cloudflareZoneState: "prepared" }
+      : {}),
+    failureReason: dnsWriteAwaitingReconciliation
+      ? migration.failureReason
+      : null,
+  }, "cloudflare_zone_reconciled", deps.now())
+  let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
+  let comparison = semanticZoneComparison(
+    target.records,
+    migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
+  )
+  if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
+    if (
+      providerWriteReconciliationTimedOut(
+        migrationHistoryEventAt(migration, "cloudflare_dns_write_indeterminate"),
+        deps.now(),
+      )
+    ) {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "cloudflare_dns_outcome_unresolved",
+          deps.now(),
+          "Cloudflare DNS preparation exceeded the reconciliation window.",
+        ),
+      )
+    }
+    return cloudflarePreparationBlockedOutcome(
+      migration,
+      waiting(
+        migration,
+        "Cloudflare DNS write remains indeterminate; no duplicate records were sent.",
+      ),
+    )
+  }
+  if (!comparison.equivalent && cloudflareRecords.length > 0) {
+    const unexpectedExisting = migrationZoneRecordsForComparison(
+      cloudflareRecords,
+      target.domain,
+    ).some((record) =>
+      semanticZoneComparison(target.records, [record]).unexpected.length > 0)
+    if (unexpectedExisting) {
+      const revocation = await revokeMigrationSourceAuthority(
+        payload,
+        migration,
+        deps.now(),
+      )
+      migration = revocation.migration
+      migration = await updateMigration(payload, migration, {
+        state: "failed",
+        semanticComparison: comparison,
+        ...clearedMigrationCredentials(deps.now(), revocation.confirmed),
+        ...(!revocation.confirmed
+          ? { reconciliationRequired: true }
+          : {}),
+        failureReason: "cloudflare_zone_contains_unexpected_records",
+      }, "automatic_zone_preparation_stopped", deps.now())
+      return cloudflarePreparationBlockedOutcome(migration, {
+        status: "failed",
+        migrationId: migration.id,
+        message: "Cloudflare already contains unexpected records; automatic migration stopped.",
+      })
+    }
+  }
+  if (!comparison.equivalent) {
+    const usage = await deps.getCloudflareDnsRecordUsage(zone.id)
+    const recordsStillRequired = comparison.missing.filter(
+      (entry) => !entry.endsWith(":ttl"),
+    ).length
+    if (usage.recordUsage + recordsStillRequired > usage.recordQuota) {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        await stopUnfulfillableMigrationBeforeRegistrarCommit(
+          payload,
+          migration,
+          managedDomain,
+          order,
+          "cloudflare_dns_capacity_insufficient",
+          deps.now(),
+        ),
+      )
+    }
+  }
+  if (!comparison.equivalent) {
+    if (!deps.forwardProviderWritesAllowed()) {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Cloudflare DNS preparation is ready but forward provider writes are release-blocked.",
+        ),
+      )
+    }
+    try {
+      for (const record of target.records) {
+        await deps.createOrReuseCloudflareMigrationDnsRecord(zone.id, record)
+      }
+    } catch (error) {
+      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        cloudflareZoneState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "cloudflare_dns_write_indeterminate",
+      }, "cloudflare_dns_write_indeterminate", deps.now())
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Cloudflare DNS preparation is awaiting reconciliation.",
+        ),
+      )
+    }
+    cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
+    comparison = semanticZoneComparison(
+      target.records,
+      migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
+    )
+  }
+  if (!comparison.equivalent) {
+    return cloudflarePreparationBlockedOutcome(
+      migration,
+      waiting(migration, "Cloudflare target zone is not semantically complete."),
+    )
+  }
+  migration = await updateMigration(payload, migration, {
+    cloudflareZoneState: "confirmed",
+    cloudflareRecordIds: cloudflareRecords.map((entry) => entry.id).filter(Boolean),
+    zonePreparedAt: deps.now(),
+    semanticComparison: comparison,
+    reconciliationRequired: false,
+    failureReason: null,
+  }, "cloudflare_target_zone_semantically_verified", deps.now())
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    cloudflareZoneId: zone.id,
+    cloudflareNameservers: zone.nameServers,
+    cloudflareZoneStatus: zone.status,
+    cloudflareDnsRecordIds: [...new Set([
+      ...stringIds(managedDomain.cloudflareDnsRecordIds),
+      ...cloudflareRecords
+        .map((entry) => entry.id)
+        .filter((id): id is string => Boolean(id)),
+    ])],
+    reconciliationRequired: managedDomain.edgeRoutingStatus !== "active",
+  }, "migration_edge_zone_linked", deps.now())
+  return { outcome: "continue", migration, managedDomain, zone }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -3398,207 +3674,21 @@ export async function prepareDomainMigration(
   let managedDomain = validationContextOutcome.managedDomain
   let actions = validationContextOutcome.actions
 
-  const visibleZones = await deps.listCloudflareZones(migration.domainNameAscii)
-  const persistedZone = migration.cloudflareZoneId
-    ? visibleZones.filter((entry) => entry.id === migration.cloudflareZoneId)
-    : []
-  const zoneLookup = classifyCloudflareZoneLookup(
-    migration.domainNameAscii,
-    persistedZone.length > 0 ? persistedZone : visibleZones,
-  )
-  if (zoneLookup.outcome === "ambiguous") {
-    return stopMigrationForProviderManualReview(
+  const cloudflarePreparationOutcome =
+    await prepareCloudflareZoneAndSemanticRecordsPhase(
       payload,
       migration,
       managedDomain,
-      "cloudflare_zone_lookup_ambiguous",
-      deps.now(),
-      "Multiple exact Cloudflare zones match the migration authority.",
+      order,
+      target,
+      deps,
     )
+  if (cloudflarePreparationOutcome.outcome !== "continue") {
+    return cloudflarePreparationOutcome.result
   }
-  let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
-  if (!zone) {
-    if (migration.cloudflareZoneState === "indeterminate") {
-      if (
-        providerWriteReconciliationTimedOut(
-          migrationHistoryEventAt(
-            migration,
-            "cloudflare_zone_write_indeterminate",
-          ),
-          deps.now(),
-        )
-      ) {
-        return stopMigrationForProviderManualReview(
-          payload,
-          migration,
-          managedDomain,
-          "cloudflare_zone_outcome_unresolved",
-          deps.now(),
-          "Cloudflare zone creation exceeded the reconciliation window.",
-        )
-      }
-      return waiting(migration, "Cloudflare zone creation remains indeterminate.")
-    }
-    if (!deps.forwardProviderWritesAllowed()) {
-      return waiting(
-        migration,
-        "Cloudflare zone creation is prepared but forward provider writes are release-blocked.",
-      )
-    }
-    migration = await updateMigration(payload, migration, {
-      cloudflareZoneState: "prepared",
-      reconciliationRequired: true,
-    }, "cloudflare_zone_write_prepared", deps.now())
-    try {
-      zone = await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
-    } catch (error) {
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
-      migration = await updateMigration(payload, migration, {
-        state: "awaiting_provider",
-        cloudflareZoneState: "indeterminate",
-        reconciliationRequired: true,
-        failureReason: "cloudflare_zone_creation_indeterminate",
-      }, "cloudflare_zone_write_indeterminate", deps.now())
-      return waiting(migration, "Cloudflare zone creation is awaiting reconciliation.")
-    }
-  }
-  const dnsWriteAwaitingReconciliation =
-    migration.cloudflareZoneState === "indeterminate" &&
-    migration.failureReason === "cloudflare_dns_write_indeterminate"
-  const zoneCreationRecoveredByExactRead =
-    migration.cloudflareZoneState === "indeterminate" &&
-    migration.failureReason === "cloudflare_zone_creation_indeterminate"
-  migration = await updateMigration(payload, migration, {
-    cloudflareZoneId: zone.id,
-    cloudflareNameservers: zone.nameServers,
-    ...(zoneCreationRecoveredByExactRead
-      ? { cloudflareZoneState: "prepared" }
-      : {}),
-    failureReason: dnsWriteAwaitingReconciliation
-      ? migration.failureReason
-      : null,
-  }, "cloudflare_zone_reconciled", deps.now())
-  let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
-  let comparison = semanticZoneComparison(
-    target.records,
-    migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
-  )
-  if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
-    if (
-      providerWriteReconciliationTimedOut(
-        migrationHistoryEventAt(migration, "cloudflare_dns_write_indeterminate"),
-        deps.now(),
-      )
-    ) {
-      return stopMigrationForProviderManualReview(
-        payload,
-        migration,
-        managedDomain,
-        "cloudflare_dns_outcome_unresolved",
-        deps.now(),
-        "Cloudflare DNS preparation exceeded the reconciliation window.",
-      )
-    }
-    return waiting(
-      migration,
-      "Cloudflare DNS write remains indeterminate; no duplicate records were sent.",
-    )
-  }
-  if (!comparison.equivalent && cloudflareRecords.length > 0) {
-    const unexpectedExisting = migrationZoneRecordsForComparison(
-      cloudflareRecords,
-      target.domain,
-    ).some((record) =>
-      semanticZoneComparison(target.records, [record]).unexpected.length > 0)
-    if (unexpectedExisting) {
-      const revocation = await revokeMigrationSourceAuthority(
-        payload,
-        migration,
-        deps.now(),
-      )
-      migration = revocation.migration
-      migration = await updateMigration(payload, migration, {
-        state: "failed",
-        semanticComparison: comparison,
-        ...clearedMigrationCredentials(deps.now(), revocation.confirmed),
-        ...(!revocation.confirmed
-          ? { reconciliationRequired: true }
-          : {}),
-        failureReason: "cloudflare_zone_contains_unexpected_records",
-      }, "automatic_zone_preparation_stopped", deps.now())
-      return {
-        status: "failed",
-        migrationId: migration.id,
-        message: "Cloudflare already contains unexpected records; automatic migration stopped.",
-      }
-    }
-  }
-  if (!comparison.equivalent) {
-    const usage = await deps.getCloudflareDnsRecordUsage(zone.id)
-    const recordsStillRequired = comparison.missing.filter(
-      (entry) => !entry.endsWith(":ttl"),
-    ).length
-    if (usage.recordUsage + recordsStillRequired > usage.recordQuota) {
-      return stopUnfulfillableMigrationBeforeRegistrarCommit(
-        payload,
-        migration,
-        managedDomain,
-        order,
-        "cloudflare_dns_capacity_insufficient",
-        deps.now(),
-      )
-    }
-  }
-  if (!comparison.equivalent) {
-    if (!deps.forwardProviderWritesAllowed()) {
-      return waiting(
-        migration,
-        "Cloudflare DNS preparation is ready but forward provider writes are release-blocked.",
-      )
-    }
-    try {
-      for (const record of target.records) {
-        await deps.createOrReuseCloudflareMigrationDnsRecord(zone.id, record)
-      }
-    } catch (error) {
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
-      migration = await updateMigration(payload, migration, {
-        state: "awaiting_provider",
-        cloudflareZoneState: "indeterminate",
-        reconciliationRequired: true,
-        failureReason: "cloudflare_dns_write_indeterminate",
-      }, "cloudflare_dns_write_indeterminate", deps.now())
-      return waiting(migration, "Cloudflare DNS preparation is awaiting reconciliation.")
-    }
-    cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
-    comparison = semanticZoneComparison(
-      target.records,
-      migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
-    )
-  }
-  if (!comparison.equivalent) {
-    return waiting(migration, "Cloudflare target zone is not semantically complete.")
-  }
-  migration = await updateMigration(payload, migration, {
-    cloudflareZoneState: "confirmed",
-    cloudflareRecordIds: cloudflareRecords.map((entry) => entry.id).filter(Boolean),
-    zonePreparedAt: deps.now(),
-    semanticComparison: comparison,
-    reconciliationRequired: false,
-    failureReason: null,
-  }, "cloudflare_target_zone_semantically_verified", deps.now())
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    cloudflareZoneId: zone.id,
-    cloudflareNameservers: zone.nameServers,
-    cloudflareZoneStatus: zone.status,
-    cloudflareDnsRecordIds: [...new Set([
-      ...stringIds(managedDomain.cloudflareDnsRecordIds),
-      ...cloudflareRecords
-        .map((entry) => entry.id)
-        .filter((id): id is string => Boolean(id)),
-    ])],
-    reconciliationRequired: managedDomain.edgeRoutingStatus !== "active",
-  }, "migration_edge_zone_linked", deps.now())
+  migration = cloudflarePreparationOutcome.migration
+  managedDomain = cloudflarePreparationOutcome.managedDomain
+  const zone = cloudflarePreparationOutcome.zone
   if (managedDomain.edgeRoutingStatus === "failed") {
     return stopUnfulfillableMigrationBeforeRegistrarCommit(
       payload,
