@@ -3007,6 +3007,20 @@ type CloudflarePreparationPhaseOutcome =
     }
   | MigrationStoppedPhaseOutcome
 
+type EdgeReadinessPhaseOutcome =
+  | {
+      outcome: "continue"
+      status: "configured" | "active"
+    }
+  | {
+      outcome: "failed"
+      failureReason: "automatic_edge_routing_conflict"
+    }
+  | {
+      outcome: "waiting"
+      message: string
+    }
+
 const sourceAuthorityBlockedOutcome = (
   migration: DomainMigration,
   result: MigrationResult,
@@ -3632,6 +3646,31 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
   return { outcome: "continue", migration, managedDomain, zone }
 }
 
+const evaluateEdgeReadinessPhase = (
+  managedDomain: ManagedDomain,
+): EdgeReadinessPhaseOutcome => {
+  if (managedDomain.edgeRoutingStatus === "failed") {
+    return {
+      outcome: "failed",
+      failureReason: "automatic_edge_routing_conflict",
+    }
+  }
+  if (
+    managedDomain.edgeRoutingStatus !== "configured" &&
+    managedDomain.edgeRoutingStatus !== "active"
+  ) {
+    return {
+      outcome: "waiting",
+      message:
+        "Automatic website and administration routing is being prepared before transfer.",
+    }
+  }
+  return {
+    outcome: "continue",
+    status: managedDomain.edgeRoutingStatus,
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -3689,25 +3728,20 @@ export async function prepareDomainMigration(
   migration = cloudflarePreparationOutcome.migration
   managedDomain = cloudflarePreparationOutcome.managedDomain
   const zone = cloudflarePreparationOutcome.zone
-  if (managedDomain.edgeRoutingStatus === "failed") {
+  const edgeReadinessOutcome = evaluateEdgeReadinessPhase(managedDomain)
+  if (edgeReadinessOutcome.outcome === "failed") {
     return stopUnfulfillableMigrationBeforeRegistrarCommit(
       payload,
       migration,
       managedDomain,
       order,
-      "automatic_edge_routing_conflict",
+      edgeReadinessOutcome.failureReason,
       deps.now(),
     )
   }
-  if (
-    managedDomain.edgeRoutingStatus !== "configured" &&
-    managedDomain.edgeRoutingStatus !== "active"
-  ) {
+  if (edgeReadinessOutcome.outcome === "waiting") {
     await queueCommerceReconciliation(payload)
-    return waiting(
-      migration,
-      "Automatic website and administration routing is being prepared before transfer.",
-    )
+    return waiting(migration, edgeReadinessOutcome.message)
   }
   if (
     sourceEvidenceStale &&

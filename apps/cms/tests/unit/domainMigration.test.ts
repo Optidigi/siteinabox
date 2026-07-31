@@ -1431,6 +1431,55 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("fails before OpenProvider customer preparation when edge readiness fails and preserves per-surface evidence", async () => {
+    const store = createStore({ managedDomainEdgeReady: false })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    const managedDomain = store.collections["managed-domains"]![0]!
+    Object.assign(managedDomain, {
+      edgeRoutingStatus: "failed",
+      httpsStatus: "pending",
+      httpsEvidence: {
+        apex: { status: "verified" },
+        www: { status: "pending", reason: "www_edge_pending" },
+      },
+      adminHttpsStatus: "pending",
+      adminHttpsEvidence: {
+        admin: { status: "pending", reason: "admin_edge_pending" },
+      },
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "failed" })
+
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(managedDomain).toMatchObject({
+      state: "manual_review",
+      failureReason: "automatic_edge_routing_conflict",
+      httpsStatus: "pending",
+      httpsEvidence: {
+        apex: { status: "verified" },
+        www: { status: "pending", reason: "www_edge_pending" },
+      },
+      adminHttpsStatus: "pending",
+      adminHttpsEvidence: {
+        admin: { status: "pending", reason: "admin_edge_pending" },
+      },
+    })
+  })
+
   it("alerts after the governed transfer wait window without repeating the registrar write", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
