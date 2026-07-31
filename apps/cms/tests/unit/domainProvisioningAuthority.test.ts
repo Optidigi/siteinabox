@@ -10,6 +10,10 @@ import {
   OpenProviderCustomerReferenceLookupIncompleteError,
   OpenProviderIndeterminateWriteError,
 } from "@/lib/domains/openprovider"
+import {
+  CloudflareApiError,
+  CloudflareIndeterminateWriteError,
+} from "@/lib/domains/cloudflare"
 import type {
   CheckoutProfile,
   ManagedDomain,
@@ -206,6 +210,36 @@ const requestedProviderDomain = () => ({
   verificationEmailStatus: null,
   verificationEmailDescription: null,
   raw: {},
+})
+
+const authoritativeZone = {
+  id: "zone-authoritative",
+  name: "example.nl",
+  nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+  status: "active" as const,
+  raw: {},
+}
+
+const zonePhaseDependencies = (
+  listZones: () => Promise<(typeof authoritativeZone)[]>,
+  createZone: () => Promise<typeof authoritativeZone>,
+  register: () => Promise<never> =
+    async () => {
+      throw new OpenProviderIndeterminateWriteError("registration")
+    },
+) => ({
+  now: () => NOW,
+  loginOpenProvider: vi.fn(async () => "token"),
+  findOpenProviderDomain: vi.fn(async () => null),
+  checkOpenProviderDomainAvailability: vi.fn(async () => available),
+  findOpenProviderCustomerByReference: vi.fn(async () => ({
+    handle: "OWNER-CLIENT",
+    comments: "domain-registration:order:600:v1",
+    raw: {},
+  })),
+  listCloudflareZones: listZones,
+  createOrReuseCloudflareZone: createZone,
+  registerOpenProviderDomain: register,
 })
 
 describe("new-domain provider authority", () => {
@@ -879,6 +913,227 @@ describe("new-domain provider authority", () => {
     expect(results).toHaveLength(2)
     expect(createCustomer).toHaveBeenCalledOnce()
     expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("lets concurrent workers dispatch one Cloudflare zone create", async () => {
+    const store = fixture()
+    let zoneVisible = false
+    let initialLookups = 0
+    let releaseInitialLookups!: () => void
+    const bothInitialLookups = new Promise<void>((resolve) => {
+      releaseInitialLookups = resolve
+    })
+    const listZones = vi.fn(async () => {
+      if (zoneVisible) return [authoritativeZone]
+      initialLookups += 1
+      if (initialLookups === 2) releaseInitialLookups()
+      await bothInitialLookups
+      return []
+    })
+    const createZone = vi.fn(async () => {
+      expect(store.collections["managed-domains"]?.[0]).toMatchObject({
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_prepared",
+      })
+      zoneVisible = true
+      return authoritativeZone
+    })
+    const register = vi.fn(async () => {
+      throw new OpenProviderIndeterminateWriteError("registration")
+    })
+    const dependencies = zonePhaseDependencies(listZones, createZone, register)
+
+    const results = await Promise.all([
+      provisionPaidDomainOrder(store.payload, store.run, {
+        order: store.order,
+        paymentAttemptId: 700,
+        dependencies,
+      }),
+      provisionPaidDomainOrder(store.payload, store.run, {
+        order: store.order,
+        paymentAttemptId: 700,
+        dependencies,
+      }),
+    ])
+
+    expect(results).toHaveLength(2)
+    expect(createZone).toHaveBeenCalledOnce()
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("recovers a lost Cloudflare success response from exact readback", async () => {
+    const store = fixture()
+    let zoneVisible = false
+    const listZones = vi.fn(async () => zoneVisible ? [authoritativeZone] : [])
+    const createZone = vi.fn(async () => {
+      zoneVisible = true
+      throw new CloudflareIndeterminateWriteError("zone creation")
+    })
+    const register = vi.fn(async () => {
+      throw new OpenProviderIndeterminateWriteError("registration")
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: zonePhaseDependencies(listZones, createZone, register),
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        cloudflareZoneId: authoritativeZone.id,
+        failureReason: "openprovider_registration_indeterminate",
+      },
+    })
+    expect(createZone).toHaveBeenCalledOnce()
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a usable Cloudflare response prepared when exact readback is absent", async () => {
+    const store = fixture()
+    const listZones = vi.fn(async () => [])
+    const createZone = vi.fn(async () => authoritativeZone)
+    const register = vi.fn(async () => {
+      throw new Error("registrar must not run")
+    })
+
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: zonePhaseDependencies(listZones, createZone, register),
+    }
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_readback_pending",
+      },
+    })
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          failureReason: "cloudflare_zone_creation_readback_pending",
+        },
+      })
+    expect(createZone).toHaveBeenCalledOnce()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("persists Cloudflare uncertainty when authoritative readback errors", async () => {
+    const store = fixture()
+    let lookupCount = 0
+    const listZones = vi.fn(async () => {
+      lookupCount += 1
+      if (lookupCount === 1) return []
+      throw new Error("zone readback unavailable")
+    })
+    const createZone = vi.fn(async () => authoritativeZone)
+    const register = vi.fn(async () => {
+      throw new Error("registrar must not run")
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: zonePhaseDependencies(listZones, createZone, register),
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      },
+    })
+    expect(createZone).toHaveBeenCalledOnce()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("persists an indeterminate Cloudflare write after exact absence", async () => {
+    const store = fixture()
+    const listZones = vi.fn(async () => [])
+    const createZone = vi.fn(async () => {
+      throw new CloudflareApiError("zone creation", 503)
+    })
+    const register = vi.fn(async () => {
+      throw new Error("registrar must not run")
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: zonePhaseDependencies(listZones, createZone, register),
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      },
+    })
+    expect(createZone).toHaveBeenCalledOnce()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("stops when Cloudflare readback becomes ambiguous after create", async () => {
+    const store = fixture()
+    let lookupCount = 0
+    const listZones = vi.fn(async () => {
+      lookupCount += 1
+      return lookupCount === 1
+        ? []
+        : [authoritativeZone, { ...authoritativeZone, id: "zone-other" }]
+    })
+    const createZone = vi.fn(async () => authoritativeZone)
+    const register = vi.fn(async () => {
+      throw new Error("registrar must not run")
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: zonePhaseDependencies(listZones, createZone, register),
+    })).resolves.toMatchObject({
+      status: "waiting",
+      managedDomain: {
+        state: "manual_review",
+        failureReason: "cloudflare_zone_lookup_ambiguous",
+      },
+    })
+    expect(createZone).toHaveBeenCalledOnce()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("persists deterministic Cloudflare rejection after exact absence", async () => {
+    const store = fixture()
+    const listZones = vi.fn(async () => [])
+    const createZone = vi.fn(async () => {
+      throw new CloudflareApiError("zone creation", 403)
+    })
+    const register = vi.fn(async () => {
+      throw new Error("registrar must not run")
+    })
+
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: zonePhaseDependencies(listZones, createZone, register),
+    }
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          state: "manual_review",
+          reconciliationRequired: false,
+          failureReason: "cloudflare_zone_creation_write_rejected",
+        },
+      })
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        managedDomain: {
+          failureReason: "cloudflare_zone_creation_write_rejected",
+        },
+      })
+    expect(createZone).toHaveBeenCalledOnce()
     expect(register).not.toHaveBeenCalled()
   })
 
