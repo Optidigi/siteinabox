@@ -534,6 +534,45 @@ async function updateMigration(
   }) as Promise<DomainMigration>
 }
 
+async function claimOpenProviderCustomerWrite(
+  payload: Payload,
+  migration: DomainMigration,
+  now: string,
+): Promise<DomainMigration | null> {
+  const claimed = await payload.update({
+    collection: "domain-migrations",
+    where: {
+      and: [
+        { id: { equals: migration.id } },
+        {
+          providerTransferState: {
+            equals: migration.providerTransferState,
+          },
+        },
+        { updatedAt: { equals: migration.updatedAt } },
+      ],
+    },
+    data: {
+      providerTransferState: "prepared",
+      reconciliationRequired: true,
+      failureReason: null,
+      updatedAt: now,
+      stateHistory: migrationHistory(
+        migration,
+        now,
+        migration.state,
+        "openprovider_customer_handle_write_prepared",
+      ),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { domainMigrationLifecycleMutation: true },
+  })
+  return Array.isArray(claimed.docs)
+    ? claimed.docs[0] as DomainMigration | undefined ?? null
+    : null
+}
+
 const clearedMigrationCredentials = (
   now: string,
   sourceAuthorityRevoked = true,
@@ -3693,11 +3732,29 @@ const openProviderCustomerPreparationBlockedOutcome = (
   result,
 })
 
+type OpenProviderCustomerWriteErrorClassification =
+  | "rejected"
+  | "indeterminate"
+
+const classifyOpenProviderCustomerWriteError = (
+  error: unknown,
+): OpenProviderCustomerWriteErrorClassification =>
+  error instanceof OpenProviderApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+    ? "rejected"
+    : "indeterminate"
+
+
 async function prepareOpenProviderCustomerPhase(
   payload: Payload,
   initialMigration: DomainMigration,
   initialManagedDomain: ManagedDomain,
+  order: Order,
   profile: CheckoutProfile,
+  sourceEvidenceStale: boolean,
   deps: MigrationDependencies,
 ): Promise<OpenProviderCustomerPreparationPhaseOutcome> {
   let migration = initialMigration
@@ -3764,6 +3821,53 @@ async function prepareOpenProviderCustomerPhase(
         waiting(migration, "Customer-handle creation remains indeterminate."),
       )
     } else {
+      const customerWritePreparedAt = migrationHistoryEventAt(
+        migration,
+        "openprovider_customer_handle_write_prepared",
+      )
+      if (
+        ["prepared", "indeterminate"].includes(
+          migration.providerTransferState,
+        ) &&
+        !customerWritePreparedAt
+      ) {
+        return openProviderCustomerPreparationBlockedOutcome(
+          migration,
+          await stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "openprovider_customer_handle_checkpoint_conflict",
+            deps.now(),
+            "Openprovider customer preparation conflicts with a registrar operation checkpoint.",
+          ),
+        )
+      }
+      if (
+        migration.providerTransferState === "prepared" &&
+        !providerWriteClaimLeaseElapsed(customerWritePreparedAt, deps.now())
+      ) {
+        return openProviderCustomerPreparationBlockedOutcome(
+          migration,
+          waiting(
+            migration,
+            "Customer-handle creation is prepared and awaiting its claim lease.",
+          ),
+        )
+      }
+      if (sourceEvidenceStale) {
+        return openProviderCustomerPreparationBlockedOutcome(
+          migration,
+          await stopMigrationForProviderManualReview(
+            payload,
+            migration,
+            managedDomain,
+            "source_evidence_stale_before_provider_write",
+            deps.now(),
+            "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
+          ),
+        )
+      }
       if (!deps.forwardProviderWritesAllowed()) {
         return openProviderCustomerPreparationBlockedOutcome(
           migration,
@@ -3773,18 +3877,66 @@ async function prepareOpenProviderCustomerPhase(
           ),
         )
       }
+      const claimed = await claimOpenProviderCustomerWrite(
+        payload,
+        migration,
+        deps.now(),
+      )
+      if (!claimed) {
+        const winner = await payload.findByID({
+          collection: "domain-migrations",
+          id: migration.id,
+          depth: 0,
+          overrideAccess: true,
+        }) as DomainMigration
+        if (!winner.providerCustomerHandle) {
+          return openProviderCustomerPreparationBlockedOutcome(
+            winner,
+            waiting(
+              winner,
+              "Customer-handle creation is owned by another worker.",
+            ),
+          )
+        }
+        migration = winner
+        customerHandle = winner.providerCustomerHandle
+      } else {
+        migration = claimed
+      }
       try {
-        customerHandle = (await deps.createOpenProviderCustomerHandle(
-          domainRegistrantFromCheckoutProfile(profile),
-          { token, reference: migration.idempotencyKey },
-        )).handle
+        if (!customerHandle) {
+          customerHandle = (await deps.createOpenProviderCustomerHandle(
+            domainRegistrantFromCheckoutProfile(profile),
+            { token, reference: migration.idempotencyKey },
+          )).handle
+        }
       } catch (error) {
-        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+        if (classifyOpenProviderCustomerWriteError(error) === "rejected") {
+          migration = await updateMigration(payload, migration, {
+            providerTransferState: "not_started",
+            reconciliationRequired: false,
+            failureReason: "openprovider_customer_handle_write_rejected",
+          }, "openprovider_customer_handle_write_rejected", deps.now())
+          return openProviderCustomerPreparationBlockedOutcome(
+            migration,
+            await stopUnfulfillableMigrationBeforeRegistrarCommit(
+              payload,
+              migration,
+              managedDomain,
+              order,
+              "openprovider_customer_handle_write_rejected",
+              deps.now(),
+            ),
+          )
+        }
         migration = await updateMigration(payload, migration, {
           state: "awaiting_provider",
           providerTransferState: "indeterminate",
           reconciliationRequired: true,
-          failureReason: "openprovider_customer_handle_indeterminate",
+          failureReason: error instanceof OpenProviderIndeterminateWriteError ||
+              error instanceof OpenProviderApiError
+            ? "openprovider_customer_handle_indeterminate"
+            : "openprovider_customer_handle_local_failure_indeterminate",
         }, "openprovider_customer_handle_indeterminate", deps.now())
         return openProviderCustomerPreparationBlockedOutcome(
           migration,
@@ -3904,7 +4056,9 @@ export async function prepareDomainMigration(
     payload,
     migration,
     managedDomain,
+    order,
     profile,
+    sourceEvidenceStale,
     deps,
   )
   if (customerPreparationOutcome.outcome !== "continue") {
@@ -3914,6 +4068,19 @@ export async function prepareDomainMigration(
   managedDomain = customerPreparationOutcome.managedDomain
   const token = customerPreparationOutcome.token
   const customerHandle = customerPreparationOutcome.customerHandle
+  if (
+    sourceEvidenceStale &&
+    migration.providerTransferState === "not_started"
+  ) {
+    return stopMigrationForProviderManualReview(
+      payload,
+      migration,
+      managedDomain,
+      "source_evidence_stale_before_provider_write",
+      deps.now(),
+      "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
+    )
+  }
 
   let providerDomain: Awaited<
     ReturnType<MigrationDependencies["findOpenProviderDomain"]>

@@ -3413,6 +3413,364 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("waits through a crashed customer-create claim lease and retries only after exact absence", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        suffix: null,
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockResolvedValue({
+      handle: "OWNER-CLIENT",
+      raw: {},
+    })
+    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
+    type ConditionalMigrationUpdateArgs = MockUpdateArgs & {
+      where?: MockFindArgs["where"]
+    }
+    const originalUpdate = update.getMockImplementation() as (
+      args: ConditionalMigrationUpdateArgs,
+    ) => Promise<unknown>
+    let crashAfterClaim = true
+    update.mockImplementation(async (args: ConditionalMigrationUpdateArgs) => {
+      const result = await originalUpdate(args)
+      const history = Array.isArray(args.data.stateHistory)
+        ? args.data.stateHistory
+        : []
+      const lastHistory = history.at(-1) as Record<string, unknown> | undefined
+      if (
+        crashAfterClaim &&
+        args.collection === "domain-migrations" &&
+        args.where &&
+        lastHistory?.reason === "openprovider_customer_handle_write_prepared"
+      ) {
+        crashAfterClaim = false
+        throw new Error("worker stopped after customer claim")
+      }
+      return result
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).rejects.toThrow("worker stopped after customer claim")
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      providerTransferState: "prepared",
+      reconciliationRequired: true,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "openprovider_customer_handle_write_prepared",
+        }),
+      ]),
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T09:02:00.000Z",
+      }),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("claim lease"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T09:06:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.findOpenProviderCustomerByReference)
+      .toHaveBeenCalledTimes(3)
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("allows only one concurrent customer-create effect after the optimistic claim", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    const createGate: {
+      release?: (value: { handle: string; raw: object }) => void
+    } = {}
+    let signalCreateStarted: (() => void) | null = null
+    const createStarted = new Promise<void>((resolve) => {
+      signalCreateStarted = resolve
+    })
+    fixture.dependencies.createOpenProviderCustomerHandle.mockImplementation(
+      () => new Promise((resolve) => {
+        createGate.release = resolve
+        signalCreateStarted?.()
+      }),
+    )
+
+    const first = prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    await createStarted
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("claim lease"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+
+    createGate.release?.({ handle: "OWNER-CLIENT", raw: {} })
+    await expect(first).resolves.toMatchObject({ status: "completed" })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("does not interpret a registrar prepared checkpoint as customer-create authority", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      providerCustomerHandle: null,
+      providerTransferState: "prepared",
+      transferRequestedAt: "2026-07-28T08:50:00.000Z",
+      stateHistory: [
+        ...(Array.isArray(stored.stateHistory) ? stored.stateHistory : []),
+        {
+          state: stored.state,
+          at: "2026-07-28T08:50:00.000Z",
+          reason: "provider_transfer_write_prepared",
+        },
+      ],
+    })
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("conflicts with a registrar"),
+    })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_customer_handle_checkpoint_conflict",
+    })
+  })
+
+  it("persists deterministic customer-create rejection as terminal manual review without retry", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new OpenProviderApiError(
+        "OpenProvider customer creation",
+        422,
+        "CUSTOMER_VALIDATION_FAILED",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("full governed refund was queued"),
+    })
+
+    const stored = store.collections["domain-migrations"]![0]!
+    expect(stored).toMatchObject({
+      state: "failed",
+      providerTransferState: "not_started",
+      reconciliationRequired: false,
+      failureReason: "openprovider_customer_handle_write_rejected",
+      encryptedTransferCode: null,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          reason: "openprovider_customer_handle_write_rejected",
+        }),
+      ]),
+    })
+    expect(store.payload.jobs.queue).toHaveBeenCalledWith({
+      task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: String(store.collections["payment-attempts"]![0]!.id),
+        scenario: "unfulfillable_before_provider_commit",
+      },
+      queue: "default",
+      overrideAccess: true,
+    })
+    expect(store.collections.orders![0]).toMatchObject({ state: "exception" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("conservatively checkpoints a local failure after customer claim as indeterminate", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new Error("local response decoding failed"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_local_failure_indeterminate",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("remains indeterminate"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
+  it("treats a customer-create provider 503 as indeterminate instead of rejected", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new OpenProviderApiError(
+        "OpenProvider customer creation",
+        503,
+        "PROVIDER_UNAVAILABLE",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      providerTransferState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_customer_handle_indeterminate",
+    })
+    expect(store.payload.jobs.queue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ task: "request-mollie-refund" }),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("remains indeterminate"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledOnce()
+  })
+
   it("recovers indeterminate customer creation from one exact reference without repeating the POST", async () => {
     const store = createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
