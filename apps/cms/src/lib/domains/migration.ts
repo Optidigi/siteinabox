@@ -3462,10 +3462,21 @@ export async function prepareDomainMigration(
       return waiting(migration, "Cloudflare zone creation is awaiting reconciliation.")
     }
   }
+  const dnsWriteAwaitingReconciliation =
+    migration.cloudflareZoneState === "indeterminate" &&
+    migration.failureReason === "cloudflare_dns_write_indeterminate"
+  const zoneCreationRecoveredByExactRead =
+    migration.cloudflareZoneState === "indeterminate" &&
+    migration.failureReason === "cloudflare_zone_creation_indeterminate"
   migration = await updateMigration(payload, migration, {
     cloudflareZoneId: zone.id,
     cloudflareNameservers: zone.nameServers,
-    failureReason: null,
+    ...(zoneCreationRecoveredByExactRead
+      ? { cloudflareZoneState: "prepared" }
+      : {}),
+    failureReason: dnsWriteAwaitingReconciliation
+      ? migration.failureReason
+      : null,
   }, "cloudflare_zone_reconciled", deps.now())
   let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   let comparison = semanticZoneComparison(

@@ -3161,6 +3161,49 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("recovers an indeterminate Cloudflare zone creation from an exact read without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{
+        id: "zone-1",
+        name: "example.nl",
+        nameServers: CLOUDFLARE_NAMESERVERS,
+        status: "active",
+        raw: {},
+      }])
+    fixture.dependencies.createOrReuseCloudflareZone.mockRejectedValueOnce(
+      new CloudflareIndeterminateWriteError("Cloudflare zone creation"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    const recovered = await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    expect(recovered).toEqual({
+      status: "completed",
+      migrationId: migration.id,
+      message: "Automatic existing-domain migration completed.",
+    })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledOnce()
+    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+      .toHaveBeenCalledTimes(zoneExport.records.length)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "completed",
+      cloudflareZoneId: "zone-1",
+      cloudflareZoneState: "confirmed",
+    })
+  })
+
   it("stops for manual review when exact Cloudflare zone authority is ambiguous", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -3227,6 +3270,47 @@ describe("automatic existing-domain migration", () => {
       state: "failed",
       encryptedTransferCode: null,
       failureReason: "cloudflare_dns_outcome_unresolved",
+    })
+  })
+
+  it("fails closed on unexpected existing Cloudflare records before any DNS or registrar write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.records.push({
+      id: "foreign-record",
+      record: {
+        type: "A",
+        name: "unexpected.example.nl",
+        ttl: 300,
+        content: "192.0.2.200",
+      },
+      raw: {},
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("unexpected records"),
+    })
+
+    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "cloudflare_zone_contains_unexpected_records",
+      encryptedTransferCode: null,
+      semanticComparison: {
+        equivalent: false,
+        unexpected: expect.arrayContaining([
+          expect.stringContaining("unexpected.example.nl"),
+        ]),
+      },
     })
   })
 
