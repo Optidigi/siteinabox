@@ -9,7 +9,7 @@ import {
   validateTldRegistrationLabel,
   validateTldRegistrantPrerequisites,
 } from "@siteinabox/contracts/tld-capabilities"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import type {
   CheckoutProfile,
   ManagedDomain,
@@ -19,6 +19,7 @@ import type {
   Tenant,
 } from "@/payload-types"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 import {
   ensureCommerceNotification,
   queueCommerceNotification,
@@ -2381,23 +2382,119 @@ export async function activateManagedDomainEntitlement(
   payload: Payload,
   domain: ManagedDomain,
   now = new Date().toISOString(),
+  options: { req?: PayloadRequest } = {},
 ): Promise<ManagedDomain> {
+  const authoritativeDomain = await payload.findByID({
+    collection: "managed-domains",
+    id: domain.id,
+    depth: 0,
+    overrideAccess: true,
+    ...payloadRequestArgs(options.req),
+  }) as ManagedDomain
+  const activationAuthoritySatisfied = (candidate: ManagedDomain): boolean =>
+    candidate.custodyStatus === "managed" &&
+    candidate.providerRegistrationState === "confirmed" &&
+    ["not_required", "verified", "recovered"].includes(
+      candidate.registrantVerificationStatus,
+    ) &&
+    Boolean(candidate.cloudflareZoneId) &&
+    candidate.cloudflareZoneStatus === "active" &&
+    candidate.authoritativeDnsStatus === "verified" &&
+    candidate.httpsStatus === "verified" &&
+    candidate.adminHttpsStatus === "verified" &&
+    candidate.edgeRoutingStatus === "active" &&
+    candidate.reconciliationRequired === false &&
+    candidate.failureReason == null
+
   if (
-    domain.authoritativeDnsStatus !== "verified" ||
-    domain.httpsStatus !== "verified" ||
-    domain.adminHttpsStatus !== "verified" ||
-    domain.edgeRoutingStatus !== "active"
+    !activationAuthoritySatisfied(authoritativeDomain) ||
+    (
+      authoritativeDomain.entitlementStatus !== "pending" &&
+      authoritativeDomain.entitlementStatus !== "active"
+    ) ||
+    (
+      authoritativeDomain.customerStatus !== "provisioning" &&
+      authoritativeDomain.customerStatus !== "active"
+    )
   ) {
     throw new Error(
-      "Managed-domain entitlement requires verified authoritative DNS, website HTTPS, and administration routing.",
+      "Managed-domain entitlement requires current registrar, registrant, DNS, HTTPS, edge, custody, and reconciliation authority.",
     )
   }
-  return updateManagedDomain(payload, domain, {
-    state: "active",
-    entitlementStatus: "active",
-    entitlementActivatedAt: domain.entitlementActivatedAt ?? now,
-    customerStatus: "active",
-    reconciliationRequired: false,
-    failureReason: null,
-  }, "entitlement_activated", now)
+  if (
+    authoritativeDomain.state === "active" &&
+    authoritativeDomain.entitlementStatus === "active" &&
+    authoritativeDomain.customerStatus === "active"
+  ) {
+    return authoritativeDomain
+  }
+
+  const activated = await payload.update({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { id: { equals: authoritativeDomain.id } },
+        { updatedAt: { equals: authoritativeDomain.updatedAt } },
+        { custodyStatus: { equals: "managed" } },
+        { providerRegistrationState: { equals: "confirmed" } },
+        {
+          registrantVerificationStatus: {
+            in: ["not_required", "verified", "recovered"],
+          },
+        },
+        { cloudflareZoneId: { exists: true } },
+        { cloudflareZoneStatus: { equals: "active" } },
+        { authoritativeDnsStatus: { equals: "verified" } },
+        { httpsStatus: { equals: "verified" } },
+        { adminHttpsStatus: { equals: "verified" } },
+        { edgeRoutingStatus: { equals: "active" } },
+        { entitlementStatus: { equals: "pending" } },
+        { customerStatus: { equals: "provisioning" } },
+        { reconciliationRequired: { equals: false } },
+        { failureReason: { exists: false } },
+      ],
+    },
+    data: {
+      state: "active",
+      entitlementStatus: "active",
+      entitlementActivatedAt:
+        authoritativeDomain.entitlementActivatedAt ?? now,
+      customerStatus: "active",
+      reconciliationRequired: false,
+      failureReason: null,
+      stateHistory: historyWith(
+        authoritativeDomain,
+        now,
+        "active",
+        "entitlement_activated",
+      ),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { managedDomainLifecycleMutation: true },
+    ...payloadRequestArgs(options.req),
+  })
+  const claimed = Array.isArray(activated.docs)
+    ? activated.docs[0] as ManagedDomain | undefined
+    : undefined
+  if (claimed) return claimed
+
+  const winner = await payload.findByID({
+    collection: "managed-domains",
+    id: authoritativeDomain.id,
+    depth: 0,
+    overrideAccess: true,
+    ...payloadRequestArgs(options.req),
+  }) as ManagedDomain
+  if (
+    activationAuthoritySatisfied(winner) &&
+    winner.state === "active" &&
+    winner.entitlementStatus === "active" &&
+    winner.customerStatus === "active"
+  ) {
+    return winner
+  }
+  throw new Error(
+    "Managed-domain entitlement authority changed during activation.",
+  )
 }

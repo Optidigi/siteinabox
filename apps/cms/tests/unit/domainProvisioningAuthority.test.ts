@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  activateManagedDomainEntitlement,
   provisionPaidDomainOrder,
 } from "@/lib/domains/provisioning"
 import {
@@ -1606,5 +1607,111 @@ describe("new-domain provider authority", () => {
     expect(createCustomer).not.toHaveBeenCalled()
     expect(createZone).not.toHaveBeenCalled()
     expect(register).not.toHaveBeenCalled()
+  })
+})
+
+describe("managed-domain entitlement activation authority", () => {
+  const readyDomain = (): ManagedDomain => ({
+    ...managedDomain(),
+    providerCustomerHandle: "OWNER-CLIENT",
+    providerDomainId: "9001",
+    providerRegistrationState: "confirmed",
+    cloudflareZoneId: "zone-1",
+    cloudflareNameservers: [
+      "ada.ns.cloudflare.com",
+      "bob.ns.cloudflare.com",
+    ],
+    cloudflareZoneStatus: "active",
+    registrantVerificationStatus: "verified",
+    authoritativeDnsStatus: "verified",
+    httpsStatus: "verified",
+    adminHttpsStatus: "verified",
+    edgeRoutingStatus: "active",
+    reconciliationRequired: false,
+    failureReason: null,
+  })
+
+  it("reloads current authority instead of trusting a stale ready caller", async () => {
+    const staleReady = readyDomain()
+    const current = {
+      ...staleReady,
+      authoritativeDnsStatus: "pending" as const,
+    }
+    const store = createMutablePayloadStore({
+      collections: {
+        "managed-domains": [current as unknown as MockDoc],
+      },
+    })
+
+    await expect(activateManagedDomainEntitlement(
+      store.payload,
+      staleReady,
+      NOW,
+    )).rejects.toThrow("requires current registrar")
+    expect(current).toMatchObject({
+      state: "registration_pending",
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+    })
+  })
+
+  it("fails closed when readiness regresses during the activation claim", async () => {
+    const current = readyDomain()
+    const store = createMutablePayloadStore({
+      collections: {
+        "managed-domains": [current as unknown as MockDoc],
+      },
+      hooks: {
+        beforeUpdate: (args, collections) => {
+          if (
+            args.collection === "managed-domains" &&
+            args.where
+          ) {
+            collections["managed-domains"]![0]!.edgeRoutingStatus = "pending"
+          }
+        },
+      },
+    })
+
+    await expect(activateManagedDomainEntitlement(
+      store.payload,
+      current,
+      NOW,
+    )).rejects.toThrow("authority changed during activation")
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "registration_pending",
+      edgeRoutingStatus: "pending",
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+    })
+  })
+
+  it("activates through one conditional authority claim and replays idempotently", async () => {
+    const current = readyDomain()
+    const store = createMutablePayloadStore({
+      collections: {
+        "managed-domains": [current as unknown as MockDoc],
+      },
+    })
+
+    await expect(activateManagedDomainEntitlement(
+      store.payload,
+      current,
+      NOW,
+    )).resolves.toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    })
+    await expect(activateManagedDomainEntitlement(
+      store.payload,
+      current,
+      NOW,
+    )).resolves.toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    })
+    expect(store.update).toHaveBeenCalledOnce()
   })
 })
