@@ -3647,6 +3647,95 @@ describe("Mollie payment flow", () => {
     })
   })
 
+  it("preserves one refund operation when dispatch races authoritative synchronization", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      accountingDocuments,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_refund_sync_race",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    let refundWriteStarted!: () => void
+    let releaseRefund!: () => void
+    const refundWriteStartedPromise = new Promise<void>((resolve) => {
+      refundWriteStarted = resolve
+    })
+    const releaseRefundPromise = new Promise<void>((resolve) => {
+      releaseRefund = resolve
+    })
+    const providerWrite = vi.fn(async (url: string) => {
+      expect(url).toBe(
+        "https://api.mollie.com/v2/payments/tr_refund_sync_race/refunds",
+      )
+      refundWriteStarted()
+      await releaseRefundPromise
+      return new Response(JSON.stringify({
+        id: "re_refund_sync_race",
+        status: "pending",
+        amount: { currency: "EUR", value: "499.00" },
+      }), { status: 201 })
+    })
+    vi.stubGlobal("fetch", providerWrite)
+
+    const refund = requestMollieRefund(payload, {
+      paymentAttemptId: String(paymentAttempts[0]?.id),
+      scenario: "unfulfillable_before_provider_commit",
+    })
+    await refundWriteStartedPromise
+    const synchronized = await applyMollieWebhookPayment(
+      payload,
+      "tr_refund_sync_race",
+      async () => ({
+        id: "tr_refund_sync_race",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        sequenceType: "first",
+        paidAt: "2026-07-26T12:00:00.000Z",
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: { refunds: [], chargebacks: [] },
+      }),
+    )
+    expect(synchronized).toMatchObject({
+      state: "refund_pending",
+      fulfillmentRequired: false,
+    })
+    expect(billingAgreements[0]).toMatchObject({
+      reconciliationRequired: true,
+    })
+
+    releaseRefund()
+    await expect(refund).resolves.toMatchObject({
+      providerRefundId: "re_refund_sync_race",
+      reused: false,
+    })
+
+    expect(providerWrite).toHaveBeenCalledTimes(1)
+    expect(paymentAttempts[0]).toMatchObject({
+      state: "refund_pending",
+      providerRefundIds: ["re_refund_sync_race"],
+      reconciliationRequired: false,
+    })
+    expect(accountingDocuments.find((document) =>
+      document.documentType === "credit_note"
+    )).toMatchObject({
+      state: "pending_provider",
+      providerOperationId: "re_refund_sync_race",
+      reconciliationRequired: false,
+    })
+  })
+
   it("lets a full-refund pause win a concurrent recurring collection claim", async () => {
     enableSandboxCommerceRelease()
     const {

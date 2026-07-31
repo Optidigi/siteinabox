@@ -3223,6 +3223,149 @@ const refundGrossAmount = (
   throw new Error("This refund scenario requires manual review or no provider refund.")
 }
 
+const dispatchClaimedMollieRefund = async (
+  payload: Payload,
+  input: {
+    attempt: PaymentAttempt
+    order: Order
+    document: AccountingDocument
+    providerPaymentId: string
+    scenario: RefundScenario
+    agreementClaim: BillingAgreement | null
+    now: string
+  },
+): Promise<{
+  document: AccountingDocument
+  providerRefundId: string
+  reused: false
+}> => {
+  let { attempt, document } = input
+  const releaseAgreementClaim = async (
+    failureReason: string | null,
+  ): Promise<void> => {
+    if (!input.agreementClaim?.updatedAt) return
+    await payload.update({
+      collection: "billing-agreements",
+      where: {
+        and: [
+          { id: { equals: input.agreementClaim.id } },
+          { updatedAt: { equals: input.agreementClaim.updatedAt } },
+          { reconciliationRequired: { equals: true } },
+        ],
+      },
+      data: {
+        reconciliationRequired: false,
+        failureReason,
+        lastSyncedAt: input.now,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { billingAgreementLifecycleMutation: true },
+    })
+  }
+  try {
+    if (attempt.state !== "refund_pending") {
+      attempt = await updateAttempt(payload, attempt, {
+        state: "refund_pending",
+        refundPendingAt: input.now,
+        stateHistory: stateHistory(
+          attempt.stateHistory,
+          "refund_pending",
+          input.now,
+        ),
+      })
+    }
+  } catch (error) {
+    await releaseAgreementClaim(null)
+    throw error
+  }
+  const refundIdempotencyKey =
+    `mollie:refund:${attempt.id}:${input.scenario}:v1`
+  try {
+    const refund = await createMollieRefund({
+      paymentId: input.providerPaymentId,
+      amount: mollieAmount(document.grossAmountMinor, document.currency),
+      description: `Site in a Box ${input.scenario}`,
+      idempotencyKey: refundIdempotencyKey,
+      metadata: {
+        accountingDocumentId: document.id,
+        paymentAttemptId: attempt.id,
+        orderId: input.order.id,
+        refundScenario: input.scenario,
+      },
+    })
+    document = await payload.update({
+      collection: "accounting-documents",
+      id: document.id,
+      data: {
+        providerOperationId: refund.id,
+        providerStatus: refund.status,
+        reconciliationRequired: false,
+        lastSyncedAt: input.now,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { accountingDocumentLifecycleMutation: true },
+    }) as AccountingDocument
+    await updateAttempt(payload, attempt, {
+      providerRefundIds: [
+        ...(Array.isArray(attempt.providerRefundIds)
+          ? attempt.providerRefundIds
+          : []),
+        refund.id,
+      ],
+      reconciliationRequired: false,
+      lastSyncedAt: input.now,
+    })
+    return { document, providerRefundId: refund.id, reused: false }
+  } catch (error) {
+    const classification = classifyMollieRefundError(error)
+    const knownRejected = classification.outcome === "deterministic_rejection"
+    document = await payload.update({
+      collection: "accounting-documents",
+      id: document.id,
+      data: {
+        state: knownRejected ? "failed" : "pending_provider",
+        reconciliationRequired: !knownRejected,
+        failedAt: knownRejected ? input.now : undefined,
+        failureMessage: error instanceof Error
+          ? error.message
+          : "Mollie refund creation failed.",
+        lastSyncedAt: input.now,
+        stateHistory: knownRejected
+          ? [
+              ...(Array.isArray(document.stateHistory)
+                ? document.stateHistory
+                : []),
+              { state: "failed", at: input.now },
+            ]
+          : document.stateHistory,
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { accountingDocumentLifecycleMutation: true },
+    }) as AccountingDocument
+    await updateAttempt(payload, attempt, {
+      state: knownRejected ? "refund_failed" : "refund_pending",
+      reconciliationRequired: !knownRejected,
+      failureCode: classification.providerCode,
+      failureMessage: error instanceof Error
+        ? error.message
+        : "Mollie refund creation failed.",
+      lastSyncedAt: input.now,
+      stateHistory: stateHistory(
+        attempt.stateHistory,
+        knownRejected ? "refund_failed" : "refund_pending",
+        input.now,
+      ),
+    })
+    if (knownRejected) {
+      await releaseAgreementClaim("Mollie rejected the full refund request.")
+    }
+    throw error
+  }
+}
+
 export async function requestMollieRefund(
   payload: Payload,
   input: {
@@ -3424,117 +3567,13 @@ async function requestMollieRefundLocked(
       }
     }
   }
-  const releaseRefundAgreementClaim = async (
-    failureReason: string | null,
-  ): Promise<void> => {
-    if (!refundAgreementClaim?.updatedAt) return
-    await payload.update({
-      collection: "billing-agreements",
-      where: {
-        and: [
-          { id: { equals: refundAgreementClaim.id } },
-          { updatedAt: { equals: refundAgreementClaim.updatedAt } },
-          { reconciliationRequired: { equals: true } },
-        ],
-      },
-      data: {
-        reconciliationRequired: false,
-        failureReason,
-        lastSyncedAt: now,
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { billingAgreementLifecycleMutation: true },
-    })
-  }
-  try {
-    if (attempt.state !== "refund_pending") {
-      attempt = await updateAttempt(payload, attempt, {
-        state: "refund_pending",
-        refundPendingAt: now,
-        stateHistory: stateHistory(attempt.stateHistory, "refund_pending", now),
-      })
-    }
-  } catch (error) {
-    await releaseRefundAgreementClaim(null)
-    throw error
-  }
-  const refundIdempotencyKey = `mollie:refund:${attempt.id}:${input.scenario}:v1`
-  try {
-    const refund = await createMollieRefund({
-      paymentId: providerPaymentId,
-      amount: mollieAmount(document.grossAmountMinor, document.currency),
-      description: `Site in a Box ${input.scenario}`,
-      idempotencyKey: refundIdempotencyKey,
-      metadata: {
-        accountingDocumentId: document.id,
-        paymentAttemptId: attempt.id,
-        orderId: order.id,
-        refundScenario: input.scenario,
-      },
-    })
-    document = await payload.update({
-      collection: "accounting-documents",
-      id: document.id,
-      data: {
-        providerOperationId: refund.id,
-        providerStatus: refund.status,
-        reconciliationRequired: false,
-        lastSyncedAt: now,
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { accountingDocumentLifecycleMutation: true },
-    }) as AccountingDocument
-    await updateAttempt(payload, attempt, {
-      providerRefundIds: [
-        ...(Array.isArray(attempt.providerRefundIds) ? attempt.providerRefundIds : []),
-        refund.id,
-      ],
-      reconciliationRequired: false,
-      lastSyncedAt: now,
-    })
-    return { document, providerRefundId: refund.id, reused: false }
-  } catch (error) {
-    const classification = classifyMollieRefundError(error)
-    const knownRejected = classification.outcome === "deterministic_rejection"
-    document = await payload.update({
-      collection: "accounting-documents",
-      id: document.id,
-      data: {
-        state: knownRejected ? "failed" : "pending_provider",
-        reconciliationRequired: !knownRejected,
-        failedAt: knownRejected ? now : undefined,
-        failureMessage: error instanceof Error ? error.message : "Mollie refund creation failed.",
-        lastSyncedAt: now,
-        stateHistory: knownRejected
-          ? [
-              ...(Array.isArray(document.stateHistory) ? document.stateHistory : []),
-              { state: "failed", at: now },
-            ]
-          : document.stateHistory,
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { accountingDocumentLifecycleMutation: true },
-    }) as AccountingDocument
-    await updateAttempt(payload, attempt, {
-      state: knownRejected ? "refund_failed" : "refund_pending",
-      reconciliationRequired: !knownRejected,
-      failureCode: classification.providerCode,
-      failureMessage: error instanceof Error ? error.message : "Mollie refund creation failed.",
-      lastSyncedAt: now,
-      stateHistory: stateHistory(
-        attempt.stateHistory,
-        knownRejected ? "refund_failed" : "refund_pending",
-        now,
-      ),
-    })
-    if (knownRejected) {
-      await releaseRefundAgreementClaim(
-        "Mollie rejected the full refund request.",
-      )
-    }
-    throw error
-  }
+  return dispatchClaimedMollieRefund(payload, {
+    attempt,
+    order,
+    document,
+    providerPaymentId,
+    scenario: input.scenario,
+    agreementClaim: refundAgreementClaim,
+    now,
+  })
 }
