@@ -25,8 +25,10 @@ import {
 } from "@/lib/commerce/notifications"
 import {
   buildCloudflareDnsRecordRequests,
+  classifyCloudflareZoneLookup,
   createCloudflareZoneDnsRecords,
   createOrReuseCloudflareZone,
+  CloudflareAmbiguousZoneLookupError,
   CloudflareIndeterminateWriteError,
   getCloudflareSslVerification,
   listCloudflareDnsRecords,
@@ -39,6 +41,8 @@ import {
   findOpenProviderDomain,
   loginOpenProvider,
   normalizeOpenProviderTimestamp,
+  OpenProviderAmbiguousCustomerReferenceLookupError,
+  OpenProviderAmbiguousDomainLookupError,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   type OpenProviderDomainRecord,
@@ -67,6 +71,10 @@ import {
   type HttpsVerification,
 } from "@/lib/domains/verification"
 import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
+import {
+  registrationRegistrantVerification,
+  storedRegistrantVerification,
+} from "@/lib/domains/registrantVerification"
 
 type ManagedDomainLifecycleData = Partial<ManagedDomain> & Record<string, unknown>
 
@@ -529,41 +537,6 @@ const registrationIsActive = (
   status.trim().toUpperCase(),
 )
 
-const registrantVerification = (
-  record: OpenProviderDomainRecord | null,
-  capability: TldCapability,
-): {
-  status: "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed"
-  description: string
-} => {
-  const status = record?.verificationEmailStatus?.trim().toLowerCase() ?? ""
-  const description = record?.verificationEmailDescription?.trim() ||
-    (
-      status
-        ? `Provider reports no registrant verification requirement for .${capability.tld}.`
-        : `Provider registrant verification status is not available yet for .${capability.tld}.`
-    )
-  if (!status) {
-    return { status: "pending", description }
-  }
-  if (["not applicable", "not required", "n/a"].includes(status)) {
-    return { status: "not_required", description }
-  }
-  if (["verified", "valid", "completed"].includes(status)) {
-    return { status: "verified", description }
-  }
-  if (status.includes("suspend")) {
-    return { status: "suspended", description }
-  }
-  if (status.includes("overdue") || status.includes("expired")) {
-    return { status: "overdue", description }
-  }
-  if (status.includes("fail") || status.includes("reject")) {
-    return { status: "failed", description }
-  }
-  return { status: "pending", description }
-}
-
 const canonicalDnsValue = (value: string): string =>
   value.trim().toLowerCase().replace(/\.$/, "")
 
@@ -588,6 +561,53 @@ const waiting = (
   managedDomain,
   message,
 })
+
+const providerAuthorityAmbiguityCodes = new Set([
+  "cloudflare_zone_lookup_ambiguous",
+  "openprovider_customer_reference_ambiguous",
+  "openprovider_domain_lookup_ambiguous",
+])
+
+async function stopProvisioningForProviderAmbiguity(
+  payload: Payload,
+  run: SiteGenerationRun,
+  managedDomain: ManagedDomain,
+  registrant: ReturnType<typeof domainRegistrantFromCheckoutProfile>,
+  code: string,
+  message: string,
+  now: string,
+): Promise<ProvisionPaidDomainResult> {
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    customerStatus: "manual_review",
+    reconciliationRequired: true,
+    failureReason: code,
+  }, code, now)
+  await recordCommerceAdminException({
+    payload,
+    source: "domains",
+    code,
+    message,
+    tenant: managedDomain.tenant,
+    subjectId: managedDomain.id,
+    severity: "critical",
+    now,
+  })
+  run = await compatibilityProjection(
+    payload,
+    run,
+    managedDomain,
+    "failed",
+    code,
+    registrant,
+  )
+  return waiting(
+    managedDomain.domainNameAscii,
+    run,
+    managedDomain,
+    message,
+  )
+}
 
 export async function provisionPaidDomainOrder(
   payload: Payload,
@@ -674,6 +694,17 @@ export async function provisionPaidDomainOrder(
   }
   const initialProviderRegistrationState = managedDomain.providerRegistrationState
   const initialFailureReason = managedDomain.failureReason
+  if (
+    managedDomain.state === "manual_review" &&
+    providerAuthorityAmbiguityCodes.has(initialFailureReason ?? "")
+  ) {
+    return waiting(
+      normalized.domain,
+      run,
+      managedDomain,
+      "Provider authority remains ambiguous and requires manual reconciliation.",
+    )
+  }
   if (
     managedDomain.state === "manual_review" &&
     (
@@ -767,7 +798,24 @@ export async function provisionPaidDomainOrder(
   )
 
   const token = await dependencies.loginOpenProvider()
-  let providerDomain = await dependencies.findOpenProviderDomain(normalized.domain, { token })
+  let providerDomain: OpenProviderDomainRecord | null
+  try {
+    providerDomain = await dependencies.findOpenProviderDomain(
+      normalized.domain,
+      { token },
+    )
+  } catch (error) {
+    if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
+    return stopProvisioningForProviderAmbiguity(
+      payload,
+      run,
+      managedDomain,
+      registrant,
+      "openprovider_domain_lookup_ambiguous",
+      "Multiple exact Openprovider domains match the accepted registration authority.",
+      dependencies.now(),
+    )
+  }
   if (
     providerDomain &&
     managedDomain.providerCustomerHandle &&
@@ -841,10 +889,28 @@ export async function provisionPaidDomainOrder(
 
   let customerHandle = managedDomain.providerCustomerHandle ?? null
   if (!customerHandle) {
-    const existingCustomer = await dependencies.findOpenProviderCustomerByReference(
-      managedDomain.provisioningIdempotencyKey,
-      { token },
-    )
+    let existingCustomer: Awaited<
+      ReturnType<ProvisioningDependencies["findOpenProviderCustomerByReference"]>
+    >
+    try {
+      existingCustomer = await dependencies.findOpenProviderCustomerByReference(
+        managedDomain.provisioningIdempotencyKey,
+        { token },
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
+        throw error
+      }
+      return stopProvisioningForProviderAmbiguity(
+        payload,
+        run,
+        managedDomain,
+        registrant,
+        "openprovider_customer_reference_ambiguous",
+        "Multiple exact Openprovider customers match the accepted registration reference.",
+        dependencies.now(),
+      )
+    }
     if (existingCustomer) {
       customerHandle = existingCustomer.handle
     } else {
@@ -889,9 +955,26 @@ export async function provisionPaidDomainOrder(
   }
 
   const visibleZones = await dependencies.listCloudflareZones(normalized.domain)
-  let zone = managedDomain.cloudflareZoneId
-    ? visibleZones.find((candidate) => candidate.id === managedDomain.cloudflareZoneId) ?? null
-    : visibleZones[0] ?? null
+  const persistedZones = managedDomain.cloudflareZoneId
+    ? visibleZones.filter((candidate) =>
+        candidate.id === managedDomain.cloudflareZoneId)
+    : []
+  const zoneLookup = classifyCloudflareZoneLookup(
+    normalized.domain,
+    persistedZones.length > 0 ? persistedZones : visibleZones,
+  )
+  if (zoneLookup.outcome === "ambiguous") {
+    return stopProvisioningForProviderAmbiguity(
+      payload,
+      run,
+      managedDomain,
+      registrant,
+      "cloudflare_zone_lookup_ambiguous",
+      "Multiple exact Cloudflare zones match the accepted registration authority.",
+      dependencies.now(),
+    )
+  }
+  let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
   if (!zone) {
     if (initialFailureReason === "cloudflare_zone_creation_indeterminate") {
       return waiting(
@@ -908,6 +991,17 @@ export async function provisionPaidDomainOrder(
       })
       zone = await dependencies.createOrReuseCloudflareZone(normalized.domain)
     } catch (error) {
+      if (error instanceof CloudflareAmbiguousZoneLookupError) {
+        return stopProvisioningForProviderAmbiguity(
+          payload,
+          run,
+          managedDomain,
+          registrant,
+          "cloudflare_zone_lookup_ambiguous",
+          "Multiple exact Cloudflare zones match the accepted registration authority.",
+          dependencies.now(),
+        )
+      }
       if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
       managedDomain = await updateManagedDomain(payload, managedDomain, {
         reconciliationRequired: true,
@@ -983,16 +1077,55 @@ export async function provisionPaidDomainOrder(
       // A successful POST is not registrant-verification evidence. Always
       // reconcile through OpenProvider's authoritative domain read before DNS
       // or publication may advance.
-      providerDomain = await dependencies.findOpenProviderDomain(
-        normalized.domain,
-        { token },
-      )
+      try {
+        providerDomain = await dependencies.findOpenProviderDomain(
+          normalized.domain,
+          { token },
+        )
+      } catch (error) {
+        if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) {
+          throw error
+        }
+        return stopProvisioningForProviderAmbiguity(
+          payload,
+          run,
+          managedDomain,
+          registrant,
+          "openprovider_domain_lookup_ambiguous",
+          "Multiple exact Openprovider domains match the accepted registration authority.",
+          dependencies.now(),
+        )
+      }
     } catch (error) {
+      if (error instanceof OpenProviderAmbiguousDomainLookupError) {
+        return stopProvisioningForProviderAmbiguity(
+          payload,
+          run,
+          managedDomain,
+          registrant,
+          "openprovider_domain_lookup_ambiguous",
+          "Multiple exact Openprovider domains match the accepted registration authority.",
+          dependencies.now(),
+        )
+      }
       let reconciled: OpenProviderDomainRecord | null = null
+      let reconciliationError: unknown = null
       try {
         reconciled = await dependencies.findOpenProviderDomain(normalized.domain, { token })
-      } catch {
+      } catch (readError) {
         // The original indeterminate write remains authoritative until a read succeeds.
+        reconciliationError = readError
+      }
+      if (reconciliationError instanceof OpenProviderAmbiguousDomainLookupError) {
+        return stopProvisioningForProviderAmbiguity(
+          payload,
+          run,
+          managedDomain,
+          registrant,
+          "openprovider_domain_lookup_ambiguous",
+          "Multiple exact Openprovider domains match the accepted registration authority.",
+          dependencies.now(),
+        )
       }
       if (reconciled?.ownerHandle === customerHandle) {
         providerDomain = reconciled
@@ -1058,25 +1191,25 @@ export async function provisionPaidDomainOrder(
     )
   }
 
-  const verification = registrantVerification(providerDomain, capability)
-  const recovered = verification.status === "verified" &&
-    ["pending", "overdue", "suspended", "failed"].includes(
-      managedDomain.registrantVerificationStatus,
-    )
-  const verificationStatus = recovered ? "recovered" : verification.status
-  const verificationActionRequired = [
-    "pending",
-    "overdue",
-    "suspended",
-    "failed",
-  ].includes(verificationStatus)
+  const verification = registrationRegistrantVerification(
+    providerDomain,
+    capability.tld,
+  )
+  const storedVerification = storedRegistrantVerification(
+    verification.status,
+    managedDomain.registrantVerificationStatus,
+  )
+  const verificationStatus = storedVerification.status
+  const verificationActionRequired = storedVerification.customerActionRequired
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     registrantVerificationStatus: verificationStatus,
     registrantVerificationCheckedAt: dependencies.now(),
     registrantVerificationDueAt: normalizeOpenProviderTimestamp(
       providerDomain.verificationEmailExpiresAt,
     ) ?? managedDomain.registrantVerificationDueAt,
-    registrantVerificationRecoveredAt: recovered ? dependencies.now() : undefined,
+    registrantVerificationRecoveredAt: storedVerification.recovered
+      ? dependencies.now()
+      : undefined,
     registrantVerificationDescription: verification.description,
     customerStatus: verificationActionRequired
       ? "verification_required"

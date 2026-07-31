@@ -32,6 +32,8 @@ import {
 } from "@/lib/domains/migration"
 import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
 import {
+  OpenProviderAmbiguousCustomerReferenceLookupError,
+  OpenProviderAmbiguousDomainLookupError,
   OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
 } from "@/lib/domains/openprovider"
@@ -2741,6 +2743,44 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("stops for manual review when exact Cloudflare zone authority is ambiguous", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([
+      {
+        id: "zone-1",
+        name: "example.nl",
+        nameServers: CLOUDFLARE_NAMESERVERS,
+        status: "active",
+        raw: {},
+      },
+      {
+        id: "zone-2",
+        name: "example.nl",
+        nameServers: ["cara.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+        status: "active",
+        raw: {},
+      },
+    ])
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("Multiple exact Cloudflare zones"),
+    })
+    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "cloudflare_zone_lookup_ambiguous",
+      reconciliationRequired: true,
+    })
+  })
+
   it("escalates indeterminate Cloudflare DNS creation without repeating records", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -2818,6 +2858,60 @@ describe("automatic existing-domain migration", () => {
       state: "failed",
       encryptedTransferCode: null,
       failureReason: "openprovider_customer_handle_outcome_unresolved",
+    })
+  })
+
+  it("stops for manual review when exact customer-reference authority is ambiguous", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockRejectedValue(
+      new OpenProviderAmbiguousCustomerReferenceLookupError(
+        "domain-migration:order:600:v1",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("Multiple exact Openprovider customers"),
+    })
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_customer_reference_ambiguous",
+      reconciliationRequired: true,
+    })
+  })
+
+  it("stops for manual review when exact registrar domain authority is ambiguous", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderDomain.mockRejectedValue(
+      new OpenProviderAmbiguousDomainLookupError("example.nl"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("Multiple exact Openprovider domains"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_domain_lookup_ambiguous",
+      reconciliationRequired: true,
     })
   })
 

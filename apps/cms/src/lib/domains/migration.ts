@@ -36,6 +36,7 @@ import { initialPaymentIsFinanciallySecured } from "@/lib/payments/initialPaymen
 
 import {
   CloudflareIndeterminateWriteError,
+  classifyCloudflareZoneLookup,
   createOrReuseCloudflareMigrationDnsRecord,
   createOrReuseCloudflareZone,
   enableCloudflareDnssec,
@@ -87,6 +88,8 @@ import {
 } from "@/lib/domains/migrationEvidence"
 import { normalizeDomain } from "@/lib/domains/normalize"
 import {
+  OpenProviderAmbiguousCustomerReferenceLookupError,
+  OpenProviderAmbiguousDomainLookupError,
   OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
   createOpenProviderCustomerHandle,
@@ -116,6 +119,10 @@ import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliat
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { classifyMigrationEntry } from "@/lib/domains/migrationDecisions"
+import {
+  migrationRegistrantVerification,
+  storedRegistrantVerification,
+} from "@/lib/domains/registrantVerification"
 
 const CUTOVER_VERIFICATION_MINUTES = 30
 const SOURCE_EVIDENCE_MAX_AGE_MS = 24 * 60 * 60_000
@@ -1406,21 +1413,6 @@ const activeProviderDomain = (
   record: OpenProviderDomainRecord,
   activeStatuses: readonly string[],
 ): boolean => activeStatuses.includes(record.status.trim().toUpperCase())
-
-const verificationStatus = (
-  providerDomain: OpenProviderDomainRecord,
-): "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed" => {
-  const status = providerDomain.verificationEmailStatus?.trim().toLowerCase() ?? ""
-  if (!status) return "pending"
-  if (["not applicable", "not required", "n/a"].includes(status)) {
-    return "not_required"
-  }
-  if (["verified", "completed", "approved"].includes(status)) return "verified"
-  if (status.includes("suspend")) return "suspended"
-  if (status.includes("overdue") || status.includes("expired")) return "overdue"
-  if (status.includes("fail") || status.includes("reject")) return "failed"
-  return "pending"
-}
 
 const storedZoneSnapshot = (value: unknown): NormalizedCompleteZone => {
   const source = readObject(value)
@@ -3061,10 +3053,24 @@ export async function prepareDomainMigration(
   }
 
   const visibleZones = await deps.listCloudflareZones(migration.domainNameAscii)
-  let zone = visibleZones
-    .find((entry) => entry.id === migration.cloudflareZoneId) ??
-    visibleZones[0] ??
-    null
+  const persistedZone = migration.cloudflareZoneId
+    ? visibleZones.filter((entry) => entry.id === migration.cloudflareZoneId)
+    : []
+  const zoneLookup = classifyCloudflareZoneLookup(
+    migration.domainNameAscii,
+    persistedZone.length > 0 ? persistedZone : visibleZones,
+  )
+  if (zoneLookup.outcome === "ambiguous") {
+    return stopMigrationForProviderManualReview(
+      payload,
+      migration,
+      managedDomain,
+      "cloudflare_zone_lookup_ambiguous",
+      deps.now(),
+      "Multiple exact Cloudflare zones match the migration authority.",
+    )
+  }
+  let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
   if (!zone) {
     if (migration.cloudflareZoneState === "indeterminate") {
       if (
@@ -3269,10 +3275,27 @@ export async function prepareDomainMigration(
   const token = await deps.loginOpenProvider()
   let customerHandle = migration.providerCustomerHandle ?? null
   if (!customerHandle) {
-    const existingCustomer = await deps.findOpenProviderCustomerByReference(
-      migration.idempotencyKey,
-      { token },
-    )
+    let existingCustomer: Awaited<
+      ReturnType<MigrationDependencies["findOpenProviderCustomerByReference"]>
+    >
+    try {
+      existingCustomer = await deps.findOpenProviderCustomerByReference(
+        migration.idempotencyKey,
+        { token },
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
+        throw error
+      }
+      return stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "openprovider_customer_reference_ambiguous",
+        deps.now(),
+        "Multiple exact Openprovider customers match the migration reference.",
+      )
+    }
     if (existingCustomer) {
       customerHandle = existingCustomer.handle
     } else if (
@@ -3335,7 +3358,25 @@ export async function prepareDomainMigration(
     }, "provider_customer_handle_persisted", deps.now())
   }
 
-  let providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
+  let providerDomain: Awaited<
+    ReturnType<MigrationDependencies["findOpenProviderDomain"]>
+  >
+  try {
+    providerDomain = await deps.findOpenProviderDomain(
+      migration.domainNameAscii,
+      { token },
+    )
+  } catch (error) {
+    if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
+    return stopMigrationForProviderManualReview(
+      payload,
+      migration,
+      managedDomain,
+      "openprovider_domain_lookup_ambiguous",
+      deps.now(),
+      "Multiple exact Openprovider domains match the migration authority.",
+    )
+  }
   if (!providerDomain) {
     if (
       migration.providerTransferState === "prepared" &&
@@ -3665,18 +3706,13 @@ export async function prepareDomainMigration(
       deps.now(),
     )
   }
-  const registrantVerification = verificationStatus(providerDomain)
-  const recovered = registrantVerification === "verified" &&
-    ["pending", "overdue", "suspended", "failed"].includes(
-      managedDomain.registrantVerificationStatus,
-    )
-  const storedRegistrantVerification = recovered ? "recovered" : registrantVerification
-  const verificationActionRequired = [
-    "pending",
-    "overdue",
-    "suspended",
-    "failed",
-  ].includes(storedRegistrantVerification)
+  const registrantVerification = migrationRegistrantVerification(providerDomain)
+  const storedVerification = storedRegistrantVerification(
+    registrantVerification,
+    managedDomain.registrantVerificationStatus,
+  )
+  const projectedRegistrantVerification = storedVerification.status
+  const verificationActionRequired = storedVerification.customerActionRequired
   actions = actionStates(migration.customerActions, deps.now())
   actions = withAction(
     withAction(
@@ -3700,12 +3736,14 @@ export async function prepareDomainMigration(
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     providerDomainId: String(providerDomain.id),
     providerRegistrationState: "confirmed",
-    registrantVerificationStatus: storedRegistrantVerification,
+    registrantVerificationStatus: projectedRegistrantVerification,
     registrantVerificationCheckedAt: deps.now(),
     registrantVerificationDueAt: normalizeOpenProviderTimestamp(
       providerDomain.verificationEmailExpiresAt,
     ) ?? managedDomain.registrantVerificationDueAt,
-    registrantVerificationRecoveredAt: recovered ? deps.now() : undefined,
+    registrantVerificationRecoveredAt: storedVerification.recovered
+      ? deps.now()
+      : undefined,
     registrantVerificationDescription: providerDomain.verificationEmailDescription,
     providerAutorenew: providerDomain.autorenew,
     providerAutorenewCheckedAt: deps.now(),
@@ -3723,18 +3761,18 @@ export async function prepareDomainMigration(
     customerActions: actions,
     reconciliationRequired: verificationActionRequired,
     failureReason: verificationActionRequired
-      ? `registrant_verification_${storedRegistrantVerification}`
+      ? `registrant_verification_${projectedRegistrantVerification}`
       : null,
   }, `registrant_verification_${registrantVerification}`, deps.now())
-  if (["overdue", "suspended", "failed"].includes(storedRegistrantVerification)) {
+  if (["overdue", "suspended", "failed"].includes(projectedRegistrantVerification)) {
     await recordCommerceAdminException({
       payload,
       source: "domains",
-      code: `registrant_verification_${storedRegistrantVerification}`,
+      code: `registrant_verification_${projectedRegistrantVerification}`,
       message: "Provider-reported registrant verification blocks the domain migration.",
       tenant: managedDomain.tenant,
       subjectId: migration.id,
-      severity: storedRegistrantVerification === "suspended" ? "critical" : "error",
+      severity: projectedRegistrantVerification === "suspended" ? "critical" : "error",
       now: deps.now(),
     })
   }
@@ -3745,7 +3783,7 @@ export async function prepareDomainMigration(
         migration,
         managedDomain,
         providerDomain,
-        `registrant_verification_${storedRegistrantVerification}_after_cutover`,
+        `registrant_verification_${projectedRegistrantVerification}_after_cutover`,
         deps,
       )
     }
