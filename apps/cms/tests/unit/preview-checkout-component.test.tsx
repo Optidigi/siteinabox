@@ -420,8 +420,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
       "ns1.example.test, ns2.example.test",
     )
     expect(
-      (screen.getByText("checkoutMigrationPreflightNoOrder") as HTMLButtonElement)
-        .disabled,
+      screen.getAllByText("checkoutMigrationPreflightNoOrder").every(
+        (element) => (element as HTMLButtonElement).disabled,
+      ),
     ).toBe(true)
     expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
     expect(screen.queryByText("checkoutDomainAvailableDetail")).toBeNull()

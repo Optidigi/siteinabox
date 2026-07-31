@@ -2562,6 +2562,15 @@ export function PreviewCheckout({
                           ? t("checkoutTransferRenewalEffectRestartsFromTransferDate")
                           : t("checkoutTransferRenewalEffectProviderDetermined")}
                   </span>
+                  <span className="text-muted-foreground">
+                    {selectedQuote.quote.transferRenewalEffect === "unchanged"
+                      ? t("checkoutDomainRenewalExplanationUnchanged")
+                      : selectedQuote.quote.transferRenewalEffect === "extends_one_year"
+                        ? t("checkoutDomainRenewalExplanationExtendsOneYear")
+                        : selectedQuote.quote.transferRenewalEffect === "restarts_from_transfer_date"
+                          ? t("checkoutDomainRenewalExplanationRestartsFromTransferDate")
+                          : t("checkoutDomainRenewalExplanationProviderDetermined")}
+                  </span>
                 </div>
               )}
 
