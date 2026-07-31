@@ -5,6 +5,8 @@ import {
   classifyMollieCreationError,
   classifyMollieRefundError,
   generationProjectionStatus,
+  isCapturedPaymentAttemptState,
+  isDuplicateMollieProjection,
   paymentStateFromMollie,
   targetAttemptState,
 } from "@/lib/payments/paymentDecisions"
@@ -87,6 +89,32 @@ describe("payment decisions", () => {
       chargebackAmountMinor: 0,
       reconciliationRequired: true,
     })
+  })
+
+  it("classifies captured states and duplicate provider projections", () => {
+    expect([
+      "paid",
+      "refund_pending",
+      "partially_refunded",
+      "refunded",
+      "refund_failed",
+      "chargeback",
+    ].every((state) =>
+      isCapturedPaymentAttemptState(state as PaymentAttempt["state"])
+    )).toBe(true)
+    expect(isCapturedPaymentAttemptState("pending_provider")).toBe(false)
+    const currentAttempt = {
+      ...attempt("paid"),
+      providerStatus: "paid",
+      refundedAmountMinor: 0,
+      chargebackAmountMinor: 0,
+    }
+    const providerPayment = payment({ status: "paid" })
+    expect(isDuplicateMollieProjection(
+      currentAttempt,
+      providerPayment,
+      targetAttemptState(currentAttempt, providerPayment),
+    )).toBe(true)
   })
 
   it("prioritizes chargeback and detects adjustment over-allocation", () => {

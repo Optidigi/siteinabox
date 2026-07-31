@@ -54,6 +54,8 @@ import {
   confirmedRefunds,
   failedRefunds,
   generationProjectionStatus,
+  isCapturedPaymentAttemptState,
+  isDuplicateMollieProjection,
   mollieAmountMinor,
   paymentStateFromMollie,
   pendingRefunds,
@@ -2907,18 +2909,24 @@ const ensureDuplicatePaymentRefundQueued = async (
   return document
 }
 
-export async function synchronizeMolliePayment(
+const loadAuthoritativeMollieSynchronization = async (
   payload: Payload,
   paymentId: string,
-  fetchPayment: (id: string) => Promise<MolliePayment> = retrieveMolliePayment,
-): Promise<MollieSynchronizationResult> {
+  fetchPayment: (id: string) => Promise<MolliePayment>,
+): Promise<{
+  payment: MolliePayment
+  attempt: PaymentAttempt
+  orderId: string | number
+}> => {
   const payment = await fetchPayment(paymentId)
   if (payment.id !== paymentId) {
     throw new IgnorableMollieWebhookError("Mollie returned another payment id.")
   }
-  let attempt = await findOrBackfillAttempt(payload, payment)
+  const attempt = await findOrBackfillAttempt(payload, payment)
   if (attempt.providerPaymentId !== payment.id) {
-    throw new IgnorableMollieWebhookError("Payment attempt provider reference does not match Mollie.")
+    throw new IgnorableMollieWebhookError(
+      "Payment attempt provider reference does not match Mollie.",
+    )
   }
   await assertProviderPaymentAuthority(payload, attempt, payment)
   const providerAmountMinor = mollieAmountMinor(payment.amount)
@@ -2931,55 +2939,148 @@ export async function synchronizeMolliePayment(
       reconciliationRequired: true,
       lastSyncedAt: new Date().toISOString(),
       failureCode: "provider_amount_mismatch",
-      failureMessage: "Mollie amount or currency differs from the frozen payment attempt.",
+      failureMessage:
+        "Mollie amount or currency differs from the frozen payment attempt.",
     })
-    throw new Error("Mollie payment amount does not match the frozen payment attempt.")
+    throw new Error(
+      "Mollie payment amount does not match the frozen payment attempt.",
+    )
   }
-
   const orderId = relationshipId(attempt.order)
   if (!orderId) {
     throw new Error("Mollie payment attempt is missing its authoritative order.")
   }
-  return withCommerceOrderLock(payload, orderId, async () => {
-  attempt = await payload.findByID({
+  return { payment, attempt, orderId }
+}
+
+const persistAuthoritativeMollieAttemptState = async (
+  payload: Payload,
+  attemptId: string | number,
+  payment: MolliePayment,
+  now: string,
+): Promise<{ attempt: PaymentAttempt; duplicate: boolean }> => {
+  let attempt = await payload.findByID({
     collection: "payment-attempts",
-    id: attempt.id,
+    id: attemptId,
     depth: 0,
     overrideAccess: true,
   }) as PaymentAttempt
-  const now = new Date().toISOString()
   const target = targetAttemptState(attempt, payment)
-  const duplicate =
-    attempt.state === target.state &&
-    attempt.providerStatus === payment.status &&
-    (attempt.refundedAmountMinor ?? 0) === target.refundedAmountMinor &&
-    (attempt.chargebackAmountMinor ?? 0) === target.chargebackAmountMinor
-  attempt = await transitionAttemptState(payload, attempt, target.state, now, payment.status)
+  const duplicate = isDuplicateMollieProjection(attempt, payment, target)
+  attempt = await transitionAttemptState(
+    payload,
+    attempt,
+    target.state,
+    now,
+    payment.status,
+  )
   attempt = await updateAttempt(payload, attempt, {
     providerStatus: payment.status,
     reconciliationRequired: target.reconciliationRequired,
     lastSyncedAt: now,
     authorizedAt: payment.authorizedAt ?? attempt.authorizedAt,
-    paidAt: payment.paidAt ?? (target.state === "paid" ? attempt.paidAt ?? now : attempt.paidAt),
-    failedAt: payment.failedAt ?? (target.state === "failed" ? attempt.failedAt ?? now : attempt.failedAt),
+    paidAt: payment.paidAt ??
+      (target.state === "paid" ? attempt.paidAt ?? now : attempt.paidAt),
+    failedAt: payment.failedAt ??
+      (target.state === "failed" ? attempt.failedAt ?? now : attempt.failedAt),
     cancelledAt: payment.canceledAt ??
-      (target.state === "cancelled" ? attempt.cancelledAt ?? now : attempt.cancelledAt),
+      (target.state === "cancelled"
+        ? attempt.cancelledAt ?? now
+        : attempt.cancelledAt),
     expiredAt: payment.expiredAt ??
       (target.state === "expired" ? attempt.expiredAt ?? now : attempt.expiredAt),
     refundPendingAt: pendingRefunds(payment).length > 0
       ? attempt.refundPendingAt ?? now
       : attempt.refundPendingAt,
     refundedAmountMinor: target.refundedAmountMinor,
-    refundedAt: target.state === "refunded" ? attempt.refundedAt ?? now : attempt.refundedAt,
-    providerRefundIds: (payment._embedded?.refunds ?? []).map((refund) => refund.id),
+    refundedAt: target.state === "refunded"
+      ? attempt.refundedAt ?? now
+      : attempt.refundedAt,
+    providerRefundIds: (payment._embedded?.refunds ?? []).map(
+      (refund) => refund.id,
+    ),
     chargebackAmountMinor: target.chargebackAmountMinor,
-    chargebackAt: target.state === "chargeback" ? attempt.chargebackAt ?? now : attempt.chargebackAt,
-    providerChargebackIds: (payment._embedded?.chargebacks ?? []).map((chargeback) => chargeback.id),
-    failureCode: target.reconciliationRequired ? "provider_state_conflict" : null,
+    chargebackAt: target.state === "chargeback"
+      ? attempt.chargebackAt ?? now
+      : attempt.chargebackAt,
+    providerChargebackIds: (payment._embedded?.chargebacks ?? []).map(
+      (chargeback) => chargeback.id,
+    ),
+    failureCode: target.reconciliationRequired
+      ? "provider_state_conflict"
+      : null,
     failureMessage: target.reconciliationRequired
       ? "Provider state or adjustment totals conflict with captured local evidence."
       : null,
   })
+  return { attempt, duplicate }
+}
+
+const reconcileSupersededMollieAttempt = async (
+  payload: Payload,
+  input: {
+    attempt: PaymentAttempt
+    order: Order
+    payment: MolliePayment
+    duplicate: boolean
+    now: string
+  },
+): Promise<MollieSynchronizationResult> => {
+  let attempt = input.attempt
+  if (isCapturedPaymentAttemptState(attempt.state)) {
+    attempt = await updateAttempt(payload, attempt, {
+      reconciliationRequired: false,
+      failureCode: "non_authoritative_attempt_captured",
+      failureMessage:
+        "A superseded payment attempt was captured and its governed refund was queued.",
+      lastSyncedAt: input.now,
+    })
+    await ensureDuplicatePaymentRefundQueued(
+      payload,
+      input.order,
+      attempt,
+      input.now,
+    )
+    await synchronizeAccountingEvidence(
+      payload,
+      input.order,
+      attempt,
+      input.payment,
+      input.now,
+      true,
+    )
+  }
+  return {
+    ok: true,
+    paymentAttemptId: attempt.id,
+    orderId: input.order.id,
+    state: attempt.state,
+    duplicate: input.duplicate,
+    fulfillmentRequired: false,
+  }
+}
+
+export async function synchronizeMolliePayment(
+  payload: Payload,
+  paymentId: string,
+  fetchPayment: (id: string) => Promise<MolliePayment> = retrieveMolliePayment,
+): Promise<MollieSynchronizationResult> {
+  const authoritative = await loadAuthoritativeMollieSynchronization(
+    payload,
+    paymentId,
+    fetchPayment,
+  )
+  const { payment, orderId } = authoritative
+  return withCommerceOrderLock(payload, orderId, async () => {
+  const now = new Date().toISOString()
+  const checkpoint = await persistAuthoritativeMollieAttemptState(
+    payload,
+    authoritative.attempt.id,
+    payment,
+    now,
+  )
+  let { attempt } = checkpoint
+  const { duplicate } = checkpoint
   const order = await payload.findByID({
     collection: "orders",
     id: relationshipId(attempt.order) ?? "",
@@ -2988,45 +3089,13 @@ export async function synchronizeMolliePayment(
   }) as Order
   const ownsSharedProjection = await attemptOwnsSharedProjection(payload, attempt)
   if (!ownsSharedProjection) {
-    const captured = [
-      "paid",
-      "refund_pending",
-      "partially_refunded",
-      "refunded",
-      "refund_failed",
-      "chargeback",
-    ].includes(attempt.state)
-    if (captured) {
-      attempt = await updateAttempt(payload, attempt, {
-        reconciliationRequired: false,
-        failureCode: "non_authoritative_attempt_captured",
-        failureMessage:
-          "A superseded payment attempt was captured and its governed refund was queued.",
-        lastSyncedAt: now,
-      })
-      await ensureDuplicatePaymentRefundQueued(
-        payload,
-        order,
-        attempt,
-        now,
-      )
-      await synchronizeAccountingEvidence(
-        payload,
-        order,
-        attempt,
-        payment,
-        now,
-        true,
-      )
-    }
-    return {
-      ok: true,
-      paymentAttemptId: attempt.id,
-      orderId: order.id,
-      state: attempt.state,
+    return reconcileSupersededMollieAttempt(payload, {
+      attempt,
+      order,
+      payment,
       duplicate,
-      fulfillmentRequired: false,
-    }
+      now,
+    })
   }
   await synchronizeBillingAgreement(payload, attempt, order, payment, now)
   const orderProjection = await synchronizeOrderProjection(payload, order, attempt, now)

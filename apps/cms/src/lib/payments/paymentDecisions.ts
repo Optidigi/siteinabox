@@ -90,6 +90,19 @@ export function generationProjectionStatus(
   return "pending_provider"
 }
 
+export function isCapturedPaymentAttemptState(
+  state: PaymentAttemptState,
+): boolean {
+  return [
+    "paid",
+    "refund_pending",
+    "partially_refunded",
+    "refunded",
+    "refund_failed",
+    "chargeback",
+  ].includes(state)
+}
+
 export const confirmedRefunds = (payment: MolliePayment): MollieRefund[] =>
   (payment._embedded?.refunds ?? []).filter(
     (refund) => refund.status === "refunded",
@@ -229,4 +242,17 @@ export function targetAttemptState(
     chargebackAmountMinor,
     reconciliationRequired: false,
   }
+}
+
+export function isDuplicateMollieProjection(
+  attempt: PaymentAttempt,
+  payment: MolliePayment,
+  target: ReturnType<typeof targetAttemptState>,
+): boolean {
+  return (
+    attempt.state === target.state &&
+    attempt.providerStatus === payment.status &&
+    (attempt.refundedAmountMinor ?? 0) === target.refundedAmountMinor &&
+    (attempt.chargebackAmountMinor ?? 0) === target.chargebackAmountMinor
+  )
 }
