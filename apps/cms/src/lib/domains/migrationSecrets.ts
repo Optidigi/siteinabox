@@ -108,10 +108,7 @@ export type DurableAutomaticSourceMechanism =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
 
-export type DurableAutomaticSourceRefreshCredential = Exclude<
-  AutomaticSourceRefreshCredential,
-  { kind: "provider_export" }
->
+export type DurableAutomaticSourceRefreshCredential = AutomaticSourceRefreshCredential
 
 export type AutomaticSourceRefreshAuthority = {
   schemaVersion: 1
