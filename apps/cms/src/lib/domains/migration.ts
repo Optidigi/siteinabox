@@ -2381,6 +2381,7 @@ async function secureTargetDnssec(
   migration: DomainMigration
   providerDomain: OpenProviderDomainRecord
   result: MigrationResult | null
+  rollbackReason?: string
 }> {
   let cloudflareDnssec = await deps.getCloudflareDnssec(zoneId)
   const cloudflareKeyAvailable =
@@ -2608,14 +2609,8 @@ async function secureTargetDnssec(
       return {
         migration,
         providerDomain,
-        result: await rollbackCutover(
-          payload,
-          migration,
-          managedDomain,
-          providerDomain,
-          reason,
-          deps,
-        ),
+        result: null,
+        rollbackReason: reason,
       }
     }
     return {
@@ -3110,6 +3105,28 @@ type SourceDnssecAndNameserverCutoverPhaseOutcome =
       outcome: "continue"
       migration: DomainMigration
       providerDomain: OpenProviderDomainRecord
+    }
+  | NonRollbackMigrationStoppedPhaseOutcome
+  | {
+      outcome: "rollback_required"
+      migration: DomainMigration
+      providerDomain: OpenProviderDomainRecord
+      reason: string
+    }
+
+type PostCutoverTargetVerificationPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      providerDomain: OpenProviderDomainRecord
+      authoritativeDns: Awaited<
+        ReturnType<MigrationDependencies["verifyAuthoritativeDns"]>
+      >
+      https: {
+        status: "verified" | "pending"
+        httpStatus: number | null
+        reason: string | null
+      }
     }
   | NonRollbackMigrationStoppedPhaseOutcome
   | {
@@ -4848,6 +4865,154 @@ async function prepareSourceDnssecAndNameserverCutoverPhase(
   }
 }
 
+const postCutoverTargetVerificationBlockedOutcome = (
+  migration: DomainMigration,
+  result: MigrationResult,
+): NonRollbackMigrationStoppedPhaseOutcome => ({
+  outcome: result.status === "failed"
+    ? "manual_review"
+    : migration.reconciliationRequired
+      ? "provider_reconciliation_required"
+      : "waiting",
+  result,
+})
+
+async function verifyPostCutoverTargetAndSecureDnssecPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  managedDomain: ManagedDomain,
+  initialProviderDomain: OpenProviderDomainRecord,
+  target: ReturnType<typeof migrationTarget>,
+  zone: Awaited<
+    ReturnType<MigrationDependencies["listCloudflareZones"]>
+  >[number],
+  token: string,
+  deps: MigrationDependencies,
+): Promise<PostCutoverTargetVerificationPhaseOutcome> {
+  let migration = initialMigration
+  let providerDomain = initialProviderDomain
+  const postCutoverRecords = await deps.listCloudflareMigrationDnsRecords(
+    zone.id,
+  )
+  const postCutoverComparison = semanticZoneComparison(
+    target.records,
+    migrationZoneRecordsForComparison(postCutoverRecords, target.domain),
+  )
+  const authoritativeDns = await deps.verifyAuthoritativeDns(
+    migration.domainNameAscii,
+    zone.nameServers,
+  )
+  const preservedRecords = target.records.filter((record) =>
+    !["A", "AAAA", "CNAME"].includes(record.type) ||
+    (record.name !== target.domain && record.name !== `www.${target.domain}`),
+  )
+  const preservedDns = await deps.verifyPreservedDnsRecords(
+    preservedRecords,
+    zone.nameServers,
+  )
+  const edgeReady =
+    managedDomain.edgeRoutingStatus === "active" &&
+    managedDomain.httpsStatus === "verified" &&
+    managedDomain.adminHttpsStatus === "verified"
+  const https = edgeReady
+    ? { status: "verified" as const, httpStatus: 200, reason: null }
+    : {
+        status: "pending" as const,
+        httpStatus: null,
+        reason: "automatic_edge_routing_pending",
+      }
+  const verification = {
+    checkedAt: deps.now(),
+    semanticZone: postCutoverComparison,
+    authoritativeDns,
+    preservedDns,
+    cloudflareSsl: {
+      status: edgeReady ? "active" : "pending",
+      providerStatuses: [],
+    },
+    https,
+    edgeRouting: {
+      status: managedDomain.edgeRoutingStatus,
+      adminHttpsStatus: managedDomain.adminHttpsStatus,
+      checkedAt: managedDomain.edgeRoutingCheckedAt,
+    },
+    preservedRecordCount: preservedRecords.length,
+  }
+  migration = await updateMigration(payload, migration, {
+    postCutoverVerification: verification,
+  }, "post_cutover_verification_recorded", deps.now())
+  const verified = postCutoverComparison.equivalent &&
+    authoritativeDns.status === "verified" &&
+    preservedDns.status === "verified" &&
+    edgeReady
+  if (!verified) {
+    const deadlineReached = migration.verificationDeadlineAt
+      ? new Date(deps.now()).getTime() >=
+        new Date(migration.verificationDeadlineAt).getTime()
+      : false
+    if (!deadlineReached && postCutoverComparison.equivalent) {
+      await queueCommerceReconciliation(payload)
+      return postCutoverTargetVerificationBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Cutover propagation and HTTPS verification are still pending.",
+        ),
+      )
+    }
+    return {
+      outcome: "rollback_required",
+      migration,
+      providerDomain,
+      reason: postCutoverComparison.equivalent
+        ? "post_cutover_verification_deadline_exceeded"
+        : "post_cutover_zone_semantic_mismatch",
+    }
+  }
+
+  const targetDnssec = await secureTargetDnssec(
+    payload,
+    migration,
+    managedDomain,
+    providerDomain,
+    zone.id,
+    token,
+    deps,
+  )
+  migration = targetDnssec.migration
+  providerDomain = targetDnssec.providerDomain
+  if (targetDnssec.rollbackReason) {
+    return {
+      outcome: "rollback_required",
+      migration,
+      providerDomain,
+      reason: targetDnssec.rollbackReason,
+    }
+  }
+  if (targetDnssec.result) {
+    return postCutoverTargetVerificationBlockedOutcome(
+      migration,
+      targetDnssec.result,
+    )
+  }
+  if (!providerDomain) {
+    return postCutoverTargetVerificationBlockedOutcome(
+      migration,
+      waiting(
+        migration,
+        "Transferred domain authority awaits provider reconciliation before publication.",
+      ),
+    )
+  }
+  return {
+    outcome: "continue",
+    migration,
+    providerDomain,
+    authoritativeDns,
+    https,
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -5039,96 +5204,35 @@ export async function prepareDomainMigration(
   migration = sourceDnssecAndCutoverOutcome.migration
   providerDomain = sourceDnssecAndCutoverOutcome.providerDomain
 
-  const postCutoverRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
-  const postCutoverComparison = semanticZoneComparison(
-    target.records,
-    migrationZoneRecordsForComparison(postCutoverRecords, target.domain),
-  )
-  const authoritativeDns = await deps.verifyAuthoritativeDns(
-    migration.domainNameAscii,
-    zone.nameServers,
-  )
-  const preservedRecords = target.records.filter((record) =>
-    !["A", "AAAA", "CNAME"].includes(record.type) ||
-    (record.name !== target.domain && record.name !== `www.${target.domain}`),
-  )
-  const preservedDns = await deps.verifyPreservedDnsRecords(
-    preservedRecords,
-    zone.nameServers,
-  )
-  const edgeReady =
-    managedDomain.edgeRoutingStatus === "active" &&
-    managedDomain.httpsStatus === "verified" &&
-    managedDomain.adminHttpsStatus === "verified"
-  const https = edgeReady
-    ? { status: "verified" as const, httpStatus: 200, reason: null }
-    : {
-        status: "pending" as const,
-        httpStatus: null,
-        reason: "automatic_edge_routing_pending",
-      }
-  const verification = {
-    checkedAt: deps.now(),
-    semanticZone: postCutoverComparison,
-    authoritativeDns,
-    preservedDns,
-    cloudflareSsl: {
-      status: edgeReady ? "active" : "pending",
-      providerStatuses: [],
-    },
-    https,
-    edgeRouting: {
-      status: managedDomain.edgeRoutingStatus,
-      adminHttpsStatus: managedDomain.adminHttpsStatus,
-      checkedAt: managedDomain.edgeRoutingCheckedAt,
-    },
-    preservedRecordCount: preservedRecords.length,
-  }
-  migration = await updateMigration(payload, migration, {
-    postCutoverVerification: verification,
-  }, "post_cutover_verification_recorded", deps.now())
-  const verified = postCutoverComparison.equivalent &&
-    authoritativeDns.status === "verified" &&
-    preservedDns.status === "verified" &&
-    edgeReady
-  if (!verified) {
-    const deadlineReached = migration.verificationDeadlineAt
-      ? new Date(deps.now()).getTime() >= new Date(migration.verificationDeadlineAt).getTime()
-      : false
-    if (!deadlineReached && postCutoverComparison.equivalent) {
-      await queueCommerceReconciliation(payload)
-      return waiting(migration, "Cutover propagation and HTTPS verification are still pending.")
-    }
-    return rollbackCutover(
+  const postCutoverTargetVerificationOutcome =
+    await verifyPostCutoverTargetAndSecureDnssecPhase(
       payload,
       migration,
       managedDomain,
       providerDomain,
-      postCutoverComparison.equivalent
-        ? "post_cutover_verification_deadline_exceeded"
-        : "post_cutover_zone_semantic_mismatch",
+      target,
+      zone,
+      token,
+      deps,
+    )
+  if (postCutoverTargetVerificationOutcome.outcome === "rollback_required") {
+    return rollbackCutover(
+      payload,
+      postCutoverTargetVerificationOutcome.migration,
+      managedDomain,
+      postCutoverTargetVerificationOutcome.providerDomain,
+      postCutoverTargetVerificationOutcome.reason,
       deps,
     )
   }
-
-  const targetDnssec = await secureTargetDnssec(
-    payload,
-    migration,
-    managedDomain,
-    providerDomain,
-    zone.id,
-    token,
-    deps,
-  )
-  migration = targetDnssec.migration
-  providerDomain = targetDnssec.providerDomain
-  if (targetDnssec.result) return targetDnssec.result
-  if (!providerDomain) {
-    return waiting(
-      migration,
-      "Transferred domain authority awaits provider reconciliation before publication.",
-    )
+  if (postCutoverTargetVerificationOutcome.outcome !== "continue") {
+    return postCutoverTargetVerificationOutcome.result
   }
+  migration = postCutoverTargetVerificationOutcome.migration
+  providerDomain = postCutoverTargetVerificationOutcome.providerDomain
+  const authoritativeDns =
+    postCutoverTargetVerificationOutcome.authoritativeDns
+  const https = postCutoverTargetVerificationOutcome.https
   const publicationProviderDomain = providerDomain
 
   return withCommerceOrderLock(payload, order.id, async () => {
