@@ -152,6 +152,77 @@ const providerWriteAwaitingReconciliation = (
   cycle: DomainRenewalCycle,
 ): boolean => ["prepared", "indeterminate"].includes(cycle.providerWriteState)
 
+export type RenewalCancellationObligationDecision = {
+  paymentRequestEligible: boolean
+  obligation:
+    | { outcome: "continue_committed_obligation" }
+    | { outcome: "manual_review_uncovered_at_cutoff" }
+    | {
+        outcome: "disable_autorenew"
+        renewalCancelled: boolean
+        cancelCycleAfterAutorenewOff: boolean
+        settledStatus: "cancelled" | "payment_required"
+      }
+}
+
+export const decideRenewalCancellationObligation = (input: {
+  cycleState: DomainRenewalCycle["state"]
+  paymentSecuredAt: DomainRenewalCycle["paymentSecuredAt"]
+  domainRenewalIntent: ManagedDomain["renewalIntent"]
+  agreementState: BillingAgreement["state"] | null
+  agreementRenewalIntent: BillingAgreement["renewalIntent"] | null
+  cutoffReached: boolean
+  providerAutorenew: OpenProviderDomainRecord["autorenew"]
+}): RenewalCancellationObligationDecision => {
+  const paymentSecured = Boolean(input.paymentSecuredAt) ||
+    ["payment_committed", "provider_requested", "renewed"].includes(
+      input.cycleState,
+    )
+  const paymentRequestEligible =
+    !paymentSecured &&
+    input.cycleState !== "cancelled" &&
+    input.agreementRenewalIntent === true &&
+    !input.cutoffReached &&
+    (
+      input.agreementState === "active" ||
+      input.agreementState === "past_due"
+    )
+  const committedObligation =
+    input.cycleState !== "cancelled" &&
+    (
+      Boolean(input.paymentSecuredAt) ||
+      ["payment_committed", "provider_requested"].includes(input.cycleState)
+    )
+  if (committedObligation) {
+    return {
+      paymentRequestEligible,
+      obligation: { outcome: "continue_committed_obligation" },
+    }
+  }
+  if (input.cutoffReached && input.providerAutorenew !== "off") {
+    return {
+      paymentRequestEligible,
+      obligation: { outcome: "manual_review_uncovered_at_cutoff" },
+    }
+  }
+  const renewalCancelled =
+    !input.domainRenewalIntent ||
+    input.agreementRenewalIntent === false ||
+    input.cutoffReached
+  return {
+    paymentRequestEligible,
+    obligation: {
+      outcome: "disable_autorenew",
+      renewalCancelled,
+      cancelCycleAfterAutorenewOff:
+        renewalCancelled &&
+        input.cycleState !== "cancelled" &&
+        !input.paymentSecuredAt,
+      settledStatus: renewalCancelled ? "cancelled" : "payment_required",
+    },
+  }
+}
+
 async function claimAutorenewWrite(
   payload: Payload,
   cycle: DomainRenewalCycle,
@@ -1271,25 +1342,44 @@ export async function reconcileManagedDomainRenewal(
     })
     return { status: "manual_review", cycleId: cycle.id }
   }
-  const paymentSecured = Boolean(cycle.paymentSecuredAt) ||
-    ["payment_committed", "provider_requested", "renewed"].includes(cycle.state)
-  if (!paymentSecured && cycle.state !== "cancelled" && agreement && agreement.renewalIntent) {
-    if (
-      deps.providerWritesAllowed() &&
-      !cutoffReached &&
-      ["active", "past_due"].includes(agreement.state)
-    ) {
-      cycle = await ensureDomainPayment({ payload, agreement, cycle, domain, now: nowDate })
-    }
+  const renewalDecision = (
+    currentCycle: DomainRenewalCycle,
+  ) => decideRenewalCancellationObligation({
+    cycleState: currentCycle.state,
+    paymentSecuredAt: currentCycle.paymentSecuredAt,
+    domainRenewalIntent: domain.renewalIntent,
+    agreementState: agreement?.state ?? null,
+    agreementRenewalIntent: agreement?.renewalIntent ?? null,
+    cutoffReached,
+    providerAutorenew: providerDomain.autorenew,
+  })
+  let cancellationObligation = renewalDecision(cycle)
+  if (
+    cancellationObligation.paymentRequestEligible &&
+    agreement &&
+    deps.providerWritesAllowed()
+  ) {
+    cycle = await ensureDomainPayment({
+      payload,
+      agreement,
+      cycle,
+      domain,
+      now: nowDate,
+    })
+    cancellationObligation = renewalDecision(cycle)
   }
   // The current cycle's financial/provider commitment outranks future renewal
   // intent. Cancellation stops an uncovered future cycle, but it must never
   // undo a cycle the customer already paid for or that was committed at the
   // provider-safe cutoff.
-  const shouldRenew = cycle.state !== "cancelled" &&
-    (Boolean(cycle.paymentSecuredAt) || ["payment_committed", "provider_requested"].includes(cycle.state))
-  if (!shouldRenew) {
-    if (cutoffReached && providerDomain.autorenew !== "off") {
+  if (
+    cancellationObligation.obligation.outcome !==
+      "continue_committed_obligation"
+  ) {
+    if (
+      cancellationObligation.obligation.outcome ===
+        "manual_review_uncovered_at_cutoff"
+    ) {
       cycle = await updateCycle(payload, cycle, {
         state: "manual_review",
         adminExceptionCode: "autorenew_on_without_coverage_at_cutoff",
@@ -1342,10 +1432,9 @@ export async function reconcileManagedDomainRenewal(
       dependencies: deps,
       now,
     })
-    const renewalCancelled = !domain.renewalIntent ||
-      agreement?.renewalIntent === false ||
-      cutoffReached
-    if (renewalCancelled && cycle.state !== "cancelled" && !cycle.paymentSecuredAt) {
+    if (
+      cancellationObligation.obligation.cancelCycleAfterAutorenewOff
+    ) {
       cycle = await updateCycle(payload, cycle, {
         state: "cancelled",
         cancelledAt: now,
@@ -1356,7 +1445,7 @@ export async function reconcileManagedDomainRenewal(
     return {
       status: providerWriteAwaitingReconciliation(cycle)
         ? "waiting"
-        : renewalCancelled ? "cancelled" : "payment_required",
+        : cancellationObligation.obligation.settledStatus,
       cycleId: cycle.id,
     }
   }

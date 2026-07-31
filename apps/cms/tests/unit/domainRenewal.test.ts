@@ -26,6 +26,7 @@ vi.mock("@/lib/commerce/alerts", () => ({
 }))
 
 import {
+  decideRenewalCancellationObligation,
   normalizeOpenProviderRenewalDate,
   PROVIDER_RENEWAL_ADVANCE_GRACE_MS,
   PROVIDER_WRITE_RECONCILIATION_GRACE_MS,
@@ -204,6 +205,105 @@ describe("Openprovider renewal_date cycles", () => {
   it("normalizes provider dates as UTC instead of machine-local time", () => {
     expect(normalizeOpenProviderRenewalDate("2027-07-26 00:00:00"))
       .toBe("2027-07-26T00:00:00.000Z")
+  })
+
+  it.each([
+    {
+      label: "uncovered active renewal",
+      input: {
+        cycleState: "scheduled" as const,
+        paymentSecuredAt: null,
+        domainRenewalIntent: true,
+        agreementState: "active" as const,
+        agreementRenewalIntent: true,
+        cutoffReached: false,
+        providerAutorenew: "on" as const,
+      },
+      expected: {
+        paymentRequestEligible: true,
+        obligation: {
+          outcome: "disable_autorenew",
+          renewalCancelled: false,
+          cancelCycleAfterAutorenewOff: false,
+          settledStatus: "payment_required",
+        },
+      },
+    },
+    {
+      label: "cancelled uncovered future cycle",
+      input: {
+        cycleState: "scheduled" as const,
+        paymentSecuredAt: null,
+        domainRenewalIntent: false,
+        agreementState: "cancellation_scheduled" as const,
+        agreementRenewalIntent: false,
+        cutoffReached: false,
+        providerAutorenew: "on" as const,
+      },
+      expected: {
+        paymentRequestEligible: false,
+        obligation: {
+          outcome: "disable_autorenew",
+          renewalCancelled: true,
+          cancelCycleAfterAutorenewOff: true,
+          settledStatus: "cancelled",
+        },
+      },
+    },
+    ...(["payment_committed", "provider_requested"] as const).map(
+      (cycleState) => ({
+        label: `${cycleState} obligation after cancellation`,
+        input: {
+          cycleState,
+          paymentSecuredAt: null,
+          domainRenewalIntent: false,
+          agreementState: "cancellation_scheduled" as const,
+          agreementRenewalIntent: false,
+          cutoffReached: true,
+          providerAutorenew: "off" as const,
+        },
+        expected: {
+          paymentRequestEligible: false,
+          obligation: { outcome: "continue_committed_obligation" },
+        },
+      }),
+    ),
+    {
+      label: "paid obligation after cancellation",
+      input: {
+        cycleState: "payment_required" as const,
+        paymentSecuredAt: "2027-06-01T00:00:00.000Z",
+        domainRenewalIntent: false,
+        agreementState: "cancellation_scheduled" as const,
+        agreementRenewalIntent: false,
+        cutoffReached: true,
+        providerAutorenew: "off" as const,
+      },
+      expected: {
+        paymentRequestEligible: false,
+        obligation: { outcome: "continue_committed_obligation" },
+      },
+    },
+    {
+      label: "uncovered cutoff with autorenew on",
+      input: {
+        cycleState: "payment_required" as const,
+        paymentSecuredAt: null,
+        domainRenewalIntent: true,
+        agreementState: "active" as const,
+        agreementRenewalIntent: true,
+        cutoffReached: true,
+        providerAutorenew: "on" as const,
+      },
+      expected: {
+        paymentRequestEligible: false,
+        obligation: {
+          outcome: "manual_review_uncovered_at_cutoff",
+        },
+      },
+    },
+  ])("decides $label without effects", ({ input, expected }) => {
+    expect(decideRenewalCancellationObligation(input)).toEqual(expected)
   })
 
   it("blocks disabled-stage discovery but permits committed-cycle safety reconciliation", async () => {
