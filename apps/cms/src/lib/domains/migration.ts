@@ -3080,6 +3080,23 @@ type RegistrarTransferPhaseOutcome =
     }
   | MigrationStoppedPhaseOutcome
 
+type RegistrantVerificationProjectionPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome: "customer_action_required"
+      result: MigrationResult
+    }
+  | {
+      outcome: "rollback_required"
+      migration: DomainMigration
+      managedDomain: ManagedDomain
+      reason: string
+    }
+
 const sourceAuthorityBlockedOutcome = (
   migration: DomainMigration,
   result: MigrationResult,
@@ -4476,6 +4493,129 @@ async function claimAndReconcileRegistrarTransferPhase(
   }
 }
 
+async function projectRegistrantVerificationAndCustomerActionPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  initialManagedDomain: ManagedDomain,
+  capability: TldCapability,
+  providerDomain: OpenProviderDomainRecord,
+  deps: MigrationDependencies,
+): Promise<RegistrantVerificationProjectionPhaseOutcome> {
+  let migration = initialMigration
+  let managedDomain = initialManagedDomain
+  const registrantVerification = migrationRegistrantVerification(providerDomain)
+  const storedVerification = storedRegistrantVerification(
+    registrantVerification,
+    managedDomain.registrantVerificationStatus,
+  )
+  const projectedRegistrantVerification = storedVerification.status
+  const verificationActionRequired = storedVerification.customerActionRequired
+  let actions = actionStates(migration.customerActions, deps.now())
+  actions = withAction(
+    withAction(
+      actions,
+      "confirm_transfer",
+      capability.transfer.customerConfirmation === "none"
+        ? "not_required"
+        : "completed",
+      deps.now(),
+      capability.transfer.customerConfirmation === "none"
+        ? "tld_confirmation_not_required"
+        : "provider_domain_active",
+    ),
+    "verify_registrant",
+    verificationActionRequired
+      ? registrantVerification === "pending" ? "required" : "failed"
+      : "completed",
+    deps.now(),
+    providerDomain.verificationEmailDescription ?? registrantVerification,
+  )
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    providerDomainId: String(providerDomain.id),
+    providerRegistrationState: "confirmed",
+    registrantVerificationStatus: projectedRegistrantVerification,
+    registrantVerificationCheckedAt: deps.now(),
+    registrantVerificationDueAt: normalizeOpenProviderTimestamp(
+      providerDomain.verificationEmailExpiresAt,
+    ) ?? managedDomain.registrantVerificationDueAt,
+    registrantVerificationRecoveredAt: storedVerification.recovered
+      ? deps.now()
+      : undefined,
+    registrantVerificationDescription:
+      providerDomain.verificationEmailDescription,
+    providerAutorenew: providerDomain.autorenew,
+    providerAutorenewCheckedAt: deps.now(),
+    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    providerRenewalDate: normalizeOpenProviderTimestamp(
+      providerDomain.renewalDate,
+    ),
+    registryExpiryDate: normalizeOpenProviderTimestamp(
+      providerDomain.registryExpiryDate,
+    ),
+    reconciliationRequired: verificationActionRequired,
+  }, "provider_transfer_reconciled", deps.now())
+  migration = await updateMigration(payload, migration, {
+    providerTransferState: "confirmed",
+    providerDomainId: String(providerDomain.id),
+    transferConfirmedAt: migration.transferConfirmedAt ?? deps.now(),
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: migration.transferCodeDeletedAt ?? deps.now(),
+    customerActions: actions,
+    reconciliationRequired: verificationActionRequired,
+    failureReason: verificationActionRequired
+      ? `registrant_verification_${projectedRegistrantVerification}`
+      : null,
+  }, `registrant_verification_${registrantVerification}`, deps.now())
+  if (["overdue", "suspended", "failed"].includes(
+    projectedRegistrantVerification,
+  )) {
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: `registrant_verification_${projectedRegistrantVerification}`,
+      message:
+        "Provider-reported registrant verification blocks the domain migration.",
+      tenant: managedDomain.tenant,
+      subjectId: migration.id,
+      severity: projectedRegistrantVerification === "suspended"
+        ? "critical"
+        : "error",
+      now: deps.now(),
+    })
+  }
+  if (verificationActionRequired) {
+    if (["cutover_in_progress", "verifying"].includes(migration.state)) {
+      return {
+        outcome: "rollback_required",
+        migration,
+        managedDomain,
+        reason:
+          `registrant_verification_${projectedRegistrantVerification}_after_cutover`,
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      state: "awaiting_provider",
+      reconciliationRequired: true,
+    }, registrantVerification === "pending"
+      ? "registrant_verification_required"
+      : "registrant_verification_customer_action_required", deps.now())
+    return {
+      outcome: "customer_action_required",
+      result: waiting(
+        migration,
+        registrantVerification === "pending"
+          ? "Customer registrant verification is required before cutover."
+          : "Registrant verification still requires customer action; cutover remains paused.",
+      ),
+    }
+  }
+  return {
+    outcome: "continue",
+    migration,
+    managedDomain,
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -4614,100 +4754,31 @@ export async function prepareDomainMigration(
   let providerDomain = registrarTransferOutcome.providerDomain
   actions = registrarTransferOutcome.actions
 
-  const registrantVerification = migrationRegistrantVerification(providerDomain)
-  const storedVerification = storedRegistrantVerification(
-    registrantVerification,
-    managedDomain.registrantVerificationStatus,
-  )
-  const projectedRegistrantVerification = storedVerification.status
-  const verificationActionRequired = storedVerification.customerActionRequired
-  actions = actionStates(migration.customerActions, deps.now())
-  actions = withAction(
-    withAction(
-      actions,
-      "confirm_transfer",
-      capability.transfer.customerConfirmation === "none"
-        ? "not_required"
-        : "completed",
-      deps.now(),
-      capability.transfer.customerConfirmation === "none"
-        ? "tld_confirmation_not_required"
-        : "provider_domain_active",
-    ),
-    "verify_registrant",
-    verificationActionRequired
-      ? registrantVerification === "pending" ? "required" : "failed"
-      : "completed",
-    deps.now(),
-    providerDomain.verificationEmailDescription ?? registrantVerification,
-  )
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    providerDomainId: String(providerDomain.id),
-    providerRegistrationState: "confirmed",
-    registrantVerificationStatus: projectedRegistrantVerification,
-    registrantVerificationCheckedAt: deps.now(),
-    registrantVerificationDueAt: normalizeOpenProviderTimestamp(
-      providerDomain.verificationEmailExpiresAt,
-    ) ?? managedDomain.registrantVerificationDueAt,
-    registrantVerificationRecoveredAt: storedVerification.recovered
-      ? deps.now()
-      : undefined,
-    registrantVerificationDescription: providerDomain.verificationEmailDescription,
-    providerAutorenew: providerDomain.autorenew,
-    providerAutorenewCheckedAt: deps.now(),
-    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
-    providerRenewalDate: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
-    registryExpiryDate: normalizeOpenProviderTimestamp(providerDomain.registryExpiryDate),
-    reconciliationRequired: verificationActionRequired,
-  }, "provider_transfer_reconciled", deps.now())
-  migration = await updateMigration(payload, migration, {
-    providerTransferState: "confirmed",
-    providerDomainId: String(providerDomain.id),
-    transferConfirmedAt: migration.transferConfirmedAt ?? deps.now(),
-    encryptedTransferCode: null,
-    transferCodeDeletedAt: migration.transferCodeDeletedAt ?? deps.now(),
-    customerActions: actions,
-    reconciliationRequired: verificationActionRequired,
-    failureReason: verificationActionRequired
-      ? `registrant_verification_${projectedRegistrantVerification}`
-      : null,
-  }, `registrant_verification_${registrantVerification}`, deps.now())
-  if (["overdue", "suspended", "failed"].includes(projectedRegistrantVerification)) {
-    await recordCommerceAdminException({
+  const registrantVerificationOutcome =
+    await projectRegistrantVerificationAndCustomerActionPhase(
       payload,
-      source: "domains",
-      code: `registrant_verification_${projectedRegistrantVerification}`,
-      message: "Provider-reported registrant verification blocks the domain migration.",
-      tenant: managedDomain.tenant,
-      subjectId: migration.id,
-      severity: projectedRegistrantVerification === "suspended" ? "critical" : "error",
-      now: deps.now(),
-    })
-  }
-  if (verificationActionRequired) {
-    if (["cutover_in_progress", "verifying"].includes(migration.state)) {
-      return rollbackCutover(
-        payload,
-        migration,
-        managedDomain,
-        providerDomain,
-        `registrant_verification_${projectedRegistrantVerification}_after_cutover`,
-        deps,
-      )
-    }
-    migration = await updateMigration(payload, migration, {
-      state: "awaiting_provider",
-      reconciliationRequired: true,
-    }, registrantVerification === "pending"
-      ? "registrant_verification_required"
-      : "registrant_verification_customer_action_required", deps.now())
-    return waiting(
       migration,
-      registrantVerification === "pending"
-        ? "Customer registrant verification is required before cutover."
-      : "Registrant verification still requires customer action; cutover remains paused.",
+      managedDomain,
+      capability,
+      providerDomain,
+      deps,
+    )
+  if (registrantVerificationOutcome.outcome === "rollback_required") {
+    return rollbackCutover(
+      payload,
+      registrantVerificationOutcome.migration,
+      registrantVerificationOutcome.managedDomain,
+      providerDomain,
+      registrantVerificationOutcome.reason,
+      deps,
     )
   }
+  if (registrantVerificationOutcome.outcome !== "continue") {
+    return registrantVerificationOutcome.result
+  }
+  migration = registrantVerificationOutcome.migration
+  managedDomain = registrantVerificationOutcome.managedDomain
+
   const dnssecCutover = await prepareDnssecForCutover(
     payload,
     migration,
