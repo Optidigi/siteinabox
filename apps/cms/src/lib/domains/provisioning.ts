@@ -158,6 +158,13 @@ type RegistrarRegistrationOutcome =
       result: ProvisionPaidDomainResult
     }
 
+type RegistrantVerificationPhaseOutcome =
+  | { outcome: "continue"; managedDomain: ManagedDomain }
+  | {
+      outcome: "customer_action_required"
+      result: ProvisionPaidDomainResult
+    }
+
 type RegistrarWriteErrorClassification = "rejected" | "indeterminate"
 
 const classifyRegistrarWriteError = (
@@ -1388,6 +1395,103 @@ async function claimAndReconcileRegistrarRegistrationPhase(
   }
 }
 
+async function projectRegistrantVerificationPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    capability: TldCapability
+    tenantId: string | number
+    managedDomain: ManagedDomain
+    providerDomain: OpenProviderDomainRecord
+  },
+): Promise<RegistrantVerificationPhaseOutcome> {
+  const verification = registrationRegistrantVerification(
+    context.providerDomain,
+    context.capability.tld,
+  )
+  const storedVerification = storedRegistrantVerification(
+    verification.status,
+    context.managedDomain.registrantVerificationStatus,
+  )
+  const verificationStatus = storedVerification.status
+  const verificationActionRequired = storedVerification.customerActionRequired
+  const managedDomain = await updateManagedDomain(
+    payload,
+    context.managedDomain,
+    {
+      registrantVerificationStatus: verificationStatus,
+      registrantVerificationCheckedAt: dependencies.now(),
+      registrantVerificationDueAt: normalizeOpenProviderTimestamp(
+        context.providerDomain.verificationEmailExpiresAt,
+      ) ?? context.managedDomain.registrantVerificationDueAt,
+      registrantVerificationRecoveredAt: storedVerification.recovered
+        ? dependencies.now()
+        : undefined,
+      registrantVerificationDescription: verification.description,
+      customerStatus: verificationActionRequired
+        ? "verification_required"
+        : "provisioning",
+      reconciliationRequired: verificationActionRequired,
+      failureReason: verificationActionRequired
+        ? `registrant_verification_${verificationStatus}`
+        : null,
+    },
+    `registrant_verification_${verificationStatus}`,
+    dependencies.now(),
+  )
+  if (["overdue", "suspended", "failed"].includes(verificationStatus)) {
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: `registrant_verification_${verificationStatus}`,
+      message:
+        "Provider-reported registrant verification requires immediate customer recovery.",
+      tenant: managedDomain.tenant,
+      subjectId: managedDomain.id,
+      severity: verificationStatus === "suspended" ? "critical" : "error",
+      now: dependencies.now(),
+    })
+  }
+  if (verificationActionRequired) {
+    const agreements = await payload.find({
+      collection: "billing-agreements",
+      where: { originatingOrder: { equals: input.order.id } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (agreements.docs.length === 1) {
+      const delivery = await ensureCommerceNotification({
+        payload,
+        kind: "domain_verification_required",
+        tenantId: context.tenantId,
+        recipient: input.order.customerEmail,
+        businessEventKey: `registration:${managedDomain.id}`,
+        eventAt:
+          managedDomain.registrantVerificationDueAt ??
+          managedDomain.registrationRequestedAt ??
+          managedDomain.createdAt,
+        billingAgreementId: agreements.docs[0]!.id,
+      })
+      await queueCommerceNotification(payload, delivery.id)
+    }
+    return {
+      outcome: "customer_action_required",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Customer registrant verification is required before activation.",
+      ),
+    }
+  }
+
+  return { outcome: "continue", managedDomain }
+}
+
 export async function provisionPaidDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
@@ -1584,74 +1688,23 @@ export async function provisionPaidDomainOrder(
   providerDomain = registrationOutcome.providerDomain
   managedDomain = registrationOutcome.managedDomain
 
-  const verification = registrationRegistrantVerification(
-    providerDomain,
-    capability.tld,
-  )
-  const storedVerification = storedRegistrantVerification(
-    verification.status,
-    managedDomain.registrantVerificationStatus,
-  )
-  const verificationStatus = storedVerification.status
-  const verificationActionRequired = storedVerification.customerActionRequired
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    registrantVerificationStatus: verificationStatus,
-    registrantVerificationCheckedAt: dependencies.now(),
-    registrantVerificationDueAt: normalizeOpenProviderTimestamp(
-      providerDomain.verificationEmailExpiresAt,
-    ) ?? managedDomain.registrantVerificationDueAt,
-    registrantVerificationRecoveredAt: storedVerification.recovered
-      ? dependencies.now()
-      : undefined,
-    registrantVerificationDescription: verification.description,
-    customerStatus: verificationActionRequired
-      ? "verification_required"
-      : "provisioning",
-    reconciliationRequired: verificationActionRequired,
-    failureReason: verificationActionRequired ? `registrant_verification_${verificationStatus}` : null,
-  }, `registrant_verification_${verificationStatus}`, dependencies.now())
-  if (["overdue", "suspended", "failed"].includes(verificationStatus)) {
-    await recordCommerceAdminException({
-      payload,
-      source: "domains",
-      code: `registrant_verification_${verificationStatus}`,
-      message: "Provider-reported registrant verification requires immediate customer recovery.",
-      tenant: managedDomain.tenant,
-      subjectId: managedDomain.id,
-      severity: verificationStatus === "suspended" ? "critical" : "error",
-      now: dependencies.now(),
-    })
-  }
-  if (verificationActionRequired) {
-    const agreements = await payload.find({
-      collection: "billing-agreements",
-      where: { originatingOrder: { equals: input.order.id } },
-      limit: 2,
-      depth: 0,
-      overrideAccess: true,
-    })
-    if (agreements.docs.length === 1) {
-      const delivery = await ensureCommerceNotification({
-        payload,
-        kind: "domain_verification_required",
-        tenantId,
-        recipient: input.order.customerEmail,
-        businessEventKey: `registration:${managedDomain.id}`,
-        eventAt:
-          managedDomain.registrantVerificationDueAt ??
-          managedDomain.registrationRequestedAt ??
-          managedDomain.createdAt,
-        billingAgreementId: agreements.docs[0]!.id,
-      })
-      await queueCommerceNotification(payload, delivery.id)
-    }
-    return waiting(
-      normalized.domain,
-      run,
+  const verificationOutcome = await projectRegistrantVerificationPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      normalized,
+      capability,
+      tenantId,
       managedDomain,
-      "Customer registrant verification is required before activation.",
-    )
+      providerDomain,
+    },
+  )
+  if (verificationOutcome.outcome !== "continue") {
+    return verificationOutcome.result
   }
+  managedDomain = verificationOutcome.managedDomain
 
   const refreshedZone = (await dependencies.listCloudflareZones(normalized.domain))
     .find((candidate) => candidate.id === zone?.id) ?? zone

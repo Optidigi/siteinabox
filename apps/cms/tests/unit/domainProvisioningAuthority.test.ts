@@ -776,6 +776,55 @@ describe("new-domain provider authority", () => {
     expect(register).not.toHaveBeenCalled()
   })
 
+  it("alerts and blocks DNS effects when registrar verification is suspended", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    const createDnsRecords = vi.fn()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => ({
+          ...requestedProviderDomain(),
+          status: "ACT",
+          verificationEmailStatus: "suspended",
+          verificationEmailDescription: "Registrant verification is suspended.",
+          verificationEmailExpiresAt: "2026-08-12T12:00:00.000Z",
+        })),
+        listCloudflareZones: vi.fn(async () => [{
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        }]),
+        createCloudflareZoneDnsRecords: createDnsRecords,
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("verification is required"),
+      managedDomain: {
+        providerRegistrationState: "confirmed",
+        registrantVerificationStatus: "suspended",
+        registrantVerificationDueAt: "2026-08-12T12:00:00.000Z",
+        customerStatus: "verification_required",
+        reconciliationRequired: true,
+        failureReason: "registrant_verification_suspended",
+      },
+    })
+    expect(createDnsRecords).not.toHaveBeenCalled()
+    expect(store.collections["operational-alerts"]).toContainEqual(
+      expect.objectContaining({
+        dedupeKey: expect.stringContaining("registrant_verification_suspended"),
+        severity: "critical",
+        status: "open",
+      }),
+    )
+  })
+
   it("accepts one exact registrar domain without customer, zone, or registrar writes", async () => {
     const store = fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
