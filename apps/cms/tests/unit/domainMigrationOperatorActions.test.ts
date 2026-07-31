@@ -27,12 +27,12 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("payload", () => ({ getPayload: mocks.getPayload }))
 vi.mock("@/payload.config", () => ({ default: {} }))
-vi.mock("@/lib/domains/assistedMigration", () => ({
-  completeMigrationOperatorWork: mocks.complete,
-  failMigrationOperatorWork: mocks.fail,
-  requestMigrationOperatorWork: mocks.requestWork,
+vi.mock("@/lib/domains/migrationOperatorRecovery", () => ({
+  authorizeDomainMigrationIncidentRecovery: mocks.requestWork,
+  completeDomainMigrationIncidentRecovery: mocks.complete,
+  failDomainMigrationIncidentRecovery: mocks.fail,
   requestDomainMigrationRollback: mocks.rollback,
-  startMigrationOperatorWork: mocks.start,
+  startDomainMigrationIncidentRecovery: mocks.start,
 }))
 
 import {
@@ -74,7 +74,7 @@ describe("domain migration operator actions", () => {
     expect(mocks.rollback).not.toHaveBeenCalled()
   })
 
-  it("binds the authenticated super-admin to paid operator work", async () => {
+  it("binds the authenticated super-admin to incident recovery", async () => {
     const user = {
       id: 99,
       email: "operator@siteinabox.nl",
@@ -107,8 +107,6 @@ describe("domain migration operator actions", () => {
     })
     expect(mocks.requestWork).toHaveBeenCalledWith(expect.anything(), {
       migrationId: "10",
-      requestedClassification: "assisted_standard",
-      workCause: "siteinabox_incident_recovery",
       workScope: "restore_siab_website_records",
     })
   })

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
-import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
+import { createMollieCheckoutForGenerationRun, synchronizeMolliePayment } from "@/lib/payments/molliePayments"
 import { fulfillPaidOrder } from "@/lib/payments/fulfillOrder"
 import { deliverCommerceNotification } from "@/lib/commerce/notifications"
 import { reconcileCommerceEdgeRouting } from "@/lib/domains/edgeRouting"
@@ -689,7 +689,7 @@ describe("intake-to-live mocked flow", () => {
     })
     expect(checkout.checkoutUrl).toBe("https://www.mollie.com/checkout/flow")
 
-    const synchronized = await applyMollieWebhookPayment(payload, "tr_flow_123", async () => ({
+    const synchronized = await synchronizeMolliePayment(payload, "tr_flow_123", async () => ({
       id: "tr_flow_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -831,7 +831,6 @@ describe("intake-to-live mocked flow", () => {
     })
     expect(finalRun.payment).toMatchObject({
       status: "completed",
-      mollieSubscriptionId: null,
       selectedDomain: "flow-live.nl",
     })
     expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/subscriptions"))).toBe(false)

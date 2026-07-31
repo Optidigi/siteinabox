@@ -12,10 +12,7 @@ import {
   type MigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
 import { splitDomain } from "@/lib/domains/normalize"
-import type {
-  AcquiredMigrationSource,
-  MigrationSourcePublicEvidence,
-} from "./types"
+import type { MigrationSourcePublicEvidence } from "./types"
 
 const execFile = promisify(execFileCallback)
 
@@ -460,7 +457,7 @@ export async function acquireValidatedProviderExport(input: {
   now?: Date
   requireAxfrEnvelope?: boolean
   validationOptions?: BindValidationOptions
-}): Promise<AcquiredMigrationSource> {
+}): Promise<{ zone: CompleteZoneExport; sourceSoaSerial: number }> {
   const domain = splitDomain(input.domain).domain
   if (input.requireAxfrEnvelope) {
     parseBindZone(input.bindText, domain, { requireAxfrEnvelope: true })
@@ -499,11 +496,7 @@ export async function acquireValidatedProviderExport(input: {
     records: parsed.records,
   } satisfies CompleteZoneExport)
   return {
-    mechanism: "validated_provider_export_v1",
     zone,
-    refreshCredential: {
-      kind: "provider_export",
-      sourceSoaSerial: parsed.soaSerial,
-    },
+    sourceSoaSerial: parsed.soaSerial,
   }
 }

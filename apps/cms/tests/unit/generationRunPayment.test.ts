@@ -48,7 +48,6 @@ describe("generation run payment abstraction", () => {
       selectedDomain: null,
       mollieCustomerId: null,
       mollieSequenceType: null,
-      mollieSubscriptionId: null,
       renewalInterval: null,
     })
   })
@@ -80,7 +79,6 @@ describe("generation run payment abstraction", () => {
       selectedDomain: null,
       mollieCustomerId: null,
       mollieSequenceType: null,
-      mollieSubscriptionId: null,
       renewalInterval: null,
     })
 

@@ -15,6 +15,7 @@ import {
 import { DomainMigrationCustomerInputError } from "@/lib/domains/migration"
 import { migrationCheckoutSecretKey } from "@/lib/domains/migrationCheckoutSecret"
 import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
+import type { CompleteZoneExport } from "@siteinabox/contracts/domain-migration"
 const mocks = vi.hoisted(() => ({
   headers: new Headers({ host: "preview.siteinabox.nl" }),
   getSession: vi.fn(),
@@ -34,8 +35,6 @@ const mocks = vi.hoisted(() => ({
   createOrderAndAcceptanceEvidence: vi.fn(),
   satisfyRequirementsFromTransaction: vi.fn(),
   createMollieCheckoutForGenerationRun: vi.fn(),
-  createSupplementalMigrationMollieCheckout: vi.fn(),
-  requestMigrationOperatorWork: vi.fn(),
   persistMigrationCheckoutSecret: vi.fn(),
   attachMigrationCheckoutSecret: vi.fn(),
   openAttachedMigrationCheckoutSecret: vi.fn(),
@@ -203,12 +202,6 @@ vi.mock("@/lib/domains/cloudflareSourceOAuth", async (importOriginal) => {
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createMollieCheckoutForGenerationRun: mocks.createMollieCheckoutForGenerationRun,
-  createSupplementalMigrationMollieCheckout:
-    mocks.createSupplementalMigrationMollieCheckout,
-}))
-
-vi.mock("@/lib/domains/assistedMigration", () => ({
-  requestMigrationOperatorWork: mocks.requestMigrationOperatorWork,
 }))
 
 vi.mock("@/lib/checkout/checkoutProfile", async (importOriginal) => {
@@ -286,14 +279,14 @@ const validProfileForm = () => {
   return formData
 }
 
-const completeExistingDomainZone = () => ({
+const completeExistingDomainZone = (): CompleteZoneExport => ({
   schemaVersion: 1,
   format: "siab-complete-zone-v1",
   domain: "ami-care.nl",
   acquiredAt: new Date().toISOString(),
   authority: {
-    mechanism: "customer_authorized_provider_export",
-    provider: "legacy-provider",
+    mechanism: "cloudflare_api",
+    provider: "cloudflare",
     complete: true,
   },
   authoritativeNameservers: ["ns1.legacy.example", "ns2.legacy.example"],
@@ -308,6 +301,18 @@ const completeExistingDomainZone = () => ({
       target: "mail.example.net",
     },
   ],
+})
+
+const acquiredCloudflareSource = (
+  zone: CompleteZoneExport = completeExistingDomainZone(),
+) => ({
+  mechanism: "cloudflare_api_v1" as const,
+  zone,
+  refreshCredential: {
+    kind: "cloudflare_api_token" as const,
+    token: "customer-cloudflare-token-value",
+    zoneId: "a".repeat(32),
+  },
 })
 
 const validExistingDomainForm = () => {
@@ -484,9 +489,6 @@ describe("preview checkout domain suggestion action", () => {
     })
     mocks.createMollieCheckoutForGenerationRun.mockResolvedValue({
       checkoutUrl: "https://payments.example.test/checkout",
-    })
-    mocks.createSupplementalMigrationMollieCheckout.mockResolvedValue({
-      checkoutUrl: "https://payments.example.test/supplemental",
     })
     mocks.persistMigrationCheckoutSecret.mockResolvedValue({
       id: 99,
@@ -1163,7 +1165,6 @@ describe("preview checkout domain suggestion action", () => {
       checkPreviewCheckoutDomainAction,
       savePreviewCheckoutProfileAction,
       startPreviewCheckoutPaymentAction,
-      suggestPreviewCheckoutDomainsAction,
     } = await import(
       "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
     )
@@ -1177,18 +1178,6 @@ describe("preview checkout domain suggestion action", () => {
     )).resolves.toMatchObject({
       ok: false,
       status: "service_error",
-    })
-
-    const suggestions = new FormData()
-    suggestions.set("domain", "ami-care.nl")
-    await expect(suggestPreviewCheckoutDomainsAction(
-      "ami-care",
-      { ok: false },
-      suggestions,
-    )).resolves.toMatchObject({
-      ok: false,
-      suggestions: [],
-      done: true,
     })
 
     const profileForm = validProfileForm()
@@ -1245,7 +1234,7 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
-  it("recollects only the exact expired evidence for the authenticated accepted order", async () => {
+  it("rejects retired zone-upload recollection for an accepted order", async () => {
     const acceptedAt = new Date(Date.now() - 31 * 24 * 60 * 60_000)
     const acceptedZone = {
       ...completeExistingDomainZone(),
@@ -1259,9 +1248,8 @@ describe("preview checkout domain suggestion action", () => {
       >[0]["zoneExport"],
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: true,
-      acceptedOrderRecollection: true,
       publicEvidence: await mocks.inspectExistingDomainPublicEvidence(),
+      acquiredSource: acquiredCloudflareSource(acceptedZone),
       now: acceptedAt,
     }, {
       capabilityForTld: (tld, _operation, now) => {
@@ -1286,7 +1274,7 @@ describe("preview checkout domain suggestion action", () => {
       providerOperationPriceNetMinor: 1_250,
       selectedDomain: "ami-care.nl",
       domainMode: "existing_domain",
-      migrationClassification: "assisted_standard",
+      migrationClassification: "automatic",
       migrationSourceZoneHash: assessment.sourceZoneHash,
       migrationPublicEvidenceHash: "e".repeat(64),
       migrationInputEnvelope: null,
@@ -1324,37 +1312,7 @@ describe("preview checkout domain suggestion action", () => {
     formData.set("acceptedOrderId", "90")
 
     await expect(recollectAcceptedMigrationInputAction("ami-care", formData))
-      .rejects.toThrow()
-    expect(mocks.replaceExpiredAttachedMigrationCheckoutSecret)
-      .toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          secretKey: quote.migrationSecretKey,
-          orderId: 90,
-          generationRunId: 500,
-          domain: "ami-care.nl",
-          sourceZoneHash: assessment.sourceZoneHash,
-          encryptedInput: expect.any(String),
-        }),
-      )
-
-    mocks.replaceExpiredAttachedMigrationCheckoutSecret.mockClear()
-    const changedForm = new FormData()
-    changedForm.set("acceptedOrderId", "90")
-    changedForm.set("zoneExport", JSON.stringify({
-      ...recollectedZone,
-      records: recollectedZone.records.map((record, index) =>
-        index === 0 ? { ...record, content: "192.0.2.99" } : record),
-    }))
-    changedForm.set("transferCode", "opaque-transfer-code")
-    changedForm.set("transferAuthorization", "accepted")
-    await expect(
-      recollectAcceptedMigrationInputAction("ami-care", changedForm),
-    ).resolves.toEqual({
-      ok: false,
-      status: "invalid_input",
-      message: "checkoutMigrationActionInvalidInput",
-    })
+      .resolves.toMatchObject({ ok: false, status: "invalid_input" })
     expect(mocks.replaceExpiredAttachedMigrationCheckoutSecret)
       .not.toHaveBeenCalled()
   })
@@ -1388,8 +1346,6 @@ describe("preview checkout domain suggestion action", () => {
       zoneExport: acquiredSource.zone,
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
-      acceptedOrderRecollection: true,
       acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
       publicEvidence: await mocks.inspectExistingDomainPublicEvidence(),
       acquiredSource,
@@ -1502,17 +1458,17 @@ describe("preview checkout domain suggestion action", () => {
     )
     const initialPublicEvidence =
       await mocks.inspectExistingDomainPublicEvidence()
+    const sourceZone = completeExistingDomainZone() as Parameters<
+      typeof assessExistingDomainMigrationInput
+    >[0]["zoneExport"]
     const assessed = assessExistingDomainMigrationInput({
       generationRunId: 500,
       domain: "ami-care.nl",
-      zoneExport: completeExistingDomainZone() as Parameters<
-        typeof assessExistingDomainMigrationInput
-      >[0]["zoneExport"],
+      zoneExport: sourceZone,
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: true,
-      acceptedOrderRecollection: true,
       publicEvidence: initialPublicEvidence,
+      acquiredSource: acquiredCloudflareSource(sourceZone),
       now: new Date(),
     }, {
       capabilityForTld: (tld, _operation, now) => {
@@ -1537,7 +1493,7 @@ describe("preview checkout domain suggestion action", () => {
       providerOperationPriceNetMinor: 1_250,
       selectedDomain: "ami-care.nl",
       domainMode: "existing_domain",
-      migrationClassification: "assisted_standard",
+      migrationClassification: "automatic",
       migrationSourceZoneHash: assessed.sourceZoneHash,
       migrationPublicEvidenceHash:
         existingDomainPublicEvidenceHash(initialPublicEvidence),
@@ -1584,17 +1540,17 @@ describe("preview checkout domain suggestion action", () => {
     )
     const initialPublicEvidence =
       await mocks.inspectExistingDomainPublicEvidence()
+    const sourceZone = completeExistingDomainZone() as Parameters<
+      typeof assessExistingDomainMigrationInput
+    >[0]["zoneExport"]
     const assessed = assessExistingDomainMigrationInput({
       generationRunId: 500,
       domain: "ami-care.nl",
-      zoneExport: completeExistingDomainZone() as Parameters<
-        typeof assessExistingDomainMigrationInput
-      >[0]["zoneExport"],
+      zoneExport: sourceZone,
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: true,
-      acceptedOrderRecollection: true,
       publicEvidence: initialPublicEvidence,
+      acquiredSource: acquiredCloudflareSource(sourceZone),
       now: new Date(),
     }, {
       capabilityForTld: (tld, _operation, now) => {
@@ -1619,7 +1575,7 @@ describe("preview checkout domain suggestion action", () => {
       providerOperationPriceNetMinor: 1_250,
       selectedDomain: "ami-care.nl",
       domainMode: "existing_domain",
-      migrationClassification: "assisted_standard",
+      migrationClassification: "automatic",
       migrationSourceZoneHash: assessed.sourceZoneHash,
       migrationPublicEvidenceHash:
         existingDomainPublicEvidenceHash(initialPublicEvidence),
@@ -1840,54 +1796,6 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
-  it("loads alternatives through the authenticated preview grant without mutating checkout state", async () => {
-    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-    const result = await suggestPreviewCheckoutDomainsAction("ami-care", { ok: false }, formData)
-
-    expect(result).toMatchObject({
-      ok: true,
-      domain: "ami-care.nl",
-      suggestions: [{
-        domain: "amicare-web.nl",
-        included: false,
-        extraFeeAmount: "20.00",
-        extraFeeCurrency: "EUR",
-        extraFeeLabel: expect.stringContaining("20"),
-      }],
-      cursor: 5,
-      done: false,
-    })
-    expect(mocks.loadPreviewGrantContext).toHaveBeenCalledWith({
-      clientSlug: "ami-care",
-      email: "Customer@Example.com",
-    })
-    expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomainBatch).toHaveBeenCalledWith(
-      "ami-care.nl",
-      { amount: "10.00", currency: "EUR" },
-      { cursor: 0, batchSize: 5, existingDomains: [] },
-    )
-    const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
-    expect(context.payload.update).not.toHaveBeenCalled()
-  })
-
-  it("requires preview login before querying alternatives", async () => {
-    mocks.getSession.mockResolvedValue(null)
-    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-
-    await expect(suggestPreviewCheckoutDomainsAction("ami-care", { ok: false }, formData))
-      .rejects.toThrow("Preview login required")
-    expect(mocks.loadPreviewGrantContext).not.toHaveBeenCalled()
-    expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
-  })
-
   it("binds transfer-code correction to the authenticated run, tenant, and customer", async () => {
     const context = await mocks.loadPreviewGrantContext()
     context.payload.findByID = vi.fn()
@@ -2079,7 +1987,7 @@ describe("preview checkout domain suggestion action", () => {
     )
   })
 
-  it("does not reauthorize a paid migration through a disabled source adapter", async () => {
+  it("rejects a retired provider-export correction", async () => {
     vi.stubEnv("COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED", "0")
     const context = await mocks.loadPreviewGrantContext()
     context.payload.jobs = { queue: vi.fn() }
@@ -2114,7 +2022,7 @@ describe("preview checkout domain suggestion action", () => {
       submitMigrationTransferCodeAction("ami-care", formData),
     ).resolves.toMatchObject({
       ok: false,
-      status: "retryable_service_error",
+      status: "invalid_input",
     })
     expect(mocks.acquireValidatedProviderExport).not.toHaveBeenCalled()
     expect(mocks.acquireAutomaticMigrationInputs).not.toHaveBeenCalled()
@@ -2460,43 +2368,6 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
     expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
     expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
-  })
-
-  it("marks suggestion provider failures terminal for the current typed domain", async () => {
-    mocks.suggestAvailablePreviewDomainBatch.mockRejectedValue(new Error("provider unavailable"))
-    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-    const result = await suggestPreviewCheckoutDomainsAction(
-      "ami-care",
-      {
-        ok: true,
-        domain: "ami-care.nl",
-        cursor: 5,
-        done: false,
-        suggestions: [{
-          domain: "amicare-web.nl",
-          included: true,
-          extraFeeAmount: null,
-          extraFeeCurrency: null,
-        }],
-      },
-      formData,
-    )
-
-    expect(result).toMatchObject({
-      ok: false,
-      domain: "ami-care.nl",
-      cursor: 5,
-      done: true,
-      suggestions: [{ domain: "amicare-web.nl" }],
-    })
-    expect(mocks.suggestAvailablePreviewDomainBatch).toHaveBeenCalledWith(
-      "ami-care.nl",
-      { amount: "10.00", currency: "EUR" },
-      { cursor: 5, batchSize: 5, existingDomains: ["amicare-web.nl"] },
-    )
   })
 
   it("derives period-end cancellation only from authenticated checkout authority", async () => {

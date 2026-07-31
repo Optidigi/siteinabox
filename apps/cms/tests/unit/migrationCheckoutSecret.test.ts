@@ -26,8 +26,8 @@ const zone = {
   domain: "example.nl",
   acquiredAt: "2026-07-28T10:00:00.000Z",
   authority: {
-    mechanism: "customer_authorized_provider_export" as const,
-    provider: "fixture",
+    mechanism: "cloudflare_api" as const,
+    provider: "cloudflare",
     complete: true as const,
   },
   authoritativeNameservers: ["ns1.example.test", "ns2.example.test"],
@@ -104,6 +104,12 @@ const buildStore = () => {
   }
 }
 
+const cloudflareRefreshCredential = (token = "customer-cloudflare-token-value") => ({
+  kind: "cloudflare_api_token" as const,
+  token,
+  zoneId: "a".repeat(32),
+})
+
 describe("migration checkout secret lifecycle", () => {
   beforeEach(() => {
     vi.stubEnv("DOMAIN_MIGRATION_ENCRYPTION_KEY", ENCRYPTION_KEY)
@@ -115,13 +121,14 @@ describe("migration checkout secret lifecycle", () => {
       normalizeCompleteZone(zone),
     )
     const encryptedInput = sealCheckoutMigrationInput({
-      schemaVersion: 1,
+      schemaVersion: 2,
       generationRunId: "500",
       domain: "example.nl",
-      classification: "assisted_standard",
-      sourceMechanism: "customer_authorized_provider_export_v1",
+      classification: "automatic",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: zone,
+      sourceRefreshCredential: cloudflareRefreshCredential(),
       transferCode: "secret-epp",
       transferAuthorizationAccepted: true,
     })
@@ -140,6 +147,7 @@ describe("migration checkout secret lifecycle", () => {
       generationRunId: 500,
       domain: "example.nl",
       sourceZoneHash,
+      now: new Date("2026-07-28T10:01:00.000Z"),
     })
     await expect(openAttachedMigrationCheckoutSecret(store.payload, {
       secretKey,
@@ -147,6 +155,7 @@ describe("migration checkout secret lifecycle", () => {
       generationRunId: 500,
       domain: "example.nl",
       sourceZoneHash,
+      now: new Date("2026-07-28T10:02:00.000Z"),
     })).resolves.toMatchObject({ transferCode: "secret-epp", sourceZoneHash })
 
     await consumeMigrationCheckoutSecret(store.payload, { secretKey, orderId: 90 })
@@ -163,14 +172,7 @@ describe("migration checkout secret lifecycle", () => {
 
   it("limits automatic source credentials to the 24-hour source-evidence window", async () => {
     const store = buildStore()
-    const automaticZone = {
-      ...zone,
-      authority: {
-        mechanism: "validated_provider_export" as const,
-        provider: "legacy-provider",
-        complete: true as const,
-      },
-    }
+    const automaticZone = zone
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
       normalizeCompleteZone(automaticZone),
     )
@@ -179,13 +181,10 @@ describe("migration checkout secret lifecycle", () => {
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic",
-      sourceMechanism: "validated_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: automaticZone,
-      sourceRefreshCredential: {
-        kind: "provider_export",
-        sourceSoaSerial: 2026072901,
-      },
+      sourceRefreshCredential: cloudflareRefreshCredential(),
       transferCode: "secret-epp",
       transferAuthorizationAccepted: true,
     })
@@ -208,13 +207,14 @@ describe("migration checkout secret lifecycle", () => {
       normalizeCompleteZone(zone),
     )
     const encryptedInput = sealCheckoutMigrationInput({
-      schemaVersion: 1,
+      schemaVersion: 2,
       generationRunId: "500",
       domain: "example.nl",
-      classification: "assisted_standard",
-      sourceMechanism: "customer_authorized_provider_export_v1",
+      classification: "automatic",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: zone,
+      sourceRefreshCredential: cloudflareRefreshCredential(),
       transferCode: "secret-epp",
       transferAuthorizationAccepted: true,
     })
@@ -290,13 +290,14 @@ describe("migration checkout secret lifecycle", () => {
       normalizeCompleteZone(zone),
     )
     const encryptedInput = sealCheckoutMigrationInput({
-      schemaVersion: 1,
+      schemaVersion: 2,
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic",
-      sourceMechanism: "customer_authorized_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: zone,
+      sourceRefreshCredential: cloudflareRefreshCredential(),
       transferCode: "secret-epp",
       transferAuthorizationAccepted: true,
     })
@@ -346,13 +347,14 @@ describe("migration checkout secret lifecycle", () => {
       normalizeCompleteZone(zone),
     )
     const input = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic" as const,
-      sourceMechanism: "customer_authorized_provider_export_v1" as const,
+      sourceMechanism: "cloudflare_api_v1" as const,
       sourceZoneHash,
       sourceZone: zone,
+      sourceRefreshCredential: cloudflareRefreshCredential(),
       transferCode: "same-secret-epp",
       transferAuthorizationAccepted: true as const,
     }
@@ -391,29 +393,19 @@ describe("migration checkout secret lifecycle", () => {
   })
 
   it("does not coalesce concurrent automatic inputs with different refresh credentials", async () => {
-    const automaticZone = {
-      ...zone,
-      authority: {
-        mechanism: "validated_provider_export" as const,
-        provider: "fixture",
-        complete: true as const,
-      },
-    }
+    const automaticZone = zone
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
       normalizeCompleteZone(automaticZone),
     )
-    const envelope = (sourceSoaSerial: number) => sealCheckoutMigrationInput({
+    const envelope = (token: string) => sealCheckoutMigrationInput({
       schemaVersion: 2,
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic",
-      sourceMechanism: "validated_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: automaticZone,
-      sourceRefreshCredential: {
-        kind: "provider_export",
-        sourceSoaSerial,
-      },
+      sourceRefreshCredential: cloudflareRefreshCredential(token),
       transferCode: "same-secret-epp",
       transferAuthorizationAccepted: true,
     })
@@ -440,8 +432,8 @@ describe("migration checkout secret lifecycle", () => {
       })
 
     const results = await Promise.allSettled([
-      persist(envelope(2026072901)),
-      persist(envelope(2026072902)),
+      persist(envelope("first-customer-cloudflare-token")),
+      persist(envelope("second-customer-cloudflare-token")),
     ])
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
@@ -494,16 +486,4 @@ describe("durable automatic source refresh authority", () => {
     )).toThrow()
   })
 
-  it("rejects a provider-export pseudo credential as durable authority", () => {
-    expect(() => sealAutomaticSourceRefreshAuthority({
-      schemaVersion: 1,
-      domain: "example.nl",
-      sourceMechanism: "validated_provider_export_v1",
-      acceptedSourceAuthorityHash: "a".repeat(64),
-      acceptedSourceContentHash: "b".repeat(64),
-      credential: { kind: "provider_export", sourceSoaSerial: 10 },
-    } as never, "domain-migration:order:90:v1")).toThrow(
-      "refresh authority is invalid",
-    )
-  })
 })

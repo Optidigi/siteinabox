@@ -7,12 +7,12 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import type { User } from "@/payload-types"
 import {
-  completeMigrationOperatorWork,
-  failMigrationOperatorWork,
+  authorizeDomainMigrationIncidentRecovery,
+  completeDomainMigrationIncidentRecovery,
+  failDomainMigrationIncidentRecovery,
   requestDomainMigrationRollback,
-  requestMigrationOperatorWork,
-  startMigrationOperatorWork,
-} from "@/lib/domains/assistedMigration"
+  startDomainMigrationIncidentRecovery,
+} from "@/lib/domains/migrationOperatorRecovery"
 
 const migrationId = (formData: FormData): string => {
   const value = String(formData.get("migrationId") ?? "").trim()
@@ -58,10 +58,8 @@ export async function classifySiteinaboxIncidentAction(formData: FormData) {
   }
   try {
     const { payload } = await authenticatedOperator()
-    await requestMigrationOperatorWork(payload, {
+    await authorizeDomainMigrationIncidentRecovery(payload, {
       migrationId: id,
-      requestedClassification: "assisted_standard",
-      workCause: "siteinabox_incident_recovery",
       workScope: scope,
     })
   } catch {
@@ -75,7 +73,7 @@ export async function startMigrationOperatorWorkAction(formData: FormData) {
   const id = migrationId(formData)
   try {
     const { payload, user } = await authenticatedOperator()
-    await startMigrationOperatorWork(payload, {
+    await startDomainMigrationIncidentRecovery(payload, {
       migrationId: id,
       actor: user,
     })
@@ -95,7 +93,7 @@ export async function completeMigrationOperatorWorkAction(formData: FormData) {
   }
   try {
     const { payload, user } = await authenticatedOperator()
-    await completeMigrationOperatorWork(payload, {
+    await completeDomainMigrationIncidentRecovery(payload, {
       migrationId: id,
       actor: user,
       completionNotes: notes,
@@ -120,7 +118,7 @@ export async function failMigrationOperatorWorkAction(formData: FormData) {
   }
   try {
     const { payload, user } = await authenticatedOperator()
-    await failMigrationOperatorWork(payload, {
+    await failDomainMigrationIncidentRecovery(payload, {
       migrationId: id,
       actor: user,
       failureCode: failureCode as

@@ -1,9 +1,6 @@
 import "server-only"
 
-import type {
-  CompleteZoneExport,
-  MigrationSourceMechanism,
-} from "@siteinabox/contracts/domain-migration"
+import type { CompleteZoneExport } from "@siteinabox/contracts/domain-migration"
 import type {
   AutomaticSourceRefreshCredential,
 } from "@/lib/domains/migrationSecrets"
@@ -22,10 +19,9 @@ export class MigrationSourceRefreshRetryableError extends Error {
   }
 }
 
-export type AutomaticMigrationSourceMechanism = Exclude<
-  MigrationSourceMechanism,
-  "customer_authorized_provider_export_v1"
->
+export type AutomaticMigrationSourceMechanism =
+  | "cloudflare_api_v1"
+  | "authorized_axfr_v1"
 
 export type AcquiredMigrationSource = {
   mechanism: AutomaticMigrationSourceMechanism
@@ -44,6 +40,5 @@ export const sourceAuthorityMechanism = (
   mechanism: AutomaticMigrationSourceMechanism,
 ): CompleteZoneExport["authority"]["mechanism"] => {
   if (mechanism === "cloudflare_api_v1") return "cloudflare_api"
-  if (mechanism === "authorized_axfr_v1") return "authorized_axfr"
-  return "validated_provider_export"
+  return "authorized_axfr"
 }

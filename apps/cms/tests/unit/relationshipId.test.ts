@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { relationshipId, relationshipIdSet, sameRelationshipId } from "@/lib/relationshipId"
+import {
+  numericRelationshipId,
+  relationshipId,
+  relationshipIdSet,
+  sameRelationshipId,
+} from "@/lib/relationshipId"
 
 describe("relationshipId helpers", () => {
   it("normalizes raw and populated relationship IDs to strings", () => {
@@ -14,6 +19,19 @@ describe("relationshipId helpers", () => {
     expect(relationshipId(undefined)).toBeNull()
     expect(relationshipId({})).toBeNull()
     expect(relationshipId({ id: null })).toBeNull()
+  })
+
+  it("normalizes numeric relationship IDs and rejects unsafe values", () => {
+    expect(numericRelationshipId(7)).toBe(7)
+    expect(numericRelationshipId("7")).toBe(7)
+    expect(numericRelationshipId({ id: "7" })).toBe(7)
+    expect(numericRelationshipId(null)).toBeUndefined()
+    expect(() => numericRelationshipId("1.5")).toThrow(
+      "Expected a numeric Payload relationship id.",
+    )
+    expect(() => numericRelationshipId(String(Number.MAX_SAFE_INTEGER + 1))).toThrow(
+      "Expected a numeric Payload relationship id.",
+    )
   })
 
   it("compares only present normalized IDs", () => {

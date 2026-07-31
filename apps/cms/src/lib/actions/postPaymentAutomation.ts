@@ -10,7 +10,6 @@ import {
 } from "@/lib/payments/postPaymentActivation"
 
 const allowedSteps = new Set<PostPaymentAutomationRetryStep>([
-  "mollie_subscription",
   "domain_provisioning",
   "refresh_provisioning",
   "activation_gate",

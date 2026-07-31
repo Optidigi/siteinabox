@@ -1,6 +1,5 @@
 import "server-only"
 
-import { resolveSoa } from "node:dns/promises"
 import {
   normalizeCompleteZone,
   type CompleteZoneExport,
@@ -46,7 +45,6 @@ type RefreshDependencies = {
   acquireCloudflareSource?: typeof acquireCloudflareSource
   acquireAuthorizedAxfr?: typeof acquireAuthorizedAxfr
   inspectPublicEvidence?: typeof inspectExistingDomainPublicEvidence
-  resolveSoaImpl?: typeof resolveSoa
 }
 
 export type AutomaticMigrationSourceRefreshInput = Pick<
@@ -84,13 +82,6 @@ const requireTransferEligibility = (
   }
 }
 
-const canonicalNames = (values: string[]): string[] =>
-  [...new Set(values.map((value) =>
-    value.trim().toLowerCase().replace(/\.$/, "")))].sort()
-
-const sameNames = (left: string[], right: string[]): boolean =>
-  canonicalNames(left).join("\n") === canonicalNames(right).join("\n")
-
 const requireSameSource = (
   acquired: AcquiredMigrationSource,
   accepted: AutomaticMigrationSourceRefreshInput,
@@ -112,36 +103,6 @@ const requireSameSource = (
     throw new MigrationSourceChangedError()
   }
   return acquired.zone
-}
-
-const verifyExportAuthority = async (
-  input: AutomaticMigrationSourceRefreshInput,
-  dependencies: RefreshDependencies,
-): Promise<CompleteZoneExport> => {
-  const credential = input.sourceRefreshCredential
-  if (credential.kind !== "provider_export") {
-    throw new Error("Provider-export refresh authority is invalid.")
-  }
-  const [publicEvidence, soa] = await Promise.all([
-    (dependencies.inspectPublicEvidence ?? inspectExistingDomainPublicEvidence)(
-      input.domain,
-    ),
-    (dependencies.resolveSoaImpl ?? resolveSoa)(input.domain),
-  ])
-  const source = normalizeCompleteZone(input.sourceZone)
-  requireTransferEligibility(publicEvidence)
-  if (
-    soa.serial !== credential.sourceSoaSerial ||
-    !sameNames(
-      publicEvidence.authoritativeNameservers,
-      source.authoritativeNameservers,
-    ) ||
-    publicEvidence.dnssecDsPresent !== (source.dnssec.status === "signed") ||
-    domainMigrationSourceAuthorityHash(source) !== input.sourceZoneHash
-  ) {
-    throw new MigrationSourceChangedError()
-  }
-  return input.sourceZone
 }
 
 export async function refreshAutomaticMigrationSource(
@@ -198,5 +159,5 @@ export async function refreshAutomaticMigrationSource(
       mode,
     )
   }
-  return verifyExportAuthority(input, dependencies)
+  throw new Error("Unsupported automatic migration source.")
 }

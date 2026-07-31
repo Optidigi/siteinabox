@@ -40,7 +40,7 @@ const acceptedOrder = (selectedDomain = "example.nl") => {
     billingPeriod: "annual",
     providerOperationPriceNetMinor: 1_250,
     migrationClassification: "automatic",
-    migrationSourceMechanism: "validated_provider_export_v1",
+    migrationSourceMechanism: "cloudflare_api_v1",
     migrationSourceZoneHash: "a".repeat(64),
     migrationPublicEvidenceHash: "c".repeat(64),
     migrationInputEnvelope: "v1.encrypted-authority",

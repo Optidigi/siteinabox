@@ -1,6 +1,5 @@
 import "server-only"
 import {
-  semanticZoneComparison,
   type NormalizedMigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
 import { parseCloudflareDnssec } from "@/lib/domains/dnssecProviderContracts"
@@ -697,23 +696,6 @@ export async function reconcileOwnedCloudflareDnsRecord(
   }
 }
 
-export async function createCloudflareZoneDnsRecords(
-  zoneId: string,
-  domainInput: string,
-  options?: CloudflareOptions & { ttl?: number; proxied?: boolean },
-): Promise<CloudflareDnsRecordResult[]> {
-  const env = options?.env ?? process.env
-  const records = buildCloudflareDnsRecordRequests(domainInput, env, {
-    ttl: options?.ttl,
-    proxied: options?.proxied,
-  })
-  const results: CloudflareDnsRecordResult[] = []
-  for (const record of records) {
-    results.push(await createOrReuseCloudflareDnsRecord(zoneId, record, options))
-  }
-  return results
-}
-
 const migrationRecordBody = (
   record: NormalizedMigrationDnsRecord,
 ): Record<string, unknown> => {
@@ -1031,59 +1013,39 @@ export async function getCloudflareDnsRecordUsage(
   }
 }
 
-export async function createCloudflareMigrationDnsRecord(
+/**
+ * Submit one caller-planned set of missing migration records. The response is
+ * deliberately not treated as confirmation; the migration orchestrator must
+ * list and semantically compare the full zone after this effect.
+ */
+export async function batchCreateCloudflareMigrationDnsRecords(
   zoneId: string,
-  record: NormalizedMigrationDnsRecord,
+  records: readonly NormalizedMigrationDnsRecord[],
   options?: CloudflareOptions,
-): Promise<CloudflareMigrationDnsRecordResult> {
+): Promise<void> {
+  if (records.length === 0) return
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   let response: Response
   try {
     response = await fetcher(options)(
-      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records`,
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/batch`,
       {
         method: "POST",
         headers: headers(token),
-        body: JSON.stringify(migrationRecordBody(record)),
+        body: JSON.stringify({
+          posts: records.map(migrationRecordBody),
+        }),
       },
     )
   } catch (error) {
-    throw new CloudflareIndeterminateWriteError("Cloudflare migration DNS record creation", error)
+    throw new CloudflareIndeterminateWriteError("Cloudflare migration DNS batch creation", error)
   }
   const payload = await readCloudflareWritePayload(
-    "Cloudflare migration DNS record creation",
+    "Cloudflare migration DNS batch creation",
     response,
   )
-  assertCloudflareOk("Cloudflare migration DNS record creation", response, payload)
-  const parsed = parseMigrationDnsRecord(resultObject(payload))
-  if (!parsed?.id) {
-    throw new CloudflareIndeterminateWriteError("Cloudflare migration DNS record creation")
-  }
-  return { ...parsed, raw: payload }
-}
-
-export async function createOrReuseCloudflareMigrationDnsRecord(
-  zoneId: string,
-  record: NormalizedMigrationDnsRecord,
-  options?: CloudflareOptions,
-): Promise<CloudflareMigrationDnsRecordResult> {
-  const findExisting = async () => (await listCloudflareMigrationDnsRecords(zoneId, options))
-    .find((candidate) =>
-      semanticZoneComparison([record], [candidate.record]).equivalent)
-  const existing = await findExisting()
-  if (existing) return existing
-  try {
-    return await createCloudflareMigrationDnsRecord(zoneId, record, options)
-  } catch (error) {
-    try {
-      const reconciled = await findExisting()
-      if (reconciled) return reconciled
-    } catch {
-      // Preserve the original indeterminate provider outcome.
-    }
-    throw error
-  }
+  assertCloudflareOk("Cloudflare migration DNS batch creation", response, payload)
 }
 
 export async function getCloudflareSslVerification(

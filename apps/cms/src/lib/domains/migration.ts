@@ -36,8 +36,8 @@ import { initialPaymentIsFinanciallySecured } from "@/lib/payments/initialPaymen
 
 import {
   CloudflareIndeterminateWriteError,
+  batchCreateCloudflareMigrationDnsRecords,
   classifyCloudflareZoneLookup,
-  createOrReuseCloudflareMigrationDnsRecord,
   createOrReuseCloudflareZone,
   enableCloudflareDnssec,
   getCloudflareDnssec,
@@ -176,7 +176,7 @@ type MigrationDependencies = {
   listCloudflareZones: typeof listCloudflareZones
   createOrReuseCloudflareZone: typeof createOrReuseCloudflareZone
   listCloudflareMigrationDnsRecords: typeof listCloudflareMigrationDnsRecords
-  createOrReuseCloudflareMigrationDnsRecord: typeof createOrReuseCloudflareMigrationDnsRecord
+  batchCreateCloudflareMigrationDnsRecords: typeof batchCreateCloudflareMigrationDnsRecords
   getCloudflareDnsRecordUsage: typeof getCloudflareDnsRecordUsage
   getCloudflareDnssec: typeof getCloudflareDnssec
   enableCloudflareDnssec: typeof enableCloudflareDnssec
@@ -209,7 +209,7 @@ const defaultDependencies: MigrationDependencies = {
   listCloudflareZones,
   createOrReuseCloudflareZone,
   listCloudflareMigrationDnsRecords,
-  createOrReuseCloudflareMigrationDnsRecord,
+  batchCreateCloudflareMigrationDnsRecords,
   getCloudflareDnsRecordUsage,
   getCloudflareDnssec,
   enableCloudflareDnssec,
@@ -664,12 +664,10 @@ const migrationEvidenceFromOrder = (order: Order) => {
   const migration = readObject(quoteEvidence.migration)
   const sourceMechanism = String(migration.sourceMechanism)
   if (
-    !["automatic", "assisted_standard"].includes(String(migration.classification)) ||
+    migration.classification !== "automatic" ||
     ![
-      "customer_authorized_provider_export_v1",
       "cloudflare_api_v1",
       "authorized_axfr_v1",
-      "validated_provider_export_v1",
     ].includes(sourceMechanism)
   ) {
     throw new Error("Accepted order does not freeze a supported migration source contract.")
@@ -690,12 +688,10 @@ const migrationEvidenceFromOrder = (order: Order) => {
   }
   return {
     capability,
-    classification: migration.classification as "automatic" | "assisted_standard",
+    classification: "automatic" as const,
     sourceMechanism: sourceMechanism as
-      | "customer_authorized_provider_export_v1"
       | "cloudflare_api_v1"
-      | "authorized_axfr_v1"
-      | "validated_provider_export_v1",
+      | "authorized_axfr_v1",
     sourceZoneHash: typeof migration.sourceZoneHash === "string"
       ? migration.sourceZoneHash
       : null,
@@ -708,23 +704,14 @@ const migrationEvidenceFromOrder = (order: Order) => {
 export const isAutomaticMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return migration.classification === "automatic" &&
-    [
-      "customer_authorized_provider_export_v1",
-      "cloudflare_api_v1",
-      "authorized_axfr_v1",
-      "validated_provider_export_v1",
-    ].includes(String(migration.sourceMechanism))
+    ["cloudflare_api_v1", "authorized_axfr_v1"].includes(
+      String(migration.sourceMechanism),
+    )
 }
 
 export const isSupportedDomainMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
-  return ["automatic", "assisted_standard"].includes(String(migration.classification)) &&
-    [
-      "customer_authorized_provider_export_v1",
-      "cloudflare_api_v1",
-      "authorized_axfr_v1",
-      "validated_provider_export_v1",
-    ].includes(String(migration.sourceMechanism))
+  return isAutomaticMigrationOrder(order)
 }
 
 async function checkoutProfileForOrder(
@@ -882,38 +869,32 @@ export async function createAutomaticDomainMigration(
     }
     let refreshedSource: CompleteZoneExport
     try {
-      if (checkoutInput.schemaVersion === 2) {
-        let refreshInput: AutomaticMigrationSourceRefreshInput = checkoutInput
-        if (
-          checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth"
-        ) {
-          const credential = await (
-            dependencies.resolveCloudflareOAuthCredential ??
-            resolveCloudflareOAuthCredential
-          )(
-            payload,
-            checkoutInput.sourceRefreshCredential,
-            { now: new Date(now) },
-          )
-          if (!credential.zoneId) {
-            throw new MigrationSourceAuthorizationError()
-          }
-          refreshInput = {
-            ...checkoutInput,
-            sourceRefreshCredential: {
-              kind: "cloudflare_api_token",
-              token: credential.accessToken,
-              zoneId: credential.zoneId,
-            },
-          }
+      let refreshInput: AutomaticMigrationSourceRefreshInput = checkoutInput
+      if (checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth") {
+        const credential = await (
+          dependencies.resolveCloudflareOAuthCredential ??
+          resolveCloudflareOAuthCredential
+        )(
+          payload,
+          checkoutInput.sourceRefreshCredential,
+          { now: new Date(now) },
+        )
+        if (!credential.zoneId) {
+          throw new MigrationSourceAuthorizationError()
         }
-        refreshedSource = await (
-          dependencies.refreshAutomaticMigrationSource ??
-          refreshAutomaticMigrationSource
-        )(refreshInput)
-      } else {
-        refreshedSource = checkoutInput.sourceZone
+        refreshInput = {
+          ...checkoutInput,
+          sourceRefreshCredential: {
+            kind: "cloudflare_api_token",
+            token: credential.accessToken,
+            zoneId: credential.zoneId,
+          },
+        }
       }
+      refreshedSource = await (
+        dependencies.refreshAutomaticMigrationSource ??
+        refreshAutomaticMigrationSource
+      )(refreshInput)
     } catch (error) {
       if (
         !(error instanceof MigrationSourceChangedError) &&
@@ -921,10 +902,7 @@ export async function createAutomaticDomainMigration(
       ) {
         throw error
       }
-      if (
-        checkoutInput.schemaVersion === 2 &&
-        checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth"
-      ) {
+      if (checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth") {
         await revokeCloudflareSourceAuthorization(
           payload,
           checkoutInput.sourceRefreshCredential,
@@ -949,21 +927,12 @@ export async function createAutomaticDomainMigration(
         reconciliationRequired: false,
       }, "automatic_source_reauthorization_required", now)
     }
-    let sourceRefreshAuthority: AutomaticSourceRefreshAuthority | undefined
-    if (
-      checkoutInput.schemaVersion === 2 &&
-      (
-        checkoutInput.sourceMechanism === "cloudflare_api_v1" ||
-        checkoutInput.sourceMechanism === "authorized_axfr_v1"
-      )
-    ) {
-      sourceRefreshAuthority = buildAutomaticSourceRefreshAuthority({
-        domain: normalized.domain,
-        sourceMechanism: checkoutInput.sourceMechanism,
-        sourceZone: checkoutInput.normalizedSourceZone,
-        credential: checkoutInput.sourceRefreshCredential,
-      })
-    }
+    const sourceRefreshAuthority = buildAutomaticSourceRefreshAuthority({
+      domain: normalized.domain,
+      sourceMechanism: checkoutInput.sourceMechanism,
+      sourceZone: checkoutInput.normalizedSourceZone,
+      credential: checkoutInput.sourceRefreshCredential,
+    })
     migration = await acquireAutomaticMigrationInputs(payload, {
       migrationId: migration.id,
       zoneExport: refreshedSource,
@@ -3366,23 +3335,6 @@ async function refreshSourceAuthorityAndCustomerReadinessPhase(
       failureReason: null,
     }, "customer_actions_satisfied", now)
   }
-  if (
-    migration.state === "ready_to_prepare" &&
-    migration.acceptedClassification === "assisted_standard" &&
-    !migration.operatorWorkCompletedAt
-  ) {
-    const { pauseAcceptedAssistedMigration } = await import(
-      "@/lib/domains/assistedMigration"
-    )
-    migration = await pauseAcceptedAssistedMigration(payload, migration)
-    return {
-      outcome: "waiting",
-      result: waiting(
-        migration,
-        "Paid assisted migration is waiting for operator work.",
-      ),
-    }
-  }
   if (migration.state === "ready_to_prepare") {
     migration = await updateMigration(payload, migration, {
       state: "preparing",
@@ -3577,12 +3529,18 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
   }
   let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
   if (!zone) {
-    if (migration.cloudflareZoneState === "indeterminate") {
+    const zoneWriteAwaitingReadback =
+      migration.cloudflareZoneState === "indeterminate" ||
+      migration.cloudflareZoneState === "prepared"
+    if (zoneWriteAwaitingReadback) {
+      const checkpointReason = migration.cloudflareZoneState === "indeterminate"
+        ? "cloudflare_zone_write_indeterminate"
+        : "cloudflare_zone_write_prepared"
       if (
         providerWriteReconciliationTimedOut(
           migrationHistoryEventAt(
             migration,
-            "cloudflare_zone_write_indeterminate",
+            checkpointReason,
           ),
           deps.now(),
         )
@@ -3616,9 +3574,16 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
     migration = await updateMigration(payload, migration, {
       cloudflareZoneState: "prepared",
       reconciliationRequired: true,
+      failureReason: "cloudflare_zone_creation_prepared",
     }, "cloudflare_zone_write_prepared", deps.now())
     try {
-      zone = await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
+      await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        cloudflareZoneState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      }, "cloudflare_zone_write_indeterminate", deps.now())
     } catch (error) {
       if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
       migration = await updateMigration(payload, migration, {
@@ -3635,6 +3600,30 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
         ),
       )
     }
+    const dispatchedLookup = classifyCloudflareZoneLookup(
+      migration.domainNameAscii,
+      await deps.listCloudflareZones(migration.domainNameAscii),
+    )
+    if (dispatchedLookup.outcome === "ambiguous") {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "cloudflare_zone_lookup_ambiguous",
+          deps.now(),
+          "Multiple exact Cloudflare zones match the migration authority.",
+        ),
+      )
+    }
+    if (dispatchedLookup.outcome === "absent") {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(migration, "Cloudflare zone creation is awaiting reconciliation."),
+      )
+    }
+    zone = dispatchedLookup.zone
   }
   const dnsWriteAwaitingReconciliation =
     migration.cloudflareZoneState === "indeterminate" &&
@@ -3642,6 +3631,10 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
   const zoneCreationRecoveredByExactRead =
     migration.cloudflareZoneState === "indeterminate" &&
     migration.failureReason === "cloudflare_zone_creation_indeterminate"
+  const zoneCreationFailure = [
+    "cloudflare_zone_creation_prepared",
+    "cloudflare_zone_creation_indeterminate",
+  ].includes(migration.failureReason ?? "")
   migration = await updateMigration(payload, migration, {
     cloudflareZoneId: zone.id,
     cloudflareNameservers: zone.nameServers,
@@ -3650,17 +3643,28 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
       : {}),
     failureReason: dnsWriteAwaitingReconciliation
       ? migration.failureReason
-      : null,
+      : zoneCreationFailure
+        ? null
+        : migration.failureReason,
   }, "cloudflare_zone_reconciled", deps.now())
   let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   let comparison = semanticZoneComparison(
     target.records,
     migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
   )
-  if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
+  const dnsWriteAwaitingReadback =
+    migration.cloudflareZoneState === "indeterminate" ||
+    (
+      migration.cloudflareZoneState === "prepared" &&
+      migration.failureReason === "cloudflare_dns_write_prepared"
+    )
+  if (!comparison.equivalent && dnsWriteAwaitingReadback) {
+    const checkpointReason = migration.cloudflareZoneState === "indeterminate"
+      ? "cloudflare_dns_write_indeterminate"
+      : "cloudflare_dns_write_prepared"
     if (
       providerWriteReconciliationTimedOut(
-        migrationHistoryEventAt(migration, "cloudflare_dns_write_indeterminate"),
+        migrationHistoryEventAt(migration, checkpointReason),
         deps.now(),
       )
     ) {
@@ -3742,25 +3746,40 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
         ),
       )
     }
-    try {
-      for (const record of target.records) {
-        await deps.createOrReuseCloudflareMigrationDnsRecord(zone.id, record)
-      }
-    } catch (error) {
-      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+    const missingRecords = target.records.filter((record) => !semanticZoneComparison(
+      [record],
+      migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
+    ).equivalent)
+    if (missingRecords.length > 0) {
       migration = await updateMigration(payload, migration, {
-        state: "awaiting_provider",
-        cloudflareZoneState: "indeterminate",
+        cloudflareZoneState: "prepared",
         reconciliationRequired: true,
-        failureReason: "cloudflare_dns_write_indeterminate",
-      }, "cloudflare_dns_write_indeterminate", deps.now())
-      return cloudflarePreparationBlockedOutcome(
-        migration,
-        waiting(
+        failureReason: "cloudflare_dns_write_prepared",
+      }, "cloudflare_dns_write_prepared", deps.now())
+      try {
+        await deps.batchCreateCloudflareMigrationDnsRecords(zone.id, missingRecords)
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          cloudflareZoneState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "cloudflare_dns_write_indeterminate",
+        }, "cloudflare_dns_write_indeterminate", deps.now())
+      } catch (error) {
+        if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          cloudflareZoneState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "cloudflare_dns_write_indeterminate",
+        }, "cloudflare_dns_write_indeterminate", deps.now())
+        return cloudflarePreparationBlockedOutcome(
           migration,
-          "Cloudflare DNS preparation is awaiting reconciliation.",
-        ),
-      )
+          waiting(
+            migration,
+            "Cloudflare DNS preparation is awaiting reconciliation.",
+          ),
+        )
+      }
     }
     cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
     comparison = semanticZoneComparison(
@@ -3774,13 +3793,22 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
       waiting(migration, "Cloudflare target zone is not semantically complete."),
     )
   }
+  const confirmedCloudflarePreparationFailure = [
+    "cloudflare_zone_creation_prepared",
+    "cloudflare_zone_creation_indeterminate",
+    "cloudflare_dns_write_prepared",
+    "cloudflare_dns_write_indeterminate",
+  ].includes(migration.failureReason ?? "")
   migration = await updateMigration(payload, migration, {
     cloudflareZoneState: "confirmed",
     cloudflareRecordIds: cloudflareRecords.map((entry) => entry.id).filter(Boolean),
     zonePreparedAt: deps.now(),
     semanticComparison: comparison,
-    reconciliationRequired: false,
-    failureReason: null,
+    reconciliationRequired:
+      migration.reconciliationRequired && !confirmedCloudflarePreparationFailure,
+    failureReason: confirmedCloudflarePreparationFailure
+      ? null
+      : migration.failureReason,
   }, "cloudflare_target_zone_semantically_verified", deps.now())
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     cloudflareZoneId: zone.id,
@@ -4005,12 +4033,14 @@ async function prepareOpenProviderCustomerPhase(
       } else {
         migration = claimed
       }
+      let customerWriteDispatched = false
       try {
         if (!customerHandle) {
-          customerHandle = (await deps.createOpenProviderCustomerHandle(
+          await deps.createOpenProviderCustomerHandle(
             domainRegistrantFromCheckoutProfile(profile),
             { token, reference: migration.idempotencyKey },
-          )).handle
+          )
+          customerWriteDispatched = true
         }
       } catch (error) {
         if (classifyOpenProviderCustomerWriteError(error) === "rejected") {
@@ -4048,6 +4078,45 @@ async function prepareOpenProviderCustomerPhase(
           ),
         )
       }
+      if (customerWriteDispatched) {
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          providerTransferState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_indeterminate",
+        }, "openprovider_customer_handle_indeterminate", deps.now())
+        try {
+          existingCustomer = await deps.findOpenProviderCustomerByReference(
+            migration.idempotencyKey,
+            { token },
+          )
+        } catch (error) {
+          if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
+            throw error
+          }
+          return openProviderCustomerPreparationBlockedOutcome(
+            migration,
+            await stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "openprovider_customer_reference_ambiguous",
+              deps.now(),
+              "Multiple exact Openprovider customers match the migration reference.",
+            ),
+          )
+        }
+        if (!existingCustomer) {
+          return openProviderCustomerPreparationBlockedOutcome(
+            migration,
+            waiting(migration, "Customer-handle creation is awaiting reconciliation."),
+          )
+        }
+        customerHandle = existingCustomer.handle
+      }
+    }
+    if (!customerHandle) {
+      throw new Error("Exact Openprovider customer readback did not provide a handle.")
     }
     migration = await updateMigration(payload, migration, {
       providerCustomerHandle: customerHandle,

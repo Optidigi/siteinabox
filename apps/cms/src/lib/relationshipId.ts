@@ -21,6 +21,16 @@ export const relationshipId = (value: RelationshipIdRef): string | null => {
   return String(value)
 }
 
+export const numericRelationshipId = (value: RelationshipIdRef): number | undefined => {
+  const id = relationshipId(value)
+  if (id == null) return undefined
+  const numeric = Number(id)
+  if (!Number.isSafeInteger(numeric)) {
+    throw new Error("Expected a numeric Payload relationship id.")
+  }
+  return numeric
+}
+
 export const sameRelationshipId = (
   left: RelationshipIdRef,
   right: RelationshipIdRef,

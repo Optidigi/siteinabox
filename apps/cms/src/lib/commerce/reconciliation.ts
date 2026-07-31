@@ -342,7 +342,7 @@ const paymentExactlyMatchesAttempt = (
 
   const agreementId = relationshipId(attempt.billingAgreement)
   if (!agreementId) {
-    return !strictAuthority || attempt.purpose === "supplemental"
+    return !strictAuthority
   }
   if (
     !agreement ||

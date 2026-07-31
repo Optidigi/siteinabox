@@ -49,7 +49,7 @@ vi.mock("@/lib/domains/verification", () => ({
 
 import { getPayload } from "payload"
 import {
-  applyMollieWebhookPayment,
+  synchronizeMolliePayment,
   createApplicationRecurringMolliePayment,
   createMandateRecoveryMolliePayment,
   createMollieCheckoutForGenerationRun,
@@ -1442,6 +1442,33 @@ describe("Mollie payment flow", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it("rejects a retired migration source before current-catalog provider work", async () => {
+    enableSandboxCommerceRelease()
+    const { payload, order, billingAgreements, paymentAttempts } = createPayloadStub()
+    Object.assign(order, {
+      orderKind: "initial_subscription",
+      catalogVersion: "2026-07-29.1",
+      quoteEvidence: {
+        domainMode: "existing_domain",
+        migrationServiceFeeNetMinor: 0,
+        migration: {
+          classification: "automatic",
+          sourceMechanism: "validated_provider_export_v1",
+        },
+      },
+    })
+
+    await expect(createMollieCheckoutForGenerationRun(payload, {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    })).rejects.toThrow("zero-fee automatic migration")
+    expect(billingAgreements).toHaveLength(0)
+    expect(paymentAttempts).toHaveLength(0)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("allows only one provider payment write when first-payment schedulers race", async () => {
     enableSandboxCommerceRelease()
     const { payload, paymentAttempts, billingAgreements } = createPayloadStub()
@@ -1519,7 +1546,7 @@ describe("Mollie payment flow", () => {
       payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_test_123" },
     })
 
-    const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: mollieStatus,
       amount: { currency: "EUR", value: "499.00" },
@@ -1544,6 +1571,18 @@ describe("Mollie payment flow", () => {
     expect(run.errors).toBeNull()
   })
 
+  it("ignores an order-only provider payment instead of synthesizing a payment attempt", async () => {
+    const { payload } = createPayloadStub()
+
+    await expect(synchronizeMolliePayment(payload, "tr_order_only", async () => ({
+      id: "tr_order_only",
+      status: "paid",
+      amount: { currency: "EUR", value: "499.00" },
+      metadata: { orderId: 600 },
+    }))).rejects.toThrow("not linked to a payment attempt")
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("reports duplicate webhook delivery while keeping the operation idempotent", async () => {
     const { payload } = createPayloadStub({
       payment: {
@@ -1555,7 +1594,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -2052,7 +2091,7 @@ describe("Mollie payment flow", () => {
       providerPaymentId: "tr_mandate_recovery",
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_mandate_recovery",
       async () => ({
@@ -2266,7 +2305,7 @@ describe("Mollie payment flow", () => {
       reused: true,
       checkoutUrl: "https://www.mollie.com/checkout/recovery-won",
     })
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       fixture.payload,
       "tr_recovery_won",
       async () => ({
@@ -2295,7 +2334,7 @@ describe("Mollie payment flow", () => {
       purpose: "domain_renewal",
     })).rejects.toThrow("active customer mandate")
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       fixture.payload,
       "tr_recovery_won",
       async () => ({
@@ -2416,7 +2455,7 @@ describe("Mollie payment flow", () => {
         mandateId: "mdt_test_123",
       },
     })
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       fixture.payload,
       "tr_collection_won",
       async () => recurringProviderPayment("pending"),
@@ -2425,7 +2464,7 @@ describe("Mollie payment flow", () => {
       reconciliationRequired: true,
       failureReason: "A recurring Mollie provider write is in progress.",
     })
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       fixture.payload,
       "tr_collection_won",
       async () => recurringProviderPayment("failed"),
@@ -2653,7 +2692,7 @@ describe("Mollie payment flow", () => {
       currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
     })
 
-    await applyMollieWebhookPayment(payload, "tr_late_committed", async () => ({
+    await synchronizeMolliePayment(payload, "tr_late_committed", async () => ({
       id: "tr_late_committed",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -2746,7 +2785,7 @@ describe("Mollie payment flow", () => {
       paymentRequested: false,
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_refund_123",
       async () => ({
@@ -2791,12 +2830,12 @@ describe("Mollie payment flow", () => {
         chargebacks: [],
       },
     }
-    const first = await applyMollieWebhookPayment(
+    const first = await synchronizeMolliePayment(
       payload,
       "tr_refund_123",
       async () => providerPayment,
     )
-    const duplicate = await applyMollieWebhookPayment(
+    const duplicate = await synchronizeMolliePayment(
       payload,
       "tr_refund_123",
       async () => providerPayment,
@@ -2868,7 +2907,7 @@ describe("Mollie payment flow", () => {
     })
     expect(pendingDocument?.providerOperationId).toBeUndefined()
 
-    const result = await applyMollieWebhookPayment(
+    const result = await synchronizeMolliePayment(
       payload,
       "tr_refund_indeterminate",
       async () => ({
@@ -2932,7 +2971,7 @@ describe("Mollie payment flow", () => {
       authoritativeDnsStatus: "verified",
       cloudflareDnsRecordIds: ["mx", "dkim", "website"],
     })
-    const chargeback = await applyMollieWebhookPayment(
+    const chargeback = await synchronizeMolliePayment(
       payload,
       "tr_chargeback_123",
       async () => ({
@@ -2954,7 +2993,7 @@ describe("Mollie payment flow", () => {
         },
       }),
     )
-    const stale = await applyMollieWebhookPayment(
+    const stale = await synchronizeMolliePayment(
       payload,
       "tr_chargeback_123",
       async () => ({
@@ -3012,7 +3051,7 @@ describe("Mollie payment flow", () => {
     })
     tenant.status = "active"
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_chargeback_recovery_race",
       async () => ({
@@ -3057,7 +3096,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    const result = await applyMollieWebhookPayment(
+    const result = await synchronizeMolliePayment(
       payload,
       "tr_combined_reversal",
       async () => ({
@@ -3148,7 +3187,7 @@ describe("Mollie payment flow", () => {
       currentPeriodEndsAt: "2026-08-27T10:00:00.000Z",
     })
 
-    const result = await applyMollieWebhookPayment(
+    const result = await synchronizeMolliePayment(
       payload,
       "tr_old_attempt",
       async () => ({
@@ -3210,7 +3249,7 @@ describe("Mollie payment flow", () => {
     Object.assign(order, { billingPeriod })
     Object.assign(billingAgreements[0]!, { billingPeriod })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       `tr_first_${billingPeriod}`,
       async () => ({
@@ -3273,7 +3312,7 @@ describe("Mollie payment flow", () => {
       currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_recurring_cancel_race",
       async () => ({
@@ -3336,7 +3375,7 @@ describe("Mollie payment flow", () => {
       currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_paid_webhook_cancel_race",
       async () => ({
@@ -3401,7 +3440,7 @@ describe("Mollie payment flow", () => {
         currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
       })
 
-      await applyMollieWebhookPayment(
+      await synchronizeMolliePayment(
         payload,
         `tr_cancel_${providerStatus}`,
         async () => ({
@@ -3464,7 +3503,7 @@ describe("Mollie payment flow", () => {
       currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_cancel_chargeback",
       async () => ({
@@ -3490,7 +3529,7 @@ describe("Mollie payment flow", () => {
       reconciliationRequired: false,
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_cancel_chargeback",
       async () => ({
@@ -3568,7 +3607,7 @@ describe("Mollie payment flow", () => {
       billingSuspendedAt: "2026-08-15T10:00:00.000Z",
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_recurring_restore",
       async () => ({
@@ -3614,7 +3653,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    await expect(applyMollieWebhookPayment(
+    await expect(synchronizeMolliePayment(
       payload,
       "tr_amount_mismatch",
       async () => ({
@@ -3643,7 +3682,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    await expect(applyMollieWebhookPayment(
+    await expect(synchronizeMolliePayment(
       payload,
       "tr_currency_mismatch",
       async () => ({
@@ -3673,7 +3712,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    await expect(applyMollieWebhookPayment(
+    await expect(synchronizeMolliePayment(
       payload,
       "tr_amount_missing",
       async () => ({
@@ -3726,7 +3765,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    await expect(applyMollieWebhookPayment(
+    await expect(synchronizeMolliePayment(
       payload,
       "tr_authority_mismatch",
       async () => ({
@@ -3796,7 +3835,7 @@ describe("Mollie payment flow", () => {
         delete (payment.metadata as Record<string, unknown>)[missing]
       }
 
-      await expect(applyMollieWebhookPayment(
+      await expect(synchronizeMolliePayment(
         payload,
         String(payment.id),
         async () => payment as never,
@@ -3829,7 +3868,7 @@ describe("Mollie payment flow", () => {
     })
     Object.assign(agreement, { providerMandateId: "mdt_expected" })
 
-    await expect(applyMollieWebhookPayment(
+    await expect(synchronizeMolliePayment(
       payload,
       "tr_mandate_mismatch",
       async () => ({
@@ -4149,7 +4188,7 @@ describe("Mollie payment flow", () => {
       scenario: "unfulfillable_before_provider_commit",
     })
     await refundWriteStartedPromise
-    const synchronized = await applyMollieWebhookPayment(
+    const synchronized = await synchronizeMolliePayment(
       payload,
       "tr_refund_sync_race",
       async () => ({
@@ -4373,7 +4412,7 @@ describe("Mollie payment flow", () => {
       },
     })
 
-    const result = await applyMollieWebhookPayment(
+    const result = await synchronizeMolliePayment(
       payload,
       "tr_refunded_before_sync",
       async () => ({
@@ -4475,7 +4514,7 @@ describe("Mollie payment flow", () => {
         _embedded: adjustments,
       })
 
-      const paid = await applyMollieWebhookPayment(
+      const paid = await synchronizeMolliePayment(
         payload,
         "tr_adjusted_before_fulfillment",
         async () => providerPayment({ refunds: [], chargebacks: [] }),
@@ -4483,7 +4522,7 @@ describe("Mollie payment flow", () => {
       expect(paid.fulfillmentRequired).toBe(true)
       expect(order.state).toBe("fulfillment_pending")
 
-      const adjusted = await applyMollieWebhookPayment(
+      const adjusted = await synchronizeMolliePayment(
         payload,
         "tr_adjusted_before_fulfillment",
         async () => providerPayment({ refunds, chargebacks }),
@@ -4608,7 +4647,7 @@ describe("Mollie payment flow", () => {
       },
     })
     await transactionReached
-    const adjusted = await applyMollieWebhookPayment(
+    const adjusted = await synchronizeMolliePayment(
       payload,
       "tr_race_before_registrar_commit",
       async () => ({
@@ -4935,18 +4974,18 @@ describe("Mollie payment flow", () => {
     } as const
 
     queue.mockRejectedValueOnce(new Error("temporary queue outage"))
-    await expect(applyMollieWebhookPayment(
+    await expect(synchronizeMolliePayment(
       payload,
       providerPayment.id,
       async () => providerPayment as never,
     )).rejects.toThrow("temporary queue outage")
 
-    const first = await applyMollieWebhookPayment(
+    const first = await synchronizeMolliePayment(
       payload,
       providerPayment.id,
       async () => providerPayment as never,
     )
-    const repeated = await applyMollieWebhookPayment(
+    const repeated = await synchronizeMolliePayment(
       payload,
       providerPayment.id,
       async () => providerPayment as never,
@@ -5070,7 +5109,7 @@ describe("Mollie payment flow", () => {
       nextChargeAt: "2026-08-01T10:00:00.000Z",
     })
 
-    await applyMollieWebhookPayment(
+    await synchronizeMolliePayment(
       payload,
       "tr_historical_coverage",
       async () => ({
@@ -5164,7 +5203,7 @@ describe("Mollie payment flow", () => {
       throw new Error(`Unexpected provider fetch ${url}`)
     }))
 
-    const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -5187,7 +5226,6 @@ describe("Mollie payment flow", () => {
     expect(run.payment).toMatchObject({
       status: "completed",
       selectedDomain: "clientsite.nl",
-      mollieSubscriptionId: null,
       note: "Mollie payment synchronized; fulfillment is queued separately.",
     })
     const fulfillment = await fulfillPaidOrder(payload, {
@@ -5465,7 +5503,7 @@ describe("Mollie payment flow", () => {
       throw new Error(`Unexpected fetch ${url}`)
     }))
 
-    const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -5497,7 +5535,6 @@ describe("Mollie payment flow", () => {
       status: "completed",
       selectedDomain,
       mollieCustomerId: "cst_test_123",
-      mollieSubscriptionId: null,
     })
     expect(run.domainOrder).toMatchObject({
       status: "registered",
@@ -5634,7 +5671,6 @@ describe("Mollie payment flow", () => {
     const findDomain = vi.fn()
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(providerDomain)
-    const createDns = vi.fn()
     const dependencies = {
       now: () => "2026-07-29T12:00:00.000Z",
       loginOpenProvider: vi.fn(async () => "op-token"),
@@ -5667,7 +5703,6 @@ describe("Mollie payment flow", () => {
         status: "registered" as const,
         raw: {},
       })),
-      createCloudflareZoneDnsRecords: createDns,
     }
 
     await expect(provisionPaidDomainOrder(payload, cast(run), {
@@ -5680,7 +5715,6 @@ describe("Mollie payment flow", () => {
       message: expect.stringContaining("verification is required"),
     })
     expect(findDomain).toHaveBeenCalledTimes(2)
-    expect(createDns).not.toHaveBeenCalled()
     expect(managedDomains[0]).toMatchObject({
       providerRegistrationState: "confirmed",
       registrantVerificationStatus: "pending",
@@ -5733,7 +5767,7 @@ describe("Mollie payment flow", () => {
       }
       throw new Error(`Unexpected provider fetch ${url}`)
     }))
-    const synchronized = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+    const synchronized = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -5959,7 +5993,7 @@ describe("Mollie payment flow", () => {
       }
       throw new Error(`Unexpected provider fetch ${url}`)
     }))
-    const synchronized = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+    const synchronized = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
@@ -5994,32 +6028,6 @@ describe("Mollie payment flow", () => {
       reconciliationRequired: true,
       failureReason: "openprovider_registration_indeterminate",
     })
-  })
-
-  it("blocks the legacy operator subscription retry without a provider request", async () => {
-    const { payload, run } = createPayloadStub({
-      payment: {
-        status: "completed",
-        provider: "mollie",
-        externalReference: "tr_test_123",
-        mollieCustomerId: "cst_test_123",
-      },
-    })
-
-    const result = await retryPostPaymentAutomation(payload, 500, "mollie_subscription")
-
-    expect(result).toEqual({
-      status: "blocked",
-      message: "Long-lived Mollie subscription creation is disabled.",
-    })
-    expect(run.errors).toMatchObject({
-      postPaymentAutomation: {
-        status: "blocked",
-        step: "mollie_subscription",
-        message: "Long-lived Mollie subscription creation is disabled.",
-      },
-    })
-    expect(fetch).not.toHaveBeenCalled()
   })
 
   it("blocks a domain-provisioning retry without an order-bound paid attempt", async () => {

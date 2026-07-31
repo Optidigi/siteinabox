@@ -53,7 +53,6 @@ import {
 } from "@/lib/domains/migrationEvidence"
 import {
   openAutomaticSourceRefreshAuthority,
-  openMigrationSecret,
   sealCheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
 import {
@@ -109,8 +108,8 @@ const zoneExport: CompleteZoneExport = {
   domain: "example.nl",
   acquiredAt: "2026-07-28T08:00:00.000Z",
   authority: {
-    mechanism: "customer_authorized_provider_export",
-    provider: "legacy-dns",
+    mechanism: "cloudflare_api",
+    provider: "cloudflare",
     complete: true,
   },
   authoritativeNameservers: OLD_NAMESERVERS,
@@ -159,6 +158,25 @@ const signedZoneExport: CompleteZoneExport = {
   },
 }
 
+const sourceRefreshAuthority = (
+  sourceZone: CompleteZoneExport,
+  token = "customer-cloudflare-token-value",
+) => {
+  const normalized = normalizeCompleteZone(sourceZone)
+  return {
+    schemaVersion: 1 as const,
+    domain: "example.nl",
+    sourceMechanism: "cloudflare_api_v1" as const,
+    acceptedSourceAuthorityHash: domainMigrationSourceAuthorityHash(normalized),
+    acceptedSourceContentHash: domainMigrationSourceContentHash(normalized),
+    credential: {
+      kind: "cloudflare_api_token" as const,
+      token,
+      zoneId: "a".repeat(32),
+    },
+  }
+}
+
 const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
   const collections: Record<string, MockDoc[]> = {
     orders: [{
@@ -173,7 +191,7 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
         transferRenewalEffect: "unchanged",
         migration: {
           classification: "automatic",
-          sourceMechanism: "customer_authorized_provider_export_v1",
+          sourceMechanism: "cloudflare_api_v1",
         },
         tldCapability: {
           tld: "nl",
@@ -417,6 +435,7 @@ const preparedMigration = async (
     migrationId: migration.id,
     zoneExport: sourceZone,
     transferCode: "opaque-nl-transfer-code",
+    sourceRefreshAuthority: sourceRefreshAuthority(sourceZone),
     env: {
       DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
       CLOUDFLARE_RENDERER_TUNNEL_ID: "11111111-1111-4111-8111-111111111111",
@@ -472,6 +491,9 @@ const workflowDependencies = (input?: {
     : "2026-07-28T09:00:00.000Z"
   const dependencies = {
     now: () => typeof input?.now === "function" ? input.now() : currentNow,
+    refreshAutomaticMigrationSource: vi.fn(async (
+      source: { sourceZone: CompleteZoneExport },
+    ) => source.sourceZone),
     forwardProviderWritesAllowed: vi.fn(() => true),
     transferContractEvidenceAllowed: vi.fn(() => true),
     loginOpenProvider: vi.fn(async () => "token"),
@@ -573,13 +595,13 @@ const workflowDependencies = (input?: {
       ds: TARGET_DS,
       raw: {},
     })),
-    createOrReuseCloudflareMigrationDnsRecord: vi.fn(async (
+    batchCreateCloudflareMigrationDnsRecords: vi.fn(async (
       _zoneId: string,
-      record: NormalizedMigrationDnsRecord,
+      nextRecords: readonly NormalizedMigrationDnsRecord[],
     ) => {
-      const result = { id: `record-${recordId++}`, record, raw: {} }
-      records.push(result)
-      return result
+      for (const record of nextRecords) {
+        records.push({ id: `record-${recordId++}`, record, raw: {} })
+      }
     }),
     getCloudflareSslVerification: vi.fn(async () => ({
       status: "active" as const,
@@ -778,11 +800,6 @@ describe("automatic existing-domain migration", () => {
     const store = createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
-      authority: {
-        mechanism: "validated_provider_export",
-        provider: "legacy-dns",
-        complete: true,
-      },
     }
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
       normalizeCompleteZone(automaticZone),
@@ -797,12 +814,13 @@ describe("automatic existing-domain migration", () => {
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic",
-      sourceMechanism: "validated_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: automaticZone,
       sourceRefreshCredential: {
-        kind: "provider_export",
-        sourceSoaSerial: 2026072901,
+        kind: "cloudflare_api_token",
+        token: "customer-cloudflare-token-value",
+        zoneId: "a".repeat(32),
       },
       transferCode: "opaque-nl-transfer-code",
       transferAuthorizationAccepted: true,
@@ -812,7 +830,7 @@ describe("automatic existing-domain migration", () => {
       ...(order.quoteEvidence as Record<string, unknown>),
       migration: {
         classification: "automatic",
-        sourceMechanism: "validated_provider_export_v1",
+        sourceMechanism: "cloudflare_api_v1",
         sourceZoneHash,
         checkoutSecretKey: secretKey,
       },
@@ -841,7 +859,7 @@ describe("automatic existing-domain migration", () => {
       now.toISOString(),
       { refreshAutomaticMigrationSource: refresh },
     )).resolves.toMatchObject({
-      sourceMechanism: "validated_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneSnapshot: expect.any(Object),
       state: "ready_to_prepare",
     })
@@ -856,11 +874,6 @@ describe("automatic existing-domain migration", () => {
     const store = createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
-      authority: {
-        mechanism: "validated_provider_export",
-        provider: "legacy-dns",
-        complete: true,
-      },
     }
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
       normalizeCompleteZone(automaticZone),
@@ -875,12 +888,13 @@ describe("automatic existing-domain migration", () => {
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic",
-      sourceMechanism: "validated_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: automaticZone,
       sourceRefreshCredential: {
-        kind: "provider_export",
-        sourceSoaSerial: 2026072901,
+        kind: "cloudflare_api_token",
+        token: "customer-cloudflare-token-value",
+        zoneId: "a".repeat(32),
       },
       transferCode: "opaque-nl-transfer-code",
       transferAuthorizationAccepted: true,
@@ -890,7 +904,7 @@ describe("automatic existing-domain migration", () => {
       ...(order.quoteEvidence as Record<string, unknown>),
       migration: {
         classification: "automatic",
-        sourceMechanism: "validated_provider_export_v1",
+        sourceMechanism: "cloudflare_api_v1",
         sourceZoneHash,
         checkoutSecretKey: secretKey,
       },
@@ -1160,7 +1174,7 @@ describe("automatic existing-domain migration", () => {
     expect(refresh).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
-      state: "preparing",
+      state: "awaiting_provider",
       failureReason: null,
       encryptedSourceRefreshAuthority: expect.any(String),
     })
@@ -1264,23 +1278,6 @@ describe("automatic existing-domain migration", () => {
     expect(store.payload.jobs.queue).toHaveBeenCalledTimes(1)
   })
 
-  it("preserves an accepted assisted-standard classification in the migration authority", async () => {
-    const store = createStore()
-    const order = store.collections.orders![0]!
-    order.quoteEvidence = {
-      ...(order.quoteEvidence as Record<string, unknown>),
-      migration: {
-        classification: "assisted_standard",
-        sourceMechanism: "customer_authorized_provider_export_v1",
-      },
-    }
-
-    await expect(createAutomaticDomainMigration(store.payload, 600)).resolves.toMatchObject({
-      acceptedClassification: "assisted_standard",
-      operatorWorkAuthorizationState: "not_required",
-    })
-  })
-
   it("clears retained checkout ciphertext on retry after acquisition already succeeded", async () => {
     const store = createStore()
     const now = new Date("2026-07-28T09:00:00.000Z")
@@ -1293,13 +1290,18 @@ describe("automatic existing-domain migration", () => {
       sourceZoneHash,
     )
     const encryptedInput = sealCheckoutMigrationInput({
-      schemaVersion: 1,
+      schemaVersion: 2,
       generationRunId: "500",
       domain: "example.nl",
       classification: "automatic",
-      sourceMechanism: "customer_authorized_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceZoneHash,
       sourceZone: zoneExport,
+      sourceRefreshCredential: {
+        kind: "cloudflare_api_token",
+        token: "customer-cloudflare-token-value",
+        zoneId: "a".repeat(32),
+      },
       transferCode: "opaque-nl-transfer-code",
       transferAuthorizationAccepted: true,
     })
@@ -1308,7 +1310,7 @@ describe("automatic existing-domain migration", () => {
       ...(order.quoteEvidence as Record<string, unknown>),
       migration: {
         classification: "automatic",
-        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceMechanism: "cloudflare_api_v1",
         sourceZoneHash,
         checkoutSecretKey: secretKey,
       },
@@ -1345,13 +1347,24 @@ describe("automatic existing-domain migration", () => {
       return originalUpdate(args)
     })
 
-    await expect(createAutomaticDomainMigration(store.payload, 600, now.toISOString()))
+    const refresh = { refreshAutomaticMigrationSource: vi.fn(async () => zoneExport) }
+    await expect(createAutomaticDomainMigration(
+      store.payload,
+      600,
+      now.toISOString(),
+      refresh,
+    ))
       .rejects.toThrow("simulated secret clearing failure")
     expect(store.collections["domain-migrations"]).toHaveLength(1)
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       sourceZoneSnapshot: expect.any(Object),
     })
-    await expect(createAutomaticDomainMigration(store.payload, 600, now.toISOString()))
+    await expect(createAutomaticDomainMigration(
+      store.payload,
+      600,
+      now.toISOString(),
+      refresh,
+    ))
       .resolves.toMatchObject({ sourceZoneSnapshot: expect.any(Object) })
     expect(store.collections["migration-checkout-secrets"]![0]).toMatchObject({
       state: "consumed",
@@ -2655,14 +2668,14 @@ describe("automatic existing-domain migration", () => {
     expect(store.collections.orders![0]).toMatchObject({ state: "fulfilled" })
   })
 
-  it("requires fresh source evidence before the first provider write", async () => {
+  it("requires source reauthorization when the current source changes", async () => {
     const store = createStore()
     const order = store.collections.orders![0]!
     order.quoteEvidence = {
       ...(order.quoteEvidence as Record<string, unknown>),
       migration: {
         classification: "automatic",
-        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceMechanism: "cloudflare_api_v1",
         sourceZoneHash: domainMigrationSourceAuthorityHash(
           normalizeCompleteZone(zoneExport),
         ),
@@ -2674,6 +2687,9 @@ describe("automatic existing-domain migration", () => {
       acquiredAt: "2026-07-26T08:00:00.000Z",
     })
     const fixture = workflowDependencies()
+    fixture.dependencies.refreshAutomaticMigrationSource.mockRejectedValueOnce(
+      new MigrationSourceChangedError(),
+    )
 
     await expect(prepareDomainMigration(
       store.payload,
@@ -2681,51 +2697,21 @@ describe("automatic existing-domain migration", () => {
       asMigrationDependencies(fixture.dependencies),
     )).resolves.toMatchObject({
       status: "waiting",
-      message: expect.stringContaining("source evidence is stale"),
+      message: expect.stringContaining("must be reauthorized"),
     })
     expect(stored).toMatchObject({
       state: "awaiting_customer",
-      sourceZoneSnapshot: null,
-      targetZoneSnapshot: null,
-      rollbackEvidence: null,
-      encryptedTransferCode: null,
-      failureReason: "source_evidence_stale",
+      sourceZoneSnapshot: expect.any(Object),
+      targetZoneSnapshot: expect.any(Object),
+      rollbackEvidence: expect.any(Object),
+      encryptedTransferCode: expect.any(String),
+      failureReason: "source_authority_reauthorization_required",
       customerActions: {
-        upload_complete_zone: { status: "required" },
-        provide_epp_code: { status: "required" },
+        provide_epp_code: { status: "completed" },
       },
     })
     expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
-
-    const freshZone = {
-      ...zoneExport,
-      acquiredAt: "2026-07-28T09:00:00.000Z",
-    }
-    await expect(acquireAutomaticMigrationInputs(store.payload, {
-      migrationId: migration.id,
-      zoneExport: {
-        ...freshZone,
-        records: freshZone.records.map((record, index) =>
-          index === 0 && record.type === "A"
-            ? { ...record, content: "192.0.2.99" }
-            : record),
-      },
-      transferCode: "replacement-epp-code",
-      now: "2026-07-28T09:00:00.000Z",
-      expectedUpdatedAt: String(stored.updatedAt),
-    })).rejects.toThrow("invalid_input")
-    await expect(acquireAutomaticMigrationInputs(store.payload, {
-      migrationId: migration.id,
-      zoneExport: freshZone,
-      transferCode: "replacement-epp-code",
-      now: "2026-07-28T09:00:00.000Z",
-      expectedUpdatedAt: String(stored.updatedAt),
-    })).resolves.toMatchObject({
-      state: "ready_to_prepare",
-      encryptedTransferCode: expect.any(String),
-      failureReason: null,
-    })
   })
 
   it("returns customer action before Phase 3 when the transfer code expired", async () => {
@@ -2770,7 +2756,7 @@ describe("automatic existing-domain migration", () => {
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
   })
 
-  it("stops before every new provider write when previously prepared source evidence expires", async () => {
+  it("refreshes durable source authority before provider writes", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
@@ -2789,22 +2775,12 @@ describe("automatic existing-domain migration", () => {
       store.payload,
       migration.id,
       asMigrationDependencies(fixture.dependencies),
-    )).resolves.toMatchObject({
-      status: "failed",
-      message: expect.stringContaining("source evidence expired"),
-    })
+    )).resolves.toMatchObject({ status: "completed" })
 
-    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
-      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.refreshAutomaticMigrationSource).toHaveBeenCalled()
     expect(fixture.dependencies.createOpenProviderCustomerHandle)
       .not.toHaveBeenCalled()
-    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
-    expect(stored).toMatchObject({
-      state: "failed",
-      failureReason: "source_evidence_stale_before_provider_write",
-      reconciliationRequired: true,
-    })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledOnce()
   })
 
   it("queues a full refund before registrar transfer when destination DNS capacity is insufficient", async () => {
@@ -2841,65 +2817,6 @@ describe("automatic existing-domain migration", () => {
       failureReason: "cloudflare_dns_capacity_insufficient",
       encryptedTransferCode: null,
     })
-  })
-
-  it("atomically rejects a second stale-source replacement from another tab", async () => {
-    const store = createStore()
-    const order = store.collections.orders![0]!
-    order.quoteEvidence = {
-      ...(order.quoteEvidence as Record<string, unknown>),
-      migration: {
-        classification: "automatic",
-        sourceMechanism: "customer_authorized_provider_export_v1",
-        sourceZoneHash: domainMigrationSourceAuthorityHash(
-          normalizeCompleteZone(zoneExport),
-        ),
-      },
-    }
-    const migration = await preparedMigration(store)
-    const stored = store.collections["domain-migrations"]![0]!
-    Object.assign(stored.sourceZoneSnapshot as Record<string, unknown>, {
-      acquiredAt: "2026-07-26T08:00:00.000Z",
-    })
-    const fixture = workflowDependencies()
-    await prepareDomainMigration(
-      store.payload,
-      migration.id,
-      asMigrationDependencies(fixture.dependencies),
-    )
-    const expectedUpdatedAt = String(stored.updatedAt)
-    const execute = store.payload.db.drizzle.execute as unknown as ReturnType<
-      typeof vi.fn
-    >
-    execute.mockReset()
-      .mockResolvedValueOnce({ rows: [{ id: migration.id }] })
-      .mockResolvedValueOnce({ rows: [] })
-    const freshZone = {
-      ...zoneExport,
-      acquiredAt: "2026-07-28T09:00:00.000Z",
-    }
-    const transferCodes = ["first-tab-code", "second-tab-code"]
-
-    const results = await Promise.allSettled(transferCodes.map((transferCode) =>
-      acquireAutomaticMigrationInputs(store.payload, {
-        migrationId: migration.id,
-        zoneExport: freshZone,
-        transferCode,
-        expectedUpdatedAt,
-        now: "2026-07-28T09:00:00.000Z",
-      })))
-
-    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
-    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
-    const winnerIndex = results.findIndex((result) => result.status === "fulfilled")
-    const ciphertext = String(stored.encryptedTransferCode)
-    expect(openMigrationSecret(
-      ciphertext,
-      String(stored.idempotencyKey),
-      {
-        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
-      } as unknown as NodeJS.ProcessEnv,
-    )).toBe(transferCodes[winnerIndex])
   })
 
   it("keeps incoming transfer fail-closed without complete TLD DNSSEC evidence", async () => {
@@ -3314,10 +3231,7 @@ describe("automatic existing-domain migration", () => {
     const store = createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
-    Object.assign(stored, {
-      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
-      sourceRefreshAuthorityExpiresAt: "2026-08-20T09:00:00.000Z",
-    })
+    const retainedSourceAuthority = stored.encryptedSourceRefreshAuthority
     const fixture = workflowDependencies()
     fixture.dependencies.transferOpenProviderDomain.mockRejectedValueOnce(
       new OpenProviderIndeterminateWriteError("OpenProvider domain transfer"),
@@ -3348,7 +3262,7 @@ describe("automatic existing-domain migration", () => {
       state: "awaiting_provider",
       providerTransferState: "indeterminate",
       encryptedTransferCode: expect.any(String),
-      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      encryptedSourceRefreshAuthority: retainedSourceAuthority,
       sourceZoneSnapshot: expect.any(Object),
       targetZoneSnapshot: expect.any(Object),
       rollbackEvidence: expect.any(Object),
@@ -3387,7 +3301,7 @@ describe("automatic existing-domain migration", () => {
       state: "awaiting_provider",
       providerTransferState: "indeterminate",
       encryptedTransferCode: expect.any(String),
-      encryptedSourceRefreshAuthority: "retained-source-oauth-authority",
+      encryptedSourceRefreshAuthority: retainedSourceAuthority,
       failureReason: null,
     })
     expect(store.collections["operational-alerts"]).toEqual([
@@ -3504,13 +3418,77 @@ describe("automatic existing-domain migration", () => {
     })
 
     expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledOnce()
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
-      .toHaveBeenCalledTimes(zoneExport.records.length)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .toHaveBeenCalledTimes(1)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .toHaveBeenCalledWith("zone-1", expect.any(Array))
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       state: "completed",
       cloudflareZoneId: "zone-1",
       cloudflareZoneState: "confirmed",
     })
+  })
+
+  it("does not repeat a successful Cloudflare zone write while readback is stale", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([])
+    fixture.dependencies.createOrReuseCloudflareZone.mockResolvedValue({
+      id: "zone-1",
+      name: "example.nl",
+      nameServers: CLOUDFLARE_NAMESERVERS,
+      status: "active",
+      raw: {},
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledOnce()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      cloudflareZoneState: "indeterminate",
+      failureReason: "cloudflare_zone_creation_indeterminate",
+    })
+  })
+
+  it("treats a prepared Cloudflare zone checkpoint as readback-only after restart", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      state: "preparing",
+      cloudflareZoneState: "prepared",
+      reconciliationRequired: true,
+      failureReason: "cloudflare_zone_creation_prepared",
+      stateHistory: [
+        ...(Array.isArray(stored.stateHistory) ? stored.stateHistory : []),
+        {
+          state: "preparing",
+          at: "2026-07-28T08:59:00.000Z",
+          reason: "cloudflare_zone_write_prepared",
+        },
+      ],
+    })
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([])
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
   })
 
   it("stops for manual review when exact Cloudflare zone authority is ambiguous", async () => {
@@ -3555,8 +3533,8 @@ describe("automatic existing-domain migration", () => {
     const store = createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
-    fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord.mockRejectedValue(
-      new CloudflareIndeterminateWriteError("Cloudflare DNS record creation"),
+    fixture.dependencies.batchCreateCloudflareMigrationDnsRecords.mockRejectedValue(
+      new CloudflareIndeterminateWriteError("Cloudflare DNS batch creation"),
     )
 
     await expect(prepareDomainMigration(
@@ -3573,13 +3551,69 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({ status: "failed" })
 
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
       .toHaveBeenCalledTimes(1)
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       state: "failed",
       encryptedTransferCode: null,
       failureReason: "cloudflare_dns_outcome_unresolved",
     })
+  })
+
+  it("does not repeat a successful Cloudflare DNS batch while readback is stale", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.batchCreateCloudflareMigrationDnsRecords.mockResolvedValue()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .toHaveBeenCalledOnce()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      cloudflareZoneState: "indeterminate",
+      failureReason: "cloudflare_dns_write_indeterminate",
+    })
+  })
+
+  it("treats a prepared Cloudflare DNS checkpoint as readback-only after restart", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      state: "preparing",
+      cloudflareZoneState: "prepared",
+      reconciliationRequired: true,
+      failureReason: "cloudflare_dns_write_prepared",
+      stateHistory: [
+        ...(Array.isArray(stored.stateHistory) ? stored.stateHistory : []),
+        {
+          state: "preparing",
+          at: "2026-07-28T08:59:00.000Z",
+          reason: "cloudflare_dns_write_prepared",
+        },
+      ],
+    })
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .not.toHaveBeenCalled()
   })
 
   it("fails closed on unexpected existing Cloudflare records before any DNS or registrar write", async () => {
@@ -3607,7 +3641,7 @@ describe("automatic existing-domain migration", () => {
       message: expect.stringContaining("unexpected records"),
     })
 
-    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
       .not.toHaveBeenCalled()
     expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
@@ -3673,6 +3707,50 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("does not trust a customer-create response while exact readback is absent", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockResolvedValue({
+      handle: "UNVERIFIED-WRITE-RESPONSE",
+      raw: {},
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle).toHaveBeenCalledOnce()
+    const stored = store.collections["domain-migrations"]![0]!
+    expect(stored).toMatchObject({
+      providerTransferState: "indeterminate",
+      failureReason: "openprovider_customer_handle_indeterminate",
+    })
+    expect(stored.providerCustomerHandle).toBeFalsy()
+  })
+
   it("waits through a crashed customer-create claim lease and retries only after exact absence", async () => {
     const store = createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
@@ -3692,7 +3770,15 @@ describe("automatic existing-domain migration", () => {
     })
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
-    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.findOpenProviderCustomerByReference
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        handle: "OWNER-CLIENT",
+        comments: "domain-migration:order:600:v1",
+        raw: {},
+      })
     fixture.dependencies.createOpenProviderCustomerHandle.mockResolvedValue({
       handle: "OWNER-CLIENT",
       raw: {},
@@ -3763,7 +3849,7 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({ status: "completed" })
     expect(fixture.dependencies.findOpenProviderCustomerByReference)
-      .toHaveBeenCalledTimes(3)
+      .toHaveBeenCalledTimes(4)
     expect(fixture.dependencies.createOpenProviderCustomerHandle)
       .toHaveBeenCalledOnce()
   })
@@ -3786,7 +3872,14 @@ describe("automatic existing-domain migration", () => {
     })
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
-    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.findOpenProviderCustomerByReference
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        handle: "OWNER-CLIENT",
+        comments: "domain-migration:order:600:v1",
+        raw: {},
+      })
     const createGate: {
       release?: (value: { handle: string; raw: object }) => void
     } = {}

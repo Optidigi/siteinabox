@@ -13,7 +13,6 @@ import {
   type MigrationSourceMechanism,
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
-import type { MigrationClassification } from "@siteinabox/contracts/commerce"
 import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 import {
   domainMigrationSourceAuthorityHash,
@@ -87,19 +86,6 @@ export function openMigrationSecret(
   ]).toString("utf8")
 }
 
-type LegacyCheckoutMigrationInput = {
-  schemaVersion: 1
-  generationRunId: string
-  domain: string
-  classification: Exclude<MigrationClassification, "complex">
-  sourceMechanism: "customer_authorized_provider_export_v1"
-  sourceZoneHash: string
-  sourceZone: CompleteZoneExport
-  transferCode: string
-  transferAuthorizationAccepted: true
-  gtldTransferEligibilityAccepted?: boolean
-}
-
 export type AutomaticSourceRefreshCredential =
   | {
       kind: "cloudflare_api_token"
@@ -117,19 +103,12 @@ export type AutomaticSourceRefreshCredential =
       tsigName: string | null
       tsigSecret: string | null
     }
-  | {
-      kind: "provider_export"
-      sourceSoaSerial: number
-    }
 
 export type DurableAutomaticSourceMechanism =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
 
-export type DurableAutomaticSourceRefreshCredential = Exclude<
-  AutomaticSourceRefreshCredential,
-  { kind: "provider_export" }
->
+export type DurableAutomaticSourceRefreshCredential = AutomaticSourceRefreshCredential
 
 export type AutomaticSourceRefreshAuthority = {
   schemaVersion: 1
@@ -179,10 +158,7 @@ export type AutomaticCheckoutMigrationInput = {
   generationRunId: string
   domain: string
   classification: "automatic"
-  sourceMechanism: Exclude<
-    MigrationSourceMechanism,
-    "customer_authorized_provider_export_v1"
-  >
+  sourceMechanism: DurableAutomaticSourceMechanism
   sourceZoneHash: string
   sourceZone: CompleteZoneExport
   sourceRefreshCredential: AutomaticSourceRefreshCredential
@@ -191,9 +167,7 @@ export type AutomaticCheckoutMigrationInput = {
   gtldTransferEligibilityAccepted?: boolean
 }
 
-export type CheckoutMigrationInput =
-  | LegacyCheckoutMigrationInput
-  | AutomaticCheckoutMigrationInput
+export type CheckoutMigrationInput = AutomaticCheckoutMigrationInput
 
 const automaticRefreshCredentialValid = (
   sourceMechanism: AutomaticCheckoutMigrationInput["sourceMechanism"],
@@ -234,10 +208,7 @@ const automaticRefreshCredentialValid = (
       credential.nameserver.length <= 255 &&
       (tsigAbsent || tsigPresent)
   }
-  return credential.kind === "provider_export" &&
-    Number.isSafeInteger(credential.sourceSoaSerial) &&
-    Number(credential.sourceSoaSerial) >= 0 &&
-    Number(credential.sourceSoaSerial) <= 4_294_967_295
+  return false
 }
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/
@@ -271,17 +242,17 @@ const durableSourceRefreshAuthorityValid = (
 const automaticSourceAuthorityMatches = (
   sourceMechanism: AutomaticCheckoutMigrationInput["sourceMechanism"],
   sourceZone: NormalizedCompleteZone,
-): boolean => ({
-  cloudflare_api_v1: "cloudflare_api",
-  authorized_axfr_v1: "authorized_axfr",
-  validated_provider_export_v1: "validated_provider_export",
-})[sourceMechanism] === sourceZone.authority.mechanism
+): boolean => (
+  sourceMechanism === "cloudflare_api_v1"
+    ? sourceZone.authority.mechanism === "cloudflare_api"
+    : sourceZone.authority.mechanism === "authorized_axfr"
+)
 
 type SerializedCheckoutMigrationInput = {
-  schemaVersion?: 1 | 2
+  schemaVersion?: 2
   generationRunId?: string
   domain?: string
-  classification?: "automatic" | "assisted_standard"
+  classification?: "automatic"
   sourceMechanism?: MigrationSourceMechanism
   sourceZoneHash?: string
   sourceZone?: unknown
@@ -320,12 +291,8 @@ export function sealCheckoutMigrationInput(
       input.sourceRefreshCredential,
     ) &&
     automaticSourceAuthorityMatches(input.sourceMechanism, sourceZone)
-  const legacyInputValid =
-    input.schemaVersion === 1 &&
-    ["automatic", "assisted_standard"].includes(input.classification) &&
-    input.sourceMechanism === "customer_authorized_provider_export_v1"
   if (
-    (!legacyInputValid && !automaticInputValid) ||
+    !automaticInputValid ||
     input.generationRunId.trim().length === 0 ||
     sourceZone.domain !== input.domain.trim().toLowerCase() ||
     input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
@@ -364,22 +331,19 @@ export function openCheckoutMigrationInput(
   const sourceMechanism = migrationSourceMechanismSchema.safeParse(
     input.sourceMechanism,
   )
-  const legacyInputValid =
-    input.schemaVersion === 1 &&
-    input.sourceMechanism === "customer_authorized_provider_export_v1" &&
-    ["automatic", "assisted_standard"].includes(input.classification ?? "")
   const automaticInputValid =
     input.schemaVersion === 2 &&
     input.classification === "automatic" &&
     sourceMechanism.success &&
-    sourceMechanism.data !== "customer_authorized_provider_export_v1" &&
+    (sourceMechanism.data === "cloudflare_api_v1" ||
+      sourceMechanism.data === "authorized_axfr_v1") &&
     automaticRefreshCredentialValid(
       sourceMechanism.data,
       input.sourceRefreshCredential,
     ) &&
     automaticSourceAuthorityMatches(sourceMechanism.data, sourceZone)
   if (
-    (!legacyInputValid && !automaticInputValid) ||
+    !automaticInputValid ||
     input.generationRunId !== String(generationRunId) ||
     input.domain !== normalizedDomain ||
     sourceZone.domain !== normalizedDomain ||
@@ -401,10 +365,8 @@ export function openCheckoutMigrationInput(
     schemaVersion: input.schemaVersion,
     generationRunId: String(generationRunId),
     domain: normalizedDomain,
-    classification: input.classification as "automatic" | "assisted_standard",
-    sourceMechanism: sourceMechanism.success
-      ? sourceMechanism.data
-      : "customer_authorized_provider_export_v1",
+    classification: "automatic",
+    sourceMechanism: sourceMechanism.data as DurableAutomaticSourceMechanism,
     sourceZoneHash: input.sourceZoneHash,
     sourceZone: sourceZoneInput,
     normalizedSourceZone: sourceZone,
