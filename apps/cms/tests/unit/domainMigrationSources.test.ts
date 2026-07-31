@@ -69,31 +69,39 @@ const publicEvidence = {
   supplementalOnly: true as const,
 }
 
-const acquiredExport = () => acquireValidatedProviderExport({
-  domain: "example.nl",
-  provider: "example-provider",
-  bindText: BIND_ZONE,
-  publicEvidence,
-  now: new Date("2026-07-29T10:00:00.000Z"),
-})
-
-const checkoutInput = async (
-  acquiredInput?: Awaited<ReturnType<typeof acquiredExport>>,
-): Promise<AutomaticCheckoutMigrationInput> => {
-  const acquired = acquiredInput ?? await acquiredExport()
+const checkoutInput = async (): Promise<AutomaticCheckoutMigrationInput> => {
+  const parsed = parseBindZone(BIND_ZONE, "example.nl")
+  const sourceZone: CompleteZoneExport = {
+    schemaVersion: 1,
+    format: "siab-complete-zone-v1",
+    domain: "example.nl",
+    acquiredAt: "2026-07-29T10:00:00.000Z",
+    authority: {
+      mechanism: "cloudflare_api",
+      provider: "cloudflare",
+      complete: true,
+    },
+    authoritativeNameservers: parsed.authoritativeNameservers,
+    dnssec: { status: "unsigned", parentDsRecords: [] },
+    records: parsed.records,
+  }
   return {
-  schemaVersion: 2,
-  generationRunId: "500",
-  domain: "example.nl",
-  classification: "automatic",
-  sourceMechanism: acquired.mechanism,
-  sourceZoneHash: domainMigrationSourceAuthorityHash(
-    normalizeCompleteZone(acquired.zone),
-  ),
-  sourceZone: acquired.zone,
-  sourceRefreshCredential: acquired.refreshCredential,
-  transferCode: "opaque-epp",
-  transferAuthorizationAccepted: true,
+    schemaVersion: 2,
+    generationRunId: "500",
+    domain: "example.nl",
+    classification: "automatic",
+    sourceMechanism: "cloudflare_api_v1",
+    sourceZoneHash: domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(sourceZone),
+    ),
+    sourceZone,
+    sourceRefreshCredential: {
+      kind: "cloudflare_api_token",
+      token: "customer-cloudflare-token-value",
+      zoneId: "a".repeat(32),
+    },
+    transferCode: "opaque-epp",
+    transferAuthorizationAccepted: true,
   }
 }
 
@@ -458,31 +466,29 @@ describe("complete migration source acquisition", () => {
     expect(execFileImpl).not.toHaveBeenCalled()
   })
 
-  it("refreshes provider exports from live authority and stops changed sources", async () => {
+  it("refreshes Cloudflare source authority and stops changed sources", async () => {
     const input = await checkoutInput()
+    const exactSource = {
+      mechanism: "cloudflare_api_v1" as const,
+      zone: input.sourceZone,
+      refreshCredential: input.sourceRefreshCredential,
+    }
     await expect(refreshAutomaticMigrationSource(input, {
       inspectPublicEvidence: vi.fn(async () => publicEvidence),
-      resolveSoaImpl: vi.fn(async () => ({
-        nsname: "ns1.provider.example",
-        hostmaster: "hostmaster.example.nl",
-        serial: 2026072901,
-        refresh: 3600,
-        retry: 900,
-        expire: 1209600,
-        minttl: 300,
-      })),
+      acquireCloudflareSource: vi.fn(async () => exactSource),
     })).resolves.toEqual(input.sourceZone)
 
     await expect(refreshAutomaticMigrationSource(input, {
       inspectPublicEvidence: vi.fn(async () => publicEvidence),
-      resolveSoaImpl: vi.fn(async () => ({
-        nsname: "ns1.provider.example",
-        hostmaster: "hostmaster.example.nl",
-        serial: 2026072902,
-        refresh: 3600,
-        retry: 900,
-        expire: 1209600,
-        minttl: 300,
+      acquireCloudflareSource: vi.fn(async () => ({
+        ...exactSource,
+        zone: {
+          ...input.sourceZone,
+          records: input.sourceZone.records.map((record, index) =>
+            index === 0 && "content" in record
+              ? { ...record, content: "192.0.2.99" }
+              : record),
+        },
       })),
     })).rejects.toBeInstanceOf(MigrationSourceChangedError)
   })
