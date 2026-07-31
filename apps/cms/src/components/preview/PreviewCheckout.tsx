@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   ReceiptText,
+  Rocket,
   UserRound,
   X,
 } from "lucide-react"
@@ -23,6 +24,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@site
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@siteinabox/ui/components/sheet"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 
@@ -68,6 +76,7 @@ type PreviewCheckoutProfileAction = (
 
 type CheckoutStep = "domain" | "details" | "overview"
 type BillingPeriod = "monthly" | "annual"
+type DetailsGroup = "company" | "contact" | "address"
 type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
@@ -95,6 +104,7 @@ type PreviewCheckoutProps = {
   initialProfile?: CheckoutProfileView | null
   initialDetails: CheckoutProfileDraft
   initialQuotes?: CheckoutQuoteSet | null
+  supportedDomainExtensions?: string[]
   initialStep?: CheckoutStep
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
@@ -240,6 +250,7 @@ export function PreviewCheckout({
   initialProfile,
   initialDetails,
   initialQuotes = null,
+  supportedDomainExtensions = ["nl", "com", "eu"],
   initialStep = "domain",
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
@@ -335,6 +346,12 @@ export function PreviewCheckout({
     initialProfile ?? null,
   )
   const [detailsDirty, setDetailsDirty] = React.useState(!initialProfile)
+  const [detailsEditorOpen, setDetailsEditorOpen] = React.useState(!initialProfile)
+  const [detailsEditorGroup, setDetailsEditorGroup] = React.useState<DetailsGroup>(() => {
+    if (!initialDetails.firstName || !initialDetails.lastName || !initialDetails.phoneSubscriberNumber) return "contact"
+    if (!initialDetails.registeredBusinessName && !initialDetails.intendedCompanyName) return "company"
+    return "address"
+  })
   const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(
     initialQuotes?.annual.quote.billingPeriod ?? "annual",
   )
@@ -367,6 +384,12 @@ export function PreviewCheckout({
     cloudflareSourceDomain ?? readyDomain ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
+  const [selectedExtensions, setSelectedExtensions] = React.useState<string[]>(() =>
+    supportedDomainExtensions.slice(0, 4),
+  )
+  const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
+  const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
+  const extensionRequestRef = React.useRef<string | null>(null)
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const domainRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
   const latestDomainRequestTokenRef = React.useRef<string | null>(null)
@@ -380,6 +403,7 @@ export function PreviewCheckout({
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
   const [termsAccepted, setTermsAccepted] = React.useState(false)
   const [businessUseAccepted, setBusinessUseAccepted] = React.useState(false)
+  const [legalSubmitRequested, setLegalSubmitRequested] = React.useState(false)
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
@@ -580,20 +604,6 @@ export function PreviewCheckout({
   ])
 
   React.useEffect(() => {
-    if (step !== "domain" || domainMode !== "new_registration") return
-    if (!domainLooksCheckable) return
-    if (
-      normalizedDomainValue === checkedDomain ||
-      normalizedDomainValue === lastSubmittedDomainRef.current
-    ) return
-    const timer = window.setTimeout(() => {
-      lastSubmittedDomainRef.current = normalizedDomainValue
-      domainFormRef.current?.requestSubmit()
-    }, 650)
-    return () => window.clearTimeout(timer)
-  }, [checkedDomain, domainLooksCheckable, domainMode, normalizedDomainValue, step])
-
-  React.useEffect(() => {
     if (
       profileState.requestToken &&
       profileState.requestToken !== latestProfileRequestTokenRef.current
@@ -602,6 +612,7 @@ export function PreviewCheckout({
       setSavedProfile(profileState.profile)
       setDetails(profileState.profile)
       setDetailsDirty(false)
+      setDetailsEditorOpen(false)
       if (profileState.quotes) setQuotes(profileState.quotes)
       setStep("overview")
       return
@@ -652,6 +663,15 @@ export function PreviewCheckout({
         profileState.requestToken === latestProfileRequestTokenRef.current
       )
     ) {
+      const fields = Object.keys(profileState.fieldErrors ?? {})
+      setDetailsEditorGroup(
+        fields.some((field) => ["street", "number", "suffix", "zipcode", "city", "country", "euEligibilityBasis", "euEligibilityCountry"].includes(field))
+          ? "address"
+          : fields.some((field) => ["partyType", "registeredBusinessName", "kvkNumber", "intendedCompanyName"].includes(field))
+            ? "company"
+            : "contact",
+      )
+      setDetailsEditorOpen(true)
       profileErrorSummaryRef.current?.focus()
     }
   }, [profileState])
@@ -774,8 +794,14 @@ export function PreviewCheckout({
     suggestionsState.cursor,
   ])
 
-  const selectedDomain =
-    checkedDomain && checkedDomain === normalizedDomainValue ? checkedDomain : null
+  const extensionSelectionApplies = Boolean(
+    checkedDomain && extensionResults.some((result) =>
+      result.ok && result.domain === checkedDomain && Boolean(result.quotes)),
+  )
+  const selectedDomain = checkedDomain &&
+    (checkedDomain === normalizedDomainValue || extensionSelectionApplies)
+    ? checkedDomain
+    : null
   const primaryDomainUnavailable = Boolean(
     domainMode === "new_registration" &&
     !checkPending &&
@@ -803,9 +829,11 @@ export function PreviewCheckout({
     quotes &&
     quotes.annual.quote.domainMode === domainMode &&
     (
-      checkAppliesToCurrentInput
+      extensionResults.some((result) =>
+        result.ok && result.domain === selectedDomain && Boolean(result.quotes)) ||
+      (checkAppliesToCurrentInput
         ? checkState.ok
-        : selectedDomain === readyDomain
+        : selectedDomain === readyDomain)
     ),
   )
   const domainResultKind = checkPending
@@ -847,6 +875,9 @@ export function PreviewCheckout({
     lastSuggestionsRequestKeyRef.current = null
     setSuggestionsPending(false)
     setDomainValue(value)
+    setExtensionResults([])
+    setExtensionCheckPending(false)
+    extensionRequestRef.current = null
     if (value.trim().toLowerCase() !== checkedDomain) {
       setCheckedDomain(null)
       setQuotes(null)
@@ -854,6 +885,67 @@ export function PreviewCheckout({
       setMigrationPreflight(null)
       if (step !== "domain") setStep("domain")
     }
+  }
+
+  const toggleExtension = (extension: string, checked: boolean) => {
+    setSelectedExtensions((current) => {
+      const next = checked
+        ? [...new Set([...current, extension])]
+        : current.filter((entry) => entry !== extension)
+      return next.length > 0 ? next : current
+    })
+    setCheckedDomain(null)
+    setQuotes(null)
+    setExtensionResults([])
+    setExtensionCheckPending(false)
+    extensionRequestRef.current = null
+  }
+
+  const checkSelectedExtensions = React.useCallback(async () => {
+    const entered = normalizedDomainValue.replace(/^https?:\/\//, "").split("/")[0] ?? ""
+    const firstLabel = entered.split(".")[0]?.trim() ?? ""
+    if (!firstLabel) return
+    const requestToken = nextRequestToken()
+    extensionRequestRef.current = requestToken
+    setExtensionCheckPending(true)
+    setCheckedDomain(null)
+    setQuotes(null)
+    setExtensionResults([])
+    const results = await Promise.all(selectedExtensions.map(async (extension) => {
+      const domain = `${firstLabel}.${extension}`
+      try {
+        const formData = new FormData()
+        formData.set("domain", domain)
+        formData.set("domainMode", "new_registration")
+        formData.set("requestToken", requestToken)
+        return await checkDomainAction(initialActionState, formData)
+      } catch {
+        return {
+          ok: false,
+          status: "service_error" as const,
+          domain,
+          domainMode: "new_registration" as const,
+          message: t("checkoutDomainServiceUnavailable"),
+        }
+      }
+    }))
+    if (extensionRequestRef.current !== requestToken) return
+    setExtensionResults(results)
+    setExtensionCheckPending(false)
+  }, [checkDomainAction, normalizedDomainValue, selectedExtensions, t])
+
+  React.useEffect(() => {
+    if (step !== "domain" || domainMode !== "new_registration") return
+    const firstLabel = normalizedDomainValue.replace(/^https?:\/\//, "").split(/[./]/)[0]?.trim() ?? ""
+    if (firstLabel.length < 2 || selectedExtensions.length === 0) return
+    const timer = window.setTimeout(() => void checkSelectedExtensions(), 450)
+    return () => window.clearTimeout(timer)
+  }, [checkSelectedExtensions, domainMode, normalizedDomainValue, selectedExtensions.length, step])
+
+  const selectExtensionResult = (result: PreviewCheckoutActionState) => {
+    if (!result.ok || !result.domain || !result.quotes) return
+    setCheckedDomain(result.domain)
+    setQuotes(result.quotes)
   }
 
   const updateDomainMode = (mode: "new_registration" | "existing_domain") => {
@@ -896,6 +988,11 @@ export function PreviewCheckout({
     setDetailsDirty(true)
   }
 
+  const openDetailsEditor = (group: DetailsGroup) => {
+    setDetailsEditorGroup(group)
+    setDetailsEditorOpen(true)
+  }
+
   const goBack = () => {
     if (acceptedOrderId != null) return
     if (step === "details") setStep("domain")
@@ -904,6 +1001,19 @@ export function PreviewCheckout({
 
   const submitPayment = () => {
     if (requiresMigrationRecollection) return
+    const firstMissingId = !previewApprovalAccepted
+      ? "checkout-preview-approval"
+      : !businessUseAccepted
+        ? "checkout-business-use"
+        : !termsAccepted
+          ? "checkout-terms"
+          : null
+    if (firstMissingId) {
+      setLegalSubmitRequested(true)
+      window.setTimeout(() => document.getElementById(firstMissingId)?.focus(), 0)
+      return
+    }
+    setLegalSubmitRequested(false)
     setPaymentSubmitRequested(true)
     paymentFormRef.current?.requestSubmit()
   }
@@ -915,6 +1025,9 @@ export function PreviewCheckout({
     acceptedMigrationDomain &&
     cloudflareSourceAuthorization &&
     cloudflareSourceDomain === acceptedMigrationDomain,
+  )
+  const fulfilmentActive = Boolean(
+    paymentReturn || provisioningStatus || migrationStatus || billingAgreement,
   )
 
   return (
@@ -973,16 +1086,27 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div className="mx-auto grid min-w-0 w-full max-w-4xl gap-4 p-3 [&>*]:min-w-0 md:p-4">
-        <PreviewCheckoutStepper
-          step={step}
-          highestReachedStep={
-            acceptedOrderId == null
-              ? highestReachedStep
-              : checkoutStepOrder.indexOf(step)
-          }
-          onStepSelect={acceptedOrderId == null ? setStep : () => {}}
-        />
+      <div className="mx-auto grid min-w-0 w-full max-w-5xl gap-4 p-3 [&>*]:min-w-0 sm:p-4">
+        {fulfilmentActive ? (
+          <div className="grid gap-1 py-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Rocket className="size-4" aria-hidden />
+              {t("checkoutFulfilmentEyebrow")}
+            </div>
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
+              {t("checkoutFulfilmentTitle")}
+            </h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              {t("checkoutFulfilmentDescription")}
+            </p>
+          </div>
+        ) : (
+          <PreviewCheckoutStepper
+            step={step}
+            highestReachedStep={highestReachedStep}
+            onStepSelect={setStep}
+          />
+        )}
 
         {paymentReturn && (
           <Alert role="status" aria-live="polite">
@@ -1392,7 +1516,7 @@ export function PreviewCheckout({
           </Alert>
         )}
 
-        {step === "domain" && (
+        {!fulfilmentActive && step === "domain" && (
           <Card>
             <CardHeader>
               <CardTitle>
@@ -1510,6 +1634,56 @@ export function PreviewCheckout({
                     ) : null}
                   </div>
                 </div>
+                {domainMode === "new_registration" && (
+                  <div className="grid gap-3 pt-2">
+                    <fieldset className="grid gap-2">
+                      <legend className="text-sm font-medium">{t("checkoutExtensionsLegend")}</legend>
+                      <div className="flex flex-wrap gap-2">
+                        {supportedDomainExtensions.map((extension) => (
+                          <div key={extension} className="flex min-h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
+                            <Checkbox
+                              aria-label={`.${extension}`}
+                              checked={selectedExtensions.includes(extension)}
+                              onCheckedChange={(value) => toggleExtension(extension, value === true)}
+                            />
+                            .{extension}
+                          </div>
+                        ))}
+                      </div>
+                    </fieldset>
+                    {(extensionCheckPending || extensionResults.length > 0) && (
+                      <div className="divide-y rounded-md border" aria-live="polite">
+                        {extensionCheckPending && selectedExtensions.map((extension) => (
+                          <div key={extension} className="flex min-w-0 items-center gap-3 p-3 text-sm text-muted-foreground">
+                            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                            <span className="min-w-0 break-all">{normalizedDomainValue.split(".")[0]}.{extension}</span>
+                            <span className="ml-auto">{t("checkoutDomainCheckingShort")}</span>
+                          </div>
+                        ))}
+                        {!extensionCheckPending && extensionResults.map((result) => {
+                          const available = Boolean(result.ok && result.domain && result.quotes)
+                          const premium = result.status === "premium"
+                          return (
+                            <div key={result.domain ?? result.message} className="flex min-w-0 items-center gap-3 p-3 text-sm">
+                              {available
+                                ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
+                                : <CircleAlert className="size-4 shrink-0 text-warning" aria-hidden />}
+                              <span className="min-w-0 flex-1 break-all font-medium">{result.domain}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {available ? t("checkoutExtensionAvailable") : premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : t("checkoutExtensionError")}
+                              </span>
+                              {available && (
+                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} onClick={() => selectExtensionResult(result)}>
+                                  {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+                                </Button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
                   !migrationTransferBlocked &&
@@ -1779,7 +1953,7 @@ export function PreviewCheckout({
           </Card>
         )}
 
-        {step === "details" && (
+        {!fulfilmentActive && step === "details" && (
           <Card>
             <CardHeader>
               <CardTitle>
@@ -1791,11 +1965,49 @@ export function PreviewCheckout({
                 {t("checkoutDetailsDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="grid gap-4">
+              <div className="divide-y rounded-md border" aria-label={t("checkoutKnownDetailsLabel")}>
+                <ConfirmationRow
+                  title={t("checkoutContactGroup")}
+                  value={`${details.firstName} ${details.lastName} · ${customerEmail}`}
+                  onEdit={() => openDetailsEditor("contact")}
+                  t={t}
+                />
+                <ConfirmationRow
+                  title={t("checkoutCompanyGroup")}
+                  value={details.registeredBusinessName || details.intendedCompanyName || t("checkoutNotProvided")}
+                  onEdit={() => openDetailsEditor("company")}
+                  t={t}
+                />
+                <ConfirmationRow
+                  title={t("checkoutAddressGroup")}
+                  value={`${details.street} ${details.number}${details.suffix ?? ""}, ${details.zipcode} ${details.city}`}
+                  onEdit={() => openDetailsEditor("address")}
+                  t={t}
+                />
+                <ConfirmationRow
+                  title={t("checkoutPhoneTitle")}
+                  value={`${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`}
+                  onEdit={() => openDetailsEditor("contact")}
+                  t={t}
+                />
+              </div>
+              <Sheet open={detailsEditorOpen} onOpenChange={setDetailsEditorOpen}>
+                <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-full sm:max-w-xl sm:rounded-none sm:border-l">
+                  <SheetHeader className="border-b px-5">
+                    <SheetTitle>
+                      {detailsEditorGroup === "company"
+                        ? t("checkoutEditDetailsCompany")
+                        : detailsEditorGroup === "address"
+                          ? t("checkoutEditDetailsAddress")
+                          : t("checkoutEditDetailsContact")}
+                    </SheetTitle>
+                    <SheetDescription>{t("checkoutEditDetailsDescription")}</SheetDescription>
+                  </SheetHeader>
               <form
                 id="checkout-profile-form"
                 action={profileAction}
-                className="grid gap-6"
+                className="grid gap-6 px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)]"
                 onSubmit={() => {
                   const token = nextRequestToken()
                   latestProfileRequestTokenRef.current = token
@@ -1821,6 +2033,35 @@ export function PreviewCheckout({
                   name="expectedProfileVersion"
                   value={savedProfile?.profileVersion ?? 0}
                 />
+                {detailsEditorGroup !== "company" && (
+                  <>
+                    <input type="hidden" name="partyType" value={details.partyType} />
+                    <input type="hidden" name="registeredBusinessName" value={details.registeredBusinessName ?? ""} />
+                    <input type="hidden" name="kvkNumber" value={details.kvkNumber ?? ""} />
+                    <input type="hidden" name="intendedCompanyName" value={details.intendedCompanyName ?? ""} />
+                  </>
+                )}
+                {detailsEditorGroup !== "contact" && (
+                  <>
+                    <input type="hidden" name="firstName" value={details.firstName ?? ""} />
+                    <input type="hidden" name="lastName" value={details.lastName ?? ""} />
+                    <input type="hidden" name="phoneCountryCode" value={details.phoneCountryCode ?? ""} />
+                    <input type="hidden" name="phoneAreaCode" value={details.phoneAreaCode ?? ""} />
+                    <input type="hidden" name="phoneSubscriberNumber" value={details.phoneSubscriberNumber ?? ""} />
+                  </>
+                )}
+                {detailsEditorGroup !== "address" && (
+                  <>
+                    <input type="hidden" name="street" value={details.street ?? ""} />
+                    <input type="hidden" name="number" value={details.number ?? ""} />
+                    <input type="hidden" name="suffix" value={details.suffix ?? ""} />
+                    <input type="hidden" name="zipcode" value={details.zipcode ?? ""} />
+                    <input type="hidden" name="city" value={details.city ?? ""} />
+                    <input type="hidden" name="country" value={details.country ?? ""} />
+                    <input type="hidden" name="euEligibilityBasis" value={details.euEligibilityBasis ?? ""} />
+                    <input type="hidden" name="euEligibilityCountry" value={details.euEligibilityCountry ?? ""} />
+                  </>
+                )}
 
                 {savedProfile && (
                   <Alert>
@@ -1885,6 +2126,7 @@ export function PreviewCheckout({
                   </div>
                 )}
 
+                {detailsEditorGroup === "company" && <>
                 <fieldset className="grid gap-3">
                   <legend className="text-base font-semibold">
                     {t("checkoutPartyTypeLegend")}
@@ -1923,6 +2165,46 @@ export function PreviewCheckout({
                   </label>
                 </fieldset>
 
+                {details.partyType === "registered_business" ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <CheckoutTextField
+                      id="checkout-business-name"
+                      name="registeredBusinessName"
+                      label={t("checkoutRegisteredBusinessName")}
+                      value={details.registeredBusinessName}
+                      error={profileState.fieldErrors?.registeredBusinessName}
+                      autoComplete="organization"
+                      onChange={(value) => updateDetail("registeredBusinessName", value)}
+                      required
+                    />
+                    <CheckoutTextField
+                      id="checkout-kvk"
+                      name="kvkNumber"
+                      label={t("checkoutKvkNumber")}
+                      value={details.kvkNumber}
+                      error={profileState.fieldErrors?.kvkNumber}
+                      inputMode="numeric"
+                      pattern="[0-9]{8}"
+                      maxLength={8}
+                      onChange={(value) => updateDetail("kvkNumber", value.replace(/\D/g, ""))}
+                      required
+                    />
+                  </div>
+                ) : (
+                  <CheckoutTextField
+                    id="checkout-intended-company"
+                    name="intendedCompanyName"
+                    label={t("checkoutIntendedCompanyName")}
+                    value={details.intendedCompanyName}
+                    error={profileState.fieldErrors?.intendedCompanyName}
+                    autoComplete="organization"
+                    onChange={(value) => updateDetail("intendedCompanyName", value)}
+                    description={t("checkoutIntendedCompanyNameHelp")}
+                  />
+                )}
+                </>}
+
+                {detailsEditorGroup === "contact" && <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <CheckoutTextField
                     id="checkout-first-name"
@@ -1953,47 +2235,17 @@ export function PreviewCheckout({
                   autoComplete="email"
                   readOnly
                 />
-
-                {details.partyType === "registered_business" ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <CheckoutTextField
-                      id="checkout-business-name"
-                      name="registeredBusinessName"
-                      label={t("checkoutRegisteredBusinessName")}
-                      value={details.registeredBusinessName}
-                      error={profileState.fieldErrors?.registeredBusinessName}
-                      autoComplete="organization"
-                      onChange={(value) => updateDetail("registeredBusinessName", value)}
-                      required
-                    />
-                    <CheckoutTextField
-                      id="checkout-kvk"
-                      name="kvkNumber"
-                      label={t("checkoutKvkNumber")}
-                      value={details.kvkNumber}
-                      error={profileState.fieldErrors?.kvkNumber}
-                      inputMode="numeric"
-                      pattern="[0-9]{8}"
-                      maxLength={8}
-                      onChange={(value) => updateDetail("kvkNumber", value.replace(/\D/g, ""))}
-                      required
-                    />
+                <fieldset className="grid gap-4">
+                  <legend className="text-base font-semibold">{t("checkoutPhoneTitle")}</legend>
+                  <div className="grid gap-4 sm:grid-cols-[7rem_8rem_1fr]">
+                    <CheckoutTextField id="checkout-phone-country" name="phoneCountryCode" label={t("checkoutPhoneCountry")} value={details.phoneCountryCode} error={profileState.fieldErrors?.phoneCountryCode} autoComplete="tel-country-code" onChange={(value) => updateDetail("phoneCountryCode", value)} required />
+                    <CheckoutTextField id="checkout-phone-area" name="phoneAreaCode" label={t("checkoutPhoneArea")} value={details.phoneAreaCode} error={profileState.fieldErrors?.phoneAreaCode} inputMode="numeric" autoComplete="tel-area-code" onChange={(value) => updateDetail("phoneAreaCode", value.replace(/\D/g, ""))} required />
+                    <CheckoutTextField id="checkout-phone-number" name="phoneSubscriberNumber" label={t("checkoutPhoneNumber")} value={details.phoneSubscriberNumber} error={profileState.fieldErrors?.phoneSubscriberNumber} inputMode="numeric" autoComplete="tel-local" onChange={(value) => updateDetail("phoneSubscriberNumber", value.replace(/\D/g, ""))} required />
                   </div>
-                ) : (
-                  <>
-                    <CheckoutTextField
-                      id="checkout-intended-company"
-                      name="intendedCompanyName"
-                      label={t("checkoutIntendedCompanyName")}
-                      value={details.intendedCompanyName}
-                      error={profileState.fieldErrors?.intendedCompanyName}
-                      autoComplete="organization"
-                      onChange={(value) => updateDetail("intendedCompanyName", value)}
-                      description={t("checkoutIntendedCompanyNameHelp")}
-                    />
-                  </>
-                )}
+                </fieldset>
+                </>}
 
+                {detailsEditorGroup === "address" && <>
                 <fieldset className="grid gap-4">
                   <legend className="text-base font-semibold">
                     {t("checkoutRegistrantAddress")}
@@ -2126,49 +2378,22 @@ export function PreviewCheckout({
                   </fieldset>
                 )}
 
-                <fieldset className="grid gap-4">
-                  <legend className="text-base font-semibold">{t("checkoutPhoneTitle")}</legend>
-                  <div className="grid gap-4 sm:grid-cols-[7rem_8rem_1fr]">
-                    <CheckoutTextField
-                      id="checkout-phone-country"
-                      name="phoneCountryCode"
-                      label={t("checkoutPhoneCountry")}
-                      value={details.phoneCountryCode}
-                      error={profileState.fieldErrors?.phoneCountryCode}
-                      autoComplete="tel-country-code"
-                      onChange={(value) => updateDetail("phoneCountryCode", value)}
-                      required
-                    />
-                    <CheckoutTextField
-                      id="checkout-phone-area"
-                      name="phoneAreaCode"
-                      label={t("checkoutPhoneArea")}
-                      value={details.phoneAreaCode}
-                      error={profileState.fieldErrors?.phoneAreaCode}
-                      inputMode="numeric"
-                      autoComplete="tel-area-code"
-                      onChange={(value) => updateDetail("phoneAreaCode", value.replace(/\D/g, ""))}
-                      required
-                    />
-                    <CheckoutTextField
-                      id="checkout-phone-number"
-                      name="phoneSubscriberNumber"
-                      label={t("checkoutPhoneNumber")}
-                      value={details.phoneSubscriberNumber}
-                      error={profileState.fieldErrors?.phoneSubscriberNumber}
-                      inputMode="numeric"
-                      autoComplete="tel-local"
-                      onChange={(value) => updateDetail("phoneSubscriberNumber", value.replace(/\D/g, ""))}
-                      required
-                    />
-                  </div>
-                </fieldset>
+                </>}
+                <Button type="submit" variant="success" disabled={profilePending}>
+                  {profilePending
+                    ? <Loader2 className="size-4 animate-spin" aria-hidden />
+                    : <CheckCircle2 className="size-4" aria-hidden />}
+                  {t("checkoutDetailsSave")}
+                </Button>
               </form>
+                </SheetContent>
+              </Sheet>
             </CardContent>
           </Card>
         )}
 
-        {step === "overview" && savedProfile && (
+        {!fulfilmentActive && step === "overview" && savedProfile && (
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
           <Card>
             <CardHeader>
               <CardTitle>
@@ -2397,6 +2622,13 @@ export function PreviewCheckout({
               </form>
 
               <div className="grid min-w-0 gap-4 border-t pt-5">
+                {legalSubmitRequested && !(previewApprovalAccepted && businessUseAccepted && termsAccepted) && (
+                  <Alert variant="destructive" role="alert">
+                    <CircleAlert className="size-4" aria-hidden />
+                    <AlertTitle>{t("checkoutDeclarationsRequiredTitle")}</AlertTitle>
+                    <AlertDescription>{t("checkoutDeclarationsRequiredDescription")}</AlertDescription>
+                  </Alert>
+                )}
                 <AcceptanceCheckbox
                   id="checkout-preview-approval"
                   checked={previewApprovalAccepted}
@@ -2411,17 +2643,15 @@ export function PreviewCheckout({
                   label={businessUseDeclarationText}
                   help={t("checkoutBusinessUseHelp")}
                 />
-                <label
-                  htmlFor="checkout-terms"
-                  className="flex min-w-0 items-start gap-3 text-sm leading-6"
-                >
+                <div className="flex min-w-0 items-start gap-3 text-sm leading-6">
                   <Checkbox
                     id="checkout-terms"
+                    aria-labelledby="checkout-terms-label"
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked === true)}
                     className="mt-1"
                   />
-                  <span className="min-w-0 break-words">
+                  <span id="checkout-terms-label" className="min-w-0 break-words">
                     {t.rich("checkoutTermsAcceptanceLabel", {
                       terms: (chunks) => (
                         <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
@@ -2440,7 +2670,7 @@ export function PreviewCheckout({
                       })}
                     </span>
                   </span>
-                </label>
+                </div>
               </div>
 
               {paymentSubmitRequested && paymentState.message && (
@@ -2464,16 +2694,39 @@ export function PreviewCheckout({
               )}
             </CardContent>
           </Card>
+          <Card className="hidden lg:sticky lg:top-20 lg:block">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t("checkoutCompactSummaryTitle")}</CardTitle>
+              <CardDescription>{t("checkoutCompactSummaryDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
+              <ReviewRow label={t("checkoutContractingParty")} value={savedProfile.contractingPartyName} />
+              <ReviewRow
+                label={t("checkoutPlanLegend")}
+                value={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+              />
+              <div className="border-t pt-3">
+                <ReviewRow
+                  label={t("checkoutSummaryTotal")}
+                  value={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
+                  strong
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">{t("checkoutCompactSummarySaved")}</p>
+            </CardContent>
+          </Card>
+          </div>
         )}
       </div>
 
-      <CheckoutActionBar
+      {!fulfilmentActive && <CheckoutActionBar
         step={step}
         canContinueFromDomain={domainIsReady}
         profileReady={Boolean(savedProfile && !detailsDirty)}
         quoteReady={Boolean(selectedQuote)}
         selectedDomain={selectedDomain}
-        checkPending={checkPending}
+        checkPending={checkPending || extensionCheckPending}
         profilePending={profilePending}
         paymentPending={paymentPending}
         paymentBlocked={requiresMigrationRecollection}
@@ -2496,9 +2749,6 @@ export function PreviewCheckout({
             : paymentStatusLive
         }
         navigationLocked={acceptedOrderId != null}
-        legalAccepted={
-          previewApprovalAccepted && termsAccepted && businessUseAccepted
-        }
         totalPriceLabel={money(
           locale,
           grossAmountMinor,
@@ -2507,9 +2757,17 @@ export function PreviewCheckout({
         previewHref={previewHref}
         onBack={goBack}
         onDomainNext={() => setStep("details")}
+        onDomainCheck={() => {
+          if (domainMode === "new_registration") void checkSelectedExtensions()
+          else domainFormRef.current?.requestSubmit()
+        }}
+        onDetailsNext={() => {
+          if (detailsDirty || !savedProfile) setDetailsEditorOpen(true)
+          else setStep("overview")
+        }}
         onPay={submitPayment}
         t={t}
-      />
+      />}
     </main>
   )
 }
@@ -2638,11 +2896,12 @@ function CheckoutActionBar({
   sourceAcquisitionReady,
   paymentStatus,
   navigationLocked,
-  legalAccepted,
   totalPriceLabel,
   previewHref,
   onBack,
   onDomainNext,
+  onDomainCheck,
+  onDetailsNext,
   onPay,
   t,
 }: {
@@ -2660,11 +2919,12 @@ function CheckoutActionBar({
   sourceAcquisitionReady: boolean
   paymentStatus: string
   navigationLocked: boolean
-  legalAccepted: boolean
   totalPriceLabel: string
   previewHref: string
   onBack: () => void
   onDomainNext: () => void
+  onDomainCheck: () => void
+  onDetailsNext: () => void
   onPay: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
@@ -2713,11 +2973,11 @@ function CheckoutActionBar({
     ) : (
       <Button
         key="domain-check"
-        form="checkout-domain-form"
-        type="submit"
+        type="button"
         variant={unavailable ? "ghost" : "default"}
         className={cn("min-w-0 flex-1 md:flex-none", unavailable && "text-muted-foreground")}
         disabled={checkPending || unavailable}
+        onClick={onDomainCheck}
       >
         {checkPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Globe2 className="size-4" aria-hidden />}
         {checkPending
@@ -2735,11 +2995,11 @@ function CheckoutActionBar({
     primary = (
       <Button
         key="details-save"
-        form="checkout-profile-form"
-        type="submit"
+        type="button"
         variant="success"
         className="min-w-0 flex-1 md:flex-none"
         disabled={profilePending}
+        onClick={onDetailsNext}
       >
         {profilePending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
         {profileReady ? t("checkoutDetailsConfirm") : t("checkoutDetailsSave")}
@@ -2760,7 +3020,6 @@ function CheckoutActionBar({
           !selectedDomain ||
           !profileReady ||
           !quoteReady ||
-          !legalAccepted ||
           paymentInProgress ||
           complete
         }
@@ -2843,18 +3102,44 @@ function AcceptanceCheckbox({
   help: string
 }) {
   return (
-    <label htmlFor={id} className="flex min-w-0 items-start gap-3 text-sm leading-6">
+    <div className="flex min-w-0 items-start gap-3 text-sm leading-6">
       <Checkbox
         id={id}
+        aria-labelledby={`${id}-label`}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
         className="mt-1"
       />
-      <span className="min-w-0 break-words">
+      <span id={`${id}-label`} className="min-w-0 break-words">
         {label}
         <span className="block text-muted-foreground">{help}</span>
       </span>
-    </label>
+    </div>
+  )
+}
+
+function ConfirmationRow({
+  title,
+  value,
+  onEdit,
+  t,
+}: {
+  title: string
+  value: string
+  onEdit: () => void
+  t: ReturnType<typeof useTranslations<"preview">>
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-3 p-3 sm:p-4">
+      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="break-words text-sm text-muted-foreground">{value}</p>
+      </div>
+      <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={onEdit}>
+        {t("checkoutEdit")}
+      </Button>
+    </div>
   )
 }
 

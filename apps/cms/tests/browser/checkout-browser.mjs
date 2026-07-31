@@ -56,18 +56,16 @@ try {
 
   const domainInput = page.getByLabel("Domain name")
   await domainInput.fill("service-error.nl")
-  await page.getByRole("button", { name: "Check domain" }).click()
-  await page.getByRole("alert").filter({
-    hasText: "The live domain check is temporarily unavailable.",
-  }).waitFor()
-  assert.equal(
-    await page.getByRole("button", { name: "Check again" }).isVisible(),
-    true,
-  )
+  await page.getByText("service-error.nl", { exact: true }).waitFor()
+  assert.equal(await page.getByText("Try again", { exact: true }).isVisible(), true)
 
   await domainInput.fill("analytical-engines.nl")
-  await page.getByRole("button", { name: /Check domain|Check again/ }).click()
-  await page.getByText("analytical-engines.nl is available.").waitFor()
+  await page.getByText("analytical-engines.com", { exact: true }).waitFor()
+  assert.equal(await page.getByText("Unavailable", { exact: true }).isVisible(), true)
+  assert.equal(await page.getByText("Premium", { exact: true }).isVisible(), true)
+  assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
+  await page.getByText("analytical-engines.nl", { exact: true })
+    .locator("..").getByRole("button", { name: "Select", exact: true }).click()
 
   const continueButton = page.getByRole("button", { name: "Continue" })
   await continueButton.focus()
@@ -83,7 +81,10 @@ try {
   assert.ok(target && target.width >= 44 && target.height >= 44)
   assert.equal(await domainStepButton.isVisible(), true)
 
-  await page.getByRole("button", { name: "Continue" }).click()
+  assert.equal(await page.getByText(/Ada Lovelace.*owner@example\.test/).isVisible(), true)
+  await page.getByRole("button", { name: "Edit" }).first().click()
+  await page.getByRole("dialog").waitFor()
+  await page.getByRole("button", { name: "Save and continue" }).click()
   const errorSummary = page.getByLabel("Review these fields")
   await errorSummary.waitFor()
   assert.equal(await errorSummary.evaluate((node) => node === document.activeElement), true)
@@ -98,6 +99,17 @@ try {
   await page.getByRole("button", { name: "Continue" }).click()
   await page.getByRole("heading", { name: "Subscription & review" }).waitFor()
   assert.equal(await page.getByText(/229[.,]90/, { exact: false }).first().isVisible(), true)
+  await page.getByRole("button", { name: /Checkout/ }).click()
+  await page.getByRole("alert").filter({ hasText: "Confirm the required declarations" }).waitFor()
+  assert.equal(
+    await page.locator("#checkout-preview-approval").evaluate((node) => node === document.activeElement),
+    true,
+  )
+  assert.equal(
+    await page.locator("label button, a button, button a").count(),
+    0,
+    "Checkout must not contain nested interactive controls.",
+  )
   assert.equal(pageErrors.length, 0, pageErrors.join("\n"))
   process.stdout.write("Checkout keyboard/price contract passed.\n")
 
@@ -133,6 +145,32 @@ try {
     true,
   )
   await pendingPage.close()
+
+  const themePage = await browser.newPage({ viewport: { width: 320, height: 568 } })
+  themePage.setDefaultTimeout(5_000)
+  await themePage.emulateMedia({ colorScheme: "light" })
+  await themePage.addInitScript(() => {
+    if (!localStorage.getItem("theme")) localStorage.setItem("theme", "system")
+  })
+  await themePage.goto(origin, { waitUntil: "networkidle" })
+  const systemLight = await themePage.evaluate(() => ({
+    dark: document.documentElement.classList.contains("dark"),
+    background: getComputedStyle(document.body).backgroundColor,
+    fits: document.documentElement.scrollWidth <= innerWidth,
+  }))
+  assert.equal(systemLight.dark, false)
+  assert.equal(systemLight.fits, true)
+  await themePage.evaluate(() => localStorage.setItem("theme", "dark"))
+  await themePage.reload({ waitUntil: "networkidle" })
+  const explicitDark = await themePage.evaluate(() => ({
+    dark: document.documentElement.classList.contains("dark"),
+    background: getComputedStyle(document.body).backgroundColor,
+    fits: document.documentElement.scrollWidth <= innerWidth,
+  }))
+  assert.equal(explicitDark.dark, true)
+  assert.notEqual(explicitDark.background, systemLight.background)
+  assert.equal(explicitDark.fits, true)
+  await themePage.close()
 
   const unsupportedPage = await browser.newPage({
     viewport: { width: 320, height: 700 },
