@@ -1,8 +1,9 @@
 import "server-only"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import type {
   Order,
   PaymentAttempt,
+  PublishedSiteSnapshot,
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
@@ -16,6 +17,8 @@ import {
   canActivatePublishedSnapshot,
   publishSiteSnapshot,
 } from "@/lib/publish/siteSnapshots"
+import { queueLiveHandoffAfterActivation } from "@/lib/publish/liveHandoffEmail"
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 import {
   normalizeGenerationRunPaymentState,
   recordGenerationRunPostPaymentAutomationState,
@@ -42,7 +45,16 @@ const automationState = (
   at: nowIso(),
 })
 
-async function loadTenant(payload: Payload, run: SiteGenerationRun): Promise<Tenant> {
+type PostPaymentActivationOptions = {
+  deferLiveHandoff?: boolean
+  req?: PayloadRequest
+}
+
+async function loadTenant(
+  payload: Payload,
+  run: SiteGenerationRun,
+  req?: PayloadRequest,
+): Promise<Tenant> {
   const tenantId = relationshipId(run.tenant)
   if (!tenantId) throw new Error("Generation run is missing a tenant.")
   return payload.findByID({
@@ -50,6 +62,7 @@ async function loadTenant(payload: Payload, run: SiteGenerationRun): Promise<Ten
     id: tenantId,
     depth: 0,
     overrideAccess: true,
+    ...payloadRequestArgs(req),
   }) as Promise<Tenant>
 }
 
@@ -84,7 +97,11 @@ const automationResultFromRun = (run: SiteGenerationRun): PostPaymentActivationR
   return { status: "failed", message: "Post-payment automation did not complete." }
 }
 
-async function latestRunSnapshot(payload: Payload, run: SiteGenerationRun): Promise<any | null> {
+async function latestRunSnapshot(
+  payload: Payload,
+  run: SiteGenerationRun,
+  req?: PayloadRequest,
+): Promise<PublishedSiteSnapshot | null> {
   const result = await payload.find({
     collection: "published-site-snapshots",
     where: { sourceGenerationRun: { equals: run.id } },
@@ -92,8 +109,9 @@ async function latestRunSnapshot(payload: Payload, run: SiteGenerationRun): Prom
     limit: 10,
     depth: 0,
     overrideAccess: true,
+    ...payloadRequestArgs(req),
   })
-  const docs = result.docs as unknown[]
+  const docs = result.docs as PublishedSiteSnapshot[]
   return docs.find((doc) => {
     const status = (doc as { status?: string }).status
     return status === "active" || status === "drafted"
@@ -103,17 +121,18 @@ async function latestRunSnapshot(payload: Payload, run: SiteGenerationRun): Prom
 export async function publishAndActivateAfterCompletedPayment(
   payload: Payload,
   run: SiteGenerationRun,
+  options: PostPaymentActivationOptions = {},
 ): Promise<PostPaymentActivationResult> {
   let tenant: Tenant
   try {
-    tenant = await loadTenant(payload, run)
+    tenant = await loadTenant(payload, run, options.req)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Post-payment tenant lookup failed."
     await recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
       status: "failed",
       step: "refresh_provisioning",
       message,
-    }))
+    }), { req: options.req })
     return { status: "failed", message }
   }
 
@@ -123,12 +142,12 @@ export async function publishAndActivateAfterCompletedPayment(
       status: "blocked",
       step: "activation_gate",
       message: gate.reason,
-    }))
+    }), { req: options.req })
     return { status: "blocked", message: gate.reason }
   }
 
   try {
-    const existingSnapshot = await latestRunSnapshot(payload, run)
+    const existingSnapshot = await latestRunSnapshot(payload, run, options.req)
     let snapshotId: string | number | null = existingSnapshot?.id ?? null
     if (existingSnapshot?.status === "active") {
       await recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
@@ -136,13 +155,15 @@ export async function publishAndActivateAfterCompletedPayment(
         step: "publish_activate",
         message: "Generation run already has an active published snapshot.",
         snapshotId,
-      }))
+      }), { req: options.req })
       return { status: "activated", snapshotId }
     }
     if (existingSnapshot) {
       const activated = await activatePublishedSnapshot(payload, {
         snapshotId: existingSnapshot.id,
         activationReason: "automatic activation after completed payment and provisioning",
+        deferLiveHandoff: options.deferLiveHandoff,
+        req: options.req,
       })
       snapshotId = activated?.id ?? existingSnapshot.id
     } else {
@@ -151,6 +172,8 @@ export async function publishAndActivateAfterCompletedPayment(
         generationRunId: run.id,
         activate: true,
         activationReason: "automatic activation after completed payment and provisioning",
+        deferLiveHandoff: options.deferLiveHandoff,
+        req: options.req,
       })
       snapshotId = result.snapshot?.id ?? null
     }
@@ -159,7 +182,7 @@ export async function publishAndActivateAfterCompletedPayment(
       step: "publish_activate",
       message: "Published and activated automatically after completed payment and provisioning.",
       snapshotId,
-    }))
+    }), { req: options.req })
     return { status: "activated", snapshotId }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Automatic publish and activation failed."
@@ -167,9 +190,32 @@ export async function publishAndActivateAfterCompletedPayment(
       status: "failed",
       step: "publish_activate",
       message,
-    }))
+    }), { req: options.req })
     return { status: "failed", message }
   }
+}
+
+export async function queueDeferredPostPaymentLiveHandoff(
+  payload: Payload,
+  run: SiteGenerationRun,
+  snapshotId: string | number,
+  eventAt: string,
+): Promise<"queued" | "sent" | "skipped" | "failed"> {
+  const [tenant, snapshotDoc] = await Promise.all([
+    loadTenant(payload, run),
+    payload.findByID({
+      collection: "published-site-snapshots",
+      id: snapshotId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<PublishedSiteSnapshot>,
+  ])
+  return queueLiveHandoffAfterActivation(payload, {
+    tenant,
+    run,
+    snapshotDoc,
+    eventAt,
+  })
 }
 
 async function retryMollieSubscription(payload: Payload, run: SiteGenerationRun): Promise<SiteGenerationRun> {

@@ -15,7 +15,7 @@ import {
   type TldCapability,
 } from "@siteinabox/contracts/tld-capabilities"
 import { sql } from "@payloadcms/db-postgres"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import type {
   CheckoutProfile,
   DomainMigration,
@@ -112,12 +112,16 @@ import {
   type DnssecChainVerification,
 } from "@/lib/domains/verification"
 import { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
-import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
+import {
+  publishAndActivateAfterCompletedPayment,
+  queueDeferredPostPaymentLiveHandoff,
+} from "@/lib/payments/postPaymentActivation"
 import { activateManagedDomainEntitlement } from "@/lib/domains/provisioning"
 import { cloudflareTunnelTarget } from "@/lib/domains/cloudflareTunnels"
 import { queueCommerceReconciliation } from "@/lib/jobs/queueCommerceReconciliation"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 import { classifyMigrationEntry } from "@/lib/domains/migrationDecisions"
 import {
   migrationRegistrantVerification,
@@ -182,6 +186,7 @@ type MigrationDependencies = {
   verifyPreservedDnsRecords: typeof verifyPreservedDnsRecords
   verifyHttpsEndpoint: typeof verifyHttpsEndpoint
   publishAndActivateAfterCompletedPayment: typeof publishAndActivateAfterCompletedPayment
+  queueDeferredPostPaymentLiveHandoff: typeof queueDeferredPostPaymentLiveHandoff
   activateManagedDomainEntitlement: typeof activateManagedDomainEntitlement
   refreshAutomaticMigrationSource: typeof refreshAutomaticMigrationSource
   resolveCloudflareOAuthCredential: typeof resolveCloudflareOAuthCredential
@@ -213,6 +218,7 @@ const defaultDependencies: MigrationDependencies = {
   verifyPreservedDnsRecords,
   verifyHttpsEndpoint,
   publishAndActivateAfterCompletedPayment,
+  queueDeferredPostPaymentLiveHandoff,
   activateManagedDomainEntitlement,
   refreshAutomaticMigrationSource,
   resolveCloudflareOAuthCredential,
@@ -518,6 +524,7 @@ async function updateMigration(
   data: Record<string, unknown>,
   reason: string,
   now: string,
+  req?: PayloadRequest,
 ): Promise<DomainMigration> {
   const state = typeof data.state === "string" ? data.state : migration.state
   return payload.update({
@@ -531,6 +538,7 @@ async function updateMigration(
     depth: 0,
     overrideAccess: true,
     context: { domainMigrationLifecycleMutation: true },
+    ...payloadRequestArgs(req),
   }) as Promise<DomainMigration>
 }
 
@@ -625,6 +633,7 @@ async function updateManagedDomain(
   data: Record<string, unknown>,
   reason: string,
   now: string,
+  req?: PayloadRequest,
 ): Promise<ManagedDomain> {
   const state = typeof data.state === "string" ? data.state : domain.state
   const history = Array.isArray(domain.stateHistory)
@@ -640,6 +649,7 @@ async function updateManagedDomain(
     depth: 0,
     overrideAccess: true,
     context: { managedDomainLifecycleMutation: true },
+    ...payloadRequestArgs(req),
   }) as Promise<ManagedDomain>
 }
 
@@ -3114,6 +3124,12 @@ type SourceDnssecAndNameserverCutoverPhaseOutcome =
       reason: string
     }
 
+type PostCutoverHttpsEvidence = {
+  status: "verified" | "pending"
+  httpStatus: number | null
+  reason: string | null
+}
+
 type PostCutoverTargetVerificationPhaseOutcome =
   | {
       outcome: "continue"
@@ -3122,16 +3138,29 @@ type PostCutoverTargetVerificationPhaseOutcome =
       authoritativeDns: Awaited<
         ReturnType<MigrationDependencies["verifyAuthoritativeDns"]>
       >
-      https: {
-        status: "verified" | "pending"
-        httpStatus: number | null
-        reason: string | null
-      }
+      https: PostCutoverHttpsEvidence
     }
   | NonRollbackMigrationStoppedPhaseOutcome
   | {
       outcome: "rollback_required"
       migration: DomainMigration
+      providerDomain: OpenProviderDomainRecord
+      reason: string
+    }
+
+type PublicationActivationPhaseOutcome =
+  | {
+      outcome: "completed"
+      result: MigrationResult
+    }
+  | {
+      outcome: "manual_review"
+      result: MigrationResult
+    }
+  | {
+      outcome: "rollback_required"
+      migration: DomainMigration
+      managedDomain: ManagedDomain
       providerDomain: OpenProviderDomainRecord
       reason: string
     }
@@ -5013,6 +5042,202 @@ async function verifyPostCutoverTargetAndSecureDnssecPhase(
   }
 }
 
+async function publishActivateAndCompleteMigrationPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  initialManagedDomain: ManagedDomain,
+  order: Order,
+  providerDomain: OpenProviderDomainRecord,
+  authoritativeDns: Awaited<
+    ReturnType<MigrationDependencies["verifyAuthoritativeDns"]>
+  >,
+  https: PostCutoverHttpsEvidence,
+  zone: Awaited<
+    ReturnType<MigrationDependencies["listCloudflareZones"]>
+  >[number],
+  deps: MigrationDependencies,
+): Promise<PublicationActivationPhaseOutcome> {
+  let migration = initialMigration
+  let managedDomain = initialManagedDomain
+  const prePublicationPayment = await loadSecuredInitialPaymentAuthority(
+    payload,
+    order.id,
+  )
+  if (!prePublicationPayment.secured) {
+    return {
+      outcome: "manual_review",
+      result: await stopMigrationForRevokedPaymentAfterRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        prePublicationPayment.order,
+        deps.now(),
+      ),
+    }
+  }
+
+  const generationRunId = relationshipId(order.generationRun)
+  if (!generationRunId) {
+    return {
+      outcome: "rollback_required",
+      migration,
+      managedDomain,
+      providerDomain,
+      reason: "migration_order_generation_run_missing",
+    }
+  }
+  const run = await payload.findByID({
+    collection: "site-generation-runs",
+    id: generationRunId,
+    depth: 0,
+    overrideAccess: true,
+  }) as SiteGenerationRun
+  if (!sameRelationshipId(run.tenant, migration.tenant)) {
+    return {
+      outcome: "rollback_required",
+      migration,
+      managedDomain,
+      providerDomain,
+      reason: "migration_order_tenant_mismatch",
+    }
+  }
+
+  const transactionID = await payload.db.beginTransaction()
+  if (!transactionID) {
+    throw new Error("Migration publication requires a database transaction.")
+  }
+  const req = { transactionID } as PayloadRequest
+  let snapshotId: string | number
+  const publicationAt = deps.now()
+  try {
+    await payload.update({
+      collection: "tenants",
+      id: relationshipId(migration.tenant) as string | number,
+      data: {
+        domain: migration.domainNameAscii,
+        domainVerification: {
+          status: "verified",
+          checkedAt: publicationAt,
+          notes:
+            "Automatic migration verified complete semantic zone preservation, authoritative DNS, and HTTPS.",
+        },
+      },
+      depth: 0,
+      overrideAccess: true,
+      ...payloadRequestArgs(req),
+    })
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      authoritativeDnsStatus: "verified",
+      authoritativeDnsCheckedAt: publicationAt,
+      authoritativeDnsEvidence: authoritativeDns,
+      httpsStatus: "verified",
+      httpsCheckedAt: publicationAt,
+      httpsEvidence: https,
+      cloudflareZoneId: zone.id,
+      cloudflareNameservers: zone.nameServers,
+      cloudflareZoneStatus: zone.status,
+      transferredAt: managedDomain.transferredAt ?? publicationAt,
+      reconciliationRequired: false,
+      failureReason: null,
+    }, "migration_cutover_verified", publicationAt, req)
+    managedDomain = await deps.activateManagedDomainEntitlement(
+      payload,
+      managedDomain,
+      publicationAt,
+      { req },
+    )
+    const activation = await deps.publishAndActivateAfterCompletedPayment(
+      payload,
+      run,
+      { deferLiveHandoff: true, req },
+    )
+    if (activation.status !== "activated" || activation.snapshotId == null) {
+      throw new Error(
+        activation.status === "activated"
+          ? "Approved snapshot activation returned no authoritative snapshot identity."
+          : activation.message,
+      )
+    }
+    snapshotId = activation.snapshotId
+    await payload.db.commitTransaction(transactionID)
+  } catch (error) {
+    await payload.db.rollbackTransaction(transactionID).catch(() => undefined)
+    return {
+      outcome: "rollback_required",
+      migration,
+      managedDomain: initialManagedDomain,
+      providerDomain,
+      reason: `approved_snapshot_activation_failed:${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    }
+  }
+
+  try {
+    await deps.queueDeferredPostPaymentLiveHandoff(
+      payload,
+      run,
+      snapshotId,
+      publicationAt,
+    )
+  } catch (error) {
+    await queueCommerceReconciliation(payload).catch(() => undefined)
+    payload.logger.warn({
+      migration: migration.id,
+      snapshot: snapshotId,
+      error: redactOperationalMessage(error),
+    }, "[domain-migration] live handoff queueing deferred to reconciliation")
+  }
+
+  const revocation = await revokeMigrationSourceAuthority(
+    payload,
+    migration,
+    deps.now(),
+  )
+  migration = revocation.migration
+
+  const completionTransactionID = await payload.db.beginTransaction()
+  if (!completionTransactionID) {
+    throw new Error("Migration completion requires a database transaction.")
+  }
+  const completionReq = {
+    transactionID: completionTransactionID,
+  } as PayloadRequest
+  try {
+    const completedAt = deps.now()
+    migration = await updateMigration(payload, migration, {
+      state: "completed",
+      completedAt,
+      ...clearedMigrationCredentials(completedAt, revocation.confirmed),
+      reconciliationRequired: !revocation.confirmed,
+      failureReason: null,
+    }, "automatic_migration_completed", completedAt, completionReq)
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "fulfilled" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+      ...payloadRequestArgs(completionReq),
+    })
+    await payload.db.commitTransaction(completionTransactionID)
+  } catch (error) {
+    await payload.db.rollbackTransaction(completionTransactionID)
+      .catch(() => undefined)
+    throw error
+  }
+
+  return {
+    outcome: "completed",
+    result: {
+      status: "completed",
+      migrationId: migration.id,
+      message: "Automatic existing-domain migration completed.",
+    },
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -5236,112 +5461,27 @@ export async function prepareDomainMigration(
   const publicationProviderDomain = providerDomain
 
   return withCommerceOrderLock(payload, order.id, async () => {
-    const prePublicationPayment = await loadSecuredInitialPaymentAuthority(
+    const publicationOutcome = await publishActivateAndCompleteMigrationPhase(
       payload,
-      order.id,
+      migration,
+      managedDomain,
+      order,
+      publicationProviderDomain,
+      authoritativeDns,
+      https,
+      zone,
+      deps,
     )
-    if (!prePublicationPayment.secured) {
-      return stopMigrationForRevokedPaymentAfterRegistrarCommit(
+    if (publicationOutcome.outcome === "rollback_required") {
+      return rollbackCutover(
         payload,
-        migration,
-        managedDomain,
-        prePublicationPayment.order,
-        deps.now(),
+        publicationOutcome.migration,
+        publicationOutcome.managedDomain,
+        publicationOutcome.providerDomain,
+        publicationOutcome.reason,
+        deps,
       )
     }
-
-    const tenant = await payload.update({
-    collection: "tenants",
-    id: relationshipId(migration.tenant) as string | number,
-    data: {
-      domain: migration.domainNameAscii,
-      domainVerification: {
-        status: "verified",
-        checkedAt: deps.now(),
-        notes: "Automatic migration verified complete semantic zone preservation, authoritative DNS, and HTTPS.",
-      },
-    },
-    depth: 0,
-    overrideAccess: true,
-  }) as Tenant
-  const generationRunId = relationshipId(order.generationRun)
-  if (!generationRunId) {
-    return rollbackCutover(
-      payload,
-      migration,
-      managedDomain,
-      publicationProviderDomain,
-      "migration_order_generation_run_missing",
-      deps,
-    )
-  }
-  const run = await payload.findByID({
-    collection: "site-generation-runs",
-    id: generationRunId,
-    depth: 0,
-    overrideAccess: true,
-  }) as SiteGenerationRun
-  if (!sameRelationshipId(run.tenant, tenant.id)) {
-    return rollbackCutover(
-      payload,
-      migration,
-      managedDomain,
-      publicationProviderDomain,
-      "migration_order_tenant_mismatch",
-      deps,
-    )
-  }
-  const activation = await deps.publishAndActivateAfterCompletedPayment(payload, run)
-  if (activation.status !== "activated") {
-    return rollbackCutover(
-      payload,
-      migration,
-      managedDomain,
-      publicationProviderDomain,
-      `approved_snapshot_activation_failed:${activation.message}`,
-      deps,
-    )
-  }
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    authoritativeDnsStatus: "verified",
-    authoritativeDnsCheckedAt: deps.now(),
-    authoritativeDnsEvidence: authoritativeDns,
-    httpsStatus: "verified",
-    httpsCheckedAt: deps.now(),
-    httpsEvidence: https,
-    cloudflareZoneId: zone.id,
-    cloudflareNameservers: zone.nameServers,
-    cloudflareZoneStatus: zone.status,
-    transferredAt: managedDomain.transferredAt ?? deps.now(),
-    reconciliationRequired: false,
-    failureReason: null,
-  }, "migration_cutover_verified", deps.now())
-  managedDomain = await deps.activateManagedDomainEntitlement(payload, managedDomain, deps.now())
-  const revocation = await revokeMigrationSourceAuthority(
-    payload,
-    migration,
-    deps.now(),
-  )
-  migration = revocation.migration
-  migration = await updateMigration(payload, migration, {
-    state: "completed",
-    completedAt: deps.now(),
-    ...clearedMigrationCredentials(deps.now(), revocation.confirmed),
-    reconciliationRequired: !revocation.confirmed,
-    failureReason: null,
-  }, "automatic_migration_completed", deps.now())
-  await payload.update({
-    collection: "orders",
-    id: order.id,
-    data: { state: "fulfilled" },
-    depth: 0,
-    overrideAccess: true,
-    context: { legalOrderLifecycleMutation: true },
-  })
-    return {
-      status: "completed",
-      migrationId: migration.id,
-      message: "Automatic existing-domain migration completed.",
-    }
+    return publicationOutcome.result
   })
 }

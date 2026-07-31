@@ -1,6 +1,7 @@
 import "server-only"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import type { SiteGenerationRun } from "@/payload-types"
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 
 export const generationRunPaymentStatuses = [
@@ -178,6 +179,7 @@ export async function recordGenerationRunPostPaymentAutomationState(
   payload: Payload,
   run: Pick<SiteGenerationRun, "id" | "errors">,
   state: Omit<GenerationRunPostPaymentAutomationState, "message"> & { message: unknown },
+  options: { req?: PayloadRequest } = {},
 ): Promise<SiteGenerationRun> {
   const errors = {
     ...readRecord(run.errors),
@@ -193,5 +195,6 @@ export async function recordGenerationRunPostPaymentAutomationState(
     data: { errors },
     depth: 0,
     overrideAccess: true,
+    ...payloadRequestArgs(options.req),
   }) as Promise<SiteGenerationRun>
 }

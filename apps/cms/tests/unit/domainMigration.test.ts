@@ -261,6 +261,7 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
     "managed-domains": [],
   }
   let nextId = 1_000
+  let transactionSnapshot: Record<string, MockDoc[]> | null = null
   const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
     const docs = (collections[collection] ?? []).filter((doc) => {
       if (!where) return true
@@ -354,6 +355,21 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
     Object.assign(doc, data)
     return doc
   })
+  const beginTransaction = vi.fn(async () => {
+    if (transactionSnapshot) throw new Error("A test transaction is already active.")
+    transactionSnapshot = structuredClone(collections)
+    return "migration-publication-transaction"
+  })
+  const commitTransaction = vi.fn(async () => {
+    if (!transactionSnapshot) throw new Error("No test transaction is active.")
+    transactionSnapshot = null
+  })
+  const rollbackTransaction = vi.fn(async () => {
+    if (!transactionSnapshot) throw new Error("No test transaction is active.")
+    for (const key of Object.keys(collections)) delete collections[key]
+    Object.assign(collections, structuredClone(transactionSnapshot))
+    transactionSnapshot = null
+  })
   return {
     collections,
     payload: asPayload({
@@ -362,6 +378,9 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
       create,
       update,
       db: {
+        beginTransaction,
+        commitTransaction,
+        rollbackTransaction,
         drizzle: {
           execute: vi.fn(async () => ({ rows: [{ id: 1_000 }] })),
         },
@@ -374,6 +393,9 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
       },
       jobs: { queue: vi.fn() },
     }),
+    beginTransaction,
+    commitTransaction,
+    rollbackTransaction,
   }
 }
 
@@ -627,10 +649,14 @@ const workflowDependencies = (input?: {
       httpStatus: 404,
       reason: null,
     })),
-    publishAndActivateAfterCompletedPayment: vi.fn(async () => ({
-      status: "activated" as const,
+    publishAndActivateAfterCompletedPayment: vi.fn(async (): Promise<
+      | { status: "activated"; snapshotId: string | number | null }
+      | { status: "blocked" | "failed"; message: string }
+    > => ({
+      status: "activated",
       snapshotId: 10,
     })),
+    queueDeferredPostPaymentLiveHandoff: vi.fn(async () => "queued" as const),
     activateManagedDomainEntitlement: vi.fn(async (
       payload: ReturnType<typeof createStore>["payload"],
       domain: MockDoc,
@@ -2393,6 +2419,126 @@ describe("automatic existing-domain migration", () => {
       .not.toHaveBeenCalled()
     expect(fixture.dependencies.activateManagedDomainEntitlement)
       .not.toHaveBeenCalled()
+  })
+
+  it("prevalidates the generation run before projecting the target tenant domain", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    store.collections.orders![0]!.generationRun = null
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.activateManagedDomainEntitlement)
+      .not.toHaveBeenCalled()
+    expect(store.beginTransaction).not.toHaveBeenCalled()
+  })
+
+  it("prevalidates generation-run tenant authority before publication", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    store.collections["site-generation-runs"]![0]!.tenant = 2
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.activateManagedDomainEntitlement)
+      .not.toHaveBeenCalled()
+    expect(store.beginTransaction).not.toHaveBeenCalled()
+  })
+
+  it("rolls back tenant and entitlement projection when snapshot activation fails", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.publishAndActivateAfterCompletedPayment
+      .mockResolvedValue({
+        status: "failed",
+        message: "injected activation failure",
+      })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(store.rollbackTransaction).toHaveBeenCalledOnce()
+    expect(store.collections.tenants![0]).toMatchObject({
+      status: "preview",
+      domain: "preview.siteinabox.test",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+    })
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .not.toHaveBeenCalled()
+  })
+
+  it("defers customer handoff until transactional publication commits", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .toHaveBeenCalledWith(
+        store.payload,
+        expect.objectContaining({ id: 500, tenant: 1 }),
+        expect.objectContaining({
+          deferLiveHandoff: true,
+          req: expect.objectContaining({
+            transactionID: "migration-publication-transaction",
+          }),
+        }),
+      )
+    expect(fixture.dependencies.queueDeferredPostPaymentLiveHandoff)
+      .toHaveBeenCalledWith(
+        store.payload,
+        expect.objectContaining({ id: 500 }),
+        10,
+        "2026-07-28T09:00:00.000Z",
+      )
+    expect(store.commitTransaction.mock.invocationCallOrder[0])
+      .toBeLessThan(
+        fixture.dependencies.queueDeferredPostPaymentLiveHandoff
+          .mock.invocationCallOrder[0] as number,
+      )
+    expect(store.collections.tenants![0]).toMatchObject({
+      domain: "example.nl",
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    })
+    expect(store.collections.orders![0]).toMatchObject({ state: "fulfilled" })
   })
 
   it("requires fresh source evidence before the first provider write", async () => {

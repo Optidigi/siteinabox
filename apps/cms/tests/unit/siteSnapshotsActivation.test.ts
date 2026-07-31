@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { PayloadRequest } from "payload"
 import {
   activatePublishedSnapshot,
   canActivatePublishedSnapshot,
@@ -165,6 +166,37 @@ describe("published snapshot activation gate", () => {
       cloudflareSubdomainId: "subdomain-123",
     })
     expect(snapshot.status).toBe("active")
+  })
+
+  it("can defer live handoff until an owning transaction commits", async () => {
+    const { payload, tenant, snapshot } = createActivationPayload({
+      tenant: verifiedTenant,
+    })
+
+    await expect(activatePublishedSnapshot(payload, {
+      snapshotId: 10,
+      deferLiveHandoff: true,
+      req: { transactionID: "publication-transaction" } as PayloadRequest,
+    })).resolves.toMatchObject({
+      id: 10,
+      status: "active",
+    })
+
+    expect(tenant).toMatchObject({
+      status: "active",
+      activeSnapshot: 10,
+    })
+    expect(snapshot.status).toBe("active")
+    expect(payload.find).toHaveBeenCalledTimes(2)
+    expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "published-site-snapshots",
+      req: expect.objectContaining({
+        transactionID: "publication-transaction",
+      }),
+    }))
+    expect(payload.find).not.toHaveBeenCalledWith(expect.objectContaining({
+      collection: "orders",
+    }))
   })
 
   it("activates while optional tenant-branded email remains pending", async () => {
