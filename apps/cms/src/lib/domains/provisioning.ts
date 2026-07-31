@@ -142,6 +142,21 @@ type CloudflareZoneReconciliationOutcome =
       result: ProvisionPaidDomainResult
     }
 
+type RegistrarRegistrationOutcome =
+  | {
+      outcome: "continue"
+      providerDomain: OpenProviderDomainRecord
+      managedDomain: ManagedDomain
+    }
+  | {
+      outcome:
+        | "waiting"
+        | "provider_reconciliation_required"
+        | "manual_review"
+        | "unfulfillable"
+      result: ProvisionPaidDomainResult
+    }
+
 type ProvisioningDependencies = {
   now: () => string
   loginOpenProvider: typeof loginOpenProvider
@@ -1095,6 +1110,233 @@ async function reconcileCloudflareZonePhase(
   }
 }
 
+async function claimAndReconcileRegistrarRegistrationPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+  context: {
+    token: string
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    capability: TldCapability
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+    providerDomain: OpenProviderDomainRecord | null
+    customerHandle: string
+    zone: CloudflareZoneResult
+  },
+): Promise<RegistrarRegistrationOutcome> {
+  let managedDomain = context.managedDomain
+  let providerDomain = context.providerDomain
+  if (!providerDomain) {
+    const claimedAt = dependencies.now()
+    const claimedDomain = await claimRegistrarCommit(payload, {
+      order: input.order,
+      paymentAttemptId: input.paymentAttemptId,
+      managedDomain,
+      now: claimedAt,
+    })
+    if (!claimedDomain) {
+      return {
+        outcome: "waiting",
+        result: waiting(
+          context.normalized.domain,
+          run,
+          managedDomain,
+          "Payment authority changed before registrar commitment; no registration was sent.",
+        ),
+      }
+    }
+    managedDomain = claimedDomain
+    try {
+      const registration = await dependencies.registerOpenProviderDomain(
+        context.normalized.domain,
+        {
+          token: context.token,
+          ownerHandle: context.customerHandle,
+          nameServers: context.zone.nameServers.map((name) => ({ name })),
+          nsGroup: null,
+          period: context.capability.registration.periodYears,
+          autorenew:
+            context.capability.renewal.executionMode ===
+              "provider_autorenew" &&
+            tldCapabilityOperationFlagEnabled(
+              context.capability,
+              "renewal_provider_autorenew",
+            )
+              ? "on"
+              : "off",
+          reference: managedDomain.provisioningIdempotencyKey,
+          acceptedCapabilityVersion: context.capability.capabilityVersion,
+        },
+      )
+      managedDomain = await updateManagedDomain(payload, managedDomain, {
+        providerDomainId: registration.id == null
+          ? managedDomain.providerDomainId
+          : String(registration.id),
+        providerRegistrationState: "confirmed",
+        registeredAt: registration.status === "registered"
+          ? managedDomain.registeredAt ?? dependencies.now()
+          : managedDomain.registeredAt,
+        reconciliationRequired: registration.status !== "registered",
+        failureReason: null,
+      }, `provider_registration_${registration.status}`, dependencies.now())
+      // A successful POST is not registrant-verification evidence. Always
+      // reconcile through OpenProvider's authoritative domain read before DNS
+      // or publication may advance.
+      try {
+        providerDomain = await dependencies.findOpenProviderDomain(
+          context.normalized.domain,
+          { token: context.token },
+        )
+      } catch (error) {
+        if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) {
+          throw error
+        }
+        return {
+          outcome: "manual_review",
+          result: await stopProvisioningForProviderAmbiguity(
+            payload,
+            run,
+            managedDomain,
+            context.registrant,
+            "openprovider_domain_lookup_ambiguous",
+            "Multiple exact Openprovider domains match the accepted registration authority.",
+            dependencies.now(),
+          ),
+        }
+      }
+    } catch (error) {
+      if (error instanceof OpenProviderAmbiguousDomainLookupError) {
+        return {
+          outcome: "manual_review",
+          result: await stopProvisioningForProviderAmbiguity(
+            payload,
+            run,
+            managedDomain,
+            context.registrant,
+            "openprovider_domain_lookup_ambiguous",
+            "Multiple exact Openprovider domains match the accepted registration authority.",
+            dependencies.now(),
+          ),
+        }
+      }
+      let reconciled: OpenProviderDomainRecord | null = null
+      let reconciliationError: unknown = null
+      try {
+        reconciled = await dependencies.findOpenProviderDomain(
+          context.normalized.domain,
+          { token: context.token },
+        )
+      } catch (readError) {
+        // The original indeterminate write remains authoritative until a read succeeds.
+        reconciliationError = readError
+      }
+      if (reconciliationError instanceof OpenProviderAmbiguousDomainLookupError) {
+        return {
+          outcome: "manual_review",
+          result: await stopProvisioningForProviderAmbiguity(
+            payload,
+            run,
+            managedDomain,
+            context.registrant,
+            "openprovider_domain_lookup_ambiguous",
+            "Multiple exact Openprovider domains match the accepted registration authority.",
+            dependencies.now(),
+          ),
+        }
+      }
+      if (reconciled?.ownerHandle === context.customerHandle) {
+        providerDomain = reconciled
+      } else if (error instanceof OpenProviderIndeterminateWriteError) {
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        }, "openprovider_registration_indeterminate", dependencies.now())
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider registration is awaiting reconciliation; no retry was sent.",
+          ),
+        }
+      } else {
+        throw error
+      }
+    }
+  }
+
+  if (!providerDomain) {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider is still processing the domain registration.",
+      ),
+    }
+  }
+  if (providerDomain.ownerHandle !== context.customerHandle) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      state: "manual_review",
+      customerStatus: "manual_review",
+      reconciliationRequired: false,
+      failureReason: "provider_domain_owner_mismatch",
+    }, "provider_domain_owner_mismatch", dependencies.now())
+    return {
+      outcome: "unfulfillable",
+      result: {
+        status: "unfulfillable",
+        domain: context.normalized.domain,
+        run,
+        managedDomain,
+        message:
+          "Openprovider returned the domain under a different registrant handle.",
+      },
+    }
+  }
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    providerDomainId: String(providerDomain.id),
+    providerRegistrationState: "confirmed",
+    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    providerRenewalDate: normalizeOpenProviderTimestamp(
+      providerDomain.renewalDate,
+    ),
+    registryExpiryDate: normalizeOpenProviderTimestamp(
+      providerDomain.registryExpiryDate,
+    ),
+    registeredAt: registrationIsActive(providerDomain.status, context.capability)
+      ? managedDomain.registeredAt ?? dependencies.now()
+      : managedDomain.registeredAt,
+    reconciliationRequired: !registrationIsActive(
+      providerDomain.status,
+      context.capability,
+    ),
+    failureReason: null,
+  }, "provider_registration_reconciled", dependencies.now())
+  if (!registrationIsActive(providerDomain.status, context.capability)) {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Openprovider has accepted the registration and is still processing it.",
+      ),
+    }
+  }
+
+  return {
+    outcome: "continue",
+    providerDomain,
+    managedDomain,
+  }
+}
+
 export async function provisionPaidDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
@@ -1269,168 +1511,27 @@ export async function provisionPaidDomainOrder(
   const zone = zoneOutcome.zone
   managedDomain = zoneOutcome.managedDomain
 
-  if (!providerDomain) {
-    const claimedAt = dependencies.now()
-    const claimedDomain = await claimRegistrarCommit(payload, {
-      order: input.order,
-      paymentAttemptId: input.paymentAttemptId,
+  const registrationOutcome = await claimAndReconcileRegistrarRegistrationPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+    {
+      token,
+      normalized,
+      capability,
+      registrant,
       managedDomain,
-      now: claimedAt,
-    })
-    if (!claimedDomain) {
-      return waiting(
-        normalized.domain,
-        run,
-        managedDomain,
-        "Payment authority changed before registrar commitment; no registration was sent.",
-      )
-    }
-    managedDomain = claimedDomain
-    try {
-      const registration = await dependencies.registerOpenProviderDomain(normalized.domain, {
-        token,
-        ownerHandle: customerHandle,
-        nameServers: zone.nameServers.map((name) => ({ name })),
-        nsGroup: null,
-        period: capability.registration.periodYears,
-        autorenew:
-          capability.renewal.executionMode === "provider_autorenew" &&
-          tldCapabilityOperationFlagEnabled(
-            capability,
-            "renewal_provider_autorenew",
-          )
-            ? "on"
-            : "off",
-        reference: managedDomain.provisioningIdempotencyKey,
-        acceptedCapabilityVersion: capability.capabilityVersion,
-      })
-      managedDomain = await updateManagedDomain(payload, managedDomain, {
-        providerDomainId: registration.id == null
-          ? managedDomain.providerDomainId
-          : String(registration.id),
-        providerRegistrationState: "confirmed",
-        registeredAt: registration.status === "registered"
-          ? managedDomain.registeredAt ?? dependencies.now()
-          : managedDomain.registeredAt,
-        reconciliationRequired: registration.status !== "registered",
-        failureReason: null,
-      }, `provider_registration_${registration.status}`, dependencies.now())
-      // A successful POST is not registrant-verification evidence. Always
-      // reconcile through OpenProvider's authoritative domain read before DNS
-      // or publication may advance.
-      try {
-        providerDomain = await dependencies.findOpenProviderDomain(
-          normalized.domain,
-          { token },
-        )
-      } catch (error) {
-        if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) {
-          throw error
-        }
-        return stopProvisioningForProviderAmbiguity(
-          payload,
-          run,
-          managedDomain,
-          registrant,
-          "openprovider_domain_lookup_ambiguous",
-          "Multiple exact Openprovider domains match the accepted registration authority.",
-          dependencies.now(),
-        )
-      }
-    } catch (error) {
-      if (error instanceof OpenProviderAmbiguousDomainLookupError) {
-        return stopProvisioningForProviderAmbiguity(
-          payload,
-          run,
-          managedDomain,
-          registrant,
-          "openprovider_domain_lookup_ambiguous",
-          "Multiple exact Openprovider domains match the accepted registration authority.",
-          dependencies.now(),
-        )
-      }
-      let reconciled: OpenProviderDomainRecord | null = null
-      let reconciliationError: unknown = null
-      try {
-        reconciled = await dependencies.findOpenProviderDomain(normalized.domain, { token })
-      } catch (readError) {
-        // The original indeterminate write remains authoritative until a read succeeds.
-        reconciliationError = readError
-      }
-      if (reconciliationError instanceof OpenProviderAmbiguousDomainLookupError) {
-        return stopProvisioningForProviderAmbiguity(
-          payload,
-          run,
-          managedDomain,
-          registrant,
-          "openprovider_domain_lookup_ambiguous",
-          "Multiple exact Openprovider domains match the accepted registration authority.",
-          dependencies.now(),
-        )
-      }
-      if (reconciled?.ownerHandle === customerHandle) {
-        providerDomain = reconciled
-      } else if (error instanceof OpenProviderIndeterminateWriteError) {
-        managedDomain = await updateManagedDomain(payload, managedDomain, {
-          providerRegistrationState: "indeterminate",
-          reconciliationRequired: true,
-          failureReason: "openprovider_registration_indeterminate",
-        }, "openprovider_registration_indeterminate", dependencies.now())
-        return waiting(
-          normalized.domain,
-          run,
-          managedDomain,
-          "Openprovider registration is awaiting reconciliation; no retry was sent.",
-        )
-      } else {
-        throw error
-      }
-    }
+      providerDomain,
+      customerHandle,
+      zone,
+    },
+  )
+  if (registrationOutcome.outcome !== "continue") {
+    return registrationOutcome.result
   }
-
-  if (!providerDomain) {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Openprovider is still processing the domain registration.",
-    )
-  }
-  if (providerDomain.ownerHandle !== customerHandle) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      state: "manual_review",
-      customerStatus: "manual_review",
-      reconciliationRequired: false,
-      failureReason: "provider_domain_owner_mismatch",
-    }, "provider_domain_owner_mismatch", dependencies.now())
-    return {
-      status: "unfulfillable",
-      domain: normalized.domain,
-      run,
-      managedDomain,
-      message: "Openprovider returned the domain under a different registrant handle.",
-    }
-  }
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    providerDomainId: String(providerDomain.id),
-    providerRegistrationState: "confirmed",
-    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
-    providerRenewalDate: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
-    registryExpiryDate: normalizeOpenProviderTimestamp(providerDomain.registryExpiryDate),
-    registeredAt: registrationIsActive(providerDomain.status, capability)
-      ? managedDomain.registeredAt ?? dependencies.now()
-      : managedDomain.registeredAt,
-    reconciliationRequired: !registrationIsActive(providerDomain.status, capability),
-    failureReason: null,
-  }, "provider_registration_reconciled", dependencies.now())
-  if (!registrationIsActive(providerDomain.status, capability)) {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Openprovider has accepted the registration and is still processing it.",
-    )
-  }
+  providerDomain = registrationOutcome.providerDomain
+  managedDomain = registrationOutcome.managedDomain
 
   const verification = registrationRegistrantVerification(
     providerDomain,

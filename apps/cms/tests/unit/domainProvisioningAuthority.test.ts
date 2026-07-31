@@ -435,6 +435,119 @@ describe("new-domain provider authority", () => {
     expect(register).not.toHaveBeenCalled()
   })
 
+  it("recovers an indeterminate registration on restart from exact owner readback without a second POST", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    let domainLookupCount = 0
+    const register = vi.fn(async () => {
+      throw new OpenProviderIndeterminateWriteError(
+        "registration response was lost",
+      )
+    })
+
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => {
+          domainLookupCount += 1
+          return domainLookupCount <= 2
+            ? null
+            : {
+                id: 9001,
+                domain: "example.nl",
+                status: "REQ",
+                ownerHandle: "OWNER-CLIENT",
+                adminHandle: null,
+                nameServers: [],
+                renewalDate: null,
+                registryExpiryDate: null,
+                autorenew: "off" as const,
+                verificationEmailStatus: null,
+                verificationEmailDescription: null,
+                raw: {},
+              }
+        }),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        listCloudflareZones: vi.fn(async () => [{
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        }]),
+        registerOpenProviderDomain: register,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        message: expect.stringContaining("no retry was sent"),
+        managedDomain: {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        },
+      })
+    expect(domainLookupCount).toBe(2)
+    expect(register).toHaveBeenCalledOnce()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        message: expect.stringContaining("still processing"),
+        managedDomain: {
+          providerDomainId: "9001",
+          providerRegistrationState: "confirmed",
+          reconciliationRequired: true,
+          failureReason: null,
+        },
+      })
+    expect(domainLookupCount).toBe(3)
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("rejects exact registrar readback under a different customer owner", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    const register = vi.fn()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => ({
+          id: 9001,
+          domain: "example.nl",
+          status: "ACT",
+          ownerHandle: "OWNER-OTHER",
+          adminHandle: null,
+          nameServers: [],
+          renewalDate: null,
+          registryExpiryDate: null,
+          autorenew: "off" as const,
+          verificationEmailStatus: null,
+          verificationEmailDescription: null,
+          raw: {},
+        })),
+        registerOpenProviderDomain: register,
+      },
+    })).resolves.toMatchObject({
+      status: "unfulfillable",
+      message: expect.stringContaining("different provider owner"),
+      managedDomain: {
+        state: "manual_review",
+        failureReason: "provider_domain_owner_mismatch",
+      },
+    })
+    expect(register).not.toHaveBeenCalled()
+  })
+
   it("accepts one exact registrar domain without customer, zone, or registrar writes", async () => {
     const store = fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
