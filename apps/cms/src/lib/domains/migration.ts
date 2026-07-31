@@ -3070,6 +3070,16 @@ type OpenProviderCustomerPreparationPhaseOutcome =
     }
   | MigrationStoppedPhaseOutcome
 
+type RegistrarTransferPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      managedDomain: ManagedDomain
+      providerDomain: OpenProviderDomainRecord
+      actions: MigrationCustomerActionStates
+    }
+  | MigrationStoppedPhaseOutcome
+
 const sourceAuthorityBlockedOutcome = (
   migration: DomainMigration,
   result: MigrationResult,
@@ -3966,6 +3976,506 @@ async function prepareOpenProviderCustomerPhase(
   }
 }
 
+const registrarTransferBlockedOutcome = (
+  migration: DomainMigration,
+  result: MigrationResult,
+): MigrationStoppedPhaseOutcome => ({
+  outcome: result.status === "rolled_back"
+    ? "rollback_required"
+    : result.status === "failed"
+      ? "manual_review"
+      : migration.state === "awaiting_customer"
+        ? "customer_action_required"
+        : migration.reconciliationRequired
+          ? "provider_reconciliation_required"
+          : "waiting",
+  result,
+})
+
+async function claimAndReconcileRegistrarTransferPhase(
+  payload: Payload,
+  initialMigration: DomainMigration,
+  initialManagedDomain: ManagedDomain,
+  order: Order,
+  capability: TldCapability,
+  source: ReturnType<typeof migrationSource>,
+  sourceEvidenceStale: boolean,
+  token: string,
+  customerHandle: string,
+  initialActions: MigrationCustomerActionStates,
+  deps: MigrationDependencies,
+): Promise<RegistrarTransferPhaseOutcome> {
+  let migration = initialMigration
+  let managedDomain = initialManagedDomain
+  let actions = initialActions
+  let providerDomain: Awaited<
+    ReturnType<MigrationDependencies["findOpenProviderDomain"]>
+  >
+  try {
+    providerDomain = await deps.findOpenProviderDomain(
+      migration.domainNameAscii,
+      { token },
+    )
+  } catch (error) {
+    if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
+    if (migration.providerTransferState !== "not_started") {
+      return registrarTransferBlockedOutcome(
+        migration,
+        await pauseMigrationForRegistrarAmbiguity(
+          payload,
+          migration,
+          managedDomain,
+          deps.now(),
+        ),
+      )
+    }
+    return registrarTransferBlockedOutcome(
+      migration,
+      await stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "openprovider_domain_lookup_ambiguous",
+        deps.now(),
+        "Multiple exact Openprovider domains match the migration authority.",
+      ),
+    )
+  }
+  if (
+    providerDomain &&
+    (
+      migration.failureReason === "openprovider_domain_lookup_ambiguous" ||
+      managedDomain.failureReason === "openprovider_domain_lookup_ambiguous"
+    )
+  ) {
+    await resolveCommerceAdminException({
+      payload,
+      source: "domains",
+      code: "openprovider_domain_lookup_ambiguous",
+      subjectId: migration.id,
+      now: deps.now(),
+    })
+    migration = await updateMigration(payload, migration, {
+      failureReason: null,
+      reconciliationRequired: true,
+    }, "openprovider_domain_lookup_ambiguity_resolved", deps.now())
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      state: "transfer_pending",
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+      reconciliationRequired: true,
+      failureReason: null,
+    }, "openprovider_domain_lookup_ambiguity_resolved", deps.now())
+  }
+  if (!providerDomain) {
+    if (
+      migration.providerTransferState === "prepared" &&
+      !migration.providerTransferId &&
+      providerWriteClaimLeaseElapsed(migration.transferRequestedAt, deps.now())
+    ) {
+      return registrarTransferBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "provider_transfer_dispatch_unknown",
+          deps.now(),
+          "Transfer dispatch is unresolved; the provider operation must not be repeated.",
+        ),
+      )
+    }
+    if (
+      (
+        migration.providerTransferState === "indeterminate" ||
+        (
+          migration.providerTransferState === "prepared" &&
+          Boolean(migration.providerTransferId)
+        )
+      ) &&
+      providerWriteReconciliationTimedOut(
+        migration.transferRequestedAt,
+        deps.now(),
+      )
+    ) {
+      return registrarTransferBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "provider_transfer_outcome_unresolved",
+          deps.now(),
+          "Transfer provider outcome exceeded the reconciliation window.",
+        ),
+      )
+    }
+    if (
+      migration.providerTransferState === "indeterminate" ||
+      (
+        migration.providerTransferState === "prepared" &&
+        (
+          migration.providerTransferId ||
+          !providerWriteClaimLeaseElapsed(migration.transferRequestedAt, deps.now())
+        )
+      )
+    ) {
+      return registrarTransferBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Domain transfer outcome awaits reconciliation; no retry was sent.",
+        ),
+      )
+    }
+    if (
+      ["cloudflare_api_v1", "authorized_axfr_v1"].includes(
+        migration.sourceMechanism,
+      )
+    ) {
+      const refreshed = await refreshMigrationSourceAuthority(
+        payload,
+        migration,
+        "exact_authority",
+        deps,
+      )
+      migration = refreshed.migration
+      if (refreshed.blocked) {
+        return registrarTransferBlockedOutcome(migration, refreshed.blocked)
+      }
+    } else if (sourceEvidenceStale) {
+      return registrarTransferBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "source_evidence_stale_before_transfer",
+          deps.now(),
+          "Frozen source evidence expired before transfer; reviewed fresh authority is required.",
+        ),
+      )
+    }
+    const transferParentDs = await deps.verifyParentDsAbsent(
+      migration.domainNameAscii,
+    )
+    if (transferParentDs.status === "indeterminate") {
+      return registrarTransferBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "DNSSEC parent state could not be reverified before transfer.",
+        ),
+      )
+    }
+    const transferParentStateMatches = source.dnssec.status === "signed"
+      ? transferParentDs.status === "present" &&
+        dsRecordsEqual(transferParentDs.records, source.dnssec.parentDsRecords) &&
+        transferParentDs.ttl === source.dnssec.parentDsTtl
+      : transferParentDs.status === "absent"
+    if (!transferParentStateMatches) {
+      return registrarTransferBlockedOutcome(
+        migration,
+        await stopUnfulfillableMigrationBeforeRegistrarCommit(
+          payload,
+          migration,
+          managedDomain,
+          order,
+          "dnssec_parent_state_changed_before_transfer",
+          deps.now(),
+        ),
+      )
+    }
+    if (!await verifyFrozenSourceDnssec(source, deps)) {
+      return registrarTransferBlockedOutcome(
+        migration,
+        waiting(
+          migration,
+          "Source DNSSEC chain could not be reauthenticated immediately before transfer.",
+        ),
+      )
+    }
+    const transferResult = await withCommerceOrderLock(
+      payload,
+      order.id,
+      async (): Promise<MigrationResult | null> => {
+        const paymentAuthority = await loadSecuredInitialPaymentAuthority(
+          payload,
+          order.id,
+        )
+        if (
+          !paymentAuthority.secured ||
+          paymentAuthority.order.state !== "fulfillment_pending"
+        ) {
+          return stopMigrationForRevokedPaymentBeforeRegistrarCommit(
+            payload,
+            migration,
+            managedDomain,
+            paymentAuthority.order,
+            deps.now(),
+          )
+        }
+        if (!deps.forwardProviderWritesAllowed()) {
+          return waiting(
+            migration,
+            "Domain transfer is prepared but forward provider writes are release-blocked.",
+          )
+        }
+        migration = await updateMigration(payload, migration, {
+          providerTransferState: "prepared",
+          transferRequestedAt: deps.now(),
+          reconciliationRequired: true,
+        }, "provider_transfer_write_prepared", deps.now())
+        const encryptedTransferCode = migration.encryptedTransferCode
+        if (!encryptedTransferCode) {
+          return waiting(
+            migration,
+            "The encrypted transfer code is no longer available.",
+          )
+        }
+        const transferCode = openMigrationSecret(
+          encryptedTransferCode,
+          migration.idempotencyKey,
+        )
+        try {
+          const transfer = await deps.transferOpenProviderDomain(
+            migration.domainNameAscii,
+            {
+              token,
+              authCode: transferCode,
+              ownerHandle: customerHandle,
+              nameServers: source.authoritativeNameservers.map((name) => ({ name })),
+              dnssecKeys: source.dnssec.status === "signed"
+                ? sourceDnskeys(source)
+                : undefined,
+              autorenew: transferAutorenewMode(capability),
+              reference: migration.idempotencyKey,
+              acceptedCapabilityVersion: capability.capabilityVersion,
+            },
+          )
+          actions = transferConfirmationAction(
+            actionStates(migration.customerActions, deps.now()),
+            capability,
+            "required",
+            deps.now(),
+          )
+          migration = await updateMigration(payload, migration, {
+            providerTransferId: String(transfer.id),
+            customerActions: actions,
+          }, `provider_transfer_${transfer.status}`, deps.now())
+        } catch (error) {
+          try {
+            providerDomain = await deps.findOpenProviderDomain(
+              migration.domainNameAscii,
+              { token },
+            )
+          } catch {
+            // The prepared write remains authoritative until reconciliation succeeds.
+          }
+          if (
+            !providerDomain &&
+            error instanceof OpenProviderIndeterminateWriteError
+          ) {
+            actions = transferConfirmationAction(
+              actionStates(migration.customerActions, deps.now()),
+              capability,
+              "required",
+              deps.now(),
+            )
+            migration = await updateMigration(payload, migration, {
+              state: "awaiting_provider",
+              providerTransferState: "indeterminate",
+              customerActions: actions,
+              reconciliationRequired: true,
+              failureReason: "openprovider_transfer_indeterminate",
+            }, "provider_transfer_indeterminate", deps.now())
+            return waiting(
+              migration,
+              "Domain transfer is awaiting provider reconciliation.",
+            )
+          }
+          if (!providerDomain && providerRejectedTransferAuthorization(error)) {
+            actions = withAction(
+              actionStates(migration.customerActions, deps.now()),
+              "provide_epp_code",
+              "failed",
+              deps.now(),
+              "provider_rejected_authorization",
+            )
+            migration = await updateMigration(payload, migration, {
+              state: "awaiting_customer",
+              providerTransferState: "not_started",
+              encryptedTransferCode: null,
+              transferCodeDeletedAt: deps.now(),
+              customerActions: actions,
+              reconciliationRequired: false,
+              failureReason: "provider_rejected_transfer_authorization",
+            }, "provider_rejected_transfer_authorization", deps.now())
+            return waiting(
+              migration,
+              "The provider rejected the transfer authorization.",
+            )
+          }
+          if (
+            !providerDomain &&
+            error instanceof OpenProviderApiError &&
+            error.status >= 400 &&
+            error.status < 500
+          ) {
+            return stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "openprovider_transfer_rejected_non_authorization",
+              deps.now(),
+              "The provider rejected a paid transfer for immediate operator review.",
+            )
+          }
+          if (!providerDomain) throw error
+        }
+        providerDomain ??= await deps.findOpenProviderDomain(
+          migration.domainNameAscii,
+          { token },
+        )
+        return null
+      },
+    )
+    if (transferResult) {
+      return registrarTransferBlockedOutcome(migration, transferResult)
+    }
+  }
+  if (
+    !providerDomain ||
+    !activeProviderDomain(
+      providerDomain,
+      capability.transfer.confirmation.activeStatuses,
+    )
+  ) {
+    const currentConfirmationStatus = actions.confirm_transfer.status
+    const confirmationNeedsUpdate = nextTransferConfirmationStatus(
+      currentConfirmationStatus,
+      capability,
+      true,
+    ) !== currentConfirmationStatus
+    if (migration.state === "preparing" || confirmationNeedsUpdate) {
+      actions = transferConfirmationAction(
+        actions,
+        capability,
+        "required",
+        deps.now(),
+      )
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        customerActions: actions,
+      }, "provider_transfer_processing", deps.now())
+    }
+    const requestedAt = migration.transferRequestedAt
+      ? new Date(migration.transferRequestedAt).getTime()
+      : Number.NaN
+    const maximumWaitMs =
+      Math.max(1, capability.transfer.maximumExpectedWaitDays) *
+      24 * 60 * 60 * 1_000
+    if (
+      Number.isFinite(requestedAt) &&
+      new Date(deps.now()).getTime() - requestedAt >= maximumWaitMs
+    ) {
+      if (migration.failureReason !== "provider_transfer_sla_exceeded") {
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          failureReason: "provider_transfer_sla_exceeded",
+          reconciliationRequired: true,
+        }, "provider_transfer_sla_exceeded", deps.now())
+      }
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "provider_transfer_sla_exceeded",
+        message:
+          "The registrar transfer exceeded the governed TLD waiting window; automated polling continues without repeating the transfer write.",
+        tenant: managedDomain.tenant,
+        subjectId: migration.id,
+        severity: "error",
+        now: deps.now(),
+      })
+    }
+    return registrarTransferBlockedOutcome(
+      migration,
+      waiting(
+        migration,
+        "Openprovider is still processing the domain transfer.",
+      ),
+    )
+  }
+  await resolveCommerceAdminException({
+    payload,
+    source: "domains",
+    code: "provider_transfer_sla_exceeded",
+    subjectId: migration.id,
+    now: deps.now(),
+  })
+  if (migration.failureReason === "provider_transfer_sla_exceeded") {
+    migration = await updateMigration(payload, migration, {
+      failureReason: null,
+      reconciliationRequired: false,
+    }, "provider_transfer_completed_after_sla", deps.now())
+  }
+  if (providerDomain.ownerHandle !== customerHandle) {
+    return registrarTransferBlockedOutcome(
+      migration,
+      await stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "provider_domain_owner_mismatch",
+        deps.now(),
+        "Transferred domain ownership differs from the accepted customer registrant.",
+      ),
+    )
+  }
+  if (
+    migration.cutoverWriteState === "not_started" &&
+    !nameserversEqual(
+      providerDomain.nameServers,
+      source.authoritativeNameservers,
+    )
+  ) {
+    return registrarTransferBlockedOutcome(
+      migration,
+      await rollbackCutover(
+        payload,
+        migration,
+        managedDomain,
+        providerDomain,
+        "transfer_did_not_retain_old_nameservers",
+        deps,
+      ),
+    )
+  }
+  const postTransferPayment = await loadSecuredInitialPaymentAuthority(
+    payload,
+    order.id,
+  )
+  if (!postTransferPayment.secured) {
+    return registrarTransferBlockedOutcome(
+      migration,
+      await stopMigrationForRevokedPaymentAfterRegistrarCommit(
+        payload,
+        migration,
+        managedDomain,
+        postTransferPayment.order,
+        deps.now(),
+      ),
+    )
+  }
+  return {
+    outcome: "continue",
+    migration,
+    managedDomain,
+    providerDomain,
+    actions,
+  }
+}
+
 export async function prepareDomainMigration(
   payload: Payload,
   migrationId: string | number,
@@ -4082,388 +4592,28 @@ export async function prepareDomainMigration(
     )
   }
 
-  let providerDomain: Awaited<
-    ReturnType<MigrationDependencies["findOpenProviderDomain"]>
-  >
-  try {
-    providerDomain = await deps.findOpenProviderDomain(
-      migration.domainNameAscii,
-      { token },
-    )
-  } catch (error) {
-    if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) throw error
-    if (migration.providerTransferState !== "not_started") {
-      return pauseMigrationForRegistrarAmbiguity(
-        payload,
-        migration,
-        managedDomain,
-        deps.now(),
-      )
-    }
-    return stopMigrationForProviderManualReview(
+  const registrarTransferOutcome =
+    await claimAndReconcileRegistrarTransferPhase(
       payload,
       migration,
       managedDomain,
-      "openprovider_domain_lookup_ambiguous",
-      deps.now(),
-      "Multiple exact Openprovider domains match the migration authority.",
-    )
-  }
-  if (
-    providerDomain &&
-    (
-      migration.failureReason === "openprovider_domain_lookup_ambiguous" ||
-      managedDomain.failureReason === "openprovider_domain_lookup_ambiguous"
-    )
-  ) {
-    await resolveCommerceAdminException({
-      payload,
-      source: "domains",
-      code: "openprovider_domain_lookup_ambiguous",
-      subjectId: migration.id,
-      now: deps.now(),
-    })
-    migration = await updateMigration(payload, migration, {
-      failureReason: null,
-      reconciliationRequired: true,
-    }, "openprovider_domain_lookup_ambiguity_resolved", deps.now())
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      state: "transfer_pending",
-      entitlementStatus: "pending",
-      customerStatus: "provisioning",
-      reconciliationRequired: true,
-      failureReason: null,
-    }, "openprovider_domain_lookup_ambiguity_resolved", deps.now())
-  }
-  if (!providerDomain) {
-    if (
-      migration.providerTransferState === "prepared" &&
-      !migration.providerTransferId &&
-      providerWriteClaimLeaseElapsed(migration.transferRequestedAt, deps.now())
-    ) {
-      return stopMigrationForProviderManualReview(
-        payload,
-        migration,
-        managedDomain,
-        "provider_transfer_dispatch_unknown",
-        deps.now(),
-        "Transfer dispatch is unresolved; the provider operation must not be repeated.",
-      )
-    }
-    if (
-      (
-        migration.providerTransferState === "indeterminate" ||
-        (
-          migration.providerTransferState === "prepared" &&
-          Boolean(migration.providerTransferId)
-        )
-      ) &&
-      providerWriteReconciliationTimedOut(
-        migration.transferRequestedAt,
-        deps.now(),
-      )
-    ) {
-      return stopMigrationForProviderManualReview(
-        payload,
-        migration,
-        managedDomain,
-        "provider_transfer_outcome_unresolved",
-        deps.now(),
-        "Transfer provider outcome exceeded the reconciliation window.",
-      )
-    }
-    if (
-      migration.providerTransferState === "indeterminate" ||
-      (
-        migration.providerTransferState === "prepared" &&
-        (
-          migration.providerTransferId ||
-          !providerWriteClaimLeaseElapsed(migration.transferRequestedAt, deps.now())
-        )
-      )
-    ) {
-      return waiting(migration, "Domain transfer outcome awaits reconciliation; no retry was sent.")
-    }
-    if (
-      ["cloudflare_api_v1", "authorized_axfr_v1"].includes(
-        migration.sourceMechanism,
-      )
-    ) {
-      const refreshed = await refreshMigrationSourceAuthority(
-        payload,
-        migration,
-        "exact_authority",
-        deps,
-      )
-      migration = refreshed.migration
-      if (refreshed.blocked) return refreshed.blocked
-    } else if (sourceEvidenceStale) {
-      return stopMigrationForProviderManualReview(
-        payload,
-        migration,
-        managedDomain,
-        "source_evidence_stale_before_transfer",
-        deps.now(),
-        "Frozen source evidence expired before transfer; reviewed fresh authority is required.",
-      )
-    }
-    const transferParentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
-    if (transferParentDs.status === "indeterminate") {
-      return waiting(migration, "DNSSEC parent state could not be reverified before transfer.")
-    }
-    const transferParentStateMatches = source.dnssec.status === "signed"
-      ? transferParentDs.status === "present" &&
-        dsRecordsEqual(transferParentDs.records, source.dnssec.parentDsRecords) &&
-        transferParentDs.ttl === source.dnssec.parentDsTtl
-      : transferParentDs.status === "absent"
-    if (!transferParentStateMatches) {
-      return stopUnfulfillableMigrationBeforeRegistrarCommit(
-        payload,
-        migration,
-        managedDomain,
-        order,
-        "dnssec_parent_state_changed_before_transfer",
-        deps.now(),
-      )
-    }
-    if (!await verifyFrozenSourceDnssec(source, deps)) {
-      return waiting(
-        migration,
-        "Source DNSSEC chain could not be reauthenticated immediately before transfer.",
-      )
-    }
-    const transferResult = await withCommerceOrderLock(
-      payload,
-      order.id,
-      async (): Promise<MigrationResult | null> => {
-        const paymentAuthority = await loadSecuredInitialPaymentAuthority(
-          payload,
-          order.id,
-        )
-        if (
-          !paymentAuthority.secured ||
-          paymentAuthority.order.state !== "fulfillment_pending"
-        ) {
-          return stopMigrationForRevokedPaymentBeforeRegistrarCommit(
-            payload,
-            migration,
-            managedDomain,
-            paymentAuthority.order,
-            deps.now(),
-          )
-        }
-        if (!deps.forwardProviderWritesAllowed()) {
-          return waiting(
-            migration,
-            "Domain transfer is prepared but forward provider writes are release-blocked.",
-          )
-        }
-        migration = await updateMigration(payload, migration, {
-          providerTransferState: "prepared",
-          transferRequestedAt: deps.now(),
-          reconciliationRequired: true,
-        }, "provider_transfer_write_prepared", deps.now())
-        const encryptedTransferCode = migration.encryptedTransferCode
-        if (!encryptedTransferCode) {
-          return waiting(migration, "The encrypted transfer code is no longer available.")
-        }
-        const transferCode = openMigrationSecret(
-          encryptedTransferCode,
-          migration.idempotencyKey,
-        )
-        try {
-          const transfer = await deps.transferOpenProviderDomain(migration.domainNameAscii, {
-            token,
-            authCode: transferCode,
-            ownerHandle: customerHandle,
-            nameServers: source.authoritativeNameservers.map((name) => ({ name })),
-            dnssecKeys: source.dnssec.status === "signed"
-              ? sourceDnskeys(source)
-              : undefined,
-            autorenew: transferAutorenewMode(capability),
-            reference: migration.idempotencyKey,
-            acceptedCapabilityVersion: capability.capabilityVersion,
-          })
-          actions = transferConfirmationAction(
-            actionStates(migration.customerActions, deps.now()),
-            capability,
-            "required",
-            deps.now(),
-          )
-          migration = await updateMigration(payload, migration, {
-            providerTransferId: String(transfer.id),
-            customerActions: actions,
-          }, `provider_transfer_${transfer.status}`, deps.now())
-        } catch (error) {
-          try {
-            providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
-          } catch {
-            // The prepared write remains authoritative until reconciliation succeeds.
-          }
-          if (!providerDomain && error instanceof OpenProviderIndeterminateWriteError) {
-            actions = transferConfirmationAction(
-              actionStates(migration.customerActions, deps.now()),
-              capability,
-              "required",
-              deps.now(),
-            )
-            migration = await updateMigration(payload, migration, {
-              state: "awaiting_provider",
-              providerTransferState: "indeterminate",
-              customerActions: actions,
-              reconciliationRequired: true,
-              failureReason: "openprovider_transfer_indeterminate",
-            }, "provider_transfer_indeterminate", deps.now())
-            return waiting(migration, "Domain transfer is awaiting provider reconciliation.")
-          }
-          if (!providerDomain && providerRejectedTransferAuthorization(error)) {
-            actions = withAction(
-              actionStates(migration.customerActions, deps.now()),
-              "provide_epp_code",
-              "failed",
-              deps.now(),
-              "provider_rejected_authorization",
-            )
-            migration = await updateMigration(payload, migration, {
-              state: "awaiting_customer",
-              providerTransferState: "not_started",
-              encryptedTransferCode: null,
-              transferCodeDeletedAt: deps.now(),
-              customerActions: actions,
-              reconciliationRequired: false,
-              failureReason: "provider_rejected_transfer_authorization",
-            }, "provider_rejected_transfer_authorization", deps.now())
-            return waiting(migration, "The provider rejected the transfer authorization.")
-          }
-          if (
-            !providerDomain &&
-            error instanceof OpenProviderApiError &&
-            error.status >= 400 &&
-            error.status < 500
-          ) {
-            return stopMigrationForProviderManualReview(
-              payload,
-              migration,
-              managedDomain,
-              "openprovider_transfer_rejected_non_authorization",
-              deps.now(),
-              "The provider rejected a paid transfer for immediate operator review.",
-            )
-          }
-          if (!providerDomain) throw error
-        }
-        providerDomain ??= await deps.findOpenProviderDomain(
-          migration.domainNameAscii,
-          { token },
-        )
-        return null
-      },
-    )
-    if (transferResult) return transferResult
-  }
-  if (!providerDomain || !activeProviderDomain(
-    providerDomain,
-    capability.transfer.confirmation.activeStatuses,
-  )) {
-    const currentConfirmationStatus = actions.confirm_transfer.status
-    const confirmationNeedsUpdate =
-      nextTransferConfirmationStatus(
-        currentConfirmationStatus,
-        capability,
-        true,
-      ) !== currentConfirmationStatus
-    if (migration.state === "preparing" || confirmationNeedsUpdate) {
-      actions = transferConfirmationAction(
-        actions,
-        capability,
-        "required",
-        deps.now(),
-      )
-      migration = await updateMigration(payload, migration, {
-        state: "awaiting_provider",
-        customerActions: actions,
-      }, "provider_transfer_processing", deps.now())
-    }
-    const requestedAt = migration.transferRequestedAt
-      ? new Date(migration.transferRequestedAt).getTime()
-      : Number.NaN
-    const maximumWaitMs =
-      Math.max(1, capability.transfer.maximumExpectedWaitDays) *
-      24 * 60 * 60 * 1_000
-    if (
-      Number.isFinite(requestedAt) &&
-      new Date(deps.now()).getTime() - requestedAt >= maximumWaitMs
-    ) {
-      if (migration.failureReason !== "provider_transfer_sla_exceeded") {
-        migration = await updateMigration(payload, migration, {
-          state: "awaiting_provider",
-          failureReason: "provider_transfer_sla_exceeded",
-          reconciliationRequired: true,
-        }, "provider_transfer_sla_exceeded", deps.now())
-      }
-      await recordCommerceAdminException({
-        payload,
-        source: "domains",
-        code: "provider_transfer_sla_exceeded",
-        message:
-          "The registrar transfer exceeded the governed TLD waiting window; automated polling continues without repeating the transfer write.",
-        tenant: managedDomain.tenant,
-        subjectId: migration.id,
-        severity: "error",
-        now: deps.now(),
-      })
-    }
-    return waiting(migration, "Openprovider is still processing the domain transfer.")
-  }
-  await resolveCommerceAdminException({
-    payload,
-    source: "domains",
-    code: "provider_transfer_sla_exceeded",
-    subjectId: migration.id,
-    now: deps.now(),
-  })
-  if (migration.failureReason === "provider_transfer_sla_exceeded") {
-    migration = await updateMigration(payload, migration, {
-      failureReason: null,
-      reconciliationRequired: false,
-    }, "provider_transfer_completed_after_sla", deps.now())
-  }
-  if (providerDomain.ownerHandle !== customerHandle) {
-    return stopMigrationForProviderManualReview(
-      payload,
-      migration,
-      managedDomain,
-      "provider_domain_owner_mismatch",
-      deps.now(),
-      "Transferred domain ownership differs from the accepted customer registrant.",
-    )
-  }
-  if (
-    migration.cutoverWriteState === "not_started" &&
-    !nameserversEqual(providerDomain.nameServers, source.authoritativeNameservers)
-  ) {
-    return rollbackCutover(
-      payload,
-      migration,
-      managedDomain,
-      providerDomain,
-      "transfer_did_not_retain_old_nameservers",
+      order,
+      capability,
+      source,
+      sourceEvidenceStale,
+      token,
+      customerHandle,
+      actions,
       deps,
     )
+  if (registrarTransferOutcome.outcome !== "continue") {
+    return registrarTransferOutcome.result
   }
-  const postTransferPayment = await loadSecuredInitialPaymentAuthority(
-    payload,
-    order.id,
-  )
-  if (!postTransferPayment.secured) {
-    return stopMigrationForRevokedPaymentAfterRegistrarCommit(
-      payload,
-      migration,
-      managedDomain,
-      postTransferPayment.order,
-      deps.now(),
-    )
-  }
+  migration = registrarTransferOutcome.migration
+  managedDomain = registrarTransferOutcome.managedDomain
+  let providerDomain = registrarTransferOutcome.providerDomain
+  actions = registrarTransferOutcome.actions
+
   const registrantVerification = migrationRegistrantVerification(providerDomain)
   const storedVerification = storedRegistrantVerification(
     registrantVerification,
