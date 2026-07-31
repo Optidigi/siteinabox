@@ -5850,8 +5850,9 @@ describe("Mollie payment flow", () => {
     expect(managedDomains[0]).toMatchObject({
       cloudflareZoneId: "zone_123",
       cloudflareZoneStatus: "active",
-      providerRegistrationState: "confirmed",
+      providerRegistrationState: "prepared",
       reconciliationRequired: true,
+      failureReason: "openprovider_registration_readback_pending",
     })
   })
 

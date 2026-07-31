@@ -44,6 +44,7 @@ import {
   normalizeOpenProviderTimestamp,
   OpenProviderAmbiguousCustomerReferenceLookupError,
   OpenProviderAmbiguousDomainLookupError,
+  OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   type OpenProviderDomainRecord,
@@ -156,6 +157,19 @@ type RegistrarRegistrationOutcome =
         | "unfulfillable"
       result: ProvisionPaidDomainResult
     }
+
+type RegistrarWriteErrorClassification = "rejected" | "indeterminate"
+
+const classifyRegistrarWriteError = (
+  error: unknown,
+): RegistrarWriteErrorClassification =>
+  error instanceof OpenProviderApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+    ? "rejected"
+    : "indeterminate"
 
 type ProvisioningDependencies = {
   now: () => string
@@ -793,6 +807,7 @@ async function loadAndClassifyProvisioningAuthorityPhase(
     managedDomain.state === "manual_review" &&
     (
       [
+        "openprovider_registration_write_rejected",
         "paid_domain_became_unavailable_before_provider_commit",
         "provider_domain_owner_mismatch",
       ].includes(initialFailureReason ?? "") ||
@@ -1148,6 +1163,8 @@ async function claimAndReconcileRegistrarRegistrationPhase(
       }
     }
     managedDomain = claimedDomain
+    let registrationFailed = false
+    let registrationError: unknown = null
     try {
       const registration = await dependencies.registerOpenProviderDomain(
         context.normalized.domain,
@@ -1174,13 +1191,10 @@ async function claimAndReconcileRegistrarRegistrationPhase(
         providerDomainId: registration.id == null
           ? managedDomain.providerDomainId
           : String(registration.id),
-        providerRegistrationState: "confirmed",
-        registeredAt: registration.status === "registered"
-          ? managedDomain.registeredAt ?? dependencies.now()
-          : managedDomain.registeredAt,
-        reconciliationRequired: registration.status !== "registered",
-        failureReason: null,
-      }, `provider_registration_${registration.status}`, dependencies.now())
+        providerRegistrationState: "prepared",
+        reconciliationRequired: true,
+        failureReason: "openprovider_registration_readback_pending",
+      }, `provider_registration_response_${registration.status}`, dependencies.now())
       // A successful POST is not registrant-verification evidence. Always
       // reconcile through OpenProvider's authoritative domain read before DNS
       // or publication may advance.
@@ -1189,39 +1203,43 @@ async function claimAndReconcileRegistrarRegistrationPhase(
           context.normalized.domain,
           { token: context.token },
         )
-      } catch (error) {
-        if (!(error instanceof OpenProviderAmbiguousDomainLookupError)) {
-          throw error
+      } catch (readError) {
+        if (readError instanceof OpenProviderAmbiguousDomainLookupError) {
+          return {
+            outcome: "manual_review",
+            result: await stopProvisioningForProviderAmbiguity(
+              payload,
+              run,
+              managedDomain,
+              context.registrant,
+              "openprovider_domain_lookup_ambiguous",
+              "Multiple exact Openprovider domains match the accepted registration authority.",
+              dependencies.now(),
+            ),
+          }
         }
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        }, "openprovider_registration_readback_indeterminate", dependencies.now())
         return {
-          outcome: "manual_review",
-          result: await stopProvisioningForProviderAmbiguity(
-            payload,
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
             run,
             managedDomain,
-            context.registrant,
-            "openprovider_domain_lookup_ambiguous",
-            "Multiple exact Openprovider domains match the accepted registration authority.",
-            dependencies.now(),
+            "Openprovider registration readback is awaiting reconciliation; no retry was sent.",
           ),
         }
       }
     } catch (error) {
-      if (error instanceof OpenProviderAmbiguousDomainLookupError) {
-        return {
-          outcome: "manual_review",
-          result: await stopProvisioningForProviderAmbiguity(
-            payload,
-            run,
-            managedDomain,
-            context.registrant,
-            "openprovider_domain_lookup_ambiguous",
-            "Multiple exact Openprovider domains match the accepted registration authority.",
-            dependencies.now(),
-          ),
-        }
-      }
+      registrationFailed = true
+      registrationError = error
+    }
+    if (registrationFailed) {
       let reconciled: OpenProviderDomainRecord | null = null
+      let reconciliationReadFailed = false
       let reconciliationError: unknown = null
       try {
         reconciled = await dependencies.findOpenProviderDomain(
@@ -1230,6 +1248,7 @@ async function claimAndReconcileRegistrarRegistrationPhase(
         )
       } catch (readError) {
         // The original indeterminate write remains authoritative until a read succeeds.
+        reconciliationReadFailed = true
         reconciliationError = readError
       }
       if (reconciliationError instanceof OpenProviderAmbiguousDomainLookupError) {
@@ -1246,9 +1265,43 @@ async function claimAndReconcileRegistrarRegistrationPhase(
           ),
         }
       }
-      if (reconciled?.ownerHandle === context.customerHandle) {
+      if (reconciliationReadFailed) {
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        }, "openprovider_registration_readback_indeterminate", dependencies.now())
+        return {
+          outcome: "provider_reconciliation_required",
+          result: waiting(
+            context.normalized.domain,
+            run,
+            managedDomain,
+            "Openprovider registration readback is awaiting reconciliation; no retry was sent.",
+          ),
+        }
+      }
+      if (reconciled) {
         providerDomain = reconciled
-      } else if (error instanceof OpenProviderIndeterminateWriteError) {
+      } else if (classifyRegistrarWriteError(registrationError) === "rejected") {
+        managedDomain = await updateManagedDomain(payload, managedDomain, {
+          state: "manual_review",
+          customerStatus: "manual_review",
+          providerRegistrationState: "not_started",
+          reconciliationRequired: false,
+          failureReason: "openprovider_registration_write_rejected",
+        }, "openprovider_registration_write_rejected", dependencies.now())
+        return {
+          outcome: "unfulfillable",
+          result: {
+            status: "unfulfillable",
+            domain: context.normalized.domain,
+            run,
+            managedDomain,
+            message: "Openprovider deterministically rejected the domain registration.",
+          },
+        }
+      } else {
         managedDomain = await updateManagedDomain(payload, managedDomain, {
           providerRegistrationState: "indeterminate",
           reconciliationRequired: true,
@@ -1263,8 +1316,6 @@ async function claimAndReconcileRegistrarRegistrationPhase(
             "Openprovider registration is awaiting reconciliation; no retry was sent.",
           ),
         }
-      } else {
-        throw error
       }
     }
   }

@@ -6,6 +6,7 @@ import {
 import {
   OpenProviderAmbiguousCustomerReferenceLookupError,
   OpenProviderAmbiguousDomainLookupError,
+  OpenProviderApiError,
   OpenProviderCustomerReferenceLookupIncompleteError,
   OpenProviderIndeterminateWriteError,
 } from "@/lib/domains/openprovider"
@@ -191,6 +192,21 @@ const available = {
   price: null,
   internalReason: null,
 }
+
+const requestedProviderDomain = () => ({
+  id: 9001,
+  domain: "example.nl",
+  status: "REQ",
+  ownerHandle: "OWNER-CLIENT",
+  adminHandle: null,
+  nameServers: [],
+  renewalDate: null,
+  registryExpiryDate: null,
+  autorenew: "off" as const,
+  verificationEmailStatus: null,
+  verificationEmailDescription: null,
+  raw: {},
+})
 
 describe("new-domain provider authority", () => {
   it("stops before every write when exact registrar-domain lookup is ambiguous", async () => {
@@ -507,6 +523,218 @@ describe("new-domain provider authority", () => {
         },
       })
     expect(domainLookupCount).toBe(3)
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a successful registration response prepared until exact restart readback", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    let domainLookupCount = 0
+    const register = vi.fn(async () => ({
+      id: 9001,
+      domain: "example.nl",
+      status: "requested" as const,
+      raw: {},
+    }))
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => {
+          domainLookupCount += 1
+          return domainLookupCount <= 2 ? null : requestedProviderDomain()
+        }),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        listCloudflareZones: vi.fn(async () => [{
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        }]),
+        registerOpenProviderDomain: register,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        message: expect.stringContaining("still processing"),
+        managedDomain: {
+          providerDomainId: "9001",
+          providerRegistrationState: "prepared",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_readback_pending",
+        },
+      })
+    expect(register).toHaveBeenCalledOnce()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          providerRegistrationState: "confirmed",
+          failureReason: null,
+        },
+      })
+    expect(domainLookupCount).toBe(3)
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a successful registration indeterminate when authoritative readback errors", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    let domainLookupCount = 0
+    const register = vi.fn(async () => ({
+      id: 9001,
+      domain: "example.nl",
+      status: "requested" as const,
+      raw: {},
+    }))
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => {
+          domainLookupCount += 1
+          if (domainLookupCount === 1) return null
+          if (domainLookupCount === 2) throw new Error("readback unavailable")
+          return requestedProviderDomain()
+        }),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        listCloudflareZones: vi.fn(async () => [{
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        }]),
+        registerOpenProviderDomain: register,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        message: expect.stringContaining("readback is awaiting reconciliation"),
+        managedDomain: {
+          providerDomainId: "9001",
+          providerRegistrationState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_registration_indeterminate",
+        },
+      })
+    expect(register).toHaveBeenCalledOnce()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "waiting",
+        managedDomain: {
+          providerRegistrationState: "confirmed",
+          failureReason: null,
+        },
+      })
+    expect(domainLookupCount).toBe(3)
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("terminally classifies a deterministic registration rejection after absence readback", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    const register = vi.fn(async () => {
+      throw new OpenProviderApiError(
+        "OpenProvider domain registration",
+        422,
+      )
+    })
+
+    const input = {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        listCloudflareZones: vi.fn(async () => [{
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        }]),
+        registerOpenProviderDomain: register,
+      },
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "unfulfillable",
+        message: expect.stringContaining("deterministically rejected"),
+        managedDomain: {
+          state: "manual_review",
+          providerRegistrationState: "not_started",
+          reconciliationRequired: false,
+          failureReason: "openprovider_registration_write_rejected",
+        },
+      })
+    expect(register).toHaveBeenCalledOnce()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, input))
+      .resolves.toMatchObject({
+        status: "unfulfillable",
+        managedDomain: {
+          failureReason: "openprovider_registration_write_rejected",
+        },
+      })
+    expect(register).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a deterministic registration rejection indeterminate when absence readback fails", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    let domainLookupCount = 0
+    const register = vi.fn(async () => {
+      throw new OpenProviderApiError(
+        "OpenProvider domain registration",
+        422,
+      )
+    })
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => {
+          domainLookupCount += 1
+          if (domainLookupCount === 1) return null
+          throw new Error("readback unavailable")
+        }),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        listCloudflareZones: vi.fn(async () => [{
+          id: "zone-1",
+          name: "example.nl",
+          nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          status: "active" as const,
+          raw: {},
+        }]),
+        registerOpenProviderDomain: register,
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("readback is awaiting reconciliation"),
+      managedDomain: {
+        providerRegistrationState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "openprovider_registration_indeterminate",
+      },
+    })
     expect(register).toHaveBeenCalledOnce()
   })
 
