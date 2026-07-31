@@ -3529,12 +3529,18 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
   }
   let zone = zoneLookup.outcome === "exact" ? zoneLookup.zone : null
   if (!zone) {
-    if (migration.cloudflareZoneState === "indeterminate") {
+    const zoneWriteAwaitingReadback =
+      migration.cloudflareZoneState === "indeterminate" ||
+      migration.cloudflareZoneState === "prepared"
+    if (zoneWriteAwaitingReadback) {
+      const checkpointReason = migration.cloudflareZoneState === "indeterminate"
+        ? "cloudflare_zone_write_indeterminate"
+        : "cloudflare_zone_write_prepared"
       if (
         providerWriteReconciliationTimedOut(
           migrationHistoryEventAt(
             migration,
-            "cloudflare_zone_write_indeterminate",
+            checkpointReason,
           ),
           deps.now(),
         )
@@ -3568,9 +3574,16 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
     migration = await updateMigration(payload, migration, {
       cloudflareZoneState: "prepared",
       reconciliationRequired: true,
+      failureReason: "cloudflare_zone_creation_prepared",
     }, "cloudflare_zone_write_prepared", deps.now())
     try {
-      zone = await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
+      await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        cloudflareZoneState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      }, "cloudflare_zone_write_indeterminate", deps.now())
     } catch (error) {
       if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
       migration = await updateMigration(payload, migration, {
@@ -3587,6 +3600,30 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
         ),
       )
     }
+    const dispatchedLookup = classifyCloudflareZoneLookup(
+      migration.domainNameAscii,
+      await deps.listCloudflareZones(migration.domainNameAscii),
+    )
+    if (dispatchedLookup.outcome === "ambiguous") {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        await stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "cloudflare_zone_lookup_ambiguous",
+          deps.now(),
+          "Multiple exact Cloudflare zones match the migration authority.",
+        ),
+      )
+    }
+    if (dispatchedLookup.outcome === "absent") {
+      return cloudflarePreparationBlockedOutcome(
+        migration,
+        waiting(migration, "Cloudflare zone creation is awaiting reconciliation."),
+      )
+    }
+    zone = dispatchedLookup.zone
   }
   const dnsWriteAwaitingReconciliation =
     migration.cloudflareZoneState === "indeterminate" &&
@@ -3594,6 +3631,10 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
   const zoneCreationRecoveredByExactRead =
     migration.cloudflareZoneState === "indeterminate" &&
     migration.failureReason === "cloudflare_zone_creation_indeterminate"
+  const zoneCreationFailure = [
+    "cloudflare_zone_creation_prepared",
+    "cloudflare_zone_creation_indeterminate",
+  ].includes(migration.failureReason ?? "")
   migration = await updateMigration(payload, migration, {
     cloudflareZoneId: zone.id,
     cloudflareNameservers: zone.nameServers,
@@ -3602,17 +3643,28 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
       : {}),
     failureReason: dnsWriteAwaitingReconciliation
       ? migration.failureReason
-      : null,
+      : zoneCreationFailure
+        ? null
+        : migration.failureReason,
   }, "cloudflare_zone_reconciled", deps.now())
   let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   let comparison = semanticZoneComparison(
     target.records,
     migrationZoneRecordsForComparison(cloudflareRecords, target.domain),
   )
-  if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
+  const dnsWriteAwaitingReadback =
+    migration.cloudflareZoneState === "indeterminate" ||
+    (
+      migration.cloudflareZoneState === "prepared" &&
+      migration.failureReason === "cloudflare_dns_write_prepared"
+    )
+  if (!comparison.equivalent && dnsWriteAwaitingReadback) {
+    const checkpointReason = migration.cloudflareZoneState === "indeterminate"
+      ? "cloudflare_dns_write_indeterminate"
+      : "cloudflare_dns_write_prepared"
     if (
       providerWriteReconciliationTimedOut(
-        migrationHistoryEventAt(migration, "cloudflare_dns_write_indeterminate"),
+        migrationHistoryEventAt(migration, checkpointReason),
         deps.now(),
       )
     ) {
@@ -3706,6 +3758,12 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
       }, "cloudflare_dns_write_prepared", deps.now())
       try {
         await deps.batchCreateCloudflareMigrationDnsRecords(zone.id, missingRecords)
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          cloudflareZoneState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "cloudflare_dns_write_indeterminate",
+        }, "cloudflare_dns_write_indeterminate", deps.now())
       } catch (error) {
         if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
         migration = await updateMigration(payload, migration, {
@@ -3735,13 +3793,22 @@ async function prepareCloudflareZoneAndSemanticRecordsPhase(
       waiting(migration, "Cloudflare target zone is not semantically complete."),
     )
   }
+  const confirmedCloudflarePreparationFailure = [
+    "cloudflare_zone_creation_prepared",
+    "cloudflare_zone_creation_indeterminate",
+    "cloudflare_dns_write_prepared",
+    "cloudflare_dns_write_indeterminate",
+  ].includes(migration.failureReason ?? "")
   migration = await updateMigration(payload, migration, {
     cloudflareZoneState: "confirmed",
     cloudflareRecordIds: cloudflareRecords.map((entry) => entry.id).filter(Boolean),
     zonePreparedAt: deps.now(),
     semanticComparison: comparison,
-    reconciliationRequired: false,
-    failureReason: null,
+    reconciliationRequired:
+      migration.reconciliationRequired && !confirmedCloudflarePreparationFailure,
+    failureReason: confirmedCloudflarePreparationFailure
+      ? null
+      : migration.failureReason,
   }, "cloudflare_target_zone_semantically_verified", deps.now())
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     cloudflareZoneId: zone.id,
@@ -3966,12 +4033,14 @@ async function prepareOpenProviderCustomerPhase(
       } else {
         migration = claimed
       }
+      let customerWriteDispatched = false
       try {
         if (!customerHandle) {
-          customerHandle = (await deps.createOpenProviderCustomerHandle(
+          await deps.createOpenProviderCustomerHandle(
             domainRegistrantFromCheckoutProfile(profile),
             { token, reference: migration.idempotencyKey },
-          )).handle
+          )
+          customerWriteDispatched = true
         }
       } catch (error) {
         if (classifyOpenProviderCustomerWriteError(error) === "rejected") {
@@ -4009,6 +4078,45 @@ async function prepareOpenProviderCustomerPhase(
           ),
         )
       }
+      if (customerWriteDispatched) {
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          providerTransferState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_indeterminate",
+        }, "openprovider_customer_handle_indeterminate", deps.now())
+        try {
+          existingCustomer = await deps.findOpenProviderCustomerByReference(
+            migration.idempotencyKey,
+            { token },
+          )
+        } catch (error) {
+          if (!(error instanceof OpenProviderAmbiguousCustomerReferenceLookupError)) {
+            throw error
+          }
+          return openProviderCustomerPreparationBlockedOutcome(
+            migration,
+            await stopMigrationForProviderManualReview(
+              payload,
+              migration,
+              managedDomain,
+              "openprovider_customer_reference_ambiguous",
+              deps.now(),
+              "Multiple exact Openprovider customers match the migration reference.",
+            ),
+          )
+        }
+        if (!existingCustomer) {
+          return openProviderCustomerPreparationBlockedOutcome(
+            migration,
+            waiting(migration, "Customer-handle creation is awaiting reconciliation."),
+          )
+        }
+        customerHandle = existingCustomer.handle
+      }
+    }
+    if (!customerHandle) {
+      throw new Error("Exact Openprovider customer readback did not provide a handle.")
     }
     migration = await updateMigration(payload, migration, {
       providerCustomerHandle: customerHandle,

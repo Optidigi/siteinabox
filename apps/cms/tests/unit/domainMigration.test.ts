@@ -3429,6 +3429,68 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("does not repeat a successful Cloudflare zone write while readback is stale", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([])
+    fixture.dependencies.createOrReuseCloudflareZone.mockResolvedValue({
+      id: "zone-1",
+      name: "example.nl",
+      nameServers: CLOUDFLARE_NAMESERVERS,
+      status: "active",
+      raw: {},
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledOnce()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      cloudflareZoneState: "indeterminate",
+      failureReason: "cloudflare_zone_creation_indeterminate",
+    })
+  })
+
+  it("treats a prepared Cloudflare zone checkpoint as readback-only after restart", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      state: "preparing",
+      cloudflareZoneState: "prepared",
+      reconciliationRequired: true,
+      failureReason: "cloudflare_zone_creation_prepared",
+      stateHistory: [
+        ...(Array.isArray(stored.stateHistory) ? stored.stateHistory : []),
+        {
+          state: "preparing",
+          at: "2026-07-28T08:59:00.000Z",
+          reason: "cloudflare_zone_write_prepared",
+        },
+      ],
+    })
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([])
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
+  })
+
   it("stops for manual review when exact Cloudflare zone authority is ambiguous", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -3496,6 +3558,62 @@ describe("automatic existing-domain migration", () => {
       encryptedTransferCode: null,
       failureReason: "cloudflare_dns_outcome_unresolved",
     })
+  })
+
+  it("does not repeat a successful Cloudflare DNS batch while readback is stale", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.batchCreateCloudflareMigrationDnsRecords.mockResolvedValue()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .toHaveBeenCalledOnce()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      cloudflareZoneState: "indeterminate",
+      failureReason: "cloudflare_dns_write_indeterminate",
+    })
+  })
+
+  it("treats a prepared Cloudflare DNS checkpoint as readback-only after restart", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      state: "preparing",
+      cloudflareZoneState: "prepared",
+      reconciliationRequired: true,
+      failureReason: "cloudflare_dns_write_prepared",
+      stateHistory: [
+        ...(Array.isArray(stored.stateHistory) ? stored.stateHistory : []),
+        {
+          state: "preparing",
+          at: "2026-07-28T08:59:00.000Z",
+          reason: "cloudflare_dns_write_prepared",
+        },
+      ],
+    })
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.batchCreateCloudflareMigrationDnsRecords)
+      .not.toHaveBeenCalled()
   })
 
   it("fails closed on unexpected existing Cloudflare records before any DNS or registrar write", async () => {
@@ -3589,6 +3707,50 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("does not trust a customer-create response while exact readback is absent", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockResolvedValue({
+      handle: "UNVERIFIED-WRITE-RESPONSE",
+      raw: {},
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle).toHaveBeenCalledOnce()
+    const stored = store.collections["domain-migrations"]![0]!
+    expect(stored).toMatchObject({
+      providerTransferState: "indeterminate",
+      failureReason: "openprovider_customer_handle_indeterminate",
+    })
+    expect(stored.providerCustomerHandle).toBeFalsy()
+  })
+
   it("waits through a crashed customer-create claim lease and retries only after exact absence", async () => {
     const store = createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
@@ -3608,7 +3770,15 @@ describe("automatic existing-domain migration", () => {
     })
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
-    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.findOpenProviderCustomerByReference
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        handle: "OWNER-CLIENT",
+        comments: "domain-migration:order:600:v1",
+        raw: {},
+      })
     fixture.dependencies.createOpenProviderCustomerHandle.mockResolvedValue({
       handle: "OWNER-CLIENT",
       raw: {},
@@ -3679,7 +3849,7 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({ status: "completed" })
     expect(fixture.dependencies.findOpenProviderCustomerByReference)
-      .toHaveBeenCalledTimes(3)
+      .toHaveBeenCalledTimes(4)
     expect(fixture.dependencies.createOpenProviderCustomerHandle)
       .toHaveBeenCalledOnce()
   })
@@ -3702,7 +3872,14 @@ describe("automatic existing-domain migration", () => {
     })
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
-    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.findOpenProviderCustomerByReference
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        handle: "OWNER-CLIENT",
+        comments: "domain-migration:order:600:v1",
+        raw: {},
+      })
     const createGate: {
       release?: (value: { handle: string; raw: object }) => void
     } = {}
