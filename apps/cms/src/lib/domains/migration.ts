@@ -2875,6 +2875,20 @@ type SourceAuthorityPhaseOutcome =
     }
   | MigrationStoppedPhaseOutcome
 
+type MigrationValidationContextPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      order: Order
+      capability: TldCapability
+      profile: CheckoutProfile
+      source: ReturnType<typeof migrationSource>
+      target: ReturnType<typeof migrationTarget>
+      managedDomain: ManagedDomain
+      actions: MigrationCustomerActionStates
+    }
+  | MigrationStoppedPhaseOutcome
+
 const sourceAuthorityBlockedOutcome = (
   migration: DomainMigration,
   result: MigrationResult,
@@ -3034,26 +3048,21 @@ async function refreshSourceAuthorityAndCustomerReadinessPhase(
   return { outcome: "continue", migration, sourceEvidenceStale, now }
 }
 
-export async function prepareDomainMigration(
+const validationContextBlockedOutcome = (
+  result: MigrationResult,
+): MigrationStoppedPhaseOutcome => ({
+  outcome: result.status === "failed" ? "manual_review" : "waiting",
+  result,
+})
+
+async function validateCapabilityFinancialAndDnssecContextPhase(
   payload: Payload,
-  migrationId: string | number,
-  dependencies: Partial<MigrationDependencies> = {},
-): Promise<MigrationResult> {
-  const deps = { ...defaultDependencies, ...dependencies }
-  const loadOutcome = await loadAndClassifyMigrationPhase(payload, migrationId)
-  if (loadOutcome.outcome !== "continue") return loadOutcome.result
-  const sourceAuthorityOutcome =
-    await refreshSourceAuthorityAndCustomerReadinessPhase(
-      payload,
-      loadOutcome.migration,
-      deps,
-    )
-  if (sourceAuthorityOutcome.outcome !== "continue") {
-    return sourceAuthorityOutcome.result
-  }
-  let migration = sourceAuthorityOutcome.migration
-  const sourceEvidenceStale = sourceAuthorityOutcome.sourceEvidenceStale
-  const now = sourceAuthorityOutcome.now
+  initialMigration: DomainMigration,
+  sourceEvidenceStale: boolean,
+  now: string,
+  deps: MigrationDependencies,
+): Promise<MigrationValidationContextPhaseOutcome> {
+  let migration = initialMigration
   const order = await payload.findByID({
     collection: "orders",
     id: relationshipId(migration.originatingOrder) as string | number,
@@ -3062,15 +3071,21 @@ export async function prepareDomainMigration(
   }) as Order
   const { capability } = migrationEvidenceFromOrder(order)
   if (!deps.transferContractEvidenceAllowed(capability)) {
-    return waiting(
+    return validationContextBlockedOutcome(waiting(
       migration,
       `Incoming .${capability.tld} transfer remains disabled until DNSSEC and cutover contract evidence is complete.`,
-    )
+    ))
   }
   const profile = await checkoutProfileForOrder(payload, order)
   const source = migrationSource(migration)
   const target = migrationTarget(migration)
-  let managedDomain = await getOrCreateManagedDomain(payload, migration, order, profile, now)
+  const managedDomain = await getOrCreateManagedDomain(
+    payload,
+    migration,
+    order,
+    profile,
+    now,
+  )
   if (!migration.managedDomain) {
     migration = await updateMigration(payload, migration, {
       managedDomain: managedDomain.id,
@@ -3081,20 +3096,24 @@ export async function prepareDomainMigration(
     migration.providerTransferState === "not_started" &&
     migration.cloudflareZoneState !== "indeterminate"
   ) {
-    return stopMigrationForProviderManualReview(
-      payload,
-      migration,
-      managedDomain,
-      "source_evidence_stale_before_provider_write",
-      deps.now(),
-      "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
+    return validationContextBlockedOutcome(
+      await stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "source_evidence_stale_before_provider_write",
+        deps.now(),
+        "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
+      ),
     )
   }
   let actions = actionStates(migration.customerActions, deps.now())
   if (migration.providerTransferState === "not_started") {
     const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
     if (parentDs.status === "indeterminate") {
-      return waiting(migration, "DNSSEC parent DS state could not be verified.")
+      return validationContextBlockedOutcome(
+        waiting(migration, "DNSSEC parent DS state could not be verified."),
+      )
     }
     const frozenParentDs = source.dnssec.parentDsRecords
     const parentStateMatchesSource = source.dnssec.status === "signed"
@@ -3103,20 +3122,22 @@ export async function prepareDomainMigration(
         parentDs.ttl === source.dnssec.parentDsTtl
       : parentDs.status === "absent"
     if (!parentStateMatchesSource) {
-      return stopUnfulfillableMigrationBeforeRegistrarCommit(
-        payload,
-        migration,
-        managedDomain,
-        order,
-        "dnssec_parent_state_changed_since_source_capture",
-        deps.now(),
+      return validationContextBlockedOutcome(
+        await stopUnfulfillableMigrationBeforeRegistrarCommit(
+          payload,
+          migration,
+          managedDomain,
+          order,
+          "dnssec_parent_state_changed_since_source_capture",
+          deps.now(),
+        ),
       )
     }
     if (!await verifyFrozenSourceDnssec(source, deps)) {
-      return waiting(
+      return validationContextBlockedOutcome(waiting(
         migration,
         "Frozen source DNSSEC chain is not currently authenticated; transfer remains paused.",
-      )
+      ))
     }
     const dnssecPlan = buildDnssecPreparationPlan({
       sourceStatus: source.dnssec.status,
@@ -3142,16 +3163,68 @@ export async function prepareDomainMigration(
       customerActions: actions,
     }, `dnssec_preparation_${parentDs.status}`, deps.now())
     if (!dnssecPlan.cutoverReady) {
-      return stopUnfulfillableMigrationBeforeRegistrarCommit(
-        payload,
-        migration,
-        managedDomain,
-        order,
-        "dnssec_source_evidence_incomplete",
-        deps.now(),
+      return validationContextBlockedOutcome(
+        await stopUnfulfillableMigrationBeforeRegistrarCommit(
+          payload,
+          migration,
+          managedDomain,
+          order,
+          "dnssec_source_evidence_incomplete",
+          deps.now(),
+        ),
       )
     }
   }
+  return {
+    outcome: "continue",
+    migration,
+    order,
+    capability,
+    profile,
+    source,
+    target,
+    managedDomain,
+    actions,
+  }
+}
+
+export async function prepareDomainMigration(
+  payload: Payload,
+  migrationId: string | number,
+  dependencies: Partial<MigrationDependencies> = {},
+): Promise<MigrationResult> {
+  const deps = { ...defaultDependencies, ...dependencies }
+  const loadOutcome = await loadAndClassifyMigrationPhase(payload, migrationId)
+  if (loadOutcome.outcome !== "continue") return loadOutcome.result
+  const sourceAuthorityOutcome =
+    await refreshSourceAuthorityAndCustomerReadinessPhase(
+      payload,
+      loadOutcome.migration,
+      deps,
+    )
+  if (sourceAuthorityOutcome.outcome !== "continue") {
+    return sourceAuthorityOutcome.result
+  }
+  const sourceEvidenceStale = sourceAuthorityOutcome.sourceEvidenceStale
+  const validationContextOutcome =
+    await validateCapabilityFinancialAndDnssecContextPhase(
+      payload,
+      sourceAuthorityOutcome.migration,
+      sourceEvidenceStale,
+      sourceAuthorityOutcome.now,
+      deps,
+    )
+  if (validationContextOutcome.outcome !== "continue") {
+    return validationContextOutcome.result
+  }
+  let migration = validationContextOutcome.migration
+  const order = validationContextOutcome.order
+  const capability = validationContextOutcome.capability
+  const profile = validationContextOutcome.profile
+  const source = validationContextOutcome.source
+  const target = validationContextOutcome.target
+  let managedDomain = validationContextOutcome.managedDomain
+  let actions = validationContextOutcome.actions
 
   const visibleZones = await deps.listCloudflareZones(migration.domainNameAscii)
   const persistedZone = migration.cloudflareZoneId

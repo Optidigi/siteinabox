@@ -1776,10 +1776,31 @@ describe("automatic existing-domain migration", () => {
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
       state: "failed",
       failureReason: "dnssec_parent_state_changed_since_source_capture",
+      reconciliationRequired: false,
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          state: "failed",
+          reason: "dnssec_parent_state_changed_since_source_capture",
+        }),
+      ]),
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      state: "manual_review",
+      entitlementStatus: "blocked",
+      failureReason: "dnssec_parent_state_changed_since_source_capture",
+    })
+    expect(store.collections.orders![0]).toMatchObject({
+      state: "exception",
     })
     expect(store.payload.jobs.queue).toHaveBeenCalledWith(expect.objectContaining({
       task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: String(store.collections["payment-attempts"]![0]!.id),
+        scenario: "unfulfillable_before_provider_commit",
+      },
     }))
+    expect(fixture.dependencies.verifyParentDsAbsent).toHaveBeenCalledOnce()
+    expect(fixture.dependencies.verifyDnssecChain).not.toHaveBeenCalled()
     expect(fixture.dependencies.listCloudflareZones).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
   })
