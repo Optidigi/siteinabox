@@ -5807,6 +5807,7 @@ describe("Mollie payment flow", () => {
       .mockRejectedValue(new CloudflareIndeterminateWriteError("Cloudflare zone creation"))
     const listZones = vi.fn()
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([zone])
     const registerDomain = vi.fn(async () => ({
       id: 9001,
