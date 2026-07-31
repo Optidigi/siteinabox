@@ -51,8 +51,12 @@ import {
   createDomainOrderState,
   normalizeDomainOrderState,
   normalizeDomainRegistrantDetails,
+  type DomainRegistrantDetails,
 } from "@/lib/domains/orderState"
-import { normalizeDomain } from "@/lib/domains/normalize"
+import {
+  normalizeDomain,
+  type NormalizedDomain,
+} from "@/lib/domains/normalize"
 import type { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
@@ -87,6 +91,33 @@ export type ProvisionPaidDomainResult = {
 }
 
 export type InitialDomainFinancialAuthority = "paid" | "custody_only"
+
+type ProvisionPaidDomainInput = {
+  order: Order
+  paymentAttemptId: string | number
+  selectedDomain?: string | null
+  dependencies?: Partial<ProvisioningDependencies>
+}
+
+type ProvisioningInitialAuthorityContext = {
+  order: Order
+  normalized: Extract<NormalizedDomain, { ok: true }>
+  capability: TldCapability
+  tenantId: string | number
+  tenant: Tenant
+  registrant: DomainRegistrantDetails
+  managedDomain: ManagedDomain
+  initialProviderRegistrationState: ManagedDomain["providerRegistrationState"]
+  initialFailureReason: ManagedDomain["failureReason"]
+  now: string
+}
+
+type ProvisioningInitialAuthorityOutcome =
+  | { outcome: "continue"; context: ProvisioningInitialAuthorityContext }
+  | {
+      outcome: "waiting" | "unfulfillable" | "completed"
+      result: ProvisionPaidDomainResult
+    }
 
 type ProvisioningDependencies = {
   now: () => string
@@ -609,17 +640,12 @@ async function stopProvisioningForProviderAmbiguity(
   )
 }
 
-export async function provisionPaidDomainOrder(
+async function loadAndClassifyProvisioningAuthorityPhase(
   payload: Payload,
   run: SiteGenerationRun,
-  input: {
-    order: Order
-    paymentAttemptId: string | number
-    selectedDomain?: string | null
-    dependencies?: Partial<ProvisioningDependencies>
-  },
-): Promise<ProvisionPaidDomainResult> {
-  const dependencies = { ...defaultDependencies, ...input.dependencies }
+  input: ProvisionPaidDomainInput,
+  dependencies: ProvisioningDependencies,
+): Promise<ProvisioningInitialAuthorityOutcome> {
   const financialAuthority = await assertInitialDomainFinancialAuthority(payload, {
     orderId: input.order.id,
     paymentAttemptId: input.paymentAttemptId,
@@ -627,8 +653,13 @@ export async function provisionPaidDomainOrder(
   input.order = financialAuthority.order
   const selectedDomain = input.selectedDomain ?? input.order.domain
   const normalized = normalizeDomain(selectedDomain)
-  if (!normalized.ok) throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
-  const capability = capabilityForAcceptedOrder(input.order, normalized.extension)
+  if (!normalized.ok) {
+    throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
+  }
+  const capability = capabilityForAcceptedOrder(
+    input.order,
+    normalized.extension,
+  )
   if (!validateTldRegistrationLabel(capability, normalized.name)) {
     throw new Error(`Domain label is not supported for .${normalized.extension}.`)
   }
@@ -641,7 +672,7 @@ export async function provisionPaidDomainOrder(
   if (!tenantId || !sameRelationshipId(input.order.tenant, tenantId)) {
     throw new Error("Paid order, generation run, and tenant must match.")
   }
-  let tenant = await payload.findByID({
+  const tenant = await payload.findByID({
     collection: "tenants",
     id: tenantId,
     depth: 0,
@@ -654,21 +685,30 @@ export async function provisionPaidDomainOrder(
   const profile = await checkoutProfileForOrder(payload, input.order)
   const registrant = normalizeDomainRegistrantDetails(input.order.domainRegistrant)
   if (!registrant) {
-    throw new Error("Paid domain fulfillment requires the frozen accepted registrant evidence.")
+    throw new Error(
+      "Paid domain fulfillment requires the frozen accepted registrant evidence.",
+    )
   }
   if (!capability.registrant.supportedPartyTypes.includes(profile.partyType)) {
-    throw new Error(`Contracting-party type is not supported for .${capability.tld}.`)
+    throw new Error(
+      `Contracting-party type is not supported for .${capability.tld}.`,
+    )
   }
   for (const field of capability.registrant.requiredFields) {
     if (!registrant[field]) {
-      throw new Error(`Authoritative registrant field ${field} is required for .${capability.tld}.`)
+      throw new Error(
+        `Authoritative registrant field ${field} is required for .${capability.tld}.`,
+      )
     }
   }
   if (profile.partyType === "registered_business" && !registrant.companyName) {
-    throw new Error(`Authoritative registrant field companyName is required for .${capability.tld}.`)
+    throw new Error(
+      `Authoritative registrant field companyName is required for .${capability.tld}.`,
+    )
   }
   const now = dependencies.now()
-  const currentSafetyCapability = tldCapabilityAt(capability.tld, now) ?? capability
+  const currentSafetyCapability = tldCapabilityAt(capability.tld, now) ??
+    capability
   const registrantPrerequisites = validateTldRegistrantPrerequisites(
     currentSafetyCapability,
     registrant,
@@ -690,20 +730,26 @@ export async function provisionPaidDomainOrder(
     !sameRelationshipId(managedDomain.originatingOrder, input.order.id) ||
     !sameRelationshipId(managedDomain.registrantProfile, profile.id)
   ) {
-    throw new Error("Managed domain is already bound to different accepted evidence or ownership.")
+    throw new Error(
+      "Managed domain is already bound to different accepted evidence or ownership.",
+    )
   }
-  const initialProviderRegistrationState = managedDomain.providerRegistrationState
+  const initialProviderRegistrationState =
+    managedDomain.providerRegistrationState
   const initialFailureReason = managedDomain.failureReason
   if (
     managedDomain.state === "manual_review" &&
     providerAuthorityAmbiguityCodes.has(initialFailureReason ?? "")
   ) {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Provider authority remains ambiguous and requires manual reconciliation.",
-    )
+    return {
+      outcome: "waiting",
+      result: waiting(
+        normalized.domain,
+        run,
+        managedDomain,
+        "Provider authority remains ambiguous and requires manual reconciliation.",
+      ),
+    }
   }
   if (
     managedDomain.state === "manual_review" &&
@@ -712,7 +758,9 @@ export async function provisionPaidDomainOrder(
         "paid_domain_became_unavailable_before_provider_commit",
         "provider_domain_owner_mismatch",
       ].includes(initialFailureReason ?? "") ||
-      initialFailureReason?.startsWith("current_tld_safety_contract_unmet:") === true
+      initialFailureReason?.startsWith(
+        "current_tld_safety_contract_unmet:",
+      ) === true
     )
   ) {
     run = await compatibilityProjection(
@@ -724,11 +772,14 @@ export async function provisionPaidDomainOrder(
       registrant,
     )
     return {
-      status: "unfulfillable",
-      domain: normalized.domain,
-      run,
-      managedDomain,
-      message: "The managed domain remains in terminal manual review.",
+      outcome: "unfulfillable",
+      result: {
+        status: "unfulfillable",
+        domain: normalized.domain,
+        run,
+        managedDomain,
+        message: "The managed domain remains in terminal manual review.",
+      },
     }
   }
   const currentSafetyFailure = !validateTldRegistrationLabel(
@@ -757,14 +808,21 @@ export async function provisionPaidDomainOrder(
       registrant,
     )
     return {
-      status: "unfulfillable",
-      domain: normalized.domain,
-      run,
-      managedDomain,
-      message: "The accepted order no longer satisfies the current registry safety contract.",
+      outcome: "unfulfillable",
+      result: {
+        status: "unfulfillable",
+        domain: normalized.domain,
+        run,
+        managedDomain,
+        message:
+          "The accepted order no longer satisfies the current registry safety contract.",
+      },
     }
   }
-  if (managedDomain.state === "active" && managedDomain.entitlementStatus === "active") {
+  if (
+    managedDomain.state === "active" &&
+    managedDomain.entitlementStatus === "active"
+  ) {
     run = await compatibilityProjection(
       payload,
       run,
@@ -774,12 +832,62 @@ export async function provisionPaidDomainOrder(
       registrant,
     )
     return {
-      status: "already_active",
-      domain: normalized.domain,
-      run,
-      managedDomain,
+      outcome: "completed",
+      result: {
+        status: "already_active",
+        domain: normalized.domain,
+        run,
+        managedDomain,
+      },
     }
   }
+  return {
+    outcome: "continue",
+    context: {
+      order: input.order,
+      normalized,
+      capability,
+      tenantId,
+      tenant,
+      registrant,
+      managedDomain,
+      initialProviderRegistrationState,
+      initialFailureReason,
+      now,
+    },
+  }
+}
+
+export async function provisionPaidDomainOrder(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input: ProvisionPaidDomainInput,
+): Promise<ProvisionPaidDomainResult> {
+  const dependencies = { ...defaultDependencies, ...input.dependencies }
+  const authorityOutcome = await loadAndClassifyProvisioningAuthorityPhase(
+    payload,
+    run,
+    input,
+    dependencies,
+  )
+  if (authorityOutcome.outcome !== "continue") {
+    return authorityOutcome.result
+  }
+  const {
+    order,
+    normalized,
+    capability,
+    tenantId,
+    tenant: initialTenant,
+    registrant,
+    managedDomain: initialManagedDomain,
+    initialProviderRegistrationState,
+    initialFailureReason,
+    now,
+  } = authorityOutcome.context
+  input.order = order
+  let tenant = initialTenant
+  let managedDomain = initialManagedDomain
   if (managedDomain.state === "pending" || managedDomain.state === "manual_review") {
     managedDomain = await updateManagedDomain(payload, managedDomain, {
       state: "registration_pending",
