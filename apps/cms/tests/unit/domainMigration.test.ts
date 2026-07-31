@@ -2134,6 +2134,48 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
+  it("returns customer action before Phase 3 when the transfer code expired", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored, {
+      transferCodeExpiresAt: "2026-07-28T08:30:00.000Z",
+    })
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("transfer code expired"),
+    })
+    expect(stored).toMatchObject({
+      state: "awaiting_customer",
+      encryptedTransferCode: null,
+      transferCodeDeletedAt: "2026-07-28T09:00:00.000Z",
+      failureReason: "transfer_code_expired",
+      customerActions: {
+        provide_epp_code: {
+          status: "required",
+          evidence: "expired",
+        },
+      },
+      stateHistory: expect.arrayContaining([
+        expect.objectContaining({
+          state: "awaiting_customer",
+          reason: "transfer_code_expired",
+        }),
+      ]),
+    })
+    expect(fixture.dependencies.listCloudflareZones).not.toHaveBeenCalled()
+    expect(fixture.dependencies.loginOpenProvider).not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+  })
+
   it("stops before every new provider write when previously prepared source evidence expires", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)

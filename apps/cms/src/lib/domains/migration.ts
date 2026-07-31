@@ -2861,6 +2861,32 @@ type MigrationPhaseOutcome =
       result: MigrationResult
     }
 
+type MigrationStoppedPhaseOutcome = Exclude<
+  MigrationPhaseOutcome,
+  { outcome: "continue" }
+>
+
+type SourceAuthorityPhaseOutcome =
+  | {
+      outcome: "continue"
+      migration: DomainMigration
+      sourceEvidenceStale: boolean
+      now: string
+    }
+  | MigrationStoppedPhaseOutcome
+
+const sourceAuthorityBlockedOutcome = (
+  migration: DomainMigration,
+  result: MigrationResult,
+): MigrationStoppedPhaseOutcome => ({
+  outcome: migration.state === "awaiting_customer"
+    ? "customer_action_required"
+    : migration.reconciliationRequired
+      ? "provider_reconciliation_required"
+      : "waiting",
+  result,
+})
+
 async function loadAndClassifyMigrationPhase(
   payload: Payload,
   migrationId: string | number,
@@ -2885,15 +2911,12 @@ async function loadAndClassifyMigrationPhase(
   }
 }
 
-export async function prepareDomainMigration(
+async function refreshSourceAuthorityAndCustomerReadinessPhase(
   payload: Payload,
-  migrationId: string | number,
-  dependencies: Partial<MigrationDependencies> = {},
-): Promise<MigrationResult> {
-  const deps = { ...defaultDependencies, ...dependencies }
-  const loadOutcome = await loadAndClassifyMigrationPhase(payload, migrationId)
-  if (loadOutcome.outcome !== "continue") return loadOutcome.result
-  let migration = loadOutcome.migration
+  initialMigration: DomainMigration,
+  deps: MigrationDependencies,
+): Promise<SourceAuthorityPhaseOutcome> {
+  let migration = initialMigration
   const now = deps.now()
   let sourceEvidenceStale = sourceEvidenceIsStale(migration, now)
   if (
@@ -2909,7 +2932,9 @@ export async function prepareDomainMigration(
       deps,
     )
     migration = refreshed.migration
-    if (refreshed.blocked) return refreshed.blocked
+    if (refreshed.blocked) {
+      return sourceAuthorityBlockedOutcome(migration, refreshed.blocked)
+    }
     sourceEvidenceStale = false
   }
   if (
@@ -2943,7 +2968,13 @@ export async function prepareDomainMigration(
       customerActions: actions,
       failureReason: "source_evidence_stale",
     }, "source_evidence_stale", now)
-    return waiting(migration, "The source evidence is stale and must be reacquired.")
+    return {
+      outcome: "customer_action_required",
+      result: waiting(
+        migration,
+        "The source evidence is stale and must be reacquired.",
+      ),
+    }
   }
   if (
     migration.transferCodeExpiresAt &&
@@ -2963,7 +2994,13 @@ export async function prepareDomainMigration(
       customerActions: actions,
       failureReason: "transfer_code_expired",
     }, "transfer_code_expired", now)
-    return waiting(migration, "The transfer code expired and must be replaced.")
+    return {
+      outcome: "customer_action_required",
+      result: waiting(
+        migration,
+        "The transfer code expired and must be replaced.",
+      ),
+    }
   }
   if (migration.state === "awaiting_customer") {
     migration = await updateMigration(payload, migration, {
@@ -2980,7 +3017,13 @@ export async function prepareDomainMigration(
       "@/lib/domains/assistedMigration"
     )
     migration = await pauseAcceptedAssistedMigration(payload, migration)
-    return waiting(migration, "Paid assisted migration is waiting for operator work.")
+    return {
+      outcome: "waiting",
+      result: waiting(
+        migration,
+        "Paid assisted migration is waiting for operator work.",
+      ),
+    }
   }
   if (migration.state === "ready_to_prepare") {
     migration = await updateMigration(payload, migration, {
@@ -2988,6 +3031,29 @@ export async function prepareDomainMigration(
       failureReason: null,
     }, "automatic_migration_preparation_started", now)
   }
+  return { outcome: "continue", migration, sourceEvidenceStale, now }
+}
+
+export async function prepareDomainMigration(
+  payload: Payload,
+  migrationId: string | number,
+  dependencies: Partial<MigrationDependencies> = {},
+): Promise<MigrationResult> {
+  const deps = { ...defaultDependencies, ...dependencies }
+  const loadOutcome = await loadAndClassifyMigrationPhase(payload, migrationId)
+  if (loadOutcome.outcome !== "continue") return loadOutcome.result
+  const sourceAuthorityOutcome =
+    await refreshSourceAuthorityAndCustomerReadinessPhase(
+      payload,
+      loadOutcome.migration,
+      deps,
+    )
+  if (sourceAuthorityOutcome.outcome !== "continue") {
+    return sourceAuthorityOutcome.result
+  }
+  let migration = sourceAuthorityOutcome.migration
+  const sourceEvidenceStale = sourceAuthorityOutcome.sourceEvidenceStale
+  const now = sourceAuthorityOutcome.now
   const order = await payload.findByID({
     collection: "orders",
     id: relationshipId(migration.originatingOrder) as string | number,
