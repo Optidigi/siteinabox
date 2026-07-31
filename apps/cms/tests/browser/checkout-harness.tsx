@@ -182,6 +182,9 @@ createRoot(document.getElementById("root")!).render(
       checkDomainAction={async (_previous, formData) => {
         const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
         const domainMode = String(formData.get("domainMode") ?? "new_registration")
+        if (domain.startsWith("stale-result.")) {
+          await new Promise((resolve) => window.setTimeout(resolve, 700))
+        }
         if (domainMode === "existing_domain") {
           const sourceMechanism = String(
             formData.get("migrationSourceMethod") ?? "",

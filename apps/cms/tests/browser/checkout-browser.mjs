@@ -56,7 +56,7 @@ try {
 
   const domainInput = page.getByLabel("Domain name")
   await domainInput.fill("service-error.nl")
-  await page.getByText("service-error.nl", { exact: true }).waitFor()
+  await page.locator("[data-checkout-main-card]").getByText("service-error.nl", { exact: true }).waitFor()
   assert.equal(await page.getByText("Try again", { exact: true }).isVisible(), true)
 
   await domainInput.fill("analytical-engines.nl")
@@ -65,7 +65,31 @@ try {
   assert.equal(await page.getByText("Premium", { exact: true }).isVisible(), true)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
   await page.getByText("analytical-engines.nl", { exact: true })
-    .locator("..").getByRole("button", { name: "Select", exact: true }).click()
+    .locator("xpath=../..").getByRole("button", { name: "Select", exact: true }).click()
+
+  await domainInput.fill("stale-result")
+  await domainInput.fill("fresh-result")
+  await page.waitForTimeout(800)
+  assert.equal(
+    await page.getByText(/^stale-result\./).count(),
+    0,
+    "A superseded domain batch must never restore stale results.",
+  )
+  assert.equal(
+    await page.getByRole("button", { name: "Continue" }).count(),
+    0,
+    "Changing the domain name must invalidate the previous order selection.",
+  )
+  await page.getByLabel(".org").click()
+  assert.equal(
+    await page.getByRole("button", { name: "Continue" }).count(),
+    0,
+    "Changing selected extensions must invalidate the previous order selection.",
+  )
+  await domainInput.fill("analytical-engines")
+  await page.getByText("analytical-engines.com", { exact: true }).waitFor()
+  await page.getByText("analytical-engines.nl", { exact: true })
+    .locator("xpath=../..").getByRole("button", { name: "Select", exact: true }).click()
 
   const continueButton = page.getByRole("button", { name: "Continue" })
   await continueButton.focus()
@@ -99,10 +123,15 @@ try {
   await page.getByRole("button", { name: "Continue" }).click()
   await page.getByRole("heading", { name: "Subscription & review" }).waitFor()
   assert.equal(await page.getByText(/229[.,]90/, { exact: false }).first().isVisible(), true)
+  assert.equal(
+    await page.locator('[role="checkbox"]:visible').count(),
+    2,
+    "Only the two legally distinct declarations may be visible checkboxes.",
+  )
   await page.getByRole("button", { name: /Checkout/ }).click()
   await page.getByRole("alert").filter({ hasText: "Confirm the required declarations" }).waitFor()
   assert.equal(
-    await page.locator("#checkout-preview-approval").evaluate((node) => node === document.activeElement),
+    await page.locator("#checkout-business-use").evaluate((node) => node === document.activeElement),
     true,
   )
   assert.equal(
@@ -144,7 +173,81 @@ try {
     await pendingPage.getByRole("button", { name: "Checkout" }).isDisabled(),
     true,
   )
+  assert.equal(
+    await pendingPage.locator("[data-checkout-action-bar]").evaluate(
+      (node) => getComputedStyle(node).position,
+    ),
+    "fixed",
+    "The phone action row must remain visible without overlaying content.",
+  )
   await pendingPage.close()
+
+  const compactPage = await browser.newPage({ viewport: { width: 320, height: 568 } })
+  compactPage.setDefaultTimeout(5_000)
+  await compactPage.goto(origin, { waitUntil: "networkidle" })
+  const compactGeometry = await compactPage.evaluate(() => {
+    const shell = document.querySelector("[data-checkout-shell]")
+    const card = document.querySelector("[data-checkout-main-card]")
+    const action = document.querySelector("[data-checkout-action-bar]")
+    return {
+      fits: document.documentElement.scrollWidth <= innerWidth,
+      shellLeft: shell?.getBoundingClientRect().left,
+      shellRight: shell?.getBoundingClientRect().right,
+      cardLeft: card?.getBoundingClientRect().left,
+      cardRight: card?.getBoundingClientRect().right,
+      actionPosition: action ? getComputedStyle(action).position : null,
+      actionVisible: action
+        ? action.getBoundingClientRect().top < innerHeight &&
+          action.getBoundingClientRect().bottom > 0
+        : false,
+    }
+  })
+  assert.equal(compactGeometry.fits, true, "Checkout overflows a 320x568 viewport.")
+  assert.equal(compactGeometry.actionPosition, "fixed")
+  assert.equal(compactGeometry.actionVisible, true)
+  assert.ok(compactGeometry.shellLeft != null && compactGeometry.cardLeft != null)
+  assert.ok(compactGeometry.cardLeft >= compactGeometry.shellLeft)
+  assert.ok(compactGeometry.shellRight != null && compactGeometry.cardRight != null)
+  assert.ok(compactGeometry.cardRight <= compactGeometry.shellRight)
+  assert.ok(
+    Math.abs(compactGeometry.cardLeft - (320 - compactGeometry.cardRight)) <= 1,
+    "The checkout card must use balanced shell gutters at 320px.",
+  )
+  await compactPage.close()
+
+  const tabletPage = await browser.newPage({ viewport: { width: 768, height: 720 } })
+  tabletPage.setDefaultTimeout(5_000)
+  await tabletPage.goto(origin, { waitUntil: "networkidle" })
+  assert.equal(
+    await tabletPage.locator("[data-checkout-action-bar]").evaluate(
+      (node) => getComputedStyle(node).position,
+    ),
+    "fixed",
+    "The mobile action pattern must not disappear in the tablet breakpoint gap.",
+  )
+  await tabletPage.close()
+
+  const desktopPage = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+  desktopPage.setDefaultTimeout(5_000)
+  await desktopPage.goto(`${origin}?payment=pending`, { waitUntil: "networkidle" })
+  await desktopPage.getByRole("heading", { name: "Subscription & review" }).waitFor()
+  const assertStickySummary = async (state) => {
+    const summary = desktopPage.locator("[data-checkout-summary]")
+    assert.equal(await summary.isVisible(), true, `Desktop summary missing on ${state}.`)
+    assert.equal(
+      await summary.evaluate((node) => getComputedStyle(node).position),
+      "sticky",
+      `Desktop summary is not sticky on ${state}.`,
+    )
+  }
+  await assertStickySummary("overview")
+  await desktopPage.getByRole("button", { name: "Details" }).click()
+  await desktopPage.getByRole("heading", { name: "Review your details" }).waitFor()
+  await assertStickySummary("details")
+  await desktopPage.getByRole("button", { name: "Domain" }).click()
+  await desktopPage.getByRole("heading", { name: "Domain name" }).waitFor()
+  await assertStickySummary("domain")
+  await desktopPage.close()
 
   const themePage = await browser.newPage({ viewport: { width: 320, height: 568 } })
   themePage.setDefaultTimeout(5_000)
@@ -179,9 +282,7 @@ try {
   await unsupportedPage.goto(`${origin}?existing=unsupported`, {
     waitUntil: "networkidle",
   })
-  await unsupportedPage.getByRole("radio", {
-    name: /I already have a domain/,
-  }).click()
+  await unsupportedPage.getByText("Existing domain", { exact: true }).click()
   await unsupportedPage.getByLabel("Domain name").fill("existing-example.nl")
   await unsupportedPage.getByRole("button", { name: "Check domain" }).click()
   await unsupportedPage.getByRole("alert").filter({
@@ -207,9 +308,7 @@ try {
   })
   axfrPage.setDefaultTimeout(5_000)
   await axfrPage.goto(`${origin}?existing=axfr`, { waitUntil: "networkidle" })
-  await axfrPage.getByRole("radio", {
-    name: /I already have a domain/,
-  }).click()
+  await axfrPage.getByText("Existing domain", { exact: true }).click()
   await axfrPage.getByLabel("Domain name").fill("existing-example.nl")
   await axfrPage.getByRole("button", { name: "Check domain" }).click()
   await axfrPage.getByLabel("Authorized nameserver").waitFor()
