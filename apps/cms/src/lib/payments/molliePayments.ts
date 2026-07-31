@@ -669,6 +669,234 @@ const claimFirstPaymentProviderWrite = async (
     : null
 }
 
+type MollieCustomerAgreement = BillingAgreement & {
+  providerCustomerId: string
+}
+
+type ConfirmedFirstPaymentAttempt = PaymentAttempt & {
+  providerPaymentId: string
+  providerStatus: string
+}
+
+const claimAndCreateFirstPaymentMollieCustomer = async (
+  payload: Payload,
+  input: {
+    agreement: BillingAgreement
+    profile: CheckoutProfile
+    order: Order
+    email: string
+    now: string
+  },
+): Promise<MollieCustomerAgreement> => {
+  if (input.agreement.providerCustomerId) {
+    return input.agreement as MollieCustomerAgreement
+  }
+  if (input.agreement.reconciliationRequired) {
+    throw new Error("Mollie customer creation requires reconciliation before retry.")
+  }
+  const claimedAgreement = await claimMollieCustomerProviderWrite(
+    payload,
+    input.agreement,
+    input.now,
+  )
+  if (!claimedAgreement) {
+    throw new Error("Mollie customer creation is already claimed or requires reconciliation.")
+  }
+  try {
+    const customer = await createMollieCustomer({
+      name: input.profile.contractingPartyName || input.profile.customerName,
+      email: input.email,
+      idempotencyKey: `${claimedAgreement.idempotencyKey}:customer`,
+      metadata: {
+        billingAgreementId: claimedAgreement.id,
+        orderId: input.order.id,
+        tenantId: relationshipId(input.order.tenant),
+      },
+    })
+    return await bindConfirmedMollieCustomer(
+      payload,
+      claimedAgreement,
+      customer.id,
+      input.now,
+    ) as MollieCustomerAgreement
+  } catch (error) {
+    await markMollieCustomerWriteIndeterminate(
+      payload,
+      claimedAgreement,
+      error,
+      input.now,
+    )
+    throw error
+  }
+}
+
+const claimAndCreateFirstMolliePayment = async (
+  payload: Payload,
+  input: {
+    attempt: PaymentAttempt
+    agreement: MollieCustomerAgreement
+    order: Order
+    run: SiteGenerationRun
+    tenant: Tenant
+    email: string
+    clientSlug: string
+    selectedDomain: string
+    now: string
+  },
+): Promise<{
+  attempt: ConfirmedFirstPaymentAttempt
+  agreement: MollieCustomerAgreement
+  amount: MollieAmount
+  checkoutUrl: string
+}> => {
+  const claimedAttempt = await claimFirstPaymentProviderWrite(
+    payload,
+    input.attempt,
+    input.now,
+  )
+  if (!claimedAttempt) {
+    throw new Error("Mollie payment creation is already claimed or requires reconciliation.")
+  }
+  let agreement = input.agreement
+  if (agreement.state === "pending_first_payment") {
+    agreement = await updateAgreement(payload, agreement, {
+      state: "mandate_pending",
+      stateHistory: agreementHistory(
+        agreement.stateHistory,
+        "mandate_pending",
+        input.now,
+      ),
+    }) as MollieCustomerAgreement
+  }
+  const amount = mollieAmount(
+    claimedAttempt.grossAmountMinor,
+    claimedAttempt.currency,
+  )
+  const origin = publicCmsOrigin()
+  try {
+    const payment = await createMolliePayment({
+      amount,
+      customerId: agreement.providerCustomerId,
+      sequenceType: "first",
+      description: `Site in a Box website ${input.selectedDomain}`,
+      redirectUrl:
+        `https://${PREVIEW_HOST}/${input.clientSlug}/checkout?payment=return`,
+      webhookUrl: `${origin}/api/payments/mollie/webhook`,
+      idempotencyKey: claimedAttempt.idempotencyKey,
+      metadata: {
+        paymentAttemptId: claimedAttempt.id,
+        billingAgreementId: agreement.id,
+        generationRunId: input.run.id,
+        tenantId: input.tenant.id,
+        customerEmail: input.email,
+        clientSlug: input.clientSlug,
+        selectedDomain: input.selectedDomain,
+        idempotencyKey: claimedAttempt.idempotencyKey,
+        mollieCustomerId: agreement.providerCustomerId,
+        sequenceType: "first",
+        purpose: claimedAttempt.purpose,
+        orderId: input.order.id,
+      },
+    })
+    const checkoutUrl = payment._links?.checkout?.href
+    if (!payment.id || !checkoutUrl) {
+      throw new Error("Mollie did not return a payment id and checkout URL.")
+    }
+    const attempt = await updateAttempt(payload, claimedAttempt, {
+      state: "pending_provider",
+      providerPaymentId: payment.id,
+      providerStatus: payment.status,
+      checkoutUrl,
+      reconciliationRequired: false,
+      lastSyncedAt: input.now,
+      stateHistory: stateHistory(
+        claimedAttempt.stateHistory,
+        "pending_provider",
+        input.now,
+        payment.status,
+      ),
+    }) as ConfirmedFirstPaymentAttempt
+    return {
+      attempt,
+      agreement,
+      amount,
+      checkoutUrl,
+    }
+  } catch (error) {
+    await markProviderWriteIndeterminate(payload, claimedAttempt, error)
+    throw error
+  }
+}
+
+const finalizeFirstMolliePaymentProjection = async (
+  payload: Payload,
+  input: {
+    attempt: ConfirmedFirstPaymentAttempt
+    agreement: MollieCustomerAgreement
+    order: Order
+    run: SiteGenerationRun
+    email: string
+    clientSlug: string
+    selectedDomain: string
+    amount: MollieAmount
+    checkoutUrl: string
+    actor?: string | number | null
+  },
+): Promise<CheckoutResult> => {
+  try {
+    const projection = molliePaymentProjection({
+      current: input.run.payment,
+      status: "pending_provider",
+      providerStatus: input.attempt.providerStatus,
+      externalReference: input.attempt.providerPaymentId,
+      checkoutUrl: input.checkoutUrl,
+      customerEmail: input.email,
+      clientSlug: input.clientSlug,
+      selectedDomain: input.selectedDomain,
+      amount: input.amount.value,
+      currency: input.amount.currency,
+      actor: input.actor ?? input.email,
+      note: "Mollie checkout created. Payment completion is confirmed asynchronously.",
+      mollieCustomerId: input.agreement.providerCustomerId,
+      mollieSequenceType: "first",
+      renewalInterval: input.agreement.billingPeriod === "annual"
+        ? "1 year"
+        : "1 month",
+    })
+    await Promise.all([
+      payload.update({
+        collection: "site-generation-runs",
+        id: input.run.id,
+        data: { payment: projection },
+        depth: 0,
+        overrideAccess: true,
+        user: input.actor ? ({ id: input.actor }) : undefined,
+      }),
+      payload.update({
+        collection: "orders",
+        id: input.order.id,
+        data: {
+          paymentStatus: "open",
+          providerPaymentId: input.attempt.providerPaymentId,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { legalOrderLifecycleMutation: true },
+      }),
+    ])
+    return {
+      payment: projection,
+      paymentAttempt: input.attempt,
+      billingAgreement: input.agreement,
+      checkoutUrl: input.checkoutUrl,
+      reused: false,
+    }
+  } catch (error) {
+    await markProviderWriteIndeterminate(payload, input.attempt, error)
+    throw error
+  }
+}
+
 type RecurringAgreementAuthority = BillingAgreement & {
   providerCustomerId: string
   providerMandateId: string
@@ -831,153 +1059,40 @@ export async function createMollieCheckoutForGenerationRun(
   }
   requireCommerceProviderWritesAllowed("Mollie first-payment creation")
 
-  let currentAgreement = agreement
-  if (!currentAgreement.providerCustomerId) {
-    if (currentAgreement.reconciliationRequired) {
-      throw new Error("Mollie customer creation requires reconciliation before retry.")
-    }
-    const claimedAgreement = await claimMollieCustomerProviderWrite(
-      payload,
-      currentAgreement,
-      now,
-    )
-    if (!claimedAgreement) {
-      throw new Error("Mollie customer creation is already claimed or requires reconciliation.")
-    }
-    currentAgreement = claimedAgreement
-    try {
-      const customer = await createMollieCustomer({
-        name: profile.contractingPartyName || profile.customerName,
-        email,
-        idempotencyKey: `${currentAgreement.idempotencyKey}:customer`,
-        metadata: {
-          billingAgreementId: currentAgreement.id,
-          orderId: order.id,
-          tenantId: relationshipId(order.tenant),
-        },
-      })
-      currentAgreement = await bindConfirmedMollieCustomer(
-        payload,
-        currentAgreement,
-        customer.id,
-        now,
-      )
-    } catch (error) {
-      await markMollieCustomerWriteIndeterminate(
-        payload,
-        currentAgreement,
-        error,
-        now,
-      )
-      throw error
-    }
-  }
-
-  const claimedAttempt = await claimFirstPaymentProviderWrite(
+  const currentAgreement = await claimAndCreateFirstPaymentMollieCustomer(
     payload,
-    attempt,
-    now,
+    {
+      agreement,
+      profile,
+      order,
+      email,
+      now,
+    },
   )
-  if (!claimedAttempt) {
-    throw new Error("Mollie payment creation is already claimed or requires reconciliation.")
-  }
-  attempt = claimedAttempt
-  if (currentAgreement.state === "pending_first_payment") {
-    currentAgreement = await updateAgreement(payload, currentAgreement, {
-      state: "mandate_pending",
-      stateHistory: agreementHistory(
-        currentAgreement.stateHistory,
-        "mandate_pending",
-        now,
-      ),
-    })
-  }
-
-  const amount = mollieAmount(attempt.grossAmountMinor, attempt.currency)
-  const origin = publicCmsOrigin()
-  try {
-    const payment = await createMolliePayment({
-      amount,
-      customerId: currentAgreement.providerCustomerId,
-      sequenceType: "first",
-      description: `Site in a Box website ${selectedDomain}`,
-      redirectUrl: `https://${PREVIEW_HOST}/${clientSlug}/checkout?payment=return`,
-      webhookUrl: `${origin}/api/payments/mollie/webhook`,
-      idempotencyKey: attempt.idempotencyKey,
-      metadata: {
-        paymentAttemptId: attempt.id,
-        billingAgreementId: currentAgreement.id,
-        generationRunId: run.id,
-        tenantId: tenant.id,
-        customerEmail: email,
-        clientSlug,
-        selectedDomain,
-        idempotencyKey: attempt.idempotencyKey,
-        mollieCustomerId: currentAgreement.providerCustomerId ?? null,
-        sequenceType: "first",
-        purpose: attempt.purpose,
-        orderId: order.id,
-      },
-    })
-    const checkoutUrl = payment._links?.checkout?.href
-    if (!payment.id || !checkoutUrl) {
-      throw new Error("Mollie did not return a payment id and checkout URL.")
-    }
-    attempt = await updateAttempt(payload, attempt, {
-      state: "pending_provider",
-      providerPaymentId: payment.id,
-      providerStatus: payment.status,
-      checkoutUrl,
-      reconciliationRequired: false,
-      lastSyncedAt: now,
-      stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now, payment.status),
-    })
-    const projection = molliePaymentProjection({
-      current: run.payment,
-      status: "pending_provider",
-      providerStatus: payment.status,
-      externalReference: payment.id,
-      checkoutUrl,
-      customerEmail: email,
-      clientSlug,
-      selectedDomain,
-      amount: amount.value,
-      currency: amount.currency,
-      actor: input.actor ?? email,
-      note: "Mollie checkout created. Payment completion is confirmed asynchronously.",
-      mollieCustomerId: currentAgreement.providerCustomerId,
-      mollieSequenceType: "first",
-      renewalInterval: currentAgreement.billingPeriod === "annual" ? "1 year" : "1 month",
-    })
-    await Promise.all([
-      payload.update({
-        collection: "site-generation-runs",
-        id: run.id,
-        data: { payment: projection },
-        depth: 0,
-        overrideAccess: true,
-        user: input.actor ? ({ id: input.actor }) : undefined,
-      }),
-      payload.update({
-        collection: "orders",
-        id: order.id,
-        data: { paymentStatus: "open", providerPaymentId: payment.id },
-        depth: 0,
-        overrideAccess: true,
-        context: { legalOrderLifecycleMutation: true },
-      }),
-    ])
-    return {
-      payment: projection,
-      paymentAttempt: attempt,
-      billingAgreement: currentAgreement,
-      checkoutUrl,
-      reused: false,
-    }
-  } catch (error) {
-    await markProviderWriteIndeterminate(payload, attempt, error)
-    throw error
-  }
+  const dispatched = await claimAndCreateFirstMolliePayment(payload, {
+    attempt,
+    agreement: currentAgreement,
+    order,
+    run,
+    tenant,
+    email,
+    clientSlug,
+    selectedDomain,
+    now,
+  })
+  const confirmedAttempt = dispatched.attempt
+  return finalizeFirstMolliePaymentProjection(payload, {
+    attempt: confirmedAttempt,
+    agreement: dispatched.agreement,
+    order,
+    run,
+    email,
+    clientSlug,
+    selectedDomain,
+    amount: dispatched.amount,
+    checkoutUrl: dispatched.checkoutUrl,
+    actor: input.actor,
+  })
 }
 
 export async function createSupplementalMigrationMollieCheckout(

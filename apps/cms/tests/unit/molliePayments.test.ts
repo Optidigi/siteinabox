@@ -767,6 +767,62 @@ describe("Mollie payment flow", () => {
     }))
   })
 
+  it("keeps a provider-bound payment reconcilable when local projection fails", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      paymentAttempts,
+      update,
+    } = createPayloadStub()
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Expected Payload update implementation.")
+    let failProjection = true
+    update.mockImplementation(async (args) => {
+      if (
+        failProjection &&
+        args.collection === "site-generation-runs" &&
+        args.data?.payment
+      ) {
+        failProjection = false
+        throw new Error("simulated local payment projection failure")
+      }
+      return originalUpdate(args)
+    })
+    const input = {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    }
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .rejects.toThrow("simulated local payment projection failure")
+    expect(paymentAttempts).toHaveLength(1)
+    expect(paymentAttempts[0]).toMatchObject({
+      state: "pending_provider",
+      providerPaymentId: "tr_test_123",
+      checkoutUrl: "https://www.mollie.com/checkout/test",
+      reconciliationRequired: true,
+      failureCode: "provider_write_indeterminate",
+      failureMessage: "simulated local payment projection failure",
+    })
+    const paymentPosts = () => vi.mocked(fetch).mock.calls.filter(([url]) =>
+      String(url) === "https://api.mollie.com/v2/payments"
+    )
+    expect(paymentPosts()).toHaveLength(1)
+
+    await expect(createMollieCheckoutForGenerationRun(payload, input))
+      .resolves.toMatchObject({
+        reused: true,
+        checkoutUrl: "https://www.mollie.com/checkout/test",
+        paymentAttempt: {
+          providerPaymentId: "tr_test_123",
+          reconciliationRequired: true,
+        },
+      })
+    expect(paymentPosts()).toHaveLength(1)
+  })
+
   it("persists an indeterminate customer write and never dispatches it again", async () => {
     enableSandboxCommerceRelease()
     const { payload, billingAgreements } = createPayloadStub()
@@ -3045,6 +3101,36 @@ describe("Mollie payment flow", () => {
       failureCode: "provider_amount_mismatch",
     })
     expect(order).toMatchObject({ paymentStatus: "pending", state: "accepted" })
+  })
+
+  it("marks a provider currency mismatch for reconciliation without satisfying the order", async () => {
+    const { payload, paymentAttempts, order, queue } = createPayloadStub({
+      payment: {
+        status: "pending_provider",
+        provider: "mollie",
+        externalReference: "tr_currency_mismatch",
+        providerStatus: "open",
+      },
+    })
+
+    await expect(applyMollieWebhookPayment(
+      payload,
+      "tr_currency_mismatch",
+      async () => ({
+        id: "tr_currency_mismatch",
+        status: "paid",
+        amount: { currency: "USD", value: "499.00" },
+        metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
+      }),
+    )).rejects.toThrow("does not match")
+
+    expect(paymentAttempts[0]).toMatchObject({
+      state: "pending_provider",
+      reconciliationRequired: true,
+      failureCode: "provider_amount_mismatch",
+    })
+    expect(order).toMatchObject({ paymentStatus: "pending", state: "accepted" })
+    expect(queue).not.toHaveBeenCalled()
   })
 
   it("requires provider amount evidence before satisfying the order", async () => {
