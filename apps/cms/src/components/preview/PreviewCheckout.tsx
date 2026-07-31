@@ -24,7 +24,6 @@ import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { cn } from "@siteinabox/ui/lib/utils"
-import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
 import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
@@ -72,7 +71,6 @@ type BillingPeriod = "monthly" | "annual"
 type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
-  | "validated_provider_export_v1"
 const checkoutStepOrder: CheckoutStep[] = ["domain", "details", "overview"]
 
 export type PreviewCheckoutCatalog = {
@@ -351,7 +349,7 @@ export function PreviewCheckout({
     React.useState<AutomaticMigrationSourceMethod | "">(() => {
       const source = initialQuotes?.annual.quote.migrationSourceMechanism
       if (cloudflareSourceAuthorization) return "cloudflare_api_v1"
-      return source && source !== "customer_authorized_provider_export_v1"
+      return source === "cloudflare_api_v1" || source === "authorized_axfr_v1"
         ? source
         : ""
     })
@@ -1114,7 +1112,6 @@ export function PreviewCheckout({
                   <MigrationSourceEvidenceFields
                     mechanism={migrationSourceMethod || null}
                     idPrefix="accepted"
-                    legacyWhenMissing
                   />
                   <Label htmlFor="accepted-migration-transfer-code">
                     {t("checkoutMigrationTransferCodeLabel")}
@@ -1276,7 +1273,12 @@ export function PreviewCheckout({
                               )
                             )}
                           <MigrationSourceEvidenceFields
-                            mechanism={migrationStatus.sourceMechanism}
+                            mechanism={
+                              migrationStatus.sourceMechanism === "cloudflare_api_v1" ||
+                              migrationStatus.sourceMechanism === "authorized_axfr_v1"
+                                ? migrationStatus.sourceMechanism
+                                : null
+                            }
                             idPrefix="migration-replacement"
                           />
                         </>
@@ -1636,34 +1638,6 @@ export function PreviewCheckout({
                           value={undefined}
                           autoComplete="off"
                         />
-                      </>
-                    )}
-                    {migrationSourceMethod === "validated_provider_export_v1" && (
-                      <>
-                        <CheckoutTextField
-                          id="checkout-source-provider"
-                          name="sourceProviderName"
-                          label={t("checkoutMigrationSourceProviderLabel")}
-                          description={t("checkoutMigrationSourceProviderHelp")}
-                          value={undefined}
-                          autoComplete="organization"
-                          required
-                        />
-                        <div className="grid gap-2">
-                          <Label htmlFor="checkout-zone-export">
-                            {t("checkoutMigrationZoneExportLabel")}
-                          </Label>
-                          <Input
-                            id="checkout-zone-export"
-                            name="zoneExport"
-                            type="file"
-                            accept="text/plain,.zone,.bind,.txt"
-                            required
-                          />
-                          <p className="text-sm text-muted-foreground">
-                            {t("checkoutMigrationZoneExportHelp")}
-                          </p>
-                        </div>
                       </>
                     )}
                     <CheckoutTextField
@@ -2889,11 +2863,9 @@ function AcceptanceCheckbox({
 function MigrationSourceEvidenceFields({
   mechanism,
   idPrefix,
-  legacyWhenMissing = false,
 }: {
-  mechanism: MigrationSourceMechanism | null | undefined
+  mechanism: AutomaticMigrationSourceMethod | null | undefined
   idPrefix: string
-  legacyWhenMissing?: boolean
 }) {
   const t = useTranslations("preview")
   if (mechanism === "authorized_axfr_v1") {
@@ -2923,49 +2895,6 @@ function MigrationSourceEvidenceFields({
           label={t("checkoutMigrationAxfrTsigSecretLabel")}
           value={undefined}
           autoComplete="off"
-        />
-      </>
-    )
-  }
-  if (mechanism === "validated_provider_export_v1") {
-    return (
-      <>
-        <CheckoutTextField
-          id={`${idPrefix}-source-provider`}
-          name="sourceProviderName"
-          label={t("checkoutMigrationSourceProviderLabel")}
-          description={t("checkoutMigrationSourceProviderHelp")}
-          value={undefined}
-          required
-        />
-        <Label htmlFor={`${idPrefix}-zone-export`}>
-          {t("checkoutMigrationZoneExportLabel")}
-        </Label>
-        <Input
-          id={`${idPrefix}-zone-export`}
-          name="zoneExport"
-          type="file"
-          accept="text/plain,.zone,.bind,.txt"
-          required
-        />
-      </>
-    )
-  }
-  if (
-    mechanism === "customer_authorized_provider_export_v1" ||
-    (!mechanism && legacyWhenMissing)
-  ) {
-    return (
-      <>
-        <Label htmlFor={`${idPrefix}-zone-export`}>
-          {t("checkoutMigrationLegacyZoneExportLabel")}
-        </Label>
-        <Input
-          id={`${idPrefix}-zone-export`}
-          name="zoneExport"
-          type="file"
-          accept="application/json,.json"
-          required
         />
       </>
     )

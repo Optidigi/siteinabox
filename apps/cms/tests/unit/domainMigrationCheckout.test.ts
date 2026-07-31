@@ -53,6 +53,16 @@ const zoneExport = (overrides: Partial<CompleteZoneExport> = {}): CompleteZoneEx
   ...overrides,
 })
 
+const cloudflareSource = (zone: CompleteZoneExport) => ({
+  mechanism: "cloudflare_api_v1" as const,
+  zone,
+  refreshCredential: {
+    kind: "cloudflare_api_token" as const,
+    token: "test-cloudflare-token-1234567890",
+    zoneId: "a".repeat(32),
+  },
+})
+
 describe("automatic migration source gates", () => {
   it("fails closed independently for each source mechanism", () => {
     const sourceEnv = {
@@ -315,11 +325,7 @@ describe("existing-domain checkout preflight", () => {
   it("freezes the gTLD eligibility declaration into encrypted migration evidence", () => {
     const comZone = zoneExport({
       domain: "example.com",
-      authority: {
-        mechanism: "validated_provider_export",
-        provider: "legacy-provider",
-        complete: true,
-      },
+      authority: { mechanism: "cloudflare_api", provider: "cloudflare", complete: true },
       records: [{
         type: "A",
         name: "example.com",
@@ -327,21 +333,13 @@ describe("existing-domain checkout preflight", () => {
         content: "192.0.2.10",
       }],
     })
-    const acquiredSource = {
-      mechanism: "validated_provider_export_v1" as const,
-      zone: comZone,
-      refreshCredential: {
-        kind: "provider_export" as const,
-        sourceSoaSerial: 2026072901,
-      },
-    }
+    const acquiredSource = cloudflareSource(comZone)
     const baseInput = {
       generationRunId: 500,
       domain: "example.com",
       zoneExport: comZone,
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence({
         registryTransferEvidence: "confirmed",
         transferBlockers: [],
@@ -399,27 +397,15 @@ describe("existing-domain checkout preflight", () => {
 
   it("issues automatic encrypted evidence only from a validated source adapter", () => {
     const acquiredZone = zoneExport({
-      authority: {
-        mechanism: "validated_provider_export",
-        provider: "legacy-provider",
-        complete: true,
-      },
+      authority: { mechanism: "cloudflare_api", provider: "cloudflare", complete: true },
     })
-    const acquiredSource = {
-      mechanism: "validated_provider_export_v1" as const,
-      zone: acquiredZone,
-      refreshCredential: {
-        kind: "provider_export" as const,
-        sourceSoaSerial: 2026072901,
-      },
-    }
+    const acquiredSource = cloudflareSource(acquiredZone)
     const result = assess({
       generationRunId: 500,
       domain: "example.nl",
       zoneExport: acquiredZone,
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence(),
       acquiredSource,
       env,
@@ -440,10 +426,10 @@ describe("existing-domain checkout preflight", () => {
     )
     expect(opened).toMatchObject({
       schemaVersion: 2,
-      sourceMechanism: "validated_provider_export_v1",
+      sourceMechanism: "cloudflare_api_v1",
       sourceRefreshCredential: {
-        kind: "provider_export",
-        sourceSoaSerial: 2026072901,
+        kind: "cloudflare_api_token",
+        zoneId: "a".repeat(32),
       },
       transferCode: "opaque-transfer-code",
     })
@@ -498,6 +484,41 @@ describe("existing-domain checkout preflight", () => {
     })
   })
 
+  it("rejects a crafted retired provider-export adapter before payment", () => {
+    const retiredZone = zoneExport({
+      authority: {
+        mechanism: "validated_provider_export",
+        provider: "retired-provider",
+        complete: true,
+      },
+    })
+    const result = assess({
+      generationRunId: 500,
+      domain: "example.nl",
+      zoneExport: retiredZone,
+      transferCode: "opaque-transfer-code",
+      transferAuthorizationAccepted: true,
+      publicEvidence: publicEvidence(),
+      acquiredSource: {
+        mechanism: "validated_provider_export_v1",
+        zone: retiredZone,
+        refreshCredential: {
+          kind: "provider_export",
+          sourceSoaSerial: 2026072901,
+        },
+      } as never,
+      env,
+      now: new Date("2026-07-28T10:00:00.000Z"),
+    })
+
+    expect(result).toMatchObject({
+      readiness: "unsupported",
+      classification: null,
+      encryptedInput: null,
+      reason: "source_authority_mismatch",
+    })
+  })
+
   it("stops stale exports and signed DNSSEC before ordinary payment", () => {
     expect(assess({
       generationRunId: 500,
@@ -543,11 +564,7 @@ describe("existing-domain checkout preflight", () => {
       ds.digest,
     ].join(" ")
     const signedZone = zoneExport({
-      authority: {
-        mechanism: "validated_provider_export",
-        provider: "legacy-provider",
-        complete: true,
-      },
+      authority: { mechanism: "cloudflare_api", provider: "cloudflare", complete: true },
       dnssec: {
         status: "signed",
         parentDsRecords: [dsRecord],
@@ -559,17 +576,9 @@ describe("existing-domain checkout preflight", () => {
       generationRunId: 500,
       domain: "example.nl",
       zoneExport: signedZone,
-      acquiredSource: {
-        mechanism: "validated_provider_export_v1",
-        zone: signedZone,
-        refreshCredential: {
-          kind: "provider_export",
-          sourceSoaSerial: 2026072901,
-        },
-      },
+      acquiredSource: cloudflareSource(signedZone),
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence({
         dnssecDsPresent: true,
         dnssecDsRecords: [dsRecord],
@@ -586,11 +595,7 @@ describe("existing-domain checkout preflight", () => {
 
   it("stops zones that cannot fit the guaranteed destination quota before payment", () => {
     const acquiredZoneWith = (count: number) => zoneExport({
-      authority: {
-        mechanism: "validated_provider_export",
-        provider: "legacy-provider",
-        complete: true,
-      },
+      authority: { mechanism: "cloudflare_api", provider: "cloudflare", complete: true },
       records: Array.from({ length: count }, (_, index) => ({
         type: "A" as const,
         name: `host-${index}.example.nl`,
@@ -606,16 +611,8 @@ describe("existing-domain checkout preflight", () => {
         zoneExport: acquiredZone,
         transferCode: "opaque-transfer-code",
         transferAuthorizationAccepted: true,
-        requestedAssistance: false,
         publicEvidence: publicEvidence(),
-        acquiredSource: {
-          mechanism: "validated_provider_export_v1",
-          zone: acquiredZone,
-          refreshCredential: {
-            kind: "provider_export",
-            sourceSoaSerial: 2026072901,
-          },
-        },
+        acquiredSource: cloudflareSource(acquiredZone),
         env,
         now: new Date("2026-07-28T10:00:00.000Z"),
       })

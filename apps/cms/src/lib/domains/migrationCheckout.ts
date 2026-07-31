@@ -16,7 +16,6 @@ import {
   tldCapabilityOperationFlagEnabled,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
-import type { MigrationClassification } from "@siteinabox/contracts/commerce"
 
 import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
 import {
@@ -41,7 +40,6 @@ const MAX_AUTOMATIC_SOURCE_RECORDS = 198
 
 type MigrationReadiness =
   | "ready_automatic"
-  | "ready_assisted"
   | "unsupported"
 
 export type ExistingDomainPublicEvidence = {
@@ -64,7 +62,7 @@ export type ExistingDomainPublicEvidence = {
 export type ExistingDomainMigrationAssessment = {
   readiness: MigrationReadiness
   domain: string
-  classification: Exclude<MigrationClassification, "complex"> | null
+  classification: "automatic" | null
   message: string
   reason:
     | "invalid_domain"
@@ -80,7 +78,6 @@ export type ExistingDomainMigrationAssessment = {
     | "dnssec_release_pending"
     | "source_authority_mismatch"
     | "automatic_ready"
-    | "accepted_order_recollected"
     | "source_completeness_unproven"
   sourceZone: NormalizedCompleteZone | null
   sourceZoneHash: string | null
@@ -457,9 +454,7 @@ export function assessExistingDomainMigrationInput(input: {
   transferCode: string
   transferAuthorizationAccepted: boolean
   gtldTransferEligibilityAccepted?: boolean
-  requestedAssistance: boolean
   publicEvidence: ExistingDomainPublicEvidence
-  acceptedOrderRecollection?: boolean
   acceptedCapabilityVersion?: string
   acquiredSource?: AcquiredMigrationSource
   env?: NodeJS.ProcessEnv
@@ -663,7 +658,7 @@ export function assessExistingDomainMigrationInput(input: {
   }
   if (
     !capability.dnssec.productionEvidenceComplete &&
-    !input.acceptedOrderRecollection
+    !input.acceptedCapabilityVersion
   ) {
     return {
       readiness: "unsupported",
@@ -723,36 +718,8 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  if (input.acceptedOrderRecollection) {
-    const checkoutInput: CheckoutMigrationInput = {
-      schemaVersion: 1,
-      generationRunId: String(input.generationRunId),
-      domain: normalizedDomain.domain,
-      classification: "assisted_standard",
-      sourceMechanism: "customer_authorized_provider_export_v1",
-      sourceZoneHash,
-      sourceZone: input.zoneExport,
-      transferCode: input.transferCode,
-      transferAuthorizationAccepted: true,
-      gtldTransferEligibilityAccepted:
-        input.gtldTransferEligibilityAccepted === true,
-    }
-    return {
-      readiness: "ready_assisted",
-      domain: normalizedDomain.domain,
-      classification: "assisted_standard",
-      message: "De bestaande geaccepteerde migratiegegevens zijn veilig vernieuwd.",
-      reason: "accepted_order_recollected",
-      sourceZone,
-      sourceZoneHash,
-      encryptedInput: sealCheckoutMigrationInput(checkoutInput, input.env),
-      publicEvidence: input.publicEvidence,
-    }
-  }
-  // A customer assertion can be structurally valid without proving that the
-  // export is authoritative and complete. The retired assisted product may not
-  // turn that assertion into a payable order. Automatic source acquisition
-  // must establish provenance before ordinary checkout becomes available.
+  // A source must be acquired through a current authorized adapter. A customer
+  // assertion or historical export is not enough to create or resume a route.
   return {
     readiness: "unsupported",
     domain: normalizedDomain.domain,

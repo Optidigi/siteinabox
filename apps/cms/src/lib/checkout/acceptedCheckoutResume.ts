@@ -84,8 +84,7 @@ const resumeQuote = (
   const transferEligibilityDeclaration = record(
     migration?.transferEligibilityDeclaration,
   )
-  const migrationClassification = migration?.classification === "automatic" ||
-    migration?.classification === "assisted_standard"
+  const migrationClassification = migration?.classification === "automatic"
     ? migration.classification
     : null
   const migrationSourceZoneHash = typeof migration?.sourceZoneHash === "string"
@@ -98,10 +97,8 @@ const resumeQuote = (
         ? migration.publicEvidenceHash
         : null
   const migrationSourceMechanism =
-    migration?.sourceMechanism === "customer_authorized_provider_export_v1" ||
-      migration?.sourceMechanism === "cloudflare_api_v1" ||
-      migration?.sourceMechanism === "authorized_axfr_v1" ||
-      migration?.sourceMechanism === "validated_provider_export_v1"
+    migration?.sourceMechanism === "cloudflare_api_v1" ||
+      migration?.sourceMechanism === "authorized_axfr_v1"
       ? migration.sourceMechanism
       : null
   const migrationInputEnvelope = null
@@ -182,6 +179,12 @@ const resumeQuote = (
     netAmountMinor: integer(evidence, "subtotalNetMinor"),
     vatAmountMinor: integer(evidence, "vatAmountMinor"),
     grossAmountMinor: integer(evidence, "grossPayableNowMinor"),
+  }
+  if (
+    domainMode === "existing_domain" &&
+    (!migrationClassification || !migrationSourceMechanism)
+  ) {
+    throw new Error("Accepted checkout order does not use a current migration route.")
   }
   const recalculated = buildCheckoutQuote({
     catalogVersion: quote.catalogVersion,

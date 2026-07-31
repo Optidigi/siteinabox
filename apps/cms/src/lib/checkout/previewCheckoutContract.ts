@@ -31,8 +31,8 @@ export type PreviewCheckoutActionState = {
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
   domainMode?: "new_registration" | "existing_domain"
-  migrationReadiness?: "ready_automatic" | "ready_assisted" | "unsupported"
-  migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationReadiness?: "ready_automatic" | "unsupported"
+  migrationClassification?: "automatic" | null
   migrationSourceMechanism?: MigrationSourceMechanism | null
   migrationPreflightOnly?: boolean
   migrationReleaseBlocked?: boolean

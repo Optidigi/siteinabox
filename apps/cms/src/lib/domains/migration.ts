@@ -664,12 +664,10 @@ const migrationEvidenceFromOrder = (order: Order) => {
   const migration = readObject(quoteEvidence.migration)
   const sourceMechanism = String(migration.sourceMechanism)
   if (
-    !["automatic", "assisted_standard"].includes(String(migration.classification)) ||
+    migration.classification !== "automatic" ||
     ![
-      "customer_authorized_provider_export_v1",
       "cloudflare_api_v1",
       "authorized_axfr_v1",
-      "validated_provider_export_v1",
     ].includes(sourceMechanism)
   ) {
     throw new Error("Accepted order does not freeze a supported migration source contract.")
@@ -690,12 +688,10 @@ const migrationEvidenceFromOrder = (order: Order) => {
   }
   return {
     capability,
-    classification: migration.classification as "automatic" | "assisted_standard",
+    classification: "automatic" as const,
     sourceMechanism: sourceMechanism as
-      | "customer_authorized_provider_export_v1"
       | "cloudflare_api_v1"
-      | "authorized_axfr_v1"
-      | "validated_provider_export_v1",
+      | "authorized_axfr_v1",
     sourceZoneHash: typeof migration.sourceZoneHash === "string"
       ? migration.sourceZoneHash
       : null,
@@ -708,23 +704,14 @@ const migrationEvidenceFromOrder = (order: Order) => {
 export const isAutomaticMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return migration.classification === "automatic" &&
-    [
-      "customer_authorized_provider_export_v1",
-      "cloudflare_api_v1",
-      "authorized_axfr_v1",
-      "validated_provider_export_v1",
-    ].includes(String(migration.sourceMechanism))
+    ["cloudflare_api_v1", "authorized_axfr_v1"].includes(
+      String(migration.sourceMechanism),
+    )
 }
 
 export const isSupportedDomainMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
-  return ["automatic", "assisted_standard"].includes(String(migration.classification)) &&
-    [
-      "customer_authorized_provider_export_v1",
-      "cloudflare_api_v1",
-      "authorized_axfr_v1",
-      "validated_provider_export_v1",
-    ].includes(String(migration.sourceMechanism))
+  return isAutomaticMigrationOrder(order)
 }
 
 async function checkoutProfileForOrder(
@@ -882,38 +869,32 @@ export async function createAutomaticDomainMigration(
     }
     let refreshedSource: CompleteZoneExport
     try {
-      if (checkoutInput.schemaVersion === 2) {
-        let refreshInput: AutomaticMigrationSourceRefreshInput = checkoutInput
-        if (
-          checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth"
-        ) {
-          const credential = await (
-            dependencies.resolveCloudflareOAuthCredential ??
-            resolveCloudflareOAuthCredential
-          )(
-            payload,
-            checkoutInput.sourceRefreshCredential,
-            { now: new Date(now) },
-          )
-          if (!credential.zoneId) {
-            throw new MigrationSourceAuthorizationError()
-          }
-          refreshInput = {
-            ...checkoutInput,
-            sourceRefreshCredential: {
-              kind: "cloudflare_api_token",
-              token: credential.accessToken,
-              zoneId: credential.zoneId,
-            },
-          }
+      let refreshInput: AutomaticMigrationSourceRefreshInput = checkoutInput
+      if (checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth") {
+        const credential = await (
+          dependencies.resolveCloudflareOAuthCredential ??
+          resolveCloudflareOAuthCredential
+        )(
+          payload,
+          checkoutInput.sourceRefreshCredential,
+          { now: new Date(now) },
+        )
+        if (!credential.zoneId) {
+          throw new MigrationSourceAuthorizationError()
         }
-        refreshedSource = await (
-          dependencies.refreshAutomaticMigrationSource ??
-          refreshAutomaticMigrationSource
-        )(refreshInput)
-      } else {
-        refreshedSource = checkoutInput.sourceZone
+        refreshInput = {
+          ...checkoutInput,
+          sourceRefreshCredential: {
+            kind: "cloudflare_api_token",
+            token: credential.accessToken,
+            zoneId: credential.zoneId,
+          },
+        }
       }
+      refreshedSource = await (
+        dependencies.refreshAutomaticMigrationSource ??
+        refreshAutomaticMigrationSource
+      )(refreshInput)
     } catch (error) {
       if (
         !(error instanceof MigrationSourceChangedError) &&
@@ -921,10 +902,7 @@ export async function createAutomaticDomainMigration(
       ) {
         throw error
       }
-      if (
-        checkoutInput.schemaVersion === 2 &&
-        checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth"
-      ) {
+      if (checkoutInput.sourceRefreshCredential.kind === "cloudflare_oauth") {
         await revokeCloudflareSourceAuthorization(
           payload,
           checkoutInput.sourceRefreshCredential,
@@ -949,21 +927,12 @@ export async function createAutomaticDomainMigration(
         reconciliationRequired: false,
       }, "automatic_source_reauthorization_required", now)
     }
-    let sourceRefreshAuthority: AutomaticSourceRefreshAuthority | undefined
-    if (
-      checkoutInput.schemaVersion === 2 &&
-      (
-        checkoutInput.sourceMechanism === "cloudflare_api_v1" ||
-        checkoutInput.sourceMechanism === "authorized_axfr_v1"
-      )
-    ) {
-      sourceRefreshAuthority = buildAutomaticSourceRefreshAuthority({
-        domain: normalized.domain,
-        sourceMechanism: checkoutInput.sourceMechanism,
-        sourceZone: checkoutInput.normalizedSourceZone,
-        credential: checkoutInput.sourceRefreshCredential,
-      })
-    }
+    const sourceRefreshAuthority = buildAutomaticSourceRefreshAuthority({
+      domain: normalized.domain,
+      sourceMechanism: checkoutInput.sourceMechanism,
+      sourceZone: checkoutInput.normalizedSourceZone,
+      credential: checkoutInput.sourceRefreshCredential,
+    })
     migration = await acquireAutomaticMigrationInputs(payload, {
       migrationId: migration.id,
       zoneExport: refreshedSource,
