@@ -385,6 +385,63 @@ describe("Openprovider renewal_date cycles", () => {
     )
   })
 
+  it("replaces indicative pricing with the actionable quote without changing renewal authority", async () => {
+    const store = createStore()
+    const indicative = dependencies({
+      now: "2027-04-27T00:00:00.000Z",
+      priceNetMinor: 1_250,
+    })
+
+    await reconcileManagedDomainRenewal(store.payload, 950, indicative.deps)
+
+    expect(store.cycles[0]).toMatchObject({
+      state: "scheduled",
+      paymentChargeAt: "2027-05-27T00:00:00.000Z",
+      renewalIntentSnapshot: true,
+      financialCoverageState: "payment_pending",
+      providerOperationPriceNetMinor: 1_250,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 250,
+      netAmountMinor: 250,
+      vatAmountMinor: 53,
+      grossAmountMinor: 303,
+      pricingEvidence: {
+        operation: "renew",
+        quotedAt: "2027-04-27T00:00:00.000Z",
+        providerOperationPriceNetMinor: 1_250,
+        includedAllowanceNetMinor: 1_000,
+        surchargeNetMinor: 250,
+      },
+    })
+
+    const actionable = dependencies({
+      now: "2027-05-27T00:00:00.000Z",
+      priceNetMinor: 800,
+    })
+    await reconcileManagedDomainRenewal(store.payload, 950, actionable.deps)
+
+    expect(store.cycles[0]).toMatchObject({
+      state: "payment_committed",
+      paymentChargeAt: "2027-05-27T00:00:00.000Z",
+      renewalIntentSnapshot: true,
+      financialCoverageState: "payment_secured",
+      providerOperationPriceNetMinor: 800,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 0,
+      netAmountMinor: 0,
+      vatAmountMinor: 0,
+      grossAmountMinor: 0,
+      paymentSecuredAt: "2027-05-27T00:00:00.000Z",
+      pricingEvidence: {
+        operation: "renew",
+        quotedAt: "2027-05-27T00:00:00.000Z",
+        providerOperationPriceNetMinor: 800,
+        includedAllowanceNetMinor: 1_000,
+        surchargeNetMinor: 0,
+      },
+    })
+  })
+
   it("fails closed for a modeled TLD whose production gate is disabled", async () => {
     const store = createStore({
       domain: {
