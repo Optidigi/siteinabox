@@ -3,7 +3,7 @@ import "server-only"
 import { getTldCapabilityByVersion } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { DomainMigration, ManagedDomain, Order } from "@/payload-types"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { relationshipId } from "@/lib/relationshipId"
 
 export type CustomerMigrationActionStatus = {
   action: string
@@ -25,14 +25,6 @@ export type CustomerMigrationStatus = {
     | "non_billable_incident_authorized"
     | "custom_quote_required"
   actions: CustomerMigrationActionStatus[]
-  supplementalProposal: {
-    workScopeCode: string
-    currency: "EUR"
-    netAmountMinor: number
-    vatAmountMinor: number
-    grossAmountMinor: number
-    paymentStatus: Order["paymentStatus"] | null
-  } | null
   updatedAt: string
 }
 
@@ -158,38 +150,6 @@ export async function loadCustomerMigrationStatus(
             ? transferConfirmationDeadline(order, migration)
           : null),
   }))
-  const supplementalOrderId = relationshipId(migration.supplementalOrder)
-  const loadedSupplementalOrder = supplementalOrderId
-    ? await payload.findByID({
-        collection: "orders",
-        id: supplementalOrderId,
-        depth: 0,
-        overrideAccess: true,
-      }).catch(() => null) as Order | null
-    : null
-  const supplementalOrder = loadedSupplementalOrder &&
-    loadedSupplementalOrder.orderKind === "migration_supplemental" &&
-    sameRelationshipId(loadedSupplementalOrder.parentOrder, order.id) &&
-    sameRelationshipId(loadedSupplementalOrder.tenant, order.tenant) &&
-    loadedSupplementalOrder.customerEmail.trim().toLowerCase() === customerEmail
-    ? loadedSupplementalOrder
-    : null
-  const supplementalProposal =
-    migration.operatorWorkAuthorizationState === "awaiting_payment" &&
-    migration.operatorWorkScope &&
-    supplementalOrder?.currency === "EUR" &&
-    Number.isSafeInteger(supplementalOrder.subtotalNetMinor) &&
-    Number.isSafeInteger(supplementalOrder.vatAmountMinor) &&
-    Number.isSafeInteger(supplementalOrder.totalGrossMinor)
-      ? {
-          workScopeCode: migration.operatorWorkScope,
-          currency: "EUR" as const,
-          netAmountMinor: supplementalOrder.subtotalNetMinor as number,
-          vatAmountMinor: supplementalOrder.vatAmountMinor as number,
-          grossAmountMinor: supplementalOrder.totalGrossMinor as number,
-          paymentStatus: supplementalOrder.paymentStatus,
-        }
-      : null
   return {
     migrationId: migration.id,
     domain: migration.domainNameAscii,
@@ -198,7 +158,6 @@ export async function loadCustomerMigrationStatus(
     sourceMechanism: migration.sourceMechanism,
     operatorAuthorization: migration.operatorWorkAuthorizationState,
     actions,
-    supplementalProposal,
     updatedAt: migration.updatedAt,
   }
 }

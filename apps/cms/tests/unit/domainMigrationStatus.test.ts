@@ -84,7 +84,6 @@ describe("customer migration status projection", () => {
           deadlineAt: null,
         },
       ],
-      supplementalProposal: null,
       updatedAt: "2026-07-28T10:00:00.000Z",
     })
     expect(JSON.stringify(result)).not.toMatch(
@@ -102,67 +101,6 @@ describe("customer migration status projection", () => {
       customerEmail: "",
     })).resolves.toBeNull()
     expect(find).not.toHaveBeenCalled()
-  })
-
-  it("shows the immutable supplemental proposal amount without operator evidence", async () => {
-    const find = vi.fn(async (input: MockFindArgs) => {
-      if (input.collection === "orders") {
-        return {
-          docs: [{
-            id: 90,
-            generationRun: 500,
-            tenant: 1,
-            orderKind: "initial_subscription",
-            customerEmail: "customer@example.com",
-            catalogVersion: "2026-07-26.1",
-          }],
-          totalDocs: 1,
-        }
-      }
-      return {
-        docs: [{
-          id: 100,
-          originatingOrder: 90,
-          supplementalOrder: 91,
-          domainNameAscii: "ami-care.nl",
-          state: "paused_supplemental_order",
-          acceptedClassification: "automatic",
-          operatorWorkAuthorizationState: "awaiting_payment",
-          operatorWorkScope: "verify_customer_zone_export",
-          customerActions: [],
-          updatedAt: "2026-07-28T10:00:00.000Z",
-        }],
-        totalDocs: 1,
-      }
-    })
-    const findByID = vi.fn(async () => ({
-      id: 91,
-      orderKind: "migration_supplemental",
-      parentOrder: 90,
-      tenant: 1,
-      customerEmail: "customer@example.com",
-      paymentStatus: "open",
-      currency: "EUR",
-      subtotalNetMinor: 4_900,
-      vatAmountMinor: 1_029,
-      totalGrossMinor: 5_929,
-    }))
-
-    await expect(loadCustomerMigrationStatus(asPayload({ find, findByID }), {
-      generationRunId: 500,
-      customerEmail: "customer@example.com",
-    })).resolves.toMatchObject({
-      migrationId: 100,
-      operatorAuthorization: "awaiting_payment",
-      supplementalProposal: {
-        workScopeCode: "verify_customer_zone_export",
-        currency: "EUR",
-        netAmountMinor: 4_900,
-        vatAmountMinor: 1_029,
-        grossAmountMinor: 5_929,
-        paymentStatus: "open",
-      },
-    })
   })
 
   it("exposes the governed registrant-email confirmation deadline", async () => {

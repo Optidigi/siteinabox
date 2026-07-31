@@ -3335,23 +3335,6 @@ async function refreshSourceAuthorityAndCustomerReadinessPhase(
       failureReason: null,
     }, "customer_actions_satisfied", now)
   }
-  if (
-    migration.state === "ready_to_prepare" &&
-    migration.acceptedClassification === "assisted_standard" &&
-    !migration.operatorWorkCompletedAt
-  ) {
-    const { pauseAcceptedAssistedMigration } = await import(
-      "@/lib/domains/assistedMigration"
-    )
-    migration = await pauseAcceptedAssistedMigration(payload, migration)
-    return {
-      outcome: "waiting",
-      result: waiting(
-        migration,
-        "Paid assisted migration is waiting for operator work.",
-      ),
-    }
-  }
   if (migration.state === "ready_to_prepare") {
     migration = await updateMigration(payload, migration, {
       state: "preparing",
