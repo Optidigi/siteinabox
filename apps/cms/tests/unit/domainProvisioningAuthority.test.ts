@@ -6,6 +6,7 @@ import {
 import {
   OpenProviderAmbiguousCustomerReferenceLookupError,
   OpenProviderAmbiguousDomainLookupError,
+  OpenProviderCustomerReferenceLookupIncompleteError,
 } from "@/lib/domains/openprovider"
 import type {
   CheckoutProfile,
@@ -274,6 +275,35 @@ describe("new-domain provider authority", () => {
     })
     expect(findDomain).toHaveBeenCalledOnce()
     expect(availability).toHaveBeenCalledOnce()
+    expect(createCustomer).not.toHaveBeenCalled()
+    expect(createZone).not.toHaveBeenCalled()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it("does not create a customer when exact-reference search is incomplete", async () => {
+    const store = fixture()
+    const createCustomer = vi.fn()
+    const createZone = vi.fn()
+    const register = vi.fn()
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => null),
+        checkOpenProviderDomainAvailability: vi.fn(async () => available),
+        findOpenProviderCustomerByReference: vi.fn(async () => {
+          throw new OpenProviderCustomerReferenceLookupIncompleteError()
+        }),
+        createOpenProviderCustomerHandle: createCustomer,
+        createOrReuseCloudflareZone: createZone,
+        registerOpenProviderDomain: register,
+      },
+    })).rejects.toBeInstanceOf(
+      OpenProviderCustomerReferenceLookupIncompleteError,
+    )
     expect(createCustomer).not.toHaveBeenCalled()
     expect(createZone).not.toHaveBeenCalled()
     expect(register).not.toHaveBeenCalled()

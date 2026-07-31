@@ -165,6 +165,13 @@ export class OpenProviderAmbiguousCustomerReferenceLookupError extends Error {
   }
 }
 
+export class OpenProviderCustomerReferenceLookupIncompleteError extends Error {
+  constructor() {
+    super("OpenProvider customer reference lookup completeness could not be proven.")
+    this.name = "OpenProviderCustomerReferenceLookupIncompleteError"
+  }
+}
+
 type OpenProviderAvailabilityOptions = OpenProviderOptions & {
   withPrice?: boolean
 }
@@ -1142,30 +1149,57 @@ export async function findOpenProviderCustomerByReference(
   if (!normalizedReference) throw new Error("OpenProvider customer reference is required.")
   const env = options?.env ?? process.env
   const token = options?.token ?? await loginOpenProvider(options)
-  const query = new URLSearchParams({ comment_pattern: normalizedReference, limit: "2" })
-  const response = await fetcher(options)(`${apiBase(env)}/customers?${query.toString()}`, {
-    method: "GET",
-    headers: jsonHeaders(token),
-  })
-  if (!response.ok) throw new OpenProviderApiError("OpenProvider customer lookup", response.status)
-  const data = dataObject(await json(response))
-  const results = Array.isArray(data.results) ? data.results : []
-  const customers = results.flatMap((result): OpenProviderCustomerRecord[] => {
-    const source = readObject(result)
-    const handle = typeof source.handle === "string" ? source.handle : null
-    const comments = typeof source.comments === "string" ? source.comments : null
-    return handle ? [{ handle, comments, raw: result }] : []
-  })
-  const lookup = classifyOpenProviderCustomerReferenceLookup(
-    normalizedReference,
-    customers,
-  )
-  if (lookup.outcome === "ambiguous") {
-    throw new OpenProviderAmbiguousCustomerReferenceLookupError(
-      normalizedReference,
+  const pageSize = 1_000
+  const maximumResults = 10_000
+  const exactCustomers: OpenProviderCustomerRecord[] = []
+  for (let offset = 0; offset < maximumResults; offset += pageSize) {
+    const query = new URLSearchParams({
+      comment_pattern: normalizedReference,
+      limit: String(pageSize),
+      offset: String(offset),
+    })
+    const response = await fetcher(options)(
+      `${apiBase(env)}/customers?${query.toString()}`,
+      {
+        method: "GET",
+        headers: jsonHeaders(token),
+      },
     )
+    if (!response.ok) {
+      throw new OpenProviderApiError(
+        "OpenProvider customer lookup",
+        response.status,
+      )
+    }
+    const data = dataObject(await json(response))
+    if (!Array.isArray(data.results)) {
+      throw new OpenProviderCustomerReferenceLookupIncompleteError()
+    }
+    const page = data.results
+    const customers = page.flatMap((result): OpenProviderCustomerRecord[] => {
+      const source = readObject(result)
+      const handle = typeof source.handle === "string" ? source.handle : null
+      const comments = typeof source.comments === "string"
+        ? source.comments
+        : null
+      return handle ? [{ handle, comments, raw: result }] : []
+    })
+    exactCustomers.push(...customers.filter((customer) =>
+      customer.comments === normalizedReference))
+    const lookup = classifyOpenProviderCustomerReferenceLookup(
+      normalizedReference,
+      exactCustomers,
+    )
+    if (lookup.outcome === "ambiguous") {
+      throw new OpenProviderAmbiguousCustomerReferenceLookupError(
+        normalizedReference,
+      )
+    }
+    if (page.length < pageSize) {
+      return lookup.outcome === "exact" ? lookup.customer : null
+    }
   }
-  return lookup.outcome === "exact" ? lookup.customer : null
+  throw new OpenProviderCustomerReferenceLookupIncompleteError()
 }
 
 export async function getOpenProviderResellerBalance(
