@@ -825,6 +825,57 @@ describe("new-domain provider authority", () => {
     )
   })
 
+  it("blocks activation when public edge readiness is active but admin HTTPS is pending", async () => {
+    const store = fixture()
+    store.domain.providerCustomerHandle = "OWNER-CLIENT"
+    store.domain.edgeRoutingStatus = "active"
+    store.domain.httpsStatus = "verified"
+    store.domain.adminHttpsStatus = "pending"
+    const zone = {
+      id: "zone-1",
+      name: "example.nl",
+      nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      status: "active" as const,
+      raw: {},
+    }
+
+    await expect(provisionPaidDomainOrder(store.payload, store.run, {
+      order: store.order,
+      paymentAttemptId: 700,
+      dependencies: {
+        now: () => NOW,
+        loginOpenProvider: vi.fn(async () => "token"),
+        findOpenProviderDomain: vi.fn(async () => ({
+          ...requestedProviderDomain(),
+          status: "ACT",
+          verificationEmailStatus: "not applicable",
+        })),
+        listCloudflareZones: vi.fn(async () => [zone]),
+        verifyAuthoritativeDns: vi.fn(async (_domain, nameServers) => ({
+          status: "verified" as const,
+          delegatedNameServers: nameServers,
+          respondingNameServers: nameServers,
+          reason: null,
+        })),
+      },
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("administration routing"),
+      managedDomain: {
+        authoritativeDnsStatus: "verified",
+        httpsStatus: "verified",
+        edgeRoutingStatus: "active",
+        adminHttpsStatus: "pending",
+        entitlementStatus: "pending",
+        reconciliationRequired: true,
+      },
+    })
+    expect(store.collections.tenants?.[0]).toMatchObject({
+      domain: "preview.siteinabox.test",
+      status: "preview",
+    })
+  })
+
   it("accepts one exact registrar domain without customer, zone, or registrar writes", async () => {
     const store = fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"

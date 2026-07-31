@@ -165,6 +165,18 @@ type RegistrantVerificationPhaseOutcome =
       result: ProvisionPaidDomainResult
     }
 
+type ProvisioningReadinessPhaseOutcome =
+  | {
+      outcome: "continue"
+      managedDomain: ManagedDomain
+      zone: CloudflareZoneResult
+    }
+  | { outcome: "waiting"; result: ProvisionPaidDomainResult }
+
+type ProvisioningActivationPhaseOutcome =
+  | { outcome: "completed"; result: ProvisionPaidDomainResult }
+  | { outcome: "waiting"; result: ProvisionPaidDomainResult }
+
 type RegistrarWriteErrorClassification = "rejected" | "indeterminate"
 
 const classifyRegistrarWriteError = (
@@ -1492,6 +1504,194 @@ async function projectRegistrantVerificationPhase(
   return { outcome: "continue", managedDomain }
 }
 
+async function verifyProvisioningReadinessPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    managedDomain: ManagedDomain
+    zone: CloudflareZoneResult
+  },
+): Promise<ProvisioningReadinessPhaseOutcome> {
+  let managedDomain = context.managedDomain
+  const refreshedZone = (await dependencies.listCloudflareZones(
+    context.normalized.domain,
+  )).find((candidate) => candidate.id === context.zone.id) ?? context.zone
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    cloudflareZoneStatus: refreshedZone.status,
+  }, "cloudflare_zone_reconciled", dependencies.now())
+  if (refreshedZone.status !== "active") {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Cloudflare is waiting for authoritative nameserver activation.",
+      ),
+    }
+  }
+
+  const authoritativeDns = await dependencies.verifyAuthoritativeDns(
+    context.normalized.domain,
+    refreshedZone.nameServers,
+  )
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    authoritativeDnsStatus: authoritativeDns.status === "verified"
+      ? "verified"
+      : "pending",
+    authoritativeDnsCheckedAt: dependencies.now(),
+    authoritativeDnsEvidence: authoritativeDns,
+    reconciliationRequired: authoritativeDns.status !== "verified",
+  }, `authoritative_dns_${authoritativeDns.status}`, dependencies.now())
+  if (authoritativeDns.status !== "verified") {
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Authoritative DNS delegation is not verified yet.",
+      ),
+    }
+  }
+
+  if (
+    managedDomain.edgeRoutingStatus !== "active" ||
+    managedDomain.httpsStatus !== "verified" ||
+    managedDomain.adminHttpsStatus !== "verified"
+  ) {
+    await queueCommerceReconciliation(payload)
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      reconciliationRequired: true,
+      failureReason: null,
+    }, "edge_routing_reconciliation_queued", dependencies.now())
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Automatic website and administration routing is awaiting Cloudflare activation.",
+      ),
+    }
+  }
+
+  return {
+    outcome: "continue",
+    managedDomain,
+    zone: refreshedZone,
+  }
+}
+
+async function projectProvisioningActivationPhase(
+  payload: Payload,
+  run: SiteGenerationRun,
+  dependencies: ProvisioningDependencies,
+  context: {
+    normalized: Extract<NormalizedDomain, { ok: true }>
+    tenantId: string | number
+    tenant: Tenant
+    registrant: DomainRegistrantDetails
+    managedDomain: ManagedDomain
+    zone: CloudflareZoneResult
+  },
+): Promise<ProvisioningActivationPhaseOutcome> {
+  let managedDomain = context.managedDomain
+  const expectedSendingDomain = `mail.${context.normalized.domain}`
+  const currentEmailSending = context.tenant.emailSending
+  const emailSending: TenantEmailSendingState =
+    currentEmailSending?.cloudflareZoneId === context.zone.id &&
+    currentEmailSending.sendingDomain?.trim().toLowerCase() ===
+      expectedSendingDomain
+      ? currentEmailSending
+      : {
+          ...buildDefaultTenantEmailSending(context.normalized.domain),
+          cloudflareZoneId: context.zone.id,
+        }
+  await payload.update({
+    collection: "tenants",
+    id: context.tenantId,
+    data: {
+      domain: context.normalized.domain,
+      domainVerification: {
+        status: "verified",
+        checkedAt: dependencies.now(),
+        notes:
+          "Verified from active Cloudflare zone and authoritative nameserver response.",
+      },
+      emailSending,
+    },
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  const settingsResult = await payload.find({
+    collection: "site-settings",
+    where: { tenant: { equals: context.tenantId } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (settingsResult.docs.length !== 1) {
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      reconciliationRequired: true,
+      failureReason: "site_settings_not_unique",
+    }, "site_settings_not_unique", dependencies.now())
+    return {
+      outcome: "waiting",
+      result: waiting(
+        context.normalized.domain,
+        run,
+        managedDomain,
+        "Exactly one tenant site-settings record is required before publication.",
+      ),
+    }
+  }
+  const siteSettings = settingsResult.docs[0]!
+  const wwwHost = `www.${context.normalized.domain}`
+  const existingAliases = (siteSettings.aliases ?? [])
+    .map((alias) => alias?.host?.trim().toLowerCase())
+    .filter((host): host is string => Boolean(host))
+  await payload.update({
+    collection: "site-settings",
+    id: siteSettings.id,
+    data: {
+      siteUrl: `https://${context.normalized.domain}`,
+      aliases: [...new Set([...existingAliases, wwwHost])].map((host) => ({
+        host,
+      })),
+    },
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    reconciliationRequired: false,
+    failureReason: null,
+    customerStatus: "provisioning",
+  }, "domain_ready_for_entitlement_activation", dependencies.now())
+  run = await compatibilityProjection(
+    payload,
+    run,
+    managedDomain,
+    "registered",
+    "domain_ready_for_entitlement_activation",
+    context.registrant,
+    emailSending,
+  )
+  return {
+    outcome: "completed",
+    result: {
+      status: "ready_for_activation",
+      domain: context.normalized.domain,
+      run,
+      managedDomain,
+    },
+  }
+}
+
 export async function provisionPaidDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
@@ -1520,7 +1720,7 @@ export async function provisionPaidDomainOrder(
     now,
   } = authorityOutcome.context
   input.order = order
-  let tenant = initialTenant
+  const tenant = initialTenant
   let managedDomain = initialManagedDomain
   if (managedDomain.state === "pending" || managedDomain.state === "manual_review") {
     managedDomain = await updateManagedDomain(payload, managedDomain, {
@@ -1706,141 +1906,31 @@ export async function provisionPaidDomainOrder(
   }
   managedDomain = verificationOutcome.managedDomain
 
-  const refreshedZone = (await dependencies.listCloudflareZones(normalized.domain))
-    .find((candidate) => candidate.id === zone?.id) ?? zone
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    cloudflareZoneStatus: refreshedZone.status,
-  }, "cloudflare_zone_reconciled", dependencies.now())
-  if (refreshedZone.status !== "active") {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Cloudflare is waiting for authoritative nameserver activation.",
-    )
-  }
-
-  const authoritativeDns = await dependencies.verifyAuthoritativeDns(
-    normalized.domain,
-    refreshedZone.nameServers,
-  )
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    authoritativeDnsStatus: authoritativeDns.status === "verified" ? "verified" : "pending",
-    authoritativeDnsCheckedAt: dependencies.now(),
-    authoritativeDnsEvidence: authoritativeDns,
-    reconciliationRequired: authoritativeDns.status !== "verified",
-  }, `authoritative_dns_${authoritativeDns.status}`, dependencies.now())
-  if (authoritativeDns.status !== "verified") {
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Authoritative DNS delegation is not verified yet.",
-    )
-  }
-
-  if (
-    managedDomain.edgeRoutingStatus !== "active" ||
-    managedDomain.httpsStatus !== "verified" ||
-    managedDomain.adminHttpsStatus !== "verified"
-  ) {
-    await queueCommerceReconciliation(payload)
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      reconciliationRequired: true,
-      failureReason: null,
-    }, "edge_routing_reconciliation_queued", dependencies.now())
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Automatic website and administration routing is awaiting Cloudflare activation.",
-    )
-  }
-
-  const expectedSendingDomain = `mail.${normalized.domain}`
-  const currentEmailSending = tenant.emailSending
-  const emailSending: TenantEmailSendingState =
-    currentEmailSending?.cloudflareZoneId === zone.id &&
-    currentEmailSending.sendingDomain?.trim().toLowerCase() ===
-      expectedSendingDomain
-      ? currentEmailSending
-      : {
-          ...buildDefaultTenantEmailSending(normalized.domain),
-          cloudflareZoneId: zone.id,
-        }
-  tenant = await payload.update({
-    collection: "tenants",
-    id: tenantId,
-    data: {
-      domain: normalized.domain,
-      domainVerification: {
-        status: "verified",
-        checkedAt: dependencies.now(),
-        notes: "Verified from active Cloudflare zone and authoritative nameserver response.",
-      },
-      emailSending,
-    },
-    depth: 0,
-    overrideAccess: true,
-  }) as Tenant
-
-  const settingsResult = await payload.find({
-    collection: "site-settings",
-    where: { tenant: { equals: tenantId } },
-    limit: 2,
-    depth: 0,
-    overrideAccess: true,
-  })
-  if (settingsResult.docs.length !== 1) {
-    managedDomain = await updateManagedDomain(payload, managedDomain, {
-      reconciliationRequired: true,
-      failureReason: "site_settings_not_unique",
-    }, "site_settings_not_unique", dependencies.now())
-    return waiting(
-      normalized.domain,
-      run,
-      managedDomain,
-      "Exactly one tenant site-settings record is required before publication.",
-    )
-  }
-  const siteSettings = settingsResult.docs[0]!
-  const wwwHost = `www.${normalized.domain}`
-  const existingAliases = (siteSettings.aliases ?? [])
-    .map((alias) => alias?.host?.trim().toLowerCase())
-    .filter((host): host is string => Boolean(host))
-  await payload.update({
-    collection: "site-settings",
-    id: siteSettings.id,
-    data: {
-      siteUrl: `https://${normalized.domain}`,
-      aliases: [...new Set([...existingAliases, wwwHost])].map((host) => ({
-        host,
-      })),
-    },
-    depth: 0,
-    overrideAccess: true,
-  })
-
-  managedDomain = await updateManagedDomain(payload, managedDomain, {
-    reconciliationRequired: false,
-    failureReason: null,
-    customerStatus: "provisioning",
-  }, "domain_ready_for_entitlement_activation", dependencies.now())
-  run = await compatibilityProjection(
+  const readinessOutcome = await verifyProvisioningReadinessPhase(
     payload,
     run,
-    managedDomain,
-    "registered",
-    "domain_ready_for_entitlement_activation",
-    registrant,
-    emailSending,
+    dependencies,
+    { normalized, managedDomain, zone },
   )
-  return {
-    status: "ready_for_activation",
-    domain: normalized.domain,
-    run,
-    managedDomain,
+  if (readinessOutcome.outcome !== "continue") {
+    return readinessOutcome.result
   }
+  managedDomain = readinessOutcome.managedDomain
+
+  const activationOutcome = await projectProvisioningActivationPhase(
+    payload,
+    run,
+    dependencies,
+    {
+      normalized,
+      tenantId,
+      tenant,
+      registrant,
+      managedDomain,
+      zone: readinessOutcome.zone,
+    },
+  )
+  return activationOutcome.result
 }
 
 export async function activateManagedDomainEntitlement(
