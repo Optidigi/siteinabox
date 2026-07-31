@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
+  Building2,
   Check,
   CheckCircle2,
   CircleAlert,
@@ -12,6 +13,12 @@ import {
   Globe2,
   Info,
   Loader2,
+  MapPin,
+  Pencil,
+  Phone,
+  Search,
+  ShieldCheck,
+  Sparkles,
   ReceiptText,
   Rocket,
   UserRound,
@@ -24,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@site
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
+import { Separator } from "@siteinabox/ui/components/separator"
 import {
   Sheet,
   SheetContent,
@@ -32,6 +40,7 @@ import {
   SheetTitle,
 } from "@siteinabox/ui/components/sheet"
 import { cn } from "@siteinabox/ui/lib/utils"
+import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
 import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
@@ -913,14 +922,22 @@ export function PreviewCheckout({
     setExtensionResults([])
     const results = await Promise.all(selectedExtensions.map(async (extension) => {
       const domain = `${firstLabel}.${extension}`
+      let result: PreviewCheckoutActionState
       try {
         const formData = new FormData()
         formData.set("domain", domain)
         formData.set("domainMode", "new_registration")
         formData.set("requestToken", requestToken)
-        return await checkDomainAction(initialActionState, formData)
+        const received = await checkDomainAction(initialActionState, formData)
+        result = received ?? {
+          ok: false,
+          status: "service_error",
+          domain,
+          domainMode: "new_registration",
+          message: t("checkoutDomainServiceUnavailable"),
+        }
       } catch {
-        return {
+        result = {
           ok: false,
           status: "service_error" as const,
           domain,
@@ -928,6 +945,13 @@ export function PreviewCheckout({
           message: t("checkoutDomainServiceUnavailable"),
         }
       }
+      if (extensionRequestRef.current === requestToken) {
+        setExtensionResults((current) => [
+          ...current.filter((entry) => entry.domain !== domain),
+          result,
+        ])
+      }
+      return result
     }))
     if (extensionRequestRef.current !== requestToken) return
     setExtensionResults(results)
@@ -1001,10 +1025,8 @@ export function PreviewCheckout({
 
   const submitPayment = () => {
     if (requiresMigrationRecollection) return
-    const firstMissingId = !previewApprovalAccepted
-      ? "checkout-preview-approval"
-      : !businessUseAccepted
-        ? "checkout-business-use"
+    const firstMissingId = !businessUseAccepted
+      ? "checkout-business-use"
         : !termsAccepted
           ? "checkout-terms"
           : null
@@ -1013,9 +1035,13 @@ export function PreviewCheckout({
       window.setTimeout(() => document.getElementById(firstMissingId)?.focus(), 0)
       return
     }
+    // The established launch/pay action is the affirmative website approval.
+    // Keep the server-owned payload explicit without presenting it as a third
+    // declaration alongside the two legally distinct acceptances.
+    setPreviewApprovalAccepted(true)
     setLegalSubmitRequested(false)
     setPaymentSubmitRequested(true)
-    paymentFormRef.current?.requestSubmit()
+    window.setTimeout(() => paymentFormRef.current?.requestSubmit(), 0)
   }
   const acceptedMigrationDomain =
     initialQuotes?.annual.quote.domainMode === "existing_domain"
@@ -1069,8 +1095,8 @@ export function PreviewCheckout({
           )}
         </>
       )}
-      <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
-        <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center gap-3 px-3 py-2 md:min-h-16 md:px-4">
+      <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
+        <div className="mx-auto flex min-h-14 w-full max-w-[65rem] items-center gap-3 px-3 py-2 sm:px-4">
           <a href={previewHref} className="flex min-w-0 items-center gap-2">
             <img src="/logos/logo-light.svg" alt="Site in a Box" className="h-8 w-auto dark:hidden md:h-9" />
             <img src="/logos/logo-dark.svg" alt="Site in a Box" className="hidden h-8 w-auto dark:block md:h-9" />
@@ -1086,7 +1112,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div className="mx-auto grid min-w-0 w-full max-w-5xl gap-4 p-3 [&>*]:min-w-0 sm:p-4">
+      <div data-checkout-shell className="mx-auto grid min-w-0 w-full max-w-[65rem] gap-3 px-3 py-3 pb-28 [&>*]:min-w-0 sm:px-4 sm:py-4 lg:pb-24">
         {fulfilmentActive ? (
           <div className="grid gap-1 py-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -1108,6 +1134,9 @@ export function PreviewCheckout({
           />
         )}
 
+        {fulfilmentActive && (
+          <Card data-checkout-main-card className="overflow-hidden shadow-none">
+            <CardContent className="grid gap-3 p-3 sm:p-4">
         {paymentReturn && (
           <Alert role="status" aria-live="polite">
             <Info className="size-4" aria-hidden />
@@ -1515,20 +1544,24 @@ export function PreviewCheckout({
             </AlertDescription>
           </Alert>
         )}
+            </CardContent>
+          </Card>
+        )}
 
         {!fulfilmentActive && step === "domain" && (
-          <Card>
-            <CardHeader>
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <Card data-checkout-main-card className="overflow-hidden">
+            <CardHeader className="gap-1 p-4 pb-3 sm:p-5 sm:pb-3">
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-xl outline-none md:text-2xl">
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
                   {t("checkoutDomainTitle")}
                 </h1>
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="max-w-2xl text-sm leading-relaxed">
                 {t("checkoutDomainStepDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-5">
+            <CardContent className="grid gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
                   <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
@@ -1541,46 +1574,37 @@ export function PreviewCheckout({
                   <AlertDescription>{t("checkoutMigrationCloudflareMismatchDescription")}</AlertDescription>
                 </Alert>
               )}
-              <fieldset className="grid gap-3">
-                <legend className="text-base font-semibold">
+              <fieldset className="grid gap-2">
+                <legend className="sr-only">
                   {t("checkoutDomainModeLegend")}
                 </legend>
-                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-4">
-                  <input
-                    type="radio"
-                    name="checkout-domain-mode"
-                    value="new_registration"
-                    checked={domainMode === "new_registration"}
-                    onChange={() => updateDomainMode("new_registration")}
-                    className="mt-1"
-                  />
-                  <span>
-                    <span className="block font-medium">{t("checkoutDomainModeNew")}</span>
-                    <span className="block text-sm text-muted-foreground">
-                      {t("checkoutDomainModeNewHelp")}
-                    </span>
-                  </span>
-                </label>
-                <label
-                  className="flex cursor-pointer items-start gap-3 rounded-md border p-4"
+                <ToggleGroup
+                  type="single"
+                  value={domainMode}
+                  onValueChange={(value) => {
+                    if (value === "new_registration" || value === "existing_domain") updateDomainMode(value)
+                  }}
+                  variant="outline"
+                  className="grid grid-cols-2 rounded-md bg-muted/40 p-1"
                 >
-                  <input
-                    type="radio"
-                    name="checkout-domain-mode"
-                    value="existing_domain"
-                    checked={domainMode === "existing_domain"}
-                    onChange={() => updateDomainMode("existing_domain")}
-                    className="mt-1"
-                  />
-                  <span>
-                    <span className="block font-medium">{t("checkoutDomainModeExisting")}</span>
-                    <span className="block text-sm text-muted-foreground">
-                      {existingDomainMigrationEnabled
-                        ? t("checkoutDomainModeExistingHelp")
-                        : t("checkoutDomainModeExistingPreflight")}
-                    </span>
-                  </span>
-                </label>
+                  <ToggleGroupItem value="new_registration" className="min-h-9 text-xs sm:text-sm">
+                    <Sparkles className="size-3.5" aria-hidden />
+                    <span className="sm:hidden">{t("checkoutDomainModeNewShort")}</span>
+                    <span className="hidden sm:inline">{t("checkoutDomainModeNew")}</span>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="existing_domain" className="min-h-9 text-xs sm:text-sm">
+                    <Globe2 className="size-3.5" aria-hidden />
+                    <span className="sm:hidden">{t("checkoutDomainModeExistingShort")}</span>
+                    <span className="hidden sm:inline">{t("checkoutDomainModeExisting")}</span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {domainMode === "new_registration"
+                    ? t("checkoutDomainModeNewHelp")
+                    : existingDomainMigrationEnabled
+                      ? t("checkoutDomainModeExistingHelp")
+                      : t("checkoutDomainModeExistingPreflight")}
+                </p>
               </fieldset>
 
               <form
@@ -1607,6 +1631,7 @@ export function PreviewCheckout({
                   />
                 )}
                 <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                   <Input
                     id="checkout-domain"
                     name="domain"
@@ -1619,7 +1644,7 @@ export function PreviewCheckout({
                     aria-invalid={domainInputState === "error" ? true : undefined}
                     aria-describedby={domainDescriptionId}
                     className={cn(
-                      "h-12 pr-12 text-base font-medium md:h-13 md:text-lg",
+                      "h-11 pr-11 pl-9 text-sm font-medium sm:text-base",
                       domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
                       domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                       domainInputState === "error" && "border-destructive",
@@ -1638,42 +1663,64 @@ export function PreviewCheckout({
                   <div className="grid gap-3 pt-2">
                     <fieldset className="grid gap-2">
                       <legend className="text-sm font-medium">{t("checkoutExtensionsLegend")}</legend>
-                      <div className="flex flex-wrap gap-2">
+                      <ToggleGroup
+                        type="multiple"
+                        value={selectedExtensions}
+                        onValueChange={(values) => {
+                          if (values.length === 0) return
+                          for (const extension of supportedDomainExtensions) {
+                            const shouldSelect = values.includes(extension)
+                            if (shouldSelect !== selectedExtensions.includes(extension)) {
+                              toggleExtension(extension, shouldSelect)
+                            }
+                          }
+                        }}
+                        variant="outline"
+                        className="flex flex-wrap justify-start gap-1.5"
+                      >
                         {supportedDomainExtensions.map((extension) => (
-                          <div key={extension} className="flex min-h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
-                            <Checkbox
-                              aria-label={`.${extension}`}
-                              checked={selectedExtensions.includes(extension)}
-                              onCheckedChange={(value) => toggleExtension(extension, value === true)}
-                            />
+                          <ToggleGroupItem
+                            key={extension}
+                            value={extension}
+                            aria-label={`.${extension}`}
+                            className="h-8 min-w-12 px-2 text-xs data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                          >
                             .{extension}
-                          </div>
+                          </ToggleGroupItem>
                         ))}
-                      </div>
+                      </ToggleGroup>
                     </fieldset>
                     {(extensionCheckPending || extensionResults.length > 0) && (
-                      <div className="divide-y rounded-md border" aria-live="polite">
-                        {extensionCheckPending && selectedExtensions.map((extension) => (
-                          <div key={extension} className="flex min-w-0 items-center gap-3 p-3 text-sm text-muted-foreground">
-                            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-                            <span className="min-w-0 break-all">{normalizedDomainValue.split(".")[0]}.{extension}</span>
-                            <span className="ml-auto">{t("checkoutDomainCheckingShort")}</span>
+                      <div className="overflow-hidden rounded-md border bg-background" aria-live="polite">
+                        {extensionCheckPending && selectedExtensions
+                          .filter((extension) => !extensionResults.some((result) => result.domain === `${normalizedDomainValue.split(".")[0]}.${extension}`))
+                          .map((extension) => (
+                          <div key={extension} className="flex min-w-0 items-center gap-2 border-b p-2.5 text-xs text-muted-foreground last:border-b-0">
+                            <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted"><Loader2 className="size-3.5 animate-spin" aria-hidden /></span>
+                            <span className="min-w-0 flex-1 break-all font-medium text-foreground">{normalizedDomainValue.split(".")[0]}.{extension}</span>
+                            <span>{t("checkoutDomainCheckingShort")}</span>
                           </div>
                         ))}
-                        {!extensionCheckPending && extensionResults.map((result) => {
+                        {[...extensionResults]
+                          .sort((left, right) => selectedExtensions.indexOf(left.domain?.split(".").at(-1) ?? "") - selectedExtensions.indexOf(right.domain?.split(".").at(-1) ?? ""))
+                          .map((result) => {
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
                           return (
-                            <div key={result.domain ?? result.message} className="flex min-w-0 items-center gap-3 p-3 text-sm">
-                              {available
-                                ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
-                                : <CircleAlert className="size-4 shrink-0 text-warning" aria-hidden />}
-                              <span className="min-w-0 flex-1 break-all font-medium">{result.domain}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {available ? t("checkoutExtensionAvailable") : premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : t("checkoutExtensionError")}
+                            <div key={result.domain ?? result.message} className={cn("flex min-w-0 items-center gap-2 border-b p-2.5 text-xs last:border-b-0", checkedDomain === result.domain && "bg-success/5")}>
+                              <span className={cn("grid size-7 shrink-0 place-items-center rounded-md bg-muted", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", result.status === "unavailable" && "bg-destructive/10 text-destructive")}>
+                                {available
+                                  ? <CheckCircle2 className="size-3.5" aria-hidden />
+                                  : premium
+                                    ? <Sparkles className="size-3.5" aria-hidden />
+                                    : <CircleAlert className="size-3.5" aria-hidden />}
+                              </span>
+                              <span className="grid min-w-0 flex-1 gap-0.5">
+                                <span className="break-all font-medium text-foreground">{result.domain}</span>
+                                <span className="text-muted-foreground">{premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}</span>
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} className="h-8 shrink-0 px-2.5 text-xs" onClick={() => selectExtensionResult(result)}>
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
                               )}
@@ -1951,41 +1998,58 @@ export function PreviewCheckout({
               )}
             </CardContent>
           </Card>
+          <CheckoutOrderSummary
+            domain={selectedDomain ?? domainValue}
+            company={savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
+            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+            total={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
+            t={t}
+          />
+          </div>
         )}
 
         {!fulfilmentActive && step === "details" && (
-          <Card>
-            <CardHeader>
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <Card data-checkout-main-card className="overflow-hidden">
+            <CardHeader className="gap-1 p-4 pb-3 sm:p-5 sm:pb-3">
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-xl outline-none md:text-2xl">
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
                   {t("checkoutDetailsTitle")}
                 </h1>
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="max-w-2xl text-sm leading-relaxed">
                 {t("checkoutDetailsDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="divide-y rounded-md border" aria-label={t("checkoutKnownDetailsLabel")}>
+            <CardContent className="grid gap-3 p-4 pt-0 sm:p-5 sm:pt-0">
+              <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-xs text-muted-foreground">
+                <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
+                <span>{t("checkoutKnownDetailsLabel")}</span>
+              </div>
+              <div className="divide-y overflow-hidden rounded-md border" aria-label={t("checkoutKnownDetailsLabel")}>
                 <ConfirmationRow
+                  icon={UserRound}
                   title={t("checkoutContactGroup")}
                   value={`${details.firstName} ${details.lastName} · ${customerEmail}`}
                   onEdit={() => openDetailsEditor("contact")}
                   t={t}
                 />
                 <ConfirmationRow
+                  icon={Building2}
                   title={t("checkoutCompanyGroup")}
                   value={details.registeredBusinessName || details.intendedCompanyName || t("checkoutNotProvided")}
                   onEdit={() => openDetailsEditor("company")}
                   t={t}
                 />
                 <ConfirmationRow
+                  icon={MapPin}
                   title={t("checkoutAddressGroup")}
                   value={`${details.street} ${details.number}${details.suffix ?? ""}, ${details.zipcode} ${details.city}`}
                   onEdit={() => openDetailsEditor("address")}
                   t={t}
                 />
                 <ConfirmationRow
+                  icon={Phone}
                   title={t("checkoutPhoneTitle")}
                   value={`${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`}
                   onEdit={() => openDetailsEditor("contact")}
@@ -2390,52 +2454,61 @@ export function PreviewCheckout({
               </Sheet>
             </CardContent>
           </Card>
+          <CheckoutOrderSummary
+            domain={selectedDomain ?? domainValue}
+            company={details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
+            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+            total={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
+            t={t}
+          />
+          </div>
         )}
 
         {!fulfilmentActive && step === "overview" && savedProfile && (
           <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-          <Card>
-            <CardHeader>
+          <Card data-checkout-main-card className="overflow-hidden">
+            <CardHeader className="gap-1 p-4 pb-3 sm:p-5 sm:pb-3">
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-xl outline-none md:text-2xl">
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
                   {t("checkoutSubscriptionOverviewTitle")}
                 </h1>
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="max-w-2xl text-sm leading-relaxed">
                 {t("checkoutSubscriptionOverviewDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid min-w-0 gap-6 [&>*]:min-w-0">
-              <fieldset className="grid min-w-0 gap-3">
-                <legend className="text-base font-semibold">{t("checkoutPlanLegend")}</legend>
-                {(acceptedOrderId == null
-                  ? ["annual", "monthly"] as const
-                  : [billingPeriod] as const).map((period) => {
+            <CardContent className="grid min-w-0 gap-4 p-4 pt-0 [&>*]:min-w-0 sm:p-5 sm:pt-0">
+              <fieldset className="grid min-w-0 gap-2">
+                <legend className="text-sm font-semibold">{t("checkoutPlanLegend")}</legend>
+                <ToggleGroup
+                  type="single"
+                  value={billingPeriod}
+                  onValueChange={(value) => {
+                    if (acceptedOrderId == null && (value === "annual" || value === "monthly")) setBillingPeriod(value)
+                  }}
+                  variant="outline"
+                  className="grid w-full grid-cols-2 gap-2"
+                >
+                {(acceptedOrderId == null ? ["annual", "monthly"] as const : [billingPeriod] as const).map((period) => {
                   const option = quotes?.[period]?.quote
                   return (
-                    <label
+                    <ToggleGroupItem
                       key={period}
+                      value={period}
+                      disabled={acceptedOrderId != null}
                       className={cn(
-                        "flex min-w-0 cursor-pointer items-start gap-3 rounded-md border p-4",
-                        billingPeriod === period && "border-primary ring-2 ring-primary/20",
+                        "h-auto min-h-16 w-full min-w-0 justify-start rounded-md border p-3 text-left",
+                        "data-[state=on]:border-primary data-[state=on]:bg-card data-[state=on]:ring-1 data-[state=on]:ring-primary",
                       )}
                     >
-                      <input
-                        type="radio"
-                        name="billing-period-choice"
-                        value={period}
-                        checked={billingPeriod === period}
-                        onChange={() => setBillingPeriod(period)}
-                        disabled={acceptedOrderId != null}
-                        className="mt-1"
-                      />
-                      <span className="grid min-w-0 flex-1 gap-1">
-                        <span className="font-medium">
+                      <span className="grid min-w-0 flex-1 gap-0.5">
+                        <span className="flex min-w-0 items-center justify-between gap-1 text-xs font-semibold sm:text-sm">
                           {period === "annual"
                             ? t("checkoutPlanAnnual")
                             : t("checkoutPlanMonthly")}
+                          {period === "annual" && <Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">{t("checkoutPlanAnnualSaving")}</Badge>}
                         </span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {t("checkoutPlanPriceExVat", {
                             price: money(
                               locale,
@@ -2445,13 +2518,20 @@ export function PreviewCheckout({
                           })}
                         </span>
                       </span>
-                      {period === "annual" && (
-                        <Badge variant="secondary">{t("checkoutPlanAnnualSaving")}</Badge>
-                      )}
-                    </label>
+                    </ToggleGroupItem>
                   )
                 })}
+                </ToggleGroup>
               </fieldset>
+
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 rounded-md border bg-muted/40 p-3">
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium text-muted-foreground">{t("checkoutSummaryTotal")}</span>
+                  <strong className="mt-0.5 block text-2xl tracking-tight">{money(locale, grossAmountMinor, catalog.currency)}</strong>
+                  <span className="mt-1 block text-xs text-muted-foreground">{t("checkoutSummaryVat")}: {money(locale, vatAmountMinor, catalog.currency)}</span>
+                </span>
+                {selectedQuote && <span className="max-w-36 text-right text-xs text-muted-foreground">{t("checkoutSummaryFutureSubscription")}: <strong className="block text-foreground">{money(locale, selectedQuote.quote.futureSubscriptionGrossMinor, selectedQuote.quote.currency)}</strong></span>}
+              </div>
 
               <div className="grid min-w-0 gap-3 rounded-md border p-4">
                 <ReviewRow
@@ -2609,7 +2689,7 @@ export function PreviewCheckout({
                     value={cloudflareSourceAuthorization}
                   />
                 )}
-                <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
+                <input type="hidden" name="previewApproval" value="accepted" />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />
                 <input type="hidden" name="expectedTermsVersion" value={termsVersion} />
@@ -2621,21 +2701,18 @@ export function PreviewCheckout({
                 />
               </form>
 
-              <div className="grid min-w-0 gap-4 border-t pt-5">
-                {legalSubmitRequested && !(previewApprovalAccepted && businessUseAccepted && termsAccepted) && (
+              <div className="grid min-w-0 gap-3 border-t pt-4">
+                {legalSubmitRequested && !(businessUseAccepted && termsAccepted) && (
                   <Alert variant="destructive" role="alert">
                     <CircleAlert className="size-4" aria-hidden />
                     <AlertTitle>{t("checkoutDeclarationsRequiredTitle")}</AlertTitle>
                     <AlertDescription>{t("checkoutDeclarationsRequiredDescription")}</AlertDescription>
                   </Alert>
                 )}
-                <AcceptanceCheckbox
-                  id="checkout-preview-approval"
-                  checked={previewApprovalAccepted}
-                  onCheckedChange={setPreviewApprovalAccepted}
-                  label={t("checkoutPreviewApprovalLabel")}
-                  help={t("checkoutPreviewApprovalHelp")}
-                />
+                <div className="flex min-w-0 items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden />
+                  <span><strong className="block font-medium text-foreground">{t("checkoutPreviewApprovalLabel")}</strong>{t("checkoutPreviewApprovalHelp")}</span>
+                </div>
                 <AcceptanceCheckbox
                   id="checkout-business-use"
                   checked={businessUseAccepted}
@@ -2694,7 +2771,7 @@ export function PreviewCheckout({
               )}
             </CardContent>
           </Card>
-          <Card className="hidden lg:sticky lg:top-20 lg:block">
+          <Card data-checkout-summary className="hidden lg:sticky lg:top-20 lg:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{t("checkoutCompactSummaryTitle")}</CardTitle>
               <CardDescription>{t("checkoutCompactSummaryDescription")}</CardDescription>
@@ -3035,7 +3112,7 @@ function CheckoutActionBar({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-[54rem] md:rounded-md md:border md:bg-card md:shadow-none">
+    <div data-checkout-action-bar className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] backdrop-blur lg:left-1/2 lg:w-[min(calc(100%_-_2rem),65rem)] lg:-translate-x-1/2 lg:rounded-t-md lg:border-x">
       <div className="flex min-w-0 items-center justify-end gap-2">
         {secondary}
         {primary}
@@ -3119,27 +3196,74 @@ function AcceptanceCheckbox({
 }
 
 function ConfirmationRow({
+  icon: Icon,
   title,
   value,
   onEdit,
   t,
 }: {
+  icon: React.ElementType
   title: string
   value: string
   onEdit: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 p-3 sm:p-4">
-      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+    <div className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2.5 p-3">
+      <span className="grid size-8 place-items-center rounded-md border bg-muted/50 text-muted-foreground">
+        <Icon className="size-4" aria-hidden />
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{title}</p>
-        <p className="break-words text-sm text-muted-foreground">{value}</p>
+        <p className="text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">{title}</p>
+        <p className="break-words text-sm font-medium leading-snug">{value}</p>
       </div>
-      <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={onEdit}>
-        {t("checkoutEdit")}
+      <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs" onClick={onEdit}>
+        <Pencil className="size-3.5" aria-hidden />
+        <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
       </Button>
     </div>
+  )
+}
+
+function CheckoutOrderSummary({
+  domain,
+  company,
+  plan,
+  total,
+  t,
+}: {
+  domain: string
+  company: string
+  plan: string
+  total: string
+  t: ReturnType<typeof useTranslations<"preview">>
+}) {
+  return (
+    <Card data-checkout-summary className="hidden overflow-hidden lg:sticky lg:top-20 lg:block">
+      <CardHeader className="gap-1 p-4 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="grid size-8 place-items-center rounded-md border bg-muted/50">
+            <ReceiptText className="size-4" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <CardTitle className="text-sm">{t("checkoutCompactSummaryTitle")}</CardTitle>
+            <CardDescription className="text-xs">{t("checkoutCompactSummaryDescription")}</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <Separator />
+      <CardContent className="grid gap-2.5 p-4">
+        <ReviewRow label={t("checkoutSummaryDomain")} value={domain || "—"} />
+        <ReviewRow label={t("checkoutContractingParty")} value={company || "—"} />
+        <ReviewRow label={t("checkoutPlanLegend")} value={plan} />
+        <Separator />
+        <ReviewRow label={t("checkoutSummaryTotal")} value={total} strong />
+        <div className="flex items-start gap-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span>{t("checkoutCompactSummarySaved")}</span>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
