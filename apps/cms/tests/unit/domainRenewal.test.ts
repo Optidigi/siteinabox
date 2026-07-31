@@ -3,6 +3,11 @@ import {
   createMutablePayloadStore,
   type MockDoc,
 } from "../_helpers/mockPayload"
+import {
+  validBillingAgreement,
+  validManagedDomain,
+  validOrder,
+} from "../_helpers/commerceBuilders"
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createApplicationRecurringMolliePayment: vi.fn(async () => ({
@@ -34,88 +39,47 @@ import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePa
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
 
-const baseDomain = {
-  id: 950,
-  domainNameAscii: "example.nl",
-  tld: "nl",
+const baseDomain = validManagedDomain({
   provisioningIdempotencyKey: "domain-registration:order:600:v1",
-  originatingOrder: 600,
-  registrantProfile: 800,
-  tenant: 1,
-  state: "active",
-  initialOperation: "registration",
-  registrantOwnership: "customer",
-  provider: "openprovider",
-  providerDomainId: "9001",
-  providerRegistrationState: "confirmed",
-  registrantVerificationStatus: "verified",
-  authoritativeDnsStatus: "verified",
-  httpsStatus: "verified",
-  entitlementStatus: "active",
-  customerStatus: "active",
-  renewalIntent: true,
-  providerAutorenew: "on",
-  reconciliationRequired: false,
-  stateHistory: [],
   createdAt: "2026-07-01T00:00:00.000Z",
-}
+  updatedAt: "2026-07-01T00:00:00.000Z",
+})
 
-const baseAgreement = {
-  id: 900,
+const baseAgreement = validBillingAgreement({
   idempotencyKey: "agreement-900",
-  originatingOrder: 600,
-  checkoutProfile: 800,
-  tenant: 1,
   state: "active",
-  provider: "mollie",
   providerCustomerId: "cst_test",
   providerMandateId: "mdt_test",
-  catalogVersion: "2026-07-26.1",
   packageCode: "siteinabox-annual",
   billingPeriod: "annual",
-  currency: "EUR",
   recurringNetAmountMinor: 19_000,
-  renewalIntent: true,
   nextChargeAt: "2027-08-01T00:00:00.000Z",
   currentPeriodStartsAt: "2026-08-01T00:00:00.000Z",
   currentPeriodEndsAt: "2027-08-01T00:00:00.000Z",
-  serviceSuspensionStatus: "none",
-  reconciliationRequired: false,
-  stateHistory: [],
   createdAt: "2026-08-01T00:00:00.000Z",
-}
+  updatedAt: "2026-08-01T00:00:00.000Z",
+})
 
-const baseOrder = {
-  id: 600,
-  orderNumber: "SIAB-500-TEST",
-  tenant: 1,
-  generationRun: 500,
+const baseOrder = validOrder({
   state: "fulfilled",
   checkoutProfileKey: "profile-1",
-  catalogVersion: "2026-07-26.1",
-  contractingPartyProfileVersion: 1,
   termsVersion: "terms-v1",
   privacyVersion: "privacy-v1",
   businessUseDeclarationVersion: "business-v1",
-  customerName: "Ada Lovelace",
-  customerEmail: "client@example.com",
-  companyName: "Acme Studio",
-  billingAddress: { country: "NL" },
   packageCode: "siteinabox-annual",
   billingPeriod: "annual",
   renewalTerms: "Renews annually.",
-  lineItems: [],
-  currency: "EUR",
+  subtotalNetMinor: 19_000,
+  vatAmountMinor: 3_990,
+  totalGrossMinor: 22_990,
   subtotalNet: 190,
   vatAmount: 39.9,
   totalGross: 229.9,
-  domain: "example.nl",
   domainRegistrant: { email: "client@example.com" },
-  legalDocuments: [10, 11],
   paymentStatus: "paid",
-  paymentProvider: "mollie",
   createdAt: "2026-08-01T00:00:00.000Z",
-}
+  updatedAt: "2026-08-01T00:00:00.000Z",
+})
 
 const createStore = (input: {
   domain?: Record<string, unknown>
