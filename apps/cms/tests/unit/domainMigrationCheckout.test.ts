@@ -379,7 +379,6 @@ describe("existing-domain checkout preflight", () => {
       zoneExport: zoneExport(),
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence({
         transferBlockers: ["rdap_status:client_transfer_prohibited"],
       }),
@@ -442,7 +441,6 @@ describe("existing-domain checkout preflight", () => {
       zoneExport: zoneExport(),
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence(),
       env,
       now: new Date("2026-07-28T10:00:00.000Z"),
@@ -462,26 +460,6 @@ describe("existing-domain checkout preflight", () => {
         proxied: false,
       }),
     ]))
-  })
-
-  it("does not revive assisted checkout when the browser requests it", () => {
-    const result = assess({
-      generationRunId: 500,
-      domain: "example.nl",
-      zoneExport: zoneExport(),
-      transferCode: "opaque-transfer-code",
-      transferAuthorizationAccepted: true,
-      requestedAssistance: true,
-      publicEvidence: publicEvidence(),
-      env,
-      now: new Date("2026-07-28T10:00:00.000Z"),
-    })
-
-    expect(result).toMatchObject({
-      readiness: "unsupported",
-      classification: null,
-      encryptedInput: null,
-    })
   })
 
   it("rejects a crafted retired provider-export adapter before payment", () => {
@@ -526,7 +504,6 @@ describe("existing-domain checkout preflight", () => {
       zoneExport: zoneExport(),
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence({
         authoritativeNameservers: ["changed1.example", "changed2.example"],
       }),
@@ -542,7 +519,6 @@ describe("existing-domain checkout preflight", () => {
       }),
       transferCode: "opaque-transfer-code",
       transferAuthorizationAccepted: true,
-      requestedAssistance: false,
       publicEvidence: publicEvidence({ dnssecDsPresent: true }),
       env,
       now: new Date("2026-07-28T10:00:00.000Z"),

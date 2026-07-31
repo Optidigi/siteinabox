@@ -1165,7 +1165,7 @@ export async function savePreviewCheckoutProfileAction(
       if (
         priorQuote.domainMode !== "existing_domain" ||
         priorQuote.selectedDomain !== selectedDomain ||
-        !priorQuote.migrationClassification ||
+        priorQuote.migrationClassification !== "automatic" ||
         !priorQuote.migrationSourceZoneHash ||
         !priorQuote.migrationPublicEvidenceHash ||
         !priorQuote.migrationInputEnvelope ||
@@ -1553,7 +1553,10 @@ export async function startPreviewCheckoutPaymentAction(
           profileVersion: checkoutProfile.profileVersion,
           draftVersion: currentQuote.draftVersion,
           domainMode: currentQuote.domainMode,
-          migrationClassification: currentQuote.migrationClassification,
+          migrationClassification:
+            currentQuote.migrationClassification === "automatic"
+              ? "automatic"
+              : null,
           migrationSourceMechanism: currentQuote.migrationSourceMechanism,
           migrationSourceZoneHash: currentQuote.migrationSourceZoneHash,
           migrationPublicEvidenceHash:

@@ -1734,9 +1734,7 @@ export function PreviewCheckout({
                       ? t("checkoutMigrationPreflightComplete")
                       : checkState.migrationReadiness === "ready_automatic"
                       ? t("checkoutMigrationReadyAutomatic")
-                      : checkState.migrationReadiness === "ready_assisted"
-                        ? t("checkoutMigrationReadyAssisted")
-                        : t("checkoutMigrationUnsupported")}
+                      : t("checkoutMigrationUnsupported")}
                   </AlertTitle>
                   <AlertDescription>
                     {checkState.message}

@@ -1004,7 +1004,6 @@ describe("PreviewCheckout live lifecycle status", () => {
         classification: "automatic",
         sourceMechanism: "cloudflare_api_v1",
         operatorAuthorization: "not_required",
-        supplementalProposal: null,
         updatedAt: "2026-07-30T10:00:00.000Z",
         actions: [{
           action: "confirm_transfer",
@@ -1032,7 +1031,6 @@ describe("PreviewCheckout live lifecycle status", () => {
           classification: "automatic" as const,
           sourceMechanism: "cloudflare_api_v1" as const,
           operatorAuthorization: "not_required" as const,
-          supplementalProposal: null,
           updatedAt: "2026-07-30T10:01:00.000Z",
           actions: [],
         },
@@ -1048,7 +1046,6 @@ describe("PreviewCheckout live lifecycle status", () => {
           classification: "automatic" as const,
           sourceMechanism: "cloudflare_api_v1" as const,
           operatorAuthorization: "not_required" as const,
-          supplementalProposal: null,
           updatedAt: "2026-07-30T10:02:00.000Z",
           actions: [],
         },
@@ -1066,7 +1063,6 @@ describe("PreviewCheckout live lifecycle status", () => {
           classification: "automatic",
           sourceMechanism: "cloudflare_api_v1",
           operatorAuthorization: "not_required",
-          supplementalProposal: null,
           updatedAt: "2026-07-30T10:00:00.000Z",
           actions: [{
             action: "provide_epp_code",
