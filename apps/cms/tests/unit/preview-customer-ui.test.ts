@@ -214,7 +214,7 @@ describe("customer preview UI", () => {
     expect(checkout).toContain("checkoutDomainLabel")
     expect(checkout).toContain("checkoutPartyRegistered")
     expect(checkout).toContain("checkoutPartyInFormation")
-    expect(checkout).toContain("checkoutMigrationAutomaticTitle")
+    expect(checkout).toContain("checkoutMigrationSourceLegend")
     expect(checkout).not.toContain("checkoutMigrationAssistedTitle")
     expect(checkout).toContain("businessUseDeclarationText")
     expect(checkout).toContain("expectedProfileVersion")

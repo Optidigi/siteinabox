@@ -48,7 +48,7 @@ try {
     "Subscription & review",
   )
   assert.equal(await page.locator("[aria-live]").count() > 0, true)
-  const phoneProgress = await page.locator("ol").first().evaluate((node) => {
+  const phoneProgress = await page.locator("[data-checkout-mobile-progress]").evaluate((node) => {
     const box = node.getBoundingClientRect()
     return { height: box.height, left: box.left, right: box.right }
   })
@@ -106,9 +106,8 @@ try {
   )
 
   const domainStepButton = page.getByRole("button", { name: "Domain" })
-  const target = await domainStepButton.boundingBox()
-  assert.ok(target && target.width >= 44 && target.height >= 44)
-  assert.equal(await domainStepButton.isVisible(), true)
+  assert.equal(await domainStepButton.isVisible(), false)
+  assert.equal(await page.locator("[data-checkout-mobile-progress]").isVisible(), true)
 
   assert.equal(await page.getByText(/Ada Lovelace.*owner@example\.test/).isVisible(), true)
   await page.getByRole("button", { name: "Edit" }).first().click()
@@ -193,7 +192,7 @@ try {
   const compactGeometry = await compactPage.evaluate(() => {
     const shell = document.querySelector("[data-checkout-shell]")
     const card = document.querySelector("[data-checkout-main-card]")
-    const progress = shell?.querySelector("ol")
+    const progress = shell?.querySelector("[data-checkout-mobile-progress]")
     const action = document.querySelector("[data-checkout-action-bar]")
     return {
       fits: document.documentElement.scrollWidth <= innerWidth,
@@ -219,11 +218,15 @@ try {
   assert.ok(compactGeometry.shellRight != null && compactGeometry.cardRight != null)
   assert.ok(compactGeometry.cardRight <= compactGeometry.shellRight)
   assert.equal(compactGeometry.progressLeft, compactGeometry.cardLeft)
-  assert.equal(compactGeometry.progressRight, compactGeometry.cardRight)
+  assert.ok(
+    compactGeometry.progressRight != null && compactGeometry.cardRight != null &&
+      compactGeometry.progressRight - compactGeometry.cardRight >= 12,
+    "The phone progress line may use the scrollbar gutter that main content reserves.",
+  )
   assert.ok(compactGeometry.progressHeight != null && compactGeometry.progressHeight <= 56)
   assert.ok(
-    Math.abs(compactGeometry.cardLeft - (320 - compactGeometry.cardRight)) <= 1,
-    "The checkout card must use balanced shell gutters at 320px.",
+    compactGeometry.cardRight != null && 320 - compactGeometry.cardRight >= 20,
+    "The phone workspace must reserve a stable right-side scroll gutter.",
   )
   await compactPage.locator("[data-checkout-shell]").evaluate((node) => {
     node.scrollTop = node.scrollHeight

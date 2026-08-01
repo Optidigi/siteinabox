@@ -1113,7 +1113,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[65rem] content-start gap-2 overflow-y-auto px-2.5 py-2.5 pb-24 [&>*]:min-w-0 sm:px-4 min-[880px]:h-auto min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-1 min-[880px]:pb-24">
+      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[65rem] content-start gap-2 overflow-y-auto py-2.5 pr-6 pb-24 pl-2.5 [&>*]:min-w-0 sm:px-4 min-[880px]:h-auto min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-1 min-[880px]:pb-24">
         {fulfilmentActive ? (
           <div className="grid gap-1 py-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -1551,7 +1551,7 @@ export function PreviewCheckout({
 
         {!fulfilmentActive && step === "domain" && (
           <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="overflow-visible border-0 bg-transparent shadow-none">
+          <Card data-checkout-main-card className="gap-0 overflow-visible border-0 bg-transparent py-0 shadow-none min-[880px]:pt-6">
             <CardHeader className="mb-2 gap-1 p-0">
               <CardTitle>
                 <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.35rem] font-semibold leading-tight tracking-tight outline-none min-[880px]:text-[1.625rem]">
@@ -1562,7 +1562,7 @@ export function PreviewCheckout({
                 {t("checkoutDomainStepDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 rounded-md border bg-card p-3 shadow-xs min-[880px]:p-4">
+            <CardContent className="grid gap-2 p-0">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
                   <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
@@ -1994,9 +1994,6 @@ export function PreviewCheckout({
                 />
               )}
 
-              {domainMode === "new_registration" && (
-                <ExistingDomainMigrationInfo catalog={catalog} locale={locale} />
-              )}
             </CardContent>
           </Card>
           <CheckoutOrderSummary
@@ -2011,7 +2008,7 @@ export function PreviewCheckout({
 
         {!fulfilmentActive && step === "details" && (
           <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="overflow-visible border-0 bg-transparent shadow-none">
+          <Card data-checkout-main-card className="gap-0 overflow-visible border-0 bg-transparent py-0 shadow-none min-[880px]:pt-6">
             <CardHeader className="mb-2 gap-1 p-0">
               <CardTitle>
                 <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.35rem] font-semibold leading-tight tracking-tight outline-none min-[880px]:text-[1.625rem]">
@@ -2467,7 +2464,7 @@ export function PreviewCheckout({
 
         {!fulfilmentActive && step === "overview" && savedProfile && (
           <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="overflow-visible border-0 bg-transparent shadow-none">
+          <Card data-checkout-main-card className="gap-0 overflow-visible border-0 bg-transparent shadow-none">
             <CardHeader className="mb-2 gap-1 p-0">
               <CardTitle>
                 <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.35rem] font-semibold leading-tight tracking-tight outline-none min-[880px]:text-[1.625rem]">
@@ -2498,7 +2495,7 @@ export function PreviewCheckout({
                       value={period}
                       disabled={acceptedOrderId != null}
                       className={cn(
-                        "h-auto min-h-16 w-full min-w-0 justify-start rounded-md border p-3 text-left",
+                        "h-auto min-h-[4.25rem] w-full min-w-0 justify-start rounded-md border p-2.5 text-left",
                         "data-[state=on]:border-primary data-[state=on]:bg-card data-[state=on]:ring-1 data-[state=on]:ring-primary",
                       )}
                     >
@@ -2509,14 +2506,12 @@ export function PreviewCheckout({
                             : t("checkoutPlanMonthly")}
                           {period === "annual" && <Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">{t("checkoutPlanAnnualSaving")}</Badge>}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {t("checkoutPlanPriceExVat", {
-                            price: money(
-                              locale,
-                              option?.planPriceNetMinor ?? 0,
-                              option?.currency ?? catalog.currency,
-                            ),
-                          })}
+                        <span className="text-lg font-semibold leading-tight tracking-tight text-foreground">
+                          {money(
+                            locale,
+                            option?.grossAmountMinor ?? 0,
+                            option?.currency ?? catalog.currency,
+                          )}
                         </span>
                       </span>
                     </ToggleGroupItem>
@@ -2525,24 +2520,24 @@ export function PreviewCheckout({
                 </ToggleGroup>
               </fieldset>
 
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 rounded-md border bg-muted/40 p-3">
+              <div className="-mx-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border-y bg-muted/40 px-3 py-2 min-[880px]:-mx-4 min-[880px]:px-4">
                 <span className="min-w-0">
                   <span className="block text-xs font-medium text-muted-foreground">{t("checkoutSummaryTotal")}</span>
-                  <strong className="mt-0.5 block text-2xl tracking-tight">{money(locale, grossAmountMinor, catalog.currency)}</strong>
-                  <span className="mt-1 block text-xs text-muted-foreground">{t("checkoutSummaryVat")}: {money(locale, vatAmountMinor, catalog.currency)}</span>
+                  <strong className="mt-0.5 block text-xl tracking-tight">{money(locale, grossAmountMinor, catalog.currency)}</strong>
+                  <span className="block text-[10px] text-muted-foreground">{t("checkoutSummaryVat")}: {money(locale, vatAmountMinor, catalog.currency)}</span>
                 </span>
                 {selectedQuote && <span className="max-w-36 text-right text-xs text-muted-foreground">{t("checkoutSummaryFutureSubscription")}: <strong className="block text-foreground">{money(locale, selectedQuote.quote.futureSubscriptionGrossMinor, selectedQuote.quote.currency)}</strong></span>}
               </div>
 
-              <div className="flex min-w-0 items-center gap-3 rounded-md border px-3 py-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/50">
+              <div className="flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50">
                   <Globe2 className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   <strong className="block break-words text-xs font-semibold sm:text-sm">
                     {selectedDomain ?? domainValue} · {savedProfile.contractingPartyName}
                   </strong>
-                  <span className="block text-[11px] leading-snug text-muted-foreground">
+                  <span className="block text-[10px] leading-tight text-muted-foreground">
                     {t("checkoutCompactSummaryDescription")}
                   </span>
                 </span>
@@ -2623,13 +2618,13 @@ export function PreviewCheckout({
                     <AlertDescription>{t("checkoutDeclarationsRequiredDescription")}</AlertDescription>
                   </Alert>
                 )}
-                <div className="flex min-w-0 items-start gap-3 text-sm leading-6">
+                <div className="flex min-w-0 items-start gap-2 text-xs leading-tight">
                   <Checkbox
                     id="checkout-terms"
                     aria-labelledby="checkout-terms-label"
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-                    className="mt-1"
+                    className="mt-0.5"
                   />
                   <span id="checkout-terms-label" className="min-w-0 break-words">
                     {t.rich("checkoutTermsAcceptanceLabel", {
@@ -2640,7 +2635,7 @@ export function PreviewCheckout({
                       ),
                       version: termsVersion,
                     })}
-                    <span className="block text-muted-foreground">
+                    <span className="mt-1 block text-[10px] leading-tight text-muted-foreground">
                       {t.rich("checkoutPrivacyDisclosure", {
                         privacy: (chunks) => (
                           <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
@@ -2658,7 +2653,7 @@ export function PreviewCheckout({
                   label={businessUseDeclarationText}
                   help={t("checkoutBusinessUseHelp")}
                 />
-                <div className="flex min-w-0 items-start gap-2 rounded-md border bg-muted/40 p-2.5 text-xs leading-snug text-muted-foreground">
+                <div className="flex min-w-0 items-start gap-2 rounded-md border bg-muted/40 p-2 text-[10px] leading-tight text-muted-foreground">
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden />
                   <span><strong className="block font-medium text-foreground">{t("checkoutPreviewApprovalLabel")}</strong>{t("checkoutPreviewApprovalHelp")}</span>
                 </div>
@@ -3109,17 +3104,17 @@ function AcceptanceCheckbox({
   help: string
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 text-sm leading-6">
+    <div className="flex min-w-0 items-start gap-2 text-xs leading-tight">
       <Checkbox
         id={id}
         aria-labelledby={`${id}-label`}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
-        className="mt-1"
+        className="mt-0.5"
       />
       <span id={`${id}-label`} className="min-w-0 break-words">
         {label}
-        <span className="block text-muted-foreground">{help}</span>
+        <span className="mt-1 block text-[10px] leading-tight text-muted-foreground">{help}</span>
       </span>
     </div>
   )
@@ -3238,52 +3233,6 @@ function MigrationSourceEvidenceFields({
     )
   }
   return null
-}
-
-function ExistingDomainMigrationInfo({
-  catalog,
-  locale,
-}: {
-  catalog: PreviewCheckoutCatalog
-  locale: string
-}) {
-  const t = useTranslations("preview")
-  return (
-    <details className="rounded-md border bg-muted/20 p-4">
-      <summary className="cursor-pointer font-medium">
-        {t("checkoutExistingDomainTitle")}
-      </summary>
-      <div className="mt-4 grid gap-3">
-        <p className="text-sm text-muted-foreground">
-          {t("checkoutExistingDomainDescription")}
-        </p>
-        <div className="grid gap-3">
-          <div className="rounded-md border bg-background p-3">
-            <div className="flex items-center gap-2 font-medium">
-              <Globe2 className="size-4" aria-hidden />
-              {t("checkoutMigrationAutomaticTitle")}
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("checkoutMigrationAutomaticDescription", {
-                price: money(
-                  locale,
-                  catalog.migrations.automaticNetAmountMinor,
-                  catalog.currency,
-                ),
-              })}
-            </p>
-          </div>
-        </div>
-        <Alert>
-          <Info className="size-4" aria-hidden />
-          <AlertDescription>{t("checkoutMigrationCustomerActions")}</AlertDescription>
-        </Alert>
-        <p className="text-sm text-muted-foreground">
-          {t("checkoutMigrationLaterPhaseNotice")}
-        </p>
-      </div>
-    </details>
-  )
 }
 
 function DomainOptionRow({

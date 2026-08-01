@@ -28,7 +28,16 @@ export function CheckoutStepper<T extends string = string>({
       ? "grid-cols-3"
       : "grid-cols-2"
   return (
-    <ol className={cn("grid min-w-0 gap-0.5 rounded-md border bg-muted p-0.5", columns)}>
+    <>
+      <div data-checkout-mobile-progress className="-mr-3.5 grid min-w-0 grid-cols-[auto_minmax(3rem,1fr)] items-center gap-3 border-b px-0 pb-1 text-[0.6875rem] font-semibold min-[880px]:hidden">
+        <span className="min-w-0 truncate">
+          {activeIndex + 1} / {steps.length} · {steps[activeIndex]?.label}
+        </span>
+        <span className="h-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+          <span className={cn("block h-full rounded-full bg-foreground", activeIndex <= 0 ? "w-1/3" : activeIndex === 1 ? "w-2/3" : "w-full")} />
+        </span>
+      </div>
+    <ol className={cn("hidden min-w-0 gap-0.5 rounded-md border bg-muted p-0.5 min-[880px]:grid", columns)}>
       {steps.map((entry, index) => {
         const Icon = entry.icon
         const active = index === activeIndex
@@ -65,5 +74,6 @@ export function CheckoutStepper<T extends string = string>({
         )
       })}
     </ol>
+    </>
   )
 }
