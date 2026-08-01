@@ -52,9 +52,9 @@ export function MobileCheckoutBar({
           <strong className="block truncate text-xs">{decision === "review" ? dueNow : selectedDomain || "—"}</strong>
           {decision === "review" && quote && <Sheet>
             <SheetTrigger asChild>
-              <button type="button" className="mt-0.5 inline-flex min-h-6 items-center gap-0.5 text-[0.625rem] font-medium underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+              <Button type="button" variant="link" className="mt-0.5 h-auto min-h-6 gap-0.5 p-0 text-[0.625rem]">
                 {t("checkoutMobileBreakdownAction")}<ChevronUp className="size-3" aria-hidden />
-              </button>
+              </Button>
             </SheetTrigger>
             <SheetContent side="bottom" className="max-h-[75dvh] overflow-y-auto rounded-t-lg pb-[max(env(safe-area-inset-bottom),1rem)]">
               <SheetHeader>
