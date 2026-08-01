@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
+  ArrowRight,
   Building2,
   Check,
   CheckCircle2,
@@ -21,9 +22,12 @@ import {
   ShieldCheck,
   Sparkles,
   ReceiptText,
+  RefreshCw,
   Rocket,
   Server,
+  TriangleAlert,
   UserRound,
+  X,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Badge } from "@siteinabox/ui/components/badge"
@@ -1152,11 +1156,12 @@ export function PreviewCheckout({
         </>
       )}
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur-xl">
-        <div className="grid h-[52px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 min-[560px]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] min-[560px]:px-4">
+        <div className="grid h-12 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 min-[560px]:h-[52px] min-[560px]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] min-[560px]:px-4">
           <div className="flex min-w-0 items-center gap-1">
-          <a href={previewHref} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1">
-            <img src="/logos/logo-light.svg" alt="Siteinabox" className="h-7 w-auto dark:hidden" />
-            <img src="/logos/logo-dark.svg" alt="Siteinabox" className="hidden h-7 w-auto dark:block" />
+          <a href={previewHref} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-xs font-semibold">
+            <img src="/logos/icon-light.svg" alt="" className="size-7 dark:hidden" />
+            <img src="/logos/icon-dark.svg" alt="" className="hidden size-7 dark:block" />
+            <span className="hidden min-[560px]:inline">Siteinabox</span>
           </a>
           </div>
           <div className="hidden items-center gap-2 text-[0.6875rem] font-semibold text-muted-foreground min-[560px]:flex">
@@ -1175,7 +1180,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[70rem] content-start gap-4 overflow-y-auto py-4 pr-6 pb-28 pl-3 [&>*]:min-w-0 min-[880px]:h-auto min-[880px]:w-[calc(100%-40px)] min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-[30px] min-[880px]:pb-24">
+      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-48px)] w-[calc(100%-20px)] min-w-0 max-w-[70rem] content-start gap-4 overflow-y-auto pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:h-[calc(100dvh-52px)] min-[560px]:w-[min(45rem,calc(100%-28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:h-auto min-[880px]:w-[calc(100%-40px)] min-[880px]:overflow-visible min-[880px]:py-[30px] min-[880px]:pb-24">
         {presentation.phase === "fulfilment" ? (
           <div className="mx-auto grid w-full max-w-[70rem] gap-1 py-2">
             <div className="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.095em] text-muted-foreground">
@@ -1651,20 +1656,20 @@ export function PreviewCheckout({
 
         {presentation.phase === "address" && step === "domain" && (
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-[18px]">
-          <Card data-checkout-main-card className="relative gap-0 overflow-hidden rounded-[22px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20">
-            <CardHeader className="flex-row items-start gap-3 border-b bg-transparent px-[17px] py-[19px] min-[880px]:px-[26px] min-[880px]:py-6">
+          <Card data-checkout-main-card className="relative gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
+            <CardHeader className="flex-row items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
               <CardTitle>
                 <h2 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
                   {t("checkoutDomainTitle")}
                 </h2>
-                <p className="mt-1 max-w-xl text-xs font-normal leading-relaxed text-muted-foreground">{t("checkoutDomainHeroDescription")}</p>
+                <p className="mt-1 max-w-xl text-sm font-normal leading-relaxed text-muted-foreground">{t("checkoutDomainHeroDescription")}</p>
               </CardTitle>
-              <Badge variant="outline" className="ml-auto shrink-0 gap-1 text-[0.625rem] text-muted-foreground">
-                <Globe2 className="size-3" aria-hidden />
+              <Badge className="ml-auto min-h-6 shrink-0 gap-1 bg-blue-500/10 px-2 text-[0.625rem] font-bold text-blue-700 hover:bg-blue-500/10 dark:text-blue-300">
+                <Globe2 className="size-[15px]" aria-hidden />
                 1 / 2
               </Badge>
             </CardHeader>
-            <CardContent className="grid gap-5 px-4 py-5 min-[880px]:px-[26px] min-[880px]:py-[22px]">
+            <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[26px] min-[560px]:pt-[22px]">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
                   <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
@@ -1690,15 +1695,13 @@ export function PreviewCheckout({
                   variant="outline"
                   className="grid grid-cols-2 rounded-xl bg-muted p-[3px]"
                 >
-                  <ToggleGroupItem value="new_registration" className="min-h-[42px] rounded-[9px] border-0 text-xs data-[state=on]:bg-card data-[state=on]:shadow-sm sm:text-sm">
-                    <Sparkles className="size-3.5" aria-hidden />
-                    <span className="sm:hidden">{t("checkoutDomainModeNewShort")}</span>
-                    <span className="hidden sm:inline">{t("checkoutDomainModeNew")}</span>
+                  <ToggleGroupItem value="new_registration" className="min-h-[42px] gap-2 rounded-[9px] border-0 text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
+                    <Search className="size-4" aria-hidden />
+                    <span>{t("checkoutDomainModeNew")}</span>
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="existing_domain" className="min-h-[42px] rounded-[9px] border-0 text-xs data-[state=on]:bg-card data-[state=on]:shadow-sm sm:text-sm">
-                    <Globe2 className="size-3.5" aria-hidden />
-                    <span className="sm:hidden">{t("checkoutDomainModeExistingShort")}</span>
-                    <span className="hidden sm:inline">{t("checkoutDomainModeExisting")}</span>
+                  <ToggleGroupItem value="existing_domain" className="min-h-[42px] gap-2 rounded-[9px] border-0 text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
+                    <RefreshCw className="size-4" aria-hidden />
+                    <span>{t("checkoutDomainModeExisting")}</span>
                   </ToggleGroupItem>
                 </ToggleGroup>
                 {domainMode === "existing_domain" && (
@@ -1723,7 +1726,7 @@ export function PreviewCheckout({
                   }
                 }}
               >
-                <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
+                <Label htmlFor="checkout-domain" className="mb-[7px] text-xs font-bold">{t("checkoutDomainLabel")}</Label>
                 <input ref={domainRequestTokenRef} type="hidden" name="requestToken" />
                 <input type="hidden" name="domainMode" value={domainMode} />
                 {migrationSourceMethod && (
@@ -1733,22 +1736,23 @@ export function PreviewCheckout({
                     value={migrationSourceMethod}
                   />
                 )}
-                <div className="grid gap-2 min-[560px]:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="grid gap-[9px] min-[560px]:grid-cols-[minmax(0,1fr)_auto] min-[560px]:items-center">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                    {domainMode === "existing_domain" ? <Globe2 className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden /> : <Search className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden />}
                     <Input
                     id="checkout-domain"
                     name="domain"
                     type="text"
                     inputMode="url"
                     autoComplete="url"
+                    spellCheck={false}
                     value={domainValue}
                     onChange={(event) => updateDomain(event.target.value)}
                     placeholder={t("checkoutDomainPlaceholder")}
                     aria-invalid={domainInputState === "error" ? true : undefined}
                     aria-describedby={domainDescriptionId}
                     className={cn(
-                      "h-12 rounded-xl pr-11 pl-10 text-base font-medium",
+                      "h-12 rounded-xl pr-11 pl-[42px] text-base font-medium",
                       domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
                       domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                       domainInputState === "error" && "border-destructive",
@@ -1763,8 +1767,8 @@ export function PreviewCheckout({
                       ) : null}
                     </div>
                   </div>
-                  <Button type="submit" className="min-h-12 rounded-xl px-5 min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
-                    {checkPending || extensionCheckPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Search className="size-4" aria-hidden />}
+                  <Button type="submit" className="min-h-11 rounded-[11px] px-4 min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
+                    {checkPending || extensionCheckPending ? <Loader2 className="size-[18px] animate-spin" aria-hidden /> : <Search className="size-[18px]" aria-hidden />}
                     {domainMode === "existing_domain" ? t("checkoutDomainCheckConnection") : t("checkoutCheckDomain")}
                   </Button>
                 </div>
@@ -1805,10 +1809,10 @@ export function PreviewCheckout({
                         {extensionCheckPending && selectedExtensions
                           .filter((extension) => !extensionResults.some((result) => result.domain === `${normalizedDomainValue.split(".")[0]}.${extension}`))
                           .map((extension) => (
-                          <div key={extension} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_76px]">
+                          <div key={extension} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-3.5">
                             <span className="grid min-w-0 gap-1.5"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-20 animate-pulse rounded-full bg-muted" /></span>
                             <span className="h-4 w-14 animate-pulse rounded bg-muted" />
-                            <span className="col-span-2 h-10 animate-pulse rounded-lg bg-muted min-[560px]:col-auto" />
+                            <span className="col-span-2 h-[34px] w-full animate-pulse rounded-[9px] bg-muted min-[560px]:col-auto min-[560px]:w-[68px]" />
                           </div>
                         ))}
                         {[...extensionResults]
@@ -1818,25 +1822,25 @@ export function PreviewCheckout({
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
                           return (
-                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_76px]", checkedDomain === result.domain && "bg-brand/10 shadow-[inset_3px_0_0_var(--brand)]")}>
+                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-[9px] gap-y-2 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-x-3.5", checkedDomain === result.domain && "bg-brand/10 shadow-[inset_3px_0_0_var(--brand)]")}>
                               <span className="grid min-w-0 gap-1.5">
                                 <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-foreground">{result.domain}</strong>
-                                <span className={cn("flex min-h-5 w-fit items-center gap-1 rounded-full px-2 text-[0.625rem] font-semibold", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", !available && !premium && "bg-muted text-muted-foreground")}>
-                                  {available ? <CheckCircle2 className="size-3" aria-hidden /> : premium ? <Sparkles className="size-3" aria-hidden /> : result.status === "unavailable" ? <CircleX className="size-3" aria-hidden /> : <CircleAlert className="size-3" aria-hidden />}
+                                <span className={cn("flex min-h-6 w-fit items-center gap-1 rounded-full px-2 text-[0.625rem] font-bold", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", !available && !premium && "bg-muted text-muted-foreground")}>
+                                  {available ? <Check className="size-[15px]" aria-hidden /> : premium ? <TriangleAlert className="size-[15px]" aria-hidden /> : result.status === "unavailable" ? <X className="size-[15px]" aria-hidden /> : <CircleAlert className="size-[15px]" aria-hidden />}
                                   {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}
                                 </span>
                               </span>
                               <span className="grid self-start pt-0.5 text-right">
-                                <strong className="text-xs font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+                                <strong className="text-[0.8125rem] font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
                                 {available && result.quotes && result.quotes.annual.quote.domainSurchargeNetMinor > 0 && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-10 w-full shrink-0 border bg-card px-3 text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-[76px]", checkedDomain === result.domain && "border-brand bg-brand text-brand-foreground [&&:hover]:bg-brand/85 [&&:hover]:text-brand-foreground")} onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border bg-card px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-brand bg-brand text-brand-foreground [&&:hover]:bg-brand/85 [&&:hover]:text-brand-foreground")} onClick={() => selectExtensionResult(result)}>
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
                               )}
                               {premium && (
-                                <Button type="button" size="sm" variant="ghost" className="col-span-2 min-h-9 w-full text-xs text-muted-foreground min-[560px]:col-auto min-[560px]:w-[76px]" onClick={() => setPremiumInfoDomain(result.domain ?? null)}>
+                                <Button type="button" size="sm" variant="ghost" className="col-span-2 min-h-9 w-full rounded-[9px] px-[11px] text-xs text-muted-foreground min-[560px]:col-auto min-[560px]:w-auto" onClick={() => setPremiumInfoDomain(result.domain ?? null)}>
                                   {t("checkoutPremiumWhy")}
                                 </Button>
                               )}
@@ -2035,20 +2039,20 @@ export function PreviewCheckout({
                 </div>
               </form>
 
-              {domainMode === "new_registration" && checkedDomain && selectedQuote && (
+              {selectedDomain && selectedQuote && (
                 <div className="flex min-w-0 items-center gap-3 rounded-[14px] border border-brand/35 bg-brand/10 p-3.5" data-selected-domain-summary>
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground">
-                    <Globe2 className="size-5" aria-hidden />
+                  <span className="grid size-[38px] shrink-0 place-items-center rounded-[11px] bg-brand text-brand-foreground">
+                    <Globe2 className="size-[18px]" aria-hidden />
                   </span>
                   <span className="grid min-w-0 flex-1 gap-0.5">
-                    <strong className="[overflow-wrap:anywhere] text-sm">{checkedDomain}</strong>
-                    <span className="text-xs text-muted-foreground">{t("checkoutExtensionAvailable")} · {selectedQuote.quote.domainSurchargeNetMinor > 0 ? `${money(locale, selectedQuote.quote.domainSurchargeNetMinor, selectedQuote.quote.currency)} ${t("checkoutPriceExVat")}` : t("checkoutDomainIncludedBadge")}</span>
+                    <strong className="[overflow-wrap:anywhere] text-sm">{selectedDomain}</strong>
+                    <span className="text-[0.6875rem] text-muted-foreground">{t("checkoutExtensionAvailable")} · {selectedQuote.quote.domainSurchargeNetMinor > 0 ? `${money(locale, selectedQuote.quote.domainSurchargeNetMinor, selectedQuote.quote.currency)} ${t("checkoutPriceExVat")}` : t("checkoutDomainIncludedBadge")}</span>
                   </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="shrink-0"
+                    className="min-h-9 shrink-0"
                     onClick={() => {
                       setCheckedDomain(null)
                       setQuotes(null)
@@ -2140,6 +2144,16 @@ export function PreviewCheckout({
               )}
 
             </CardContent>
+            <div className="flex items-start justify-between gap-3 border-t bg-muted/45 px-[17px] py-3.5 min-[560px]:px-[26px] min-[880px]:items-center min-[880px]:py-4">
+              <p className="flex max-w-md items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-[15px] shrink-0" aria-hidden />
+                <span>{t("checkoutSignedQuoteNote")}</span>
+              </p>
+              <Button type="button" className="hidden min-h-11 shrink-0 min-[880px]:inline-flex" disabled={!domainIsReady} onClick={() => setStep("review")}>
+                {t("checkoutContinueReview")}
+                <ArrowRight className="size-[18px]" aria-hidden />
+              </Button>
+            </div>
           </Card>
           <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
@@ -2857,7 +2871,7 @@ export function PreviewCheckout({
         )}
       </div>
 
-      {(presentation.phase === "address" || presentation.phase === "review") && <MobileCheckoutBar
+      {(presentation.phase === "review" || (presentation.phase === "address" && Boolean(selectedDomain))) && <MobileCheckoutBar
         decision={step}
         action={presentation.primaryAction}
         selectedDomain={selectedDomain}

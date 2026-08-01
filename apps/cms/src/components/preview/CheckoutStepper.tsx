@@ -26,7 +26,6 @@ export function CheckoutStepper<T extends string = string>({
   progressText = (current, total, label) => `${current} / ${total} · ${label}`,
 }: CheckoutStepperProps<T>) {
   const activeIndex = steps.findIndex((entry) => entry.id === activeStep)
-  const ActiveIcon = steps[activeIndex]?.icon
   const columns = steps.length === 4
     ? "grid-cols-4"
     : steps.length === 3
@@ -42,14 +41,9 @@ export function CheckoutStepper<T extends string = string>({
       aria-valuemax={steps.length}
       aria-valuenow={activeIndex + 1}
       aria-valuetext={progressText(activeIndex + 1, steps.length, steps[activeIndex]?.label ?? "")}
-      className="-mr-3 mb-4 min-w-0 min-[880px]:mr-0"
+      className="mb-4 min-w-0"
     >
-      <div className="grid min-h-11 min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(3rem,1fr)] items-center gap-2.5 rounded-xl border bg-card/70 px-3 min-[880px]:hidden">
-        <span className="grid size-7 place-items-center rounded-lg bg-brand text-brand-foreground">{ActiveIcon && <ActiveIcon className="size-3.5" aria-hidden />}</span>
-        <span className="min-w-0 truncate text-xs font-semibold">{steps[activeIndex]?.label}</span>
-        <span className="h-0.5 overflow-hidden rounded-full bg-muted" aria-hidden><span className={cn("block h-full rounded-full bg-brand", activeIndex > 0 ? "w-full" : "w-1/2")} /></span>
-      </div>
-      <ol className={cn("hidden min-w-0 gap-2 min-[880px]:grid", columns)}>
+      <ol className={cn("grid min-w-0 gap-2", columns)}>
         {steps.map((entry, index) => {
           const StepIcon = entry.icon
           const active = index === activeIndex
@@ -58,15 +52,15 @@ export function CheckoutStepper<T extends string = string>({
           const content = (
             <>
               <span className={cn(
-                "grid size-6 shrink-0 place-items-center rounded-lg bg-muted text-[0.6875rem] font-bold text-muted-foreground min-[560px]:size-7",
+                "grid size-[25px] shrink-0 place-items-center rounded-[8px] bg-muted text-muted-foreground min-[560px]:size-7 min-[560px]:rounded-[9px]",
                 active && "bg-brand text-brand-foreground",
                 complete && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
               )}>
-                {complete ? <Check className="size-3.5" aria-hidden /> : <StepIcon className="size-3.5" aria-hidden />}
+                {complete ? <Check className="size-[15px]" aria-hidden /> : <StepIcon className="size-[15px]" aria-hidden />}
               </span>
               <span className="grid min-w-0 text-left leading-tight">
-                <strong className="truncate text-[0.6875rem] font-semibold min-[560px]:text-[0.8125rem]">{entry.label}</strong>
-                {entry.description && <span className="mt-0.5 hidden truncate text-[0.6875rem] font-normal text-muted-foreground min-[560px]:block">{entry.description}</span>}
+                <strong className="truncate text-[0.8125rem] font-[760] max-[355px]:text-[0.6875rem]">{entry.label}</strong>
+                {entry.description && <span className="mt-px truncate text-[0.6875rem] font-normal text-muted-foreground max-[560px]:hidden">{entry.description}</span>}
               </span>
             </>
           )
@@ -76,7 +70,7 @@ export function CheckoutStepper<T extends string = string>({
               aria-label={entry.label}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl border bg-card/70 px-2 text-muted-foreground min-[560px]:min-h-[52px] min-[560px]:gap-2.5 min-[560px]:px-3",
+                "flex min-h-[46px] min-w-0 items-center gap-[7px] rounded-[11px] border bg-card/75 px-2 py-[7px] text-muted-foreground min-[560px]:min-h-[52px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3 min-[560px]:py-2",
                 active && "border-border bg-card text-foreground shadow-sm",
               )}
             >
@@ -85,7 +79,7 @@ export function CheckoutStepper<T extends string = string>({
                   type="button"
                   aria-label={entry.label}
                   variant="ghost"
-                  className="-m-2 flex h-auto min-h-11 min-w-0 flex-1 justify-start gap-1.5 rounded-xl px-2 text-inherit hover:bg-transparent min-[560px]:-m-3 min-[560px]:gap-2.5 min-[560px]:px-3"
+                  className="-m-2 flex h-auto min-h-[46px] min-w-0 flex-1 justify-start gap-[7px] rounded-[11px] px-2 text-inherit hover:bg-transparent min-[560px]:-m-3 min-[560px]:min-h-[52px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3"
                   onClick={() => onStepSelect(entry.id)}
                 >
                   {content}

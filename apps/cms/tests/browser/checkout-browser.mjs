@@ -120,7 +120,7 @@ try {
   )
 
   const domainStepButton = page.getByRole("button", { name: "Website address", exact: true })
-  assert.equal(await domainStepButton.isVisible(), false)
+  assert.equal(await domainStepButton.isVisible(), true)
   assert.equal(await page.locator("[data-checkout-mobile-progress]").isVisible(), true)
 
   assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
@@ -214,6 +214,15 @@ try {
   const compactPage = await browser.newPage({ viewport: { width: 320, height: 568 } })
   compactPage.setDefaultTimeout(5_000)
   await compactPage.goto(origin, { waitUntil: "networkidle" })
+  assert.equal(
+    await compactPage.locator("[data-checkout-action-bar]").count(),
+    0,
+    "The phone action row must not compete with domain search before a domain is selected.",
+  )
+  await compactPage.getByLabel("Domain name").fill("analytical-engines")
+  await compactPage.getByText("analytical-engines.com", { exact: true }).waitFor()
+  await compactPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
+    .getByRole("button", { name: "Select", exact: true }).click()
   const compactGeometry = await compactPage.evaluate(() => {
     const shell = document.querySelector("[data-checkout-shell]")
     const card = document.querySelector("[data-checkout-main-card]")
@@ -243,15 +252,11 @@ try {
   assert.ok(compactGeometry.shellRight != null && compactGeometry.cardRight != null)
   assert.ok(compactGeometry.cardRight <= compactGeometry.shellRight)
   assert.equal(compactGeometry.progressLeft, compactGeometry.cardLeft)
-  assert.ok(
-    compactGeometry.progressRight != null && compactGeometry.cardRight != null &&
-      compactGeometry.progressRight - compactGeometry.cardRight >= 12,
-    "The phone progress line may use the scrollbar gutter that main content reserves.",
-  )
+  assert.equal(compactGeometry.progressRight, compactGeometry.cardRight)
   assert.ok(compactGeometry.progressHeight != null && compactGeometry.progressHeight <= 56)
   assert.ok(
-    compactGeometry.cardRight != null && 320 - compactGeometry.cardRight >= 20,
-    "The phone workspace must reserve a stable right-side scroll gutter.",
+    compactGeometry.cardRight != null && Math.abs(320 - compactGeometry.cardRight - 10) <= 1,
+    "The phone workspace must remain centered with the prototype's 10px outer gutter.",
   )
   await compactPage.locator("[data-checkout-shell]").evaluate((node) => {
     node.scrollTop = node.scrollHeight
@@ -298,9 +303,9 @@ try {
     "The 880px two-column summary must remain sticky.",
   )
   assert.equal(
-    await tabletPage.locator("[data-checkout-summary]").getByRole("button", { name: "Check domain" }).isVisible(),
-    true,
-    "The sticky summary must expose the active primary action.",
+    await tabletPage.locator("[data-checkout-summary]").getByRole("button").count(),
+    0,
+    "The address-step summary must stay informational; domain actions belong to the launch sheet.",
   )
   await tabletPage.close()
 
@@ -389,9 +394,9 @@ try {
   await unsupportedPage.goto(`${origin}?existing=unsupported`, {
     waitUntil: "networkidle",
   })
-  await unsupportedPage.getByText("Existing domain", { exact: true }).click()
+  await unsupportedPage.getByText("Use an existing domain", { exact: true }).click()
   await unsupportedPage.getByLabel("Domain name").fill("existing-example.nl")
-  await unsupportedPage.getByRole("button", { name: "Check domain" }).click()
+  await unsupportedPage.getByRole("button", { name: "Check connection" }).click()
   await unsupportedPage.getByRole("alert").filter({
     hasText: "No safe automatic DNS source is available",
   }).waitFor()
@@ -415,9 +420,9 @@ try {
   })
   axfrPage.setDefaultTimeout(5_000)
   await axfrPage.goto(`${origin}?existing=axfr`, { waitUntil: "networkidle" })
-  await axfrPage.getByText("Existing domain", { exact: true }).click()
+  await axfrPage.getByText("Use an existing domain", { exact: true }).click()
   await axfrPage.getByLabel("Domain name").fill("existing-example.nl")
-  await axfrPage.getByRole("button", { name: "Check domain" }).click()
+  await axfrPage.getByRole("button", { name: "Check connection" }).click()
   await axfrPage.getByLabel("Authorized nameserver").waitFor()
   await axfrPage.getByLabel(/Transfer code/).fill("browser-transfer-code")
   await axfrPage.getByLabel(
@@ -468,8 +473,8 @@ try {
   await cloudflarePage.getByLabel(
     /I am authorized to transfer this customer-owned domain/,
   ).check()
-  await cloudflarePage.getByRole("button", { name: "Check domain" }).click()
-  await cloudflarePage.getByRole("button", { name: "Continue" }).waitFor()
+  await cloudflarePage.getByRole("button", { name: "Check connection" }).click()
+  await cloudflarePage.getByRole("button", { name: "Review details" }).waitFor()
   assert.equal(
     await cloudflarePage.evaluate(() =>
       document.documentElement.scrollWidth <= innerWidth),
