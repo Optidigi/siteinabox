@@ -1562,7 +1562,7 @@ export function PreviewCheckout({
                 {t("checkoutDomainStepDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-2 p-0">
+            <CardContent className="grid gap-3 rounded-md border bg-card p-3 shadow-xs min-[880px]:p-4">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
                   <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
@@ -1599,13 +1599,13 @@ export function PreviewCheckout({
                     <span className="hidden sm:inline">{t("checkoutDomainModeExisting")}</span>
                   </ToggleGroupItem>
                 </ToggleGroup>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {domainMode === "new_registration"
-                    ? t("checkoutDomainModeNewHelp")
-                    : existingDomainMigrationEnabled
+                {domainMode === "existing_domain" && (
+                  <p className="text-xs leading-snug text-muted-foreground">
+                    {existingDomainMigrationEnabled
                       ? t("checkoutDomainModeExistingHelp")
                       : t("checkoutDomainModeExistingPreflight")}
-                </p>
+                  </p>
+                )}
               </fieldset>
 
               <form
@@ -2028,7 +2028,7 @@ export function PreviewCheckout({
                 <ConfirmationRow
                   icon={UserRound}
                   title={t("checkoutContactGroup")}
-                  value={`${details.firstName} ${details.lastName} · ${customerEmail}`}
+                  value={`${details.firstName} ${details.lastName} · ${customerEmail} · ${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`}
                   onEdit={() => openDetailsEditor("contact")}
                   t={t}
                 />
@@ -2044,13 +2044,6 @@ export function PreviewCheckout({
                   title={t("checkoutAddressGroup")}
                   value={`${details.street} ${details.number}${details.suffix ?? ""}, ${details.zipcode} ${details.city}`}
                   onEdit={() => openDetailsEditor("address")}
-                  t={t}
-                />
-                <ConfirmationRow
-                  icon={Phone}
-                  title={t("checkoutPhoneTitle")}
-                  value={`${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`}
-                  onEdit={() => openDetailsEditor("contact")}
                   t={t}
                 />
               </div>
@@ -2680,29 +2673,13 @@ export function PreviewCheckout({
               )}
             </CardContent>
           </Card>
-          <Card data-checkout-summary className="hidden min-[880px]:sticky min-[880px]:top-4 min-[880px]:block">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("checkoutCompactSummaryTitle")}</CardTitle>
-              <CardDescription>{t("checkoutCompactSummaryDescription")}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
-              <ReviewRow label={t("checkoutContractingParty")} value={savedProfile.contractingPartyName} />
-              <ReviewRow
-                label={t("checkoutPlanLegend")}
-                value={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
-              />
-              <div className="border-t pt-3">
-                <ReviewRow
-                  label={t("checkoutSummaryTotal")}
-                  value={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
-                  strong
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">{t("checkoutCompactSummarySaved")}</p>
-              <div id="checkout-desktop-action" className="border-t pt-3" />
-            </CardContent>
-          </Card>
+          <CheckoutOrderSummary
+            domain={selectedDomain ?? domainValue}
+            company={savedProfile.contractingPartyName}
+            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+            total={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
+            t={t}
+          />
           </div>
         )}
       </div>
@@ -3164,7 +3141,7 @@ function CheckoutOrderSummary({
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
   return (
-    <Card data-checkout-summary className="hidden overflow-hidden shadow-xs min-[880px]:sticky min-[880px]:top-4 min-[880px]:block">
+    <Card data-checkout-summary className="hidden gap-0 overflow-hidden py-0 shadow-xs min-[880px]:sticky min-[880px]:top-4 min-[880px]:block">
       <CardHeader className="gap-1 p-3 pb-2">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-md border bg-muted/50">
@@ -3357,8 +3334,8 @@ function ReviewRow({
 }) {
   return (
     <div className="flex min-w-0 items-start justify-between gap-3">
-      <span className="min-w-0 text-sm text-muted-foreground">{label}</span>
-      <span className={cn("min-w-0 break-words text-right text-base", strong ? "font-semibold" : "font-medium")}>
+      <span className="min-w-0 text-xs leading-snug text-muted-foreground">{label}</span>
+      <span className={cn("min-w-0 break-words text-right text-sm leading-snug", strong ? "font-semibold" : "font-medium")}>
         {value || "-"}
       </span>
     </div>
