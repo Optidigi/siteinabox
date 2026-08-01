@@ -37,7 +37,7 @@ export function MobileCheckoutBar({
   void previewHref
 
   return (
-    <div data-checkout-action-bar className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-3 py-2.5 pb-[max(env(safe-area-inset-bottom),0.625rem)] shadow-lg backdrop-blur-xl min-[880px]:hidden">
+    <div data-checkout-action-bar className="fixed inset-x-0 bottom-0 z-40 flex min-h-[72px] items-center border-t bg-card/95 px-[10px] py-2.5 pb-[max(env(safe-area-inset-bottom),0.625rem)] shadow-2xl backdrop-blur-xl min-[560px]:px-[14px] min-[880px]:hidden">
       <div className={decision === "domain"
         ? "mx-auto flex min-h-12 w-full max-w-[65rem] min-w-0 items-center gap-2"
         : "mx-auto flex min-h-12 w-full max-w-[65rem] min-w-0 items-center gap-3"}>

@@ -14,6 +14,7 @@ import {
   CreditCard,
   Globe2,
   Info,
+  Link2,
   Loader2,
   LockKeyhole,
   MapPin,
@@ -421,6 +422,7 @@ export function PreviewCheckout({
   const paymentFormRef = React.useRef<HTMLFormElement | null>(null)
   const stepHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
   const profileErrorSummaryRef = React.useRef<HTMLDivElement | null>(null)
+  const detailsEditorTriggerRef = React.useRef<HTMLElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
   const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
@@ -1031,7 +1033,8 @@ export function PreviewCheckout({
     setDetailsDirty(true)
   }
 
-  const openDetailsEditor = (group: DetailsGroup) => {
+  const openDetailsEditor = (group: DetailsGroup, trigger?: HTMLElement) => {
+    if (trigger) detailsEditorTriggerRef.current = trigger
     setDetailsEditorGroup(group)
     setDetailsEditorOpen(true)
   }
@@ -1042,16 +1045,14 @@ export function PreviewCheckout({
       ? "checkout-business-use"
         : !termsAccepted
           ? "checkout-terms"
-          : null
+          : !previewApprovalAccepted
+            ? "checkout-preview-approval"
+            : null
     if (firstMissingId) {
       setLegalSubmitRequested(true)
       window.setTimeout(() => document.getElementById(firstMissingId)?.focus(), 0)
       return
     }
-    // The established launch/pay action is the affirmative website approval.
-    // Keep the server-owned payload explicit without presenting it as a third
-    // declaration alongside the two legally distinct acceptances.
-    setPreviewApprovalAccepted(true)
     setLegalSubmitRequested(false)
     setPaymentSubmitRequested(true)
     window.setTimeout(() => paymentFormRef.current?.requestSubmit(), 0)
@@ -1103,6 +1104,16 @@ export function PreviewCheckout({
     grossAmountMinor,
     selectedQuote?.quote.currency ?? catalog.currency,
   )
+  const paymentLifecycleStatusLabel = paymentStatusLive === "completed"
+    ? t("checkoutPaymentCompleteTitle")
+    : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive)
+      ? t("checkoutPaymentNotCompletedTitle")
+      : t("checkoutPaymentProcessingTitle")
+  const addressSheetDescription = domainMode === "existing_domain"
+    ? checkAppliesToCurrentInput && checkState.message
+      ? checkState.message
+      : t("checkoutDomainModeExistingPreflight")
+    : t("checkoutDomainHeroDescription")
   const primaryActionHandlers = {
     onDomainNext: () => setStep("review" as const),
     onDomainCheck: () => {
@@ -1115,9 +1126,13 @@ export function PreviewCheckout({
     },
     onPay: submitPayment,
   }
+  const transferCodeActionRequired = Boolean(migrationStatus?.actions.some((action) =>
+    action.action === "provide_epp_code" && ["required", "failed"].includes(action.status)))
+  const transferCodeDeadline = migrationStatus?.actions.find((action) =>
+    action.action === "provide_epp_code" && ["required", "failed"].includes(action.status))?.deadlineAt
 
   return (
-    <main data-checkout-phase={presentation.phase} className="h-dvh min-h-0 overflow-hidden bg-muted/25 pb-20 text-foreground min-[880px]:h-auto min-[880px]:min-h-dvh min-[880px]:overflow-visible min-[880px]:pb-24 dark:bg-background">
+    <main data-checkout-phase={presentation.phase} className="min-h-dvh bg-muted/25 pb-24 text-foreground dark:bg-background">
       {cloudflareSourceOAuthEnabled && (
         <>
           {domainMode === "existing_domain" && normalizedDomainValue && (
@@ -1180,111 +1195,91 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-48px)] w-[calc(100%-20px)] min-w-0 max-w-[70rem] content-start gap-4 overflow-y-auto pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:h-[calc(100dvh-52px)] min-[560px]:w-[min(45rem,calc(100%-28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:h-auto min-[880px]:w-[calc(100%-40px)] min-[880px]:overflow-visible min-[880px]:py-[30px] min-[880px]:pb-24">
-        {presentation.phase === "fulfilment" ? (
-          <div className="mx-auto grid w-full max-w-[70rem] gap-1 py-2">
-            <div className="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.095em] text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-brand" />
-              <Rocket className="size-4" aria-hidden />
-              {t("checkoutFulfilmentEyebrow")}
-            </div>
-            <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-tight tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
-              {t("checkoutFulfilmentTitle")}
-            </h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {t("checkoutFulfilmentDescription")}
-            </p>
-          </div>
-        ) : presentation.phase === "payment" ? (
-          <div className="mx-auto grid w-full max-w-[70rem] gap-1 py-2">
-            <div className="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.095em] text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-brand" />
-              <CreditCard className="size-4" aria-hidden />
-              {t("checkoutStepPayment")}
-            </div>
-            <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-tight tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
-              {t("checkoutPaymentReturnTitle")}
-            </h1>
-          </div>
-        ) : (
-          <>
-          <section className="grid gap-2">
+      <div data-checkout-shell className="mx-auto grid w-[calc(100%-20px)] min-w-0 max-w-[70rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%-28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%-40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
+        <section className="grid gap-2">
             <div>
               <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
-                {step === "domain" ? t("checkoutDomainHeroTitle") : t("checkoutReviewHeroTitle")}
+                {presentation.phase === "fulfilment" || presentation.phase === "payment"
+                  ? t("checkoutLaunchWorkspace")
+                    : step === "domain" ? t("checkoutDomainHeroTitle") : t("checkoutReviewHeroTitle")}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground min-[880px]:text-[0.9375rem]">
-                {step === "domain" ? t("checkoutDomainHeroDescription") : t("checkoutReviewHeroDescription")}
+                {presentation.phase === "fulfilment" || presentation.phase === "payment"
+                  ? t("checkoutLifecycleShellDescription")
+                    : step === "domain" ? t("checkoutDomainHeroDescription") : t("checkoutReviewHeroDescription")}
               </p>
             </div>
-          </section>
-          <PreviewCheckoutStepper
-            step={step}
-            highestReachedStep={highestReachedStep}
-            onStepSelect={setStep}
-          />
-          </>
-        )}
+        </section>
+        <PreviewCheckoutStepper
+          step={presentation.phase === "address" ? step : "review"}
+          highestReachedStep={presentation.phase === "address" ? highestReachedStep : 1}
+          onStepSelect={presentation.phase === "address" || presentation.phase === "review" ? setStep : undefined}
+        />
 
         {(presentation.phase === "payment" || presentation.phase === "fulfilment" || (requiresMigrationRecollection && acceptedOrderId != null)) && (
           <div className={cn("grid min-w-0 gap-[18px]", presentation.phase === "payment" && "min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start")}>
-          <Card data-checkout-main-card className={cn("relative w-full overflow-hidden rounded-[22px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20", presentation.phase !== "payment" && "mx-auto max-w-[820px]")}>
-            <CardContent className="grid gap-4 px-4 py-6 sm:px-7 sm:py-8 [&_[role=status]]:rounded-[14px] [&_[role=status]]:border [&_[role=status]]:p-4">
-        {paymentReturn && (
-          <section className="grid justify-items-center gap-3 py-3 text-center" aria-live="polite">
-            <span className={cn("grid size-14 place-items-center rounded-2xl bg-brand text-brand-foreground", ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) && "bg-destructive/15 text-destructive")}>
+          <Card data-checkout-main-card className={cn("relative w-full scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]", presentation.phase !== "payment" && "mx-auto max-w-[820px]")}>
+            <CardContent className="grid gap-[14px] px-[17px] py-5 min-[560px]:gap-[18px] min-[560px]:px-[26px] min-[560px]:py-6 [&_[role=status]]:rounded-[14px] [&_[role=status]]:border [&_[role=status]]:p-[13px]">
+        {paymentReturn && presentation.phase === "payment" && (
+          <section className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5" aria-live="polite">
+            <span className={cn("relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground", ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) && "bg-destructive/15 text-destructive", !["failed", "canceled", "cancelled", "expired", "completed"].includes(paymentStatusLive) && "after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15")}>
               {["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? <CircleAlert className="size-6" aria-hidden /> : paymentStatusLive === "completed" ? <CheckCircle2 className="size-6" aria-hidden /> : <Loader2 className="size-6 animate-spin" aria-hidden />}
             </span>
-            <Badge variant={paymentStatusLive === "completed" ? "secondary" : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? "destructive" : "outline"}>
-              {paymentStatusLive === "completed" ? t("checkoutPaymentCompleteTitle") : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutPaymentNotCompletedTitle") : t("checkoutPaymentProcessingTitle")}
+            <Badge variant={paymentStatusLive === "completed" ? "secondary" : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? "destructive" : "outline"} className="min-h-6 rounded-full px-2 text-[0.625rem] font-bold">
+              {t("checkoutOrderReference")}
             </Badge>
             <div>
-              <h2 className="text-2xl font-bold tracking-[-0.03em]">{paymentStatusLive === "completed" ? t("checkoutPaymentCompleteTitle") : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutPaymentNotCompletedTitle") : t("checkoutPaymentProcessingTitle")}</h2>
-              <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
+              <h2 className="text-[21px] font-bold tracking-[-0.03em] min-[560px]:text-2xl">{paymentStatusLive === "completed" ? t("checkoutPaymentCompleteTitle") : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutPaymentNotCompletedTitle") : t("checkoutPaymentProcessingTitle")}</h2>
+              <p className="mx-auto mt-[7px] max-w-lg text-sm leading-relaxed text-muted-foreground">
                 {paymentStatusLive === "completed" ? t("checkoutPaymentReturnCompleted") : paymentStatusLive === "pending_provider" ? t("checkoutPaymentReturnPending") : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutPaymentReturnFailed") : t("checkoutPaymentReturnUnknown")}
               </p>
             </div>
-            {["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) && <Button type="button" variant="outline" className="min-h-11" onClick={() => window.location.assign(window.location.pathname)}>{t("checkoutReviewOrderAction")}</Button>}
+            {["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) && <div className="flex flex-wrap justify-center gap-2">
+              <Button type="button" className="min-h-11 bg-foreground text-background hover:bg-foreground/90" onClick={() => window.location.assign(window.location.pathname)}><RefreshCw className="size-4" aria-hidden />{t("checkoutReviewOrderAction")}</Button>
+            </div>}
+          </section>
+        )}
+
+        {paymentReturn && presentation.phase === "payment" && (
+          <ol aria-label={t("checkoutOrderReference")} className="mx-auto w-full max-w-[600px] overflow-hidden rounded-[15px] border bg-card">
+            <LifecycleRow icon={ReceiptText} status="complete" title={t("checkoutOrderReference")} detail={t("checkoutSignedQuoteNote")} state={t("checkoutComplete")} />
+            <LifecycleRow icon={["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? CircleAlert : CreditCard} status={["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? "action_required" : "active"} title={t("checkoutStepPayment")} detail={paymentStatusLive === "pending_provider" ? t("checkoutPaymentReturnPending") : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutPaymentReturnFailed") : t("checkoutPaymentReturnUnknown")} state={["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutActionRequired") : t("checkoutInProgress")} />
+            <LifecycleRow icon={Rocket} status="pending" title={t("checkoutFulfilmentTitle")} detail={t("checkoutPaymentReturnPending")} state={t("checkoutWaiting")} />
+          </ol>
+        )}
+
+        {presentation.phase === "fulfilment" && !provisioningStatus && (
+          <section className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5" aria-live="polite">
+            <span className="relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15"><Rocket className="size-[22px]" aria-hidden /></span>
+            <Badge variant="outline" className="min-h-6 rounded-full px-2 text-[0.625rem] font-bold">{t("checkoutOrderReference")}</Badge>
+            <div>
+              <h2 className="text-[21px] font-bold tracking-[-0.03em] min-[560px]:text-2xl">{t("checkoutFulfilmentTitle")}</h2>
+              <p className="mx-auto mt-[7px] max-w-lg text-sm leading-relaxed text-muted-foreground">{t("checkoutFulfilmentDescription")}</p>
+            </div>
           </section>
         )}
 
         {provisioningStatus && (
-          <Alert role="status" aria-live="polite">
-            <Globe2 className="size-4" aria-hidden />
-            <AlertTitle>
-              {t("checkoutProvisioningStatusTitle", {
-                domain: provisioningStatus.domain,
-              })}
-            </AlertTitle>
-            <AlertDescription>
-              <ol className="mt-4 overflow-hidden rounded-[15px] border bg-card">
+          <section role="status" aria-live="polite" className="grid gap-[14px]">
+            <div className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5">
+              <span className="relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15"><Rocket className="size-[22px]" aria-hidden /></span>
+              <Badge variant="outline" className="min-h-6 rounded-full px-2 text-[0.625rem] font-bold">{t("checkoutOrderReference")}</Badge>
+              <div>
+                <h2 className="text-[21px] font-bold tracking-[-0.03em] min-[560px]:text-2xl">{t("checkoutProvisioningStatusTitle", { domain: provisioningStatus.domain })}</h2>
+                <p className="mx-auto mt-[7px] max-w-lg text-sm leading-relaxed text-muted-foreground">{t("checkoutFulfilmentDescription")}</p>
+              </div>
+            </div>
+            <ol className="mx-auto w-full max-w-[600px] overflow-hidden rounded-[15px] border bg-card">
                 {provisioningStatus.stages.map((stage) => (
-                  <li
-                    key={stage.code}
-                    className="grid min-h-[62px] min-w-0 grid-cols-[30px_minmax(0,1fr)] items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
-                  >
-                    {stage.status === "complete"
-                      ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
-                      : stage.status === "action_required"
-                        ? <CircleAlert className="size-4 shrink-0 text-warning" aria-hidden />
-                        : stage.status === "review"
-                          ? <CircleAlert className="size-4 shrink-0 text-destructive" aria-hidden />
-                          : <Loader2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-                    <span>
-                      <span className="block font-medium">
-                        {provisioningStageLabel(stage.code, t)}
-                      </span>
-                      <span className="block text-sm text-muted-foreground">
-                        {provisioningStageStatusLabel(stage.status, t)}
-                      </span>
-                    </span>
-                  </li>
+                  <LifecycleRow key={stage.code} icon={stage.status === "complete" ? CheckCircle2 : stage.status === "action_required" || stage.status === "review" ? CircleAlert : Loader2} status={stage.status} title={provisioningStageLabel(stage.code, t)} detail={provisioningStageStatusLabel(stage.status, t)} state={provisioningStageStatusLabel(stage.status, t)} />
                 ))}
-              </ol>
+            </ol>
               {provisioningStatus.stages.some((stage) =>
                 stage.code === "registrant_verification" &&
                 stage.status === "action_required") && (
-                <p className="mt-3 font-medium">
+                <div className="mx-auto w-full max-w-[600px] rounded-[14px] border border-warning/30 bg-warning/10 p-[15px] text-left">
+                <h3 className="mb-1 text-sm font-bold text-warning">{t("checkoutActionRequired")}</h3>
+                <p className="text-xs leading-relaxed text-foreground">
                   {provisioningStatus.registrantVerificationDueAt
                     ? t("checkoutProvisioningVerificationRequiredBy", {
                         deadline: new Intl.DateTimeFormat(locale, {
@@ -1296,9 +1291,9 @@ export function PreviewCheckout({
                       })
                     : t("checkoutProvisioningVerificationRequired")}
                 </p>
+                </div>
               )}
-            </AlertDescription>
-          </Alert>
+          </section>
         )}
 
         {requiresMigrationRecollection &&
@@ -1413,20 +1408,26 @@ export function PreviewCheckout({
           )}
 
         {migrationStatus && (
-          <Alert role="status" aria-live="polite" className={migrationStatus.actions.some((action) => action.status === "required" || action.status === "failed") ? "border-warning/40 bg-warning/10" : undefined}>
-            <Globe2 className="size-4" aria-hidden />
-            <AlertTitle>
-              {t("checkoutMigrationStatusTitle", {
+          <Alert role="status" aria-live="polite" className={migrationStatus.actions.some((action) => action.status === "required" || action.status === "failed") ? cn("border-warning/40 bg-warning/10", transferCodeActionRequired && "!grid-cols-[36px_minmax(0,1fr)] gap-x-3.5 [&>svg]:size-9 [&>svg]:translate-y-0") : undefined}>
+            {transferCodeActionRequired ? <Link2 className="size-9 rounded-[10px] bg-warning p-2 text-warning-foreground" aria-hidden /> : <Globe2 className="size-4" aria-hidden />}
+            <AlertTitle className={transferCodeActionRequired ? "text-base text-warning" : undefined}>
+              {transferCodeActionRequired ? t("checkoutTransferActionTitle") : t("checkoutMigrationStatusTitle", {
                 domain: migrationStatus.domain,
               })}
             </AlertTitle>
             <AlertDescription>
-              <span className="block">
+              {transferCodeActionRequired ? <p className="leading-relaxed text-foreground">
+                {transferCodeDeadline
+                  ? t("checkoutTransferActionDescriptionWithDeadline", {
+                      deadline: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(transferCodeDeadline)),
+                    })
+                  : t("checkoutTransferActionDescription")}
+              </p> : <span className="block">
                 {t("checkoutMigrationStatusState", {
                   state: migrationStateLabel(migrationStatus.state, t),
                 })}
-              </span>
-              {migrationStatus.actions.filter((action) =>
+              </span>}
+              {!transferCodeActionRequired && migrationStatus.actions.filter((action) =>
                 action.status !== "completed").length > 0 && (
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {migrationStatus.actions
@@ -1459,7 +1460,7 @@ export function PreviewCheckout({
                 submitMigrationTransferCodeAction && (
                   <form
                     action={transferCodeAction}
-                    className="mt-4 grid gap-3 rounded-[14px] border border-warning/40 bg-warning/10 p-4"
+                    className={cn("mt-4 grid gap-3 rounded-[14px] border border-warning/40 bg-warning/10 p-4", transferCodeActionRequired && "border-0 bg-transparent p-0")}
                   >
                     <input
                       type="hidden"
@@ -1535,7 +1536,7 @@ export function PreviewCheckout({
                       action.action === "provide_epp_code" &&
                       ["required", "failed"].includes(action.status)) && (
                         <>
-                          <Label htmlFor="migration-replacement-transfer-code">
+                          <Label htmlFor="migration-replacement-transfer-code" className={transferCodeActionRequired ? "sr-only" : undefined}>
                             {t("checkoutMigrationTransferCodeReplacement")}
                           </Label>
                           <Input
@@ -1543,6 +1544,8 @@ export function PreviewCheckout({
                             name="transferCode"
                             type="password"
                             autoComplete="off"
+                            placeholder={transferCodeActionRequired ? t("checkoutMigrationTransferCodeReplacement") : undefined}
+                            className={transferCodeActionRequired ? "h-12" : undefined}
                             required
                           />
                         </>
@@ -1566,7 +1569,7 @@ export function PreviewCheckout({
                       {transferCodePending && (
                         <Loader2 className="size-4 animate-spin" aria-hidden />
                       )}
-                      {t("checkoutMigrationTransferCodeSubmit")}
+                      {transferCodeActionRequired ? t("checkoutTransferActionSubmit") : t("checkoutMigrationTransferCodeSubmit")}
                     </Button>
                     {transferCodeState.message && (
                       <p
@@ -1650,19 +1653,23 @@ export function PreviewCheckout({
             locale={locale}
             primaryAction={presentation.primaryAction}
             handlers={primaryActionHandlers}
+            lifecycle={{
+              status: paymentLifecycleStatusLabel,
+              orderReference: acceptedOrderId == null ? null : String(acceptedOrderId),
+            }}
           />}
           </div>
         )}
 
         {presentation.phase === "address" && step === "domain" && (
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-[18px]">
-          <Card data-checkout-main-card className="relative gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
-            <CardHeader className="flex-row items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
+          <Card data-checkout-main-card className="relative scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
+            <CardHeader className="!flex items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
               <CardTitle>
                 <h2 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
-                  {t("checkoutDomainTitle")}
+                  {t("checkoutStepDomain")}
                 </h2>
-                <p className="mt-1 max-w-xl text-sm font-normal leading-relaxed text-muted-foreground">{t("checkoutDomainHeroDescription")}</p>
+                <p className="mt-1 max-w-xl text-sm font-normal leading-relaxed text-muted-foreground">{addressSheetDescription}</p>
               </CardTitle>
               <Badge className="ml-auto min-h-6 shrink-0 gap-1 bg-blue-500/10 px-2 text-[0.625rem] font-bold text-blue-700 hover:bg-blue-500/10 dark:text-blue-300">
                 <Globe2 className="size-[15px]" aria-hidden />
@@ -1767,7 +1774,7 @@ export function PreviewCheckout({
                       ) : null}
                     </div>
                   </div>
-                  <Button type="submit" className="min-h-11 rounded-[11px] px-4 min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
+                  <Button type="submit" className="h-11 min-h-11 rounded-[11px] px-4 shadow-sm min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
                     {checkPending || extensionCheckPending ? <Loader2 className="size-[18px] animate-spin" aria-hidden /> : <Search className="size-[18px]" aria-hidden />}
                     {domainMode === "existing_domain" ? t("checkoutDomainCheckConnection") : t("checkoutCheckDomain")}
                   </Button>
@@ -1852,8 +1859,32 @@ export function PreviewCheckout({
                     )}
                   </div>
                 )}
-                {domainMode === "existing_domain" &&
-                  migrationReadinessLedger}
+                {domainMode === "existing_domain" && checkAppliesToCurrentInput && (
+                  <Alert
+                    className={cn(
+                      "mt-2 rounded-[13px] border",
+                      checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked
+                        ? "border-success/30 bg-success/10 text-success"
+                        : "border-warning/30 bg-warning/10 text-warning",
+                    )}
+                    role={checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked ? "status" : "alert"}
+                  >
+                    {checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked
+                      ? <CheckCircle2 className="size-4" aria-hidden />
+                      : <CircleAlert className="size-4" aria-hidden />}
+                    <AlertTitle>
+                      {migrationTransferBlocked || migrationReleaseBlocked
+                        ? t("checkoutMigrationTransferBlockedTitle")
+                        : checkState.migrationPreflightOnly
+                          ? t("checkoutMigrationPreflightComplete")
+                          : checkState.migrationReadiness === "ready_automatic"
+                            ? t("checkoutMigrationReadyAutomatic")
+                            : t("checkoutMigrationUnsupported")}
+                    </AlertTitle>
+                    <AlertDescription>{checkState.message}</AlertDescription>
+                  </Alert>
+                )}
+                {domainMode === "existing_domain" && migrationReadinessLedger}
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
                   !migrationTransferBlocked &&
@@ -1865,7 +1896,7 @@ export function PreviewCheckout({
                       cloudflareSourceDomain === normalizedDomainValue
                     )
                   ) && (
-                  <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
+                  <div className="mt-[14px] grid gap-4 rounded-[14px] border bg-card p-[14px]">
                     {!cloudflareSourceAuthorization &&
                       availableMigrationSourceMethods.length > 0 && (
                         <fieldset className="grid gap-3">
@@ -1884,7 +1915,7 @@ export function PreviewCheckout({
                             .map(([value, label]) => (
                               <label
                                 key={value}
-                                className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3"
+                                className="flex cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm"
                               >
                                 <input
                                   type="radio"
@@ -1912,7 +1943,7 @@ export function PreviewCheckout({
                     {migrationSourceMethod === "cloudflare_api_v1" && (
                       cloudflareSourceOAuthEnabled ? (
                         cloudflareSourceAuthorization ? (
-                          <Alert role="status">
+                          <Alert role="status" className="rounded-[13px] border-success/30 bg-success/10 text-success">
                             <AlertTitle>{t("checkoutMigrationCloudflareConnectedTitle")}</AlertTitle>
                             <AlertDescription>{t("checkoutMigrationCloudflareConnectedDescription")}</AlertDescription>
                             <input
@@ -1925,7 +1956,7 @@ export function PreviewCheckout({
                           <Button
                             type="submit"
                             form="checkout-cloudflare-source-connect-form"
-                            className="w-fit"
+                            className="min-h-11 w-fit bg-brand text-brand-foreground hover:bg-brand/90"
                           >
                             {t("checkoutMigrationCloudflareConnect")}
                           </Button>
@@ -2082,53 +2113,6 @@ export function PreviewCheckout({
                   </Alert>
                 )}
 
-              {domainMode === "existing_domain" && checkAppliesToCurrentInput && (
-                <>
-                <Alert
-                  variant={
-                    checkState.ok && !migrationTransferBlocked
-                      ? "default"
-                      : "destructive"
-                  }
-                  role={
-                    checkState.ok && !migrationTransferBlocked
-                      ? "status"
-                      : "alert"
-                  }
-                >
-                  <Info className="size-4" aria-hidden />
-                  <AlertTitle>
-                    {migrationTransferBlocked
-                      ? t("checkoutMigrationTransferBlockedTitle")
-                      : checkState.migrationPreflightOnly
-                      ? t("checkoutMigrationPreflightComplete")
-                      : checkState.migrationReadiness === "ready_automatic"
-                      ? t("checkoutMigrationReadyAutomatic")
-                      : t("checkoutMigrationUnsupported")}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {checkState.message}
-                    {checkState.migrationPublicEvidence && (
-                      <span className="mt-2 block text-sm">
-                        {t("checkoutMigrationPublicEvidence", {
-                          registrar: checkState.migrationPublicEvidence.registrar ?? t("checkoutUnknown"),
-                          provider:
-                            checkState.migrationPublicEvidence.probableDnsProvider ??
-                            t("checkoutUnknown"),
-                          nameservers:
-                            checkState.migrationPublicEvidence.authoritativeNameservers.join(", ") ||
-                            t("checkoutUnknown"),
-                          dnssec: checkState.migrationPublicEvidence.dnssecDsPresent
-                            ? t("checkoutMigrationDnssecPresent")
-                            : t("checkoutMigrationDnssecAbsent"),
-                        })}
-                      </span>
-                    )}
-                  </AlertDescription>
-                </Alert>
-                </>
-              )}
-
               {primaryDomainUnavailable && (
                 <DomainSuggestions
                   loading={suggestionsPending}
@@ -2170,75 +2154,86 @@ export function PreviewCheckout({
 
         {presentation.phase === "review" && step === "review" && (
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-[18px]">
-          <div className="relative min-w-0 overflow-hidden rounded-[22px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20">
+          <div className="relative scroll-mb-28 min-w-0 overflow-hidden rounded-[17px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
           <Card data-checkout-main-card className="gap-0 rounded-none border-0 py-0 shadow-none">
-            <CardHeader className="flex-row items-start gap-3 border-b bg-transparent px-5 py-5 min-[880px]:px-[26px] min-[880px]:py-6">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-                <UserRound className="size-4" aria-hidden />
-              </span>
+            <CardHeader className="!flex items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
               <CardTitle>
                 <h2 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
-                  {t("checkoutStepPayment")}
+                  {t("checkoutReviewSheetTitle", { site: savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? t("checkoutLaunchWorkspace") })}
                 </h2>
-                <p className="mt-1 text-xs font-normal text-muted-foreground">{t("checkoutReviewHeroDescription")}</p>
+                <p className="mt-1 max-w-xl text-sm font-normal leading-relaxed text-muted-foreground">{t("checkoutReviewSheetDescription")}</p>
               </CardTitle>
-              <Badge variant="outline" className="ml-auto hidden shrink-0 text-[0.625rem] min-[360px]:inline-flex">
+              <Badge className="ml-auto hidden min-h-6 shrink-0 gap-1 bg-success/10 px-2 text-[0.625rem] font-bold text-success hover:bg-success/10 min-[360px]:inline-flex">
+                <Check className="size-[15px]" aria-hidden />
                 {t("checkoutKnownDetailsLabel")}
               </Badge>
             </CardHeader>
-            <CardContent className="grid gap-5 px-5 py-5 min-[880px]:px-[26px] min-[880px]:py-[22px]">
-              <div className="divide-y border-y" aria-label={t("checkoutKnownDetailsLabel")}>
-                <ConfirmationRow
-                  group="contact"
-                  icon={UserRound}
-                  title={t("checkoutContactGroup")}
-                  lines={[
-                    `${details.firstName} ${details.lastName}`.trim(),
-                    customerEmail,
-                    `${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`.trim(),
-                  ]}
-                  attention={!details.firstName || !details.lastName || !details.phoneSubscriberNumber}
-                  onEdit={() => openDetailsEditor("contact")}
-                  t={t}
-                />
+            <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[22px] min-[560px]:pt-[22px]">
+              <div className="border-y" aria-label={t("checkoutKnownDetailsLabel")}>
                 <ConfirmationRow
                   group="company"
                   icon={Building2}
                   title={t("checkoutCompanyGroup")}
-                  lines={[
-                    details.registeredBusinessName || details.intendedCompanyName || t("checkoutNotProvided"),
-                    details.kvkNumber ? `${t("checkoutKvkNumber")}: ${details.kvkNumber}` : "",
+                  summary={details.registeredBusinessName || details.intendedCompanyName || t("checkoutNotProvided")}
+                  details={[
+                    { label: t("checkoutPartyClassification"), value: details.partyType === "registered_business" ? t("checkoutPartyRegistered") : t("checkoutPartyInFormation") },
+                    { label: t("checkoutKvkNumber"), value: details.kvkNumber || t("checkoutNotProvided") },
                   ]}
                   attention={!details.registeredBusinessName && !details.intendedCompanyName}
-                  onEdit={() => openDetailsEditor("company")}
+                  onEdit={(trigger) => openDetailsEditor("company", trigger)}
+                  t={t}
+                />
+                <ConfirmationRow
+                  group="contact"
+                  icon={UserRound}
+                  title={t("checkoutContactGroup")}
+                  summary={`${details.firstName} ${details.lastName}`.trim() || t("checkoutNotProvided")}
+                  details={[
+                    { label: t("checkoutReviewDetailEmail"), value: customerEmail },
+                    { label: t("checkoutPhoneTitle"), value: `${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`.trim() || t("checkoutNotProvided") },
+                  ]}
+                  attention={!details.firstName || !details.lastName || !details.phoneSubscriberNumber}
+                  onEdit={(trigger) => openDetailsEditor("contact", trigger)}
                   t={t}
                 />
                 <ConfirmationRow
                   group="address"
                   icon={MapPin}
                   title={t("checkoutAddressGroup")}
-                  lines={[
-                    `${details.street} ${details.number}${details.suffix ?? ""}`.trim(),
-                    `${details.zipcode} ${details.city}`.trim(),
-                    details.country,
+                  summary={`${details.street} ${details.number}${details.suffix ?? ""}, ${details.zipcode} ${details.city}`.trim()}
+                  details={[
+                    { label: t("checkoutReviewDetailAddress"), value: `${details.street} ${details.number}${details.suffix ?? ""}, ${details.zipcode} ${details.city}`.trim() || t("checkoutNotProvided"), full: true },
+                    { label: t("checkoutReviewDetailCountry"), value: details.country || t("checkoutNotProvided") },
                   ]}
                   attention={!details.street || !details.number || !details.zipcode || !details.city || !details.country}
-                  onEdit={() => openDetailsEditor("address")}
+                  onEdit={(trigger) => openDetailsEditor("address", trigger)}
                   t={t}
                 />
-                <section data-review-context="account" className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] items-start gap-2.5 py-[18px]">
+                <section data-review-context="account" className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 py-[18px]">
                   <span className="grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success">
                     <Globe2 className="size-4" aria-hidden />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-xs font-semibold">{t("checkoutAccountWebsiteGroup")}</h2>
-                    <p className="mt-1 [overflow-wrap:anywhere] text-xs text-muted-foreground">{customerEmail}</p>
-                    <p className="[overflow-wrap:anywhere] text-xs text-muted-foreground">{selectedDomain ?? domainValue}</p>
-                    <p className="mt-1 text-[0.6875rem] text-muted-foreground">{t("checkoutAccountWebsiteAuthority")}</p>
+                    <h3 className="text-sm font-bold text-foreground">{t("checkoutAccountWebsiteGroup")}</h3>
+                    <p className="mt-1 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{selectedDomain ?? domainValue}</p>
                   </div>
+                  <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={() => setStep("domain")} aria-label={t("checkoutEditWebsiteAddress")}>
+                    <Pencil className="size-3.5" aria-hidden />
+                    <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
+                  </Button>
+                  <dl className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
+                    <ReviewDetail label={t("checkoutReviewDetailDomain")} value={selectedDomain ?? domainValue} />
+                    <ReviewDetail label={t("checkoutReviewDetailAccountEmail")} value={customerEmail} />
+                    <ReviewDetail label={t("checkoutReviewDetailAuthority")} value={t("checkoutAccountWebsiteAuthority")} full />
+                  </dl>
                 </section>
               </div>
-              <Sheet open={detailsEditorOpen} onOpenChange={setDetailsEditorOpen}>
+              <Sheet open={detailsEditorOpen} onOpenChange={(open) => {
+                setDetailsEditorOpen(open)
+                if (!open) {
+                  window.setTimeout(() => detailsEditorTriggerRef.current?.focus(), 0)
+                }
+              }}>
                 <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-full sm:max-w-xl sm:rounded-none sm:border-l">
                   <SheetHeader className="border-b px-5">
                     <SheetTitle>
@@ -2636,23 +2631,24 @@ export function PreviewCheckout({
               </Sheet>
             </CardContent>
           </Card>
-          {savedProfile && <Card data-checkout-main-card className="gap-0 rounded-none border-x-0 border-b-0 py-0 shadow-none">
-            <CardHeader className="flex-row items-center gap-3 border-b bg-transparent px-5 py-5 min-[880px]:px-[26px]">
+          {savedProfile && <section data-checkout-main-card className="border-t">
+            <div className="flex items-center gap-3 px-[17px] pb-0 pt-[17px] min-[560px]:px-[26px] min-[560px]:pt-[18px]">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
                 <CreditCard className="size-4" aria-hidden />
               </span>
-              <CardTitle>
-                <h2 className="text-lg font-semibold leading-tight tracking-tight min-[880px]:text-xl">
+              <div>
+                <h2 className="text-[15px] font-bold leading-tight tracking-[-0.012em]">
                   {t("checkoutSubscriptionOverviewTitle")}
                 </h2>
-              </CardTitle>
-              <Badge variant="outline" className="ml-auto shrink-0 text-[0.625rem]">
+                <p className="mt-1 text-xs leading-snug text-muted-foreground">{t("checkoutSubscriptionOverviewDescription")}</p>
+              </div>
+              <Badge variant="outline" className="ml-auto hidden shrink-0 text-[0.625rem] min-[420px]:inline-flex">
                 {billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
               </Badge>
-            </CardHeader>
-            <CardContent className="grid min-w-0 gap-5 px-5 py-5 [&>*]:min-w-0 min-[880px]:px-[26px] min-[880px]:pb-[26px]">
-              <fieldset className="grid min-w-0 gap-2">
-                <legend className="text-sm font-semibold">{t("checkoutPlanLegend")}</legend>
+            </div>
+            <div className="grid min-w-0 gap-5 px-[17px] pb-[17px] pt-3 [&>*]:min-w-0 min-[560px]:px-[26px] min-[560px]:pb-[22px]">
+              <fieldset className="ml-10 grid min-w-0 gap-2">
+                <legend className="sr-only">{t("checkoutPlanLegend")}</legend>
                 <ToggleGroup
                   type="single"
                   value={billingPeriod}
@@ -2660,7 +2656,7 @@ export function PreviewCheckout({
                     if (acceptedOrderId == null && (value === "annual" || value === "monthly")) setBillingPeriod(value)
                   }}
                   variant="outline"
-                  className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2"
+                  className="grid w-full grid-cols-1 gap-[9px] min-[420px]:grid-cols-2"
                 >
                 {(acceptedOrderId == null ? ["annual", "monthly"] as const : [billingPeriod] as const).map((period) => {
                   const option = quotes?.[period]?.quote
@@ -2688,7 +2684,7 @@ export function PreviewCheckout({
                             option?.currency ?? catalog.currency,
                           )}
                         </span>
-                        <span className="text-[0.6875rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>
+                        <span className="text-[0.6875rem] text-muted-foreground">{period === "annual" ? t("checkoutPlanPerYear") : t("checkoutPlanPerMonth")} · {t("checkoutPriceExVat")}</span>
                       </span>
                     </ToggleGroupItem>
                   )
@@ -2696,33 +2692,8 @@ export function PreviewCheckout({
                 </ToggleGroup>
               </fieldset>
 
-              <div className="-mx-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border-y bg-muted/40 px-3 py-2 min-[880px]:-mx-4 min-[880px]:px-4">
-                <span className="min-w-0">
-                  <span className="block text-xs font-medium text-muted-foreground">{t("checkoutSummaryDueNowInclVat")}</span>
-                  <strong className="mt-0.5 block text-xl tracking-tight">{money(locale, grossAmountMinor, catalog.currency)}</strong>
-                  <span className="block text-[10px] text-muted-foreground">{t("checkoutSummaryVat")}: {money(locale, vatAmountMinor, catalog.currency)}</span>
-                </span>
-                {selectedQuote && <span className="max-w-36 text-right text-xs text-muted-foreground">{t("checkoutSummaryFutureSubscription")}: <strong className="block text-foreground">{money(locale, selectedQuote.quote.futureSubscriptionGrossMinor, selectedQuote.quote.currency)}</strong></span>}
-              </div>
-
-              <div className="flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-2">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50">
-                  <Globe2 className="size-4" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <strong className="block [overflow-wrap:anywhere] text-xs font-semibold sm:text-sm">
-                    {selectedDomain ?? domainValue} · {savedProfile.contractingPartyName}
-                  </strong>
-                  <span className="block text-[10px] leading-tight text-muted-foreground">
-                    {t("checkoutCompactSummaryDescription")}
-                  </span>
-                </span>
-                <Button type="button" variant="link" size="sm" className="h-auto min-h-11 shrink-0 px-1 text-xs" onClick={() => setStep("domain")}>
-                  {t("checkoutEditWebsiteAddress")}
-                </Button>
-              </div>
               {selectedQuote?.quote.domainMode === "existing_domain" && selectedQuote.quote.transferRenewalEffect && (
-                <div className="grid gap-1 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+                <div className="ml-10 grid gap-1 rounded-[12px] border bg-muted/30 px-3 py-2 text-xs">
                   <strong>{t("checkoutTransferRenewalEffect")}</strong>
                   <span className="text-muted-foreground">
                     {selectedQuote.quote.transferRenewalEffect === "unchanged"
@@ -2774,7 +2745,7 @@ export function PreviewCheckout({
                     value={cloudflareSourceAuthorization}
                   />
                 )}
-                <input type="hidden" name="previewApproval" value="accepted" />
+                <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />
                 <input type="hidden" name="expectedTermsVersion" value={termsVersion} />
@@ -2786,32 +2757,55 @@ export function PreviewCheckout({
                 />
               </form>
 
-              <div className="grid min-w-0 gap-2 border-t pt-3">
-                {legalSubmitRequested && !(businessUseAccepted && termsAccepted) && (
-                  <Alert variant="destructive" role="alert">
+              <div className="grid min-w-0 gap-2 border-t pt-[18px]">
+                <div className="mb-1">
+                  <h3 className="text-sm font-bold text-foreground">{t("checkoutDeclarationsRequiredTitle")}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("checkoutDeclarationsIntro")}</p>
+                </div>
+                {legalSubmitRequested && !(businessUseAccepted && termsAccepted && previewApprovalAccepted) && (
+                  <Alert id="checkout-declarations-error" variant="destructive" role="alert" tabIndex={-1} className="border-destructive/35 bg-destructive/15">
                     <CircleAlert className="size-4" aria-hidden />
-                    <AlertTitle>{t("checkoutDeclarationsRequiredTitle")}</AlertTitle>
+                    <AlertTitle>{t("checkoutRequiredLabel")}</AlertTitle>
                     <AlertDescription>{t("checkoutDeclarationsRequiredDescription")}</AlertDescription>
                   </Alert>
                 )}
-                <div className="flex min-w-0 items-start gap-2 text-xs leading-tight">
+                <AcceptanceCheckbox
+                  id="checkout-business-use"
+                  checked={businessUseAccepted}
+                  onCheckedChange={setBusinessUseAccepted}
+                  title={t("checkoutBusinessPurchaseTitle")}
+                  label={businessUseDeclarationText}
+                  help={t("checkoutBusinessUseHelp")}
+                  requiredLabel={t("checkoutRequiredLabel")}
+                  describedBy={legalSubmitRequested && !businessUseAccepted ? "checkout-declarations-error" : undefined}
+                  invalid={legalSubmitRequested && !businessUseAccepted}
+                />
+                <div className={cn("flex min-w-0 items-start gap-3 rounded-xl px-2 py-3 text-sm leading-snug transition-colors hover:bg-muted/30", legalSubmitRequested && !termsAccepted && "bg-destructive/10 hover:bg-destructive/10")}>
                   <Checkbox
                     id="checkout-terms"
                     aria-labelledby="checkout-terms-label"
+                    aria-describedby={legalSubmitRequested && !termsAccepted ? "checkout-declarations-error" : undefined}
+                    aria-invalid={legalSubmitRequested && !termsAccepted ? true : undefined}
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-                    className="mt-0.5"
+                    className="mt-0.5 size-5 rounded-md"
                   />
                   <span id="checkout-terms-label" className="min-w-0 break-words">
-                    {t.rich("checkoutTermsAcceptanceLabel", {
-                      terms: (chunks) => (
-                        <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
-                          {chunks}
-                        </a>
-                      ),
-                      version: termsVersion,
-                    })}
-                    <span className="mt-1 block text-[10px] leading-tight text-muted-foreground">
+                    <strong className="flex flex-wrap items-center gap-1.5 font-semibold text-foreground">
+                      {t("checkoutTermsPrivacyTitle")}
+                      <Badge variant="secondary" className="min-h-5 px-1.5 text-[0.5625rem]">{t("checkoutRequiredLabel")}</Badge>
+                    </strong>
+                    <span className="mt-1 block text-xs leading-relaxed text-foreground">
+                      {t.rich("checkoutTermsAcceptanceLabel", {
+                        terms: (chunks) => (
+                          <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
+                            {chunks}
+                          </a>
+                        ),
+                        version: termsVersion,
+                      })}
+                    </span>
+                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                       {t.rich("checkoutPrivacyDisclosure", {
                         privacy: (chunks) => (
                           <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
@@ -2823,16 +2817,16 @@ export function PreviewCheckout({
                   </span>
                 </div>
                 <AcceptanceCheckbox
-                  id="checkout-business-use"
-                  checked={businessUseAccepted}
-                  onCheckedChange={setBusinessUseAccepted}
-                  label={businessUseDeclarationText}
-                  help={t("checkoutBusinessUseHelp")}
+                  id="checkout-preview-approval"
+                  checked={previewApprovalAccepted}
+                  onCheckedChange={setPreviewApprovalAccepted}
+                  title={t("checkoutWebsiteApprovalTitle")}
+                  label={t("checkoutPreviewApprovalLabel")}
+                  help={t("checkoutPreviewApprovalHelp")}
+                  requiredLabel={t("checkoutRequiredLabel")}
+                  describedBy={legalSubmitRequested && !previewApprovalAccepted ? "checkout-declarations-error" : undefined}
+                  invalid={legalSubmitRequested && !previewApprovalAccepted}
                 />
-                <div className="flex min-w-0 items-start gap-2 rounded-md border bg-muted/40 p-2 text-[10px] leading-tight text-muted-foreground">
-                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden />
-                  <span><strong className="block font-medium text-foreground">{t("checkoutPreviewApprovalLabel")}</strong>{t("checkoutPreviewApprovalHelp")}</span>
-                </div>
               </div>
 
               {paymentSubmitRequested && paymentState.message && (
@@ -2854,8 +2848,12 @@ export function PreviewCheckout({
                   <AlertDescription>{paymentState.message}</AlertDescription>
                 </Alert>
               )}
-            </CardContent>
-          </Card>}
+            </div>
+          </section>}
+          <div className="flex items-start gap-2 border-t bg-muted/45 px-[17px] py-3.5 text-xs leading-relaxed text-muted-foreground min-[560px]:px-[26px] min-[560px]:py-4">
+            <LockKeyhole className="mt-0.5 size-[15px] shrink-0" aria-hidden />
+            <span>{t("checkoutSignedQuoteNote")}</span>
+          </div>
           </div>
           <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
@@ -2884,6 +2882,40 @@ export function PreviewCheckout({
         handlers={primaryActionHandlers}
       />}
     </main>
+  )
+}
+
+function LifecycleRow({
+  icon: Icon,
+  status,
+  title,
+  detail,
+  state,
+}: {
+  icon: React.ElementType
+  status: "complete" | "active" | "pending" | "action_required" | "review" | string
+  title: string
+  detail: string
+  state: string
+}) {
+  const iconClass = status === "complete"
+    ? "bg-success/10 text-success"
+    : status === "action_required" || status === "review"
+      ? "bg-warning/10 text-warning"
+      : status === "active"
+        ? "bg-brand text-brand-foreground"
+        : "bg-muted text-muted-foreground"
+  return (
+    <li className="grid min-h-[62px] min-w-0 grid-cols-[30px_minmax(0,1fr)] items-center gap-x-[11px] gap-y-0 border-b px-[13px] py-2.5 last:border-b-0 min-[560px]:grid-cols-[30px_minmax(0,1fr)_auto]">
+      <span className={cn("grid size-[30px] place-items-center rounded-[9px]", iconClass)}>
+        <Icon className={status === "active" && Icon === Loader2 ? "size-[15px] animate-spin" : "size-[15px]"} aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <strong className="block text-xs leading-snug">{title}</strong>
+        <span className="mt-0.5 block text-[0.6875rem] leading-snug text-muted-foreground">{detail}</span>
+      </span>
+      <span className="col-start-2 text-[0.625rem] font-bold text-muted-foreground min-[560px]:col-start-auto min-[560px]:text-right">{state}</span>
+    </li>
   )
 }
 
@@ -2976,7 +3008,7 @@ function PreviewCheckoutStepper({
 }: {
   step: CheckoutStep
   highestReachedStep: number
-  onStepSelect: (step: CheckoutStep) => void
+  onStepSelect?: (step: CheckoutStep) => void
 }) {
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; description: string; icon: React.ElementType }> = [
@@ -3044,26 +3076,40 @@ function AcceptanceCheckbox({
   id,
   checked,
   onCheckedChange,
+  title,
   label,
   help,
+  requiredLabel,
+  describedBy,
+  invalid = false,
 }: {
   id: string
   checked: boolean
   onCheckedChange: (checked: boolean) => void
+  title: string
   label: string
   help: string
+  requiredLabel: string
+  describedBy?: string
+  invalid?: boolean
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-xl px-2 py-3 text-sm leading-snug transition-colors hover:bg-muted/30">
+    <div className={cn("flex min-w-0 items-start gap-3 rounded-xl px-2 py-3 text-sm leading-snug transition-colors hover:bg-muted/30", invalid && "bg-destructive/10 hover:bg-destructive/10")}>
       <Checkbox
         id={id}
         aria-labelledby={`${id}-label`}
+        aria-describedby={describedBy}
+        aria-invalid={invalid ? true : undefined}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
         className="mt-0.5 size-5 rounded-md"
       />
       <span id={`${id}-label`} className="min-w-0 break-words">
-        {label}
+        <strong className="flex flex-wrap items-center gap-1.5 font-semibold text-foreground">
+          {title}
+          <Badge variant="secondary" className="min-h-5 px-1.5 text-[0.5625rem]">{requiredLabel}</Badge>
+        </strong>
+        <span className="mt-1 block text-xs leading-relaxed text-foreground">{label}</span>
         <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{help}</span>
       </span>
     </div>
@@ -3074,7 +3120,8 @@ function ConfirmationRow({
   group,
   icon: Icon,
   title,
-  lines,
+  summary,
+  details,
   attention,
   onEdit,
   t,
@@ -3082,32 +3129,41 @@ function ConfirmationRow({
   group: DetailsGroup
   icon: React.ElementType
   title: string
-  lines: string[]
+  summary: string
+  details: Array<{ label: string; value: string; full?: boolean }>
   attention: boolean
-  onEdit: () => void
+  onEdit: (trigger: HTMLElement) => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
   return (
-    <section data-details-group={group} className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 py-[18px] transition-colors hover:bg-muted/25 focus-within:bg-muted/25">
+    <section data-details-group={group} className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 border-b py-[18px] transition-colors hover:bg-muted/25 focus-within:bg-muted/25">
       <span className={cn("grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success", attention && "bg-destructive/10 text-destructive")}>
         <Icon className="size-4" aria-hidden />
       </span>
       <div className="grid min-w-0 gap-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <h2 className="text-sm font-bold text-foreground">{title}</h2>
-          {attention && <Badge variant="outline" className="border-warning/50 bg-warning/10 text-[0.625rem] text-foreground">{t("checkoutDetailsMissing")}</Badge>}
-        </div>
-        <div className="grid min-w-0 gap-0.5 text-xs leading-relaxed text-muted-foreground">
-          {lines.filter(Boolean).map((line) => (
-            <span key={line} className="[overflow-wrap:anywhere]">{line}</span>
-          ))}
-        </div>
-      </div>
-      <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={onEdit} aria-label={`${t("checkoutEdit")} ${title}`}>
+         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+           <h3 className="text-sm font-bold text-foreground">{title}</h3>
+           {attention && <Badge variant="outline" className="border-warning/50 bg-warning/10 text-[0.625rem] text-foreground">{t("checkoutDetailsMissing")}</Badge>}
+         </div>
+         <p className="min-w-0 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{summary}</p>
+       </div>
+      <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={(event) => onEdit(event.currentTarget)} aria-label={`${t("checkoutEdit")} ${title}`}>
         <Pencil className="size-3.5" aria-hidden />
-        <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
-      </Button>
-    </section>
+         <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
+       </Button>
+       <dl className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
+         {details.map((detail) => <ReviewDetail key={`${detail.label}-${detail.value}`} {...detail} />)}
+       </dl>
+     </section>
+   )
+ }
+
+function ReviewDetail({ label, value, full = false }: { label: string; value: string; full?: boolean }) {
+  return (
+    <div className={cn("min-w-0", full && "min-[560px]:col-span-2")}>
+      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 [overflow-wrap:anywhere] text-xs leading-relaxed text-foreground">{value || "—"}</dd>
+    </div>
   )
 }
 

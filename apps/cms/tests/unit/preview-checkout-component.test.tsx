@@ -204,7 +204,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     />)
 
     expect(screen.getByText("checkoutTransferRenewalEffect")).toBeTruthy()
-    expect(screen.getByText("checkoutTransferRenewalEffectUnchanged")).toBeTruthy()
+    expect(screen.getAllByText("checkoutTransferRenewalEffectUnchanged")).toHaveLength(2)
     expect(screen.getByText("checkoutDomainRenewalExplanationUnchanged")).toBeTruthy()
     expect(screen.queryByText(
       "De domeintransfer wijzigt de huidige verlengdatum niet.",
@@ -276,7 +276,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
     expect(screen.getAllByText("owner@example.test")).toHaveLength(2)
-    fireEvent.click(screen.getAllByRole("button", { name: /^checkoutEdit / })[0]!)
+    fireEvent.click(screen.getByRole("button", {
+      name: "checkoutEdit checkoutContactGroup",
+    }))
     await screen.findByRole("dialog")
     expect((screen.getByLabelText("checkoutFirstName") as HTMLInputElement).value).toBe("Ada")
     expect((screen.getByLabelText("checkoutRegistrantEmail") as HTMLInputElement).readOnly).toBe(true)
@@ -308,6 +310,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(paymentForm?.querySelector('[name="firstName"]')).toBeNull()
     expect((paymentForm?.querySelector('[name="checkoutQuoteToken"]') as HTMLInputElement).value)
       .toBe("signed-annual")
+    expect(screen.getAllByRole("checkbox")).toHaveLength(3)
+    const previewApproval = paymentForm?.querySelector('[name="previewApproval"]') as HTMLInputElement
+    expect(previewApproval.value).toBe("")
+    fireEvent.click(container.querySelector("#checkout-preview-approval")!)
+    expect(previewApproval.value).toBe("accepted")
 
     fireEvent.click(screen.getByRole("button", { name: "checkoutStepDomain" }))
     const domainHeading = await screen.findByRole("heading", { name: "checkoutDomainHeroTitle" })
@@ -401,7 +408,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(preflightMode)
     expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
     expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeNull()
-    expect(screen.getByText("checkoutDomainModeExistingPreflight")).toBeTruthy()
+    expect(screen.getAllByText("checkoutDomainModeExistingPreflight").length).toBeGreaterThanOrEqual(1)
     fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
       target: { value: "example.nl" },
     })
@@ -409,14 +416,13 @@ describe("PreviewCheckout Phase 3 flow", () => {
       document.querySelector<HTMLFormElement>("#checkout-domain-form")!,
     )
     await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(1))
-    expect((await screen.findByRole("status")).textContent).toContain(
-      "ns1.example.test, ns2.example.test",
-    )
+    expect(await screen.findByText("ns1.example.test, ns2.example.test")).toBeTruthy()
     expect(
-      screen.getAllByText("checkoutMigrationPreflightNoOrder").every(
+      screen.queryAllByText("checkoutMigrationPreflightNoOrder").every(
         (element) => (element as HTMLButtonElement).disabled,
       ),
     ).toBe(true)
+    expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
     expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
     expect(screen.queryByText("checkoutDomainAvailableDetail")).toBeNull()
     preflightOnly.unmount()
@@ -587,7 +593,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       "#checkout-domain-form",
     )!
     fireEvent.submit(form)
-    await screen.findByText("This transfer TLD is not released.")
+    await screen.findAllByText("This transfer TLD is not released.")
     expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
 
     fireEvent.submit(form)
@@ -600,7 +606,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       String(checkDomainAction.mock.calls[1]?.[1].get("requestToken") ?? ""),
     ))
     await waitFor(() =>
-      expect(screen.getByText("This transfer TLD is not released.")).toBeTruthy())
+      expect(screen.getAllByText("This transfer TLD is not released.").length).toBeGreaterThanOrEqual(1))
     expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
   })
 
@@ -929,7 +935,9 @@ describe("PreviewCheckout live lifecycle status", () => {
       await vi.advanceTimersByTimeAsync(1_500)
     })
     expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("checkoutPaymentReturnCompleted")).toBeTruthy()
+    expect(screen.getByText(/checkoutProvisioningStatusTitle/)).toBeTruthy()
+    expect(screen.getByText("checkoutProvisioningStage_activation")).toBeTruthy()
+    expect(screen.getAllByText("checkoutProvisioningStageStatus_complete").length).toBeGreaterThanOrEqual(2)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000)
     })
