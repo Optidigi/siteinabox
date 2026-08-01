@@ -468,6 +468,24 @@ export function PreviewCheckout({
         ? migrationPreflight.releaseBlocked
         : false,
   )
+  const migrationReadinessLedger = activeMigrationPublicEvidence ? (
+    <div className="overflow-hidden rounded-[14px] border bg-card" aria-label={t("checkoutMigrationReadinessLabel")}>
+      {[
+        { label: t("checkoutMigrationRegistrarLabel"), detail: t("checkoutMigrationRegistrarDetail"), value: activeMigrationPublicEvidence.registrar ?? t("checkoutUnknown"), warning: false },
+        { label: t("checkoutMigrationDnsProviderLabel"), detail: activeMigrationPublicEvidence.authoritativeNameservers.join(", ") || t("checkoutUnknown"), value: activeMigrationPublicEvidence.probableDnsProvider ?? t("checkoutUnknown"), warning: false },
+        { label: t("checkoutMigrationDnssecLabel"), detail: activeMigrationPublicEvidence.dnssecDsPresent ? t("checkoutMigrationDnssecAction") : t("checkoutMigrationDnssecClear"), value: activeMigrationPublicEvidence.dnssecDsPresent ? t("checkoutMigrationDnssecPresent") : t("checkoutMigrationDnssecAbsent"), warning: activeMigrationPublicEvidence.dnssecDsPresent },
+        { label: t("checkoutMigrationTransferLockLabel"), detail: activeMigrationPublicEvidence.transferBlockers?.join(", ") || t("checkoutMigrationTransferClear"), value: migrationTransferBlocked || migrationReleaseBlocked ? t("checkoutMigrationTransferBlockedValue") : t("checkoutMigrationTransferClearValue"), warning: migrationTransferBlocked || migrationReleaseBlocked },
+      ].map((row) => (
+        <div key={row.label} className="grid min-h-[54px] grid-cols-[26px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 border-b px-3 py-2.5 last:border-b-0 min-[560px]:grid-cols-[26px_minmax(0,1fr)_auto]">
+          <span className={cn("grid size-[26px] place-items-center rounded-md", row.warning ? "bg-warning/10 text-warning" : "bg-success/10 text-success")}>
+            {row.warning ? <CircleAlert className="size-3.5" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
+          </span>
+          <span className="grid min-w-0 gap-0.5"><strong className="text-xs">{row.label}</strong><span className="[overflow-wrap:anywhere] text-[0.6875rem] leading-snug text-muted-foreground">{row.detail}</span></span>
+          <span className={cn("col-start-2 text-xs font-semibold min-[560px]:col-start-auto min-[560px]:text-right", row.warning && "text-warning")}>{row.value}</span>
+        </div>
+      ))}
+    </div>
+  ) : null
   const suggestionsApplyToCurrentInput = Boolean(
     suggestionsState.domain && suggestionsState.domain === normalizedDomainValue,
   )
@@ -1735,9 +1753,10 @@ export function PreviewCheckout({
                     value={migrationSourceMethod}
                   />
                 )}
-                <div className="relative">
-                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                  <Input
+                <div className="grid gap-2 min-[560px]:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                    <Input
                     id="checkout-domain"
                     name="domain"
                     type="text"
@@ -1755,14 +1774,19 @@ export function PreviewCheckout({
                       domainInputState === "error" && "border-destructive",
                     )}
                     required
-                  />
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    {checkPending ? (
-                      <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
-                    ) : domainInputState === "success" ? (
-                      <Check className="size-5 text-success" aria-hidden />
-                    ) : null}
+                    />
+                    <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                      {checkPending ? (
+                        <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+                      ) : domainInputState === "success" ? (
+                        <Check className="size-5 text-success" aria-hidden />
+                      ) : null}
+                    </div>
                   </div>
+                  <Button type="submit" className="min-h-12 rounded-xl px-5 min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
+                    {checkPending || extensionCheckPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Search className="size-4" aria-hidden />}
+                    {domainMode === "existing_domain" ? t("checkoutDomainCheckConnection") : t("checkoutCheckDomain")}
+                  </Button>
                 </div>
                 {domainMode === "new_registration" && (
                   <div className="grid gap-3 pt-2">
@@ -1781,14 +1805,14 @@ export function PreviewCheckout({
                           }
                         }}
                         variant="outline"
-                        className="flex flex-wrap justify-start gap-1.5"
+                        className="flex flex-wrap justify-start gap-1"
                       >
                         {supportedDomainExtensions.map((extension) => (
                           <ToggleGroupItem
                             key={extension}
                             value={extension}
                             aria-label={`.${extension}`}
-                            className="h-8 min-w-12 rounded-lg px-2 text-xs data-[state=on]:border-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:ring-1 data-[state=on]:ring-foreground"
+                            className="h-7 min-w-10 rounded-full px-2 text-[0.6875rem] data-[state=on]:border-foreground/50 data-[state=on]:bg-card data-[state=on]:text-foreground"
                           >
                             .{extension}
                           </ToggleGroupItem>
@@ -1796,14 +1820,22 @@ export function PreviewCheckout({
                       </ToggleGroup>
                     </fieldset>
                     {(extensionCheckPending || extensionResults.length > 0) && (
-                      <div className="overflow-hidden rounded-[14px] border bg-card" aria-live="polite">
+                      <div className="grid gap-2" aria-live="polite" aria-busy={extensionCheckPending}>
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <strong className="flex items-center gap-1.5 font-semibold">
+                            {extensionCheckPending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
+                            {extensionCheckPending ? t("checkoutDomainCheckingShort") : t("checkoutDomainLiveResults")}
+                          </strong>
+                          <span className="text-muted-foreground">{extensionCheckPending ? normalizedDomainValue.split(".")[0] : t("checkoutDomainCheckedNow")}</span>
+                        </div>
+                        <div className="overflow-hidden rounded-[14px] border bg-card">
                         {extensionCheckPending && selectedExtensions
                           .filter((extension) => !extensionResults.some((result) => result.domain === `${normalizedDomainValue.split(".")[0]}.${extension}`))
                           .map((extension) => (
-                          <div key={extension} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 border-b px-3 py-3 text-sm text-muted-foreground last:border-b-0 min-[560px]:grid-cols-[2rem_minmax(0,1fr)_auto]">
-                            <span className="grid size-6 shrink-0 place-items-center rounded-md bg-muted"><Loader2 className="size-3 animate-spin" aria-hidden /></span>
-                            <span className="min-w-0 flex-1 [overflow-wrap:anywhere] font-medium text-foreground">{normalizedDomainValue.split(".")[0]}.{extension}</span>
-                            <span className="col-span-2 pl-8 text-xs min-[360px]:col-auto min-[360px]:pl-0">{t("checkoutDomainCheckingShort")}</span>
+                          <div key={extension} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_76px]">
+                            <span className="grid min-w-0 gap-1.5"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-20 animate-pulse rounded-full bg-muted" /></span>
+                            <span className="h-4 w-14 animate-pulse rounded bg-muted" />
+                            <span className="col-span-2 h-10 animate-pulse rounded-lg bg-muted min-[560px]:col-auto" />
                           </div>
                         ))}
                         {[...extensionResults]
@@ -1812,35 +1844,30 @@ export function PreviewCheckout({
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
                           return (
-                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 border-b px-3 py-3 text-sm last:border-b-0 min-[560px]:grid-cols-[2rem_minmax(0,1fr)_auto]", checkedDomain === result.domain && "bg-brand/10 shadow-[inset_3px_0_0_var(--brand)]")}>
-                              <span className={cn("grid size-6 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", result.status === "unavailable" && "bg-destructive/10 text-destructive", result.status === "service_error" && "bg-destructive/10 text-destructive")}>
-                                {available
-                                  ? <CheckCircle2 className="size-3.5" aria-hidden />
-                                  : premium
-                                    ? <Sparkles className="size-3.5" aria-hidden />
-                                    : result.status === "unavailable"
-                                      ? <CircleX className="size-3.5" aria-hidden />
-                                      : <CircleAlert className="size-3.5" aria-hidden />}
-                              </span>
-                              <span className="grid min-w-0 flex-1 gap-0.5">
-                                <span className="flex min-w-0 items-start justify-between gap-2 font-semibold text-foreground">
-                                  <span className="min-w-0 [overflow-wrap:anywhere]">{result.domain}</span>
-                                  {available && result.quotes && <span className="shrink-0 text-right text-xs font-bold tabular-nums">{result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")}</span>}
+                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_76px]", checkedDomain === result.domain && "bg-brand/10 shadow-[inset_3px_0_0_var(--brand)]")}>
+                              <span className="grid min-w-0 gap-1.5">
+                                <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-foreground">{result.domain}</strong>
+                                <span className={cn("flex min-h-5 w-fit items-center gap-1 rounded-full px-2 text-[0.625rem] font-semibold", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", !available && !premium && "bg-muted text-muted-foreground")}>
+                                  {available ? <CheckCircle2 className="size-3" aria-hidden /> : premium ? <Sparkles className="size-3" aria-hidden /> : result.status === "unavailable" ? <CircleX className="size-3" aria-hidden /> : <CircleAlert className="size-3" aria-hidden />}
+                                  {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}
                                 </span>
-                                <span className="[overflow-wrap:anywhere] text-muted-foreground">{premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}</span>
                               </span>
+                              <span className="self-start pt-0.5 text-right text-xs font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : "—"}</span>
                               {available && (
-                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} className="col-span-2 min-h-11 w-full shrink-0 px-4 text-xs min-[560px]:col-auto min-[560px]:w-auto" onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "default" : "outline"} className="col-span-2 min-h-10 w-full shrink-0 !bg-card px-3 text-xs !text-foreground opacity-100 min-[560px]:col-auto min-[560px]:w-[76px]" onClick={() => selectExtensionResult(result)}>
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
                               )}
                             </div>
                           )
                         })}
+                        </div>
                       </div>
                     )}
                   </div>
                 )}
+                {domainMode === "existing_domain" &&
+                  migrationReadinessLedger}
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
                   !migrationTransferBlocked &&
@@ -2026,6 +2053,31 @@ export function PreviewCheckout({
                 </div>
               </form>
 
+              {domainMode === "new_registration" && checkedDomain && selectedQuote && (
+                <div className="flex min-w-0 items-center gap-3 rounded-[14px] border border-brand/35 bg-brand/10 p-3.5" data-selected-domain-summary>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground">
+                    <Globe2 className="size-5" aria-hidden />
+                  </span>
+                  <span className="grid min-w-0 flex-1 gap-0.5">
+                    <strong className="[overflow-wrap:anywhere] text-sm">{checkedDomain}</strong>
+                    <span className="text-xs text-muted-foreground">{t("checkoutExtensionAvailable")} · {selectedQuote.quote.domainSurchargeNetMinor > 0 ? money(locale, selectedQuote.quote.domainSurchargeNetMinor, selectedQuote.quote.currency) : t("checkoutDomainIncludedBadge")}</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      setCheckedDomain(null)
+                      setQuotes(null)
+                      window.setTimeout(() => domainFormRef.current?.querySelector<HTMLInputElement>("#checkout-domain")?.focus(), 0)
+                    }}
+                  >
+                    {t("checkoutChange")}
+                  </Button>
+                </div>
+              )}
+
               {domainResultKind === "error" && (
                 <Alert id="checkout-domain-error" variant="destructive" role="alert">
                   <CircleAlert className="size-4" aria-hidden />
@@ -2045,6 +2097,7 @@ export function PreviewCheckout({
                 )}
 
               {domainMode === "existing_domain" && checkAppliesToCurrentInput && (
+                <>
                 <Alert
                   variant={
                     checkState.ok && !migrationTransferBlocked
@@ -2087,6 +2140,7 @@ export function PreviewCheckout({
                     )}
                   </AlertDescription>
                 </Alert>
+                </>
               )}
 
               {primaryDomainUnavailable && (
