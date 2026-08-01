@@ -28,7 +28,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
@@ -1113,7 +1113,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[65rem] content-start gap-2 overflow-y-auto py-2.5 pr-6 pb-24 pl-2.5 [&>*]:min-w-0 sm:px-4 min-[880px]:h-auto min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-1 min-[880px]:pb-24">
+      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[65rem] content-start gap-3 overflow-y-auto py-3 pr-6 pb-24 pl-3 [&>*]:min-w-0 sm:px-4 min-[880px]:h-auto min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-4 min-[880px]:pb-24">
         {fulfilmentActive ? (
           <div className="grid gap-1 py-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -1551,18 +1551,18 @@ export function PreviewCheckout({
 
         {!fulfilmentActive && step === "domain" && (
           <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="gap-0 overflow-visible border-0 bg-transparent py-0 shadow-none min-[880px]:pt-6">
-            <CardHeader className="mb-2 gap-1 p-0">
+          <Card data-checkout-main-card className="gap-0 overflow-hidden py-0 shadow-xs">
+            <CardHeader className="flex-row items-center gap-2.5 border-b bg-muted/20 p-3 min-[880px]:p-4">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
+                <Globe2 className="size-4" aria-hidden />
+              </span>
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.35rem] font-semibold leading-tight tracking-tight outline-none min-[880px]:text-[1.625rem]">
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold leading-tight tracking-tight outline-none min-[880px]:text-xl">
                   {t("checkoutDomainTitle")}
                 </h1>
               </CardTitle>
-              <CardDescription className="max-w-2xl text-xs leading-snug">
-                {t("checkoutDomainStepDescription")}
-              </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 rounded-md border bg-card p-3 shadow-xs min-[880px]:p-4">
+            <CardContent className="grid gap-3 p-3 min-[880px]:p-4">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
                   <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
@@ -2008,22 +2008,18 @@ export function PreviewCheckout({
 
         {!fulfilmentActive && step === "details" && (
           <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="gap-0 overflow-visible border-0 bg-transparent py-0 shadow-none min-[880px]:pt-6">
-            <CardHeader className="mb-2 gap-1 p-0">
+          <Card data-checkout-main-card className="gap-0 overflow-hidden py-0 shadow-xs">
+            <CardHeader className="flex-row items-center gap-2.5 border-b bg-muted/20 p-3 min-[880px]:p-4">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
+                <UserRound className="size-4" aria-hidden />
+              </span>
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.35rem] font-semibold leading-tight tracking-tight outline-none min-[880px]:text-[1.625rem]">
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold leading-tight tracking-tight outline-none min-[880px]:text-xl">
                   {t("checkoutDetailsTitle")}
                 </h1>
               </CardTitle>
-              <CardDescription className="max-w-2xl text-xs leading-snug">
-                {t("checkoutDetailsDescription")}
-              </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 rounded-md border bg-card p-3 shadow-xs min-[880px]:p-4">
-              <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-xs text-muted-foreground">
-                <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
-                <span>{t("checkoutKnownDetailsLabel")}</span>
-              </div>
+            <CardContent className="grid gap-3 p-3 min-[880px]:p-4">
               <div className="divide-y overflow-hidden rounded-md border" aria-label={t("checkoutKnownDetailsLabel")}>
                 <ConfirmationRow
                   icon={UserRound}
@@ -2457,18 +2453,18 @@ export function PreviewCheckout({
 
         {!fulfilmentActive && step === "overview" && savedProfile && (
           <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="gap-0 overflow-visible border-0 bg-transparent shadow-none">
-            <CardHeader className="mb-2 gap-1 p-0">
+          <Card data-checkout-main-card className="gap-0 overflow-hidden py-0 shadow-xs">
+            <CardHeader className="flex-row items-center gap-2.5 border-b bg-muted/20 p-3 min-[880px]:p-4">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
+                <CreditCard className="size-4" aria-hidden />
+              </span>
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.35rem] font-semibold leading-tight tracking-tight outline-none min-[880px]:text-[1.625rem]">
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold leading-tight tracking-tight outline-none min-[880px]:text-xl">
                   {t("checkoutSubscriptionOverviewTitle")}
                 </h1>
               </CardTitle>
-              <CardDescription className="max-w-2xl text-xs leading-snug">
-                {t("checkoutSubscriptionOverviewDescription")}
-              </CardDescription>
             </CardHeader>
-            <CardContent className="grid min-w-0 gap-3 rounded-md border bg-card p-3 shadow-xs [&>*]:min-w-0 min-[880px]:p-4">
+            <CardContent className="grid min-w-0 gap-3 p-3 [&>*]:min-w-0 min-[880px]:p-4">
               <fieldset className="grid min-w-0 gap-2">
                 <legend className="text-sm font-semibold">{t("checkoutPlanLegend")}</legend>
                 <ToggleGroup
@@ -3141,19 +3137,17 @@ function CheckoutOrderSummary({
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
   return (
-    <Card data-checkout-summary className="hidden gap-0 overflow-hidden py-0 shadow-xs min-[880px]:sticky min-[880px]:top-4 min-[880px]:block">
-      <CardHeader className="gap-1 p-3 pb-2">
+    <Card data-checkout-summary className="hidden gap-0 overflow-hidden py-0 shadow-xs min-[880px]:sticky min-[880px]:top-20 min-[880px]:block">
+      <CardHeader className="gap-1 border-b bg-muted/20 p-3">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-md border bg-muted/50">
             <ReceiptText className="size-4" aria-hidden />
           </span>
           <div className="min-w-0">
             <CardTitle className="text-sm">{t("checkoutCompactSummaryTitle")}</CardTitle>
-            <CardDescription className="text-xs">{t("checkoutCompactSummaryDescription")}</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <Separator />
       <CardContent className="grid gap-2.5 p-3">
         <ReviewRow label={t("checkoutSummaryDomain")} value={domain || "—"} />
         <ReviewRow label={t("checkoutContractingParty")} value={company || "—"} />
