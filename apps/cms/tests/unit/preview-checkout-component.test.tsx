@@ -271,7 +271,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(screen.getByRole("listitem", { name: "checkoutStepDetails" })).toBeTruthy()
     expect(screen.getByRole("listitem", { name: "checkoutStepSubscriptionOverview" })).toBeTruthy()
 
-    fireEvent.click(screen.getAllByRole("button", { name: "checkoutNext" })[0])
+    fireEvent.click(screen.getAllByRole("button", { name: "checkoutNext" })[0]!)
     const detailsHeading = await screen.findByRole("heading", { name: "checkoutDetailsTitle" })
     expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
