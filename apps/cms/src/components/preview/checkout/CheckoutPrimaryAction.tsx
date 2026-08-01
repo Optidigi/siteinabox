@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle2, CreditCard, Globe2, Info, Loader2 } from "lucide-react"
+import { CheckCircle2, Globe2, Info, Loader2, LockKeyhole } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@siteinabox/ui/components/button"
 
@@ -45,7 +45,7 @@ export function CheckoutPrimaryActionButton({
   const Icon = action.pending
     ? Loader2
     : action.kind === "pay"
-      ? CreditCard
+      ? LockKeyhole
       : action.kind === "check_domain"
         ? Globe2
         : action.kind === "wait"

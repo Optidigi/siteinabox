@@ -266,7 +266,7 @@ createRoot(document.getElementById("root")!).render(
             | "cloudflare_api_v1"
             | "authorized_axfr_v1"
             | "validated_provider_export_v1"
-          const probableDnsProvider = existingScenario === "cloudflare"
+          const probableDnsProvider = existingScenario?.startsWith("cloudflare")
             ? "cloudflare"
             : "example-dns"
           const publicEvidence = {
@@ -288,14 +288,18 @@ createRoot(document.getElementById("root")!).render(
               status: "preflight_complete" as const,
               domain,
               domainMode: "existing_domain" as const,
-              migrationReadiness: "unsupported" as const,
+              migrationReadiness: scenario.id === "existing-ready"
+                ? "ready_automatic" as const
+                : "unsupported" as const,
               migrationClassification: null,
               migrationPreflightOnly: true,
               migrationReleaseBlocked: scenario.id === "existing-blocked",
               migrationPublicEvidence: scenario.id === "existing-blocked"
                 ? { ...publicEvidence, transferBlockers: ["The registrar transfer lock must be removed."] }
                 : publicEvidence,
-              message: "Public preflight completed without a provider write.",
+              message: scenario.id === "existing-ready"
+                ? "We found a low-risk path. Your website can stay online while the domain is connected."
+                : "Public preflight completed without a provider write.",
             }
           }
           return {
