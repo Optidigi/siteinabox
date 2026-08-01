@@ -241,6 +241,11 @@ createRoot(document.getElementById("root")!).render(
         }],
         updatedAt: "2026-07-30T12:00:00.000Z",
       } : null}
+      submitMigrationTransferCodeAction={async () => ({
+        ok: true,
+        status: "saved" as const,
+        message: "Transfer code saved.",
+      })}
       previewHref="/preview"
       prewarmHref="/prewarm"
       suggestionsHref="/suggestions"

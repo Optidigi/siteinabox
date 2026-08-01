@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronUp, X } from "lucide-react"
+import { ChevronUp } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@siteinabox/ui/components/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@siteinabox/ui/components/sheet"
@@ -33,26 +33,22 @@ export function MobileCheckoutBar({
   handlers: CheckoutPrimaryActionHandlers
 }) {
   const t = useTranslations("preview")
-  const secondary = navigationLocked && decision !== "domain" ? null : decision === "domain" ? (
-    <Button asChild variant="outline" className="w-11 px-0" aria-label={t("checkoutBackToPreview")}>
-      <a href={previewHref}><X className="size-4" aria-hidden /></a>
-    </Button>
-  ) : null
+  void navigationLocked
+  void previewHref
 
   return (
-    <div data-checkout-action-bar className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-2.5 py-1.5 pb-[max(env(safe-area-inset-bottom),0.375rem)] backdrop-blur min-[880px]:hidden">
+    <div data-checkout-action-bar className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-3 py-2.5 pb-[max(env(safe-area-inset-bottom),0.625rem)] shadow-lg backdrop-blur-xl min-[880px]:hidden">
       <div className={decision === "domain"
-        ? "mx-auto grid min-h-14 w-full max-w-[65rem] min-w-0 grid-cols-[auto_minmax(0,0.72fr)_minmax(9.75rem,1.28fr)] items-center gap-2"
-        : "mx-auto grid min-h-14 w-full max-w-[65rem] min-w-0 grid-cols-[minmax(0,0.72fr)_minmax(9.75rem,1.28fr)] items-center gap-2"}>
-        {secondary}
-        <span className="min-w-0 leading-tight">
-          <span className="block text-[0.5625rem] text-muted-foreground">
+        ? "mx-auto flex min-h-12 w-full max-w-[65rem] min-w-0 items-center gap-2"
+        : "mx-auto flex min-h-12 w-full max-w-[65rem] min-w-0 items-center gap-3"}>
+        <span className="min-w-0 flex-1 text-left leading-tight">
+          <strong className="block truncate text-sm font-bold tabular-nums">{decision === "review" ? dueNow : selectedDomain || "—"}</strong>
+          <span className="mt-0.5 block truncate text-[0.625rem] text-muted-foreground">
             {decision === "review" ? t("checkoutSummaryDueNow") : t("checkoutSummaryDomain")}
           </span>
-          <strong className="block truncate text-xs">{decision === "review" ? dueNow : selectedDomain || "—"}</strong>
           {decision === "review" && quote && <Sheet>
             <SheetTrigger asChild>
-              <Button type="button" variant="link" className="mt-0.5 h-auto min-h-6 gap-0.5 p-0 text-[0.625rem]">
+              <Button type="button" variant="link" className="mt-0.5 h-auto min-h-6 gap-0.5 p-0 text-[0.625rem] text-muted-foreground underline-offset-2">
                 {t("checkoutMobileBreakdownAction")}<ChevronUp className="size-3" aria-hidden />
               </Button>
             </SheetTrigger>
@@ -71,7 +67,7 @@ export function MobileCheckoutBar({
             </SheetContent>
           </Sheet>}
         </span>
-        <span className="flex min-w-0 [&>button]:h-auto [&>button]:min-h-11 [&>button]:w-full [&>button]:text-xs [&>button]:leading-tight">
+        <span className="flex min-w-0 shrink-0 [&>button]:h-auto [&>button]:min-h-12 [&>button]:max-w-[12rem] [&>button]:px-3 [&>button]:text-xs [&>button]:leading-tight min-[375px]:[&>button]:px-4">
           <CheckoutPrimaryActionButton action={action} dueNow={dueNow} handlers={handlers} />
         </span>
       </div>

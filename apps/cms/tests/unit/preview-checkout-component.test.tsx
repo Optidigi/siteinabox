@@ -272,7 +272,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(2)
 
     fireEvent.click(screen.getAllByRole("button", { name: "checkoutNext" })[0]!)
-    const detailsHeading = await screen.findByRole("heading", { name: "checkoutStepPayment" })
+    const detailsHeading = await screen.findByRole("heading", { name: "checkoutReviewHeroTitle" })
     expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
     expect(screen.getAllByText("owner@example.test")).toHaveLength(2)
@@ -310,11 +310,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
       .toBe("signed-annual")
 
     fireEvent.click(screen.getByRole("button", { name: "checkoutStepDomain" }))
-    const domainHeading = await screen.findByRole("heading", { name: "checkoutDomainTitle" })
+    const domainHeading = await screen.findByRole("heading", { name: "checkoutDomainHeroTitle" })
     expect(document.activeElement).toBe(domainHeading)
     fireEvent.click(screen.getByRole("button", { name: "checkoutStepPayment" }))
     expect(document.activeElement).toBe(
-      await screen.findByRole("heading", { name: "checkoutStepPayment" }),
+      await screen.findByRole("heading", { name: "checkoutReviewHeroTitle" }),
     )
   })
 

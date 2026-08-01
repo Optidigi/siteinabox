@@ -81,8 +81,8 @@ try {
   assert.equal(await page.getByText("Unavailable", { exact: true }).isVisible(), true)
   assert.equal(await page.getByText("Premium", { exact: true }).isVisible(), true)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
-  await page.getByText("analytical-engines.nl", { exact: true })
-    .locator("xpath=../..").getByRole("button", { name: "Select", exact: true }).click()
+  await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
+    .getByRole("button", { name: "Select", exact: true }).click()
 
   await domainInput.fill("stale-result")
   await domainInput.fill("fresh-result")
@@ -105,16 +105,16 @@ try {
   )
   await domainInput.fill("analytical-engines")
   await page.getByText("analytical-engines.com", { exact: true }).waitFor()
-  await page.getByText("analytical-engines.nl", { exact: true })
-    .locator("xpath=../..").getByRole("button", { name: "Select", exact: true }).click()
+  await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
+    .getByRole("button", { name: "Select", exact: true }).click()
 
   const continueButton = page.getByRole("button", { name: "Continue" })
   await continueButton.focus()
   await page.keyboard.press("Enter")
-  await page.getByRole("heading", { name: "Review & pay" }).waitFor()
+  await page.getByRole("heading", { name: "One last review" }).waitFor()
   assert.equal(
     await page.evaluate(() => document.activeElement?.textContent?.trim()),
-    "Review & pay",
+    "One last review",
   )
 
   const domainStepButton = page.getByRole("button", { name: "Website address", exact: true })
