@@ -53,6 +53,9 @@ try {
     return { height: box.height, left: box.left, right: box.right }
   })
   assert.ok(phoneProgress.height <= 56, "The phone progress indicator must stay compact.")
+  const accessibleProgress = page.getByRole("progressbar", { name: "Domain" })
+  assert.equal(await accessibleProgress.getAttribute("aria-valuenow"), "1")
+  assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "3")
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
@@ -109,7 +112,10 @@ try {
   assert.equal(await domainStepButton.isVisible(), false)
   assert.equal(await page.locator("[data-checkout-mobile-progress]").isVisible(), true)
 
-  assert.equal(await page.getByText(/Ada Lovelace.*owner@example\.test/).isVisible(), true)
+  assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
+  assert.equal(await page.getByText("owner@example.test", { exact: true }).isVisible(), true)
+  assert.equal(await page.locator("[data-details-group]").count(), 3)
+  assert.equal(await page.locator('[data-details-group="contact"]').getByRole("button", { name: /Edit contact/i }).isVisible(), true)
   await page.getByRole("button", { name: "Edit" }).first().click()
   await page.getByRole("dialog").waitFor()
   await page.getByRole("button", { name: "Save and continue" }).click()
@@ -251,11 +257,9 @@ try {
   tabletPage.setDefaultTimeout(5_000)
   await tabletPage.goto(origin, { waitUntil: "networkidle" })
   assert.equal(
-    await tabletPage.locator("[data-checkout-action-bar]").evaluate(
-      (node) => getComputedStyle(node).position,
-    ),
-    "fixed",
-    "The mobile action pattern must not disappear in the tablet breakpoint gap.",
+    await tabletPage.locator("[data-checkout-action-bar]").isVisible(),
+    false,
+    "The phone action row must yield to the desktop summary at the two-column breakpoint.",
   )
   assert.equal(
     await tabletPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -273,6 +277,11 @@ try {
     ),
     "sticky",
     "The 880px two-column summary must remain sticky.",
+  )
+  assert.equal(
+    await tabletPage.locator("[data-checkout-summary]").getByRole("button", { name: "Check domain" }).isVisible(),
+    true,
+    "The sticky summary must expose the active primary action.",
   )
   await tabletPage.close()
 

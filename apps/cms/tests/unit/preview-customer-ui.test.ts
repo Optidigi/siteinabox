@@ -172,7 +172,7 @@ describe("customer preview UI", () => {
     expect(checkout).toContain("bg-muted/30")
     expect(checkout).not.toContain("ring-2 ring-success hover")
     expect(checkout).not.toContain('aria-invalid={domainInputState === "error" || domainInputState === "warning"}')
-    expect(checkout).toContain("break-all text-base font-medium text-foreground")
+    expect(checkout).toContain("[overflow-wrap:anywhere] text-sm font-medium text-foreground")
     expect(checkout).toContain("flex items-center gap-2 text-base font-medium text-foreground")
     expect(checkout).toContain("requestSubmit()")
     expect(checkout).toContain("window.setTimeout")

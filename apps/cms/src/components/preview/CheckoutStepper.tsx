@@ -29,7 +29,16 @@ export function CheckoutStepper<T extends string = string>({
       : "grid-cols-2"
   return (
     <>
-      <div data-checkout-mobile-progress className="-mr-3.5 grid min-w-0 grid-cols-[auto_minmax(3rem,1fr)] items-center gap-3 border-b px-0 pb-1 text-[0.6875rem] font-semibold min-[880px]:hidden">
+      <div
+        data-checkout-mobile-progress
+        role="progressbar"
+        aria-label={steps[activeIndex]?.label}
+        aria-valuemin={1}
+        aria-valuemax={steps.length}
+        aria-valuenow={activeIndex + 1}
+        aria-valuetext={`${activeIndex + 1} / ${steps.length} · ${steps[activeIndex]?.label ?? ""}`}
+        className="-mr-3.5 grid min-w-0 grid-cols-[auto_minmax(3rem,1fr)] items-center gap-3 border-b px-0 pb-1 text-[0.6875rem] font-semibold min-[880px]:hidden"
+      >
         <span className="min-w-0 truncate">
           {activeIndex + 1} / {steps.length} · {steps[activeIndex]?.label}
         </span>

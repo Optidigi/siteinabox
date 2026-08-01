@@ -10,13 +10,13 @@ import {
   Check,
   CheckCircle2,
   CircleAlert,
+  CircleX,
   CreditCard,
   Globe2,
   Info,
   Loader2,
   MapPin,
   Pencil,
-  Phone,
   Search,
   ShieldCheck,
   Sparkles,
@@ -1561,6 +1561,13 @@ export function PreviewCheckout({
                   {t("checkoutDomainTitle")}
                 </h1>
               </CardTitle>
+              <Badge variant={selectedDomain ? "secondary" : "outline"} className="ml-auto shrink-0 text-[0.625rem]">
+                {checkPending || extensionCheckPending
+                  ? t("checkoutDomainCheckingShort")
+                  : selectedDomain
+                    ? t("checkoutDomainSelected")
+                    : t("checkoutDomainCheckTitle")}
+              </Badge>
             </CardHeader>
             <CardContent className="grid gap-3 p-3 min-[880px]:p-4">
               {cloudflareSourceResult === "failed" && (
@@ -1696,9 +1703,9 @@ export function PreviewCheckout({
                         {extensionCheckPending && selectedExtensions
                           .filter((extension) => !extensionResults.some((result) => result.domain === `${normalizedDomainValue.split(".")[0]}.${extension}`))
                           .map((extension) => (
-                          <div key={extension} className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b px-2 py-1.5 text-[0.6875rem] text-muted-foreground last:border-b-0">
+                          <div key={extension} data-domain-status="loading" className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b px-2 py-1.5 text-[0.6875rem] text-muted-foreground last:border-b-0">
                             <span className="grid size-6 shrink-0 place-items-center rounded-md bg-muted"><Loader2 className="size-3 animate-spin" aria-hidden /></span>
-                            <span className="min-w-0 flex-1 break-all font-medium text-foreground">{normalizedDomainValue.split(".")[0]}.{extension}</span>
+                            <span className="min-w-0 flex-1 [overflow-wrap:anywhere] font-medium text-foreground">{normalizedDomainValue.split(".")[0]}.{extension}</span>
                             <span>{t("checkoutDomainCheckingShort")}</span>
                           </div>
                         ))}
@@ -1708,17 +1715,19 @@ export function PreviewCheckout({
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
                           return (
-                            <div key={result.domain ?? result.message} className={cn("grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b px-2 py-1.5 text-[0.6875rem] last:border-b-0", checkedDomain === result.domain && "bg-accent shadow-[inset_3px_0_0_hsl(var(--foreground))]")}>
-                              <span className={cn("grid size-6 shrink-0 place-items-center rounded-md bg-muted", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", result.status === "unavailable" && "bg-destructive/10 text-destructive")}>
+                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b px-2 py-1.5 text-[0.6875rem] last:border-b-0", checkedDomain === result.domain && "bg-accent shadow-[inset_3px_0_0_hsl(var(--foreground))]")}>
+                              <span className={cn("grid size-6 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", result.status === "unavailable" && "bg-destructive/10 text-destructive", result.status === "service_error" && "bg-destructive/10 text-destructive")}>
                                 {available
                                   ? <CheckCircle2 className="size-3.5" aria-hidden />
                                   : premium
                                     ? <Sparkles className="size-3.5" aria-hidden />
-                                    : <CircleAlert className="size-3.5" aria-hidden />}
+                                    : result.status === "unavailable"
+                                      ? <CircleX className="size-3.5" aria-hidden />
+                                      : <CircleAlert className="size-3.5" aria-hidden />}
                               </span>
                               <span className="grid min-w-0 flex-1 gap-0.5">
-                                <span className="break-all font-medium text-foreground">{result.domain}</span>
-                                <span className="text-muted-foreground">{premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}</span>
+                                <span className="[overflow-wrap:anywhere] font-medium text-foreground">{result.domain}</span>
+                                <span className="[overflow-wrap:anywhere] text-muted-foreground">{premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}</span>
                               </span>
                               {available && (
                                 <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} className="h-8 shrink-0 px-2.5 text-xs" onClick={() => selectExtensionResult(result)}>
@@ -2018,27 +2027,47 @@ export function PreviewCheckout({
                   {t("checkoutDetailsTitle")}
                 </h1>
               </CardTitle>
+              <Badge variant="outline" className="ml-auto hidden shrink-0 text-[0.625rem] min-[360px]:inline-flex">
+                {t("checkoutKnownDetailsLabel")}
+              </Badge>
             </CardHeader>
             <CardContent className="grid gap-3 p-3 min-[880px]:p-4">
               <div className="divide-y overflow-hidden rounded-md border" aria-label={t("checkoutKnownDetailsLabel")}>
                 <ConfirmationRow
+                  group="contact"
                   icon={UserRound}
                   title={t("checkoutContactGroup")}
-                  value={`${details.firstName} ${details.lastName} · ${customerEmail} · ${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`}
+                  lines={[
+                    `${details.firstName} ${details.lastName}`.trim(),
+                    customerEmail,
+                    `${details.phoneCountryCode} ${details.phoneAreaCode} ${details.phoneSubscriberNumber}`.trim(),
+                  ]}
+                  attention={!details.firstName || !details.lastName || !details.phoneSubscriberNumber}
                   onEdit={() => openDetailsEditor("contact")}
                   t={t}
                 />
                 <ConfirmationRow
+                  group="company"
                   icon={Building2}
                   title={t("checkoutCompanyGroup")}
-                  value={details.registeredBusinessName || details.intendedCompanyName || t("checkoutNotProvided")}
+                  lines={[
+                    details.registeredBusinessName || details.intendedCompanyName || t("checkoutNotProvided"),
+                    details.kvkNumber ? `${t("checkoutKvkNumber")}: ${details.kvkNumber}` : "",
+                  ]}
+                  attention={!details.registeredBusinessName && !details.intendedCompanyName}
                   onEdit={() => openDetailsEditor("company")}
                   t={t}
                 />
                 <ConfirmationRow
+                  group="address"
                   icon={MapPin}
                   title={t("checkoutAddressGroup")}
-                  value={`${details.street} ${details.number}${details.suffix ?? ""}, ${details.zipcode} ${details.city}`}
+                  lines={[
+                    `${details.street} ${details.number}${details.suffix ?? ""}`.trim(),
+                    `${details.zipcode} ${details.city}`.trim(),
+                    details.country,
+                  ]}
+                  attention={!details.street || !details.number || !details.zipcode || !details.city || !details.country}
                   onEdit={() => openDetailsEditor("address")}
                   t={t}
                 />
@@ -2463,6 +2492,9 @@ export function PreviewCheckout({
                   {t("checkoutSubscriptionOverviewTitle")}
                 </h1>
               </CardTitle>
+              <Badge variant="outline" className="ml-auto shrink-0 text-[0.625rem]">
+                {billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+              </Badge>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-3 p-3 [&>*]:min-w-0 min-[880px]:p-4">
               <fieldset className="grid min-w-0 gap-2">
@@ -2523,7 +2555,7 @@ export function PreviewCheckout({
                   <Globe2 className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <strong className="block break-words text-xs font-semibold sm:text-sm">
+                  <strong className="block [overflow-wrap:anywhere] text-xs font-semibold sm:text-sm">
                     {selectedDomain ?? domainValue} · {savedProfile.contractingPartyName}
                   </strong>
                   <span className="block text-[10px] leading-tight text-muted-foreground">
@@ -2888,6 +2920,11 @@ function CheckoutActionBar({
   onPay: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
+  const [desktopActionTarget, setDesktopActionTarget] = React.useState<HTMLElement | null>(null)
+  React.useEffect(() => {
+    setDesktopActionTarget(document.getElementById("checkout-desktop-action"))
+  }, [step])
+
   const secondary = navigationLocked && step !== "domain" ? null : step === "domain" ? (
     <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
       <a href={previewHref}>
@@ -3003,16 +3040,16 @@ function CheckoutActionBar({
           <span className="block text-[0.5625rem] text-muted-foreground">{step === "overview" ? t("checkoutSummaryTotal") : step === "details" ? t("checkoutKnownDetailsLabel") : t("checkoutSummaryDomain")}</span>
           <strong className="block truncate text-xs">{step === "overview" ? totalPriceLabel : selectedDomain || "—"}</strong>
         </span>
-        <span className="flex min-w-0 [&>button]:w-full min-[880px]:[&>button]:w-auto">{primary}</span>
+        <span className="flex min-w-0 [&>button]:h-auto [&>button]:min-h-10 [&>button]:w-full [&>button]:whitespace-normal [&>button]:text-center [&>button]:text-xs [&>button]:leading-tight min-[880px]:[&>button]:w-auto">{primary}</span>
       </div>
     </div>
-    {typeof document !== "undefined" && document.getElementById("checkout-desktop-action")
+    {desktopActionTarget
       ? createPortal(
           <div className="grid gap-2 [&>button]:w-full">
             {primary}
             <p className="text-center text-[0.625rem] leading-relaxed text-muted-foreground">{t("checkoutCompactSummarySaved")}</p>
           </div>,
-          document.getElementById("checkout-desktop-action")!,
+          desktopActionTarget,
         )
       : null}
     </>
@@ -3094,32 +3131,43 @@ function AcceptanceCheckbox({
 }
 
 function ConfirmationRow({
+  group,
   icon: Icon,
   title,
-  value,
+  lines,
+  attention,
   onEdit,
   t,
 }: {
+  group: DetailsGroup
   icon: React.ElementType
   title: string
-  value: string
+  lines: string[]
+  attention: boolean
   onEdit: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
   return (
-    <div className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2.5 p-3">
-      <span className="grid size-8 place-items-center rounded-md border bg-muted/50 text-muted-foreground">
+    <section data-details-group={group} className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-2.5 p-3 transition-colors hover:bg-muted/25 focus-within:bg-muted/25">
+      <span className="grid size-8 place-items-center rounded-md border bg-muted/50 text-foreground">
         <Icon className="size-4" aria-hidden />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">{title}</p>
-        <p className="break-words text-sm font-medium leading-snug">{value}</p>
+      <div className="grid min-w-0 gap-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <h2 className="text-xs font-semibold text-foreground">{title}</h2>
+          {attention && <Badge variant="outline" className="border-warning/50 bg-warning/10 text-[0.625rem] text-foreground">{t("checkoutDetailsMissing")}</Badge>}
+        </div>
+        <div className="grid min-w-0 gap-0.5 text-xs leading-snug text-muted-foreground">
+          {lines.filter(Boolean).map((line) => (
+            <span key={line} className="[overflow-wrap:anywhere]">{line}</span>
+          ))}
+        </div>
       </div>
-      <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs" onClick={onEdit}>
+      <Button type="button" variant="outline" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs" onClick={onEdit} aria-label={`${t("checkoutEdit")} ${title}`}>
         <Pencil className="size-3.5" aria-hidden />
         <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
       </Button>
-    </div>
+    </section>
   )
 }
 
@@ -3221,7 +3269,7 @@ function DomainOptionRow({
   const content = (
     <>
       <span className="grid min-w-0 flex-1 gap-1">
-        <span className="break-all text-base font-medium text-foreground">{option.domain}</span>
+        <span className="[overflow-wrap:anywhere] text-sm font-medium text-foreground">{option.domain}</span>
         {!option.included && option.extraFeeLabel && (
           <span className="text-sm text-muted-foreground">
             {t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
@@ -3329,7 +3377,7 @@ function ReviewRow({
   return (
     <div className="flex min-w-0 items-start justify-between gap-3">
       <span className="min-w-0 text-xs leading-snug text-muted-foreground">{label}</span>
-      <span className={cn("min-w-0 break-words text-right text-sm leading-snug", strong ? "font-semibold" : "font-medium")}>
+      <span className={cn("min-w-0 [overflow-wrap:anywhere] text-right text-sm leading-snug", strong ? "font-semibold" : "font-medium")}>
         {value || "-"}
       </span>
     </div>
