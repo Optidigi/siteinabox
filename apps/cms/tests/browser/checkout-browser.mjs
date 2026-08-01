@@ -13,7 +13,10 @@ const screenshotRoot = process.env.CHECKOUT_SCREENSHOT_DIR
 if (screenshotRoot) await fs.mkdir(screenshotRoot, { recursive: true })
 const capture = async (page, name, dark = false) => {
   if (!screenshotRoot) return
-  await page.evaluate((useDark) => document.documentElement.classList.toggle("dark", useDark), dark)
+  await page.evaluate(async (useDark) => {
+    document.documentElement.classList.toggle("dark", useDark)
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }, dark)
   await page.screenshot({ path: path.join(screenshotRoot, `${name}.png`) })
 }
 const server = await createServer({
@@ -69,8 +72,8 @@ try {
 
   const domainInput = page.getByLabel("Domain name")
   await domainInput.fill("service-error.nl")
-  await page.locator("[data-checkout-main-card]").getByText("service-error.nl", { exact: true }).waitFor()
-  assert.equal(await page.getByText("Try again", { exact: true }).isVisible(), true)
+  await page.getByRole("alert").first().waitFor()
+  assert.equal(await page.getByRole("button", { name: "Check again", exact: true }).isVisible(), true)
 
   await domainInput.fill("analytical-engines.nl")
   await page.getByText("analytical-engines.com", { exact: true }).waitFor()
@@ -97,11 +100,10 @@ try {
     0,
     "Changing the domain name must invalidate the previous order selection.",
   )
-  await page.getByLabel(".org").click()
   assert.equal(
-    await page.getByRole("button", { name: "Continue" }).count(),
+    await page.getByRole("button", { name: /^\.[a-z]+$/ }).count(),
     0,
-    "Changing selected extensions must invalidate the previous order selection.",
+    "Automatic extension checks must not expose a separate extension picker.",
   )
   await domainInput.fill("analytical-engines")
   await page.getByText("analytical-engines.com", { exact: true }).waitFor()
@@ -317,7 +319,7 @@ try {
   }
   await assertStickySummary("review")
   await desktopPage.getByRole("button", { name: "Website address", exact: true }).click()
-  await desktopPage.getByRole("heading", { name: "Domain name" }).waitFor()
+  await desktopPage.getByRole("heading", { name: "Domain name", exact: true }).waitFor()
   await assertStickySummary("domain")
   await desktopPage.close()
 

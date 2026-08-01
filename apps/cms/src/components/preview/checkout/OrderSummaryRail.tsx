@@ -52,17 +52,16 @@ export function OrderSummaryRail({
         </CardHeader>
         <CardContent className="p-0">
           <div className="grid gap-2.5 px-[19px] py-[15px]">
-            <SummaryRow label={t("checkoutPlanLegend")} value={plan} />
             {quote && <>
-              <SummaryRow label={t("checkoutSummaryProviderDomainExVat")} value={money(locale, quote.providerOperationPriceNetMinor, quote.currency)} />
-              {quote.domainSurchargeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryDomainSurchargeExVat")} value={money(locale, quote.domainSurchargeNetMinor, quote.currency)} />}
+              <SummaryRow label={`${plan} · ${t("checkoutPriceExVat")}`} value={money(locale, quote.planPriceNetMinor, quote.currency)} />
+              <SummaryRow label={t("checkoutSummaryDomain")} value={quote.domainSurchargeNetMinor > 0 ? `${money(locale, quote.domainSurchargeNetMinor, quote.currency)} ${t("checkoutPriceExVat")}` : t("checkoutDomainIncludedBadge")} />
               <SummaryRow label={t("checkoutSummaryNet")} value={money(locale, quote.netAmountMinor, quote.currency)} />
               <SummaryRow subtle label={t("checkoutSummaryVatRate", { rate: vatRate ?? "" })} value={money(locale, quote.vatAmountMinor, quote.currency)} />
             </>}
           </div>
           <div className="mx-[19px] border-t border-white/15 py-[15px]">
             <div className="flex items-end justify-between gap-3">
-              <span className="text-xs text-zinc-300/75">{t("checkoutSummaryDueNow")}</span>
+              <span className="text-xs text-zinc-300/75">{t("checkoutSummaryDueNowInclVat")}</span>
               <strong className="text-2xl font-bold leading-none tracking-[-0.035em] tabular-nums">{dueNow}</strong>
             </div>
             {quote && <p className="mt-2 text-[0.625rem] leading-relaxed text-zinc-300/60">{t("checkoutSummaryFutureSubscription")} · {money(locale, quote.futureSubscriptionGrossMinor, quote.currency)}</p>}

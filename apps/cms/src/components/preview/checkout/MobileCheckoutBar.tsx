@@ -44,7 +44,7 @@ export function MobileCheckoutBar({
         <span className="min-w-0 flex-1 text-left leading-tight">
           <strong className="block truncate text-sm font-bold tabular-nums">{decision === "review" ? dueNow : selectedDomain || "—"}</strong>
           <span className="mt-0.5 block truncate text-[0.625rem] text-muted-foreground">
-            {decision === "review" ? t("checkoutSummaryDueNow") : t("checkoutSummaryDomain")}
+            {decision === "review" ? t("checkoutSummaryDueNowInclVat") : t("checkoutSummaryDomain")}
           </span>
           {decision === "review" && quote && <Sheet>
             <SheetTrigger asChild>
@@ -60,8 +60,9 @@ export function MobileCheckoutBar({
               <dl className="grid gap-3 px-4 pb-4 text-sm">
                 <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryDomain")}</dt><dd className="text-right font-medium [overflow-wrap:anywhere]">{selectedDomain || "—"}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutPlanLegend")}</dt><dd className="text-right font-medium">{plan}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryNet")} · {t("checkoutPriceExVat")}</dt><dd className="font-medium tabular-nums">{new Intl.NumberFormat(locale, { style: "currency", currency: quote.currency }).format(quote.netAmountMinor / 100)}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryVat")}</dt><dd className="font-medium tabular-nums">{new Intl.NumberFormat(locale, { style: "currency", currency: quote.currency }).format(quote.vatAmountMinor / 100)}</dd></div>
-                <div className="flex justify-between gap-4 border-t pt-3"><dt className="font-medium">{t("checkoutSummaryDueNow")}</dt><dd className="font-semibold tabular-nums">{dueNow}</dd></div>
+                <div className="flex justify-between gap-4 border-t pt-3"><dt className="font-medium">{t("checkoutSummaryDueNowInclVat")}</dt><dd className="font-semibold tabular-nums">{dueNow}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryFutureSubscription")}</dt><dd className="font-medium tabular-nums">{new Intl.NumberFormat(locale, { style: "currency", currency: quote.currency }).format(quote.futureSubscriptionGrossMinor / 100)}</dd></div>
               </dl>
             </SheetContent>

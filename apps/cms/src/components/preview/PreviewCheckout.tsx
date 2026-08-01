@@ -14,6 +14,7 @@ import {
   Globe2,
   Info,
   Loader2,
+  LockKeyhole,
   MapPin,
   Pencil,
   Search,
@@ -21,6 +22,7 @@ import {
   Sparkles,
   ReceiptText,
   Rocket,
+  Server,
   UserRound,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
@@ -399,11 +401,13 @@ export function PreviewCheckout({
     cloudflareSourceDomain ?? readyDomain ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
-  const [selectedExtensions, setSelectedExtensions] = React.useState<string[]>(() =>
-    supportedDomainExtensions.slice(0, 4),
+  const selectedExtensions = React.useMemo(
+    () => supportedDomainExtensions.slice(0, 4),
+    [supportedDomainExtensions],
   )
   const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
   const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
+  const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
   const extensionRequestRef = React.useRef<string | null>(null)
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const domainRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
@@ -471,14 +475,14 @@ export function PreviewCheckout({
   const migrationReadinessLedger = activeMigrationPublicEvidence ? (
     <div className="overflow-hidden rounded-[14px] border bg-card" aria-label={t("checkoutMigrationReadinessLabel")}>
       {[
-        { label: t("checkoutMigrationRegistrarLabel"), detail: t("checkoutMigrationRegistrarDetail"), value: activeMigrationPublicEvidence.registrar ?? t("checkoutUnknown"), warning: false },
-        { label: t("checkoutMigrationDnsProviderLabel"), detail: activeMigrationPublicEvidence.authoritativeNameservers.join(", ") || t("checkoutUnknown"), value: activeMigrationPublicEvidence.probableDnsProvider ?? t("checkoutUnknown"), warning: false },
-        { label: t("checkoutMigrationDnssecLabel"), detail: activeMigrationPublicEvidence.dnssecDsPresent ? t("checkoutMigrationDnssecAction") : t("checkoutMigrationDnssecClear"), value: activeMigrationPublicEvidence.dnssecDsPresent ? t("checkoutMigrationDnssecPresent") : t("checkoutMigrationDnssecAbsent"), warning: activeMigrationPublicEvidence.dnssecDsPresent },
-        { label: t("checkoutMigrationTransferLockLabel"), detail: activeMigrationPublicEvidence.transferBlockers?.join(", ") || t("checkoutMigrationTransferClear"), value: migrationTransferBlocked || migrationReleaseBlocked ? t("checkoutMigrationTransferBlockedValue") : t("checkoutMigrationTransferClearValue"), warning: migrationTransferBlocked || migrationReleaseBlocked },
+        { icon: Building2, label: t("checkoutMigrationRegistrarLabel"), detail: t("checkoutMigrationRegistrarDetail"), value: activeMigrationPublicEvidence.registrar ?? t("checkoutUnknown"), warning: false },
+        { icon: Server, label: t("checkoutMigrationDnsProviderLabel"), detail: activeMigrationPublicEvidence.authoritativeNameservers.join(", ") || t("checkoutUnknown"), value: activeMigrationPublicEvidence.probableDnsProvider ?? t("checkoutUnknown"), warning: false },
+        { icon: ShieldCheck, label: t("checkoutMigrationDnssecLabel"), detail: activeMigrationPublicEvidence.dnssecDsPresent ? t("checkoutMigrationDnssecAction") : t("checkoutMigrationDnssecClear"), value: activeMigrationPublicEvidence.dnssecDsPresent ? t("checkoutMigrationDnssecPresent") : t("checkoutMigrationDnssecAbsent"), warning: activeMigrationPublicEvidence.dnssecDsPresent },
+        { icon: LockKeyhole, label: t("checkoutMigrationTransferLockLabel"), detail: activeMigrationPublicEvidence.transferBlockers?.join(", ") || t("checkoutMigrationTransferClear"), value: migrationTransferBlocked || migrationReleaseBlocked ? t("checkoutMigrationTransferBlockedValue") : t("checkoutMigrationTransferClearValue"), warning: migrationTransferBlocked || migrationReleaseBlocked },
       ].map((row) => (
-        <div key={row.label} className="grid min-h-[54px] grid-cols-[26px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 border-b px-3 py-2.5 last:border-b-0 min-[560px]:grid-cols-[26px_minmax(0,1fr)_auto]">
+        <div key={row.label} className="grid min-h-[54px] grid-cols-[26px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 border-b px-3 py-[9px] last:border-b-0 min-[560px]:grid-cols-[26px_minmax(0,1fr)_auto]">
           <span className={cn("grid size-[26px] place-items-center rounded-md", row.warning ? "bg-warning/10 text-warning" : "bg-success/10 text-success")}>
-            {row.warning ? <CircleAlert className="size-3.5" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
+            <row.icon className="size-3.5" aria-hidden />
           </span>
           <span className="grid min-w-0 gap-0.5"><strong className="text-xs">{row.label}</strong><span className="[overflow-wrap:anywhere] text-[0.6875rem] leading-snug text-muted-foreground">{row.detail}</span></span>
           <span className={cn("col-start-2 text-xs font-semibold min-[560px]:col-start-auto min-[560px]:text-right", row.warning && "text-warning")}>{row.value}</span>
@@ -921,20 +925,6 @@ export function PreviewCheckout({
     }
   }
 
-  const toggleExtension = (extension: string, checked: boolean) => {
-    setSelectedExtensions((current) => {
-      const next = checked
-        ? [...new Set([...current, extension])]
-        : current.filter((entry) => entry !== extension)
-      return next.length > 0 ? next : current
-    })
-    setCheckedDomain(null)
-    setQuotes(null)
-    setExtensionResults([])
-    setExtensionCheckPending(false)
-    extensionRequestRef.current = null
-  }
-
   const checkSelectedExtensions = React.useCallback(async () => {
     const entered = normalizedDomainValue.replace(/^https?:\/\//, "").split("/")[0] ?? ""
     const firstLabel = entered.split(".")[0]?.trim() ?? ""
@@ -1162,14 +1152,8 @@ export function PreviewCheckout({
         </>
       )}
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur-xl">
-        <div className="grid h-[52px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-2 min-[560px]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] min-[560px]:px-4">
+        <div className="grid h-[52px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 min-[560px]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] min-[560px]:px-4">
           <div className="flex min-w-0 items-center gap-1">
-          <Button asChild variant="ghost" className="h-9 shrink-0 px-2 text-muted-foreground">
-            <a href={previewHref}>
-              <ArrowLeft className="size-4" aria-hidden />
-              <span className="hidden min-[700px]:inline">{t("checkoutBackToPreview")}</span>
-            </a>
-          </Button>
           <a href={previewHref} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1">
             <img src="/logos/logo-light.svg" alt="Siteinabox" className="h-7 w-auto dark:hidden" />
             <img src="/logos/logo-dark.svg" alt="Siteinabox" className="hidden h-7 w-auto dark:block" />
@@ -1180,14 +1164,18 @@ export function PreviewCheckout({
             <span className="h-0.5 w-14 overflow-hidden rounded-full bg-muted"><span className={cn("block h-full rounded-full bg-brand", step === "review" ? "w-full" : "w-1/2")} /></span>
             <span>{step === "review" ? "2 / 2" : "1 / 2"}</span>
           </div>
-          <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-            <span className="uppercase">{locale.split("-")[0]}</span>
-            <span className="hidden items-center gap-1.5 rounded-lg border bg-background px-2.5 py-2 min-[380px]:flex"><span className="size-1.5 rounded-full bg-brand" />{t("checkoutChangesSaved")}</span>
+          <div className="flex items-center justify-end">
+            <Button asChild variant="ghost" className="h-9 shrink-0 px-2 text-muted-foreground">
+              <a href={previewHref}>
+                <ArrowLeft className="size-4" aria-hidden />
+                <span className="hidden min-[380px]:inline">{t("checkoutBackToPreview")}</span>
+              </a>
+            </Button>
           </div>
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[70rem] content-start gap-4 overflow-y-auto py-4 pr-6 pb-28 pl-3 [&>*]:min-w-0 sm:px-5 min-[880px]:h-auto min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-5 min-[880px]:py-7 min-[880px]:pb-24">
+      <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[70rem] content-start gap-4 overflow-y-auto py-4 pr-6 pb-28 pl-3 [&>*]:min-w-0 min-[880px]:h-auto min-[880px]:w-[calc(100%-40px)] min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-[30px] min-[880px]:pb-24">
         {presentation.phase === "fulfilment" ? (
           <div className="mx-auto grid w-full max-w-[70rem] gap-1 py-2">
             <div className="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.095em] text-muted-foreground">
@@ -1215,9 +1203,8 @@ export function PreviewCheckout({
           </div>
         ) : (
           <>
-          <section className="grid gap-2 min-[880px]:grid-cols-[minmax(0,1fr)_auto] min-[880px]:items-end">
+          <section className="grid gap-2">
             <div>
-              <div className="mb-2 flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.095em] text-muted-foreground"><span className="size-1.5 rounded-full bg-brand ring-4 ring-brand/20" />{t("checkoutLaunchEyebrow")}</div>
               <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
                 {step === "domain" ? t("checkoutDomainHeroTitle") : t("checkoutReviewHeroTitle")}
               </h1>
@@ -1225,7 +1212,6 @@ export function PreviewCheckout({
                 {step === "domain" ? t("checkoutDomainHeroDescription") : t("checkoutReviewHeroDescription")}
               </p>
             </div>
-            <span className="hidden items-center gap-1.5 pb-1 text-xs font-semibold text-success min-[880px]:flex"><Check className="size-3.5" aria-hidden />{t("checkoutChangesSaved")}</span>
           </section>
           <PreviewCheckoutStepper
             step={step}
@@ -1666,22 +1652,16 @@ export function PreviewCheckout({
         {presentation.phase === "address" && step === "domain" && (
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-[18px]">
           <Card data-checkout-main-card className="relative gap-0 overflow-hidden rounded-[22px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20">
-            <CardHeader className="flex-row items-start gap-3 border-b bg-transparent px-5 py-5 min-[880px]:px-[26px] min-[880px]:py-6">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-                <Globe2 className="size-4" aria-hidden />
-              </span>
+            <CardHeader className="flex-row items-start gap-3 border-b bg-transparent px-[17px] py-[19px] min-[880px]:px-[26px] min-[880px]:py-6">
               <CardTitle>
                 <h2 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
                   {t("checkoutDomainTitle")}
                 </h2>
                 <p className="mt-1 max-w-xl text-xs font-normal leading-relaxed text-muted-foreground">{t("checkoutDomainHeroDescription")}</p>
               </CardTitle>
-              <Badge variant={selectedDomain ? "secondary" : "outline"} className="ml-auto shrink-0 text-[0.625rem]">
-                {checkPending || extensionCheckPending
-                  ? t("checkoutDomainCheckingShort")
-                  : selectedDomain
-                    ? t("checkoutDomainSelected")
-                    : t("checkoutDomainCheckTitle")}
+              <Badge variant="outline" className="ml-auto shrink-0 gap-1 text-[0.625rem] text-muted-foreground">
+                <Globe2 className="size-3" aria-hidden />
+                1 / 2
               </Badge>
             </CardHeader>
             <CardContent className="grid gap-5 px-4 py-5 min-[880px]:px-[26px] min-[880px]:py-[22px]">
@@ -1789,38 +1769,31 @@ export function PreviewCheckout({
                   </Button>
                 </div>
                 {domainMode === "new_registration" && (
-                  <div className="grid gap-3 pt-2">
-                    <fieldset className="grid gap-2">
-                      <legend className="text-sm font-medium">{t("checkoutExtensionsLegend")}</legend>
-                      <ToggleGroup
-                        type="multiple"
-                        value={selectedExtensions}
-                        onValueChange={(values) => {
-                          if (values.length === 0) return
-                          for (const extension of supportedDomainExtensions) {
-                            const shouldSelect = values.includes(extension)
-                            if (shouldSelect !== selectedExtensions.includes(extension)) {
-                              toggleExtension(extension, shouldSelect)
-                            }
-                          }
-                        }}
-                        variant="outline"
-                        className="flex flex-wrap justify-start gap-1"
-                      >
-                        {supportedDomainExtensions.map((extension) => (
-                          <ToggleGroupItem
-                            key={extension}
-                            value={extension}
-                            aria-label={`.${extension}`}
-                            className="h-7 min-w-10 rounded-full px-2 text-[0.6875rem] data-[state=on]:border-foreground/50 data-[state=on]:bg-card data-[state=on]:text-foreground"
-                          >
-                            .{extension}
-                          </ToggleGroupItem>
-                        ))}
-                      </ToggleGroup>
-                    </fieldset>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {t("checkoutAutomaticExtensionHint", { extensions: selectedExtensions.map((extension) => `.${extension}`).join(", ") })}
+                  </p>
+                )}
+                {domainMode === "new_registration" && (
+                  <div className="grid gap-3 pt-3">
                     {(extensionCheckPending || extensionResults.length > 0) && (
                       <div className="grid gap-2" aria-live="polite" aria-busy={extensionCheckPending}>
+                        {premiumInfoDomain && (
+                          <Alert className="mb-1 border-warning/30 bg-warning/10 text-warning" role="status">
+                            <CircleAlert className="size-4" aria-hidden />
+                            <AlertTitle>{t("checkoutExtensionPremium")}</AlertTitle>
+                            <AlertDescription>{t("checkoutDomainPremium", { domain: premiumInfoDomain })}</AlertDescription>
+                          </Alert>
+                        )}
+                        {extensionResults.some((result) => result.status === "service_error") && (
+                          <Alert variant="destructive" className="mb-1" role="alert">
+                            <CircleAlert className="size-4" aria-hidden />
+                            <AlertTitle>{t("checkoutDomainErrorTitle")}</AlertTitle>
+                            <AlertDescription className="grid gap-3">
+                              <span>{extensionResults.find((result) => result.status === "service_error")?.message}</span>
+                              <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => void checkSelectedExtensions()}>{t("checkoutCheckAgain")}</Button>
+                            </AlertDescription>
+                          </Alert>
+                        )}
                         <div className="flex items-center justify-between gap-3 text-xs">
                           <strong className="flex items-center gap-1.5 font-semibold">
                             {extensionCheckPending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
@@ -1839,6 +1812,7 @@ export function PreviewCheckout({
                           </div>
                         ))}
                         {[...extensionResults]
+                          .filter((result) => result.status !== "service_error")
                           .sort((left, right) => selectedExtensions.indexOf(left.domain?.split(".").at(-1) ?? "") - selectedExtensions.indexOf(right.domain?.split(".").at(-1) ?? ""))
                           .map((result) => {
                           const available = Boolean(result.ok && result.domain && result.quotes)
@@ -1852,10 +1826,18 @@ export function PreviewCheckout({
                                   {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}
                                 </span>
                               </span>
-                              <span className="self-start pt-0.5 text-right text-xs font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : "—"}</span>
+                              <span className="grid self-start pt-0.5 text-right">
+                                <strong className="text-xs font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+                                {available && result.quotes && result.quotes.annual.quote.domainSurchargeNetMinor > 0 && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
+                              </span>
                               {available && (
-                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "default" : "outline"} className="col-span-2 min-h-10 w-full shrink-0 !bg-card px-3 text-xs !text-foreground opacity-100 min-[560px]:col-auto min-[560px]:w-[76px]" onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-10 w-full shrink-0 border bg-card px-3 text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-[76px]", checkedDomain === result.domain && "border-brand bg-brand text-brand-foreground [&&:hover]:bg-brand/85 [&&:hover]:text-brand-foreground")} onClick={() => selectExtensionResult(result)}>
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+                                </Button>
+                              )}
+                              {premium && (
+                                <Button type="button" size="sm" variant="ghost" className="col-span-2 min-h-9 w-full text-xs text-muted-foreground min-[560px]:col-auto min-[560px]:w-[76px]" onClick={() => setPremiumInfoDomain(result.domain ?? null)}>
+                                  {t("checkoutPremiumWhy")}
                                 </Button>
                               )}
                             </div>
@@ -2060,7 +2042,7 @@ export function PreviewCheckout({
                   </span>
                   <span className="grid min-w-0 flex-1 gap-0.5">
                     <strong className="[overflow-wrap:anywhere] text-sm">{checkedDomain}</strong>
-                    <span className="text-xs text-muted-foreground">{t("checkoutExtensionAvailable")} · {selectedQuote.quote.domainSurchargeNetMinor > 0 ? money(locale, selectedQuote.quote.domainSurchargeNetMinor, selectedQuote.quote.currency) : t("checkoutDomainIncludedBadge")}</span>
+                    <span className="text-xs text-muted-foreground">{t("checkoutExtensionAvailable")} · {selectedQuote.quote.domainSurchargeNetMinor > 0 ? `${money(locale, selectedQuote.quote.domainSurchargeNetMinor, selectedQuote.quote.currency)} ${t("checkoutPriceExVat")}` : t("checkoutDomainIncludedBadge")}</span>
                   </span>
                   <Button
                     type="button"
@@ -2688,10 +2670,11 @@ export function PreviewCheckout({
                         <span className="text-lg font-semibold leading-tight tracking-tight text-foreground">
                           {money(
                             locale,
-                            option?.grossAmountMinor ?? 0,
+                            option?.planPriceNetMinor ?? 0,
                             option?.currency ?? catalog.currency,
                           )}
                         </span>
+                        <span className="text-[0.6875rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>
                       </span>
                     </ToggleGroupItem>
                   )
@@ -2701,7 +2684,7 @@ export function PreviewCheckout({
 
               <div className="-mx-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border-y bg-muted/40 px-3 py-2 min-[880px]:-mx-4 min-[880px]:px-4">
                 <span className="min-w-0">
-                  <span className="block text-xs font-medium text-muted-foreground">{t("checkoutSummaryTotal")}</span>
+                  <span className="block text-xs font-medium text-muted-foreground">{t("checkoutSummaryDueNowInclVat")}</span>
                   <strong className="mt-0.5 block text-xl tracking-tight">{money(locale, grossAmountMinor, catalog.currency)}</strong>
                   <span className="block text-[10px] text-muted-foreground">{t("checkoutSummaryVat")}: {money(locale, vatAmountMinor, catalog.currency)}</span>
                 </span>
@@ -2982,9 +2965,9 @@ function PreviewCheckoutStepper({
   onStepSelect: (step: CheckoutStep) => void
 }) {
   const t = useTranslations("preview")
-  const steps: Array<{ id: CheckoutStep; label: string; icon: React.ElementType }> = [
-    { id: "domain", label: t("checkoutStepDomain"), icon: Globe2 },
-    { id: "review", label: t("checkoutStepPayment"), icon: ReceiptText },
+  const steps: Array<{ id: CheckoutStep; label: string; description: string; icon: React.ElementType }> = [
+    { id: "domain", label: t("checkoutStepDomain"), description: t("checkoutStepDomainDescription"), icon: Globe2 },
+    { id: "review", label: t("checkoutStepPayment"), description: t("checkoutStepPaymentDescription"), icon: ReceiptText },
   ]
   return (
     <CheckoutStepper
