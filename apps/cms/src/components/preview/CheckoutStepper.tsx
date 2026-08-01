@@ -13,6 +13,7 @@ type CheckoutStepperProps<T extends string = string> = {
   activeStep: T | null
   onStepSelect?: (step: T) => void
   reachableSteps?: T[]
+  progressText?: (current: number, total: number, label: string) => string
 }
 
 export function CheckoutStepper<T extends string = string>({
@@ -20,6 +21,7 @@ export function CheckoutStepper<T extends string = string>({
   activeStep,
   onStepSelect,
   reachableSteps = [],
+  progressText = (current, total, label) => `${current} / ${total} · ${label}`,
 }: CheckoutStepperProps<T>) {
   const activeIndex = steps.findIndex((entry) => entry.id === activeStep)
   const columns = steps.length === 4
@@ -27,6 +29,13 @@ export function CheckoutStepper<T extends string = string>({
     : steps.length === 3
       ? "grid-cols-3"
       : "grid-cols-2"
+  const progressWidth = activeIndex >= steps.length - 1
+    ? "w-full"
+    : steps.length === 4
+      ? activeIndex === 0 ? "w-1/4" : activeIndex === 1 ? "w-1/2" : "w-3/4"
+      : steps.length === 3
+        ? activeIndex === 0 ? "w-1/3" : "w-2/3"
+        : "w-1/2"
   return (
     <>
       <div
@@ -36,14 +45,14 @@ export function CheckoutStepper<T extends string = string>({
         aria-valuemin={1}
         aria-valuemax={steps.length}
         aria-valuenow={activeIndex + 1}
-        aria-valuetext={`${activeIndex + 1} / ${steps.length} · ${steps[activeIndex]?.label ?? ""}`}
+        aria-valuetext={progressText(activeIndex + 1, steps.length, steps[activeIndex]?.label ?? "")}
         className="-mr-3.5 grid min-w-0 grid-cols-[auto_minmax(3rem,1fr)] items-center gap-3 border-b px-0 pb-1 text-[0.6875rem] font-semibold min-[880px]:hidden"
       >
         <span className="min-w-0 truncate">
-          {activeIndex + 1} / {steps.length} · {steps[activeIndex]?.label}
+          {progressText(activeIndex + 1, steps.length, steps[activeIndex]?.label ?? "")}
         </span>
         <span className="h-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-          <span className={cn("block h-full rounded-full bg-foreground", activeIndex <= 0 ? "w-1/3" : activeIndex === 1 ? "w-2/3" : "w-full")} />
+          <span className={cn("block h-full rounded-full bg-primary motion-safe:transition-[width]", progressWidth)} />
         </span>
       </div>
     <ol className={cn("hidden min-w-0 gap-0.5 rounded-md border bg-muted p-0.5 min-[880px]:grid", columns)}>

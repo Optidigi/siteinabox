@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import fs from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -8,8 +9,16 @@ import { createServer } from "vite"
 
 const browserRoot = path.dirname(fileURLToPath(import.meta.url))
 const cmsRoot = path.resolve(browserRoot, "../..")
+const screenshotRoot = process.env.CHECKOUT_SCREENSHOT_DIR
+if (screenshotRoot) await fs.mkdir(screenshotRoot, { recursive: true })
+const capture = async (page, name, dark = false) => {
+  if (!screenshotRoot) return
+  await page.evaluate((useDark) => document.documentElement.classList.toggle("dark", useDark), dark)
+  await page.screenshot({ path: path.join(screenshotRoot, `${name}.png`) })
+}
 const server = await createServer({
   root: browserRoot,
+  publicDir: path.join(cmsRoot, "public"),
   configFile: false,
   plugins: [react()],
   resolve: {
@@ -39,23 +48,19 @@ try {
   await page.goto(origin, { waitUntil: "networkidle" })
 
   const steps = page.locator("ol > li")
-  assert.equal(await steps.count(), 3)
+  assert.equal(await steps.count(), 2)
   assert.equal(await steps.nth(0).getAttribute("aria-current"), "step")
-  assert.equal(await steps.nth(0).getAttribute("aria-label"), "Domain")
-  assert.equal(await steps.nth(1).getAttribute("aria-label"), "Details")
-  assert.equal(
-    await steps.nth(2).getAttribute("aria-label"),
-    "Subscription & review",
-  )
+  assert.equal(await steps.nth(0).getAttribute("aria-label"), "Website address")
+  assert.equal(await steps.nth(1).getAttribute("aria-label"), "Review & pay")
   assert.equal(await page.locator("[aria-live]").count() > 0, true)
   const phoneProgress = await page.locator("[data-checkout-mobile-progress]").evaluate((node) => {
     const box = node.getBoundingClientRect()
     return { height: box.height, left: box.left, right: box.right }
   })
   assert.ok(phoneProgress.height <= 56, "The phone progress indicator must stay compact.")
-  const accessibleProgress = page.getByRole("progressbar", { name: "Domain" })
+  const accessibleProgress = page.getByRole("progressbar", { name: "Website address" })
   assert.equal(await accessibleProgress.getAttribute("aria-valuenow"), "1")
-  assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "3")
+  assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "2")
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
@@ -69,6 +74,10 @@ try {
 
   await domainInput.fill("analytical-engines.nl")
   await page.getByText("analytical-engines.com", { exact: true }).waitFor()
+  await page.setViewportSize({ width: 320, height: 568 })
+  await page.getByRole("button", { name: "Select", exact: true }).first().scrollIntoViewIfNeeded()
+  await capture(page, "phone-light-domain-results-320x568")
+  await page.setViewportSize({ width: 390, height: 844 })
   assert.equal(await page.getByText("Unavailable", { exact: true }).isVisible(), true)
   assert.equal(await page.getByText("Premium", { exact: true }).isVisible(), true)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
@@ -102,18 +111,18 @@ try {
   const continueButton = page.getByRole("button", { name: "Continue" })
   await continueButton.focus()
   await page.keyboard.press("Enter")
-  await page.getByRole("heading", { name: "Review your details" }).waitFor()
+  await page.getByRole("heading", { name: "Review & pay" }).waitFor()
   assert.equal(
     await page.evaluate(() => document.activeElement?.textContent?.trim()),
-    "Review your details",
+    "Review & pay",
   )
 
-  const domainStepButton = page.getByRole("button", { name: "Domain" })
+  const domainStepButton = page.getByRole("button", { name: "Website address", exact: true })
   assert.equal(await domainStepButton.isVisible(), false)
   assert.equal(await page.locator("[data-checkout-mobile-progress]").isVisible(), true)
 
   assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
-  assert.equal(await page.getByText("owner@example.test", { exact: true }).isVisible(), true)
+  assert.equal(await page.getByText("owner@example.test", { exact: true }).first().isVisible(), true)
   assert.equal(await page.locator("[data-details-group]").count(), 3)
   assert.equal(await page.locator('[data-details-group="contact"]').getByRole("button", { name: /Edit contact/i }).isVisible(), true)
   await page.getByRole("button", { name: "Edit" }).first().click()
@@ -128,18 +137,26 @@ try {
     true,
   )
   await page.getByLabel("First name").fill("Ada Updated")
+  await page.getByRole("button", { name: "Save and continue" }).click()
   process.stdout.write("Checkout validation/focus contract passed.\n")
 
-  await page.getByRole("button", { name: "Continue" }).click()
-  await page.getByRole("heading", { name: "Subscription & review" }).waitFor()
+  await page
+    .getByRole("heading", { name: "Plan, price and declarations" })
+    .waitFor()
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await capture(page, "desktop-light-review-ready")
+  await page.setViewportSize({ width: 390, height: 844 })
   assert.equal(await page.getByText(/229[.,]90/, { exact: false }).first().isVisible(), true)
   assert.equal(
     await page.locator('[role="checkbox"]:visible').count(),
     2,
     "Only the two legally distinct declarations may be visible checkboxes.",
   )
-  await page.getByRole("button", { name: /Checkout/ }).click()
+  await page.getByRole("button", { name: /Approve & pay/ }).click()
   await page.getByRole("alert").filter({ hasText: "Confirm the required declarations" }).waitFor()
+  await page.setViewportSize({ width: 320, height: 568 })
+  await page.getByRole("alert").filter({ hasText: "Confirm the required declarations" }).scrollIntoViewIfNeeded()
+  await capture(page, "phone-dark-declaration-block-320x568", true)
   assert.equal(
     await page.locator("#checkout-business-use").evaluate((node) => node === document.activeElement),
     true,
@@ -157,7 +174,8 @@ try {
   })
   pendingPage.setDefaultTimeout(5_000)
   await pendingPage.goto(`${origin}?payment=pending`, { waitUntil: "networkidle" })
-  await pendingPage.getByRole("heading", { name: "Subscription & review" }).waitFor()
+  await pendingPage.getByRole("heading", { name: "Payment status" }).waitFor()
+  await capture(pendingPage, "phone-dark-payment-pending-320x700", true)
   const mobileOverflow = await pendingPage.evaluate(() => ({
     fits: document.documentElement.scrollWidth <= innerWidth,
     scrollWidth: document.documentElement.scrollWidth,
@@ -179,18 +197,17 @@ try {
     true,
     `Checkout overflows a 320px viewport: ${JSON.stringify(mobileOverflow)}`,
   )
-  assert.equal(
-    await pendingPage.getByRole("button", { name: "Checkout" }).isDisabled(),
-    true,
-  )
-  assert.equal(
-    await pendingPage.locator("[data-checkout-action-bar]").evaluate(
-      (node) => getComputedStyle(node).position,
-    ),
-    "fixed",
-    "The phone action row must remain visible without overlaying content.",
-  )
+  assert.equal(await pendingPage.getByRole("button", { name: /Approve & pay/ }).count(), 0)
+  assert.equal(await pendingPage.locator("[data-checkout-action-bar]").count(), 0)
+  assert.equal(await pendingPage.locator("[data-checkout-mobile-progress]").count(), 0)
   await pendingPage.close()
+
+  const failedPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  failedPage.setDefaultTimeout(5_000)
+  await failedPage.goto(`${origin}?scenario=payment-failed`, { waitUntil: "networkidle" })
+  await failedPage.getByRole("heading", { name: "Payment status" }).waitFor()
+  await capture(failedPage, "desktop-dark-payment-failed", true)
+  await failedPage.close()
 
   const compactPage = await browser.newPage({ viewport: { width: 320, height: 568 } })
   compactPage.setDefaultTimeout(5_000)
@@ -287,8 +304,8 @@ try {
 
   const desktopPage = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   desktopPage.setDefaultTimeout(5_000)
-  await desktopPage.goto(`${origin}?payment=pending`, { waitUntil: "networkidle" })
-  await desktopPage.getByRole("heading", { name: "Subscription & review" }).waitFor()
+  await desktopPage.goto(`${origin}?scenario=review-ready`, { waitUntil: "networkidle" })
+  await desktopPage.getByRole("heading", { name: "Review & pay" }).waitFor()
   const assertStickySummary = async (state) => {
     const summary = desktopPage.locator("[data-checkout-summary]")
     assert.equal(await summary.isVisible(), true, `Desktop summary missing on ${state}.`)
@@ -298,11 +315,8 @@ try {
       `Desktop summary is not sticky on ${state}.`,
     )
   }
-  await assertStickySummary("overview")
-  await desktopPage.getByRole("button", { name: "Details" }).click()
-  await desktopPage.getByRole("heading", { name: "Review your details" }).waitFor()
-  await assertStickySummary("details")
-  await desktopPage.getByRole("button", { name: "Domain" }).click()
+  await assertStickySummary("review")
+  await desktopPage.getByRole("button", { name: "Website address", exact: true }).click()
   await desktopPage.getByRole("heading", { name: "Domain name" }).waitFor()
   await assertStickySummary("domain")
   await desktopPage.close()
@@ -311,6 +325,7 @@ try {
   fulfilledPage.setDefaultTimeout(5_000)
   await fulfilledPage.goto(`${origin}?state=fulfilled`, { waitUntil: "networkidle" })
   await fulfilledPage.getByText("analytical-engines.nl", { exact: false }).first().waitFor()
+  await capture(fulfilledPage, "phone-dark-fulfilment-complete-390x844", true)
   assert.equal(
     await fulfilledPage.locator("[data-checkout-action-bar]").count(),
     0,
@@ -329,6 +344,15 @@ try {
     "Fulfilment must not introduce nested interactive controls.",
   )
   await fulfilledPage.close()
+
+  const transferActionPage = await browser.newPage({ viewport: { width: 320, height: 568 } })
+  transferActionPage.setDefaultTimeout(5_000)
+  await transferActionPage.goto(`${origin}?scenario=fulfilment-action-transfer`, { waitUntil: "networkidle" })
+  const transferAction = transferActionPage.getByText(/valid transfer code/i).first()
+  await transferAction.waitFor()
+  await transferAction.scrollIntoViewIfNeeded()
+  await capture(transferActionPage, "phone-dark-fulfilment-action-transfer-320x568", true)
+  await transferActionPage.close()
 
   const themePage = await browser.newPage({ viewport: { width: 320, height: 568 } })
   themePage.setDefaultTimeout(5_000)
@@ -401,10 +425,9 @@ try {
     name: "Verify complete DNS source",
   }).click()
   await axfrPage.getByRole("button", { name: "Continue" }).click()
-  await axfrPage.getByRole("heading", { name: "Review your details" }).waitFor()
-  await axfrPage.getByRole("button", { name: "Continue" }).click()
+  await axfrPage.getByRole("heading", { name: "Review & pay" }).waitFor()
   await axfrPage.getByRole("heading", {
-    name: "Subscription & review",
+    name: "Plan, price and declarations",
   }).waitFor()
   assert.equal(
     await axfrPage.getByText(
@@ -433,6 +456,8 @@ try {
     waitUntil: "networkidle",
   })
   await cloudflarePage.getByText("Cloudflare connected securely").waitFor()
+  await cloudflarePage.setViewportSize({ width: 1280, height: 900 })
+  await capture(cloudflarePage, "desktop-dark-existing-cloudflare-ready", true)
   assert.equal(
     await cloudflarePage.getByText(/temporary zone-scoped token/).count(),
     0,
@@ -450,6 +475,39 @@ try {
     "Cloudflare transfer checkout overflows a 320px viewport.",
   )
   await cloudflarePage.close()
+
+  const reviewScenarioIds = [
+    "domain-start", "domain-loading", "domain-results", "domain-selected",
+    "domain-premium", "domain-error", "existing-ready", "existing-blocked",
+    "existing-review", "details-known", "details-missing", "editing-details",
+    "profile-conflict", "review-ready", "declaration-block", "quote-refreshed",
+    "payment-redirecting", "payment-pending", "payment-failed",
+    "fulfilment-pending", "fulfilment-action-verify",
+    "fulfilment-action-transfer", "fulfilment-complete",
+  ]
+  for (const scenarioId of reviewScenarioIds) {
+    const scenarioPage = await browser.newPage({ viewport: { width: 320, height: 568 } })
+    const scenarioErrors = []
+    scenarioPage.setDefaultTimeout(5_000)
+    scenarioPage.on("pageerror", (error) => scenarioErrors.push(error.message))
+    await scenarioPage.goto(`${origin}?scenario=${scenarioId}`, { waitUntil: "networkidle" })
+    assert.equal(
+      await scenarioPage.evaluate((expected) =>
+        document.documentElement.dataset.checkoutScenario === expected,
+      scenarioId),
+      true,
+      `Checkout scenario ${scenarioId} was not selected by the development harness.`,
+    )
+    assert.equal(await scenarioPage.locator("h1").count(), 1, `${scenarioId} must expose one h1.`)
+    assert.equal(
+      await scenarioPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      true,
+      `${scenarioId} overflows a 320px viewport.`,
+    )
+    assert.equal(scenarioErrors.length, 0, `${scenarioId}: ${scenarioErrors.join("\n")}`)
+    await scenarioPage.close()
+  }
+  process.stdout.write("Checkout 23-state development harness passed.\n")
   process.stdout.write("Checkout Chromium contract passed.\n")
 } finally {
   await browser?.close()

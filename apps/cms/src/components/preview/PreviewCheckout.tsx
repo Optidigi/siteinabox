@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { useActionState } from "react"
-import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
@@ -32,7 +31,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/compone
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
-import { Separator } from "@siteinabox/ui/components/separator"
 import {
   Sheet,
   SheetContent,
@@ -45,6 +43,12 @@ import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-g
 import { tldUsesIcannTransferPolicy } from "@siteinabox/contracts/tld-capabilities"
 
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
+import {
+  createCheckoutPresentation,
+  type CheckoutDecision,
+} from "@/components/preview/checkout/checkoutPresentation"
+import { MobileCheckoutBar } from "@/components/preview/checkout/MobileCheckoutBar"
+import { OrderSummaryRail } from "@/components/preview/checkout/OrderSummaryRail"
 import type {
   CheckoutProfileDraft,
   CheckoutProfileView,
@@ -84,13 +88,14 @@ type PreviewCheckoutProfileAction = (
   formData: FormData,
 ) => Promise<PreviewCheckoutProfileActionState>
 
-type CheckoutStep = "domain" | "details" | "overview"
+type LegacyCheckoutStep = "domain" | "details" | "overview"
+type CheckoutStep = CheckoutDecision
 type BillingPeriod = "monthly" | "annual"
 type DetailsGroup = "company" | "contact" | "address"
 type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
-const checkoutStepOrder: CheckoutStep[] = ["domain", "details", "overview"]
+const checkoutStepOrder: CheckoutStep[] = ["domain", "review"]
 
 export type PreviewCheckoutCatalog = {
   version: string
@@ -115,7 +120,7 @@ type PreviewCheckoutProps = {
   initialDetails: CheckoutProfileDraft
   initialQuotes?: CheckoutQuoteSet | null
   supportedDomainExtensions?: string[]
-  initialStep?: CheckoutStep
+  initialStep?: LegacyCheckoutStep
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
   enabledMigrationSourceMethods?: AutomaticMigrationSourceMethod[]
@@ -295,9 +300,10 @@ export function PreviewCheckout({
   locale,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
-  const [step, setStep] = React.useState<CheckoutStep>(initialStep)
+  const initialDecision: CheckoutStep = initialStep === "domain" ? "domain" : "review"
+  const [step, setStep] = React.useState<CheckoutStep>(initialDecision)
   const [highestReachedStep, setHighestReachedStep] = React.useState(
-    checkoutStepOrder.indexOf(initialStep),
+    checkoutStepOrder.indexOf(initialDecision),
   )
   const [checkState, checkAction, checkPending] = useActionState(
     checkDomainAction,
@@ -624,13 +630,14 @@ export function PreviewCheckout({
       setDetailsDirty(false)
       setDetailsEditorOpen(false)
       if (profileState.quotes) setQuotes(profileState.quotes)
-      setStep("overview")
+      setStep("review")
+      window.setTimeout(() => stepHeadingRef.current?.focus(), 0)
       return
     }
     if (profileState.status === "conflict" && profileState.currentProfile) {
       setSavedProfile(profileState.currentProfile)
       setDetailsDirty(true)
-      setStep("details")
+      setStep("review")
     }
   }, [profileState])
 
@@ -1018,12 +1025,6 @@ export function PreviewCheckout({
     setDetailsEditorOpen(true)
   }
 
-  const goBack = () => {
-    if (acceptedOrderId != null) return
-    if (step === "details") setStep("domain")
-    if (step === "overview") setStep("details")
-  }
-
   const submitPayment = () => {
     if (requiresMigrationRecollection) return
     const firstMissingId = !businessUseAccepted
@@ -1053,12 +1054,59 @@ export function PreviewCheckout({
     cloudflareSourceAuthorization &&
     cloudflareSourceDomain === acceptedMigrationDomain,
   )
-  const fulfilmentActive = Boolean(
-    paymentReturn || provisioningStatus || migrationStatus || billingAgreement,
+  const fulfilmentActive = Boolean(provisioningStatus || migrationStatus || billingAgreement)
+  const paymentActive = paymentReturn && !fulfilmentActive
+  const actionPaymentStatus = paymentState.status === "payment_pending"
+    ? "pending_provider"
+    : paymentStatusLive
+  const paymentInProgress = paymentPending || ["pending_provider", "open", "authorized"].includes(actionPaymentStatus)
+  const presentation = createCheckoutPresentation({
+    decision: step,
+    paymentActive,
+    fulfilmentActive,
+    domainReady: domainIsReady,
+    profileReady: Boolean(savedProfile && !detailsDirty),
+    quoteReady: Boolean(selectedQuote),
+    selectedDomain: Boolean(selectedDomain),
+    checkPending: checkPending || extensionCheckPending,
+    profilePending,
+    paymentPending,
+    paymentBlocked: requiresMigrationRecollection,
+    paymentInProgress,
+    paymentComplete: actionPaymentStatus === "completed",
+    domainResultKind,
+    preflightComplete:
+      checkState.status === "preflight_complete" &&
+      checkAppliesToCurrentInput &&
+      !migrationSourceMethod,
+    sourceAcquisitionReady: Boolean(
+      checkState.status === "preflight_complete" &&
+      checkAppliesToCurrentInput &&
+      !migrationTransferBlocked &&
+      !migrationReleaseBlocked &&
+      migrationSourceMethod,
+    ),
+  })
+  const dueNowLabel = money(
+    locale,
+    grossAmountMinor,
+    selectedQuote?.quote.currency ?? catalog.currency,
   )
+  const primaryActionHandlers = {
+    onDomainNext: () => setStep("review" as const),
+    onDomainCheck: () => {
+      if (domainMode === "new_registration") void checkSelectedExtensions()
+      else domainFormRef.current?.requestSubmit()
+    },
+    onDetailsNext: () => {
+      if (detailsDirty || !savedProfile) setDetailsEditorOpen(true)
+      else setStep("review")
+    },
+    onPay: submitPayment,
+  }
 
   return (
-    <main className="h-dvh min-h-0 overflow-hidden bg-background pb-20 text-foreground min-[880px]:h-auto min-[880px]:min-h-dvh min-[880px]:overflow-visible min-[880px]:pb-24">
+    <main data-checkout-phase={presentation.phase} className="h-dvh min-h-0 overflow-hidden bg-background pb-20 text-foreground min-[880px]:h-auto min-[880px]:min-h-dvh min-[880px]:overflow-visible min-[880px]:pb-24">
       {cloudflareSourceOAuthEnabled && (
         <>
           {domainMode === "existing_domain" && normalizedDomainValue && (
@@ -1114,7 +1162,7 @@ export function PreviewCheckout({
       </header>
 
       <div data-checkout-shell className="mx-auto grid h-[calc(100dvh-52px)] min-w-0 w-full max-w-[65rem] content-start gap-3 overflow-y-auto py-3 pr-6 pb-24 pl-3 [&>*]:min-w-0 sm:px-4 min-[880px]:h-auto min-[880px]:overflow-visible min-[880px]:gap-4 min-[880px]:px-0 min-[880px]:py-4 min-[880px]:pb-24">
-        {fulfilmentActive ? (
+        {presentation.phase === "fulfilment" ? (
           <div className="grid gap-1 py-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Rocket className="size-4" aria-hidden />
@@ -1127,6 +1175,16 @@ export function PreviewCheckout({
               {t("checkoutFulfilmentDescription")}
             </p>
           </div>
+        ) : presentation.phase === "payment" ? (
+          <div className="grid gap-1 py-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <CreditCard className="size-4" aria-hidden />
+              {t("checkoutStepPayment")}
+            </div>
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
+              {t("checkoutPaymentReturnTitle")}
+            </h1>
+          </div>
         ) : (
           <PreviewCheckoutStepper
             step={step}
@@ -1135,7 +1193,7 @@ export function PreviewCheckout({
           />
         )}
 
-        {(fulfilmentActive || (requiresMigrationRecollection && acceptedOrderId != null)) && (
+        {(presentation.phase === "payment" || presentation.phase === "fulfilment" || (requiresMigrationRecollection && acceptedOrderId != null)) && (
           <Card data-checkout-main-card className="overflow-hidden shadow-none">
             <CardContent className="grid gap-3 p-3 sm:p-4">
         {paymentReturn && (
@@ -1549,8 +1607,8 @@ export function PreviewCheckout({
           </Card>
         )}
 
-        {!fulfilmentActive && step === "domain" && (
-          <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
+        {presentation.phase === "address" && step === "domain" && (
+          <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-4">
           <Card data-checkout-main-card className="gap-0 overflow-hidden py-0 shadow-xs">
             <CardHeader className="flex-row items-center gap-2.5 border-b bg-muted/20 p-3 min-[880px]:p-4">
               <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
@@ -1703,10 +1761,10 @@ export function PreviewCheckout({
                         {extensionCheckPending && selectedExtensions
                           .filter((extension) => !extensionResults.some((result) => result.domain === `${normalizedDomainValue.split(".")[0]}.${extension}`))
                           .map((extension) => (
-                          <div key={extension} data-domain-status="loading" className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b px-2 py-1.5 text-[0.6875rem] text-muted-foreground last:border-b-0">
+                          <div key={extension} data-domain-status="loading" className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-2 border-b px-2 py-2 text-sm text-muted-foreground last:border-b-0 min-[360px]:grid-cols-[1.5rem_minmax(0,1fr)_auto]">
                             <span className="grid size-6 shrink-0 place-items-center rounded-md bg-muted"><Loader2 className="size-3 animate-spin" aria-hidden /></span>
                             <span className="min-w-0 flex-1 [overflow-wrap:anywhere] font-medium text-foreground">{normalizedDomainValue.split(".")[0]}.{extension}</span>
-                            <span>{t("checkoutDomainCheckingShort")}</span>
+                            <span className="col-span-2 pl-8 text-xs min-[360px]:col-auto min-[360px]:pl-0">{t("checkoutDomainCheckingShort")}</span>
                           </div>
                         ))}
                         {[...extensionResults]
@@ -1715,7 +1773,7 @@ export function PreviewCheckout({
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
                           return (
-                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b px-2 py-1.5 text-[0.6875rem] last:border-b-0", checkedDomain === result.domain && "bg-accent shadow-[inset_3px_0_0_hsl(var(--foreground))]")}>
+                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-2 border-b px-2 py-2 text-sm last:border-b-0 min-[360px]:grid-cols-[1.5rem_minmax(0,1fr)_auto]", checkedDomain === result.domain && "bg-accent shadow-[inset_3px_0_0_hsl(var(--primary))]")}>
                               <span className={cn("grid size-6 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", result.status === "unavailable" && "bg-destructive/10 text-destructive", result.status === "service_error" && "bg-destructive/10 text-destructive")}>
                                 {available
                                   ? <CheckCircle2 className="size-3.5" aria-hidden />
@@ -1730,7 +1788,7 @@ export function PreviewCheckout({
                                 <span className="[overflow-wrap:anywhere] text-muted-foreground">{premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}</span>
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} className="h-8 shrink-0 px-2.5 text-xs" onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant={checkedDomain === result.domain ? "secondary" : "outline"} className="col-span-2 min-h-11 w-full shrink-0 px-2.5 text-xs min-[360px]:col-auto min-[360px]:w-auto" onClick={() => selectExtensionResult(result)}>
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
                               )}
@@ -2005,26 +2063,30 @@ export function PreviewCheckout({
 
             </CardContent>
           </Card>
-          <CheckoutOrderSummary
+          <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
             company={savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
             plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
-            total={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
-            t={t}
+            dueNow={dueNowLabel}
+            quote={selectedQuote?.quote}
+            locale={locale}
+            primaryAction={presentation.primaryAction}
+            handlers={primaryActionHandlers}
           />
           </div>
         )}
 
-        {!fulfilmentActive && step === "details" && (
-          <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="gap-0 overflow-hidden py-0 shadow-xs">
+        {presentation.phase === "review" && step === "review" && (
+          <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-4">
+          <div className="min-w-0 overflow-hidden rounded-lg border bg-card shadow-xs">
+          <Card data-checkout-main-card className="gap-0 rounded-none border-0 py-0 shadow-none">
             <CardHeader className="flex-row items-center gap-2.5 border-b bg-muted/20 p-3 min-[880px]:p-4">
               <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
                 <UserRound className="size-4" aria-hidden />
               </span>
               <CardTitle>
                 <h1 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold leading-tight tracking-tight outline-none min-[880px]:text-xl">
-                  {t("checkoutDetailsTitle")}
+                  {t("checkoutStepPayment")}
                 </h1>
               </CardTitle>
               <Badge variant="outline" className="ml-auto hidden shrink-0 text-[0.625rem] min-[360px]:inline-flex">
@@ -2071,6 +2133,17 @@ export function PreviewCheckout({
                   onEdit={() => openDetailsEditor("address")}
                   t={t}
                 />
+                <section data-review-context="account" className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] items-start gap-2.5 p-3">
+                  <span className="grid size-8 place-items-center rounded-md border bg-muted/50 text-foreground">
+                    <Globe2 className="size-4" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-xs font-semibold">{t("checkoutAccountWebsiteGroup")}</h2>
+                    <p className="mt-1 [overflow-wrap:anywhere] text-xs text-muted-foreground">{customerEmail}</p>
+                    <p className="[overflow-wrap:anywhere] text-xs text-muted-foreground">{selectedDomain ?? domainValue}</p>
+                    <p className="mt-1 text-[0.6875rem] text-muted-foreground">{t("checkoutAccountWebsiteAuthority")}</p>
+                  </div>
+                </section>
               </div>
               <Sheet open={detailsEditorOpen} onOpenChange={setDetailsEditorOpen}>
                 <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-full sm:max-w-xl sm:rounded-none sm:border-l">
@@ -2470,27 +2543,15 @@ export function PreviewCheckout({
               </Sheet>
             </CardContent>
           </Card>
-          <CheckoutOrderSummary
-            domain={selectedDomain ?? domainValue}
-            company={details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
-            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
-            total={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
-            t={t}
-          />
-          </div>
-        )}
-
-        {!fulfilmentActive && step === "overview" && savedProfile && (
-          <div className="grid min-w-0 gap-3 min-[880px]:grid-cols-[minmax(0,1fr)_294px] min-[880px]:items-start min-[880px]:gap-4">
-          <Card data-checkout-main-card className="gap-0 overflow-hidden py-0 shadow-xs">
+          {savedProfile && <Card data-checkout-main-card className="gap-0 rounded-none border-x-0 border-b-0 py-0 shadow-none">
             <CardHeader className="flex-row items-center gap-2.5 border-b bg-muted/20 p-3 min-[880px]:p-4">
               <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
                 <CreditCard className="size-4" aria-hidden />
               </span>
               <CardTitle>
-                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold leading-tight tracking-tight outline-none min-[880px]:text-xl">
+                <h2 className="text-lg font-semibold leading-tight tracking-tight min-[880px]:text-xl">
                   {t("checkoutSubscriptionOverviewTitle")}
-                </h1>
+                </h2>
               </CardTitle>
               <Badge variant="outline" className="ml-auto shrink-0 text-[0.625rem]">
                 {billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
@@ -2506,7 +2567,7 @@ export function PreviewCheckout({
                     if (acceptedOrderId == null && (value === "annual" || value === "monthly")) setBillingPeriod(value)
                   }}
                   variant="outline"
-                  className="grid w-full grid-cols-2 gap-2"
+                  className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2"
                 >
                 {(acceptedOrderId == null ? ["annual", "monthly"] as const : [billingPeriod] as const).map((period) => {
                   const option = quotes?.[period]?.quote
@@ -2562,8 +2623,8 @@ export function PreviewCheckout({
                     {t("checkoutCompactSummaryDescription")}
                   </span>
                 </span>
-                <Button type="button" variant="link" size="sm" className="h-auto shrink-0 px-0 text-xs" onClick={() => setStep("details")}>
-                  {t("checkoutEdit")}
+                <Button type="button" variant="link" size="sm" className="h-auto min-h-11 shrink-0 px-1 text-xs" onClick={() => setStep("domain")}>
+                  {t("checkoutEditWebsiteAddress")}
                 </Button>
               </div>
               {selectedQuote?.quote.domainMode === "existing_domain" && selectedQuote.quote.transferRenewalEffect && (
@@ -2700,65 +2761,33 @@ export function PreviewCheckout({
                 </Alert>
               )}
             </CardContent>
-          </Card>
-          <CheckoutOrderSummary
+          </Card>}
+          </div>
+          <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
-            company={savedProfile.contractingPartyName}
+            company={savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
             plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
-            total={money(locale, grossAmountMinor, selectedQuote?.quote.currency ?? catalog.currency)}
-            t={t}
+            dueNow={dueNowLabel}
+            quote={selectedQuote?.quote}
+            locale={locale}
+            primaryAction={presentation.primaryAction}
+            handlers={primaryActionHandlers}
           />
           </div>
         )}
       </div>
 
-      {!fulfilmentActive && <CheckoutActionBar
-        step={step}
-        canContinueFromDomain={domainIsReady}
-        profileReady={Boolean(savedProfile && !detailsDirty)}
-        quoteReady={Boolean(selectedQuote)}
+      {(presentation.phase === "address" || presentation.phase === "review") && <MobileCheckoutBar
+        decision={step}
+        action={presentation.primaryAction}
         selectedDomain={selectedDomain}
-        checkPending={checkPending || extensionCheckPending}
-        profilePending={profilePending}
-        paymentPending={paymentPending}
-        paymentBlocked={requiresMigrationRecollection}
-        domainResultKind={domainResultKind}
-        preflightComplete={
-          checkState.status === "preflight_complete" &&
-          checkAppliesToCurrentInput &&
-          !migrationSourceMethod
-        }
-        sourceAcquisitionReady={Boolean(
-          checkState.status === "preflight_complete" &&
-          checkAppliesToCurrentInput &&
-          !migrationTransferBlocked &&
-          !migrationReleaseBlocked &&
-          migrationSourceMethod,
-        )}
-        paymentStatus={
-          paymentState.status === "payment_pending"
-            ? "pending_provider"
-            : paymentStatusLive
-        }
         navigationLocked={acceptedOrderId != null}
-        totalPriceLabel={money(
-          locale,
-          grossAmountMinor,
-          selectedQuote?.quote.currency ?? catalog.currency,
-        )}
+        dueNow={dueNowLabel}
+        plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+        quote={selectedQuote?.quote}
+        locale={locale}
         previewHref={previewHref}
-        onBack={goBack}
-        onDomainNext={() => setStep("details")}
-        onDomainCheck={() => {
-          if (domainMode === "new_registration") void checkSelectedExtensions()
-          else domainFormRef.current?.requestSubmit()
-        }}
-        onDetailsNext={() => {
-          if (detailsDirty || !savedProfile) setDetailsEditorOpen(true)
-          else setStep("overview")
-        }}
-        onPay={submitPayment}
-        t={t}
+        handlers={primaryActionHandlers}
       />}
     </main>
   )
@@ -2858,8 +2887,7 @@ function PreviewCheckoutStepper({
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; icon: React.ElementType }> = [
     { id: "domain", label: t("checkoutStepDomain"), icon: Globe2 },
-    { id: "details", label: t("checkoutStepDetails"), icon: UserRound },
-    { id: "overview", label: t("checkoutStepSubscriptionOverview"), icon: ReceiptText },
+    { id: "review", label: t("checkoutStepPayment"), icon: ReceiptText },
   ]
   return (
     <CheckoutStepper
@@ -2869,190 +2897,8 @@ function PreviewCheckoutStepper({
         .slice(0, highestReachedStep + 1)
         .map((entry) => entry.id)}
       onStepSelect={onStepSelect}
+      progressText={(current, total, label) => t("checkoutProgressText", { current, total, label })}
     />
-  )
-}
-
-function CheckoutActionBar({
-  step,
-  canContinueFromDomain,
-  profileReady,
-  quoteReady,
-  selectedDomain,
-  checkPending,
-  profilePending,
-  paymentPending,
-  paymentBlocked,
-  domainResultKind,
-  preflightComplete,
-  sourceAcquisitionReady,
-  paymentStatus,
-  navigationLocked,
-  totalPriceLabel,
-  previewHref,
-  onBack,
-  onDomainNext,
-  onDomainCheck,
-  onDetailsNext,
-  onPay,
-  t,
-}: {
-  step: CheckoutStep
-  canContinueFromDomain: boolean
-  profileReady: boolean
-  quoteReady: boolean
-  selectedDomain: string | null
-  checkPending: boolean
-  profilePending: boolean
-  paymentPending: boolean
-  paymentBlocked: boolean
-  domainResultKind: "loading" | "info" | "success" | "unavailable" | "error" | null
-  preflightComplete: boolean
-  sourceAcquisitionReady: boolean
-  paymentStatus: string
-  navigationLocked: boolean
-  totalPriceLabel: string
-  previewHref: string
-  onBack: () => void
-  onDomainNext: () => void
-  onDomainCheck: () => void
-  onDetailsNext: () => void
-  onPay: () => void
-  t: ReturnType<typeof useTranslations<"preview">>
-}) {
-  const [desktopActionTarget, setDesktopActionTarget] = React.useState<HTMLElement | null>(null)
-  React.useEffect(() => {
-    setDesktopActionTarget(document.getElementById("checkout-desktop-action"))
-  }, [step])
-
-  const secondary = navigationLocked && step !== "domain" ? null : step === "domain" ? (
-    <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
-      <a href={previewHref}>
-        <X className="size-4 md:hidden" aria-hidden />
-        <ArrowLeft className="hidden size-4 md:block" aria-hidden />
-        <span className="hidden md:inline">{t("checkoutBackToPreview")}</span>
-      </a>
-    </Button>
-  ) : (
-    <Button type="button" variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBack")} onClick={onBack}>
-      <ArrowLeft className="size-4" aria-hidden />
-      <span className="hidden md:inline">{t("checkoutBack")}</span>
-    </Button>
-  )
-
-  let primary: React.ReactNode
-  if (step === "domain" && canContinueFromDomain) {
-    primary = (
-      <Button
-        key="domain-next"
-        type="button"
-        variant="success"
-        className="min-w-0 flex-1 md:flex-none"
-        onClick={onDomainNext}
-      >
-        <CheckCircle2 className="size-4" aria-hidden />
-        {t("checkoutNext")}
-      </Button>
-    )
-  } else if (step === "domain") {
-    const unavailable = domainResultKind === "unavailable"
-    primary = preflightComplete ? (
-      <Button
-        key="domain-preflight-complete"
-        type="button"
-        variant="outline"
-        className="min-w-0 flex-1 md:flex-none"
-        disabled
-      >
-        <Info className="size-4" aria-hidden />
-        {t("checkoutMigrationPreflightNoOrder")}
-      </Button>
-    ) : (
-      <Button
-        key="domain-check"
-        type="button"
-        variant={unavailable ? "ghost" : "default"}
-        className={cn("min-w-0 flex-1 md:flex-none", unavailable && "text-muted-foreground")}
-        disabled={checkPending || unavailable}
-        onClick={onDomainCheck}
-      >
-        {checkPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Globe2 className="size-4" aria-hidden />}
-        {checkPending
-          ? t("checkoutDomainCheckingShort")
-          : sourceAcquisitionReady
-            ? t("checkoutMigrationVerifySource")
-          : unavailable
-            ? t("checkoutDomainOccupied")
-            : domainResultKind === "error"
-              ? t("checkoutCheckAgain")
-              : t("checkoutCheckDomain")}
-      </Button>
-    )
-  } else if (step === "details") {
-    primary = (
-      <Button
-        key="details-save"
-        type="button"
-        variant="success"
-        className="min-w-0 flex-1 md:flex-none"
-        disabled={profilePending}
-        onClick={onDetailsNext}
-      >
-        {profilePending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
-        {profileReady ? t("checkoutDetailsConfirm") : t("checkoutDetailsSave")}
-      </Button>
-    )
-  } else {
-  const complete = paymentStatus === "completed"
-  const paymentInProgress = ["pending_provider", "open", "authorized"].includes(paymentStatus)
-    primary = (
-      <Button
-        key="payment"
-        type="button"
-        variant="success"
-        className="min-w-0 flex-1 md:flex-none"
-        disabled={
-          paymentPending ||
-          paymentBlocked ||
-          !selectedDomain ||
-          !profileReady ||
-          !quoteReady ||
-          paymentInProgress ||
-          complete
-        }
-        aria-describedby={
-          paymentBlocked ? "migration-recollection-payment-block" : undefined
-        }
-        onClick={onPay}
-      >
-        {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
-        {complete ? t("paymentCompleted") : `${t("checkoutStartPayment")} - ${totalPriceLabel}`}
-      </Button>
-    )
-  }
-
-  return (
-    <>
-    <div data-checkout-action-bar className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-2.5 py-1.5 pb-[max(env(safe-area-inset-bottom),0.375rem)] backdrop-blur min-[880px]:hidden">
-      <div className="mx-auto grid min-h-12 w-full max-w-[65rem] min-w-0 grid-cols-[auto_minmax(0,0.72fr)_minmax(9.75rem,1.28fr)] items-center gap-2">
-        {secondary}
-        <span className="min-w-0 leading-tight min-[880px]:hidden">
-          <span className="block text-[0.5625rem] text-muted-foreground">{step === "overview" ? t("checkoutSummaryTotal") : step === "details" ? t("checkoutKnownDetailsLabel") : t("checkoutSummaryDomain")}</span>
-          <strong className="block truncate text-xs">{step === "overview" ? totalPriceLabel : selectedDomain || "—"}</strong>
-        </span>
-        <span className="flex min-w-0 [&>button]:h-auto [&>button]:min-h-10 [&>button]:w-full [&>button]:whitespace-normal [&>button]:text-center [&>button]:text-xs [&>button]:leading-tight min-[880px]:[&>button]:w-auto">{primary}</span>
-      </div>
-    </div>
-    {desktopActionTarget
-      ? createPortal(
-          <div className="grid gap-2 [&>button]:w-full">
-            {primary}
-            <p className="text-center text-[0.625rem] leading-relaxed text-muted-foreground">{t("checkoutCompactSummarySaved")}</p>
-          </div>,
-          desktopActionTarget,
-        )
-      : null}
-    </>
   )
 }
 
@@ -3168,47 +3014,6 @@ function ConfirmationRow({
         <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
       </Button>
     </section>
-  )
-}
-
-function CheckoutOrderSummary({
-  domain,
-  company,
-  plan,
-  total,
-  t,
-}: {
-  domain: string
-  company: string
-  plan: string
-  total: string
-  t: ReturnType<typeof useTranslations<"preview">>
-}) {
-  return (
-    <Card data-checkout-summary className="hidden gap-0 overflow-hidden py-0 shadow-xs min-[880px]:sticky min-[880px]:top-20 min-[880px]:block">
-      <CardHeader className="gap-1 border-b bg-muted/20 p-3">
-        <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-md border bg-muted/50">
-            <ReceiptText className="size-4" aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <CardTitle className="text-sm">{t("checkoutCompactSummaryTitle")}</CardTitle>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-2.5 p-3">
-        <ReviewRow label={t("checkoutSummaryDomain")} value={domain || "—"} />
-        <ReviewRow label={t("checkoutContractingParty")} value={company || "—"} />
-        <ReviewRow label={t("checkoutPlanLegend")} value={plan} />
-        <Separator />
-        <ReviewRow label={t("checkoutSummaryTotal")} value={total} strong />
-        <div id="checkout-desktop-action" className="border-t pt-2.5" />
-        <div className="flex items-start gap-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          <span>{t("checkoutCompactSummarySaved")}</span>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -3361,25 +3166,6 @@ function DomainSuggestions({
           <DomainOptionRow key={`checking-${option.domain}`} option={option} checking />
         ))}
       </div>
-    </div>
-  )
-}
-
-function ReviewRow({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string
-  value: string
-  strong?: boolean
-}) {
-  return (
-    <div className="flex min-w-0 items-start justify-between gap-3">
-      <span className="min-w-0 text-xs leading-snug text-muted-foreground">{label}</span>
-      <span className={cn("min-w-0 [overflow-wrap:anywhere] text-right text-sm leading-snug", strong ? "font-semibold" : "font-medium")}>
-        {value || "-"}
-      </span>
     </div>
   )
 }

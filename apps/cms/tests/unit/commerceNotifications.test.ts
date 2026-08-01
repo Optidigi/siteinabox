@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { asPayload, type MockDoc } from "../_helpers/mockPayload"
 
 const mailMocks = vi.hoisted(() => {
@@ -129,7 +129,11 @@ const createPayload = (cycle: MockDoc = {}) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date("2026-08-01T09:00:00.000Z"))
 })
+
+afterEach(() => vi.useRealTimers())
 
 describe("commerce notification delivery evidence", () => {
   it("deduplicates the same governed reminder key under retries", async () => {

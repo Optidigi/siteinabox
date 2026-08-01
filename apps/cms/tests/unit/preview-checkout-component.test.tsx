@@ -211,7 +211,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )).toBeNull()
   })
 
-  it("exposes three named steps and submits no registrant identity in the final hidden form", async () => {
+  it("exposes two decisions and submits no registrant identity in the final hidden form", async () => {
     const saveProfileAction = vi.fn()
       .mockResolvedValueOnce({
         ok: false,
@@ -268,14 +268,14 @@ describe("PreviewCheckout Phase 3 flow", () => {
 
     expect(screen.getByRole("listitem", { name: "checkoutStepDomain" }).getAttribute("aria-current"))
       .toBe("step")
-    expect(screen.getByRole("listitem", { name: "checkoutStepDetails" })).toBeTruthy()
-    expect(screen.getByRole("listitem", { name: "checkoutStepSubscriptionOverview" })).toBeTruthy()
+    expect(screen.getByRole("listitem", { name: "checkoutStepPayment" })).toBeTruthy()
+    expect(screen.getAllByRole("listitem")).toHaveLength(2)
 
     fireEvent.click(screen.getAllByRole("button", { name: "checkoutNext" })[0]!)
-    const detailsHeading = await screen.findByRole("heading", { name: "checkoutDetailsTitle" })
+    const detailsHeading = await screen.findByRole("heading", { name: "checkoutStepPayment" })
     expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
-    expect(screen.getByText("owner@example.test")).toBeTruthy()
+    expect(screen.getAllByText("owner@example.test")).toHaveLength(2)
     fireEvent.click(screen.getAllByRole("button", { name: /^checkoutEdit / })[0]!)
     await screen.findByRole("dialog")
     expect((screen.getByLabelText("checkoutFirstName") as HTMLInputElement).value).toBe("Ada")
@@ -294,8 +294,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
     ))
     fireEvent.submit(profileForm!)
     await waitFor(() => expect(saveProfileAction).toHaveBeenCalledTimes(2))
-    const overviewHeading = await screen.findByRole("heading", { name: "checkoutSubscriptionOverviewTitle" })
-    expect(document.activeElement).toBe(overviewHeading)
+    await screen.findByRole("heading", { name: "checkoutSubscriptionOverviewTitle" })
+    expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ik sluit deze overeenkomst uitsluitend zakelijk.")).toBeTruthy()
 
     const paymentForm = container.querySelector<HTMLFormElement>("#checkout-payment-form")
@@ -312,17 +312,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "checkoutStepDomain" }))
     const domainHeading = await screen.findByRole("heading", { name: "checkoutDomainTitle" })
     expect(document.activeElement).toBe(domainHeading)
-    fireEvent.click(screen.getByRole("button", { name: "checkoutStepDetails" }))
+    fireEvent.click(screen.getByRole("button", { name: "checkoutStepPayment" }))
     expect(document.activeElement).toBe(
-      await screen.findByRole("heading", { name: "checkoutDetailsTitle" }),
-    )
-    fireEvent.click(screen.getByRole("button", {
-      name: "checkoutStepSubscriptionOverview",
-    }))
-    expect(document.activeElement).toBe(
-      await screen.findByRole("heading", {
-        name: "checkoutSubscriptionOverviewTitle",
-      }),
+      await screen.findByRole("heading", { name: "checkoutStepPayment" }),
     )
   })
 

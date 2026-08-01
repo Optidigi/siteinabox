@@ -6,6 +6,14 @@ import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { ThemeProvider } from "@/components/theme-provider"
 import messages from "@/locales/en.json"
 import "@/styles/globals.css"
+import { checkoutScenario } from "./checkout-scenarios"
+
+const harnessMessages = {
+  ...messages.preview,
+  checkoutStartPaymentAmount: "Approve & pay {amount}",
+  checkoutSummaryDueNow: "Due today",
+  checkoutSummaryVatRate: "VAT ({rate}%)",
+}
 
 const profile = {
   profileKey: "run:500:checkout-profile:1",
@@ -94,14 +102,47 @@ const quote = (
 }
 
 const searchParams = new URLSearchParams(window.location.search)
-const pending = searchParams.get("payment") === "pending"
-const fulfilled = searchParams.get("state") === "fulfilled"
-const existingScenario = searchParams.get("existing")
+const scenario = checkoutScenario(searchParams.get("scenario"))
+document.documentElement.dataset.checkoutScenario = scenario.id
+const pending = searchParams.get("payment") === "pending" || scenario.id === "payment-pending"
+const failed = scenario.id === "payment-failed"
+const fulfilmentScenario = scenario.family === "fulfilment"
+const fulfilled = searchParams.get("state") === "fulfilled" || fulfilmentScenario
+const existingScenario = searchParams.get("existing") ??
+  (scenario.family === "existing" || scenario.id === "fulfilment-action-transfer" ? "axfr" : null)
 const existingDomain = existingScenario ? "existing-example.nl" : null
 const cloudflareConnected = existingScenario === "cloudflare"
-const initialDomain = pending ? "analytical-engines.nl" : null
+const reviewInitially = ["review", "payment", "fulfilment"].includes(scenario.initial)
+const initialDomain = reviewInitially || pending || failed
+  ? existingDomain ?? "analytical-engines.nl"
+  : null
+const missingDetails = scenario.id === "details-missing"
+
+const fulfilmentStages = [
+  { code: "payment" as const, status: "complete" as const },
+  { code: "registration" as const, status: "complete" as const },
+  {
+    code: "registrant_verification" as const,
+    status: scenario.id === "fulfilment-action-verify"
+      ? "action_required" as const
+      : scenario.id === "fulfilment-complete"
+        ? "complete" as const
+        : "pending" as const,
+  },
+  { code: "dns" as const, status: scenario.id === "fulfilment-complete" ? "complete" as const : "pending" as const },
+  { code: "https" as const, status: scenario.id === "fulfilment-complete" ? "complete" as const : "pending" as const },
+  { code: "activation" as const, status: scenario.id === "fulfilment-complete" ? "complete" as const : "pending" as const },
+]
 
 const saveProfileAction = async (_previous: unknown, formData: FormData) => {
+  if (scenario.id === "profile-conflict") {
+    return {
+      ok: false,
+      status: "conflict" as const,
+      message: "The customer profile changed in another session.",
+      currentProfile: { ...profile, profileVersion: 2, firstName: "Augusta" },
+    }
+  }
   if (!existingScenario && formData.get("firstName") === "Ada") {
     return {
       ok: false,
@@ -133,14 +174,14 @@ const saveProfileAction = async (_previous: unknown, formData: FormData) => {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <NextIntlClientProvider locale="en" messages={{ common: messages.common, preview: messages.preview }}>
+  <NextIntlClientProvider locale="en" messages={{ common: messages.common, preview: harnessMessages }}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
     <PreviewCheckout
       customerEmail="owner@example.test"
       currentDomain={initialDomain}
       domainReady={Boolean(initialDomain)}
-      initialProfile={profile}
-      initialDetails={profile}
+      initialProfile={missingDetails ? null : profile}
+      initialDetails={missingDetails ? { ...profile, firstName: "", phoneSubscriberNumber: "" } : profile}
       initialQuotes={initialDomain
         ? {
             monthly: quote("monthly", initialDomain),
@@ -148,7 +189,7 @@ createRoot(document.getElementById("root")!).render(
           }
         : null}
       supportedDomainExtensions={["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"]}
-      initialStep={pending ? "overview" : "domain"}
+      initialStep={reviewInitially || pending || failed ? "overview" : "domain"}
       existingDomainMigrationEnabled={Boolean(existingScenario)}
       cloudflareSourceOAuthEnabled={Boolean(existingScenario)}
       enabledMigrationSourceMethods={
@@ -176,19 +217,28 @@ createRoot(document.getElementById("root")!).render(
           automaticNetAmountMinor: 0,
         },
       }}
-      paymentStatus={fulfilled ? "completed" : pending ? "pending_provider" : "not_started"}
-      paymentReturn={fulfilled}
+      paymentStatus={fulfilled ? "completed" : pending ? "pending_provider" : failed ? "failed" : "not_started"}
+      paymentReturn={fulfilled || pending || failed}
       provisioningStatus={fulfilled ? {
-        domain: "analytical-engines.nl",
-        stages: [
-          { code: "payment", status: "complete" },
-          { code: "registration", status: "complete" },
-          { code: "registrant_verification", status: "complete" },
-          { code: "dns", status: "complete" },
-          { code: "https", status: "pending" },
-          { code: "activation", status: "pending" },
-        ],
-        registrantVerificationDueAt: null,
+        domain: initialDomain ?? "analytical-engines.nl",
+        stages: fulfilmentStages,
+        registrantVerificationDueAt: scenario.id === "fulfilment-action-verify"
+          ? "2026-08-03T12:00:00.000Z"
+          : null,
+        updatedAt: "2026-07-30T12:00:00.000Z",
+      } : null}
+      migrationStatus={scenario.id === "fulfilment-action-transfer" ? {
+        migrationId: "browser-migration-1",
+        domain: existingDomain ?? "existing-example.nl",
+        state: "awaiting_customer",
+        classification: "automatic",
+        sourceMechanism: "authorized_axfr_v1",
+        operatorAuthorization: "paid_authorized",
+        actions: [{
+          action: "provide_epp_code",
+          status: "required",
+          deadlineAt: "2026-08-05T12:00:00.000Z",
+        }],
         updatedAt: "2026-07-30T12:00:00.000Z",
       } : null}
       previewHref="/preview"
@@ -199,6 +249,9 @@ createRoot(document.getElementById("root")!).render(
         const domainMode = String(formData.get("domainMode") ?? "new_registration")
         if (domain.startsWith("stale-result.")) {
           await new Promise((resolve) => window.setTimeout(resolve, 700))
+        }
+        if (scenario.id === "domain-loading" && domain.startsWith("loading-state.")) {
+          await new Promise((resolve) => window.setTimeout(resolve, 30_000))
         }
         if (domainMode === "existing_domain") {
           const sourceMechanism = String(
@@ -233,7 +286,10 @@ createRoot(document.getElementById("root")!).render(
               migrationReadiness: "unsupported" as const,
               migrationClassification: null,
               migrationPreflightOnly: true,
-              migrationPublicEvidence: publicEvidence,
+              migrationReleaseBlocked: scenario.id === "existing-blocked",
+              migrationPublicEvidence: scenario.id === "existing-blocked"
+                ? { ...publicEvidence, transferBlockers: ["The registrar transfer lock must be removed."] }
+                : publicEvidence,
               message: "Public preflight completed without a provider write.",
             }
           }
@@ -297,11 +353,18 @@ createRoot(document.getElementById("root")!).render(
         }
       }}
       saveProfileAction={saveProfileAction}
-      startPaymentAction={async () => ({
-        ok: false,
-        status: "payment_pending",
-        message: "Payment processing is still pending.",
-      })}
+      startPaymentAction={async () => scenario.id === "quote-refreshed"
+        ? {
+            ok: false,
+            status: "version_conflict" as const,
+            message: "The signed quote was refreshed.",
+            quotes: { monthly: quote("monthly"), annual: quote("annual") },
+          }
+        : {
+            ok: false,
+            status: scenario.id === "payment-redirecting" ? "redirecting" as const : "payment_pending" as const,
+            message: "Payment processing is still pending.",
+          }}
       termsHref="https://www.siteinabox.nl/terms"
       privacyHref="https://www.siteinabox.nl/privacy"
       termsVersion="2026-07-07.1"
