@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Pencil } from "lucide-react"
+import { Pencil } from "lucide-react"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -53,7 +53,6 @@ export function ReviewGroup({
         <span className="flex min-w-0 flex-wrap items-center gap-1.5">
           <h3 className="text-sm font-bold text-foreground">{title}</h3>
           {attention && <Badge variant="outline" className="border-warning/50 bg-warning/10 text-[0.625rem] text-foreground">{missingLabel}</Badge>}
-          <ChevronDown className={cn("ml-auto size-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} aria-hidden />
         </span>
         <p className="min-w-0 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{summary}</p>
       </Button>

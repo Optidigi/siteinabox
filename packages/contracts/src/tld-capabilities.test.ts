@@ -72,6 +72,44 @@ describe("effective-dated TLD capability catalog", () => {
     ).toEqual([...INTENDED_TLD_CATALOG].sort())
   })
 
+  it("permits an explicitly requested OpenProvider TLD without advertising it as recommended", () => {
+    const effectiveAt = "2026-08-02T00:00:00.000Z"
+    const capability = getTldCapabilityForProductionOperation(
+      "ai",
+      "registration",
+      effectiveAt,
+    )
+
+    expect(capability).toMatchObject({
+      tld: "ai",
+      capabilityVersion: "tld-ai-2026-08-02.1",
+      production: {
+        registration: true,
+        incomingTransfer: false,
+        renewal: true,
+        registrantVerification: true,
+      },
+    })
+    expect(
+      getTldCapabilityForProductionOperation("ai", "incoming_transfer", effectiveAt),
+    ).toBeNull()
+    expect(getTldCapabilityByVersion("tld-ai-2026-08-02.1")).toMatchObject({
+      tld: "ai",
+    })
+    expect(
+      productionTldCapabilitiesAt("registration", effectiveAt).some(
+        (entry) => entry.tld === "ai",
+      ),
+    ).toBe(false)
+    expect(
+      getTldCapabilityForProductionOperation(
+        "ai",
+        "registration",
+        "2026-08-01T23:59:59.999Z",
+      ),
+    ).toBeNull()
+  })
+
   it("enables only registration and its required verification for every intended TLD", () => {
     expect(
       productionTldCapabilitiesAt(

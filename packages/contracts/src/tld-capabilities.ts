@@ -902,6 +902,138 @@ export const TLD_CAPABILITY_CATALOG = deepFreeze(
 
 const normalizedTld = (value: string): string => value.trim().toLowerCase().replace(/^\./, "")
 
+// OpenProvider's availability and price response is the commercial authority
+// for an on-demand registration. These capabilities deliberately cover only
+// registration, registrar verification, and provider autorenew; incoming
+// transfers and restoration remain governed TLD-by-TLD because they require
+// registry-specific evidence and customer declarations.
+const OPENPROVIDER_ON_DEMAND_CAPABILITY_EFFECTIVE_FROM =
+  "2026-08-02T00:00:00.000Z"
+const OPENPROVIDER_ON_DEMAND_CAPABILITY_VERSION_SUFFIX = "2026-08-02.1"
+const onDemandCapabilityVersion = (tld: string): string =>
+  `tld-${tld}-${OPENPROVIDER_ON_DEMAND_CAPABILITY_VERSION_SUFFIX}`
+
+const onDemandOpenProviderRegistrationCapability = (
+  tld: string,
+  effectiveAt: string | Date = new Date(),
+): TldCapability | null => {
+  const normalized = normalizedTld(tld)
+  const at = validEffectiveDate(effectiveAt)
+  if (
+    !/^[a-z]{2,63}$/.test(normalized) ||
+    at.getTime() < Date.parse(OPENPROVIDER_ON_DEMAND_CAPABILITY_EFFECTIVE_FROM)
+  ) {
+    return null
+  }
+  return tldCapabilitySchema.parse({
+    schemaVersion: 1,
+    capabilityVersion: onDemandCapabilityVersion(normalized),
+    catalogVersion: TLD_CAPABILITY_CATALOG_VERSION,
+    tld: normalized,
+    effectiveFrom: OPENPROVIDER_ON_DEMAND_CAPABILITY_EFFECTIVE_FROM,
+    effectiveUntil: null,
+    production: {
+      registration: true,
+      incomingTransfer: false,
+      renewal: true,
+      registrantVerification: true,
+      restoration: false,
+    },
+    provider: "openprovider",
+    registrant: {
+      customerIsRegistrant: true,
+      supportedPartyTypes: ["registered_business", "business_in_formation"],
+      requiredFields: COMMON_REGISTRANT_FIELDS,
+      registeredBusinessRequiredFields: ["companyName"],
+      businessInFormationRequiredFields: [],
+      siteinaboxContactRoles: ["administrative", "technical", "billing"],
+    },
+    registration: {
+      supported: true,
+      periodYears: 1,
+      labelLength: { min: 1, max: 63 },
+      idn: true,
+      eligibility: "none",
+      preconfiguredAuthoritativeDns: false,
+      registryValidationProfile: "generic",
+      confirmation: {
+        mechanism: "provider_domain_poll",
+        activeStatuses: PROVIDER_ACTIVE_STATUSES,
+        expectedWaitState: "persisted",
+      },
+    },
+    transfer: {
+      supported: true,
+      authorization: "required",
+      authorizationFormat: "opaque",
+      authorizationValidityDays: null,
+      completion: "pending_confirmation",
+      maximumExpectedWaitDays: 6,
+      customerConfirmation: "registrant_email",
+      confirmation: {
+        mechanism: "provider_domain_poll",
+        activeStatuses: PROVIDER_ACTIVE_STATUSES,
+        expectedWaitState: "persisted",
+      },
+      validRegistrantPhoneRequired: true,
+      renewalEffect: "provider_determined",
+      outgoing: {
+        supported: false,
+        mechanism: "unsupported",
+        providerEvidenceUrl: null,
+      },
+    },
+    verification: {
+      requirement: "provider_reported",
+      evidenceSource: "openprovider.verification_email_status",
+      activationGate: "verified_or_not_required",
+    },
+    renewal: {
+      dateSource: "openprovider.renewal_date",
+      executionMode: "provider_autorenew",
+      providerSafeCutoffLeadDays: 2,
+      completionEvidence: "renewal_date_advanced",
+    },
+    restoration: {
+      supported: true,
+      providerWindowDays: null,
+      registryQuarantineDays: null,
+      redemptionPeriodDays: null,
+      pendingDeleteDays: null,
+      mode: "provider_determined",
+      ordinaryCheckout: false,
+    },
+    dnssec: {
+      supported: true,
+      transferPreparation: "provider_determined",
+      productionEvidenceComplete: false,
+    },
+    pricing: {
+      currency: COMMERCIAL_CATALOG_CURRENCY,
+      premiumDomains: "unsupported",
+      acceptedOrderEvidence: "frozen_provider_operation_quote",
+      operations: {
+        registration: "provider_operation_quote",
+        transfer: "provider_operation_quote",
+        renewal: "provider_operation_quote",
+        restore: "manual_provider_quote",
+      },
+    },
+    rendererTls: {
+      apex: "explicit_active_host",
+      www: "explicit_active_alias",
+      edge: "cloudflare",
+      https: "cloudflare_edge_certificate",
+      origin: "protected_https_matching_host",
+    },
+    evidence: {
+      reviewedAt: OPENPROVIDER_ON_DEMAND_CAPABILITY_EFFECTIVE_FROM,
+      providerPolicyUrl: `https://www.openprovider.com/domains/tlds/${normalized}`,
+      registryPolicyUrl: "https://www.openprovider.com/domains/",
+    },
+  })
+}
+
 const validEffectiveDate = (value: string | Date): Date => {
   const date = value instanceof Date ? new Date(value.getTime()) : new Date(value)
   if (Number.isNaN(date.getTime())) throw new Error("TLD capability effective date is invalid.")
@@ -974,9 +1106,19 @@ export function getTldCapabilityForProductionOperation(
   effectiveAt: string | Date = new Date(),
 ): TldCapability | null {
   const capability = tldCapabilityAt(tld, effectiveAt)
-  return capability && tldCapabilityAllowsProductionOperation(capability, operation)
-    ? capability
-    : null
+  if (capability) {
+    return tldCapabilityAllowsProductionOperation(capability, operation)
+      ? capability
+      : null
+  }
+  if (
+    operation === "registration" ||
+    operation === "registrant_verification" ||
+    operation === "renewal_provider_autorenew"
+  ) {
+    return onDemandOpenProviderRegistrationCapability(tld, effectiveAt)
+  }
+  return null
 }
 
 export function getTldCapabilityByVersion(
@@ -988,7 +1130,13 @@ export function getTldCapabilityByVersion(
   if (matches.length > 1) {
     throw new Error(`Duplicate TLD capability version: ${capabilityVersion}`)
   }
-  return matches[0] ?? null
+  if (matches[0]) return matches[0]
+  const match = capabilityVersion.match(
+    /^tld-([a-z]{2,63})-2026-08-02\.1$/,
+  )
+  return match?.[1]
+    ? onDemandOpenProviderRegistrationCapability(match[1])
+    : null
 }
 
 export function productionTldCapabilitiesAt(

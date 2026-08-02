@@ -707,6 +707,23 @@ describe("OpenProvider adapter", () => {
       .toThrow("TLD .be is not enabled")
   })
 
+  it("builds a frozen on-demand OpenProvider registration without enabling its transfer path", () => {
+    vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"))
+
+    expect(buildOpenProviderDomainRegistrationRequest("example.ai", env, {
+      acceptedCapabilityVersion: "tld-ai-2026-08-02.1",
+    })).toMatchObject({
+      domain: { name: "example", extension: "ai" },
+      period: 1,
+      autorenew: "on",
+      ns_group: "siab-default",
+    })
+    expect(() => buildOpenProviderDomainTransferRequest("example.ai", env, {
+      authCode: "opaque-ai-token",
+      acceptedCapabilityVersion: "tld-ai-2026-08-02.1",
+    })).toThrow("not valid")
+  })
+
   it.each(["nl"] as const)(
     "builds the reviewed .%s transfer contract without sending a provider write",
     (tld) => {

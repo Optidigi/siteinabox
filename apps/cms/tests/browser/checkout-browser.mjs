@@ -179,14 +179,13 @@ try {
   assert.equal(await page.locator("[data-checkout-action-bar]").getByText(/229[.,]90/, { exact: false }).first().isVisible(), true)
   assert.equal(
     await page.locator('[role="checkbox"]:visible').count(),
-    3,
-    "Business use, terms/privacy, and website approval must be separate required checkboxes.",
+    2,
+    "Terms/privacy and website approval must be the two required checkout confirmations.",
   )
   const payButton = page.getByRole("button", { name: /Approve & pay/ })
   assert.equal(await payButton.isDisabled(), true, "Payment stays unavailable until every required confirmation is accepted.")
   await page.locator("#checkout-terms").check()
   assert.equal(await payButton.isDisabled(), true)
-  await page.locator("#checkout-business-use").check()
   await page.locator("#checkout-preview-approval").check()
   assert.equal(await payButton.isEnabled(), true, "Payment becomes available only after all required confirmations are accepted.")
   await page.setViewportSize({ width: 320, height: 568 })

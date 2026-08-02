@@ -251,7 +251,6 @@ createRoot(document.getElementById("root")!).render(
       })}
       previewHref="/preview"
       prewarmHref="/prewarm"
-      suggestionsHref="/suggestions"
       checkDomainAction={async (_previous, formData) => {
         const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
         const domainMode = String(formData.get("domainMode") ?? "new_registration")
@@ -382,8 +381,6 @@ createRoot(document.getElementById("root")!).render(
       privacyHref="https://www.siteinabox.nl/privacy"
       termsVersion="2026-07-07.1"
       privacyVersion="2026-07-18.1"
-      businessUseDeclarationVersion="business-use-2026-07-26.1"
-      businessUseDeclarationText="I enter this agreement exclusively for business use."
       locale="en-NL"
     />
     </ThemeProvider>

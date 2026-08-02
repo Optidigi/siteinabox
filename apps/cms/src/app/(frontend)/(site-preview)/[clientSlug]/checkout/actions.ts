@@ -5,10 +5,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { getLocale, getTranslations } from "next-intl/server"
-import {
-  BUSINESS_USE_DECLARATION_VERSION,
-  getCurrentLegalDocument,
-} from "@siteinabox/legal-content"
+import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import {
   COMMERCIAL_CATALOG,
   COMMERCIAL_CATALOG_VERSION,
@@ -1314,9 +1311,6 @@ export async function startPreviewCheckoutPaymentAction(
   if (formData.get("termsAcceptance") !== "accepted") {
     return { ok: false, message: t("checkoutTermsAcceptanceRequired") }
   }
-  if (formData.get("businessUseAcceptance") !== "accepted") {
-    return { ok: false, message: t("checkoutBusinessUseRequired") }
-  }
   const expectedProfileVersion = versionField(formData, "expectedProfileVersion")
   const expectedProfileKey = String(formData.get("expectedProfileKey") ?? "").trim()
   if (expectedProfileVersion == null || !expectedProfileKey) {
@@ -1326,8 +1320,7 @@ export async function startPreviewCheckoutPaymentAction(
   const currentPrivacy = getCurrentLegalDocument("platform-privacy", "nl")
   if (
     String(formData.get("expectedTermsVersion") ?? "") !== currentTerms.documentVersion ||
-    String(formData.get("expectedPrivacyVersion") ?? "") !== currentPrivacy.documentVersion ||
-    String(formData.get("expectedBusinessUseDeclarationVersion") ?? "") !== BUSINESS_USE_DECLARATION_VERSION
+    String(formData.get("expectedPrivacyVersion") ?? "") !== currentPrivacy.documentVersion
   ) {
     return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
   }

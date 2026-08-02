@@ -201,9 +201,6 @@ describe("preview checkout page domain initialization", () => {
       partyType: "registered_business",
       registeredBusinessName: "Analytical Engines B.V.",
     })
-    expect(props.businessUseDeclarationVersion).toBe(
-      "business-use-declaration-2026-07-26.1",
-    )
     expect(props.catalog.plans).toMatchObject({
       monthly: { netAmountMinor: 1_900 },
       annual: { netAmountMinor: 19_000 },

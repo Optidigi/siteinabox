@@ -167,6 +167,7 @@ describe("enabled-TLD domain verification", () => {
     })
     expect(lookup).toHaveBeenCalledWith({
       hostname: "example.nl",
+      nameserver: "1.1.1.1",
       authoritative: false,
     })
   })
