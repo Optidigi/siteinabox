@@ -52,6 +52,10 @@ export async function loadCustomerProvisioningStatus(
   })
   if (orders.docs.length !== 1) return null
   const order = orders.docs[0] as Order
+  // A cancelled checkout remains as immutable operational evidence, but it is
+  // no longer a customer fulfilment lifecycle. Projecting it here would leave
+  // a returning customer permanently on a stale provisioning timeline.
+  if (order.state === "cancelled") return null
   const domains = await payload.find({
     collection: "managed-domains",
     where: { originatingOrder: { equals: order.id } },

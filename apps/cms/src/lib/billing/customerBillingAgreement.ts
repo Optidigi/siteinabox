@@ -42,6 +42,9 @@ export async function loadCustomerBillingAgreement(
     throw new Error("Customer checkout has ambiguous initial-order authority.")
   }
   const order = orders.docs[0] as Order
+  // A cancelled initial checkout can retain its agreement record for audit;
+  // it must not reopen the launch fulfilment shell for the customer.
+  if (order.state === "cancelled") return null
   if (
     !sameRelationshipId(order.tenant, input.tenantId) ||
     order.customerEmail.trim().toLowerCase() !== customerEmail
