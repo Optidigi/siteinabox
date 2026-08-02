@@ -27,7 +27,7 @@ export function LifecycleRow({
   return (
     <li className="grid min-h-[62px] min-w-0 grid-cols-[30px_minmax(0,1fr)] items-center gap-x-[11px] gap-y-0 border-b px-[13px] py-2.5 last:border-b-0 min-[560px]:grid-cols-[30px_minmax(0,1fr)_auto]">
       <span className={cn("grid size-[30px] place-items-center rounded-[9px]", iconClass)}>
-        <Icon className={status === "active" && Icon === Loader2 ? "size-[15px] animate-spin" : "size-[15px]"} aria-hidden />
+        <Icon className={Icon === Loader2 && ["active", "pending"].includes(status) ? "size-[15px] animate-spin motion-reduce:animate-none" : "size-[15px]"} aria-hidden />
       </span>
       <span className="min-w-0">
         <strong className="block text-xs leading-snug">{title}</strong>

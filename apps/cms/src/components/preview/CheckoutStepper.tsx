@@ -70,7 +70,7 @@ export function CheckoutStepper<T extends string = string>({
               aria-label={entry.label}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "flex min-h-[46px] min-w-0 items-center gap-[7px] rounded-[11px] border bg-card/75 px-2 py-[7px] text-muted-foreground min-[560px]:min-h-[52px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3 min-[560px]:py-2",
+                "flex min-h-[50px] min-w-0 items-center gap-[7px] rounded-[11px] border bg-card/75 px-2 py-[7px] text-muted-foreground min-[560px]:min-h-[58px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3 min-[560px]:py-2",
                 active && "border-border bg-card text-foreground shadow-sm",
               )}
             >
@@ -79,7 +79,7 @@ export function CheckoutStepper<T extends string = string>({
                   type="button"
                   aria-label={entry.label}
                   variant="ghost"
-                  className="-m-2 flex h-auto min-h-[46px] min-w-0 flex-1 justify-start gap-[7px] rounded-[11px] px-2 text-inherit hover:bg-transparent min-[560px]:-m-3 min-[560px]:min-h-[52px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3"
+                  className="-m-2 flex h-auto min-h-[50px] min-w-0 flex-1 justify-start gap-[7px] rounded-[11px] px-2 text-inherit hover:bg-transparent min-[560px]:-m-3 min-[560px]:min-h-[58px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3"
                   onClick={() => onStepSelect(entry.id)}
                 >
                   {content}

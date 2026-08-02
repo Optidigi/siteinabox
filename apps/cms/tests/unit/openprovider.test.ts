@@ -133,6 +133,27 @@ describe("OpenProvider adapter", () => {
     },
   )
 
+  it("canonicalizes provider availability prices before checkout quote construction", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [{
+          domain: "example.nl",
+          status: "free",
+          price: { price: "8.5", currency: "eur" },
+        }],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainAvailability("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "available",
+      price: { amount: "8.50", currency: "EUR" },
+    })
+  })
+
   it("returns absence and fails closed on ambiguous exact domain lookup", async () => {
     const empty = vi.fn(async () => Response.json({
       code: 0,
