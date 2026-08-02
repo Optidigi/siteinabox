@@ -1251,6 +1251,8 @@
     "checkoutTermsPrivacyTitle": "Terms and privacy",
     "checkoutWebsiteApprovalTitle": "Website approval",
     "checkoutPlanLegend": "Billing period",
+    "checkoutPlanTitle": "Plan",
+    "checkoutSummaryDomainExtraExVat": "Domain extra · excl. VAT",
     "checkoutPlanPerYear": "/ year",
     "checkoutPlanPerMonth": "/ month",
     "checkoutPlanMonthly": "Monthly subscription",

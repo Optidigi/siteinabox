@@ -52,7 +52,7 @@ export const assertCheckoutGeometry = (assert, visualCase, geometry) => {
   assert.equal(geometry.horizontalOverflow, false, `${visualCase.id} has horizontal overflow.`)
   assert.equal(geometry.headingCount, 1, `${visualCase.id} must have exactly one h1.`)
   const expectedShellWidth = visualCase.width >= 880
-    ? Math.min(visualCase.width - 40, 1120)
+    ? Math.min(visualCase.width - 40, 1184)
     : visualCase.width < 560
       ? visualCase.width - 20
       : Math.min(visualCase.width - 28, 720)
