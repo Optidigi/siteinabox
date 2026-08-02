@@ -6,11 +6,18 @@ import { fileURLToPath } from "node:url"
 import react from "@vitejs/plugin-react"
 import { chromium } from "playwright"
 import { createServer } from "vite"
+import {
+  assertCheckoutGeometry,
+  checkoutGeometry,
+  checkoutVisualCases,
+} from "./checkout-visual-regression.mjs"
 
 const browserRoot = path.dirname(fileURLToPath(import.meta.url))
 const cmsRoot = path.resolve(browserRoot, "../..")
 const screenshotRoot = process.env.CHECKOUT_SCREENSHOT_DIR
 if (screenshotRoot) await fs.mkdir(screenshotRoot, { recursive: true })
+const visualMatrixRoot = process.env.CHECKOUT_VISUAL_MATRIX_DIR
+if (visualMatrixRoot) await fs.mkdir(visualMatrixRoot, { recursive: true })
 const capture = async (page, name, dark = false) => {
   if (!screenshotRoot) return
   await page.evaluate(async (useDark) => {
@@ -80,7 +87,7 @@ try {
     "The domain sheet must expose one availability action.",
   )
 
-  const domainInput = page.getByLabel("Domain name")
+  const domainInput = page.locator("#checkout-domain")
   await domainInput.fill("service-error.nl")
   await page.getByRole("alert").first().waitFor()
   assert.equal(await page.getByRole("button", { name: "Check again", exact: true }).isVisible(), true)
@@ -98,7 +105,7 @@ try {
   assert.equal(await page.getByText("Premium", { exact: true }).isVisible(), true)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
-    .getByRole("button", { name: "Select", exact: true }).click()
+    .getByRole("button", { name: "Choose", exact: true }).click()
 
   await domainInput.fill("stale-result")
   await domainInput.fill("fresh-result")
@@ -121,7 +128,7 @@ try {
   await domainInput.fill("analytical-engines")
   await page.getByText("analytical-engines.com", { exact: true }).waitFor()
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
-    .getByRole("button", { name: "Select", exact: true }).click()
+    .getByRole("button", { name: "Choose", exact: true }).click()
 
   const continueButton = page.getByRole("button", { name: "Continue" })
   await continueButton.focus()
@@ -244,10 +251,10 @@ try {
     0,
     "The phone action row must not compete with domain search before a domain is selected.",
   )
-  await compactPage.getByLabel("Domain name").fill("analytical-engines")
+  await compactPage.locator("#checkout-domain").fill("analytical-engines")
   await compactPage.getByText("analytical-engines.com", { exact: true }).waitFor()
   await compactPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
-    .getByRole("button", { name: "Select", exact: true }).click()
+    .getByRole("button", { name: "Choose", exact: true }).click()
   const compactGeometry = await compactPage.evaluate(() => {
     const shell = document.querySelector("[data-checkout-shell]")
     const card = document.querySelector("[data-checkout-main-card]")
@@ -488,7 +495,7 @@ try {
   existingReadyPage.setDefaultTimeout(5_000)
   await existingReadyPage.goto(`${origin}?scenario=existing-ready&existing=cloudflare-ready`, { waitUntil: "networkidle" })
   await existingReadyPage.getByText("Use an existing domain", { exact: true }).click()
-  await existingReadyPage.getByLabel("Domain name").fill("existing-example.nl")
+  await existingReadyPage.locator("#checkout-domain").fill("existing-example.nl")
   await existingReadyPage.getByRole("button", { name: "Check connection" }).click()
   await existingReadyPage.getByRole("status").getByText("We found a low-risk path", { exact: false }).waitFor()
   await capture(existingReadyPage, "desktop-dark-existing-cloudflare-ready", true)
@@ -502,7 +509,7 @@ try {
     waitUntil: "networkidle",
   })
   await unsupportedPage.getByText("Use an existing domain", { exact: true }).click()
-  await unsupportedPage.getByLabel("Domain name").fill("existing-example.nl")
+  await unsupportedPage.locator("#checkout-domain").fill("existing-example.nl")
   await unsupportedPage.getByRole("button", { name: "Check connection" }).click()
   await unsupportedPage.getByRole("alert").filter({
     hasText: "No safe automatic DNS source is available",
@@ -513,7 +520,7 @@ try {
     }).count(),
     0,
   )
-  assert.equal(await unsupportedPage.getByLabel("Domain name").isEnabled(), true)
+  assert.equal(await unsupportedPage.locator("#checkout-domain").isEnabled(), true)
   assert.equal(
     await unsupportedPage.evaluate(() =>
       document.documentElement.scrollWidth <= innerWidth),
@@ -528,7 +535,7 @@ try {
   axfrPage.setDefaultTimeout(5_000)
   await axfrPage.goto(`${origin}?existing=axfr`, { waitUntil: "networkidle" })
   await axfrPage.getByText("Use an existing domain", { exact: true }).click()
-  await axfrPage.getByLabel("Domain name").fill("existing-example.nl")
+  await axfrPage.locator("#checkout-domain").fill("existing-example.nl")
   await axfrPage.getByRole("button", { name: "Check connection" }).click()
   await axfrPage.getByLabel("Authorized nameserver").waitFor()
   await axfrPage.getByLabel(/Transfer code/).fill("browser-transfer-code")
@@ -600,7 +607,7 @@ try {
   ]
   const driveReviewScenario = async (scenarioPage, scenarioId) => {
     if (["domain-loading", "domain-results", "domain-selected", "domain-premium"].includes(scenarioId)) {
-      await scenarioPage.getByLabel("Domain name").fill(
+      await scenarioPage.getByLabel(/Business or domain name|Domain name|Domain you already own|Domeinnaam|Domein dat je al bezit/i).fill(
         scenarioId === "domain-loading" ? "loading-state" : "analytical-engines",
       )
       if (scenarioId === "domain-loading") {
@@ -610,7 +617,7 @@ try {
       await scenarioPage.getByText("analytical-engines.com", { exact: true }).waitFor()
       if (scenarioId === "domain-selected") {
         await scenarioPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
-          .getByRole("button", { name: "Select", exact: true }).click()
+          .getByRole("button", { name: "Choose", exact: true }).click()
         await scenarioPage.locator("[data-selected-domain-summary]").waitFor()
       }
       if (scenarioId === "domain-premium") {
@@ -619,14 +626,14 @@ try {
       return
     }
     if (scenarioId === "domain-error") {
-      await scenarioPage.getByLabel("Domain name").fill("service-error.nl")
+      await scenarioPage.getByLabel(/Business or domain name|Domain name|Domain you already own|Domeinnaam|Domein dat je al bezit/i).fill("service-error.nl")
       await scenarioPage.getByRole("alert").first().waitFor()
       return
     }
     if (["existing-ready", "existing-blocked"].includes(scenarioId)) {
-      await scenarioPage.getByText("Use an existing domain", { exact: true }).click()
-      await scenarioPage.getByLabel("Domain name").fill("existing-example.nl")
-      await scenarioPage.getByRole("button", { name: "Check connection" }).click()
+      await scenarioPage.getByText(/Use an existing domain|Gebruik een bestaand domein/i, { exact: true }).click()
+      await scenarioPage.getByLabel(/Business or domain name|Domain name|Domain you already own|Domeinnaam|Domein dat je al bezit/i).fill("existing-example.nl")
+      await scenarioPage.getByRole("button", { name: /Check connection|Verbinding controleren/i }).click()
       await scenarioPage.getByRole(scenarioId === "existing-blocked" ? "alert" : "status").first().waitFor()
       return
     }
@@ -679,6 +686,43 @@ try {
     await scenarioPage.close()
   }
   process.stdout.write("Checkout 23-state development harness passed.\n")
+
+  if (visualMatrixRoot) {
+    for (const visualCase of checkoutVisualCases) {
+      const visualPage = await browser.newPage({
+        viewport: { width: visualCase.width, height: visualCase.height },
+      })
+      visualPage.setDefaultTimeout(8_000)
+      await visualPage.addInitScript((theme) => localStorage.setItem("theme", theme), visualCase.theme)
+      await visualPage.goto(
+        `${origin}?scenario=${visualCase.scenario}&locale=${visualCase.locale}`,
+        { waitUntil: "networkidle" },
+      )
+      await driveReviewScenario(visualPage, visualCase.scenario)
+      if (visualCase.scenario === "domain-results") {
+        await visualPage.getByText("Live results", { exact: true }).evaluate((node) => {
+          node.scrollIntoView({ block: "start" })
+          window.scrollBy(0, -64)
+        })
+      } else if (visualCase.scenario === "declaration-block") {
+        await visualPage.locator("#checkout-declarations-error").scrollIntoViewIfNeeded()
+      } else if (visualCase.scenario === "fulfilment-action-transfer") {
+        await visualPage.getByText(/transfer code|verhuiscode/i).last().scrollIntoViewIfNeeded()
+      }
+      assertCheckoutGeometry(assert, visualCase, await checkoutGeometry(visualPage))
+      await visualPage.screenshot({
+        path: path.join(visualMatrixRoot, `${visualCase.id}.png`),
+        fullPage: false,
+        animations: "disabled",
+      })
+      await visualPage.close()
+    }
+    await fs.writeFile(
+      path.join(visualMatrixRoot, "manifest.json"),
+      `${JSON.stringify({ cases: checkoutVisualCases }, null, 2)}\n`,
+    )
+    process.stdout.write(`Checkout visual evidence written to ${visualMatrixRoot}.\n`)
+  }
   process.stdout.write("Checkout Chromium contract passed.\n")
 } finally {
   await browser?.close()

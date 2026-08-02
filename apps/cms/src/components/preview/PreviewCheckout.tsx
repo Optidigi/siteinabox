@@ -37,6 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/compone
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
+import { RadioGroup, RadioGroupItem } from "@siteinabox/ui/components/radio-group"
 import {
   Sheet,
   SheetContent,
@@ -55,6 +56,12 @@ import {
 } from "@/components/preview/checkout/checkoutPresentation"
 import { MobileCheckoutBar } from "@/components/preview/checkout/MobileCheckoutBar"
 import { OrderSummaryRail } from "@/components/preview/checkout/OrderSummaryRail"
+import { AcceptanceCheckbox } from "@/components/preview/checkout/AcceptanceCheckbox"
+import { CheckoutTextField } from "@/components/preview/checkout/CheckoutTextField"
+import { DomainSuggestions } from "@/components/preview/checkout/DomainSuggestions"
+import { LifecycleRow } from "@/components/preview/checkout/LifecycleRow"
+import { MigrationSourceEvidenceFields } from "@/components/preview/checkout/MigrationSourceEvidenceFields"
+import { ReviewGroup, ReviewDetail } from "@/components/preview/checkout/ReviewGroup"
 import type {
   CheckoutProfileDraft,
   CheckoutProfileView,
@@ -1647,7 +1654,7 @@ export function PreviewCheckout({
           {presentation.phase === "payment" && <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
             company={savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
-            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+            plan={billingPeriod === "annual" ? t("checkoutPlanAnnualShort") : t("checkoutPlanMonthlyShort")}
             dueNow={dueNowLabel}
             quote={selectedQuote?.quote}
             locale={locale}
@@ -1702,11 +1709,11 @@ export function PreviewCheckout({
                   variant="outline"
                   className="grid grid-cols-2 rounded-xl bg-muted p-[3px]"
                 >
-                  <ToggleGroupItem value="new_registration" className="min-h-[42px] gap-2 rounded-[9px] border-0 text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
+                  <ToggleGroupItem value="new_registration" className="min-h-[42px] min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
                     <Search className="size-4" aria-hidden />
                     <span>{t("checkoutDomainModeNew")}</span>
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="existing_domain" className="min-h-[42px] gap-2 rounded-[9px] border-0 text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
+                  <ToggleGroupItem value="existing_domain" className="min-h-[42px] min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
                     <RefreshCw className="size-4" aria-hidden />
                     <span>{t("checkoutDomainModeExisting")}</span>
                   </ToggleGroupItem>
@@ -1733,7 +1740,11 @@ export function PreviewCheckout({
                   }
                 }}
               >
-                <Label htmlFor="checkout-domain" className="mb-[7px] text-xs font-bold">{t("checkoutDomainLabel")}</Label>
+                <Label htmlFor="checkout-domain" className="mb-[7px] text-xs font-bold">
+                  {domainMode === "existing_domain"
+                    ? t("checkoutExistingDomainLabel")
+                    : t("checkoutDomainLabel")}
+                </Label>
                 <input ref={domainRequestTokenRef} type="hidden" name="requestToken" />
                 <input type="hidden" name="domainMode" value={domainMode} />
                 {migrationSourceMethod && (
@@ -1759,7 +1770,7 @@ export function PreviewCheckout({
                     aria-invalid={domainInputState === "error" ? true : undefined}
                     aria-describedby={domainDescriptionId}
                     className={cn(
-                      "h-12 rounded-xl pr-11 pl-[42px] text-base font-medium",
+                      "h-12 md:h-12 rounded-xl pr-11 pl-[42px] text-base font-medium",
                       domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
                       domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                       domainInputState === "error" && "border-destructive",
@@ -1774,16 +1785,16 @@ export function PreviewCheckout({
                       ) : null}
                     </div>
                   </div>
-                  <Button type="submit" className="h-11 min-h-11 rounded-[11px] px-4 shadow-sm min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
+                  <Button type="submit" className="h-12 min-h-12 md:h-12 md:min-h-12 rounded-[11px] px-4 shadow-sm max-[559px]:h-11 max-[559px]:min-h-11 min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
                     {checkPending || extensionCheckPending ? <Loader2 className="size-[18px] animate-spin" aria-hidden /> : <Search className="size-[18px]" aria-hidden />}
                     {domainMode === "existing_domain" ? t("checkoutDomainCheckConnection") : t("checkoutCheckDomain")}
                   </Button>
                 </div>
-                {domainMode === "new_registration" && (
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {t("checkoutAutomaticExtensionHint", { extensions: selectedExtensions.map((extension) => `.${extension}`).join(", ") })}
-                  </p>
-                )}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {domainMode === "existing_domain"
+                    ? t("checkoutExistingDomainHint")
+                    : t("checkoutAutomaticExtensionHint", { extensions: selectedExtensions.map((extension) => `.${extension}`).join(", ") })}
+                </p>
                 {domainMode === "new_registration" && (
                   <div className="grid gap-3 pt-3">
                     {(extensionCheckPending || extensionResults.length > 0) && (
@@ -1838,7 +1849,7 @@ export function PreviewCheckout({
                                 </span>
                               </span>
                               <span className="grid self-start pt-0.5 text-right">
-                                <strong className="text-[0.8125rem] font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+                                <strong className="text-[0.8125rem] font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : result.extraFeeLabel ?? "—"}</strong>
                                 {available && result.quotes && result.quotes.annual.quote.domainSurchargeNetMinor > 0 && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
                               </span>
                               {available && (
@@ -1906,29 +1917,30 @@ export function PreviewCheckout({
                           <p className="text-sm text-muted-foreground">
                             {t("checkoutMigrationSourceHelp")}
                           </p>
-                          {([
-                            ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
-                            ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
-                          ] as const)
-                            .filter(([value]) =>
-                              availableMigrationSourceMethods.includes(value))
-                            .map(([value, label]) => (
-                              <label
-                                key={value}
-                                className="flex cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm"
-                              >
-                                <input
-                                  type="radio"
-                                  name="checkout-migration-source"
-                                  value={value}
-                                  checked={migrationSourceMethod === value}
-                                  onChange={() =>
-                                    updateMigrationSourceMethod(value)}
-                                  className="mt-1"
-                                />
-                                <span>{t(label)}</span>
-                              </label>
-                            ))}
+                          <RadioGroup
+                            value={migrationSourceMethod || undefined}
+                            onValueChange={(value) => {
+                              if (value === "cloudflare_api_v1" || value === "authorized_axfr_v1") {
+                                updateMigrationSourceMethod(value)
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            {([
+                              ["cloudflare_api_v1", "checkoutMigrationSourceCloudflare"],
+                              ["authorized_axfr_v1", "checkoutMigrationSourceAxfr"],
+                            ] as const)
+                              .filter(([value]) => availableMigrationSourceMethods.includes(value))
+                              .map(([value, label]) => (
+                                <div
+                                  key={value}
+                                  className="flex cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm"
+                                >
+                                  <RadioGroupItem id={`checkout-migration-source-${value}`} value={value} className="mt-0.5" />
+                                  <Label htmlFor={`checkout-migration-source-${value}`} className="cursor-pointer font-normal leading-relaxed">{t(label)}</Label>
+                                </div>
+                              ))}
+                          </RadioGroup>
                         </fieldset>
                       )}
                     {!cloudflareSourceAuthorization &&
@@ -2142,7 +2154,7 @@ export function PreviewCheckout({
           <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
             company={savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
-            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+            plan={billingPeriod === "annual" ? t("checkoutPlanAnnualShort") : t("checkoutPlanMonthlyShort")}
             dueNow={dueNowLabel}
             quote={selectedQuote?.quote}
             locale={locale}
@@ -2170,7 +2182,7 @@ export function PreviewCheckout({
             </CardHeader>
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[22px] min-[560px]:pt-[22px]">
               <div className="border-y" aria-label={t("checkoutKnownDetailsLabel")}>
-                <ConfirmationRow
+                <ReviewGroup
                   group="company"
                   icon={Building2}
                   title={t("checkoutCompanyGroup")}
@@ -2181,9 +2193,10 @@ export function PreviewCheckout({
                   ]}
                   attention={!details.registeredBusinessName && !details.intendedCompanyName}
                   onEdit={(trigger) => openDetailsEditor("company", trigger)}
-                  t={t}
+                  editLabel={t("checkoutEdit")}
+                  missingLabel={t("checkoutDetailsMissing")}
                 />
-                <ConfirmationRow
+                <ReviewGroup
                   group="contact"
                   icon={UserRound}
                   title={t("checkoutContactGroup")}
@@ -2194,9 +2207,10 @@ export function PreviewCheckout({
                   ]}
                   attention={!details.firstName || !details.lastName || !details.phoneSubscriberNumber}
                   onEdit={(trigger) => openDetailsEditor("contact", trigger)}
-                  t={t}
+                  editLabel={t("checkoutEdit")}
+                  missingLabel={t("checkoutDetailsMissing")}
                 />
-                <ConfirmationRow
+                <ReviewGroup
                   group="address"
                   icon={MapPin}
                   title={t("checkoutAddressGroup")}
@@ -2207,7 +2221,8 @@ export function PreviewCheckout({
                   ]}
                   attention={!details.street || !details.number || !details.zipcode || !details.city || !details.country}
                   onEdit={(trigger) => openDetailsEditor("address", trigger)}
-                  t={t}
+                  editLabel={t("checkoutEdit")}
+                  missingLabel={t("checkoutDetailsMissing")}
                 />
                 <section data-review-context="account" className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 py-[18px]">
                   <span className="grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success">
@@ -2372,38 +2387,31 @@ export function PreviewCheckout({
                   <legend className="text-base font-semibold">
                     {t("checkoutPartyTypeLegend")}
                   </legend>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-md border p-4">
-                    <input
-                      type="radio"
-                      name="partyType"
-                      value="registered_business"
-                      checked={details.partyType === "registered_business"}
-                      onChange={() => updateDetail("partyType", "registered_business")}
-                      className="mt-1"
-                    />
-                    <span>
-                      <span className="block font-medium">{t("checkoutPartyRegistered")}</span>
-                      <span className="block text-sm text-muted-foreground">
-                        {t("checkoutPartyRegisteredHelp")}
-                      </span>
-                    </span>
-                  </label>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-md border p-4">
-                    <input
-                      type="radio"
-                      name="partyType"
-                      value="business_in_formation"
-                      checked={details.partyType === "business_in_formation"}
-                      onChange={() => updateDetail("partyType", "business_in_formation")}
-                      className="mt-1"
-                    />
-                    <span>
-                      <span className="block font-medium">{t("checkoutPartyInFormation")}</span>
-                      <span className="block text-sm text-muted-foreground">
-                        {t("checkoutPartyInFormationHelp")}
-                      </span>
-                    </span>
-                  </label>
+                  <RadioGroup
+                    value={details.partyType}
+                    onValueChange={(value) => {
+                      if (value === "registered_business" || value === "business_in_formation") {
+                        updateDetail("partyType", value)
+                      }
+                    }}
+                    className="gap-2"
+                    aria-label={t("checkoutPartyTypeLegend")}
+                  >
+                    <div className="flex items-start gap-3 rounded-md border p-4">
+                      <RadioGroupItem id="checkout-party-registered" value="registered_business" className="mt-0.5" />
+                      <Label htmlFor="checkout-party-registered" className="cursor-pointer font-normal">
+                        <span className="block font-medium">{t("checkoutPartyRegistered")}</span>
+                        <span className="block text-sm text-muted-foreground">{t("checkoutPartyRegisteredHelp")}</span>
+                      </Label>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-md border p-4">
+                      <RadioGroupItem id="checkout-party-formation" value="business_in_formation" className="mt-0.5" />
+                      <Label htmlFor="checkout-party-formation" className="cursor-pointer font-normal">
+                        <span className="block font-medium">{t("checkoutPartyInFormation")}</span>
+                        <span className="block text-sm text-muted-foreground">{t("checkoutPartyInFormationHelp")}</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </fieldset>
 
                 {details.partyType === "registered_business" ? (
@@ -2780,42 +2788,30 @@ export function PreviewCheckout({
                   describedBy={legalSubmitRequested && !businessUseAccepted ? "checkout-declarations-error" : undefined}
                   invalid={legalSubmitRequested && !businessUseAccepted}
                 />
-                <div className={cn("flex min-w-0 items-start gap-3 rounded-xl px-2 py-3 text-sm leading-snug transition-colors hover:bg-muted/30", legalSubmitRequested && !termsAccepted && "bg-destructive/10 hover:bg-destructive/10")}>
-                  <Checkbox
-                    id="checkout-terms"
-                    aria-labelledby="checkout-terms-label"
-                    aria-describedby={legalSubmitRequested && !termsAccepted ? "checkout-declarations-error" : undefined}
-                    aria-invalid={legalSubmitRequested && !termsAccepted ? true : undefined}
-                    checked={termsAccepted}
-                    onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-                    className="mt-0.5 size-5 rounded-md"
-                  />
-                  <span id="checkout-terms-label" className="min-w-0 break-words">
-                    <strong className="flex flex-wrap items-center gap-1.5 font-semibold text-foreground">
-                      {t("checkoutTermsPrivacyTitle")}
-                      <Badge variant="secondary" className="min-h-5 px-1.5 text-[0.5625rem]">{t("checkoutRequiredLabel")}</Badge>
-                    </strong>
-                    <span className="mt-1 block text-xs leading-relaxed text-foreground">
-                      {t.rich("checkoutTermsAcceptanceLabel", {
-                        terms: (chunks) => (
-                          <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
-                            {chunks}
-                          </a>
-                        ),
-                        version: termsVersion,
-                      })}
-                    </span>
-                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                      {t.rich("checkoutPrivacyDisclosure", {
-                        privacy: (chunks) => (
-                          <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                            {chunks}
-                          </a>
-                        ),
-                      })}
-                    </span>
-                  </span>
-                </div>
+                <AcceptanceCheckbox
+                  id="checkout-terms"
+                  checked={termsAccepted}
+                  onCheckedChange={setTermsAccepted}
+                  title={t("checkoutTermsPrivacyTitle")}
+                  label={t.rich("checkoutTermsAcceptanceLabel", {
+                    terms: (chunks) => (
+                      <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
+                        {chunks}
+                      </a>
+                    ),
+                    version: termsVersion,
+                  })}
+                  help={t.rich("checkoutPrivacyDisclosure", {
+                    privacy: (chunks) => (
+                      <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                        {chunks}
+                      </a>
+                    ),
+                  })}
+                  requiredLabel={t("checkoutRequiredLabel")}
+                  describedBy={legalSubmitRequested && !termsAccepted ? "checkout-declarations-error" : undefined}
+                  invalid={legalSubmitRequested && !termsAccepted}
+                />
                 <AcceptanceCheckbox
                   id="checkout-preview-approval"
                   checked={previewApprovalAccepted}
@@ -2858,7 +2854,7 @@ export function PreviewCheckout({
           <OrderSummaryRail
             domain={selectedDomain ?? domainValue}
             company={savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? customerEmail}
-            plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+            plan={billingPeriod === "annual" ? t("checkoutPlanAnnualShort") : t("checkoutPlanMonthlyShort")}
             dueNow={dueNowLabel}
             quote={selectedQuote?.quote}
             locale={locale}
@@ -2875,47 +2871,13 @@ export function PreviewCheckout({
         selectedDomain={selectedDomain}
         navigationLocked={acceptedOrderId != null}
         dueNow={dueNowLabel}
-        plan={billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+        plan={billingPeriod === "annual" ? t("checkoutPlanAnnualShort") : t("checkoutPlanMonthlyShort")}
         quote={selectedQuote?.quote}
         locale={locale}
         previewHref={previewHref}
         handlers={primaryActionHandlers}
       />}
     </main>
-  )
-}
-
-function LifecycleRow({
-  icon: Icon,
-  status,
-  title,
-  detail,
-  state,
-}: {
-  icon: React.ElementType
-  status: "complete" | "active" | "pending" | "action_required" | "review" | string
-  title: string
-  detail: string
-  state: string
-}) {
-  const iconClass = status === "complete"
-    ? "bg-success/10 text-success"
-    : status === "action_required" || status === "review"
-      ? "bg-warning/10 text-warning"
-      : status === "active"
-        ? "bg-brand text-brand-foreground"
-        : "bg-muted text-muted-foreground"
-  return (
-    <li className="grid min-h-[62px] min-w-0 grid-cols-[30px_minmax(0,1fr)] items-center gap-x-[11px] gap-y-0 border-b px-[13px] py-2.5 last:border-b-0 min-[560px]:grid-cols-[30px_minmax(0,1fr)_auto]">
-      <span className={cn("grid size-[30px] place-items-center rounded-[9px]", iconClass)}>
-        <Icon className={status === "active" && Icon === Loader2 ? "size-[15px] animate-spin" : "size-[15px]"} aria-hidden />
-      </span>
-      <span className="min-w-0">
-        <strong className="block text-xs leading-snug">{title}</strong>
-        <span className="mt-0.5 block text-[0.6875rem] leading-snug text-muted-foreground">{detail}</span>
-      </span>
-      <span className="col-start-2 text-[0.625rem] font-bold text-muted-foreground min-[560px]:col-start-auto min-[560px]:text-right">{state}</span>
-    </li>
   )
 }
 
@@ -3025,298 +2987,6 @@ function PreviewCheckoutStepper({
       onStepSelect={onStepSelect}
       progressText={(current, total, label) => t("checkoutProgressText", { current, total, label })}
     />
-  )
-}
-
-function CheckoutTextField({
-  id,
-  name,
-  label,
-  value,
-  error,
-  description,
-  onChange,
-  ...inputProps
-}: {
-  id: string
-  name?: string
-  label: string
-  value: string | undefined
-  error?: string
-  description?: string
-  onChange?: (value: string) => void
-} & Omit<React.ComponentProps<typeof Input>, "id" | "name" | "value" | "onChange">) {
-  const describedBy = [
-    description ? `${id}-description` : null,
-    error ? `${id}-error` : null,
-  ].filter(Boolean).join(" ") || undefined
-  return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        {...inputProps}
-        id={id}
-        name={name}
-        value={value}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
-      />
-      {description && (
-        <p id={`${id}-description`} className="text-sm text-muted-foreground">{description}</p>
-      )}
-      {error && (
-        <p id={`${id}-error`} className="text-sm text-destructive" role="alert">{error}</p>
-      )}
-    </div>
-  )
-}
-
-function AcceptanceCheckbox({
-  id,
-  checked,
-  onCheckedChange,
-  title,
-  label,
-  help,
-  requiredLabel,
-  describedBy,
-  invalid = false,
-}: {
-  id: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-  title: string
-  label: string
-  help: string
-  requiredLabel: string
-  describedBy?: string
-  invalid?: boolean
-}) {
-  return (
-    <div className={cn("flex min-w-0 items-start gap-3 rounded-xl px-2 py-3 text-sm leading-snug transition-colors hover:bg-muted/30", invalid && "bg-destructive/10 hover:bg-destructive/10")}>
-      <Checkbox
-        id={id}
-        aria-labelledby={`${id}-label`}
-        aria-describedby={describedBy}
-        aria-invalid={invalid ? true : undefined}
-        checked={checked}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-        className="mt-0.5 size-5 rounded-md"
-      />
-      <span id={`${id}-label`} className="min-w-0 break-words">
-        <strong className="flex flex-wrap items-center gap-1.5 font-semibold text-foreground">
-          {title}
-          <Badge variant="secondary" className="min-h-5 px-1.5 text-[0.5625rem]">{requiredLabel}</Badge>
-        </strong>
-        <span className="mt-1 block text-xs leading-relaxed text-foreground">{label}</span>
-        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{help}</span>
-      </span>
-    </div>
-  )
-}
-
-function ConfirmationRow({
-  group,
-  icon: Icon,
-  title,
-  summary,
-  details,
-  attention,
-  onEdit,
-  t,
-}: {
-  group: DetailsGroup
-  icon: React.ElementType
-  title: string
-  summary: string
-  details: Array<{ label: string; value: string; full?: boolean }>
-  attention: boolean
-  onEdit: (trigger: HTMLElement) => void
-  t: ReturnType<typeof useTranslations<"preview">>
-}) {
-  return (
-    <section data-details-group={group} className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 border-b py-[18px] transition-colors hover:bg-muted/25 focus-within:bg-muted/25">
-      <span className={cn("grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success", attention && "bg-destructive/10 text-destructive")}>
-        <Icon className="size-4" aria-hidden />
-      </span>
-      <div className="grid min-w-0 gap-1">
-         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-           <h3 className="text-sm font-bold text-foreground">{title}</h3>
-           {attention && <Badge variant="outline" className="border-warning/50 bg-warning/10 text-[0.625rem] text-foreground">{t("checkoutDetailsMissing")}</Badge>}
-         </div>
-         <p className="min-w-0 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{summary}</p>
-       </div>
-      <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={(event) => onEdit(event.currentTarget)} aria-label={`${t("checkoutEdit")} ${title}`}>
-        <Pencil className="size-3.5" aria-hidden />
-         <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
-       </Button>
-       <dl className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
-         {details.map((detail) => <ReviewDetail key={`${detail.label}-${detail.value}`} {...detail} />)}
-       </dl>
-     </section>
-   )
- }
-
-function ReviewDetail({ label, value, full = false }: { label: string; value: string; full?: boolean }) {
-  return (
-    <div className={cn("min-w-0", full && "min-[560px]:col-span-2")}>
-      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 [overflow-wrap:anywhere] text-xs leading-relaxed text-foreground">{value || "—"}</dd>
-    </div>
-  )
-}
-
-function MigrationSourceEvidenceFields({
-  mechanism,
-  idPrefix,
-}: {
-  mechanism: AutomaticMigrationSourceMethod | null | undefined
-  idPrefix: string
-}) {
-  const t = useTranslations("preview")
-  if (mechanism === "authorized_axfr_v1") {
-    return (
-      <>
-        <CheckoutTextField
-          id={`${idPrefix}-axfr-nameserver`}
-          name="axfrNameserver"
-          label={t("checkoutMigrationAxfrNameserverLabel")}
-          description={t("checkoutMigrationAxfrNameserverHelp")}
-          value={undefined}
-          autoComplete="off"
-          required
-        />
-        <CheckoutTextField
-          id={`${idPrefix}-axfr-tsig-name`}
-          name="axfrTsigName"
-          label={t("checkoutMigrationAxfrTsigNameLabel")}
-          description={t("checkoutMigrationAxfrTsigHelp")}
-          value={undefined}
-          autoComplete="off"
-        />
-        <CheckoutTextField
-          id={`${idPrefix}-axfr-tsig-secret`}
-          name="axfrTsigSecret"
-          type="password"
-          label={t("checkoutMigrationAxfrTsigSecretLabel")}
-          value={undefined}
-          autoComplete="off"
-        />
-      </>
-    )
-  }
-  return null
-}
-
-function DomainOptionRow({
-  option,
-  selected,
-  checking = false,
-  onSelect,
-}: {
-  option: PreviewCheckoutDomainOption
-  selected?: boolean
-  checking?: boolean
-  onSelect?: (option: PreviewCheckoutDomainOption) => void
-}) {
-  const t = useTranslations("preview")
-  const content = (
-    <>
-      <span className="grid min-w-0 flex-1 gap-1">
-        <span className="[overflow-wrap:anywhere] text-sm font-medium text-foreground">{option.domain}</span>
-        {!option.included && option.extraFeeLabel && (
-          <span className="text-sm text-muted-foreground">
-            {t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
-          </span>
-        )}
-      </span>
-      <span className="flex shrink-0 items-center gap-2">
-        {checking ? (
-          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
-        ) : option.included ? (
-          <span className="text-success" aria-label={t("checkoutDomainIncludedBadge")}>
-            <Check className="size-5" aria-hidden />
-          </span>
-        ) : (
-          <Badge variant="secondary">{t("checkoutDomainExtraFeeBadge")}</Badge>
-        )}
-        {selected && !option.included && (
-          <span className="text-success">
-            <Check className="size-5" aria-hidden />
-            <span className="sr-only">{t("checkoutDomainSelected")}</span>
-          </span>
-        )}
-      </span>
-    </>
-  )
-  if (onSelect) {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        className={cn(
-          "h-auto min-h-12 w-full justify-between whitespace-normal border border-transparent bg-success/10 p-2.5 text-left shadow-sm shadow-success/10 ring-2 ring-success/70 hover:bg-success/15 hover:ring-success dark:bg-success/10 dark:shadow-success/15 dark:hover:bg-success/15",
-          selected && "bg-success/15 ring-success dark:bg-success/15",
-        )}
-        aria-pressed={selected}
-        onClick={() => onSelect(option)}
-      >
-        {content}
-      </Button>
-    )
-  }
-  return (
-    <div
-      className={cn(
-        "flex min-h-12 w-full items-center justify-between gap-3 rounded-md border bg-background p-2.5",
-        selected && "border-transparent bg-success/10 shadow-sm shadow-success/10 ring-2 ring-success/70",
-        checking && "border-border bg-muted/30 text-muted-foreground",
-      )}
-      aria-busy={checking}
-    >
-      {content}
-    </div>
-  )
-}
-
-function DomainSuggestions({
-  loading,
-  suggestions,
-  placeholders = [],
-  selectedDomain,
-  onSelect,
-}: {
-  loading: boolean
-  suggestions?: PreviewCheckoutDomainOption[]
-  placeholders?: PreviewCheckoutDomainOption[]
-  selectedDomain: string | null
-  onSelect: (option: PreviewCheckoutDomainOption) => void
-}) {
-  const t = useTranslations("preview")
-  if (!loading && !suggestions?.length && !placeholders.length) return null
-  const visibleSuggestions = (suggestions ?? []).slice(0, 5)
-  const visiblePlaceholders = placeholders.slice(0, Math.max(0, 5 - visibleSuggestions.length))
-  return (
-    <div className="grid gap-2" aria-live="polite">
-      <div className="flex items-center gap-2 text-base font-medium text-foreground">
-        {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />}
-        <span>{t("checkoutDomainSuggestionsTitle")}</span>
-      </div>
-      <div className="grid gap-2">
-        {visibleSuggestions.map((option) => (
-          <DomainOptionRow
-            key={option.domain}
-            option={option}
-            selected={selectedDomain === option.domain}
-            onSelect={onSelect}
-          />
-        ))}
-        {visiblePlaceholders.map((option) => (
-          <DomainOptionRow key={`checking-${option.domain}`} option={option} checking />
-        ))}
-      </div>
-    </div>
   )
 }
 
