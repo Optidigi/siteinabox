@@ -349,6 +349,15 @@ createRoot(document.getElementById("root")!).render(
             message: `${domain} is premium.`,
           }
         }
+        if (scenario.id === "domain-premium" && domain.startsWith("analytical-engines.")) {
+          return {
+            ok: false,
+            status: "unavailable",
+            domain,
+            domainMode: "new_registration",
+            message: `${domain} is unavailable.`,
+          }
+        }
         return {
           ok: true,
           status: "available",

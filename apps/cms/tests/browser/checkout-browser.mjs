@@ -97,10 +97,15 @@ try {
   assert.equal(
     await page.getByText("analytical-engines.com", { exact: true }).count(),
     0,
-    "A fully qualified query must only check that exact domain.",
+    "Unavailable primary extensions must yield to checkout-ready alternatives in the five-row result surface.",
+  )
+  assert.equal(
+    await page.getByText("analytical-engines.net", { exact: true }).isVisible(),
+    true,
+    "The fallback batch must supplement a qualified query when fewer than four domains are ready.",
   )
   await domainInput.fill("analytical-engines")
-  await page.getByText("analytical-engines.com", { exact: true }).waitFor()
+  await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.setViewportSize({ width: 320, height: 568 })
   await page.getByText("Live results", { exact: true }).evaluate((node) => {
     node.scrollIntoView({ block: "start" })
@@ -108,8 +113,8 @@ try {
   })
   await capture(page, "phone-light-domain-results-320x568")
   await page.setViewportSize({ width: 390, height: 844 })
-  assert.equal(await page.getByText("Unavailable", { exact: true }).isVisible(), true)
-  assert.equal(await page.getByText("Premium", { exact: true }).isVisible(), true)
+  assert.equal(await page.getByText("Unavailable", { exact: true }).count(), 0)
+  assert.equal(await page.getByText("Premium", { exact: true }).count(), 0)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
@@ -133,7 +138,7 @@ try {
     "Automatic extension checks must not expose a separate extension picker.",
   )
   await domainInput.fill("analytical-engines")
-  await page.getByText("analytical-engines.com", { exact: true }).waitFor()
+  await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
 
@@ -258,7 +263,7 @@ try {
     "The phone action row must not compete with domain search before a domain is selected.",
   )
   await compactPage.locator("#checkout-domain").fill("analytical-engines")
-  await compactPage.getByText("analytical-engines.com", { exact: true }).waitFor()
+  await compactPage.getByText("analytical-engines.net", { exact: true }).waitFor()
   await compactPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
   const compactGeometry = await compactPage.evaluate(() => {
@@ -621,7 +626,10 @@ try {
         await scenarioPage.locator('[data-domain-status="loading"]').first().waitFor()
         return
       }
-      await scenarioPage.getByText("analytical-engines.com", { exact: true }).waitFor()
+      await scenarioPage.getByText(
+        scenarioId === "domain-premium" ? "analytical-engines.eu" : "analytical-engines.net",
+        { exact: true },
+      ).waitFor()
       if (scenarioId === "domain-selected") {
         await scenarioPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
           .getByRole("button", { name: "Choose", exact: true }).click()

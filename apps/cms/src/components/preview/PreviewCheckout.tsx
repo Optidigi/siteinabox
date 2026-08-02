@@ -228,6 +228,13 @@ const initialCancellationState: PreviewCheckoutCancellationState = {
   message: "",
 }
 const defaultSupportedDomainExtensions = ["nl", "com", "info", "org", "eu"]
+const recommendedDomainExtensions = ["nl", "com", "info", "org", "eu"]
+const fallbackDomainExtensions = ["net", "be", "de", "online", "shop"]
+
+const uniqueDomains = (domains: string[]): string[] => [...new Set(domains)]
+
+const checkoutReadyDomainResult = (result: PreviewCheckoutActionState): boolean =>
+  Boolean(result.ok && result.domain && result.quotes)
 
 export const checkoutStatusNeedsPolling = (input: {
   paymentReturn: boolean
@@ -434,12 +441,19 @@ export function PreviewCheckout({
   const supportedExtensionsKey = supportedDomainExtensions.join(",")
   const selectedExtensions = React.useMemo(() => {
     const enabled = new Set(supportedDomainExtensions)
-    return ["nl", "com", "info", "org", "eu"].filter((extension) =>
+    return recommendedDomainExtensions.filter((extension) =>
       enabled.has(extension),
     )
   }, [supportedExtensionsKey])
+  const additionalRecommendedExtensions = React.useMemo(() => {
+    const enabled = new Set(supportedDomainExtensions)
+    return fallbackDomainExtensions.filter((extension) => enabled.has(extension))
+  }, [supportedExtensionsKey])
   const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
   const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
+  const [extensionCheckPhase, setExtensionCheckPhase] = React.useState<
+    "idle" | "recommended" | "fallback"
+  >("idle")
   const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
   const extensionRequestRef = React.useRef<string | null>(null)
   const lastDomainSearchKeyRef = React.useRef<string | null>(null)
@@ -556,28 +570,60 @@ export function PreviewCheckout({
   const primaryNewDomainResult = newDomainSearchPrimaryDomain
     ? extensionResults.find((result) => result.domain === newDomainSearchPrimaryDomain) ?? null
     : null
-  const primaryNewDomainUnavailable = Boolean(
-    domainMode === "new_registration" &&
-    !extensionCheckPending &&
-    primaryNewDomainResult &&
-    !primaryNewDomainResult.ok &&
-    ["unavailable", "premium"].includes(primaryNewDomainResult.status ?? ""),
-  )
-  const newDomainSearchDomains = React.useMemo(() => {
+  const recommendedDomainSearchDomains = React.useMemo(() => {
     if (domainSearchInput.kind === "bare") {
       return selectedExtensions.map((extension) =>
         `${domainSearchInput.name}.${extension}`)
     }
     if (domainSearchInput.kind === "qualified") {
-      const alternatives = primaryNewDomainUnavailable
-        ? selectedExtensions
-            .filter((extension) => extension !== domainSearchInput.extension)
-            .map((extension) => `${domainSearchInput.name}.${extension}`)
-        : []
-      return [domainSearchInput.domain, ...alternatives]
+      return uniqueDomains([
+        domainSearchInput.domain,
+        ...selectedExtensions.map((extension) => `${domainSearchInput.name}.${extension}`),
+      ])
     }
     return []
-  }, [domainSearchInput, primaryNewDomainUnavailable, selectedExtensions])
+  }, [domainSearchInput, selectedExtensions])
+  const fallbackDomainSearchDomains = React.useMemo(() => {
+    if (!("name" in domainSearchInput)) return []
+    return additionalRecommendedExtensions
+      .map((extension) => `${domainSearchInput.name}.${extension}`)
+      .filter((domain) => !recommendedDomainSearchDomains.includes(domain))
+  }, [additionalRecommendedExtensions, domainSearchInput, recommendedDomainSearchDomains])
+  const allDomainSearchDomains = React.useMemo(
+    () => uniqueDomains([...recommendedDomainSearchDomains, ...fallbackDomainSearchDomains]),
+    [fallbackDomainSearchDomains, recommendedDomainSearchDomains],
+  )
+  const visibleDomainSearchDomains = React.useMemo(() => {
+    if (extensionCheckPending && extensionCheckPhase === "recommended") {
+      return recommendedDomainSearchDomains.slice(0, 5)
+    }
+
+    const anchor = newDomainSearchPrimaryDomain
+    const readyDomains = allDomainSearchDomains.filter((domain) =>
+      checkoutReadyDomainResult(extensionResults.find((result) => result.domain === domain) ?? initialActionState),
+    )
+    if (extensionCheckPending && extensionCheckPhase === "fallback") {
+      return uniqueDomains([
+        ...(anchor ? [anchor] : []),
+        ...readyDomains.filter((domain) => domain !== anchor),
+        ...fallbackDomainSearchDomains,
+      ]).slice(0, 5)
+    }
+
+    return uniqueDomains([
+      ...(anchor ? [anchor] : []),
+      ...readyDomains.filter((domain) => domain !== anchor),
+      ...allDomainSearchDomains.filter((domain) => domain !== anchor && !readyDomains.includes(domain)),
+    ]).slice(0, 5)
+  }, [
+    allDomainSearchDomains,
+    extensionCheckPending,
+    extensionCheckPhase,
+    extensionResults,
+    fallbackDomainSearchDomains,
+    newDomainSearchPrimaryDomain,
+    recommendedDomainSearchDomains,
+  ])
   const domainLooksCheckable = Boolean(
     newDomainSearchPrimaryDomain &&
     domainSearchInput.kind !== "invalid" &&
@@ -872,6 +918,7 @@ export function PreviewCheckout({
     setDomainValue(value)
     setExtensionResults([])
     setExtensionCheckPending(false)
+    setExtensionCheckPhase("idle")
     extensionRequestRef.current = null
     lastDomainSearchKeyRef.current = null
     if (value.trim().toLowerCase() !== checkedDomain) {
@@ -884,32 +931,18 @@ export function PreviewCheckout({
   }
 
   const checkSelectedExtensions = React.useCallback(async (force = false) => {
-    if (newDomainSearchDomains.length === 0) return
-    const searchKey = newDomainSearchDomains.join("|")
+    if (recommendedDomainSearchDomains.length === 0) return
+    const searchKey = allDomainSearchDomains.join("|")
     if (!force && lastDomainSearchKeyRef.current === searchKey) return
     lastDomainSearchKeyRef.current = searchKey
-    const retainedResults = force
-      ? []
-      : extensionResults.filter((result) =>
-          result.domain && newDomainSearchDomains.includes(result.domain))
-    const domainsToCheck = force
-      ? newDomainSearchDomains
-      : newDomainSearchDomains.filter((domain) =>
-          !retainedResults.some((result) => result.domain === domain))
-    if (domainsToCheck.length === 0) return
     const requestToken = nextRequestToken()
     extensionRequestRef.current = requestToken
     setExtensionCheckPending(true)
-    if (force || domainsToCheck.includes(newDomainSearchPrimaryDomain ?? "")) {
-      setCheckedDomain(null)
-      setQuotes(null)
-    }
-    if (force) {
-      setExtensionResults([])
-    } else {
-      setExtensionResults(retainedResults)
-    }
-    const results = await Promise.all(domainsToCheck.map(async (domain) => {
+    setExtensionCheckPhase("recommended")
+    setCheckedDomain(null)
+    setQuotes(null)
+    setExtensionResults([])
+    const checkBatch = async (domains: string[]) => Promise.all(domains.map(async (domain) => {
       let result: PreviewCheckoutActionState
       try {
         const formData = new FormData()
@@ -935,19 +968,42 @@ export function PreviewCheckout({
       }
       return result
     }))
+    const recommendedResults = await checkBatch(recommendedDomainSearchDomains)
     if (extensionRequestRef.current !== requestToken) return
-    const combinedResults = [...retainedResults, ...results]
-    setExtensionResults(newDomainSearchDomains.flatMap((domain) =>
-      combinedResults.filter((result) => result.domain === domain).slice(-1)))
+    const readyCount = recommendedResults.filter(checkoutReadyDomainResult).length
+    setExtensionResults(recommendedResults)
+    if (readyCount < 4 && fallbackDomainSearchDomains.length > 0) {
+      setExtensionCheckPhase("fallback")
+      const fallbackResults = await checkBatch(fallbackDomainSearchDomains)
+      if (extensionRequestRef.current !== requestToken) return
+      setExtensionResults([...recommendedResults, ...fallbackResults])
+    }
+    setExtensionCheckPhase("idle")
     setExtensionCheckPending(false)
-  }, [checkDomainAction, extensionResults, newDomainSearchDomains, t])
+  }, [
+    allDomainSearchDomains,
+    checkDomainAction,
+    fallbackDomainSearchDomains,
+    recommendedDomainSearchDomains,
+    t,
+  ])
 
   React.useEffect(() => {
     if (step !== "domain" || domainMode !== "new_registration") return
-    if (!domainLooksCheckable || newDomainSearchDomains.length === 0) return
+    if (!domainLooksCheckable || recommendedDomainSearchDomains.length === 0) return
+    if (checkedDomain === normalizedDomainValue && quotes) return
     const timer = window.setTimeout(() => void checkSelectedExtensions(), 250)
     return () => window.clearTimeout(timer)
-  }, [checkSelectedExtensions, domainLooksCheckable, domainMode, newDomainSearchDomains.length, step])
+  }, [
+    checkSelectedExtensions,
+    checkedDomain,
+    domainLooksCheckable,
+    domainMode,
+    normalizedDomainValue,
+    quotes,
+    recommendedDomainSearchDomains.length,
+    step,
+  ])
 
   const selectExtensionResult = (result: PreviewCheckoutActionState) => {
     if (!result.ok || !result.domain || !result.quotes) return
@@ -1803,7 +1859,7 @@ export function PreviewCheckout({
                           <span className="text-muted-foreground">{extensionCheckPending ? domainSearchName : t("checkoutDomainCheckedNow")}</span>
                         </div>
                         <div className="overflow-hidden rounded-[14px] border bg-card">
-                        {extensionCheckPending && newDomainSearchDomains
+                        {extensionCheckPending && visibleDomainSearchDomains
                           .filter((domain) => !extensionResults.some((result) => result.domain === domain))
                           .map((domain) => (
                           <div key={domain} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-3.5">
@@ -1813,10 +1869,10 @@ export function PreviewCheckout({
                           </div>
                         ))}
                         {[...extensionResults]
-                          .filter((result) => result.domain && newDomainSearchDomains.includes(result.domain))
+                          .filter((result) => result.domain && visibleDomainSearchDomains.includes(result.domain))
                           .sort((left, right) =>
-                            newDomainSearchDomains.indexOf(left.domain ?? "") -
-                            newDomainSearchDomains.indexOf(right.domain ?? ""))
+                            visibleDomainSearchDomains.indexOf(left.domain ?? "") -
+                            visibleDomainSearchDomains.indexOf(right.domain ?? ""))
                           .map((result) => {
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
