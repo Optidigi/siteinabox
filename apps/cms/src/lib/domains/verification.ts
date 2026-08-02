@@ -509,6 +509,11 @@ type DigDsLookupInput = {
   authoritative: boolean
 }
 
+// Containers commonly inherit a non-recursive resolver from their runtime
+// network. DNSSEC preflight needs an independent recursive view in addition to
+// the parent-authoritative consensus, so make that resolver explicit.
+const publicRecursiveDnsServer = "1.1.1.1"
+
 const parseDigDsLookup = (
   stdout: string,
   input: DigDsLookupInput,
@@ -658,7 +663,11 @@ export async function verifyParentDsAbsent(
       }
       const recursiveLookup = options.resolveRecursiveDsImpl
         ? { records: parseDs(await options.resolveRecursiveDsImpl(hostname)), ttl: null }
-        : await digDsLookup({ hostname, authoritative: false })
+        : await digDsLookup({
+            hostname,
+            nameserver: publicRecursiveDnsServer,
+            authoritative: false,
+          })
       const recursive = normalizeDs(recursiveLookup.records)
       if (
         recursive.length !== normalized.length ||

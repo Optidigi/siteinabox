@@ -7,6 +7,7 @@ import {
   checkoutStatusNeedsPolling,
   PreviewCheckout,
 } from "@/components/preview/PreviewCheckout"
+import type { PreviewCheckoutActionState } from "@/lib/checkout/previewCheckoutContract"
 
 const translate = Object.assign(
   (key: string, values?: Record<string, unknown>) =>
@@ -112,7 +113,6 @@ const baseCheckoutProps = () => ({
   paymentStatus: "not_started",
   previewHref: "/ami-care",
   prewarmHref: "/ami-care/checkout/prewarm",
-  suggestionsHref: "/ami-care/checkout/suggestions",
   checkDomainAction: vi.fn(),
   saveProfileAction: vi.fn(),
   startPaymentAction: vi.fn(),
@@ -170,6 +170,85 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )
     expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
     expect(screen.queryByText(/checkoutDomainAvailableDetail/)).toBeNull()
+  })
+
+  it("starts the configured extension checks together and publishes their rows as one batch", async () => {
+    const resolvers = new Map<string, (state: PreviewCheckoutActionState) => void>()
+    const checkDomainAction = vi.fn((_state: unknown, formData: FormData) =>
+      new Promise<PreviewCheckoutActionState>((resolve) => {
+        resolvers.set(String(formData.get("domain")), resolve)
+      }))
+    const { container } = render(
+      <PreviewCheckout {...baseCheckoutProps()} checkDomainAction={checkDomainAction} />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "acme" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(5))
+    expect(checkDomainAction.mock.calls.map(([, formData]) =>
+      String((formData as FormData).get("domain")))).toEqual([
+      "acme.nl", "acme.com", "acme.info", "acme.org", "acme.eu",
+    ])
+
+    await act(async () => {
+      resolvers.get("acme.nl")?.({
+        ok: false,
+        status: "unavailable",
+        domain: "acme.nl",
+        domainMode: "new_registration",
+        message: "acme.nl is unavailable.",
+      })
+    })
+    expect(container.querySelector('[data-domain-status="unavailable"]')).toBeNull()
+
+    await act(async () => {
+      for (const domain of ["acme.com", "acme.info", "acme.org", "acme.eu"]) {
+        resolvers.get(domain)?.({
+          ok: false,
+          status: "unavailable",
+          domain,
+          domainMode: "new_registration",
+          message: `${domain} is unavailable.`,
+        })
+      }
+    })
+    await waitFor(() => expect(
+      container.querySelectorAll('[data-domain-status="unavailable"]'),
+    ).toHaveLength(5))
+  })
+
+  it("falls back from an unavailable typed extension to the same name on configured extensions", async () => {
+    const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
+      const domain = String(formData.get("domain"))
+      return {
+        ok: false,
+        status: "unavailable" as const,
+        domain,
+        domainMode: "new_registration" as const,
+        message: `${domain} is unavailable.`,
+      }
+    })
+    const { container } = render(
+      <PreviewCheckout {...baseCheckoutProps()} checkDomainAction={checkDomainAction} />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "taken.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(5))
+    expect(checkDomainAction.mock.calls.map(([, formData]) =>
+      String((formData as FormData).get("domain")))).toEqual([
+      "taken.nl", "taken.com", "taken.info", "taken.org", "taken.eu",
+    ])
   })
 
   it("shows the frozen transfer-renewal effect in the final review", () => {
@@ -252,7 +331,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
         paymentStatus="not_started"
         previewHref="/ami-care"
         prewarmHref="/ami-care/checkout/prewarm"
-        suggestionsHref="/ami-care/checkout/suggestions"
         checkDomainAction={vi.fn()}
         saveProfileAction={saveProfileAction}
         startPaymentAction={vi.fn()}
@@ -389,7 +467,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       paymentStatus: "not_started",
       previewHref: "/ami-care",
       prewarmHref: "/ami-care/checkout/prewarm",
-      suggestionsHref: "/ami-care/checkout/suggestions",
       checkDomainAction,
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),
@@ -704,7 +781,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       paymentStatus: "not_started",
       previewHref: "/example",
       prewarmHref: "/example/checkout/prewarm",
-      suggestionsHref: "/example/checkout/suggestions",
       checkDomainAction,
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),
@@ -892,7 +968,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       paymentStatus: "canceled",
       previewHref: "/example",
       prewarmHref: "/example/checkout/prewarm",
-      suggestionsHref: "/example/checkout/suggestions",
       checkDomainAction: vi.fn(),
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),

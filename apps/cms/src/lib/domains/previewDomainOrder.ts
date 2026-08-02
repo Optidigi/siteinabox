@@ -201,7 +201,7 @@ export async function checkAndRecordPreviewDomainOrder(
     options?.capabilityEffectiveAt,
   )
   const capability = options?.requireProductionCapability === false
-    ? tldCapabilityAt(normalized.extension, options?.capabilityEffectiveAt)
+    ? tldCapabilityAt(normalized.extension, options?.capabilityEffectiveAt) ?? productionCapability
     : productionCapability
   if (!capability) {
     throw new Error(`TLD .${normalized.extension} is not enabled for checkout.`)

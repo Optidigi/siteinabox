@@ -26,7 +26,7 @@ function SummaryRow({ label, value, subtle = false }: { label: string; value: st
 }
 
 export function OrderSummaryRail({
-  domain, company, plan, dueNow, quote, locale, primaryAction, handlers, lifecycle,
+  domain, company, plan, dueNow, quote, locale, vatRateBasisPoints, primaryAction, handlers, lifecycle,
 }: {
   domain: string
   company: string
@@ -34,6 +34,7 @@ export function OrderSummaryRail({
   dueNow: string
   quote?: CheckoutQuoteSet[BillingPeriod]["quote"] | null
   locale: string
+  vatRateBasisPoints: number
   primaryAction: CheckoutPrimaryAction
   handlers: CheckoutPrimaryActionHandlers
   lifecycle?: {
@@ -42,7 +43,9 @@ export function OrderSummaryRail({
   }
 }) {
   const t = useTranslations("preview")
-  const vatRate = quote ? new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(quote.vatRateBasisPoints / 10_000) : null
+  const vatRate = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(
+    (quote?.vatRateBasisPoints ?? vatRateBasisPoints) / 10_000,
+  )
   const renewalEffect = quote?.transferRenewalEffect === "unchanged"
     ? t("checkoutTransferRenewalEffectUnchanged")
     : quote?.transferRenewalEffect === "extends_one_year"
@@ -77,18 +80,18 @@ export function OrderSummaryRail({
               <SummaryRow label={`${plan} · ${t("checkoutPriceExVat")}`} value={quote ? money(locale, quote.planPriceNetMinor, quote.currency) : "—"} />
               {quote && quote.domainSurchargeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryDomainExtraExVat")} value={money(locale, quote.domainSurchargeNetMinor, quote.currency)} />}
               {quote && quote.migrationServiceFeeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryMigrationExVat")} value={money(locale, quote.migrationServiceFeeNetMinor, quote.currency)} />}
-              <SummaryRow label={t("checkoutSummaryVatRate", { rate: vatRate ?? "" })} value={quote ? money(locale, quote.vatAmountMinor, quote.currency) : "—"} />
+              <SummaryRow label={t("checkoutSummaryVatRate", { rate: vatRate })} value={quote ? money(locale, quote.vatAmountMinor, quote.currency) : "—"} />
               <SummaryRow subtle label={t("checkoutPaymentStatusLabel")} value={lifecycle?.status ?? t("checkoutWaiting")} />
             </> : addressDecision ? <>
               <SummaryRow label={`${plan} · ${t("checkoutPriceExVat")}`} value={quote ? money(locale, quote.planPriceNetMinor, quote.currency) : "—"} />
               {quote && quote.domainSurchargeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryDomainExtraExVat")} value={money(locale, quote.domainSurchargeNetMinor, quote.currency)} />}
               {quote && quote.migrationServiceFeeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryMigrationExVat")} value={money(locale, quote.migrationServiceFeeNetMinor, quote.currency)} />}
-              <SummaryRow subtle label={t("checkoutSummaryVatRate", { rate: vatRate ?? "" })} value={quote ? money(locale, quote.vatAmountMinor, quote.currency) : "—"} />
+              <SummaryRow subtle label={t("checkoutSummaryVatRate", { rate: vatRate })} value={quote ? money(locale, quote.vatAmountMinor, quote.currency) : "—"} />
             </> : quote && <>
               <SummaryRow label={`${plan} · ${t("checkoutPriceExVat")}`} value={money(locale, quote.planPriceNetMinor, quote.currency)} />
               {quote.domainSurchargeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryDomainExtraExVat")} value={money(locale, quote.domainSurchargeNetMinor, quote.currency)} />}
               {quote.migrationServiceFeeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryMigrationExVat")} value={money(locale, quote.migrationServiceFeeNetMinor, quote.currency)} />}
-              <SummaryRow subtle label={t("checkoutSummaryVatRate", { rate: vatRate ?? "" })} value={money(locale, quote.vatAmountMinor, quote.currency)} />
+              <SummaryRow subtle label={t("checkoutSummaryVatRate", { rate: vatRate })} value={money(locale, quote.vatAmountMinor, quote.currency)} />
             </>}
           </div>
           <div className="mx-[19px] border-t border-background/15 pb-[17px] pt-[15px] dark:border-foreground/15">

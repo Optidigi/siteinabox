@@ -251,7 +251,6 @@ createRoot(document.getElementById("root")!).render(
       })}
       previewHref="/preview"
       prewarmHref="/prewarm"
-      suggestionsHref="/suggestions"
       checkDomainAction={async (_previous, formData) => {
         const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
         const domainMode = String(formData.get("domainMode") ?? "new_registration")

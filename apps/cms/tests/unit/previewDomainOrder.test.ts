@@ -394,6 +394,44 @@ describe("preview domain order", () => {
     expect(run.domainOrder).toBeNull()
   })
 
+  it("checks an explicitly entered non-recommended TLD through OpenProvider without adding it to suggestions", async () => {
+    const run = { id: 123, domainOrder: null }
+    const payload = {
+      update: vi.fn(async ({ data }: MockCreateArgs) => {
+        Object.assign(run, data)
+        return { ...run }
+      }),
+    }
+    vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
+      status: "available",
+      domain: "acme.ai",
+      available: true,
+      premium: false,
+      price: { amount: "14.00", currency: "EUR" },
+      internalReason: null,
+    })
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>(run),
+      "acme.ai",
+      null,
+      {
+        record: false,
+        capabilityEffectiveAt: "2026-08-02T00:00:00.000Z",
+        requireProductionCapability: false,
+      },
+    )).resolves.toMatchObject({
+      messageKey: "checkoutDomainAvailableExtraFee",
+      domain: "acme.ai",
+      included: false,
+      extraFeeAmount: "4.00",
+    })
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.ai")
+    expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
+    expect(payload.update).not.toHaveBeenCalled()
+  })
+
   it("rechecks availability before accepting an existing ready order for payment", async () => {
     const registrant: DomainRegistrantDetails = {
       companyName: "Acme Studio",

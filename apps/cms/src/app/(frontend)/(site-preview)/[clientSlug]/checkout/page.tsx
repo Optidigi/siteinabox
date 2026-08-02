@@ -253,7 +253,6 @@ export default async function PreviewCheckoutPage({
         paymentStatus={payment?.status ?? "not_started"}
         previewHref={`/${context.clientSlug}`}
         prewarmHref={`/${context.clientSlug}/checkout/prewarm`}
-        suggestionsHref={`/${context.clientSlug}/checkout/suggestions`}
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
