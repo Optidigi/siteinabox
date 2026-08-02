@@ -266,6 +266,37 @@ describe("OpenProvider adapter", () => {
     }))
   })
 
+  it("restores requested order when OpenProvider returns nested-price results out of order", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [
+          { domain: { name: "taken", extension: "nl" }, status: "active" },
+          {
+            domain: "available.nl",
+            status: "free",
+            price: { reseller: { price: "8.06", currency: "EUR" } },
+          },
+        ],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainsAvailability(["available.nl", "taken.nl"], {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual([
+      expect.objectContaining({
+        domain: "available.nl",
+        status: "available",
+        price: { amount: "8.06", currency: "EUR" },
+      }),
+      expect.objectContaining({
+        domain: "taken.nl",
+        status: "unavailable",
+      }),
+    ])
+  })
+
   it("can check availability without requesting price details", async () => {
     const fetchMock = vi.fn(async () => Response.json({
       data: {
@@ -432,6 +463,159 @@ describe("OpenProvider adapter", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("https://openprovider.test/v1beta/domains/check", expect.objectContaining({
       headers: expect.objectContaining({ Authorization: "Bearer explicit-token" }),
     }))
+  })
+
+  it("coalesces exact canonical availability batches while a normal cacheable request is in flight", async () => {
+    let resolveProviderResponse!: (response: Response) => void
+    const providerResponse = new Promise<Response>((resolve) => {
+      resolveProviderResponse = resolve
+    })
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Promise.resolve(Response.json({ data: { token: "in-flight-token" } }))
+      return providerResponse
+    })
+
+    const first = checkOpenProviderDomainsAvailability(["shared.nl", "shared.com"], {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const second = checkOpenProviderDomainsAvailability(["shared.com", "shared.nl"], {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    resolveProviderResponse(Response.json({
+      data: {
+        results: [
+          { domain: "shared.nl", status: "free", price: { price: "8.50", currency: "EUR" } },
+          { domain: "shared.com", status: "free", price: { price: "10.00", currency: "EUR" } },
+        ],
+      },
+    }))
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      [
+        expect.objectContaining({ domain: "shared.nl", status: "available" }),
+        expect.objectContaining({ domain: "shared.com", status: "available" }),
+      ],
+      [
+        expect.objectContaining({ domain: "shared.com", status: "available" }),
+        expect.objectContaining({ domain: "shared.nl", status: "available" }),
+      ],
+    ])
+  })
+
+  it("forceFresh bypasses completed and in-flight presentation cache entries without replacing them", async () => {
+    let availabilityCalls = 0
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Response.json({ data: { token: "fresh-token" } })
+      availabilityCalls += 1
+      return Response.json({
+        data: {
+          results: [{
+            domain: "fresh.nl",
+            status: availabilityCalls === 2 ? "active" : "free",
+            price: { price: "8.50", currency: "EUR" },
+          }],
+        },
+      })
+    })
+
+    await expect(checkOpenProviderDomainAvailability("fresh.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ status: "available" })
+    await expect(checkOpenProviderDomainAvailability("fresh.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      forceFresh: true,
+    })).resolves.toMatchObject({ status: "unavailable" })
+    await expect(checkOpenProviderDomainAvailability("fresh.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ status: "available" })
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("forceFresh does not join an equivalent normal availability request already in flight", async () => {
+    const resolvers: Array<(response: Response) => void> = []
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Promise.resolve(Response.json({ data: { token: "fresh-in-flight-token" } }))
+      return new Promise<Response>((resolve) => {
+        resolvers.push(resolve)
+      })
+    })
+
+    const normal = checkOpenProviderDomainAvailability("fresh-in-flight.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const fresh = checkOpenProviderDomainAvailability("fresh-in-flight.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      forceFresh: true,
+    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+
+    resolvers[0]?.(Response.json({ data: { results: [{ domain: "fresh-in-flight.nl", status: "free" }] } }))
+    resolvers[1]?.(Response.json({ data: { results: [{ domain: "fresh-in-flight.nl", status: "active" }] } }))
+
+    await expect(normal).resolves.toMatchObject({ status: "available" })
+    await expect(fresh).resolves.toMatchObject({ status: "unavailable" })
+  })
+
+  it("maps bounded availability timeouts to recoverable internal results without caching them", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Response.json({ data: { token: "timeout-token" } })
+      expect(init?.signal).toBeInstanceOf(AbortSignal)
+      throw new DOMException("The availability request timed out.", "TimeoutError")
+    })
+
+    await expect(checkOpenProviderDomainAvailability("timeout.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      availabilityTimeoutMs: 1,
+    })).resolves.toEqual(expect.objectContaining({
+      domain: "timeout.nl",
+      status: "internal",
+      internalReason: "provider_timeout",
+    }))
+    await expect(checkOpenProviderDomainAvailability("timeout.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      availabilityTimeoutMs: 1,
+    })).resolves.toEqual(expect.objectContaining({
+      internalReason: "provider_timeout",
+    }))
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("bounds a cold availability login within the same checkout deadline", async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
+    const pending = checkOpenProviderDomainAvailability("login-timeout.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      availabilityTimeoutMs: 5,
+    })
+
+    await vi.advanceTimersByTimeAsync(5)
+    await expect(pending).resolves.toEqual(expect.objectContaining({
+      domain: "login-timeout.nl",
+      status: "internal",
+      internalReason: "provider_timeout",
+    }))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 
   it("keeps price and no-price availability cache entries separate", async () => {

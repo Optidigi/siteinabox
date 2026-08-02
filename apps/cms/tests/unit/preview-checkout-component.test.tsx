@@ -220,6 +220,42 @@ describe("PreviewCheckout Phase 3 flow", () => {
     ).toHaveLength(5))
   })
 
+  it("uses one server-derived batch action for the recommended phase when available", async () => {
+    const checkDomainBatchAction = vi.fn(async (formData: FormData) => ({
+      ok: true,
+      message: "",
+      phase: "recommended" as const,
+      requestToken: String(formData.get("requestToken") ?? ""),
+      results: ["nl", "com", "info", "org", "eu"].map((extension) => ({
+        ok: true,
+        status: "available" as const,
+        domain: `acme.${extension}`,
+        domainMode: "new_registration" as const,
+        included: true,
+        message: `acme.${extension} is available.`,
+        quotes: { monthly: quote("monthly"), annual: quote("annual") },
+      })),
+    }))
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        checkDomainBatchAction={checkDomainBatchAction}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "acme" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainBatchAction).toHaveBeenCalledTimes(1))
+    const formData = checkDomainBatchAction.mock.calls[0]?.[0] as FormData
+    expect(formData.get("domain")).toBe("acme")
+    expect(formData.get("phase")).toBe("recommended")
+  })
+
   it("keeps the typed extension first and shows recommended unavailable options when every extension is taken", async () => {
     const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
       const domain = String(formData.get("domain"))

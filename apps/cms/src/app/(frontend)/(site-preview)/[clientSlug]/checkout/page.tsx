@@ -26,6 +26,7 @@ import {
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import {
+  checkPreviewCheckoutDomainBatchAction,
   checkPreviewCheckoutDomainAction,
   loadPreviewCheckoutLiveStatusAction,
   recollectAcceptedMigrationInputAction,
@@ -250,6 +251,7 @@ export default async function PreviewCheckoutPage({
         previewHref={`/${context.clientSlug}`}
         prewarmHref={`/${context.clientSlug}/checkout/prewarm`}
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
+        checkDomainBatchAction={checkPreviewCheckoutDomainBatchAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
         loadLiveStatusAction={

@@ -20,6 +20,7 @@ import {
   checkOpenProviderDomainAvailability,
   checkOpenProviderDomainsAvailability,
   suggestOpenProviderDomains,
+  type OpenProviderAvailabilityResult,
 } from "@/lib/domains/openprovider"
 import { normalizeDomain } from "@/lib/domains/normalize"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
@@ -55,6 +56,33 @@ export type PreviewDomainOrderResult = {
   providerQuotedAt: string
   productionOperationEnabled: boolean
   suggestions: PreviewDomainSuggestion[]
+}
+
+/**
+ * The checkout requests a deliberately small, server-derived candidate set.
+ * Keep this below the provider's documented maximum so this helper cannot turn
+ * an authenticated checkout request into an unbounded availability probe.
+ */
+export const MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE = 15
+
+export type PreviewDomainOrderCheckOptions = {
+  includedProviderPrice?: FixedDomainOrderPrice
+  capabilityEffectiveAt?: string | Date
+  requireProductionCapability?: boolean
+  /** Only the payment/commit check may bypass presentation availability cache. */
+  forceFresh?: boolean
+}
+
+type NormalizedPreviewDomainOrderCandidate = {
+  domain: string
+  name: string
+  extension: string
+  productionCapability: ReturnType<typeof getTldCapabilityForProductionOperation>
+}
+
+type PreviewDomainOrderMapping = {
+  domainOrder: ReturnType<typeof createDomainOrderState>
+  result: Omit<PreviewDomainOrderResult, "run">
 }
 
 export function selectedDomainForCheckout(run: Pick<SiteGenerationRun, "domainOrder">): string | null {
@@ -179,18 +207,10 @@ const providerPriceIsUsable = (
   includedProviderPrice: FixedDomainOrderPrice,
 ): boolean => providerPrice !== null && compareMoney(providerPrice, includedProviderPrice) !== null
 
-export async function checkAndRecordPreviewDomainOrder(
-  payload: Payload,
-  run: SiteGenerationRun,
+const normalizePreviewDomainOrderCandidate = (
   domainInput: string,
-  registrant?: DomainRegistrantDetails | null,
-  options?: {
-    record?: boolean
-    includedProviderPrice?: FixedDomainOrderPrice
-    capabilityEffectiveAt?: string | Date
-    requireProductionCapability?: boolean
-  },
-): Promise<PreviewDomainOrderResult> {
+  options?: PreviewDomainOrderCheckOptions,
+): NormalizedPreviewDomainOrderCandidate => {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
     throw new Error(`Invalid domain: ${normalized.reason}`)
@@ -209,10 +229,22 @@ export async function checkAndRecordPreviewDomainOrder(
   if (!validateTldRegistrationLabel(capability, normalized.name)) {
     throw new Error(`Domain label is not supported for .${normalized.extension}.`)
   }
+  return {
+    domain: normalized.domain,
+    name: normalized.name,
+    extension: normalized.extension,
+    productionCapability,
+  }
+}
 
-  const includedProviderPrice =
-    options?.includedProviderPrice ?? maxDomainProviderPriceFromEnv()
-  const availability = await checkOpenProviderDomainAvailability(normalized.domain)
+const previewDomainOrderMapping = (
+  run: SiteGenerationRun,
+  candidate: NormalizedPreviewDomainOrderCandidate,
+  availability: OpenProviderAvailabilityResult,
+  registrant: DomainRegistrantDetails | null | undefined,
+  options?: PreviewDomainOrderCheckOptions,
+): PreviewDomainOrderMapping => {
+  const includedProviderPrice = options?.includedProviderPrice ?? maxDomainProviderPriceFromEnv()
   const now = new Date().toISOString()
   const providerPrice = availability.price
     ? { amount: availability.price.amount, currency: availability.price.currency }
@@ -220,7 +252,7 @@ export async function checkAndRecordPreviewDomainOrder(
   const priceUsable = availability.status === "available" && providerPriceIsUsable(providerPrice, includedProviderPrice)
   const includedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, includedProviderPrice)
   const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
-  const productionOperationEnabled = productionCapability !== null
+  const productionOperationEnabled = candidate.productionCapability !== null
   const status = priceUsable && productionOperationEnabled
     ? "ready_to_register"
     : availability.status === "premium"
@@ -230,7 +262,7 @@ export async function checkAndRecordPreviewDomainOrder(
         : "failed"
   const domainOrder = createDomainOrderState({
     status,
-    domain: normalized.domain,
+    domain: candidate.domain,
     // The accepted server quote is the sole customer-price authority. Domain
     // order state retains provider evidence only; it must not depend on a
     // process-wide fixed checkout amount.
@@ -242,45 +274,110 @@ export async function checkAndRecordPreviewDomainOrder(
       ?? (availability.status === "available" && !productionOperationEnabled
         ? "registration_release_pending"
         : availability.status === "available" && !priceUsable
-        ? "provider_price_unavailable"
-        : availability.status === "available" && !includedPrice
-          ? "domain_cost_above_limit"
-          : null),
+          ? "provider_price_unavailable"
+          : availability.status === "available" && !includedPrice
+            ? "domain_cost_above_limit"
+            : null),
     now,
   })
+  return {
+    domainOrder,
+    result: {
+      domain: candidate.domain,
+      included: includedPrice,
+      extraFeeAmount: extraFee?.amount ?? null,
+      extraFeeCurrency: extraFee?.currency ?? null,
+      providerPriceAmount: providerPrice?.amount ?? null,
+      providerPriceCurrency: providerPrice?.currency ?? null,
+      providerQuotedAt: now,
+      productionOperationEnabled,
+      suggestions: [],
+      messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled
+        ? "checkoutDomainReleasePending"
+        : includedPrice
+          ? "checkoutDomainAvailable"
+          : priceUsable
+            ? "checkoutDomainAvailableExtraFee"
+            : availability.status === "premium"
+              ? "checkoutDomainPremium"
+              : availability.status === "unavailable"
+                ? "checkoutDomainUnavailable"
+                : "checkoutDomainCheckFailed",
+    },
+  }
+}
+
+/**
+ * Check a bounded set of checkout candidates without changing the persisted
+ * domain-order state. The caller must derive candidates from the customer
+ * input and its approved phase; this helper only validates and deduplicates
+ * them before issuing one provider batch request.
+ */
+export async function checkPreviewDomainOrders(
+  run: SiteGenerationRun,
+  domainInputs: string[],
+  registrant?: DomainRegistrantDetails | null,
+  options?: PreviewDomainOrderCheckOptions,
+): Promise<PreviewDomainOrderResult[]> {
+  const candidatesByDomain = new Map<string, NormalizedPreviewDomainOrderCandidate>()
+  for (const domainInput of domainInputs) {
+    const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
+    candidatesByDomain.set(candidate.domain, candidate)
+  }
+  const candidates = [...candidatesByDomain.values()]
+  if (candidates.length > MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE) {
+    throw new Error(`Checkout domain batch exceeds ${MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE} domains.`)
+  }
+  if (candidates.length === 0) return []
+
+  const candidateDomains = candidates.map((candidate) => candidate.domain)
+  const availabilityResults = options?.forceFresh
+    ? await checkOpenProviderDomainsAvailability(candidateDomains, { forceFresh: true })
+    : await checkOpenProviderDomainsAvailability(candidateDomains)
+  const availabilityByDomain = new Map<string, OpenProviderAvailabilityResult>()
+  for (const availability of availabilityResults) {
+    const normalized = normalizeDomain(availability.domain)
+    if (normalized.ok) availabilityByDomain.set(normalized.domain, availability)
+  }
+
+  return candidates.map((candidate) => {
+    const availability = availabilityByDomain.get(candidate.domain)
+    if (!availability) {
+      throw new Error(`OpenProvider returned no availability result for ${candidate.domain}.`)
+    }
+    const mapping = previewDomainOrderMapping(run, candidate, availability, registrant, options)
+    return { run, ...mapping.result }
+  })
+}
+
+export async function checkAndRecordPreviewDomainOrder(
+  payload: Payload,
+  run: SiteGenerationRun,
+  domainInput: string,
+  registrant?: DomainRegistrantDetails | null,
+  options?: PreviewDomainOrderCheckOptions & {
+    record?: boolean
+  },
+): Promise<PreviewDomainOrderResult> {
+  const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
+  const availability = options?.forceFresh
+    ? await checkOpenProviderDomainAvailability(candidate.domain, { forceFresh: true })
+    : await checkOpenProviderDomainAvailability(candidate.domain)
+  const mapping = previewDomainOrderMapping(run, candidate, availability, registrant, options)
 
   const updated = options?.record === false
     ? run
     : await payload.update({
       collection: "site-generation-runs",
       id: run.id,
-      data: { domainOrder },
+      data: { domainOrder: mapping.domainOrder },
       depth: 0,
       overrideAccess: true,
     }) as SiteGenerationRun
 
   return {
     run: updated,
-    domain: normalized.domain,
-    included: includedPrice,
-    extraFeeAmount: extraFee?.amount ?? null,
-    extraFeeCurrency: extraFee?.currency ?? null,
-    providerPriceAmount: providerPrice?.amount ?? null,
-    providerPriceCurrency: providerPrice?.currency ?? null,
-    providerQuotedAt: now,
-    productionOperationEnabled,
-    suggestions: [],
-    messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled
-      ? "checkoutDomainReleasePending"
-      : includedPrice
-      ? "checkoutDomainAvailable"
-      : priceUsable
-        ? "checkoutDomainAvailableExtraFee"
-      : availability.status === "premium"
-        ? "checkoutDomainPremium"
-        : availability.status === "unavailable"
-          ? "checkoutDomainUnavailable"
-          : "checkoutDomainCheckFailed",
+    ...mapping.result,
   }
 }
 
@@ -302,6 +399,7 @@ export async function requireReadyPreviewDomainOrder(
     {
       ...options,
       requireProductionCapability: true,
+      forceFresh: true,
     },
   )
   if (result.messageKey !== "checkoutDomainAvailable" && result.messageKey !== "checkoutDomainAvailableExtraFee") {
