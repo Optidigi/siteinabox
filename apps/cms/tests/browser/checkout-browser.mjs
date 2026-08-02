@@ -163,7 +163,7 @@ try {
   process.stdout.write("Checkout validation/focus contract passed.\n")
 
   await page
-    .getByRole("heading", { name: "Plan, price and declarations" })
+    .getByRole("heading", { name: "Plan" })
     .waitFor()
   await page.setViewportSize({ width: 1280, height: 900 })
   await capture(page, "desktop-light-review-ready")
@@ -408,12 +408,12 @@ try {
       sheetRadius: launchSheet ? getComputedStyle(launchSheet).borderRadius : null,
     }
   })
-  assert.equal(desktopGeometry.shellLeft, 80, "The 1280px prototype workspace must be centered.")
-  assert.equal(desktopGeometry.shellWidth, 1120, "The desktop prototype workspace is 1120px wide.")
-  assert.equal(desktopGeometry.sheetWidth, 778, "The desktop launch sheet is 778px wide.")
-  assert.equal(desktopGeometry.summaryWidth, 324, "The desktop summary rail is 324px wide.")
+  assert.equal(desktopGeometry.shellLeft, 48, "The widened 1280px workspace must remain centered.")
+  assert.equal(desktopGeometry.shellWidth, 1184, "The desktop workspace is wide enough for the customer price rail.")
+  assert.equal(desktopGeometry.sheetWidth, 818, "The desktop launch sheet fills the widened workspace.")
+  assert.equal(desktopGeometry.summaryWidth, 348, "The desktop summary rail is 348px wide.")
   assert.equal(desktopGeometry.gap, 18, "The desktop sheet-to-summary gap is 18px.")
-  assert.equal(desktopGeometry.gridColumns, "778px 324px")
+  assert.equal(desktopGeometry.gridColumns, "818px 348px")
   assert.equal(desktopGeometry.sheetRadius, "22px")
   const assertStickySummary = async (state) => {
     const summary = desktopPage.locator("[data-checkout-summary]")
@@ -548,7 +548,7 @@ try {
   await axfrPage.getByRole("button", { name: "Continue" }).click()
   await axfrPage.getByRole("heading", { name: /launch$/i }).first().waitFor()
   await axfrPage.getByRole("heading", {
-    name: "Plan, price and declarations",
+    name: "Plan",
   }).waitFor()
   assert.equal(
     await axfrPage.getByText(

@@ -33,6 +33,7 @@ export function MobileCheckoutBar({
   handlers: CheckoutPrimaryActionHandlers
 }) {
   const t = useTranslations("preview")
+  const money = (minor: number) => new Intl.NumberFormat(locale, { style: "currency", currency: quote?.currency ?? "EUR" }).format(minor / 100)
   void navigationLocked
   void previewHref
 
@@ -59,11 +60,12 @@ export function MobileCheckoutBar({
               </SheetHeader>
               <dl className="grid gap-3 px-4 pb-4 text-sm">
                 <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryDomain")}</dt><dd className="text-right font-medium [overflow-wrap:anywhere]">{selectedDomain || "—"}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutPlanLegend")}</dt><dd className="text-right font-medium">{plan}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryNet")} · {t("checkoutPriceExVat")}</dt><dd className="font-medium tabular-nums">{new Intl.NumberFormat(locale, { style: "currency", currency: quote.currency }).format(quote.netAmountMinor / 100)}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryVat")}</dt><dd className="font-medium tabular-nums">{new Intl.NumberFormat(locale, { style: "currency", currency: quote.currency }).format(quote.vatAmountMinor / 100)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{plan} · {t("checkoutPriceExVat")}</dt><dd className="font-medium tabular-nums">{money(quote.planPriceNetMinor)}</dd></div>
+                {quote.domainSurchargeNetMinor > 0 && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryDomainExtraExVat")}</dt><dd className="font-medium tabular-nums">{money(quote.domainSurchargeNetMinor)}</dd></div>}
+                {quote.migrationServiceFeeNetMinor > 0 && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryMigrationExVat")}</dt><dd className="font-medium tabular-nums">{money(quote.migrationServiceFeeNetMinor)}</dd></div>}
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryVat")}</dt><dd className="font-medium tabular-nums">{money(quote.vatAmountMinor)}</dd></div>
                 <div className="flex justify-between gap-4 border-t pt-3"><dt className="font-medium">{t("checkoutSummaryDueNowInclVat")}</dt><dd className="font-semibold tabular-nums">{dueNow}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryFutureSubscription")}</dt><dd className="font-medium tabular-nums">{new Intl.NumberFormat(locale, { style: "currency", currency: quote.currency }).format(quote.futureSubscriptionGrossMinor / 100)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t("checkoutSummaryFutureSubscription")}</dt><dd className="font-medium tabular-nums">{money(quote.futureSubscriptionGrossMinor)}</dd></div>
               </dl>
             </SheetContent>
           </Sheet>}

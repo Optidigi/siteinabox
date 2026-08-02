@@ -296,7 +296,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     ))
     fireEvent.submit(profileForm!)
     await waitFor(() => expect(saveProfileAction).toHaveBeenCalledTimes(2))
-    await screen.findByRole("heading", { name: "checkoutSubscriptionOverviewTitle" })
+    await screen.findByRole("heading", { name: "checkoutPlanTitle" })
     expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ik sluit deze overeenkomst uitsluitend zakelijk.")).toBeTruthy()
 

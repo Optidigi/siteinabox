@@ -1251,6 +1251,8 @@
     "checkoutTermsPrivacyTitle": "Voorwaarden en privacy",
     "checkoutWebsiteApprovalTitle": "Goedkeuring website",
     "checkoutPlanLegend": "Factureringsperiode",
+    "checkoutPlanTitle": "Abonnement",
+    "checkoutSummaryDomainExtraExVat": "Domeinmeerprijs · excl. btw",
     "checkoutPlanPerYear": "/ jaar",
     "checkoutPlanPerMonth": "/ maand",
     "checkoutPlanMonthly": "Maandelijks abonnement",

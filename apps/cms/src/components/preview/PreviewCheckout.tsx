@@ -12,6 +12,7 @@ import {
   CircleAlert,
   CircleX,
   CreditCard,
+  FileText,
   Globe2,
   Info,
   Link2,
@@ -1183,7 +1184,6 @@ export function PreviewCheckout({
           <a href={previewHref} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-xs font-semibold">
             <img src="/logos/icon-light.svg" alt="" className="size-7 dark:hidden" />
             <img src="/logos/icon-dark.svg" alt="" className="hidden size-7 dark:block" />
-            <span className="hidden min-[560px]:inline">Siteinabox</span>
           </a>
           </div>
           <div className="hidden items-center gap-2 text-[0.6875rem] font-semibold text-muted-foreground min-[560px]:flex">
@@ -1202,7 +1202,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid w-[calc(100%-20px)] min-w-0 max-w-[70rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%-28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%-40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
+      <div data-checkout-shell className="mx-auto grid w-[calc(100%-20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%-28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%-40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
         <section className="grid gap-2">
             <div>
               <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
@@ -1224,7 +1224,7 @@ export function PreviewCheckout({
         />
 
         {(presentation.phase === "payment" || presentation.phase === "fulfilment" || (requiresMigrationRecollection && acceptedOrderId != null)) && (
-          <div className={cn("grid min-w-0 gap-[18px]", presentation.phase === "payment" && "min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start")}>
+          <div className={cn("grid min-w-0 gap-[18px]", presentation.phase === "payment" && "min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start")}>
           <Card data-checkout-main-card className={cn("relative w-full scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]", presentation.phase !== "payment" && "mx-auto max-w-[820px]")}>
             <CardContent className="grid gap-[14px] px-[17px] py-5 min-[560px]:gap-[18px] min-[560px]:px-[26px] min-[560px]:py-6 [&_[role=status]]:rounded-[14px] [&_[role=status]]:border [&_[role=status]]:p-[13px]">
         {paymentReturn && presentation.phase === "payment" && (
@@ -1669,7 +1669,7 @@ export function PreviewCheckout({
         )}
 
         {presentation.phase === "address" && step === "domain" && (
-          <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-[18px]">
+          <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start min-[880px]:gap-[18px]">
           <Card data-checkout-main-card className="relative scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
             <CardHeader className="!flex items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
               <CardTitle>
@@ -1707,7 +1707,8 @@ export function PreviewCheckout({
                     if (value === "new_registration" || value === "existing_domain") updateDomainMode(value)
                   }}
                   variant="outline"
-                  className="grid grid-cols-2 rounded-xl bg-muted p-[3px]"
+                  data-checkout-domain-mode
+                  className="grid w-full grid-cols-2 rounded-xl bg-muted p-[3px]"
                 >
                   <ToggleGroupItem value="new_registration" className="min-h-[42px] min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
                     <Search className="size-4" aria-hidden />
@@ -2165,7 +2166,7 @@ export function PreviewCheckout({
         )}
 
         {presentation.phase === "review" && step === "review" && (
-          <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_324px] min-[880px]:items-start min-[880px]:gap-[18px]">
+          <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start min-[880px]:gap-[18px]">
           <div className="relative scroll-mb-28 min-w-0 overflow-hidden rounded-[17px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
           <Card data-checkout-main-card className="gap-0 rounded-none border-0 py-0 shadow-none">
             <CardHeader className="!flex items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
@@ -2641,17 +2642,17 @@ export function PreviewCheckout({
           </Card>
           {savedProfile && <section data-checkout-main-card className="border-t">
             <div className="flex items-center gap-3 px-[17px] pb-0 pt-[17px] min-[560px]:px-[26px] min-[560px]:pt-[18px]">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
+              <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-success/10 text-success">
                 <CreditCard className="size-4" aria-hidden />
               </span>
               <div>
                 <h2 className="text-[15px] font-bold leading-tight tracking-[-0.012em]">
-                  {t("checkoutSubscriptionOverviewTitle")}
+                  {t("checkoutPlanTitle")}
                 </h2>
-                <p className="mt-1 text-xs leading-snug text-muted-foreground">{t("checkoutSubscriptionOverviewDescription")}</p>
+                <p className="mt-1 text-xs leading-snug text-muted-foreground">{billingPeriod === "annual" ? `${t("checkoutPlanAnnualShort")} · ${t("checkoutPlanAnnualSaving")}` : t("checkoutPlanMonthlyShort")}</p>
               </div>
-              <Badge variant="outline" className="ml-auto hidden shrink-0 text-[0.625rem] min-[420px]:inline-flex">
-                {billingPeriod === "annual" ? t("checkoutPlanAnnual") : t("checkoutPlanMonthly")}
+              <Badge variant="outline" className="ml-auto hidden shrink-0 border-success/30 bg-success/10 text-[0.625rem] text-success min-[420px]:inline-flex">
+                {t("checkoutComplete")}
               </Badge>
             </div>
             <div className="grid min-w-0 gap-5 px-[17px] pb-[17px] pt-3 [&>*]:min-w-0 min-[560px]:px-[26px] min-[560px]:pb-[22px]">
@@ -2674,7 +2675,7 @@ export function PreviewCheckout({
                       value={period}
                       disabled={acceptedOrderId != null}
                       className={cn(
-                    "h-auto min-h-[5.25rem] w-full min-w-0 justify-start rounded-[13px] border p-3 text-left",
+                    "h-auto min-h-[5.25rem] w-full min-w-0 justify-start rounded-[13px] border bg-card p-3 text-left",
                         "data-[state=on]:border-foreground data-[state=on]:bg-muted/40 data-[state=on]:ring-1 data-[state=on]:ring-foreground",
                       )}
                     >
@@ -2683,16 +2684,16 @@ export function PreviewCheckout({
                           {period === "annual"
                             ? t("checkoutPlanAnnual")
                             : t("checkoutPlanMonthly")}
-                          {period === "annual" && <Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">{t("checkoutPlanAnnualSaving")}</Badge>}
+                          {period === "annual" && <Badge className="hidden bg-brand text-[10px] text-brand-foreground hover:bg-brand sm:inline-flex">{t("checkoutPlanAnnualSaving")}</Badge>}
                         </span>
-                        <span className="text-lg font-semibold leading-tight tracking-tight text-foreground">
+                        <span className="mt-1 text-lg font-bold leading-tight tracking-tight text-foreground">
                           {money(
                             locale,
                             option?.planPriceNetMinor ?? 0,
                             option?.currency ?? catalog.currency,
                           )}
+                          <span className="ml-1 text-[0.625rem] font-medium text-muted-foreground">{period === "annual" ? t("checkoutPlanPerYear") : t("checkoutPlanPerMonth")} · {t("checkoutPriceExVat")}</span>
                         </span>
-                        <span className="text-[0.6875rem] text-muted-foreground">{period === "annual" ? t("checkoutPlanPerYear") : t("checkoutPlanPerMonth")} · {t("checkoutPriceExVat")}</span>
                       </span>
                     </ToggleGroupItem>
                   )
@@ -2975,7 +2976,7 @@ function PreviewCheckoutStepper({
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; description: string; icon: React.ElementType }> = [
     { id: "domain", label: t("checkoutStepDomain"), description: t("checkoutStepDomainDescription"), icon: Globe2 },
-    { id: "review", label: t("checkoutStepPayment"), description: t("checkoutStepPaymentDescription"), icon: ReceiptText },
+    { id: "review", label: t("checkoutStepPayment"), description: t("checkoutStepPaymentDescription"), icon: FileText },
   ]
   return (
     <CheckoutStepper
