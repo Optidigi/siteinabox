@@ -649,13 +649,16 @@ try {
     if (["declaration-block", "quote-refreshed", "payment-redirecting"].includes(scenarioId)) {
       if (scenarioId === "declaration-block") {
         await scenarioPage.locator("#checkout-terms").check()
+        const paymentButton = scenarioPage.getByRole("button", { name: /Approve & pay/ }).first()
+        if (!(await paymentButton.isDisabled())) {
+          throw new Error("Payment action must remain disabled until all checkout declarations are accepted")
+        }
+        return
       } else {
         for (const checkbox of await scenarioPage.locator('[role="checkbox"]').all()) await checkbox.check()
       }
       await scenarioPage.getByRole("button", { name: /Approve & pay/ }).first().click()
-      if (scenarioId === "declaration-block") {
-        await scenarioPage.locator("#checkout-declarations-error").getByText("Required", { exact: true }).waitFor()
-      } else if (scenarioId === "quote-refreshed") {
+      if (scenarioId === "quote-refreshed") {
         await scenarioPage.getByText("signed quote was refreshed", { exact: false }).waitFor()
       } else {
         await scenarioPage.getByText("Payment processing is still pending", { exact: false }).waitFor()
