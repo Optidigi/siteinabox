@@ -324,7 +324,7 @@ describe("commerce notification delivery evidence", () => {
 
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
       text: expect.stringMatching(
-        /Providerprijs excl\. btw: €\s?12,50.*Inbegrepen domeinvergoeding: €\s?10,00.*Bruto nu te betalen: €\s?3,03/s,
+        /Providerprijs excl\. BTW: €\s?12,50.*Inbegrepen domeinvergoeding: €\s?10,00.*Bruto nu te betalen: €\s?3,03/s,
       ),
     }))
   })

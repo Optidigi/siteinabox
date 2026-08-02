@@ -15,7 +15,7 @@ const harnessMessages = {
   ...localeMessages.preview,
   checkoutStartPaymentAmount: harnessLocale === "nl" ? "Goedkeuren & betalen {amount}" : "Approve & pay {amount}",
   checkoutSummaryDueNow: harnessLocale === "nl" ? "Vandaag verschuldigd" : "Due today",
-  checkoutSummaryVatRate: harnessLocale === "nl" ? "Btw ({rate})" : "VAT ({rate})",
+  checkoutSummaryVatRate: harnessLocale === "nl" ? "BTW ({rate})" : "VAT ({rate})",
 }
 
 const profile = {

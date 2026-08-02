@@ -559,6 +559,30 @@ describe("OpenProvider adapter", () => {
     })
   })
 
+  it("prefers the reseller availability price when product and reseller prices differ", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [{
+          domain: "example.nl",
+          status: "free",
+          price: {
+            product: { price: "10.00", currency: "USD" },
+            reseller: { price: "8.06", currency: "EUR" },
+          },
+        }],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainAvailability("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "available",
+      price: { amount: "8.06", currency: "EUR" },
+    })
+  })
+
   it("requests provider-backed domain suggestions for the same extension", async () => {
     const fetchMock = vi.fn(async () => Response.json({
       data: {

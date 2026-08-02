@@ -455,6 +455,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })).toBeNull()
     expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
     expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
+    fireEvent.click(screen.getByRole("radio", {
+      name: "checkoutMigrationSourceAxfr",
+    }))
     fireEvent.submit(
       container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
     )

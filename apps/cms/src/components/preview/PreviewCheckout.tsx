@@ -417,10 +417,12 @@ export function PreviewCheckout({
     cloudflareSourceDomain ?? readyDomain ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
-  const selectedExtensions = React.useMemo(
-    () => supportedDomainExtensions.slice(0, 4),
-    [supportedDomainExtensions],
-  )
+  const selectedExtensions = React.useMemo(() => {
+    const enabled = new Set(supportedDomainExtensions)
+    return ["com", "nl", "info", "org", "eu"].filter((extension) =>
+      enabled.has(extension),
+    )
+  }, [supportedDomainExtensions])
   const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
   const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
   const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
@@ -642,10 +644,15 @@ export function PreviewCheckout({
         (checkState.migrationPublicEvidence?.transferBlockers?.length ?? 0) > 0
       ) {
         setMigrationSourceMethod("")
-      } else if (existingDomainMigrationEnabled) {
-        setMigrationSourceMethod(
-          availableMigrationSourceMethods[0] ?? "",
-        )
+      } else if (
+        existingDomainMigrationEnabled &&
+        detectedMigrationDnsProvider === "cloudflare" &&
+        availableMigrationSourceMethods.includes("cloudflare_api_v1")
+      ) {
+        // Cloudflare is the only source that can continue without a
+        // customer-supplied secret. AXFR must remain unselected until its
+        // owner provides the required TSIG details and authorization.
+        setMigrationSourceMethod("cloudflare_api_v1")
       }
     }
   }, [
@@ -912,11 +919,9 @@ export function PreviewCheckout({
       : domainResultKind === "error"
         ? "error"
         : null
-  const domainDescriptionId = domainInputState === "success"
-    ? "checkout-domain-available"
-    : domainInputState === "warning"
-      ? "checkout-domain-unavailable"
-      : domainInputState === "error"
+  const domainDescriptionId = domainInputState === "warning"
+    ? "checkout-domain-unavailable"
+    : domainInputState === "error"
         ? "checkout-domain-error"
         : undefined
   const selectedQuote = quotes?.[billingPeriod] ?? null
@@ -1211,8 +1216,8 @@ export function PreviewCheckout({
         <div className="grid h-12 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 min-[560px]:h-[52px] min-[560px]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] min-[560px]:px-4">
           <div className="flex min-w-0 items-center gap-1">
           <a href={previewHref} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-xs font-semibold">
-            <img src="/logos/favicon.svg" alt="" className="size-7 dark:hidden" />
-            <img src="/logos/icon-dark.svg" alt="" className="hidden size-7 dark:block" />
+            <img src="/logos/logo-light.svg" alt="SiteInABox" className="h-7 w-auto dark:hidden" />
+            <img src="/logos/logo-dark.svg" alt="SiteInABox" className="hidden h-7 w-auto dark:block" />
           </a>
           </div>
           <div className="hidden items-center gap-2 text-[0.6875rem] font-semibold text-muted-foreground min-[560px]:flex">
@@ -1948,7 +1953,7 @@ export function PreviewCheckout({
                             {t("checkoutMigrationSourceHelp")}
                           </p>
                           <RadioGroup
-                            value={migrationSourceMethod || undefined}
+                            value={migrationSourceMethod}
                             onValueChange={(value) => {
                               if (value === "cloudflare_api_v1" || value === "authorized_axfr_v1") {
                                 updateMigrationSourceMethod(value)
@@ -2097,45 +2102,9 @@ export function PreviewCheckout({
                       {t("checkoutDomainUnavailableTitle")}
                     </p>
                   )}
-                  {domainInputState === "success" && domainMode === "new_registration" && (
-                    <p id="checkout-domain-available" className="text-sm font-medium text-success">
-                      {t("checkoutDomainAvailableDetail", {
-                        domain: checkState.domain ?? normalizedDomainValue,
-                      })}
-                      {checkState.extraFeeLabel
-                        ? ` ${t("checkoutDomainSurchargeDetail", {
-                            amount: checkState.extraFeeLabel,
-                          })}`
-                        : ""}
-                    </p>
-                  )}
                 </div>
               </form>
 
-              {selectedDomain && selectedQuote && (
-                <div className="flex min-w-0 items-center gap-3 rounded-[14px] border border-brand/35 bg-brand/10 p-3.5" data-selected-domain-summary>
-                  <span className="grid size-[38px] shrink-0 place-items-center rounded-[11px] bg-brand text-brand-foreground">
-                    <Globe2 className="size-[18px]" aria-hidden />
-                  </span>
-                  <span className="grid min-w-0 flex-1 gap-0.5">
-                    <strong className="[overflow-wrap:anywhere] text-sm">{selectedDomain}</strong>
-                    <span className="text-[0.6875rem] text-muted-foreground">{t("checkoutExtensionAvailable")} · {selectedQuote.quote.domainSurchargeNetMinor > 0 ? `${money(locale, selectedQuote.quote.domainSurchargeNetMinor, selectedQuote.quote.currency)} ${t("checkoutPriceExVat")}` : t("checkoutDomainIncludedBadge")}</span>
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="min-h-9 shrink-0"
-                    onClick={() => {
-                      setCheckedDomain(null)
-                      setQuotes(null)
-                      window.setTimeout(() => domainFormRef.current?.querySelector<HTMLInputElement>("#checkout-domain")?.focus(), 0)
-                    }}
-                  >
-                    {t("checkoutChange")}
-                  </Button>
-                </div>
-              )}
 
               {domainResultKind === "error" && (
                 <Alert id="checkout-domain-error" variant="destructive" role="alert">
