@@ -15,7 +15,7 @@ describe("checkout visual evidence manifest", () => {
 
   it("records the contract-level differences that make pixel identity unsafe", () => {
     expect(intentionalPrototypeDifferences).toHaveLength(6)
-    expect(intentionalPrototypeDifferences.join(" ")).toMatch(/third visible declaration/i)
+    expect(intentionalPrototypeDifferences.join(" ")).toMatch(/two required confirmations/i)
     expect(intentionalPrototypeDifferences.join(" ")).toMatch(/six-stage fulfilment/i)
   })
 })

@@ -2,11 +2,7 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
-import {
-  BUSINESS_USE_DECLARATION_TEXT_NL,
-  BUSINESS_USE_DECLARATION_VERSION,
-  getCurrentLegalDocument,
-} from "@siteinabox/legal-content"
+import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
 import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
@@ -275,8 +271,6 @@ export default async function PreviewCheckoutPage({
         privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}
         termsVersion={terms.documentVersion}
         privacyVersion={privacy.documentVersion}
-        businessUseDeclarationVersion={BUSINESS_USE_DECLARATION_VERSION}
-        businessUseDeclarationText={BUSINESS_USE_DECLARATION_TEXT_NL}
         locale={locale}
       />
     )

@@ -120,9 +120,6 @@ const baseCheckoutProps = () => ({
   privacyHref: "https://www.siteinabox.nl/privacy",
   termsVersion: "2026-07-07.1",
   privacyVersion: "2026-07-18.1",
-  businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
-  businessUseDeclarationText:
-    "Ik sluit deze overeenkomst uitsluitend zakelijk.",
   locale: "nl-NL",
 })
 
@@ -338,8 +335,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
         privacyHref="https://www.siteinabox.nl/privacy"
         termsVersion="2026-07-07.1"
         privacyVersion="2026-07-18.1"
-        businessUseDeclarationVersion="business-use-declaration-2026-07-26.1"
-        businessUseDeclarationText="Ik sluit deze overeenkomst uitsluitend zakelijk."
         locale="nl-NL"
       />,
     )
@@ -377,7 +372,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
     await waitFor(() => expect(saveProfileAction).toHaveBeenCalledTimes(2))
     await screen.findByRole("heading", { name: "checkoutPlanTitle" })
     expect(document.activeElement).toBe(detailsHeading)
-    expect(screen.getByText("Ik sluit deze overeenkomst uitsluitend zakelijk.")).toBeTruthy()
 
     const paymentForm = container.querySelector<HTMLFormElement>("#checkout-payment-form")
     expect((paymentForm?.querySelector('[name="expectedProfileKey"]') as HTMLInputElement).value)
@@ -389,7 +383,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(paymentForm?.querySelector('[name="firstName"]')).toBeNull()
     expect((paymentForm?.querySelector('[name="checkoutQuoteToken"]') as HTMLInputElement).value)
       .toBe("signed-annual")
-    expect(screen.getAllByRole("checkbox")).toHaveLength(3)
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2)
     const previewApproval = paymentForm?.querySelector('[name="previewApproval"]') as HTMLInputElement
     expect(previewApproval.value).toBe("")
     fireEvent.click(container.querySelector("#checkout-preview-approval")!)
@@ -474,8 +468,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       privacyHref: "https://www.siteinabox.nl/privacy",
       termsVersion: "2026-07-07.1",
       privacyVersion: "2026-07-18.1",
-      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
-      businessUseDeclarationText: "Ik sluit deze overeenkomst uitsluitend zakelijk.",
       locale: "nl-NL",
     }
     const preflightOnly = render(<PreviewCheckout {...commonProps} />)
@@ -788,9 +780,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       privacyHref: "https://www.siteinabox.nl/privacy",
       termsVersion: "2026-07-07.1",
       privacyVersion: "2026-07-18.1",
-      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
-      businessUseDeclarationText:
-        "Ik sluit deze overeenkomst uitsluitend zakelijk.",
       locale: "nl-NL",
       existingDomainMigrationEnabled: true,
       cloudflareSourceOAuthEnabled: true,
@@ -976,9 +965,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       privacyHref: "https://www.siteinabox.nl/privacy",
       termsVersion: "2026-07-07.1",
       privacyVersion: "2026-07-18.1",
-      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
-      businessUseDeclarationText:
-        "Ik sluit deze overeenkomst uitsluitend zakelijk.",
       locale: "nl-NL",
     }
     const { container, rerender } = render(<PreviewCheckout {...props} />)

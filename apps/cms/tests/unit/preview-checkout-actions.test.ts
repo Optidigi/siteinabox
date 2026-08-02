@@ -236,15 +236,10 @@ const validPaymentForm = () => {
   formData.set("domain", "ami-care.nl")
   formData.set("previewApproval", "accepted")
   formData.set("termsAcceptance", "accepted")
-  formData.set("businessUseAcceptance", "accepted")
   formData.set("expectedProfileVersion", "1")
   formData.set("expectedProfileKey", "run:500:checkout-profile:1")
   formData.set("expectedTermsVersion", "2026-07-07.1")
   formData.set("expectedPrivacyVersion", "2026-07-18.1")
-  formData.set(
-    "expectedBusinessUseDeclarationVersion",
-    "business-use-declaration-2026-07-26.1",
-  )
   formData.set("billingPeriod", "annual")
   formData.set("checkoutQuoteToken", sealCheckoutQuote(buildCheckoutQuote({
     billingPeriod: "annual",
@@ -689,16 +684,6 @@ describe("preview checkout domain suggestion action", () => {
     expect(result).toMatchObject({ ok: false, message: "checkoutTermsAcceptanceRequired" })
   })
 
-  it("blocks payment before the governed business-use declaration is accepted", async () => {
-    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
-    const formData = new FormData()
-    formData.set("domain", "ami-care.nl")
-    formData.set("previewApproval", "accepted")
-    formData.set("termsAcceptance", "accepted")
-
-    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
-    expect(result).toMatchObject({ ok: false, message: "checkoutBusinessUseRequired" })
-  })
 
   it("rejects a stale authoritative profile before any domain or payment write", async () => {
     const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")

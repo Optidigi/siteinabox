@@ -19,7 +19,7 @@ export const checkoutVisualCases = Object.freeze([
 
 export const intentionalPrototypeDifferences = Object.freeze([
   "Repository preview/CMS chrome and real logo replace prototype chrome.",
-  "The product decision retains publication approval as the third visible declaration, overriding the earlier two-checkbox handoff note.",
+  "The customer checkout presents the two required confirmations for Terms/Privacy and website approval.",
   "Server-owned quote/profile/domain data replaces prototype sample values and client calculations.",
   "The authoritative six-stage fulfilment projection replaces the prototype's shortened timeline.",
   "Repository semantic tokens, primitives, and Lucide icons replace prototype inline CSS and SVG.",
@@ -72,6 +72,6 @@ export const assertCheckoutGeometry = (assert, visualCase, geometry) => {
   if (visualCase.scenario.startsWith("fulfilment-") || visualCase.scenario.startsWith("payment-")) {
     assert.equal(geometry.legalCheckboxCount, 0, `${visualCase.id} exposes editable legal controls during lifecycle.`)
   } else if (["review-ready", "declaration-block"].includes(visualCase.scenario)) {
-    assert.equal(geometry.legalCheckboxCount, 3, `${visualCase.id} must expose exactly three legal controls.`)
+    assert.equal(geometry.legalCheckboxCount, 2, `${visualCase.id} must expose exactly two legal controls.`)
   }
 }

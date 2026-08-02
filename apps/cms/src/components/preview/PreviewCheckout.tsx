@@ -208,8 +208,6 @@ type PreviewCheckoutProps = {
   privacyHref: string
   termsVersion: string
   privacyVersion: string
-  businessUseDeclarationVersion: string
-  businessUseDeclarationText: string
   locale: string
 }
 
@@ -333,8 +331,6 @@ export function PreviewCheckout({
   privacyHref,
   termsVersion,
   privacyVersion,
-  businessUseDeclarationVersion,
-  businessUseDeclarationText,
   locale,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
@@ -460,7 +456,6 @@ export function PreviewCheckout({
   const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
   const [termsAccepted, setTermsAccepted] = React.useState(false)
-  const [businessUseAccepted, setBusinessUseAccepted] = React.useState(false)
   const [legalSubmitRequested, setLegalSubmitRequested] = React.useState(false)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const domainSearchInput = React.useMemo(
@@ -782,7 +777,6 @@ export function PreviewCheckout({
     }
     setPreviewApprovalAccepted(false)
     setTermsAccepted(false)
-    setBusinessUseAccepted(false)
   }, [paymentState])
 
   React.useEffect(() => {
@@ -866,11 +860,9 @@ export function PreviewCheckout({
       : domainResultKind === "error"
         ? "error"
         : null
-  const domainDescriptionId = domainInputState === "warning"
-    ? "checkout-domain-unavailable"
-    : domainInputState === "error"
-        ? "checkout-domain-error"
-        : undefined
+  const domainDescriptionId = domainInputState === "error"
+    ? "checkout-domain-error"
+    : undefined
   const selectedQuote = quotes?.[billingPeriod] ?? null
   const netAmountMinor = selectedQuote?.quote.netAmountMinor ?? 0
   const vatAmountMinor = selectedQuote?.quote.vatAmountMinor ?? 0
@@ -1008,13 +1000,11 @@ export function PreviewCheckout({
 
   const submitPayment = () => {
     if (requiresMigrationRecollection) return
-    const firstMissingId = !businessUseAccepted
-      ? "checkout-business-use"
-        : !termsAccepted
-          ? "checkout-terms"
-          : !previewApprovalAccepted
-            ? "checkout-preview-approval"
-            : null
+    const firstMissingId = !termsAccepted
+      ? "checkout-terms"
+      : !previewApprovalAccepted
+        ? "checkout-preview-approval"
+        : null
     if (firstMissingId) {
       setLegalSubmitRequested(true)
       window.setTimeout(() => document.getElementById(firstMissingId)?.focus(), 0)
@@ -1061,7 +1051,7 @@ export function PreviewCheckout({
     profilePending,
     paymentPending,
     paymentBlocked: requiresMigrationRecollection,
-    declarationsAccepted: businessUseAccepted && termsAccepted && previewApprovalAccepted,
+    declarationsAccepted: termsAccepted && previewApprovalAccepted,
     paymentInProgress,
     paymentComplete: actionPaymentStatus === "completed",
     domainResultKind,
@@ -1724,6 +1714,9 @@ export function PreviewCheckout({
                 </Label>
                 <input ref={domainRequestTokenRef} type="hidden" name="requestToken" />
                 <input type="hidden" name="domainMode" value={domainMode} />
+                <p aria-live="polite" aria-atomic="true" className="sr-only">
+                  {extensionCheckPending ? t("checkoutDomainCheckingShort") : ""}
+                </p>
                 {migrationSourceMethod && (
                   <input
                     type="hidden"
@@ -1843,12 +1836,12 @@ export function PreviewCheckout({
                                   {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "release_pending" ? t("checkoutDomainReleasePendingTitle") : result.status === "service_error" ? t("checkoutExtensionError") : result.status === "invalid" ? t("checkoutDomainInvalid") : t("checkoutExtensionAvailable")}
                                 </span>
                               </span>
-                              <span className="grid self-start pt-0.5 text-right">
+                              <span className="grid self-center text-right">
                                 <strong className="text-[0.8125rem] font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : result.extraFeeLabel ?? "—"}</strong>
                                 {available && result.quotes && result.quotes.annual.quote.domainSurchargeNetMinor > 0 && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border bg-card px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-brand bg-brand text-brand-foreground [&&:hover]:bg-brand/85 [&&:hover]:text-brand-foreground")} onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-brand bg-brand text-brand-foreground [&&:hover]:bg-brand/85 [&&:hover]:text-brand-foreground")} onClick={() => selectExtensionResult(result)}>
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
                               )}
@@ -2076,13 +2069,6 @@ export function PreviewCheckout({
                     )}
                   </div>
                 )}
-                <div aria-live="polite" aria-atomic="true">
-                  {domainInputState === "warning" && (
-                    <p id="checkout-domain-unavailable" className="text-sm font-medium text-warning">
-                      {t("checkoutDomainUnavailableTitle")}
-                    </p>
-                  )}
-                </div>
               </form>
 
 
@@ -2644,7 +2630,7 @@ export function PreviewCheckout({
                           {period === "annual"
                             ? t("checkoutPlanAnnual")
                             : t("checkoutPlanMonthly")}
-                          {period === "annual" && <Badge className="h-[18px] rounded-full bg-brand px-1.5 py-0 text-[0.5625rem] font-extrabold leading-none text-brand-foreground hover:bg-brand">{t("checkoutPlanAnnualSaving")}</Badge>}
+                          {period === "annual" && <Badge className="h-[18px] rounded-full bg-success/10 px-1.5 py-0 text-[0.5625rem] font-extrabold leading-none text-success hover:bg-success/10">{t("checkoutPlanAnnualSaving")}</Badge>}
                         </span>
                         <span className="mt-1 text-lg font-bold leading-tight tracking-tight text-foreground">
                           {money(
@@ -2716,14 +2702,8 @@ export function PreviewCheckout({
                 )}
                 <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
-                <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />
                 <input type="hidden" name="expectedTermsVersion" value={termsVersion} />
                 <input type="hidden" name="expectedPrivacyVersion" value={privacyVersion} />
-                <input
-                  type="hidden"
-                  name="expectedBusinessUseDeclarationVersion"
-                  value={businessUseDeclarationVersion}
-                />
               </form>
 
               <div className="grid min-w-0 gap-2 border-t pt-[18px]">
@@ -2731,24 +2711,13 @@ export function PreviewCheckout({
                   <h3 className="text-sm font-bold text-foreground">{t("checkoutDeclarationsRequiredTitle")}</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("checkoutDeclarationsIntro")}</p>
                 </div>
-                {legalSubmitRequested && !(businessUseAccepted && termsAccepted && previewApprovalAccepted) && (
+                {legalSubmitRequested && !(termsAccepted && previewApprovalAccepted) && (
                   <Alert id="checkout-declarations-error" variant="destructive" role="alert" tabIndex={-1} className="border-destructive/35 bg-destructive/15">
                     <CircleAlert className="size-4" aria-hidden />
                     <AlertTitle>{t("checkoutRequiredLabel")}</AlertTitle>
                     <AlertDescription>{t("checkoutDeclarationsRequiredDescription")}</AlertDescription>
                   </Alert>
                 )}
-                <AcceptanceCheckbox
-                  id="checkout-business-use"
-                  checked={businessUseAccepted}
-                  onCheckedChange={setBusinessUseAccepted}
-                  title={t("checkoutBusinessPurchaseTitle")}
-                  label={businessUseDeclarationText}
-                  help={t("checkoutBusinessUseHelp")}
-                  requiredLabel={t("checkoutRequiredLabel")}
-                  describedBy={legalSubmitRequested && !businessUseAccepted ? "checkout-declarations-error" : undefined}
-                  invalid={legalSubmitRequested && !businessUseAccepted}
-                />
                 <AcceptanceCheckbox
                   id="checkout-terms"
                   checked={termsAccepted}
