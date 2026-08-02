@@ -29,6 +29,7 @@ const UPSTREAM_UI_FILES = new Set([
   "label.tsx",
   "pagination.tsx",
   "popover.tsx",
+  "radio-group.tsx",
   "select.tsx",
   "separator.tsx",
   "sheet.tsx",

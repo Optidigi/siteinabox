@@ -155,7 +155,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "analytical-engines.nl" },
     })
     fireEvent.submit(
@@ -409,7 +409,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
     expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeNull()
     expect(screen.getAllByText("checkoutDomainModeExistingPreflight").length).toBeGreaterThanOrEqual(1)
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.nl" },
     })
     fireEvent.submit(
@@ -435,7 +435,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
     expect((existingMode as HTMLInputElement).disabled).toBe(false)
     fireEvent.click(existingMode)
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.nl" },
     })
     fireEvent.submit(
@@ -516,7 +516,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(screen.getByRole("radio", {
       name: /checkoutDomainModeExisting/,
     }))
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.com" },
     })
     fireEvent.submit(
@@ -586,7 +586,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(screen.getByRole("radio", {
       name: /checkoutDomainModeExisting/,
     }))
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.com" },
     })
     const form = container.querySelector<HTMLFormElement>(
@@ -685,7 +685,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(screen.getByRole("radio", {
       name: /checkoutDomainModeExisting/,
     }))
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.nl" },
     })
     fireEvent.submit(
@@ -766,7 +766,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(screen.getByRole("radio", {
       name: /checkoutDomainModeExisting/,
     }))
-    fireEvent.change(screen.getByLabelText("checkoutDomainLabel"), {
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.nl" },
     })
     fireEvent.submit(
@@ -784,7 +784,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })).toBeNull()
     expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
     expect(
-      (screen.getByLabelText("checkoutDomainLabel") as HTMLInputElement).disabled,
+      (screen.getByLabelText(/checkout(?:Existing)?DomainLabel/) as HTMLInputElement).disabled,
     ).toBe(false)
   })
 

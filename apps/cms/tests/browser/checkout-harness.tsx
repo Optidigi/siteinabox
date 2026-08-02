@@ -4,15 +4,18 @@ import { NextIntlClientProvider } from "next-intl"
 
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { ThemeProvider } from "@/components/theme-provider"
-import messages from "@/locales/en.json"
+import enMessages from "@/locales/en.json"
+import nlMessages from "@/locales/nl.json"
 import "@/styles/globals.css"
 import { checkoutScenario } from "./checkout-scenarios"
 
+const harnessLocale = new URLSearchParams(window.location.search).get("locale") === "nl" ? "nl" : "en"
+const localeMessages = harnessLocale === "nl" ? nlMessages : enMessages
 const harnessMessages = {
-  ...messages.preview,
-  checkoutStartPaymentAmount: "Approve & pay {amount}",
-  checkoutSummaryDueNow: "Due today",
-  checkoutSummaryVatRate: "VAT ({rate}%)",
+  ...localeMessages.preview,
+  checkoutStartPaymentAmount: harnessLocale === "nl" ? "Goedkeuren & betalen {amount}" : "Approve & pay {amount}",
+  checkoutSummaryDueNow: harnessLocale === "nl" ? "Vandaag verschuldigd" : "Due today",
+  checkoutSummaryVatRate: harnessLocale === "nl" ? "Btw ({rate})" : "VAT ({rate})",
 }
 
 const profile = {
@@ -174,8 +177,8 @@ const saveProfileAction = async (_previous: unknown, formData: FormData) => {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <NextIntlClientProvider locale="en" messages={{ common: messages.common, preview: harnessMessages }}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+  <NextIntlClientProvider locale={harnessLocale} messages={{ common: localeMessages.common, preview: harnessMessages }}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
     <PreviewCheckout
       customerEmail="owner@example.test"
       currentDomain={initialDomain}
@@ -343,6 +346,7 @@ createRoot(document.getElementById("root")!).render(
             status: "premium",
             domain,
             domainMode: "new_registration",
+            extraFeeLabel: "€119.00",
             message: `${domain} is premium.`,
           }
         }

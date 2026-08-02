@@ -26,6 +26,8 @@ const buttonVariants = cva(
       // keeps its existing /75 + shadow combo unchanged.
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/75",
+        brand:
+          "bg-brand text-brand-foreground hover:bg-brand/90 focus-visible:ring-brand/40",
         success:
           "bg-success text-success-foreground hover:bg-success/90 focus-visible:ring-success/30",
         warning:

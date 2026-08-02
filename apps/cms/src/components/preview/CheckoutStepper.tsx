@@ -54,7 +54,7 @@ export function CheckoutStepper<T extends string = string>({
               <span className={cn(
                 "grid size-[25px] shrink-0 place-items-center rounded-[8px] bg-muted text-muted-foreground min-[560px]:size-7 min-[560px]:rounded-[9px]",
                 active && "bg-brand text-brand-foreground",
-                complete && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                complete && "bg-success/10 text-success",
               )}>
                 {complete ? <Check className="size-[15px]" aria-hidden /> : <StepIcon className="size-[15px]" aria-hidden />}
               </span>

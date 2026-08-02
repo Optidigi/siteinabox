@@ -27,6 +27,8 @@
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.7686 0.1647 70.0804);
   --warning-foreground: oklch(0.145 0 0);
+  --info: oklch(0.623 0.214 259.815);
+  --info-foreground: oklch(0.985 0 0);
   --border: #dfe2e5;
   --input: #dfe2e5;
   --ring: #5c6168;
@@ -77,6 +79,8 @@
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.7000 0.1500 70);
   --warning-foreground: oklch(0.145 0 0);
+  --info: oklch(0.707 0.165 254.624);
+  --info-foreground: oklch(0.145 0 0);
   --border: #2b2e32;
   --input: #2b2e32;
   --ring: #a8abb2;
@@ -162,6 +166,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
+  --color-info-foreground: var(--info-foreground);
+  --color-info: var(--info);
   --color-success-foreground: var(--success-foreground);
   --color-success: var(--success);
   --color-brand: var(--brand);
