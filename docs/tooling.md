@@ -27,7 +27,8 @@ pnpm mcp:check
 ```
 
 The policy registry declares `shadcn`, `postgres`, `github`, `context7`,
-`better-auth`, `cloudflare-api`, `docker`, `sequential-thinking`, and `posthog`.
+`better-auth`, `cloudflare-api`, `docker`, `openprovider`,
+`sequential-thinking`, and `posthog`.
 A declaration proves policy, not startup, authentication, or effective runtime
 permission. Inspect the generated target and the server's advertised tools
 before relying on it.
@@ -47,8 +48,9 @@ Docker or Podman CLI under the normal sandbox and approval policy instead.
 - Use the matching MCP when current material evidence lives in that system:
   Better Auth for authentication behavior, shadcn for primitive discovery,
   Context7 for versioned library documentation, GitHub for hosted repository
-  state, PostgreSQL for approved database inspection, Cloudflare/PostHog for
-  approved provider investigation, and Docker for container inspection.
+  state, PostgreSQL for approved database inspection, Cloudflare, Openprovider,
+  and PostHog for approved provider investigation, and Docker for container
+  inspection.
 - If a server is unavailable, use repository evidence, an established CLI, or
   official primary documentation and report the limitation.
 

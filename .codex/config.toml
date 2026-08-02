@@ -33,6 +33,12 @@ default_tools_approval_mode = "auto"
 env_vars = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
 env = { "GITHUB_READ_ONLY" = "1", "GITHUB_TOOLSETS" = "repos,issues,pull_requests,actions" }
 
+[mcp_servers.openprovider]
+url = "https://mcp.openprovider.com/mcp"
+enabled = true
+required = false
+default_tools_approval_mode = "prompt"
+
 [mcp_servers.postgres]
 command = "npx"
 args = ["-y", "@bytebase/dbhub@0.23.0", "--transport", "stdio", "--config", ".mcp/dbhub-postgres.toml"]

@@ -172,6 +172,39 @@
       "projectionTargets": ["codex", "cursor"],
       "fallback": "Use git, gh read-only commands, or GitHub primary documentation."
     },
+    "openprovider": {
+      "purpose": "Approved Openprovider domain, DNS, SSL, and account investigation; provider mutations require explicit approval.",
+      "transport": "http",
+      "url": "https://mcp.openprovider.com/mcp",
+      "implementation": {
+        "kind": "remote",
+        "identifier": "https://mcp.openprovider.com/mcp",
+        "version": "provider-managed",
+        "reviewedAt": "2026-08-02",
+        "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": true,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": [
+        "Configure an Openprovider Bearer Authorization header in user-local Codex configuration; do not use application Openprovider credentials.",
+        "Use read-only inspection first. Any external-provider write, including DNS, domain, SSL, customer, contact, email, or license changes, requires explicit approval."
+      ],
+      "projectionTargets": ["codex"],
+      "fallback": "Use the repository Openprovider integration and Openprovider primary documentation; do not mutate the provider."
+    },
     "postgres": {
       "purpose": "Bounded read-only database inspection with a dedicated database role.",
       "transport": "stdio",

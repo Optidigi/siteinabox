@@ -260,7 +260,7 @@ function tomlServer(name, server, target) {
     lines.push(`enabled = ${server.clientPolicy.defaultEnabled}`)
     lines.push("required = false")
     lines.push(`default_tools_approval_mode = ${quote(server.clientPolicy.approval.mode)}`)
-    if (server.requiredEnv.length > 0) lines.push(`env_vars = [${server.requiredEnv.map(quote).join(", ")}]`)
+    if (server.transport === "stdio" && server.requiredEnv.length > 0) lines.push(`env_vars = [${server.requiredEnv.map(quote).join(", ")}]`)
     if (server.clientPolicy.enabledTools.values.length > 0) lines.push(`enabled_tools = [${server.clientPolicy.enabledTools.values.map(quote).join(", ")}]`)
     if (server.clientPolicy.disabledTools.values.length > 0) lines.push(`disabled_tools = [${server.clientPolicy.disabledTools.values.map(quote).join(", ")}]`)
     if (Object.keys(server.staticEnv).length > 0) lines.push(`env = ${tomlInlineTable(server.staticEnv)}`)

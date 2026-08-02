@@ -93,6 +93,16 @@ test("Codex receives policy fields while basic clients omit unsafe servers", () 
   }
 })
 
+test("HTTP secret headers do not generate stdio env forwarding", () => {
+  const registry = clone()
+  registry.servers.openprovider.requiredEnv = ["OPENPROVIDER_MCP_AUTHORIZATION"]
+  registry.servers.openprovider.secretHeaders = { Authorization: "OPENPROVIDER_MCP_AUTHORIZATION" }
+  const projections = renderProjections(registry)
+  const codex = projections.get([...projections.keys()].find((path) => path.endsWith(".codex/config.toml")))
+  assert.match(codex, /\[mcp_servers\.openprovider\][^[]*env_http_headers = \{ "Authorization" = "OPENPROVIDER_MCP_AUTHORIZATION" \}/)
+  assert.doesNotMatch(codex, /\[mcp_servers\.openprovider\][^[]*env_vars =/)
+})
+
 test("GitHub projections retain official server-side least privilege", () => {
   const projections = renderProjections(clone())
   for (const content of projections.values()) {
