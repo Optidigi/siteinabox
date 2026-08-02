@@ -142,7 +142,7 @@ describe("customer preview UI", () => {
     expect(stepper).toContain("bg-brand text-brand-foreground")
     expect(stepper).toContain('aria-current={active ? "step" : undefined}')
     expect(checkout).toContain('id: "review"')
-    expect(checkout).toContain('src="/logos/icon-light.svg"')
+    expect(checkout).toContain('src="/logos/favicon.svg"')
     expect(checkout).toContain('src="/logos/icon-dark.svg"')
     expect(domainResultRow).toContain("checkoutDomainExtraFeeInline")
     expect(checkout).toContain("domainReady")
