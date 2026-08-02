@@ -254,6 +254,20 @@ describe("PreviewCheckout Phase 3 flow", () => {
     const formData = checkDomainBatchAction.mock.calls[0]?.[0] as FormData
     expect(formData.get("domain")).toBe("acme")
     expect(formData.get("phase")).toBe("recommended")
+
+    const [firstAvailableSelect] = await screen.findAllByRole("button", {
+      name: "checkoutSelectDomain",
+    })
+    fireEvent.click(firstAvailableSelect!)
+
+    const selectedRow = await waitFor(() => {
+      const row = container.querySelector('[data-domain-selected="true"]')
+      expect(row).toBeTruthy()
+      return row!
+    })
+    expect(selectedRow.className).toContain("bg-success/[0.07]")
+    const selectedButton = screen.getByRole("button", { name: "checkoutDomainSelected" })
+    expect(selectedButton.querySelector("svg")).toBeTruthy()
   })
 
   it("keeps the typed extension first and shows recommended unavailable options when every extension is taken", async () => {

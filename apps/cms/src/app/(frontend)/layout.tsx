@@ -24,7 +24,10 @@ import { StatusFeedbackProvider } from "@/components/status-feedback"
 import { defaultLocale, localeCookieName, resolveLocale } from "@/i18n/config"
 import { loadMessages } from "@/i18n/messages"
 
-const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" })
+// Checkout typography follows the Inter treatment in the launch-workspace
+// prototype. Loading the 800 face keeps the prototype's 730–780 emphasis
+// crisp instead of asking the browser to synthesize it from 700.
+const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-sans" })
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" })
 
 // WCAG 2.4.2 (Page Titled, Level A) — every route gets a non-empty <title>.

@@ -1192,7 +1192,7 @@ export function PreviewCheckout({
     action.action === "provide_epp_code" && ["required", "failed"].includes(action.status))?.deadlineAt
 
   return (
-    <main data-checkout-phase={presentation.phase} className="min-h-dvh overflow-x-clip bg-muted/25 pb-24 text-foreground dark:bg-background">
+    <main data-checkout-phase={presentation.phase} className="min-h-dvh overflow-x-clip bg-muted/25 pb-24 font-sans text-foreground antialiased dark:bg-background">
       {cloudflareSourceOAuthEnabled && (
         <>
           {domainMode === "existing_domain" && normalizedDomainValue && (
@@ -1257,7 +1257,7 @@ export function PreviewCheckout({
       <div data-checkout-shell className="mx-auto grid w-[calc(100%_-_20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%_-_28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%_-_40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
         <section className="grid gap-2">
             <div>
-              <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
+              <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-[760] leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
                 {presentation.phase === "fulfilment" || presentation.phase === "payment"
                   ? t("checkoutLaunchWorkspace")
                     : step === "domain" ? t("checkoutDomainHeroTitle") : t("checkoutReviewHeroTitle")}
@@ -1917,9 +1917,9 @@ export function PreviewCheckout({
                             ? result.domain?.slice(0, -(resultExtension.length + 1))
                             : result.domain
                           return (
-                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-[9px] gap-y-2 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-x-3.5", checkedDomain === result.domain && "bg-brand/10 shadow-[inset_3px_0_0_var(--brand)]")}>
+                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-[9px] gap-y-2 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-x-3.5", checkedDomain === result.domain && "bg-success/[0.07] shadow-[inset_3px_0_0_var(--success)]")}>
                               <span className="grid min-w-0 gap-1.5">
-                                <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-foreground">
+                                <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-[730] tracking-[-0.012em] text-foreground">
                                   {resultName}
                                   {resultExtension && <span className={available ? "text-success" : "text-brand"}>.{resultExtension}</span>}
                                 </strong>
@@ -1933,7 +1933,8 @@ export function PreviewCheckout({
                                 {available && result.quotes && result.quotes.annual.quote.domainSurchargeNetMinor > 0 && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-brand bg-brand text-brand-foreground [&&:hover]:bg-brand/85 [&&:hover]:text-brand-foreground")} onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground")} onClick={() => selectExtensionResult(result)}>
+                                  {checkedDomain === result.domain && <Check className="size-[15px]" aria-hidden />}
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
                               )}
