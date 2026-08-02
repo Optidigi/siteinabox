@@ -75,4 +75,22 @@ describe("customer provisioning status", () => {
       customerEmail: "customer@example.com",
     })).resolves.toBeNull()
   })
+
+  it("does not project a cancelled order as live fulfilment", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => ({
+      docs: collection === "orders" ? [{
+        id: 600,
+        state: "cancelled",
+        generationRun: 500,
+        orderKind: "initial_subscription",
+        customerEmail: "customer@example.com",
+      }] : [],
+    }))
+
+    await expect(loadCustomerProvisioningStatus(asPayload({ find }), {
+      generationRunId: 500,
+      customerEmail: "customer@example.com",
+    })).resolves.toBeNull()
+    expect(find).toHaveBeenCalledTimes(1)
+  })
 })

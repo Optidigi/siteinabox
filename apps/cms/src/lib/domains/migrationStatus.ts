@@ -121,6 +121,9 @@ export async function loadCustomerMigrationStatus(
   })
   if (orders.docs.length !== 1) return null
   const order = orders.docs[0] as Order
+  // Cancelled orders are retained for audit, not presented as active customer
+  // migration work.
+  if (order.state === "cancelled") return null
   const migrations = await payload.find({
     collection: "domain-migrations",
     where: { originatingOrder: { equals: order.id } },

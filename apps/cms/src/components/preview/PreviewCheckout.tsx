@@ -1090,7 +1090,17 @@ export function PreviewCheckout({
     cloudflareSourceDomain === acceptedMigrationDomain,
   )
   const fulfilmentActive = Boolean(provisioningStatus || migrationStatus || billingAgreement)
-  const paymentActive = paymentReturn && !fulfilmentActive
+  const paymentReturnHasLifecycle = [
+    "pending_provider",
+    "open",
+    "authorized",
+    "completed",
+    "failed",
+    "canceled",
+    "cancelled",
+    "expired",
+  ].includes(paymentStatusLive)
+  const paymentActive = paymentReturn && paymentReturnHasLifecycle && !fulfilmentActive
   const actionPaymentStatus = paymentState.status === "payment_pending"
     ? "pending_provider"
     : paymentStatusLive

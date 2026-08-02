@@ -103,6 +103,25 @@ describe("customer migration status projection", () => {
     expect(find).not.toHaveBeenCalled()
   })
 
+  it("does not project a cancelled order as live migration work", async () => {
+    const find = vi.fn(async ({ collection }: MockFindArgs) => ({
+      docs: collection === "orders" ? [{
+        id: 90,
+        state: "cancelled",
+        generationRun: 500,
+        orderKind: "initial_subscription",
+        customerEmail: "customer@example.com",
+      }] : [],
+      totalDocs: 1,
+    }))
+
+    await expect(loadCustomerMigrationStatus(asPayload({ find }), {
+      generationRunId: 500,
+      customerEmail: "customer@example.com",
+    })).resolves.toBeNull()
+    expect(find).toHaveBeenCalledTimes(1)
+  })
+
   it("exposes the governed registrant-email confirmation deadline", async () => {
     const order = {
       id: 600,
