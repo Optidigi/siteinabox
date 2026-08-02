@@ -144,8 +144,9 @@ try {
   assert.equal(await page.locator("[data-checkout-mobile-progress]").isVisible(), true)
 
   assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
+  await page.locator('[data-details-group="contact"] [aria-expanded="false"]').click()
   assert.equal(await page.getByText("owner@example.test", { exact: true }).first().isVisible(), true)
-  assert.equal(await page.locator("[data-details-group]").count(), 3)
+  assert.equal(await page.locator("[data-details-group]").count(), 5)
   assert.equal(await page.locator('[data-details-group="contact"]').getByRole("button", { name: /Edit contact/i }).isVisible(), true)
   await page.getByRole("button", { name: "Edit" }).first().click()
   await page.getByRole("dialog").waitFor()
@@ -174,16 +175,15 @@ try {
     3,
     "Business use, terms/privacy, and website approval must be separate required checkboxes.",
   )
+  const payButton = page.getByRole("button", { name: /Approve & pay/ })
+  assert.equal(await payButton.isDisabled(), true, "Payment stays unavailable until every required confirmation is accepted.")
   await page.locator("#checkout-terms").check()
-  await page.getByRole("button", { name: /Approve & pay/ }).click()
-  await page.getByRole("alert").filter({ hasText: "Review and confirm all three items" }).waitFor()
+  assert.equal(await payButton.isDisabled(), true)
+  await page.locator("#checkout-business-use").check()
+  await page.locator("#checkout-preview-approval").check()
+  assert.equal(await payButton.isEnabled(), true, "Payment becomes available only after all required confirmations are accepted.")
   await page.setViewportSize({ width: 320, height: 568 })
-  await page.getByRole("alert").filter({ hasText: "Review and confirm all three items" }).scrollIntoViewIfNeeded()
-  await capture(page, "phone-dark-declaration-block-320x568", true)
-  assert.equal(
-    await page.locator("#checkout-business-use").evaluate((node) => node === document.activeElement),
-    true,
-  )
+  await capture(page, "phone-dark-declarations-ready-320x568", true)
   assert.equal(
     await page.locator("label button, a button, button a").count(),
     0,
@@ -649,13 +649,16 @@ try {
     if (["declaration-block", "quote-refreshed", "payment-redirecting"].includes(scenarioId)) {
       if (scenarioId === "declaration-block") {
         await scenarioPage.locator("#checkout-terms").check()
+        const paymentButton = scenarioPage.getByRole("button", { name: /Approve & pay/ }).first()
+        if (!(await paymentButton.isDisabled())) {
+          throw new Error("Payment action must remain disabled until all checkout declarations are accepted")
+        }
+        return
       } else {
         for (const checkbox of await scenarioPage.locator('[role="checkbox"]').all()) await checkbox.check()
       }
       await scenarioPage.getByRole("button", { name: /Approve & pay/ }).first().click()
-      if (scenarioId === "declaration-block") {
-        await scenarioPage.locator("#checkout-declarations-error").getByText("Required", { exact: true }).waitFor()
-      } else if (scenarioId === "quote-refreshed") {
+      if (scenarioId === "quote-refreshed") {
         await scenarioPage.getByText("signed quote was refreshed", { exact: false }).waitFor()
       } else {
         await scenarioPage.getByText("Payment processing is still pending", { exact: false }).waitFor()

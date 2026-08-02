@@ -79,7 +79,6 @@ export function OrderSummaryRail({
               {quote && quote.migrationServiceFeeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryMigrationExVat")} value={money(locale, quote.migrationServiceFeeNetMinor, quote.currency)} />}
               <SummaryRow label={t("checkoutSummaryVatRate", { rate: vatRate ?? "" })} value={quote ? money(locale, quote.vatAmountMinor, quote.currency) : "—"} />
               <SummaryRow subtle label={t("checkoutPaymentStatusLabel")} value={lifecycle?.status ?? t("checkoutWaiting")} />
-              <SummaryRow subtle label={t("checkoutQuoteStatus")} value={t("checkoutQuoteStatusLocked")} />
             </> : addressDecision ? <>
               <SummaryRow label={`${plan} · ${t("checkoutPriceExVat")}`} value={quote ? money(locale, quote.planPriceNetMinor, quote.currency) : "—"} />
               {quote && quote.domainSurchargeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryDomainExtraExVat")} value={money(locale, quote.domainSurchargeNetMinor, quote.currency)} />}
@@ -90,7 +89,6 @@ export function OrderSummaryRail({
               {quote.domainSurchargeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryDomainExtraExVat")} value={money(locale, quote.domainSurchargeNetMinor, quote.currency)} />}
               {quote.migrationServiceFeeNetMinor > 0 && <SummaryRow label={t("checkoutSummaryMigrationExVat")} value={money(locale, quote.migrationServiceFeeNetMinor, quote.currency)} />}
               <SummaryRow subtle label={t("checkoutSummaryVatRate", { rate: vatRate ?? "" })} value={money(locale, quote.vatAmountMinor, quote.currency)} />
-              <SummaryRow subtle label={t("checkoutQuoteStatus")} value={t("checkoutQuoteStatusReady")} />
             </>}
           </div>
           <div className="mx-[19px] border-t border-background/15 pb-[17px] pt-[15px] dark:border-foreground/15">

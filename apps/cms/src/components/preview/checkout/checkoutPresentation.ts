@@ -58,6 +58,7 @@ export function createCheckoutPresentation(input: {
   profilePending?: boolean
   paymentPending?: boolean
   paymentBlocked?: boolean
+  declarationsAccepted?: boolean
   paymentInProgress: boolean
   paymentComplete?: boolean
   domainResultKind?: CheckoutDomainResultKind
@@ -139,6 +140,7 @@ export function createCheckoutPresentation(input: {
       disabled: Boolean(
         input.paymentPending ||
         input.paymentBlocked ||
+        !input.declarationsAccepted ||
         !input.selectedDomain ||
         !input.quoteReady ||
         input.paymentInProgress ||

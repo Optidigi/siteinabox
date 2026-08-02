@@ -1001,6 +1001,21 @@ export function PreviewCheckout({
     setQuotes(result.quotes)
   }
 
+  // The submitted domain is also one of the live-result rows. Keeping that
+  // authoritative action result in the same surface means a manual check never
+  // appears to do nothing while the debounced multi-TLD checks are completing.
+  React.useEffect(() => {
+    if (
+      domainMode !== "new_registration" ||
+      !checkAppliesToCurrentInput ||
+      !checkState.domain
+    ) return
+    setExtensionResults((current) => [
+      checkState,
+      ...current.filter((entry) => entry.domain !== checkState.domain),
+    ])
+  }, [checkAppliesToCurrentInput, checkState, domainMode])
+
   const updateDomainMode = (mode: "new_registration" | "existing_domain") => {
     if (mode === domainMode) return
     suggestionsAbortRef.current?.abort()
@@ -1092,6 +1107,7 @@ export function PreviewCheckout({
     profilePending,
     paymentPending,
     paymentBlocked: requiresMigrationRecollection,
+    declarationsAccepted: businessUseAccepted && termsAccepted && previewApprovalAccepted,
     paymentInProgress,
     paymentComplete: actionPaymentStatus === "completed",
     domainResultKind,
@@ -1182,7 +1198,7 @@ export function PreviewCheckout({
         <div className="grid h-12 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 min-[560px]:h-[52px] min-[560px]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] min-[560px]:px-4">
           <div className="flex min-w-0 items-center gap-1">
           <a href={previewHref} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-xs font-semibold">
-            <img src="/logos/icon-light.svg" alt="" className="size-7 dark:hidden" />
+            <img src="/logos/favicon.svg" alt="" className="size-7 dark:hidden" />
             <img src="/logos/icon-dark.svg" alt="" className="hidden size-7 dark:block" />
           </a>
           </div>
@@ -1733,7 +1749,7 @@ export function PreviewCheckout({
                 ref={domainFormRef}
                 action={checkAction}
                 className="grid gap-2"
-                onSubmit={() => {
+              onSubmit={() => {
                   const token = nextRequestToken()
                   latestDomainRequestTokenRef.current = token
                   if (domainRequestTokenRef.current) {
@@ -2225,24 +2241,21 @@ export function PreviewCheckout({
                   editLabel={t("checkoutEdit")}
                   missingLabel={t("checkoutDetailsMissing")}
                 />
-                <section data-review-context="account" className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 py-[18px]">
-                  <span className="grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success">
-                    <Globe2 className="size-4" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-foreground">{t("checkoutAccountWebsiteGroup")}</h3>
-                    <p className="mt-1 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{selectedDomain ?? domainValue}</p>
-                  </div>
-                  <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={() => setStep("domain")} aria-label={t("checkoutEditWebsiteAddress")}>
-                    <Pencil className="size-3.5" aria-hidden />
-                    <span className="hidden min-[360px]:inline">{t("checkoutEdit")}</span>
-                  </Button>
-                  <dl className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
-                    <ReviewDetail label={t("checkoutReviewDetailDomain")} value={selectedDomain ?? domainValue} />
-                    <ReviewDetail label={t("checkoutReviewDetailAccountEmail")} value={customerEmail} />
-                    <ReviewDetail label={t("checkoutReviewDetailAuthority")} value={t("checkoutAccountWebsiteAuthority")} full />
-                  </dl>
-                </section>
+                <ReviewGroup
+                  group="account"
+                  icon={Globe2}
+                  title={t("checkoutAccountWebsiteGroup")}
+                  summary={selectedDomain ?? domainValue}
+                  details={[
+                    { label: t("checkoutReviewDetailDomain"), value: selectedDomain ?? domainValue },
+                    { label: t("checkoutReviewDetailAccountEmail"), value: customerEmail },
+                    { label: t("checkoutReviewDetailAuthority"), value: t("checkoutAccountWebsiteAuthority"), full: true },
+                  ]}
+                  attention={false}
+                  onEdit={() => setStep("domain")}
+                  editLabel={t("checkoutEdit")}
+                  missingLabel={t("checkoutDetailsMissing")}
+                />
               </div>
               <Sheet open={detailsEditorOpen} onOpenChange={(open) => {
                 setDetailsEditorOpen(open)
@@ -2640,7 +2653,7 @@ export function PreviewCheckout({
               </Sheet>
             </CardContent>
           </Card>
-          {savedProfile && <section data-checkout-main-card className="border-t">
+          {savedProfile && <section data-details-group="plan" className="border-b bg-card">
             <div className="flex items-center gap-3 px-[17px] pb-0 pt-[17px] min-[560px]:px-[26px] min-[560px]:pt-[18px]">
               <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-success/10 text-success">
                 <CreditCard className="size-4" aria-hidden />
@@ -2651,9 +2664,6 @@ export function PreviewCheckout({
                 </h2>
                 <p className="mt-1 text-xs leading-snug text-muted-foreground">{billingPeriod === "annual" ? `${t("checkoutPlanAnnualShort")} · ${t("checkoutPlanAnnualSaving")}` : t("checkoutPlanMonthlyShort")}</p>
               </div>
-              <Badge variant="outline" className="ml-auto hidden shrink-0 border-success/30 bg-success/10 text-[0.625rem] text-success min-[420px]:inline-flex">
-                {t("checkoutComplete")}
-              </Badge>
             </div>
             <div className="grid min-w-0 gap-5 px-[17px] pb-[17px] pt-3 [&>*]:min-w-0 min-[560px]:px-[26px] min-[560px]:pb-[22px]">
               <fieldset className="ml-10 grid min-w-0 gap-2">
@@ -2665,6 +2675,7 @@ export function PreviewCheckout({
                     if (acceptedOrderId == null && (value === "annual" || value === "monthly")) setBillingPeriod(value)
                   }}
                   variant="outline"
+                  spacing={1}
                   className="grid w-full grid-cols-1 gap-[9px] min-[420px]:grid-cols-2"
                 >
                 {(acceptedOrderId == null ? ["annual", "monthly"] as const : [billingPeriod] as const).map((period) => {
@@ -2675,7 +2686,7 @@ export function PreviewCheckout({
                       value={period}
                       disabled={acceptedOrderId != null}
                       className={cn(
-                    "h-auto min-h-[5.25rem] w-full min-w-0 justify-start rounded-[13px] border bg-card p-3 text-left",
+                    "h-auto min-h-[5.25rem] w-full min-w-0 justify-start rounded-[13px] border bg-card p-3 text-left shadow-none",
                         "data-[state=on]:border-foreground data-[state=on]:bg-muted/40 data-[state=on]:ring-1 data-[state=on]:ring-foreground",
                       )}
                     >
@@ -2684,7 +2695,7 @@ export function PreviewCheckout({
                           {period === "annual"
                             ? t("checkoutPlanAnnual")
                             : t("checkoutPlanMonthly")}
-                          {period === "annual" && <Badge className="hidden bg-brand text-[10px] text-brand-foreground hover:bg-brand sm:inline-flex">{t("checkoutPlanAnnualSaving")}</Badge>}
+                          {period === "annual" && <Badge className="h-[18px] rounded-full bg-brand px-1.5 py-0 text-[0.5625rem] font-extrabold leading-none text-brand-foreground hover:bg-brand">{t("checkoutPlanAnnualSaving")}</Badge>}
                         </span>
                         <span className="mt-1 text-lg font-bold leading-tight tracking-tight text-foreground">
                           {money(

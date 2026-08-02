@@ -275,7 +275,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
     const detailsHeading = await screen.findByRole("heading", { name: "checkoutReviewHeroTitle" })
     expect(document.activeElement).toBe(detailsHeading)
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
-    expect(screen.getAllByText("owner@example.test")).toHaveLength(2)
+    fireEvent.click(screen.getByRole("button", { name: "checkoutContactGroup Ada Lovelace", expanded: false }))
+    expect(screen.getAllByText("owner@example.test")).toHaveLength(1)
     fireEvent.click(screen.getByRole("button", {
       name: "checkoutEdit checkoutContactGroup",
     }))
