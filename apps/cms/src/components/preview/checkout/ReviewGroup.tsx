@@ -45,7 +45,7 @@ export function ReviewGroup({
         type="button"
         variant="ghost"
         size="sm"
-        className="grid min-w-0 gap-1 text-left"
+        className="grid w-full min-w-0 justify-start gap-1 text-left"
         aria-expanded={expanded}
         aria-controls={`checkout-review-${group}`}
         onClick={() => setExpanded((current) => !current)}

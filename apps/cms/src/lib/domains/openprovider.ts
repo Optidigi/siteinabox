@@ -397,6 +397,15 @@ export async function loginOpenProvider(options?: OpenProviderOptions): Promise<
   }
 }
 
+const canonicalMoneyAmount = (value: string | number): string | null => {
+  const raw = String(value).trim()
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return null
+  const [whole, fraction = ""] = raw.split(".")
+  const minor = Number(whole) * 100 + Number(fraction.padEnd(2, "0"))
+  if (!Number.isSafeInteger(minor) || minor < 0) return null
+  return `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, "0")}`
+}
+
 const normalizeMoney = (source: unknown): { amount: string; currency: string } | null => {
   if (!source || typeof source !== "object" || Array.isArray(source)) return null
   const value = readObject(source)
@@ -404,7 +413,11 @@ const normalizeMoney = (source: unknown): { amount: string; currency: string } |
   const amount = nestedPrice.create ?? value.price ?? value.amount ?? value.product_price
   const currency = value.currency ?? value.product_currency
   if ((typeof amount === "string" || typeof amount === "number") && typeof currency === "string") {
-    return { amount: String(amount), currency }
+    const normalizedAmount = canonicalMoneyAmount(amount)
+    const normalizedCurrency = currency.trim().toUpperCase()
+    if (normalizedAmount && /^[A-Z]{3}$/.test(normalizedCurrency)) {
+      return { amount: normalizedAmount, currency: normalizedCurrency }
+    }
   }
   for (const key of ["product", "reseller", "premium", "price"]) {
     const nested = normalizeMoney(value[key])

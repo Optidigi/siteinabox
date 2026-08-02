@@ -25,7 +25,6 @@ import {
   Sparkles,
   ReceiptText,
   RefreshCw,
-  Rocket,
   Server,
   TriangleAlert,
   UserRound,
@@ -110,6 +109,10 @@ type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
 const checkoutStepOrder: CheckoutStep[] = ["domain", "review"]
+
+const SiteinaboxMark = ({ className }: { className?: string }) => (
+  <img src="/logos/favicon.svg" alt="" className={className} />
+)
 
 export type PreviewCheckoutCatalog = {
   version: string
@@ -1166,7 +1169,7 @@ export function PreviewCheckout({
     action.action === "provide_epp_code" && ["required", "failed"].includes(action.status))?.deadlineAt
 
   return (
-    <main data-checkout-phase={presentation.phase} className="min-h-dvh bg-muted/25 pb-24 text-foreground dark:bg-background">
+    <main data-checkout-phase={presentation.phase} className="min-h-dvh overflow-x-clip bg-muted/25 pb-24 text-foreground dark:bg-background">
       {cloudflareSourceOAuthEnabled && (
         <>
           {domainMode === "existing_domain" && normalizedDomainValue && (
@@ -1228,7 +1231,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid w-[calc(100%-20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%-28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%-40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
+      <div data-checkout-shell className="mx-auto grid w-[calc(100%_-_20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%_-_28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%_-_40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
         <section className="grid gap-2">
             <div>
               <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-bold leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
@@ -1277,13 +1280,13 @@ export function PreviewCheckout({
           <ol aria-label={t("checkoutOrderReference")} className="mx-auto w-full max-w-[600px] overflow-hidden rounded-[15px] border bg-card">
             <LifecycleRow icon={ReceiptText} status="complete" title={t("checkoutOrderReference")} detail={t("checkoutSignedQuoteNote")} state={t("checkoutComplete")} />
             <LifecycleRow icon={["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? CircleAlert : CreditCard} status={["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? "action_required" : "active"} title={t("checkoutStepPayment")} detail={paymentStatusLive === "pending_provider" ? t("checkoutPaymentReturnPending") : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutPaymentReturnFailed") : t("checkoutPaymentReturnUnknown")} state={["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) ? t("checkoutActionRequired") : t("checkoutInProgress")} />
-            <LifecycleRow icon={Rocket} status="pending" title={t("checkoutFulfilmentTitle")} detail={t("checkoutPaymentReturnPending")} state={t("checkoutWaiting")} />
+            <LifecycleRow icon={SiteinaboxMark} status="pending" title={t("checkoutFulfilmentTitle")} detail={t("checkoutPaymentReturnPending")} state={t("checkoutWaiting")} />
           </ol>
         )}
 
         {presentation.phase === "fulfilment" && !provisioningStatus && (
           <section className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5" aria-live="polite">
-            <span className="relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15"><Rocket className="size-[22px]" aria-hidden /></span>
+            <span className="relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15"><SiteinaboxMark className="size-[24px]" /></span>
             <Badge variant="outline" className="min-h-6 rounded-full px-2 text-[0.625rem] font-bold">{t("checkoutOrderReference")}</Badge>
             <div>
               <h2 className="text-[21px] font-bold tracking-[-0.03em] min-[560px]:text-2xl">{t("checkoutFulfilmentTitle")}</h2>
@@ -1295,7 +1298,7 @@ export function PreviewCheckout({
         {provisioningStatus && (
           <section role="status" aria-live="polite" className="grid gap-[14px]">
             <div className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5">
-              <span className="relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15"><Rocket className="size-[22px]" aria-hidden /></span>
+              <span className="relative grid size-[60px] place-items-center rounded-[18px] bg-brand text-brand-foreground after:absolute after:-inset-[5px] after:rounded-[22px] after:border-2 after:border-current after:opacity-15"><SiteinaboxMark className="size-[24px]" /></span>
               <Badge variant="outline" className="min-h-6 rounded-full px-2 text-[0.625rem] font-bold">{t("checkoutOrderReference")}</Badge>
               <div>
                 <h2 className="text-[21px] font-bold tracking-[-0.03em] min-[560px]:text-2xl">{t("checkoutProvisioningStatusTitle", { domain: provisioningStatus.domain })}</h2>
