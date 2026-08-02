@@ -148,6 +148,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     const { container } = render(
       <PreviewCheckout
         {...baseCheckoutProps()}
+        supportedDomainExtensions={["nl"]}
         checkDomainAction={checkDomainAction}
       />,
     )
@@ -219,7 +220,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     ).toHaveLength(5))
   })
 
-  it("falls back from an unavailable typed extension to the same name on configured extensions", async () => {
+  it("keeps the typed extension first and shows recommended unavailable options when every extension is taken", async () => {
     const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
       const domain = String(formData.get("domain"))
       return {
@@ -231,7 +232,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
       }
     })
     const { container } = render(
-      <PreviewCheckout {...baseCheckoutProps()} checkDomainAction={checkDomainAction} />,
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
+        checkDomainAction={checkDomainAction}
+      />,
     )
 
     fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
@@ -241,11 +246,197 @@ describe("PreviewCheckout Phase 3 flow", () => {
       container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
     )
 
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(10))
     expect(checkDomainAction.mock.calls.map(([, formData]) =>
       String((formData as FormData).get("domain")))).toEqual([
       "taken.nl", "taken.com", "taken.info", "taken.org", "taken.eu",
+      "taken.net", "taken.be", "taken.de", "taken.online", "taken.shop",
     ])
+    const unavailableRows = [...container.querySelectorAll('[data-domain-status="unavailable"]')]
+    expect(unavailableRows).toHaveLength(5)
+    expect(unavailableRows[0]?.textContent).toContain("taken.nl")
+    expect(unavailableRows.map((row) => row.textContent).join(" ")).not.toContain("taken.net")
+  })
+
+  it("runs the fallback extensions together until the result surface has four selectable alternatives", async () => {
+    const fallbackDomains = new Set([
+      "unavailable.net",
+      "unavailable.be",
+      "unavailable.de",
+      "unavailable.online",
+      "unavailable.shop",
+    ])
+    const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
+      const domain = String(formData.get("domain"))
+      if (!fallbackDomains.has(domain)) {
+        return {
+          ok: false,
+          status: "unavailable" as const,
+          domain,
+          domainMode: "new_registration" as const,
+          message: `${domain} is unavailable.`,
+        }
+      }
+      return {
+        ok: true,
+        status: "available" as const,
+        domain,
+        domainMode: "new_registration" as const,
+        message: `${domain} is available.`,
+        quotes: { monthly: quote("monthly"), annual: quote("annual") },
+      }
+    })
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "unavailable" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(
+      container.querySelectorAll('[data-domain-status="available"]'),
+    ).toHaveLength(4))
+    const resultRows = [...container.querySelectorAll("[data-domain-status]")]
+    expect(resultRows[0]?.textContent).toContain("unavailable.nl")
+    expect(resultRows.map((row) => row.textContent).join(" ")).toContain("unavailable.net")
+    expect(resultRows.map((row) => row.textContent).join(" ")).toContain("unavailable.online")
+    expect(resultRows.map((row) => row.textContent).join(" ")).not.toContain("unavailable.shop")
+  })
+
+  it("launches every recommended extension before waiting for a response", async () => {
+    const recommendedDomains = new Set([
+      "primary.nl",
+      "primary.com",
+      "primary.info",
+      "primary.org",
+      "primary.eu",
+    ])
+    const checkDomainAction = vi.fn((_state: unknown, formData: FormData) => {
+      const domain = String(formData.get("domain"))
+      if (recommendedDomains.has(domain)) {
+        return new Promise<PreviewCheckoutActionState>(() => {})
+      }
+      return Promise.resolve({ ok: false, message: "" })
+    })
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "primary" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(5))
+    expect(checkDomainAction.mock.calls.map(([, formData]) =>
+      String((formData as FormData).get("domain")))).toEqual([
+      "primary.nl", "primary.com", "primary.info", "primary.org", "primary.eu",
+    ])
+  })
+
+  it("launches every fallback extension before waiting for a fallback response", async () => {
+    const fallbackDomains = new Set([
+      "parallel.net",
+      "parallel.be",
+      "parallel.de",
+      "parallel.online",
+      "parallel.shop",
+    ])
+    const checkDomainAction = vi.fn((_state: unknown, formData: FormData) => {
+      const domain = String(formData.get("domain"))
+      if (fallbackDomains.has(domain)) {
+        return new Promise<PreviewCheckoutActionState>(() => {})
+      }
+      return Promise.resolve({
+        ok: false,
+        status: "unavailable" as const,
+        domain,
+        domainMode: "new_registration" as const,
+        message: `${domain} is unavailable.`,
+      })
+    })
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "parallel" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(10))
+    expect(checkDomainAction.mock.calls.slice(5).map(([, formData]) =>
+      String((formData as FormData).get("domain")))).toEqual([
+      "parallel.net", "parallel.be", "parallel.de", "parallel.online", "parallel.shop",
+    ])
+  })
+
+  it("keeps an explicitly typed non-recommended OpenProvider TLD as the first result", async () => {
+    const readyDomains = new Set([
+      "direct.ai",
+      "direct.net",
+      "direct.be",
+      "direct.de",
+      "direct.online",
+      "direct.shop",
+    ])
+    const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
+      const domain = String(formData.get("domain"))
+      const ready = readyDomains.has(domain)
+      return {
+        ok: ready,
+        status: ready ? "available" as const : "unavailable" as const,
+        domain,
+        domainMode: "new_registration" as const,
+        message: ready ? `${domain} is available.` : `${domain} is unavailable.`,
+        ...(ready ? { quotes: { monthly: quote("monthly"), annual: quote("annual") } } : {}),
+      }
+    })
+    const { container } = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
+        checkDomainAction={checkDomainAction}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "direct.ai" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(11))
+    expect(checkDomainAction.mock.calls.slice(0, 6).map(([, formData]) =>
+      String((formData as FormData).get("domain")))).toEqual([
+      "direct.ai", "direct.nl", "direct.com", "direct.info", "direct.org", "direct.eu",
+    ])
+    await waitFor(() => expect(
+      container.querySelectorAll('[data-domain-status="available"]'),
+    ).toHaveLength(5))
+    expect(container.querySelector("[data-domain-status]")?.textContent).toContain("direct.ai")
   })
 
   it("shows the frozen transfer-renewal effect in the final review", () => {
