@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Pencil } from "lucide-react"
+import { ChevronDown, Pencil } from "lucide-react"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -22,6 +22,7 @@ export function ReviewGroup({
   onEdit,
   editLabel,
   missingLabel,
+  defaultCollapsed = true,
 }: {
   group: string
   icon: React.ElementType
@@ -32,26 +33,37 @@ export function ReviewGroup({
   onEdit: (trigger: HTMLElement) => void
   editLabel: string
   missingLabel: string
+  defaultCollapsed?: boolean
 }) {
+  const [expanded, setExpanded] = React.useState(!defaultCollapsed)
   return (
     <section data-details-group={group} className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 border-b py-[18px] transition-colors hover:bg-muted/25 focus-within:bg-muted/25">
       <span className={cn("grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success", attention && "bg-destructive/10 text-destructive")}>
         <Icon className="size-4" aria-hidden />
       </span>
-      <div className="grid min-w-0 gap-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="grid min-w-0 gap-1 text-left"
+        aria-expanded={expanded}
+        aria-controls={`checkout-review-${group}`}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5">
           <h3 className="text-sm font-bold text-foreground">{title}</h3>
           {attention && <Badge variant="outline" className="border-warning/50 bg-warning/10 text-[0.625rem] text-foreground">{missingLabel}</Badge>}
-        </div>
+          <ChevronDown className={cn("ml-auto size-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} aria-hidden />
+        </span>
         <p className="min-w-0 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{summary}</p>
-      </div>
+      </Button>
       <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={(event) => onEdit(event.currentTarget)} aria-label={`${editLabel} ${title}`}>
         <Pencil className="size-3.5" aria-hidden />
         <span className="hidden min-[360px]:inline">{editLabel}</span>
       </Button>
-      <dl className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
+      {expanded && <dl id={`checkout-review-${group}`} className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
         {details.map((detail) => <ReviewDetail key={`${detail.label}-${detail.value}`} {...detail} />)}
-      </dl>
+      </dl>}
     </section>
   )
 }
