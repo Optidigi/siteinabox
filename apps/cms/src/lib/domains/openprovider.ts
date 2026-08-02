@@ -174,12 +174,21 @@ export class OpenProviderCustomerReferenceLookupIncompleteError extends Error {
 
 type OpenProviderAvailabilityOptions = OpenProviderOptions & {
   withPrice?: boolean
+  /**
+   * Availability is presentation data until the separate final order check.
+   * This bypasses only this process-local presentation cache.
+   */
+  forceFresh?: boolean
+  /** Internal/test override; production availability reads remain bounded. */
+  availabilityTimeoutMs?: number
 }
 
 const DEFAULT_API_BASE = "https://api.openprovider.eu/v1beta"
 const OPENPROVIDER_TOKEN_TTL_MS = 47 * 60 * 60 * 1000
 const AVAILABILITY_CACHE_TTL_MS = 60 * 1000
 const AVAILABILITY_CACHE_MAX_ENTRIES = 256
+const OPENPROVIDER_AVAILABILITY_TIMEOUT_MS = 5 * 1000
+const OPENPROVIDER_AVAILABILITY_TIMEOUT_MAX_MS = 10 * 1000
 
 export class OpenProviderApiError extends Error {
   status: number
@@ -313,9 +322,16 @@ type CachedAvailabilityResult = {
 }
 
 const availabilityCache = new Map<string, CachedAvailabilityResult>()
+const pendingAvailabilityBatches = new Map<string, Promise<Map<string, OpenProviderAvailabilityResult>>>()
 
 const availabilityCacheKey = (scope: string, domain: string, withPrice: boolean): string =>
   `${scope}:${domain}:with_price=${withPrice}`
+
+const availabilityBatchKey = (
+  scope: string,
+  domains: Array<{ domain: string }>,
+  withPrice: boolean,
+): string => `${scope}:domains=${domains.map(({ domain }) => domain).sort().join(",")}:with_price=${withPrice}`
 
 const getCachedAvailabilityResult = (scope: string, domain: string, withPrice: boolean, now = Date.now()): OpenProviderAvailabilityResult | null => {
   const key = availabilityCacheKey(scope, domain, withPrice)
@@ -488,6 +504,7 @@ const fetchOpenProviderAvailability = async (
   domains: Array<{ name: string; extension: string }>,
   withPrice: boolean,
   options?: OpenProviderOptions,
+  availabilityTimeoutMs = OPENPROVIDER_AVAILABILITY_TIMEOUT_MS,
 ): Promise<Response> =>
   fetcher(options)(`${apiBase(env)}/domains/check`, {
     method: "POST",
@@ -496,7 +513,138 @@ const fetchOpenProviderAvailability = async (
       domains: domains.map((domain) => ({ name: domain.name, extension: domain.extension })),
       with_price: withPrice,
     }),
+    signal: AbortSignal.timeout(availabilityTimeoutMs),
   })
+
+const normalizedAvailabilityTimeoutMs = (value: number | undefined): number => {
+  if (!Number.isFinite(value)) return OPENPROVIDER_AVAILABILITY_TIMEOUT_MS
+  return Math.max(1, Math.min(Math.floor(value as number), OPENPROVIDER_AVAILABILITY_TIMEOUT_MAX_MS))
+}
+
+const isAvailabilityTimeout = (error: unknown): boolean =>
+  error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
+
+const availabilityTimeoutError = (): Error => {
+  const error = new Error("OpenProvider availability request timed out.")
+  error.name = "TimeoutError"
+  return error
+}
+
+const awaitAvailabilityWithin = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(availabilityTimeoutError()), timeoutMs)
+    void promise.then(
+      (value) => {
+        clearTimeout(timeout)
+        resolve(value)
+      },
+      (error: unknown) => {
+        clearTimeout(timeout)
+        reject(error)
+      },
+    )
+  })
+
+const availabilityProviderErrorResults = (
+  domains: Array<{ domain: string }>,
+  reason: string,
+): Map<string, OpenProviderAvailabilityResult> => new Map(domains.map((domain) => [
+  domain.domain,
+  internalAvailabilityResult(domain.domain, reason),
+]))
+
+const logAvailabilityTiming = (input: {
+  start: number
+  candidateCount: number
+  cacheHitCount: number
+  fetchedCount: number
+  inFlightJoined: boolean
+  providerFetchCount: number
+  forceFresh: boolean
+  outcome: "cache" | "provider" | "internal"
+}): void => {
+  console.info("OpenProvider availability timing", {
+    durationMs: Math.max(0, Math.round(performance.now() - input.start)),
+    candidateCount: input.candidateCount,
+    cacheHitCount: input.cacheHitCount,
+    fetchedCount: input.fetchedCount,
+    inFlightJoined: input.inFlightJoined,
+    providerFetchCount: input.providerFetchCount,
+    forceFresh: input.forceFresh,
+    outcome: input.outcome,
+  })
+}
+
+const fetchAvailabilityResults = async (
+  env: NodeJS.ProcessEnv,
+  domains: Array<{ name: string; extension: string; domain: string }>,
+  withPrice: boolean,
+  options?: OpenProviderAvailabilityOptions,
+): Promise<Map<string, OpenProviderAvailabilityResult>> => {
+  const availabilityTimeoutMs = normalizedAvailabilityTimeoutMs(options?.availabilityTimeoutMs)
+  const deadline = Date.now() + availabilityTimeoutMs
+  const remainingTimeoutMs = (): number => Math.max(1, deadline - Date.now())
+  let response: Response
+  try {
+    let token = options?.token ?? await awaitAvailabilityWithin(
+      loginOpenProvider(options),
+      remainingTimeoutMs(),
+    )
+    response = await fetchOpenProviderAvailability(
+      env,
+      token,
+      domains,
+      withPrice,
+      options,
+      remainingTimeoutMs(),
+    )
+    if (!options?.token && response.status === 401) {
+      const credentials = requireOpenProviderCredentials(env)
+      clearCachedOpenProviderToken(authCacheKey(env, fetcher(options), credentials.username))
+      token = await awaitAvailabilityWithin(loginOpenProvider(options), remainingTimeoutMs())
+      response = await fetchOpenProviderAvailability(
+        env,
+        token,
+        domains,
+        withPrice,
+        options,
+        remainingTimeoutMs(),
+      )
+    }
+  } catch (error) {
+    if (isAvailabilityTimeout(error)) return availabilityProviderErrorResults(domains, "provider_timeout")
+    throw error
+  }
+
+  if (!response.ok) return availabilityProviderErrorResults(domains, `provider_http_${response.status}`)
+
+  const payload = await json(response)
+  const data = dataObject(payload)
+  const rawResults = Array.isArray(data.results) ? data.results : []
+  const resultsByDomain = new Map<string, unknown>()
+  rawResults.forEach((result, index) => {
+    const directDomain = availabilityResultDomain(result)
+    const fallbackDomain = domains[index]?.domain ?? null
+    let key = fallbackDomain
+    if (directDomain) {
+      try {
+        key = splitDomain(directDomain).domain
+      } catch {
+        key = fallbackDomain
+      }
+    }
+    if (key) resultsByDomain.set(key, result)
+  })
+
+  const fetchedResults = new Map<string, OpenProviderAvailabilityResult>()
+  domains.forEach((domain) => {
+    const result = resultsByDomain.get(domain.domain)
+    fetchedResults.set(domain.domain, result
+      ? normalizeOpenProviderAvailabilityResponse(domain.domain, { data: { results: [result] } })
+      : internalAvailabilityResult(domain.domain, "unknown_provider_status"))
+  })
+  return fetchedResults
+}
 
 const fetchOpenProviderSuggestions = async (
   env: NodeJS.ProcessEnv,
@@ -514,6 +662,7 @@ export async function checkOpenProviderDomainsAvailability(
   domainInputs: string[],
   options?: OpenProviderAvailabilityOptions,
 ): Promise<OpenProviderAvailabilityResult[]> {
+  const startedAt = performance.now()
   const domains = [...new Map(domainInputs.map((input) => {
     const domain = splitDomain(input)
     return [domain.domain, domain] as const
@@ -522,7 +671,7 @@ export async function checkOpenProviderDomainsAvailability(
 
   const env = options?.env ?? process.env
   const withPrice = options?.withPrice ?? true
-  const canUseProcessCache = !options?.token
+  const canUseProcessCache = !options?.token && !options?.forceFresh
   const fetchImpl = fetcher(options)
   const cacheScope = canUseProcessCache
     ? authCacheKey(env, fetchImpl, requireOpenProviderCredentials(env).username)
@@ -535,53 +684,59 @@ export async function checkOpenProviderDomainsAvailability(
       return !cached
     })
     : domains
-  if (domainsToFetch.length === 0) return domains.map((domain) => cachedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, "unknown_provider_status"))
-
-  let token = options?.token ?? await loginOpenProvider(options)
-  let response = await fetchOpenProviderAvailability(env, token, domainsToFetch, withPrice, options)
-  if (!options?.token && response.status === 401) {
-    clearCachedOpenProviderToken(cacheScope ?? undefined)
-    token = await loginOpenProvider(options)
-    response = await fetchOpenProviderAvailability(env, token, domainsToFetch, withPrice, options)
+  if (domainsToFetch.length === 0) {
+    const results = domains.map((domain) => cachedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, "unknown_provider_status"))
+    logAvailabilityTiming({
+      start: startedAt,
+      candidateCount: domains.length,
+      cacheHitCount: cachedResults.size,
+      fetchedCount: 0,
+      inFlightJoined: false,
+      providerFetchCount: 0,
+      forceFresh: Boolean(options?.forceFresh),
+      outcome: "cache",
+    })
+    return results
   }
 
-  if (!response.ok) {
-    const fetchedResults = new Map(domainsToFetch.map((domain) => [
-      domain.domain,
-      internalAvailabilityResult(domain.domain, `provider_http_${response.status}`),
-    ]))
-    return domains.map((domain) => cachedResults.get(domain.domain) ?? fetchedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, `provider_http_${response.status}`))
-  }
-
-  const payload = await json(response)
-  const data = dataObject(payload)
-  const rawResults = Array.isArray(data.results) ? data.results : []
-  const resultsByDomain = new Map<string, unknown>()
-  rawResults.forEach((result, index) => {
-    const directDomain = availabilityResultDomain(result)
-    const fallbackDomain = domainsToFetch[index]?.domain ?? null
-    let key = fallbackDomain
-    if (directDomain) {
-      try {
-        key = splitDomain(directDomain).domain
-      } catch {
-        key = fallbackDomain
-      }
+  const inFlightKey = cacheScope
+    ? availabilityBatchKey(cacheScope, domainsToFetch, withPrice)
+    : null
+  let pending = inFlightKey ? pendingAvailabilityBatches.get(inFlightKey) : undefined
+  const inFlightJoined = Boolean(pending)
+  if (!pending) {
+    pending = fetchAvailabilityResults(env, domainsToFetch, withPrice, options)
+    if (inFlightKey) {
+      pendingAvailabilityBatches.set(inFlightKey, pending)
+      void pending.finally(() => {
+        if (pendingAvailabilityBatches.get(inFlightKey) === pending) pendingAvailabilityBatches.delete(inFlightKey)
+      }).catch(() => {
+        // The caller receives the original rejection. This prevents an ignored
+        // cleanup promise from becoming an unhandled rejection.
+      })
     }
-    if (key) resultsByDomain.set(key, result)
-  })
+  }
+  const fetchedResults = await pending
+  if (cacheScope) {
+    for (const result of fetchedResults.values()) {
+      // Provider, timeout, and malformed-response states are recoverable
+      // errors, never presentation-cache entries.
+      if (result.status !== "internal") setCachedAvailabilityResult(cacheScope, result, withPrice)
+    }
+  }
 
-  const fetchedResults = new Map<string, OpenProviderAvailabilityResult>()
-  domainsToFetch.forEach((domain) => {
-    const result = resultsByDomain.get(domain.domain)
-    const normalized = result
-      ? normalizeOpenProviderAvailabilityResponse(domain.domain, { data: { results: [result] } })
-      : internalAvailabilityResult(domain.domain, "unknown_provider_status")
-    fetchedResults.set(domain.domain, normalized)
-    if (cacheScope) setCachedAvailabilityResult(cacheScope, normalized, withPrice)
+  const results = domains.map((domain) => cachedResults.get(domain.domain) ?? fetchedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, "unknown_provider_status"))
+  logAvailabilityTiming({
+    start: startedAt,
+    candidateCount: domains.length,
+    cacheHitCount: cachedResults.size,
+    fetchedCount: domainsToFetch.length,
+    inFlightJoined,
+    providerFetchCount: inFlightJoined ? 0 : 1,
+    forceFresh: Boolean(options?.forceFresh),
+    outcome: results.some((result) => result.status === "internal") ? "internal" : "provider",
   })
-
-  return domains.map((domain) => cachedResults.get(domain.domain) ?? fetchedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, "unknown_provider_status"))
+  return results
 }
 
 export async function checkOpenProviderDomainAvailability(

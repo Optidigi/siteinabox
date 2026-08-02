@@ -73,6 +73,7 @@ import type {
   MigrationCustomerActionState,
   PreviewCheckoutActionState,
   PreviewCheckoutCancellationState,
+  PreviewCheckoutDomainBatchActionState,
   PreviewCheckoutLiveStatus,
   PreviewCheckoutProfileActionState,
 } from "@/lib/checkout/previewCheckoutContract"
@@ -81,6 +82,7 @@ export type {
   MigrationCustomerActionState,
   PreviewCheckoutActionState,
   PreviewCheckoutCancellationState,
+  PreviewCheckoutDomainBatchActionState,
   PreviewCheckoutLiveStatus,
   PreviewCheckoutProfileActionState,
 } from "@/lib/checkout/previewCheckoutContract"
@@ -89,6 +91,10 @@ type PreviewCheckoutAction = (
   previousState: PreviewCheckoutActionState,
   formData: FormData,
 ) => Promise<PreviewCheckoutActionState>
+
+type PreviewCheckoutDomainBatchAction = (
+  formData: FormData,
+) => Promise<PreviewCheckoutDomainBatchActionState>
 
 type PreviewCheckoutProfileAction = (
   previousState: PreviewCheckoutProfileActionState,
@@ -191,6 +197,7 @@ type PreviewCheckoutProps = {
   previewHref: string
   prewarmHref: string
   checkDomainAction: PreviewCheckoutAction
+  checkDomainBatchAction?: PreviewCheckoutDomainBatchAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
   loadLiveStatusAction?: () => Promise<PreviewCheckoutLiveStatus>
@@ -328,6 +335,7 @@ export function PreviewCheckout({
   previewHref,
   prewarmHref,
   checkDomainAction,
+  checkDomainBatchAction,
   saveProfileAction,
   startPaymentAction,
   loadLiveStatusAction,
@@ -942,7 +950,32 @@ export function PreviewCheckout({
     setCheckedDomain(null)
     setQuotes(null)
     setExtensionResults([])
-    const checkBatch = async (domains: string[]) => Promise.all(domains.map(async (domain) => {
+    const checkBatch = async (
+      domains: string[],
+      phase: "recommended" | "fallback",
+    ): Promise<PreviewCheckoutActionState[]> => {
+      if (checkDomainBatchAction) {
+        try {
+          const formData = new FormData()
+          formData.set("domain", domainValue)
+          formData.set("phase", phase)
+          formData.set("requestToken", requestToken)
+          const received = await checkDomainBatchAction(formData)
+          if (received?.results?.length) return received.results
+        } catch {
+          // Keep the established recoverable row-level error presentation.
+        }
+        return domains.map((domain) => ({
+          ok: false,
+          status: "service_error" as const,
+          domain,
+          domainMode: "new_registration" as const,
+          message: t("checkoutDomainServiceUnavailable"),
+          requestToken,
+        }))
+      }
+
+      return Promise.all(domains.map(async (domain) => {
       let result: PreviewCheckoutActionState
       try {
         const formData = new FormData()
@@ -967,14 +1000,15 @@ export function PreviewCheckout({
         }
       }
       return result
-    }))
-    const recommendedResults = await checkBatch(recommendedDomainSearchDomains)
+      }))
+    }
+    const recommendedResults = await checkBatch(recommendedDomainSearchDomains, "recommended")
     if (extensionRequestRef.current !== requestToken) return
     const readyCount = recommendedResults.filter(checkoutReadyDomainResult).length
     setExtensionResults(recommendedResults)
     if (readyCount < 4 && fallbackDomainSearchDomains.length > 0) {
       setExtensionCheckPhase("fallback")
-      const fallbackResults = await checkBatch(fallbackDomainSearchDomains)
+      const fallbackResults = await checkBatch(fallbackDomainSearchDomains, "fallback")
       if (extensionRequestRef.current !== requestToken) return
       setExtensionResults([...recommendedResults, ...fallbackResults])
     }
@@ -982,7 +1016,9 @@ export function PreviewCheckout({
     setExtensionCheckPending(false)
   }, [
     allDomainSearchDomains,
+    checkDomainBatchAction,
     checkDomainAction,
+    domainValue,
     fallbackDomainSearchDomains,
     recommendedDomainSearchDomains,
     t,

@@ -18,7 +18,14 @@ import {
 } from "@/lib/domains/openprovider"
 import { createDomainOrderState, type DomainRegistrantDetails } from "@/lib/domains/orderState"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
-import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch, suggestAvailablePreviewDomains } from "@/lib/domains/previewDomainOrder"
+import {
+  checkAndRecordPreviewDomainOrder,
+  checkPreviewDomainOrders,
+  MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE,
+  requireReadyPreviewDomainOrder,
+  suggestAvailablePreviewDomainBatch,
+  suggestAvailablePreviewDomains,
+} from "@/lib/domains/previewDomainOrder"
 
 describe("preview domain order", () => {
   beforeEach(() => {
@@ -394,6 +401,74 @@ describe("preview domain order", () => {
     expect(run.domainOrder).toBeNull()
   })
 
+  it("checks normalized checkout candidates in one non-persistent batch and restores candidate order", async () => {
+    const run = { id: 123, domainOrder: null }
+    vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
+      {
+        status: "available",
+        domain: "acme.com",
+        available: true,
+        premium: false,
+        price: { amount: "12.50", currency: "EUR" },
+        internalReason: null,
+      },
+      {
+        status: "available",
+        domain: "acme.nl",
+        available: true,
+        premium: false,
+        price: { amount: "6.50", currency: "EUR" },
+        internalReason: null,
+      },
+    ])
+
+    await expect(checkPreviewDomainOrders(
+      cast<SiteGenerationRun>(run),
+      ["Acme.NL", "acme.com", "acme.nl"],
+      null,
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+        capabilityEffectiveAt: "2026-07-28T14:59:59.999Z",
+        requireProductionCapability: false,
+      },
+    )).resolves.toMatchObject([
+      {
+        run,
+        domain: "acme.nl",
+        messageKey: "checkoutDomainAvailable",
+        included: true,
+      },
+      {
+        run,
+        domain: "acme.com",
+        messageKey: "checkoutDomainReleasePending",
+        included: false,
+        extraFeeAmount: "2.50",
+      },
+    ])
+
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledTimes(1)
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(["acme.nl", "acme.com"])
+    expect(checkOpenProviderDomainAvailability).not.toHaveBeenCalled()
+    expect(run.domainOrder).toBeNull()
+  })
+
+  it("rejects checkout batches above the bounded provider limit before calling OpenProvider", async () => {
+    const domainInputs = Array.from(
+      { length: MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE + 1 },
+      (_, index) => `acme${index}.nl`,
+    )
+
+    await expect(checkPreviewDomainOrders(
+      cast<SiteGenerationRun>({ id: 123, domainOrder: null }),
+      domainInputs,
+      null,
+      { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
+    )).rejects.toThrow(`Checkout domain batch exceeds ${MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE} domains.`)
+
+    expect(checkOpenProviderDomainsAvailability).not.toHaveBeenCalled()
+  })
+
   it("checks an explicitly entered non-recommended TLD through OpenProvider without adding it to suggestions", async () => {
     const run = { id: 123, domainOrder: null }
     const payload = {
@@ -481,7 +556,7 @@ describe("preview domain order", () => {
 
     expect(result).toMatchObject({ domain: "levelweb.nl" })
     expect(payload.update).toHaveBeenCalledTimes(1)
-    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("levelweb.nl")
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("levelweb.nl", { forceFresh: true })
     expect(run.domainOrder).toMatchObject({
       status: "ready_to_register",
       domain: "levelweb.nl",

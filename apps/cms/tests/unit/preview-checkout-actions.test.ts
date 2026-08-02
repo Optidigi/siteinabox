@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
   checkAndRecordPreviewDomainOrder: vi.fn(),
+  checkPreviewDomainOrders: vi.fn(),
   requireReadyPreviewDomainOrder: vi.fn(),
   loginOpenProvider: vi.fn(),
   getOpenProviderDomainTransferPrice: vi.fn(),
@@ -174,6 +175,7 @@ vi.mock("@/lib/checkout/acceptedCheckoutResume", async (importOriginal) => {
 
 vi.mock("@/lib/domains/previewDomainOrder", () => ({
   checkAndRecordPreviewDomainOrder: mocks.checkAndRecordPreviewDomainOrder,
+  checkPreviewDomainOrders: mocks.checkPreviewDomainOrders,
   requireReadyPreviewDomainOrder: mocks.requireReadyPreviewDomainOrder,
   suggestAvailablePreviewDomainBatch: mocks.suggestAvailablePreviewDomainBatch,
 }))
@@ -991,6 +993,58 @@ describe("preview checkout domain suggestion action", () => {
         requireProductionCapability: false,
       },
     )
+    expect(context.payload.update).not.toHaveBeenCalled()
+  })
+
+  it("checks a server-derived domain phase in one non-persistent batch", async () => {
+    mocks.productionTldCapabilitiesAt.mockReturnValue([
+      { tld: "nl" }, { tld: "com" }, { tld: "info" }, { tld: "org" }, { tld: "eu" },
+    ])
+    mocks.checkPreviewDomainOrders.mockResolvedValue([
+      {
+        run: { id: 500 },
+        messageKey: "checkoutDomainAvailable",
+        domain: "ami-care.nl",
+        included: true,
+        extraFeeAmount: null,
+        extraFeeCurrency: null,
+        providerPriceAmount: "10.00",
+        providerPriceCurrency: "EUR",
+        providerQuotedAt: "2026-08-03T10:00:00.000Z",
+        productionOperationEnabled: true,
+        suggestions: [],
+      },
+    ])
+    const { checkPreviewCheckoutDomainBatchAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("domain", "ami-care")
+    formData.set("phase", "recommended")
+    formData.set("requestToken", "domain-batch-1")
+
+    const actionResult = await checkPreviewCheckoutDomainBatchAction("ami-care", formData)
+    expect(actionResult).toMatchObject({
+      ok: true,
+      phase: "recommended",
+      requestToken: "domain-batch-1",
+    })
+    expect(actionResult.results[0]).toMatchObject({
+      domain: "ami-care.nl",
+      ok: true,
+      quotes: expect.any(Object),
+    })
+    const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
+    expect(mocks.checkPreviewDomainOrders).toHaveBeenCalledWith(
+      context.run,
+      ["ami-care.nl", "ami-care.com", "ami-care.info", "ami-care.org", "ami-care.eu"],
+      null,
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+        requireProductionCapability: false,
+      },
+    )
+    expect(mocks.loadLatestCheckoutProfile).toHaveBeenCalledTimes(1)
     expect(context.payload.update).not.toHaveBeenCalled()
   })
 
