@@ -342,6 +342,7 @@ describe("preview checkout domain suggestion action", () => {
     )
     vi.spyOn(console, "info").mockImplementation(() => {})
     vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
     mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
     mocks.loadPreviewGrantContext.mockResolvedValue({
       payload: { update: mocks.payloadUpdate },
@@ -1099,6 +1100,47 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
     expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("keeps an unavailable public preflight recoverable without provider reads", async () => {
+    vi.stubEnv("COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED", "0")
+    mocks.inspectExistingDomainPublicEvidence.mockRejectedValueOnce(
+      new Error("DS resolver unavailable"),
+    )
+    const { checkPreviewCheckoutDomainAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("domainMode", "existing_domain")
+    formData.set("requestToken", "existing-preflight-retry-1")
+
+    await expect(checkPreviewCheckoutDomainAction(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: "service_error",
+      domain: "ami-care.nl",
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      migrationPreflightOnly: true,
+      message: "checkoutMigrationPublicPreflightFailed",
+      requestToken: "existing-preflight-retry-1",
+    })
+    expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()
+    expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+    expect(console.warn).toHaveBeenCalledWith(
+      "Preview checkout existing-domain preflight failed",
+      expect.objectContaining({
+        operation: "existing_domain_public_preflight",
+        category: "unknown",
+        clientSlug: "ami-care",
+        tld: "nl",
+      }),
+    )
   })
 
   it("stops a submitted source before credential reads when public transfer evidence is blocked", async () => {

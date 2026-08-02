@@ -1392,6 +1392,7 @@
     "checkoutEuEligibilityCountryRequired": "Enter the two-letter .eu eligibility country.",
     "checkoutEuEligibilityCombinationInvalid": "Choose an eligibility basis that matches the contracting party and its address.",
     "checkoutMigrationPreflightComplete": "Public preflight completed",
+    "checkoutMigrationPreflightUnavailableTitle": "Domain check temporarily unavailable",
     "checkoutMigrationSourceLegend": "How may we acquire the complete DNS zone?",
     "checkoutMigrationSourceHelp": "The source is captured twice and compared semantically. Public DNS results are never treated as a complete zone.",
     "checkoutMigrationSourceCloudflare": "My DNS is on Cloudflare — authorize read-only access for this domain through Cloudflare",

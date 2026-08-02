@@ -93,6 +93,13 @@ try {
   assert.equal(await page.getByRole("button", { name: "Check again", exact: true }).isVisible(), true)
 
   await domainInput.fill("analytical-engines.nl")
+  await page.getByText("analytical-engines.nl", { exact: true }).waitFor()
+  assert.equal(
+    await page.getByText("analytical-engines.com", { exact: true }).count(),
+    0,
+    "A fully qualified query must only check that exact domain.",
+  )
+  await domainInput.fill("analytical-engines")
   await page.getByText("analytical-engines.com", { exact: true }).waitFor()
   await page.setViewportSize({ width: 320, height: 568 })
   await page.getByText("Live results", { exact: true }).evaluate((node) => {

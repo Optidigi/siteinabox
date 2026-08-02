@@ -132,6 +132,60 @@ describe("enabled-TLD domain verification", () => {
     })
   })
 
+  it("uses the supported dig DS path for authoritative and recursive evidence", async () => {
+    const lookup = vi.fn(async (input: {
+      hostname: string
+      nameserver?: string
+      authoritative: boolean
+    }) => ({
+      records: [],
+      ttl: null,
+    }))
+
+    await expect(verifyParentDsAbsent("example.nl", {
+      resolveParentNsImpl: vi.fn(async () => [
+        "ns1.nic.nl",
+        "ns2.nic.nl",
+      ]),
+      digDsLookupImpl: lookup,
+    })).resolves.toEqual({
+      status: "absent",
+      records: [],
+      ttl: null,
+      reason: null,
+    })
+
+    expect(lookup).toHaveBeenCalledWith({
+      hostname: "example.nl",
+      nameserver: "ns1.nic.nl",
+      authoritative: true,
+    })
+    expect(lookup).toHaveBeenCalledWith({
+      hostname: "example.nl",
+      nameserver: "ns2.nic.nl",
+      authoritative: true,
+    })
+    expect(lookup).toHaveBeenCalledWith({
+      hostname: "example.nl",
+      authoritative: false,
+    })
+  })
+
+  it("keeps an unavailable DS lookup indeterminate", async () => {
+    await expect(verifyParentDsAbsent("example.nl", {
+      resolveParentNsImpl: vi.fn(async () => [
+        "ns1.nic.nl",
+        "ns2.nic.nl",
+      ]),
+      digDsLookupImpl: vi.fn(async () => {
+        throw new Error("dns query failed")
+      }),
+    })).resolves.toMatchObject({
+      status: "indeterminate",
+      reason: "parent_ds_lookup_failed",
+    })
+  })
+
   it.each(["example.nl", "example.be"])(
     "requires exact delegation and an SOA answer for %s",
     async (domain) => {
