@@ -537,14 +537,15 @@ try {
   await axfrPage.getByText("Use an existing domain", { exact: true }).click()
   await axfrPage.locator("#checkout-domain").fill("existing-example.nl")
   await axfrPage.getByRole("button", { name: "Check connection" }).click()
+  await axfrPage.getByRole("radio", {
+    name: "My DNS provider permits an authorized AXFR",
+  }).check()
   await axfrPage.getByLabel("Authorized nameserver").waitFor()
   await axfrPage.getByLabel(/Transfer code/).fill("browser-transfer-code")
   await axfrPage.getByLabel(
     /I am authorized to transfer this customer-owned domain/,
   ).check()
-  await axfrPage.getByRole("button", {
-    name: "Verify complete DNS source",
-  }).click()
+  await axfrPage.getByRole("button", { name: "Check connection" }).click()
   await axfrPage.getByRole("button", { name: "Continue" }).click()
   await axfrPage.getByRole("heading", { name: /launch$/i }).first().waitFor()
   await axfrPage.getByRole("heading", {
@@ -618,7 +619,7 @@ try {
       if (scenarioId === "domain-selected") {
         await scenarioPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
           .getByRole("button", { name: "Choose", exact: true }).click()
-        await scenarioPage.locator("[data-selected-domain-summary]").waitFor()
+        await scenarioPage.locator('[data-domain-selected="true"]').waitFor()
       }
       if (scenarioId === "domain-premium") {
         await scenarioPage.getByText("Premium", { exact: true }).waitFor()

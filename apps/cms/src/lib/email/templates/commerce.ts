@@ -145,10 +145,10 @@ export function commerceNotificationTemplate(input: {
           : input.kind === "domain_renewal_60d"
             ? [
                 `${input.domainName ?? "Het domein"} staat gepland voor verlenging op ${date(input.eventAt)}.`,
-                `Providerprijs excl. btw: ${money(input.providerOperationPriceNetMinor, currency)}.`,
+                `Providerprijs excl. BTW: ${money(input.providerOperationPriceNetMinor, currency)}.`,
                 `Inbegrepen domeinvergoeding: ${money(input.includedAllowanceNetMinor, currency)}.`,
-                `Toeslag excl. btw: ${money(input.surchargeNetMinor, currency)}.`,
-                `Btw: ${money(input.vatAmountMinor, currency)}.`,
+                `Toeslag excl. BTW: ${money(input.surchargeNetMinor, currency)}.`,
+                `BTW: ${money(input.vatAmountMinor, currency)}.`,
                 `Bruto nu te betalen: ${money(input.grossAmountMinor, currency)}.`,
                 `Dekkingsstatus: ${input.financialCoverageState ?? "onbekend"}.`,
               ].join(" ")

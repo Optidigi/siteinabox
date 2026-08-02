@@ -419,7 +419,11 @@ const normalizeMoney = (source: unknown): { amount: string; currency: string } |
       return { amount: normalizedAmount, currency: normalizedCurrency }
     }
   }
-  for (const key of ["product", "reseller", "premium", "price"]) {
+  // Availability prices feed the signed checkout quote. Prefer the reseller
+  // amount when OpenProvider returns both its public product price and the
+  // account's actual provider cost; the latter is the authoritative input to
+  // our commercial allowance/surcharge rule.
+  for (const key of ["reseller", "product", "premium", "price"]) {
     const nested = normalizeMoney(value[key])
     if (nested) return nested
   }
