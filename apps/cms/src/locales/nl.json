@@ -1392,6 +1392,7 @@
     "checkoutEuEligibilityCountryRequired": "Vul de tweecijferige landcode voor .eu-toelating in.",
     "checkoutEuEligibilityCombinationInvalid": "Kies een toelatingsgrond die past bij de contractpartij en het adres.",
     "checkoutMigrationPreflightComplete": "Openbare voorcontrole afgerond",
+    "checkoutMigrationPreflightUnavailableTitle": "Domeincontrole tijdelijk niet beschikbaar",
     "checkoutMigrationSourceLegend": "Hoe mogen we de volledige DNS-zone ophalen?",
     "checkoutMigrationSourceHelp": "De bron wordt twee keer ingelezen en semantisch vergeleken. Publieke DNS-resultaten gelden nooit als volledige zone.",
     "checkoutMigrationSourceCloudflare": "Mijn DNS staat bij Cloudflare — machtig alleen-lezen toegang voor dit domein via Cloudflare",

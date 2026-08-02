@@ -473,6 +473,44 @@ describe("PreviewCheckout Phase 3 flow", () => {
       .toBeNull()
   })
 
+  it("does not present a failed existing-domain preflight as complete", async () => {
+    const checkDomainAction = vi.fn(async (
+      _state: unknown,
+      formData: FormData,
+    ) => ({
+      ok: false,
+      status: "service_error" as const,
+      domain: "example.nl",
+      domainMode: "existing_domain" as const,
+      migrationReadiness: "unsupported" as const,
+      migrationPreflightOnly: true,
+      message: "checkoutMigrationPublicPreflightFailed",
+      requestToken: String(formData.get("requestToken") ?? ""),
+    }))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      currentDomain={null}
+      domainReady={false}
+      initialQuotes={null}
+      checkDomainAction={checkDomainAction}
+    />)
+
+    fireEvent.click(screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    }))
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "example.nl" },
+    })
+    fireEvent.submit(
+      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
+    )
+
+    expect(await screen.findByText("checkoutMigrationPreflightUnavailableTitle")).toBeTruthy()
+    expect(screen.queryByText("checkoutMigrationPreflightComplete")).toBeNull()
+    expect(screen.getByRole("button", { name: "checkoutCheckAgain" })).toBeTruthy()
+    expect(screen.queryByText("checkoutMigrationSourceLegend")).toBeNull()
+  })
+
   it("turns a public transfer blocker into an alert and suppresses source controls", async () => {
     const checkDomainAction = vi.fn(async (
       _state: unknown,

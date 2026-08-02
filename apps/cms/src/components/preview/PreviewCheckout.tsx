@@ -114,6 +114,48 @@ const SiteinaboxMark = ({ className }: { className?: string }) => (
   <img src="/logos/favicon.svg" alt="" className={className} />
 )
 
+type DomainSearchInput =
+  | { kind: "empty" | "invalid"; canonical: string }
+  | { kind: "bare"; canonical: string; name: string }
+  | {
+      kind: "qualified"
+      canonical: string
+      domain: string
+      name: string
+      extension: string
+    }
+
+const domainLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
+
+const parseDomainSearchInput = (value: string): DomainSearchInput => {
+  const canonical = value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/.*$/, "")
+    .replace(/\.$/, "")
+  if (!canonical) return { kind: "empty", canonical }
+  const labels = canonical.split(".")
+  if (
+    canonical.length > 253 ||
+    !labels.every((label) => domainLabelPattern.test(label)) ||
+    (labels.length > 1 && !/[a-z]/.test(labels.at(-1) ?? ""))
+  ) {
+    return { kind: "invalid", canonical }
+  }
+  if (labels.length === 1) {
+    return { kind: "bare", canonical, name: labels[0]! }
+  }
+  return {
+    kind: "qualified",
+    canonical,
+    domain: canonical,
+    name: labels.slice(0, -1).join("."),
+    extension: labels.at(-1)!,
+  }
+}
+
 export type PreviewCheckoutCatalog = {
   version: string
   currency: "EUR"
@@ -200,6 +242,7 @@ const initialCancellationState: PreviewCheckoutCancellationState = {
   status: "idle",
   message: "",
 }
+const defaultSupportedDomainExtensions = ["nl", "com", "eu"]
 
 export const checkoutStatusNeedsPolling = (input: {
   paymentReturn: boolean
@@ -282,7 +325,7 @@ export function PreviewCheckout({
   initialProfile,
   initialDetails,
   initialQuotes = null,
-  supportedDomainExtensions = ["nl", "com", "eu"],
+  supportedDomainExtensions = defaultSupportedDomainExtensions,
   initialStep = "domain",
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
@@ -417,16 +460,18 @@ export function PreviewCheckout({
     cloudflareSourceDomain ?? readyDomain ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
+  const supportedExtensionsKey = supportedDomainExtensions.join(",")
   const selectedExtensions = React.useMemo(() => {
     const enabled = new Set(supportedDomainExtensions)
     return ["com", "nl", "info", "org", "eu"].filter((extension) =>
       enabled.has(extension),
     )
-  }, [supportedDomainExtensions])
+  }, [supportedExtensionsKey])
   const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
   const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
   const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
   const extensionRequestRef = React.useRef<string | null>(null)
+  const lastDomainSearchKeyRef = React.useRef<string | null>(null)
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const domainRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
   const latestDomainRequestTokenRef = React.useRef<string | null>(null)
@@ -445,6 +490,27 @@ export function PreviewCheckout({
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
+  const domainSearchInput = React.useMemo(
+    () => parseDomainSearchInput(domainValue),
+    [domainValue],
+  )
+  const domainSearchName = "name" in domainSearchInput
+    ? domainSearchInput.name
+    : ""
+  const newDomainSearchDomains = React.useMemo(() => {
+    if (domainSearchInput.kind === "bare") {
+      return selectedExtensions.map((extension) =>
+        `${domainSearchInput.name}.${extension}`)
+    }
+    if (domainSearchInput.kind === "qualified") {
+      // A fully qualified request is unambiguous. Keep its result surface to
+      // that exact domain; alternatives remain an explicit unavailable-state
+      // affordance rather than silently changing what the customer checked.
+      return [domainSearchInput.domain]
+    }
+    return []
+  }, [domainSearchInput, selectedExtensions])
+  const newDomainSearchPrimaryDomain = newDomainSearchDomains[0] ?? null
   const detectedMigrationDnsProvider =
     checkState.migrationPublicEvidence?.probableDnsProvider ??
     migrationPreflight?.publicEvidence?.probableDnsProvider ??
@@ -476,8 +542,21 @@ export function PreviewCheckout({
     checkState.domain === normalizedDomainValue &&
     (checkState.domainMode ?? "new_registration") === domainMode,
   )
-  const activeMigrationPublicEvidence = checkAppliesToCurrentInput
-    ? checkState.migrationPublicEvidence
+  const migrationPreflightFailed = Boolean(
+    domainMode === "existing_domain" &&
+    checkAppliesToCurrentInput &&
+    checkState.status === "service_error",
+  )
+  const migrationPreflightComplete = Boolean(
+    domainMode === "existing_domain" &&
+    checkAppliesToCurrentInput &&
+    checkState.status === "preflight_complete" &&
+    checkState.migrationPublicEvidence,
+  )
+  const activeMigrationPublicEvidence = migrationPreflightFailed
+    ? null
+    : checkAppliesToCurrentInput
+      ? checkState.migrationPublicEvidence
     : migrationPreflight?.domain === normalizedDomainValue
       ? migrationPreflight.publicEvidence
       : null
@@ -485,7 +564,7 @@ export function PreviewCheckout({
     (activeMigrationPublicEvidence?.transferBlockers?.length ?? 0) > 0,
   )
   const migrationReleaseBlocked = Boolean(
-    checkAppliesToCurrentInput
+    !migrationPreflightFailed && checkAppliesToCurrentInput
       ? checkState.migrationReleaseBlocked
       : migrationPreflight?.domain === normalizedDomainValue
         ? migrationPreflight.releaseBlocked
@@ -509,11 +588,26 @@ export function PreviewCheckout({
       ))}
     </div>
   ) : null
-  const suggestionsApplyToCurrentInput = Boolean(
-    suggestionsState.domain && suggestionsState.domain === normalizedDomainValue,
+  const primaryNewDomainResult = newDomainSearchPrimaryDomain
+    ? extensionResults.find((result) => result.domain === newDomainSearchPrimaryDomain) ?? null
+    : null
+  const primaryNewDomainUnavailable = Boolean(
+    domainMode === "new_registration" &&
+    !extensionCheckPending &&
+    primaryNewDomainResult &&
+    !primaryNewDomainResult.ok &&
+    ["unavailable", "premium"].includes(primaryNewDomainResult.status ?? ""),
   )
-  const domainLooksCheckable =
-    normalizedDomainValue.includes(".") && normalizedDomainValue.length >= 5
+  const suggestionsApplyToCurrentInput = Boolean(
+    newDomainSearchPrimaryDomain &&
+    suggestionsState.domain === newDomainSearchPrimaryDomain,
+  )
+  const domainLooksCheckable = Boolean(
+    newDomainSearchPrimaryDomain &&
+    domainSearchInput.kind !== "invalid" &&
+    domainSearchInput.kind !== "empty" &&
+    domainSearchName.length >= 2,
+  )
 
   React.useEffect(() => {
     if (cancellationState.agreement) {
@@ -630,6 +724,7 @@ export function PreviewCheckout({
   React.useEffect(() => {
     if (
       domainMode === "existing_domain" &&
+      migrationPreflightComplete &&
       checkState.migrationPreflightOnly &&
       checkState.domain === normalizedDomainValue &&
       checkTokenIsCurrent
@@ -661,6 +756,7 @@ export function PreviewCheckout({
     availableMigrationSourceMethods,
     domainMode,
     existingDomainMigrationEnabled,
+    migrationPreflightComplete,
     normalizedDomainValue,
   ])
 
@@ -744,13 +840,7 @@ export function PreviewCheckout({
       domainMode !== "new_registration" ||
       !domainLooksCheckable
     ) return
-    const unavailable = Boolean(
-      !checkPending &&
-      checkAppliesToCurrentInput &&
-      !checkState.ok &&
-      ["unavailable", "premium"].includes(checkState.status ?? ""),
-    )
-    if (!unavailable) return
+    if (!primaryNewDomainUnavailable || !newDomainSearchPrimaryDomain) return
     if (
       suggestionsApplyToCurrentInput &&
       (suggestionsState.done || (suggestionsState.suggestions?.length ?? 0) >= 5)
@@ -760,7 +850,7 @@ export function PreviewCheckout({
       : []
     const cursor = suggestionsApplyToCurrentInput ? suggestionsState.cursor ?? 0 : 0
     const requestKey = JSON.stringify({
-      domain: normalizedDomainValue,
+      domain: newDomainSearchPrimaryDomain,
       cursor,
       existing: existing.map((suggestion) => suggestion.domain),
     })
@@ -778,7 +868,7 @@ export function PreviewCheckout({
         credentials: "same-origin",
         signal: controller.signal,
         body: JSON.stringify({
-          domain: normalizedDomainValue,
+          domain: newDomainSearchPrimaryDomain,
           cursor,
           existing: existing.map((suggestion) => suggestion.domain),
         }),
@@ -791,11 +881,11 @@ export function PreviewCheckout({
           if (controller.signal.aborted) return
           setSuggestionsState((previousState) => {
             const previousSuggestions =
-              previousState.domain === normalizedDomainValue
+              previousState.domain === newDomainSearchPrimaryDomain
                 ? previousState.suggestions ?? []
                 : []
             const nextSuggestions =
-              nextState.domain === normalizedDomainValue
+              nextState.domain === newDomainSearchPrimaryDomain
                 ? nextState.suggestions ?? []
                 : []
             const merged = [
@@ -810,21 +900,20 @@ export function PreviewCheckout({
             ].slice(0, 5)
             return {
               ok: nextState.ok,
-              domain: normalizedDomainValue,
+              domain: newDomainSearchPrimaryDomain,
               suggestions: merged,
               cursor: nextState.cursor ?? cursor,
               done: nextState.done || merged.length >= 5,
             }
           })
         })
-        .catch((error) => {
+        .catch(() => {
           if (controller.signal.aborted) return
-          console.error("Preview checkout suggestions request failed", error)
           setSuggestionsState((previousState) => ({
             ok: false,
-            domain: normalizedDomainValue,
+            domain: newDomainSearchPrimaryDomain,
             suggestions:
-              previousState.domain === normalizedDomainValue
+              previousState.domain === newDomainSearchPrimaryDomain
                 ? previousState.suggestions ?? []
                 : [],
             cursor,
@@ -840,13 +929,10 @@ export function PreviewCheckout({
     }, suggestionsApplyToCurrentInput ? 0 : 90)
     return () => window.clearTimeout(timer)
   }, [
-    checkAppliesToCurrentInput,
-    checkPending,
-    checkState.ok,
-    checkState.status,
     domainLooksCheckable,
-    normalizedDomainValue,
     domainMode,
+    newDomainSearchPrimaryDomain,
+    primaryNewDomainUnavailable,
     step,
     suggestionsApplyToCurrentInput,
     suggestionsHref,
@@ -864,20 +950,13 @@ export function PreviewCheckout({
     (checkedDomain === normalizedDomainValue || extensionSelectionApplies)
     ? checkedDomain
     : null
-  const primaryDomainUnavailable = Boolean(
-    domainMode === "new_registration" &&
-    !checkPending &&
-    checkAppliesToCurrentInput &&
-    !checkState.ok &&
-    ["unavailable", "premium"].includes(checkState.status ?? ""),
-  )
   const suggestions =
-    primaryDomainUnavailable && suggestionsApplyToCurrentInput
+    primaryNewDomainUnavailable && suggestionsApplyToCurrentInput
       ? suggestionsState.suggestions
       : []
   const placeholderSuggestions =
-    primaryDomainUnavailable && domainLooksCheckable
-      ? placeholderSuggestionsForDomain(normalizedDomainValue)
+    primaryNewDomainUnavailable && newDomainSearchPrimaryDomain
+      ? placeholderSuggestionsForDomain(newDomainSearchPrimaryDomain)
         .filter(
           (option) =>
             !(suggestions ?? []).some(
@@ -893,25 +972,35 @@ export function PreviewCheckout({
     (
       extensionResults.some((result) =>
         result.ok && result.domain === selectedDomain && Boolean(result.quotes)) ||
-      (checkAppliesToCurrentInput
+      (domainMode === "existing_domain" && checkAppliesToCurrentInput
         ? checkState.ok
         : selectedDomain === readyDomain)
     ),
   )
-  const domainResultKind = checkPending
-    ? "loading"
-    : ["preflight_complete", "release_pending"].includes(checkState.status ?? "") &&
-        checkAppliesToCurrentInput
-      ? "info"
-    : domainIsReady
-      ? "success"
-      : checkState.message && checkAppliesToCurrentInput
-        ? checkState.ok
-          ? "success"
-          : ["unavailable", "premium"].includes(checkState.status ?? "")
+  const domainResultKind = domainMode === "new_registration"
+    ? extensionCheckPending
+      ? "loading"
+      : domainIsReady || primaryNewDomainResult?.ok
+        ? "success"
+        : primaryNewDomainResult
+          ? ["unavailable", "premium"].includes(primaryNewDomainResult.status ?? "")
             ? "unavailable"
             : "error"
-        : null
+          : null
+    : checkPending
+      ? "loading"
+      : ["preflight_complete", "release_pending"].includes(checkState.status ?? "") &&
+          checkAppliesToCurrentInput
+        ? "info"
+        : domainIsReady
+          ? "success"
+          : checkState.message && checkAppliesToCurrentInput
+            ? checkState.ok
+              ? "success"
+              : ["unavailable", "premium"].includes(checkState.status ?? "")
+                ? "unavailable"
+                : "error"
+            : null
   const domainInputState = domainResultKind === "success"
     ? "success"
     : domainResultKind === "unavailable"
@@ -938,6 +1027,7 @@ export function PreviewCheckout({
     setExtensionResults([])
     setExtensionCheckPending(false)
     extensionRequestRef.current = null
+    lastDomainSearchKeyRef.current = null
     if (value.trim().toLowerCase() !== checkedDomain) {
       setCheckedDomain(null)
       setQuotes(null)
@@ -947,18 +1037,18 @@ export function PreviewCheckout({
     }
   }
 
-  const checkSelectedExtensions = React.useCallback(async () => {
-    const entered = normalizedDomainValue.replace(/^https?:\/\//, "").split("/")[0] ?? ""
-    const firstLabel = entered.split(".")[0]?.trim() ?? ""
-    if (!firstLabel) return
+  const checkSelectedExtensions = React.useCallback(async (force = false) => {
+    if (newDomainSearchDomains.length === 0) return
+    const searchKey = newDomainSearchDomains.join("|")
+    if (!force && lastDomainSearchKeyRef.current === searchKey) return
+    lastDomainSearchKeyRef.current = searchKey
     const requestToken = nextRequestToken()
     extensionRequestRef.current = requestToken
     setExtensionCheckPending(true)
     setCheckedDomain(null)
     setQuotes(null)
     setExtensionResults([])
-    const results = await Promise.all(selectedExtensions.map(async (extension) => {
-      const domain = `${firstLabel}.${extension}`
+    const results = await Promise.all(newDomainSearchDomains.map(async (domain) => {
       let result: PreviewCheckoutActionState
       try {
         const formData = new FormData()
@@ -993,36 +1083,22 @@ export function PreviewCheckout({
     if (extensionRequestRef.current !== requestToken) return
     setExtensionResults(results)
     setExtensionCheckPending(false)
-  }, [checkDomainAction, normalizedDomainValue, selectedExtensions, t])
+  }, [checkDomainAction, newDomainSearchDomains, t])
 
   React.useEffect(() => {
     if (step !== "domain" || domainMode !== "new_registration") return
-    const firstLabel = normalizedDomainValue.replace(/^https?:\/\//, "").split(/[./]/)[0]?.trim() ?? ""
-    if (firstLabel.length < 2 || selectedExtensions.length === 0) return
+    if (!domainLooksCheckable || newDomainSearchDomains.length === 0) return
     const timer = window.setTimeout(() => void checkSelectedExtensions(), 450)
     return () => window.clearTimeout(timer)
-  }, [checkSelectedExtensions, domainMode, normalizedDomainValue, selectedExtensions.length, step])
+  }, [checkSelectedExtensions, domainLooksCheckable, domainMode, newDomainSearchDomains.length, step])
 
   const selectExtensionResult = (result: PreviewCheckoutActionState) => {
     if (!result.ok || !result.domain || !result.quotes) return
     setCheckedDomain(result.domain)
+    lastDomainSearchKeyRef.current = result.domain
+    setDomainValue(result.domain)
     setQuotes(result.quotes)
   }
-
-  // The submitted domain is also one of the live-result rows. Keeping that
-  // authoritative action result in the same surface means a manual check never
-  // appears to do nothing while the debounced multi-TLD checks are completing.
-  React.useEffect(() => {
-    if (
-      domainMode !== "new_registration" ||
-      !checkAppliesToCurrentInput ||
-      !checkState.domain
-    ) return
-    setExtensionResults((current) => [
-      checkState,
-      ...current.filter((entry) => entry.domain !== checkState.domain),
-    ])
-  }, [checkAppliesToCurrentInput, checkState, domainMode])
 
   const updateDomainMode = (mode: "new_registration" | "existing_domain") => {
     if (mode === domainMode) return
@@ -1033,6 +1109,7 @@ export function PreviewCheckout({
     setMigrationSourceMethod("")
     setMigrationPreflight(null)
     setDomainValue("")
+    lastDomainSearchKeyRef.current = null
     lastSubmittedDomainRef.current = null
   }
 
@@ -1043,6 +1120,12 @@ export function PreviewCheckout({
     setMigrationSourceMethod(method)
     setCheckedDomain(null)
     setQuotes(null)
+  }
+
+  const retryExistingDomainPreflight = () => {
+    setMigrationSourceMethod("")
+    setMigrationPreflight(null)
+    window.setTimeout(() => domainFormRef.current?.requestSubmit(), 0)
   }
 
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
@@ -1767,7 +1850,12 @@ export function PreviewCheckout({
                 ref={domainFormRef}
                 action={checkAction}
                 className="grid gap-2"
-              onSubmit={() => {
+              onSubmit={(event) => {
+                  if (domainMode === "new_registration") {
+                    event.preventDefault()
+                    void checkSelectedExtensions()
+                    return
+                  }
                   const token = nextRequestToken()
                   latestDomainRequestTokenRef.current = token
                   if (domainRequestTokenRef.current) {
@@ -1841,13 +1929,22 @@ export function PreviewCheckout({
                             <AlertDescription>{t("checkoutDomainPremium", { domain: premiumInfoDomain })}</AlertDescription>
                           </Alert>
                         )}
+                        {extensionResults.some((result) => result.status === "release_pending") && (
+                          <Alert className="mb-1 border-warning/30 bg-warning/10 text-warning" role="status">
+                            <CircleAlert className="size-4" aria-hidden />
+                            <AlertTitle>{t("checkoutDomainReleasePendingTitle")}</AlertTitle>
+                            <AlertDescription>
+                              {extensionResults.find((result) => result.status === "release_pending")?.message}
+                            </AlertDescription>
+                          </Alert>
+                        )}
                         {extensionResults.some((result) => result.status === "service_error") && (
                           <Alert variant="destructive" className="mb-1" role="alert">
                             <CircleAlert className="size-4" aria-hidden />
                             <AlertTitle>{t("checkoutDomainErrorTitle")}</AlertTitle>
                             <AlertDescription className="grid gap-3">
                               <span>{extensionResults.find((result) => result.status === "service_error")?.message}</span>
-                              <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => void checkSelectedExtensions()}>{t("checkoutCheckAgain")}</Button>
+                              <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => void checkSelectedExtensions(true)}>{t("checkoutCheckAgain")}</Button>
                             </AlertDescription>
                           </Alert>
                         )}
@@ -1856,21 +1953,23 @@ export function PreviewCheckout({
                             {extensionCheckPending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
                             {extensionCheckPending ? t("checkoutDomainCheckingShort") : t("checkoutDomainLiveResults")}
                           </strong>
-                          <span className="text-muted-foreground">{extensionCheckPending ? normalizedDomainValue.split(".")[0] : t("checkoutDomainCheckedNow")}</span>
+                          <span className="text-muted-foreground">{extensionCheckPending ? domainSearchName : t("checkoutDomainCheckedNow")}</span>
                         </div>
                         <div className="overflow-hidden rounded-[14px] border bg-card">
-                        {extensionCheckPending && selectedExtensions
-                          .filter((extension) => !extensionResults.some((result) => result.domain === `${normalizedDomainValue.split(".")[0]}.${extension}`))
-                          .map((extension) => (
-                          <div key={extension} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-3.5">
+                        {extensionCheckPending && newDomainSearchDomains
+                          .filter((domain) => !extensionResults.some((result) => result.domain === domain))
+                          .map((domain) => (
+                          <div key={domain} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-3.5">
                             <span className="grid min-w-0 gap-1.5"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-20 animate-pulse rounded-full bg-muted" /></span>
                             <span className="h-4 w-14 animate-pulse rounded bg-muted" />
                             <span className="col-span-2 h-[34px] w-full animate-pulse rounded-[9px] bg-muted min-[560px]:col-auto min-[560px]:w-[68px]" />
                           </div>
                         ))}
                         {[...extensionResults]
-                          .filter((result) => result.status !== "service_error")
-                          .sort((left, right) => selectedExtensions.indexOf(left.domain?.split(".").at(-1) ?? "") - selectedExtensions.indexOf(right.domain?.split(".").at(-1) ?? ""))
+                          .filter((result) => result.domain && newDomainSearchDomains.includes(result.domain))
+                          .sort((left, right) =>
+                            newDomainSearchDomains.indexOf(left.domain ?? "") -
+                            newDomainSearchDomains.indexOf(right.domain ?? ""))
                           .map((result) => {
                           const available = Boolean(result.ok && result.domain && result.quotes)
                           const premium = result.status === "premium"
@@ -1880,7 +1979,7 @@ export function PreviewCheckout({
                                 <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-foreground">{result.domain}</strong>
                                 <span className={cn("flex min-h-6 w-fit items-center gap-1 rounded-full px-2 text-[0.625rem] font-bold", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", !available && !premium && "bg-muted text-muted-foreground")}>
                                   {available ? <Check className="size-[15px]" aria-hidden /> : premium ? <TriangleAlert className="size-[15px]" aria-hidden /> : result.status === "unavailable" ? <X className="size-[15px]" aria-hidden /> : <CircleAlert className="size-[15px]" aria-hidden />}
-                                  {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "service_error" ? t("checkoutExtensionError") : t("checkoutExtensionAvailable")}
+                                  {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "release_pending" ? t("checkoutDomainReleasePendingTitle") : result.status === "service_error" ? t("checkoutExtensionError") : result.status === "invalid" ? t("checkoutDomainInvalid") : t("checkoutExtensionAvailable")}
                                 </span>
                               </span>
                               <span className="grid self-start pt-0.5 text-right">
@@ -1909,17 +2008,21 @@ export function PreviewCheckout({
                   <Alert
                     className={cn(
                       "mt-2 rounded-[13px] border",
-                      checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked
+                      migrationPreflightFailed
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked
                         ? "border-success/30 bg-success/10 text-success"
                         : "border-warning/30 bg-warning/10 text-warning",
                     )}
-                    role={checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked ? "status" : "alert"}
+                    role={!migrationPreflightFailed && checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked ? "status" : "alert"}
                   >
-                    {checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked
+                    {!migrationPreflightFailed && checkState.ok && !migrationTransferBlocked && !migrationReleaseBlocked
                       ? <CheckCircle2 className="size-4" aria-hidden />
                       : <CircleAlert className="size-4" aria-hidden />}
                     <AlertTitle>
-                      {migrationTransferBlocked || migrationReleaseBlocked
+                      {migrationPreflightFailed
+                        ? t("checkoutMigrationPreflightUnavailableTitle")
+                        : migrationTransferBlocked || migrationReleaseBlocked
                         ? t("checkoutMigrationTransferBlockedTitle")
                         : checkState.migrationPreflightOnly
                           ? t("checkoutMigrationPreflightComplete")
@@ -1927,12 +2030,28 @@ export function PreviewCheckout({
                             ? t("checkoutMigrationReadyAutomatic")
                             : t("checkoutMigrationUnsupported")}
                     </AlertTitle>
-                    <AlertDescription>{checkState.message}</AlertDescription>
+                    <AlertDescription className={migrationPreflightFailed ? "grid gap-3" : undefined}>
+                      <span>{checkState.message}</span>
+                      {migrationPreflightFailed && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-fit"
+                          onClick={retryExistingDomainPreflight}
+                          disabled={checkPending}
+                        >
+                          {checkPending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
+                          {t("checkoutCheckAgain")}
+                        </Button>
+                      )}
+                    </AlertDescription>
                   </Alert>
                 )}
-                {domainMode === "existing_domain" && migrationReadinessLedger}
+                {domainMode === "existing_domain" && !migrationPreflightFailed && migrationReadinessLedger}
                 {domainMode === "existing_domain" &&
                   existingDomainMigrationEnabled &&
+                  !migrationPreflightFailed &&
                   !migrationTransferBlocked &&
                   !migrationReleaseBlocked &&
                   (
@@ -2124,7 +2243,7 @@ export function PreviewCheckout({
                   </Alert>
                 )}
 
-              {primaryDomainUnavailable && (
+              {primaryNewDomainUnavailable && (
                 <DomainSuggestions
                   loading={suggestionsPending}
                   suggestions={suggestions}

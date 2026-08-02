@@ -47,6 +47,7 @@ import {
   automaticMigrationSourceEnabled,
   existingDomainPublicEvidenceHash,
   existingDomainMigrationCheckoutEnabled,
+  ExistingDomainPublicEvidenceError,
   gtldTransferEligibilityDeclarationRequired,
   inspectExistingDomainPublicEvidence,
   type ExistingDomainPublicEvidence,
@@ -245,6 +246,21 @@ const domainErrorStatus = (error: unknown): NonNullable<PreviewCheckoutActionSta
   return "service_error"
 }
 
+const logExistingDomainPreflightFailure = (
+  error: unknown,
+  context: Awaited<ReturnType<typeof requirePreviewCheckoutContext>>,
+  extension: string,
+): void => {
+  console.warn("Preview checkout existing-domain preflight failed", {
+    operation: "existing_domain_public_preflight",
+    category: error instanceof ExistingDomainPublicEvidenceError
+      ? error.category
+      : "unknown",
+    clientSlug: context.clientSlug,
+    tld: extension,
+  })
+}
+
 const acquireAutomaticMigrationSourceFromForm = async (
   domain: string,
   sourceMethod: MigrationSourceMechanism,
@@ -360,7 +376,8 @@ async function checkExistingDomainMigration(
             : t("checkoutMigrationPublicPreflightReleasePending"),
         requestToken,
       }
-    } catch {
+    } catch (error) {
+      logExistingDomainPreflightFailure(error, context, normalized.extension)
       return {
         ok: false,
         status: "service_error",
@@ -378,7 +395,8 @@ async function checkExistingDomainMigration(
   >
   try {
     publicEvidence = await inspectExistingDomainPublicEvidence(domain)
-  } catch {
+  } catch (error) {
+    logExistingDomainPreflightFailure(error, context, normalized.extension)
     return {
       ok: false,
       status: "service_error",

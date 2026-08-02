@@ -64,6 +64,33 @@ const cloudflareSource = (zone: CompleteZoneExport) => ({
 })
 
 describe("automatic migration source gates", () => {
+  it.each([
+    ["nameserver lookup", {
+      resolveNsImpl: async () => {
+        throw new Error("resolver unavailable")
+      },
+      resolveDsImpl: async () => [],
+    }, "nameserver_lookup_failed"],
+    ["parent DS lookup", {
+      resolveNsImpl: async () => ["ns1.example.test"],
+      resolveDsImpl: async () => {
+        throw new Error("DS resolver unavailable")
+      },
+    }, "parent_ds_lookup_failed"],
+  ] as const)("classifies a failed %s without weakening preflight safety", async (
+    _label,
+    resolvers,
+    category,
+  ) => {
+    await expect(inspectExistingDomainPublicEvidence("example.nl", {
+      ...resolvers,
+      fetchImpl: (async () => new Response(null, { status: 404 })) as typeof fetch,
+    })).rejects.toMatchObject({
+      name: "ExistingDomainPublicEvidenceError",
+      category,
+    })
+  })
+
   it("fails closed independently for each source mechanism", () => {
     const sourceEnv = {
       COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED: "1",

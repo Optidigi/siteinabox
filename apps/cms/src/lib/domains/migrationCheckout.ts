@@ -142,6 +142,17 @@ const timeout = async <T>(promise: Promise<T>, milliseconds: number): Promise<T>
   }
 }
 
+export type ExistingDomainPublicEvidenceFailureCategory =
+  | "nameserver_lookup_failed"
+  | "parent_ds_lookup_failed"
+
+export class ExistingDomainPublicEvidenceError extends Error {
+  constructor(readonly category: ExistingDomainPublicEvidenceFailureCategory) {
+    super(category)
+    this.name = "ExistingDomainPublicEvidenceError"
+  }
+}
+
 type RdapDomainEvidence = {
   registrar: string | null
   statuses: string[]
@@ -353,8 +364,8 @@ export async function inspectExistingDomainPublicEvidence(
   const resolveNsImpl = input.resolveNsImpl ?? resolveNs
   const fetchImpl = input.fetchImpl ?? fetch
   const now = input.now ?? new Date()
-  const dsEvidencePromise = input.resolveDsImpl
-    ? timeout(input.resolveDsImpl(domain).then((records) => ({
+  const dsEvidenceSource = input.resolveDsImpl
+    ? Promise.resolve().then(() => input.resolveDsImpl!(domain)).then((records) => ({
         records: records.flatMap((record) => {
           const value = record as {
             keyTag?: unknown
@@ -382,8 +393,8 @@ export async function inspectExistingDomainPublicEvidence(
           return { records: [], ttl: null }
         }
         throw error
-      }), 3_000)
-    : timeout(verifyParentDsAbsent(domain).then((evidence) => {
+      })
+    : verifyParentDsAbsent(domain).then((evidence) => {
         if (evidence.status === "indeterminate") {
           throw new Error("Parent DS inspection failed.")
         }
@@ -391,9 +402,19 @@ export async function inspectExistingDomainPublicEvidence(
           records: evidence.records,
           ttl: evidence.ttl ?? null,
         }
-      }), 20_000)
+      })
+  const dsEvidencePromise = timeout(
+    dsEvidenceSource,
+    input.resolveDsImpl ? 3_000 : 20_000,
+  ).catch((error) => {
+    if (error instanceof ExistingDomainPublicEvidenceError) throw error
+    throw new ExistingDomainPublicEvidenceError("parent_ds_lookup_failed")
+  })
+  const nameserversPromise = timeout(resolveNsImpl(domain), 3_000).catch(() => {
+    throw new ExistingDomainPublicEvidenceError("nameserver_lookup_failed")
+  })
   const [nameservers, dsEvidence, rdap] = await Promise.all([
-    timeout(resolveNsImpl(domain), 3_000),
+    nameserversPromise,
     dsEvidencePromise,
     rdapDomainEvidence(domain, fetchImpl).catch(() => null),
   ])

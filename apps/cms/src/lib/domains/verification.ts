@@ -498,6 +498,79 @@ type DsRecord = {
   digest: string
 }
 
+type DsLookup = {
+  records: DsRecord[]
+  ttl: number | null
+}
+
+type DigDsLookupInput = {
+  hostname: string
+  nameserver?: string
+  authoritative: boolean
+}
+
+const parseDigDsLookup = (
+  stdout: string,
+  input: DigDsLookupInput,
+): DsLookup => {
+  const status = stdout.match(/^;;\s+->>HEADER<<-.*\bstatus:\s*([A-Z]+),/m)?.[1]
+  const flags = stdout.match(/^;;\s+flags:\s*([^;]+);/m)?.[1]
+    ?.trim()
+    .split(/\s+/) ?? []
+  if (status !== "NOERROR") {
+    throw new Error("parent_ds_response_status_invalid")
+  }
+  if (input.authoritative && !flags.includes("aa")) {
+    throw new Error("parent_ds_authoritative_answer_missing")
+  }
+
+  const records: DsRecord[] = []
+  const ttls: number[] = []
+  for (const line of stdout.split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean)) {
+    if (line.startsWith(";")) continue
+    const fields = line.split(/\s+/)
+    const dsIndex = fields.findIndex((field) => field.toUpperCase() === "DS")
+    if (dsIndex < 0) {
+      throw new Error("parent_ds_answer_invalid")
+    }
+    const ttl = Number(fields[1])
+    const keyTag = Number(fields[dsIndex + 1])
+    const algorithm = Number(fields[dsIndex + 2])
+    const digestType = Number(fields[dsIndex + 3])
+    const digest = fields.slice(dsIndex + 4).join("").toUpperCase()
+    if (
+      !Number.isSafeInteger(ttl) || ttl <= 0 ||
+      !Number.isSafeInteger(keyTag) || keyTag < 0 ||
+      !Number.isSafeInteger(algorithm) || algorithm < 0 ||
+      !Number.isSafeInteger(digestType) || digestType < 0 ||
+      !/^[A-F0-9]+$/.test(digest)
+    ) {
+      throw new Error("parent_ds_answer_invalid")
+    }
+    records.push({ keyTag, algorithm, digestType, digest })
+    ttls.push(ttl)
+  }
+  return {
+    records,
+    ttl: ttls.length > 0 ? Math.max(...ttls) : null,
+  }
+}
+
+const lookupDsWithDig = async (input: DigDsLookupInput): Promise<DsLookup> => {
+  const { stdout } = await execFileAsync("dig", [
+    "+time=5",
+    "+tries=1",
+    ...(input.authoritative ? ["+norecurse"] : []),
+    "+noall",
+    "+comments",
+    "+answer",
+    ...(input.nameserver ? [`@${input.nameserver}`] : []),
+    input.hostname,
+    "DS",
+  ], { encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1_024 })
+  return parseDigDsLookup(stdout, input)
+}
+
 export async function verifyParentDsAbsent(
   domain: string,
   options: {
@@ -508,6 +581,7 @@ export async function verifyParentDsAbsent(
       nameserver: string,
       hostname: string,
     ) => Promise<{ records: DsRecord[]; ttl: number | null }>
+    digDsLookupImpl?: (input: DigDsLookupInput) => Promise<DsLookup>
   } = {},
 ): Promise<ParentDsVerification> {
   try {
@@ -546,47 +620,20 @@ export async function verifyParentDsAbsent(
           .map(canonicalDnsName),
       )].sort()
       if (parentNameservers.length < 2) throw new Error("parent_nameservers_incomplete")
-      const authoritativeResults: string[][] = []
-      const authoritativeTtls: number[] = []
-      for (const nameserver of parentNameservers) {
-        const lookup = options.authoritativeDsLookupImpl
+      const digDsLookup = options.digDsLookupImpl ?? lookupDsWithDig
+      const authoritativeLookups = await Promise.all(parentNameservers.map(
+        async (nameserver) => options.authoritativeDsLookupImpl
           ? await options.authoritativeDsLookupImpl(nameserver, hostname)
-          : await (async () => {
-              const { stdout } = await execFileAsync("dig", [
-                "+time=5",
-                "+tries=1",
-                "+norecurse",
-                "+noall",
-                "+answer",
-                `@${nameserver}`,
-                hostname,
-                "DS",
-              ], { encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1_024 })
-              const records: DsRecord[] = []
-              const ttls: number[] = []
-              for (const line of stdout.split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean)) {
-                const fields = line.split(/\s+/)
-                const dsIndex = fields.findIndex((field) => field.toUpperCase() === "DS")
-                const ttl = Number(fields[1])
-                if (dsIndex < 0 || !Number.isSafeInteger(ttl) || ttl <= 0) {
-                  throw new Error("parent_ds_authoritative_answer_invalid")
-                }
-                records.push({
-                  keyTag: Number(fields[dsIndex + 1]),
-                  algorithm: Number(fields[dsIndex + 2]),
-                  digestType: Number(fields[dsIndex + 3]),
-                  digest: fields.slice(dsIndex + 4).join(""),
-                })
-                ttls.push(ttl)
-              }
-              return {
-                records,
-                ttl: ttls.length > 0 ? Math.max(...ttls) : null,
-              }
-            })()
-        authoritativeResults.push(normalizeDs(lookup.records))
-        if (lookup.ttl != null) authoritativeTtls.push(lookup.ttl)
-      }
+          : await digDsLookup({
+              hostname,
+              nameserver,
+              authoritative: true,
+            }),
+      ))
+      const authoritativeResults = authoritativeLookups.map((lookup) =>
+        normalizeDs(lookup.records))
+      const authoritativeTtls = authoritativeLookups.flatMap((lookup) =>
+        lookup.ttl == null ? [] : [lookup.ttl])
       normalized = authoritativeResults[0] ?? []
       if (authoritativeResults.some((records) =>
         records.length !== normalized.length ||
@@ -609,17 +656,10 @@ export async function verifyParentDsAbsent(
           reason: "parent_ds_authoritative_ttl_missing",
         }
       }
-      const recursive = normalizeDs(parseDs(await (
-        options.resolveRecursiveDsImpl
-          ? options.resolveRecursiveDsImpl(hostname)
-          : resolve(hostname, "DS")
-      ).catch((error) => {
-        const code = error && typeof error === "object" && "code" in error
-          ? String(error.code)
-          : ""
-        if (["ENODATA", "ENOTFOUND", "ENONAME"].includes(code)) return []
-        throw error
-      })))
+      const recursiveLookup = options.resolveRecursiveDsImpl
+        ? { records: parseDs(await options.resolveRecursiveDsImpl(hostname)), ttl: null }
+        : await digDsLookup({ hostname, authoritative: false })
+      const recursive = normalizeDs(recursiveLookup.records)
       if (
         recursive.length !== normalized.length ||
         recursive.some((record, index) => record !== normalized[index])
