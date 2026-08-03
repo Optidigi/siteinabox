@@ -154,6 +154,21 @@ async function renderCheckoutProps(
 }
 
 describe("preview checkout page domain initialization", () => {
+  it("passes the selected-domain quote as a serializable bound server action", async () => {
+    const props = await renderCheckoutProps()
+    const formData = new FormData()
+    const quoteDomainAction = props.quoteDomainAction
+    if (!quoteDomainAction) throw new Error("Expected selected-domain quote action.")
+
+    await quoteDomainAction(formData)
+
+    expect(mocks.checkDomainAction).toHaveBeenCalledWith(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )
+  })
+
   it("does not initialize checkout from the tenant domain when no domain order is ready", async () => {
     const props = await renderCheckoutProps()
 
