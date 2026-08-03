@@ -128,6 +128,8 @@ describe("customer preview UI", () => {
   it("renders checkout as an accessible two-decision authoritative-profile flow", () => {
     const checkout = read("src/components/preview/PreviewCheckout.tsx")
     const stepper = read("src/components/preview/CheckoutStepper.tsx")
+    const nl = JSON.parse(read("src/locales/nl.json")) as { preview: Record<string, string> }
+    const en = JSON.parse(read("src/locales/en.json")) as { preview: Record<string, string> }
     const page = read("src/app/(frontend)/(site-preview)/[clientSlug]/checkout/page.tsx")
     const actions = read("src/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions.ts")
     const primaryAction = read("src/components/preview/checkout/CheckoutPrimaryAction.tsx")
@@ -180,6 +182,15 @@ describe("customer preview UI", () => {
     expect(stepper).toContain("activeHeadingRef")
     expect(checkout).toContain("checkoutOnlineTitle")
     expect(checkout).toContain("checkoutOnlineDescription")
+    expect(checkout).toContain("checkoutDomainContentTitle")
+    expect(checkout).toContain("checkoutDomainContentDescription")
+    expect(checkout).toContain("checkoutBackToDomain")
+    expect(nl.preview.checkoutPlanMonthly).toBe("Maandelijks")
+    expect(nl.preview.checkoutPlanAnnual).toBe("Jaarlijks")
+    expect(en.preview.checkoutPlanMonthly).toBe("Monthly")
+    expect(en.preview.checkoutPlanAnnual).toBe("Yearly")
+    expect(nl.preview.checkoutDeclarationsRequiredDescription).toContain("beide")
+    expect(en.preview.checkoutDeclarationsRequiredDescription).toContain("both")
     expect(checkout).toContain('acceptedBillingPeriod ?? initialProgress?.billingPeriod ?? "monthly"')
     expect(checkout).toContain('variant="brand"')
     expect(checkout).toContain("data-migration-source-card")

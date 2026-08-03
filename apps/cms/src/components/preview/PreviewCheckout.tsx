@@ -211,7 +211,7 @@ type PreviewCheckoutProps = {
   quoteDomainAction?: (formData: FormData) => Promise<PreviewCheckoutActionState>
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
-  saveProgressAction?: (draft: CheckoutProgressDraft) => Promise<unknown>
+  saveProgressAction?: (draft: CheckoutProgressDraft) => Promise<{ ok: boolean; message?: string }>
   startPaymentAction: PreviewCheckoutAction
   loadLiveStatusAction?: () => Promise<PreviewCheckoutLiveStatus>
   recollectAcceptedMigrationInputAction?: (
@@ -361,11 +361,10 @@ export function PreviewCheckout({
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
   // A restored decision never bypasses a fresh quote: progress is intent only.
-  const initialDecision: CheckoutStep = initialStep === "domain"
-    ? "domain"
-    : initialProgress?.decision === "review" && !initialQuotes
-      ? "domain"
-      : "review"
+  const initialDecision: CheckoutStep = initialStep !== "domain" ||
+    (initialProgress?.decision === "review" && initialQuotes)
+    ? "review"
+    : "domain"
   const [step, setStep] = React.useState<CheckoutStep>(initialDecision)
   const [checkState, checkAction, checkPending] = useActionState(
     checkDomainAction,
@@ -494,23 +493,30 @@ export function PreviewCheckout({
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
   const [termsAccepted, setTermsAccepted] = React.useState(false)
   const [legalSubmitRequested, setLegalSubmitRequested] = React.useState(false)
+  const [progressTransitionPending, setProgressTransitionPending] = React.useState(false)
+  const progressSaveChainRef = React.useRef<Promise<unknown>>(Promise.resolve())
+  const resumeAttemptedRef = React.useRef(false)
+  const resumeReviewRef = React.useRef(initialProgress?.decision === "review")
   const normalizedDomainValue = domainValue.trim().toLowerCase()
-  React.useEffect(() => {
-    if (!saveProgressAction) return
-    const timer = window.setTimeout(() => {
-      void saveProgressAction({
-        domainMode,
-        domainQuery: normalizedDomainValue,
-        selectedDomain: selectedDomainIntent,
-        decision: step,
-        billingPeriod,
-        migrationSourceMechanism: domainMode === "existing_domain"
-          ? migrationSourceMethod || null
-          : null,
-        profileDraft: details,
-      })
-    }, 500)
-    return () => window.clearTimeout(timer)
+  const persistProgress = React.useCallback((overrides: Partial<CheckoutProgressDraft> = {}) => {
+    if (!saveProgressAction) return Promise.resolve(true)
+    const draft: CheckoutProgressDraft = {
+      domainMode,
+      domainQuery: normalizedDomainValue,
+      selectedDomain: selectedDomainIntent,
+      decision: step,
+      billingPeriod,
+      migrationSourceMechanism: domainMode === "existing_domain"
+        ? migrationSourceMethod || null
+        : null,
+      profileDraft: details,
+      ...overrides,
+    }
+    const save = progressSaveChainRef.current
+      .catch(() => undefined)
+      .then(() => saveProgressAction(draft))
+    progressSaveChainRef.current = save
+    return save.then((result) => result.ok, () => false)
   }, [
     billingPeriod,
     details,
@@ -520,6 +526,16 @@ export function PreviewCheckout({
     saveProgressAction,
     selectedDomainIntent,
     step,
+  ])
+  React.useEffect(() => {
+    if (!saveProgressAction) return
+    const timer = window.setTimeout(() => {
+      void persistProgress()
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [
+    persistProgress,
+    saveProgressAction,
   ])
   const domainSearchInput = React.useMemo(
     () => parseDomainSearchInput(domainValue),
@@ -860,6 +876,11 @@ export function PreviewCheckout({
         : selectedDomain === readyDomain)
     ),
   )
+  React.useEffect(() => {
+    if (!domainIsReady || !resumeReviewRef.current) return
+    resumeReviewRef.current = false
+    setStep("review")
+  }, [domainIsReady])
   const domainResultKind = domainMode === "new_registration"
     ? extensionCheckPending
       ? "loading"
@@ -924,8 +945,8 @@ export function PreviewCheckout({
 
   const quoteExtensionResult = React.useCallback(async (
     result: PreviewCheckoutActionState,
-  ) => {
-    if (!result.ok || !result.domain || !quoteDomainAction) return
+  ): Promise<boolean> => {
+    if (!result.ok || !result.domain || !quoteDomainAction) return false
     const quoteToken = nextRequestToken()
     latestQuoteRequestTokenRef.current = quoteToken
     setDomainQuotePending(true)
@@ -940,14 +961,18 @@ export function PreviewCheckout({
         !quoted.ok ||
         !quoted.quotes ||
         quoted.domain !== result.domain
-      ) return
+      ) return false
       setCheckedDomain(quoted.domain)
       setSelectedDomainIntent(quoted.domain)
       setQuotes(quoted.quotes)
+      return await persistProgress({
+        domainMode: "new_registration",
+        selectedDomain: quoted.domain,
+      })
     } finally {
       if (latestQuoteRequestTokenRef.current === quoteToken) setDomainQuotePending(false)
     }
-  }, [quoteDomainAction])
+  }, [persistProgress, quoteDomainAction])
 
   const checkSelectedExtensions = React.useCallback(async (force = false) => {
     if (!domainSearchHref) return
@@ -988,7 +1013,13 @@ export function PreviewCheckout({
       const restoredSelection = results.find((result) =>
         result.domain === selectedDomainIntent && result.ok)
       if (restoredSelection) {
-        await quoteExtensionResult(restoredSelection)
+        const restored = await quoteExtensionResult(restoredSelection)
+        if (restored && resumeReviewRef.current) {
+          if (await persistProgress({ decision: "review", selectedDomain: restoredSelection.domain })) {
+            resumeReviewRef.current = false
+            setStep("review")
+          }
+        }
       } else if (results.some((result) => result.domain === selectedDomainIntent)) {
         setSelectedDomainIntent(null)
       }
@@ -1009,6 +1040,7 @@ export function PreviewCheckout({
     domainSearchHref,
     domainValue,
     normalizedDomainValue,
+    persistProgress,
     quoteExtensionResult,
     selectedDomainIntent,
     t,
@@ -1047,7 +1079,13 @@ export function PreviewCheckout({
       const restoredSelection = more.find((result) =>
         result.domain === selectedDomainIntent && result.ok)
       if (restoredSelection) {
-        await quoteExtensionResult(restoredSelection)
+        const restored = await quoteExtensionResult(restoredSelection)
+        if (restored && resumeReviewRef.current) {
+          if (await persistProgress({ decision: "review", selectedDomain: restoredSelection.domain })) {
+            resumeReviewRef.current = false
+            setStep("review")
+          }
+        }
       } else if (more.some((result) => result.domain === selectedDomainIntent)) {
         setSelectedDomainIntent(null)
       }
@@ -1075,6 +1113,13 @@ export function PreviewCheckout({
     setDomainValue("")
     lastDomainSearchKeyRef.current = null
     lastSubmittedDomainRef.current = null
+    void persistProgress({
+      domainMode: mode,
+      domainQuery: "",
+      selectedDomain: null,
+      migrationSourceMechanism: null,
+      decision: "domain",
+    })
   }
 
   const updateMigrationSourceMethod = (
@@ -1084,6 +1129,11 @@ export function PreviewCheckout({
     setMigrationSourceMethod(method)
     setCheckedDomain(null)
     setQuotes(null)
+    void persistProgress({
+      migrationSourceMechanism: method,
+      selectedDomain: null,
+      decision: "domain",
+    })
   }
 
   const retryExistingDomainPreflight = () => {
@@ -1091,6 +1141,21 @@ export function PreviewCheckout({
     setMigrationPreflight(null)
     window.setTimeout(() => domainFormRef.current?.requestSubmit(), 0)
   }
+
+  React.useEffect(() => {
+    if (
+      resumeAttemptedRef.current ||
+      !initialProgress?.selectedDomain ||
+      initialProgress.decision !== "review" ||
+      initialQuotes
+    ) return
+    resumeAttemptedRef.current = true
+    if (initialProgress.domainMode === "new_registration") {
+      void checkSelectedExtensions(true)
+      return
+    }
+    window.setTimeout(() => domainFormRef.current?.requestSubmit(), 0)
+  }, [checkSelectedExtensions, initialProgress, initialQuotes])
 
   const updateDetail = <K extends keyof CheckoutProfileDraft>(
     key: K,
@@ -1147,7 +1212,7 @@ export function PreviewCheckout({
     ? "pending_provider"
     : paymentStatusLive
   const paymentInProgress = paymentPending || ["pending_provider", "open", "authorized"].includes(actionPaymentStatus)
-  const presentation = createCheckoutPresentation({
+  const basePresentation = createCheckoutPresentation({
     decision: step,
     paymentActive,
     fulfilmentActive,
@@ -1175,6 +1240,17 @@ export function PreviewCheckout({
       migrationSourceMethod,
     ),
   })
+  const presentation = progressTransitionPending &&
+    basePresentation.primaryAction.kind === "continue_to_review"
+    ? {
+        ...basePresentation,
+        primaryAction: {
+          ...basePresentation.primaryAction,
+          disabled: true,
+          pending: true,
+        },
+      }
+    : basePresentation
   const dueNowLabel = money(
     locale,
     grossAmountMinor,
@@ -1185,15 +1261,41 @@ export function PreviewCheckout({
     : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive)
       ? t("checkoutPaymentNotCompletedTitle")
       : t("checkoutPaymentProcessingTitle")
+  const continueToReview = async () => {
+    if (progressTransitionPending || !domainIsReady) return
+    setProgressTransitionPending(true)
+    try {
+      if (await persistProgress({ decision: "review", selectedDomain })) {
+        setStep("review")
+      }
+    } finally {
+      setProgressTransitionPending(false)
+    }
+  }
+  const returnToDomain = async () => {
+    if (progressTransitionPending || acceptedOrderId != null) return
+    setProgressTransitionPending(true)
+    try {
+      if (await persistProgress({ decision: "domain" })) {
+        setStep("domain")
+      }
+    } finally {
+      setProgressTransitionPending(false)
+    }
+  }
+  const updateBillingPeriod = (period: BillingPeriod) => {
+    setBillingPeriod(period)
+    void persistProgress({ billingPeriod: period })
+  }
   const primaryActionHandlers = {
-    onDomainNext: () => setStep("review" as const),
+    onDomainNext: () => void continueToReview(),
     onDomainCheck: () => {
       if (domainMode === "new_registration") void checkSelectedExtensions()
       else domainFormRef.current?.requestSubmit()
     },
     onDetailsNext: () => {
       if (detailsDirty || !savedProfile) setDetailsEditorOpen(true)
-      else setStep("review")
+      else void continueToReview()
     },
     onPay: submitPayment,
   }
@@ -1732,6 +1834,14 @@ export function PreviewCheckout({
           <Card data-checkout-main-card className="relative scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 shadow-sm min-[560px]:rounded-[22px]">
             <PreviewCheckoutStepper step="domain" activeHeadingRef={stepHeadingRef} />
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[26px] min-[560px]:pt-[22px]">
+              <div>
+                <h3 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
+                  {t("checkoutDomainContentTitle")}
+                </h3>
+                <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                  {t("checkoutDomainContentDescription")}
+                </p>
+              </div>
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
                   <AlertTitle>{t("checkoutMigrationCloudflareFailedTitle")}</AlertTitle>
@@ -2203,7 +2313,8 @@ export function PreviewCheckout({
                 <ShieldCheck className="mt-0.5 size-[15px] shrink-0" aria-hidden />
                 <span>{t("checkoutSignedQuoteNote")}</span>
               </p>
-              <Button type="button" variant="brand" className="hidden min-h-11 shrink-0 min-[880px]:inline-flex" disabled={!domainIsReady} onClick={() => setStep("review")}>
+              <Button type="button" variant="brand" className="hidden min-h-11 shrink-0 min-[880px]:inline-flex" disabled={!domainIsReady || progressTransitionPending} onClick={() => void continueToReview()}>
+                {progressTransitionPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
                 {t("checkoutContinueReview")}
                 <ArrowRight className="size-[18px]" aria-hidden />
               </Button>
@@ -2229,6 +2340,14 @@ export function PreviewCheckout({
           <PreviewCheckoutStepper step="review" activeHeadingRef={stepHeadingRef} />
           <Card className="gap-0 rounded-none border-0 py-0 shadow-none">
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[22px] min-[560px]:pt-[22px]">
+              {acceptedOrderId == null && (
+                <Button type="button" variant="ghost" className="w-fit px-0 text-muted-foreground hover:bg-transparent hover:text-foreground" disabled={progressTransitionPending} onClick={() => void returnToDomain()}>
+                  {progressTransitionPending
+                    ? <Loader2 className="size-4 animate-spin" aria-hidden />
+                    : <ArrowLeft className="size-4" aria-hidden />}
+                  {t("checkoutBackToDomain")}
+                </Button>
+              )}
               <div className="border-y" aria-label={t("checkoutKnownDetailsLabel")}>
                 <ReviewGroup
                   group="company"
@@ -2703,7 +2822,7 @@ export function PreviewCheckout({
                   type="single"
                   value={billingPeriod}
                   onValueChange={(value) => {
-                    if (acceptedOrderId == null && (value === "annual" || value === "monthly")) setBillingPeriod(value)
+                    if (acceptedOrderId == null && (value === "annual" || value === "monthly")) updateBillingPeriod(value)
                   }}
                   variant="outline"
                   spacing={1}
