@@ -114,7 +114,7 @@ try {
     const box = node.getBoundingClientRect()
     return { height: box.height, left: box.left, right: box.right }
   })
-  assert.ok(phoneProgress.height <= 56, "The phone progress indicator must stay compact.")
+  assert.ok(phoneProgress.height >= 60, "The phone progress cards must retain their intended presence.")
   const accessibleProgress = page.getByRole("progressbar", { name: "Website address" })
   assert.equal(await accessibleProgress.getAttribute("aria-valuenow"), "1")
   assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "2")
@@ -136,10 +136,13 @@ try {
 
   const domainInput = page.locator("#checkout-domain")
   await domainInput.fill("service-error.nl")
+  assert.equal(await page.getByRole("alert").count(), 0, "Typing alone must not check availability.")
+  await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await page.getByRole("alert").first().waitFor()
   assert.equal(await page.getByRole("button", { name: "Check again", exact: true }).isVisible(), true)
 
   await domainInput.fill("analytical-engines.nl")
+  await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await page.getByText("analytical-engines.nl", { exact: true }).waitFor()
   assert.equal(
     await page.getByText("analytical-engines.com", { exact: true }).count(),
@@ -150,6 +153,7 @@ try {
   await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await domainInput.fill("analytical-engines")
+  await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.setViewportSize({ width: 320, height: 568 })
@@ -162,11 +166,22 @@ try {
   assert.equal(await page.getByText("Unavailable", { exact: true }).count(), 1)
   assert.equal(await page.getByText("Premium", { exact: true }).count(), 1)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
+  const domainOrderBeforeSelection = await page.locator("[data-domain-status]").evaluateAll((rows) =>
+    rows.map((row) => row.querySelector("strong")?.textContent?.trim()))
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
+  assert.deepEqual(
+    await page.locator("[data-domain-status]").evaluateAll((rows) =>
+      rows.map((row) => row.querySelector("strong")?.textContent?.trim())),
+    domainOrderBeforeSelection,
+    "Selecting a domain must not reorder discovery rows.",
+  )
+  assert.equal(await domainInput.inputValue(), "analytical-engines")
 
   await domainInput.fill("stale-result")
+  await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await domainInput.fill("fresh-result")
+  await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await page.waitForTimeout(800)
   assert.equal(
     await page.getByText(/^stale-result\./).count(),
@@ -184,6 +199,7 @@ try {
     "Automatic extension checks must not expose a separate extension picker.",
   )
   await domainInput.fill("analytical-engines")
+  await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
@@ -310,6 +326,7 @@ try {
     "The phone action row must not compete with domain search before a domain is selected.",
   )
   await compactPage.locator("#checkout-domain").fill("analytical-engines")
+  await compactPage.getByRole("button", { name: "Check availability", exact: true }).click()
   await compactPage.getByText("analytical-engines.nl", { exact: true }).waitFor()
   await compactPage.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await compactPage.getByText("analytical-engines.net", { exact: true }).waitFor()
@@ -346,7 +363,12 @@ try {
   assert.ok(compactGeometry.cardRight <= compactGeometry.shellRight)
   assert.equal(compactGeometry.progressLeft, compactGeometry.cardLeft)
   assert.equal(compactGeometry.progressRight, compactGeometry.cardRight)
-  assert.ok(compactGeometry.progressHeight != null && compactGeometry.progressHeight <= 56)
+  assert.ok(
+    compactGeometry.progressHeight != null &&
+      compactGeometry.progressHeight >= 60 &&
+      compactGeometry.progressHeight <= 90,
+    "The compact progress cards must stay prominent without dominating the viewport.",
+  )
   assert.equal(compactGeometry.shellWidth, 300, "The 320px prototype workspace is 300px wide.")
   assert.ok(
     compactGeometry.shellLeft != null && Math.abs(compactGeometry.shellLeft - 10) <= 1,
@@ -671,6 +693,7 @@ try {
       await scenarioPage.getByLabel(/Business or domain name|Domain name|Domain you already own|Domeinnaam|Domein dat je al bezit/i).fill(
         scenarioId === "domain-loading" ? "loading-state" : "analytical-engines",
       )
+      await scenarioPage.getByRole("button", { name: /Check availability|Controleer beschikbaarheid/i }).click()
       if (scenarioId === "domain-loading") {
         await scenarioPage.locator('[data-domain-status="loading"]').first().waitFor()
         return
@@ -695,6 +718,7 @@ try {
     }
     if (scenarioId === "domain-error") {
       await scenarioPage.getByLabel(/Business or domain name|Domain name|Domain you already own|Domeinnaam|Domein dat je al bezit/i).fill("service-error.nl")
+      await scenarioPage.getByRole("button", { name: /Check availability|Controleer beschikbaarheid/i }).click()
       await scenarioPage.getByRole("alert").first().waitFor()
       return
     }
