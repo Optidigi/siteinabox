@@ -19,6 +19,7 @@ import {
 } from "@/collections/CommerceRecords"
 import { Forms } from "@/collections/Forms"
 import { DomainMigrations } from "@/collections/DomainMigrations"
+import { CheckoutProgressDrafts } from "@/collections/CheckoutProgressDrafts"
 import { MigrationCheckoutSecrets } from "@/collections/MigrationCheckoutSecrets"
 import { MigrationSourceAuthorizations } from "@/collections/MigrationSourceAuthorizations"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
@@ -47,6 +48,7 @@ import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
+import { purgeExpiredCheckoutProgressDraftsTask } from "@/lib/jobs/purgeExpiredCheckoutProgressDraftsTask"
 import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTask"
 import { prepareDomainTransferOutTask } from "@/lib/jobs/prepareDomainTransferOutTask"
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
@@ -136,6 +138,7 @@ export default buildConfig({
     SiteGenerationRuns,
     PublishedSiteSnapshots,
     PreviewAccessGrants,
+    CheckoutProgressDrafts,
     LegalDocuments,
     LegalPublicationEvents,
     Orders,
@@ -171,6 +174,7 @@ export default buildConfig({
   jobs: {
     tasks: [
       purgeStaleFormSubmissionsTask,
+      purgeExpiredCheckoutProgressDraftsTask,
       sendLegalRequirementNotificationsTask,
       syncMolliePaymentTask,
       fulfillOrderTask,

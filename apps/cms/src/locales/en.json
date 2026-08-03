@@ -1155,6 +1155,7 @@
     "checkoutSelectDomain": "Choose",
     "checkoutCheckDomain": "Check availability",
     "checkoutCheckAgain": "Check again",
+    "checkoutShowMoreExtensions": "Show more extensions",
     "checkoutDomainCheckingShort": "Checking",
     "checkoutDomainLiveResults": "Live results",
     "checkoutDomainCheckedNow": "Checked just now",

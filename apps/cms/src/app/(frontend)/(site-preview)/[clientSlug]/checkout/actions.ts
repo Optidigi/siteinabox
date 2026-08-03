@@ -14,7 +14,6 @@ import {
   GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
   getTldCapabilityForProductionOperation,
   isEuRegistryEligibilityCountry,
-  productionTldCapabilitiesAt,
   tldCapabilityAt,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutProfile } from "@/payload-types"
@@ -41,9 +40,7 @@ import {
 } from "@/lib/checkout/acceptedCheckoutResume"
 import {
   checkAndRecordPreviewDomainOrder,
-  checkPreviewDomainOrders,
   requireReadyPreviewDomainOrder,
-  type PreviewDomainOrderResult,
 } from "@/lib/domains/previewDomainOrder"
 import {
   assessExistingDomainMigrationInput,
@@ -92,6 +89,7 @@ import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/previ
 import {
   requirePreviewCheckoutActorContext,
   requirePreviewCheckoutContext,
+  requirePreviewDomainSearchContext,
 } from "./previewCheckoutContext"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
@@ -118,7 +116,6 @@ import type {
   MigrationCustomerActionState,
   PreviewCheckoutActionState,
   PreviewCheckoutCancellationState,
-  PreviewCheckoutDomainBatchActionState,
   PreviewCheckoutDomainOption,
   PreviewCheckoutLiveStatus,
   PreviewCheckoutProfileActionState,
@@ -128,6 +125,11 @@ import {
   checkoutProfileConflict,
   checkoutVersionConflict,
 } from "@/lib/checkout/previewCheckoutResults"
+import {
+  saveCheckoutProgressDraft,
+  type CheckoutProgressDraft,
+  type LoadedCheckoutProgressDraft,
+} from "@/lib/checkout/checkoutProgress"
 
 export type {
   MigrationCustomerActionState,
@@ -138,6 +140,30 @@ export type {
   PreviewCheckoutProfileActionState,
   PreviewCheckoutSuggestionsState,
 } from "@/lib/checkout/previewCheckoutContract"
+
+export type PreviewCheckoutProgressActionState = {
+  ok: boolean
+  message: string
+  progress?: LoadedCheckoutProgressDraft
+}
+
+/**
+ * Stores only the strict resumable-intent contract for the authenticated
+ * preview grant. It intentionally does not accept legal, quote, payment, or
+ * provider-source data.
+ */
+export async function savePreviewCheckoutProgressAction(
+  clientSlug: string,
+  draft: CheckoutProgressDraft,
+): Promise<PreviewCheckoutProgressActionState> {
+  try {
+    const context = await requirePreviewCheckoutContext(clientSlug)
+    const progress = await saveCheckoutProgressDraft({ context, draft })
+    return { ok: true, message: "", progress }
+  } catch {
+    return { ok: false, message: "Checkout progress could not be saved." }
+  }
+}
 
 function migrationAssessmentMessage(
   t: Awaited<ReturnType<typeof getTranslations>>,
@@ -162,53 +188,6 @@ const catalogDomainAllowance = (): FixedDomainOrderPrice => ({
   amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
   currency: COMMERCIAL_CATALOG.currency,
 })
-
-const recommendedDomainExtensions = ["nl", "com", "info", "org", "eu"]
-const fallbackDomainExtensions = ["net", "be", "de", "online", "shop"]
-const domainSearchLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
-
-type DomainSearchPhase = "recommended" | "fallback"
-
-const normalizeDomainSearchValue = (value: string): {
-  name: string
-  domain: string | null
-} | null => {
-  const canonical = value
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "")
-    .replace(/\/.*$/, "")
-    .replace(/\.$/, "")
-  if (!canonical || canonical.length > 253) return null
-  const labels = canonical.split(".")
-  if (!labels.every((label) => domainSearchLabelPattern.test(label))) return null
-  if (labels.length === 1) return { name: labels[0]!, domain: null }
-  if (!/[a-z]/.test(labels.at(-1) ?? "")) return null
-  return {
-    name: labels.slice(0, -1).join("."),
-    domain: canonical,
-  }
-}
-
-const batchDomainCandidates = (
-  input: string,
-  phase: DomainSearchPhase,
-): string[] => {
-  const normalized = normalizeDomainSearchValue(input)
-  if (!normalized) return []
-  const supported = new Set(
-    productionTldCapabilitiesAt("registration").map((capability) => capability.tld),
-  )
-  const extensions = (phase === "recommended"
-    ? recommendedDomainExtensions
-    : fallbackDomainExtensions
-  ).filter((extension) => supported.has(extension))
-  return [...new Set([
-    ...(phase === "recommended" && normalized.domain ? [normalized.domain] : []),
-    ...extensions.map((extension) => `${normalized.name}.${extension}`),
-  ])]
-}
 
 const checkoutQuoteSigningSecret = (): string => {
   const secret = process.env.PAYLOAD_SECRET?.trim()
@@ -295,72 +274,6 @@ const domainErrorStatus = (error: unknown): NonNullable<PreviewCheckoutActionSta
   if (error.message === "checkoutDomainUnavailable") return "unavailable"
   if (error.message === "checkoutDomainPremium") return "premium"
   return "service_error"
-}
-
-const previewDomainOrderActionState = (input: {
-  result: PreviewDomainOrderResult
-  locale: string
-  profileVersion: number
-  draftVersion: string
-  requestToken?: string
-  t: Awaited<ReturnType<typeof getTranslations>>
-}): PreviewCheckoutActionState => {
-  const { result } = input
-  const extraFee = result.extraFeeAmount && result.extraFeeCurrency
-    ? { amount: result.extraFeeAmount, currency: result.extraFeeCurrency }
-    : null
-  const canCheckout = result.productionOperationEnabled && (
-    result.messageKey === "checkoutDomainAvailable" ||
-    result.messageKey === "checkoutDomainAvailableExtraFee"
-  )
-  if (
-    canCheckout &&
-    (!result.providerPriceAmount || result.providerPriceCurrency !== COMMERCIAL_CATALOG.currency)
-  ) {
-    return {
-      ok: false,
-      status: "service_error",
-      message: input.t("checkoutDomainServiceUnavailable"),
-      domain: result.domain,
-      domainMode: "new_registration",
-      requestToken: input.requestToken,
-    }
-  }
-  const quotes = canCheckout
-    ? issuePreviewCheckoutQuoteSet({
-        domain: result.domain,
-        providerPriceNetMinor: decimalMoneyToMinor(result.providerPriceAmount!),
-        providerQuotedAt: result.providerQuotedAt,
-        profileVersion: input.profileVersion,
-        draftVersion: input.draftVersion,
-      })
-    : undefined
-  return {
-    ok: canCheckout,
-    status: domainStatusFromMessageKey(result.messageKey),
-    message: input.t(result.messageKey, {
-      domain: result.domain,
-      extraFee: formatMoney(input.locale, extraFee) ?? "",
-    }),
-    domain: result.domain,
-    included: result.included,
-    extraFeeAmount: result.extraFeeAmount,
-    extraFeeCurrency: result.extraFeeCurrency,
-    extraFeeLabel: formatMoney(input.locale, extraFee),
-    totalPriceLabel: quotes
-      ? formatMoney(input.locale, {
-          amount: (quotes.annual.quote.grossAmountMinor / 100).toFixed(2),
-          currency: quotes.annual.quote.currency,
-        })
-      : null,
-    domainSurchargeNetMinor: result.extraFeeAmount
-      ? decimalMoneyToMinor(result.extraFeeAmount)
-      : 0,
-    quotes,
-    requestToken: input.requestToken,
-    suggestions: [],
-    domainMode: "new_registration",
-  }
 }
 
 const logExistingDomainPreflightFailure = (
@@ -729,10 +642,6 @@ export async function checkPreviewCheckoutDomainAction(
 ): Promise<PreviewCheckoutActionState> {
   const totalStart = startPreviewCheckoutTimer()
   const t = await getTranslations("preview")
-  const authStart = startPreviewCheckoutTimer()
-  const context = await requirePreviewCheckoutContext(clientSlug)
-  logPreviewCheckoutTiming("primary_check_auth", authStart, { clientSlug: context.clientSlug })
-
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   const requestToken = String(formData.get("requestToken") ?? "").trim() || undefined
   const domainMode = formData.get("domainMode") === "existing_domain"
@@ -749,6 +658,9 @@ export async function checkPreviewCheckoutDomainAction(
     }
   }
   if (domainMode === "existing_domain") {
+    const authStart = startPreviewCheckoutTimer()
+    const context = await requirePreviewCheckoutContext(clientSlug)
+    logPreviewCheckoutTiming("primary_check_auth", authStart, { clientSlug: context.clientSlug })
     return checkExistingDomainMigration(
       context,
       domain,
@@ -769,6 +681,9 @@ export async function checkPreviewCheckoutDomainAction(
   }
 
   try {
+    const authStart = startPreviewCheckoutTimer()
+    const context = await requirePreviewDomainSearchContext(clientSlug)
+    logPreviewCheckoutTiming("selected_domain_quote_auth", authStart, { clientSlug: context.clientSlug })
     const locale = await getLocale()
     const providerStart = startPreviewCheckoutTimer()
     const result = await checkAndRecordPreviewDomainOrder(
@@ -841,7 +756,7 @@ export async function checkPreviewCheckoutDomainAction(
     })
     return response
   } catch (error) {
-    logPreviewCheckoutTiming("primary_check_total", totalStart, { clientSlug: context.clientSlug, domain }, {
+    logPreviewCheckoutTiming("primary_check_total", totalStart, { clientSlug, domain }, {
       ok: false,
       status: domainErrorStatus(error),
     })
@@ -852,167 +767,6 @@ export async function checkPreviewCheckoutDomainAction(
       domain,
       domainMode,
       requestToken,
-    }
-  }
-}
-
-export async function checkPreviewCheckoutDomainBatchAction(
-  clientSlug: string,
-  formData: FormData,
-): Promise<PreviewCheckoutDomainBatchActionState> {
-  const totalStart = startPreviewCheckoutTimer()
-  const t = await getTranslations("preview")
-  const authStart = startPreviewCheckoutTimer()
-  const context = await requirePreviewCheckoutContext(clientSlug)
-  logPreviewCheckoutTiming("domain_search_batch_auth", authStart, {
-    clientSlug: context.clientSlug,
-  })
-
-  const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
-  const requestToken = String(formData.get("requestToken") ?? "").trim() || undefined
-  const phase: DomainSearchPhase = formData.get("phase") === "fallback"
-    ? "fallback"
-    : "recommended"
-  const candidates = batchDomainCandidates(domain, phase)
-  if (candidates.length === 0) {
-    const message = t("checkoutDomainInvalid")
-    return {
-      ok: false,
-      message,
-      phase,
-      requestToken,
-      results: [{
-        ok: false,
-        status: "invalid",
-        message,
-        domain,
-        domainMode: "new_registration",
-        requestToken,
-      }],
-    }
-  }
-  const invalidCandidates = new Set(candidates.filter((candidate) => {
-    const normalized = normalizeDomain(candidate)
-    return !normalized.ok || !tldCapabilityAt(normalized.extension)
-  }))
-  const checkableCandidates = candidates.filter((candidate) => !invalidCandidates.has(candidate))
-  if (checkableCandidates.length === 0) {
-    const message = t("checkoutDomainInvalid")
-    return {
-      ok: false,
-      message,
-      phase,
-      requestToken,
-      results: candidates.map((candidate) => ({
-        ok: false,
-        status: "invalid",
-        message,
-        domain: candidate,
-        domainMode: "new_registration",
-        requestToken,
-      })),
-    }
-  }
-  if (!commerceProviderReadsAllowed()) {
-    const message = t("checkoutDomainServiceUnavailable")
-    return {
-      ok: false,
-      message,
-      phase,
-      requestToken,
-      results: candidates.map((candidate) => ({
-        ok: false,
-        status: "service_error",
-        message,
-        domain: candidate,
-        domainMode: "new_registration",
-        requestToken,
-      })),
-    }
-  }
-
-  try {
-    const providerStart = startPreviewCheckoutTimer()
-    const localePromise = getLocale()
-    const profilePromise = loadLatestCheckoutProfile(context.payload, context.run.id)
-    const results = await checkPreviewDomainOrders(
-      context.run,
-      checkableCandidates,
-      null,
-      {
-        includedProviderPrice: catalogDomainAllowance(),
-        requireProductionCapability: false,
-      },
-    )
-    const [locale, profile] = await Promise.all([localePromise, profilePromise])
-    const actionResultsByDomain = new Map(results.map((result) => [
-      result.domain,
-      previewDomainOrderActionState({
-      result,
-      locale,
-      profileVersion: profile?.profileVersion ?? 0,
-      draftVersion: String(context.run.updatedAt ?? result.providerQuotedAt),
-      requestToken,
-      t,
-      }),
-    ]))
-    const actionResults = candidates.map((candidate) => actionResultsByDomain.get(candidate) ?? {
-      ok: false,
-      status: "invalid" as const,
-      message: t("checkoutDomainInvalid"),
-      domain: candidate,
-      domainMode: "new_registration" as const,
-      requestToken,
-    })
-    const readyCount = actionResults.filter((result) => result.ok && result.quotes).length
-    logPreviewCheckoutTiming("domain_search_batch_provider", providerStart, {
-      clientSlug: context.clientSlug,
-    }, {
-      phase,
-      candidateCount: candidates.length,
-      resultCount: actionResults.length,
-      readyCount,
-    })
-    logPreviewCheckoutTiming("domain_search_batch_total", totalStart, {
-      clientSlug: context.clientSlug,
-    }, {
-      phase,
-      candidateCount: candidates.length,
-      resultCount: actionResults.length,
-      readyCount,
-      ok: actionResults.some((result) => result.ok),
-    })
-    return {
-      ok: actionResults.some((result) => result.ok),
-      message: "",
-      results: actionResults,
-      phase,
-      requestToken,
-    }
-  } catch (error) {
-    const message = safeCheckoutErrorMessage(error, t, domain)
-    logPreviewCheckoutTiming("domain_search_batch_total", totalStart, {
-      clientSlug: context.clientSlug,
-    }, {
-      phase,
-      candidateCount: candidates.length,
-      resultCount: candidates.length,
-      ok: false,
-      status: domainErrorStatus(error),
-    })
-    return {
-      ok: false,
-      message,
-      phase,
-      requestToken,
-      results: candidates.map((candidate) => ({
-        ok: false,
-        status: domainErrorStatus(error),
-        message,
-        domain: candidate,
-        domainMode: "new_registration",
-        requestToken,
-      })),
     }
   }
 }

@@ -13,9 +13,10 @@ const mocks = vi.hoisted(() => ({
   loadCustomerProvisioningStatus: vi.fn(),
   loadCustomerBillingAgreement: vi.fn(),
   loadAcceptedCheckoutResume: vi.fn(),
+  loadCheckoutProgressDraft: vi.fn(),
   checkDomainAction: vi.fn(),
-  checkDomainBatchAction: vi.fn(),
   saveProfileAction: vi.fn(),
+  saveProgressAction: vi.fn(),
   startPaymentAction: vi.fn(),
   loadLiveStatusAction: vi.fn(),
   scheduleCancellationAction: vi.fn(),
@@ -68,9 +69,9 @@ vi.mock("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions", () => (
   acceptMigrationSupplementalOrderAction: mocks.acceptMigrationSupplementalOrderAction,
   recollectAcceptedMigrationInputAction: mocks.recollectAcceptedMigrationInputAction,
   submitMigrationTransferCodeAction: mocks.submitMigrationTransferCodeAction,
-  checkPreviewCheckoutDomainBatchAction: mocks.checkDomainBatchAction,
   checkPreviewCheckoutDomainAction: mocks.checkDomainAction,
   savePreviewCheckoutProfileAction: mocks.saveProfileAction,
+  savePreviewCheckoutProgressAction: mocks.saveProgressAction,
   startPreviewCheckoutPaymentAction: mocks.startPaymentAction,
   loadPreviewCheckoutLiveStatusAction: mocks.loadLiveStatusAction,
   schedulePreviewCheckoutCancellationAction: mocks.scheduleCancellationAction,
@@ -94,6 +95,10 @@ vi.mock("@/lib/domains/provisioningStatus", () => ({
 
 vi.mock("@/lib/checkout/acceptedCheckoutResume", () => ({
   loadAcceptedCheckoutResume: mocks.loadAcceptedCheckoutResume,
+}))
+
+vi.mock("@/lib/checkout/checkoutProgress", () => ({
+  loadCheckoutProgressDraft: mocks.loadCheckoutProgressDraft,
 }))
 
 vi.mock("@/lib/billing/customerBillingAgreement", () => ({
@@ -136,6 +141,7 @@ async function renderCheckoutProps(
   mocks.loadCustomerProvisioningStatus.mockResolvedValue(null)
   mocks.loadCustomerBillingAgreement.mockResolvedValue(null)
   mocks.loadAcceptedCheckoutResume.mockResolvedValue(acceptedResume)
+  mocks.loadCheckoutProgressDraft.mockResolvedValue(null)
 
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")
   const element = await PreviewCheckoutPage({

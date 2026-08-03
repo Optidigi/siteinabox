@@ -70,10 +70,13 @@ import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import type { CustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 import type { CustomerBillingAgreementView } from "@/lib/billing/customerBillingAgreement"
 import type {
+  CheckoutProgressDraft,
+  LoadedCheckoutProgressDraft,
+} from "@/lib/checkout/checkoutProgress"
+import type {
   MigrationCustomerActionState,
   PreviewCheckoutActionState,
   PreviewCheckoutCancellationState,
-  PreviewCheckoutDomainBatchActionState,
   PreviewCheckoutLiveStatus,
   PreviewCheckoutProfileActionState,
 } from "@/lib/checkout/previewCheckoutContract"
@@ -82,7 +85,6 @@ export type {
   MigrationCustomerActionState,
   PreviewCheckoutActionState,
   PreviewCheckoutCancellationState,
-  PreviewCheckoutDomainBatchActionState,
   PreviewCheckoutLiveStatus,
   PreviewCheckoutProfileActionState,
 } from "@/lib/checkout/previewCheckoutContract"
@@ -92,9 +94,14 @@ type PreviewCheckoutAction = (
   formData: FormData,
 ) => Promise<PreviewCheckoutActionState>
 
-type PreviewCheckoutDomainBatchAction = (
-  formData: FormData,
-) => Promise<PreviewCheckoutDomainBatchActionState>
+type PreviewDomainDiscovery = {
+  domain: string
+  availability: "available" | "unavailable" | "premium" | "unknown" | "unsupported"
+  purchasable: boolean
+  included: boolean
+  extraFee: { amount: string; currency: string } | null
+  checkedAt: string
+}
 
 type PreviewCheckoutProfileAction = (
   previousState: PreviewCheckoutProfileActionState,
@@ -109,6 +116,13 @@ type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
 const checkoutStepOrder: CheckoutStep[] = ["domain", "review"]
+
+const defaultMigrationSourceMethod = (
+  methods: AutomaticMigrationSourceMethod[],
+): AutomaticMigrationSourceMethod | "" =>
+  methods.includes("cloudflare_api_v1")
+    ? "cloudflare_api_v1"
+    : methods[0] ?? ""
 
 const SiteinaboxMark = ({ className }: { className?: string }) => (
   <img src="/logos/favicon.svg" alt="" className={className} />
@@ -178,7 +192,7 @@ type PreviewCheckoutProps = {
   initialProfile?: CheckoutProfileView | null
   initialDetails: CheckoutProfileDraft
   initialQuotes?: CheckoutQuoteSet | null
-  supportedDomainExtensions?: string[]
+  initialProgress?: LoadedCheckoutProgressDraft | null
   initialStep?: LegacyCheckoutStep
   paymentReturn?: boolean
   existingDomainMigrationEnabled?: boolean
@@ -195,10 +209,11 @@ type PreviewCheckoutProps = {
   catalog: PreviewCheckoutCatalog
   paymentStatus: string
   previewHref: string
-  prewarmHref: string
+  domainSearchHref?: string
+  quoteDomainAction?: (formData: FormData) => Promise<PreviewCheckoutActionState>
   checkDomainAction: PreviewCheckoutAction
-  checkDomainBatchAction?: PreviewCheckoutDomainBatchAction
   saveProfileAction: PreviewCheckoutProfileAction
+  saveProgressAction?: (draft: CheckoutProgressDraft) => Promise<unknown>
   startPaymentAction: PreviewCheckoutAction
   loadLiveStatusAction?: () => Promise<PreviewCheckoutLiveStatus>
   recollectAcceptedMigrationInputAction?: (
@@ -234,14 +249,7 @@ const initialCancellationState: PreviewCheckoutCancellationState = {
   status: "idle",
   message: "",
 }
-const defaultSupportedDomainExtensions = ["nl", "com", "info", "org", "eu"]
-const recommendedDomainExtensions = ["nl", "com", "info", "org", "eu"]
-const fallbackDomainExtensions = ["net", "be", "de", "online", "shop"]
-
 const uniqueDomains = (domains: string[]): string[] => [...new Set(domains)]
-
-const checkoutReadyDomainResult = (result: PreviewCheckoutActionState): boolean =>
-  Boolean(result.ok && result.domain && result.quotes)
 
 export const checkoutStatusNeedsPolling = (input: {
   paymentReturn: boolean
@@ -286,6 +294,9 @@ export const checkoutStatusNeedsPolling = (input: {
 const money = (locale: string, minor: number, currency: string): string =>
   new Intl.NumberFormat(locale, { style: "currency", currency }).format(minor / 100)
 
+const decimalMoney = (locale: string, amount: string, currency: string): string =>
+  new Intl.NumberFormat(locale, { style: "currency", currency }).format(Number(amount))
+
 const nextRequestToken = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
@@ -316,7 +327,7 @@ export function PreviewCheckout({
   initialProfile,
   initialDetails,
   initialQuotes = null,
-  supportedDomainExtensions = defaultSupportedDomainExtensions,
+  initialProgress = null,
   initialStep = "domain",
   paymentReturn = false,
   existingDomainMigrationEnabled = false,
@@ -333,10 +344,11 @@ export function PreviewCheckout({
   catalog,
   paymentStatus,
   previewHref,
-  prewarmHref,
+  domainSearchHref,
+  quoteDomainAction,
   checkDomainAction,
-  checkDomainBatchAction,
   saveProfileAction,
+  saveProgressAction,
   startPaymentAction,
   loadLiveStatusAction,
   recollectAcceptedMigrationInputAction,
@@ -349,7 +361,12 @@ export function PreviewCheckout({
   locale,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
-  const initialDecision: CheckoutStep = initialStep === "domain" ? "domain" : "review"
+  // A restored decision never bypasses a fresh quote: progress is intent only.
+  const initialDecision: CheckoutStep = initialStep === "domain"
+    ? "domain"
+    : initialProgress?.decision === "review" && !initialQuotes
+      ? "domain"
+      : "review"
   const [step, setStep] = React.useState<CheckoutStep>(initialDecision)
   const [highestReachedStep, setHighestReachedStep] = React.useState(
     checkoutStepOrder.indexOf(initialDecision),
@@ -405,7 +422,7 @@ export function PreviewCheckout({
   const [billingAgreement, setBillingAgreement] =
     React.useState(initialBillingAgreement)
   const [details, setDetails] = React.useState<CheckoutProfileDraft>(
-    initialProfile ?? initialDetails,
+    { ...initialDetails, ...(initialProgress?.profileDraft ?? {}), ...(initialProfile ?? {}) },
   )
   const [savedProfile, setSavedProfile] = React.useState<CheckoutProfileView | null>(
     initialProfile ?? null,
@@ -418,14 +435,14 @@ export function PreviewCheckout({
     return "address"
   })
   const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(
-    initialQuotes?.annual.quote.billingPeriod ?? "annual",
+    initialQuotes?.annual.quote.billingPeriod ?? initialProgress?.billingPeriod ?? "annual",
   )
   const [domainMode, setDomainMode] = React.useState<
     "new_registration" | "existing_domain"
   >(
     cloudflareSourceAuthorization
       ? "existing_domain"
-      : initialQuotes?.annual.quote.domainMode ?? "new_registration",
+      : initialQuotes?.annual.quote.domainMode ?? initialProgress?.domainMode ?? "new_registration",
   )
   const [migrationSourceMethod, setMigrationSourceMethod] =
     React.useState<AutomaticMigrationSourceMethod | "">(() => {
@@ -433,7 +450,10 @@ export function PreviewCheckout({
       if (cloudflareSourceAuthorization) return "cloudflare_api_v1"
       return source === "cloudflare_api_v1" || source === "authorized_axfr_v1"
         ? source
-        : ""
+        : initialProgress?.migrationSourceMechanism === "cloudflare_api_v1" ||
+            initialProgress?.migrationSourceMechanism === "authorized_axfr_v1"
+          ? initialProgress.migrationSourceMechanism
+          : ""
     })
   const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
   const [migrationPreflight, setMigrationPreflight] = React.useState<{
@@ -443,31 +463,30 @@ export function PreviewCheckout({
   } | null>(null)
   const readyDomain = domainReady && currentDomain ? currentDomain : null
   const [domainValue, setDomainValue] = React.useState(
-    cloudflareSourceDomain ?? readyDomain ?? "",
+    cloudflareSourceDomain ?? readyDomain ?? initialProgress?.domainQuery ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
-  const supportedExtensionsKey = supportedDomainExtensions.join(",")
-  const selectedExtensions = React.useMemo(() => {
-    const enabled = new Set(supportedDomainExtensions)
-    return recommendedDomainExtensions.filter((extension) =>
-      enabled.has(extension),
-    )
-  }, [supportedExtensionsKey])
-  const additionalRecommendedExtensions = React.useMemo(() => {
-    const enabled = new Set(supportedDomainExtensions)
-    return fallbackDomainExtensions.filter((extension) => enabled.has(extension))
-  }, [supportedExtensionsKey])
   const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
   const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
+  const [domainQuotePending, setDomainQuotePending] = React.useState(false)
+  const [hasMoreExtensions, setHasMoreExtensions] = React.useState(false)
   const [extensionCheckPhase, setExtensionCheckPhase] = React.useState<
     "idle" | "recommended" | "fallback"
   >("idle")
+  const [extensionSearchAnchor, setExtensionSearchAnchor] = React.useState<
+    string | null
+  >(null)
+  const [extensionSearchDomains, setExtensionSearchDomains] = React.useState<
+    string[] | null
+  >(null)
   const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
   const extensionRequestRef = React.useRef<string | null>(null)
+  const extensionAbortRef = React.useRef<AbortController | null>(null)
   const lastDomainSearchKeyRef = React.useRef<string | null>(null)
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const domainRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
   const latestDomainRequestTokenRef = React.useRef<string | null>(null)
+  const latestQuoteRequestTokenRef = React.useRef<string | null>(null)
   const profileRequestTokenRef = React.useRef<HTMLInputElement | null>(null)
   const latestProfileRequestTokenRef = React.useRef<string | null>(null)
   const paymentFormRef = React.useRef<HTMLFormElement | null>(null)
@@ -480,6 +499,32 @@ export function PreviewCheckout({
   const [termsAccepted, setTermsAccepted] = React.useState(false)
   const [legalSubmitRequested, setLegalSubmitRequested] = React.useState(false)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
+  React.useEffect(() => {
+    if (!saveProgressAction) return
+    const timer = window.setTimeout(() => {
+      void saveProgressAction({
+        domainMode,
+        domainQuery: normalizedDomainValue,
+        selectedDomain: checkedDomain,
+        decision: step,
+        billingPeriod,
+        migrationSourceMechanism: domainMode === "existing_domain"
+          ? migrationSourceMethod || null
+          : null,
+        profileDraft: details,
+      })
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [
+    billingPeriod,
+    checkedDomain,
+    details,
+    domainMode,
+    migrationSourceMethod,
+    normalizedDomainValue,
+    saveProgressAction,
+    step,
+  ])
   const domainSearchInput = React.useMemo(
     () => parseDomainSearchInput(domainValue),
     [domainValue],
@@ -487,17 +532,9 @@ export function PreviewCheckout({
   const domainSearchName = "name" in domainSearchInput
     ? domainSearchInput.name
     : ""
-  const newDomainSearchPrimaryDomain = React.useMemo(() => {
-    if (domainSearchInput.kind === "bare") {
-      return selectedExtensions[0]
-        ? `${domainSearchInput.name}.${selectedExtensions[0]}`
-        : null
-    }
-    if (domainSearchInput.kind === "qualified") {
-      return domainSearchInput.domain
-    }
-    return null
-  }, [domainSearchInput, selectedExtensions])
+  const newDomainSearchPrimaryDomain = domainSearchInput.kind === "qualified"
+    ? domainSearchInput.domain
+    : null
   const detectedMigrationDnsProvider =
     checkState.migrationPublicEvidence?.probableDnsProvider ??
     migrationPreflight?.publicEvidence?.probableDnsProvider ??
@@ -577,63 +614,41 @@ export function PreviewCheckout({
   ) : null
   const primaryNewDomainResult = newDomainSearchPrimaryDomain
     ? extensionResults.find((result) => result.domain === newDomainSearchPrimaryDomain) ?? null
-    : null
-  const recommendedDomainSearchDomains = React.useMemo(() => {
-    if (domainSearchInput.kind === "bare") {
-      return selectedExtensions.map((extension) =>
-        `${domainSearchInput.name}.${extension}`)
-    }
-    if (domainSearchInput.kind === "qualified") {
-      return uniqueDomains([
-        domainSearchInput.domain,
-        ...selectedExtensions.map((extension) => `${domainSearchInput.name}.${extension}`),
-      ])
-    }
-    return []
-  }, [domainSearchInput, selectedExtensions])
-  const fallbackDomainSearchDomains = React.useMemo(() => {
-    if (!("name" in domainSearchInput)) return []
-    return additionalRecommendedExtensions
-      .map((extension) => `${domainSearchInput.name}.${extension}`)
-      .filter((domain) => !recommendedDomainSearchDomains.includes(domain))
-  }, [additionalRecommendedExtensions, domainSearchInput, recommendedDomainSearchDomains])
-  const allDomainSearchDomains = React.useMemo(
-    () => uniqueDomains([...recommendedDomainSearchDomains, ...fallbackDomainSearchDomains]),
-    [fallbackDomainSearchDomains, recommendedDomainSearchDomains],
-  )
+    : extensionResults[0] ?? null
   const visibleDomainSearchDomains = React.useMemo(() => {
-    if (extensionCheckPending && extensionCheckPhase === "recommended") {
-      return recommendedDomainSearchDomains.slice(0, 5)
-    }
-
-    const anchor = newDomainSearchPrimaryDomain
-    const readyDomains = allDomainSearchDomains.filter((domain) =>
-      checkoutReadyDomainResult(extensionResults.find((result) => result.domain === domain) ?? initialActionState),
+    const resultDomains = extensionSearchDomains ?? extensionResults
+      .map((result) => result.domain)
+      .filter((domain): domain is string => Boolean(domain))
+    const anchor = extensionSearchAnchor ??
+      resultDomains[0] ??
+      newDomainSearchPrimaryDomain ??
+      (domainSearchInput.kind === "bare" ? domainSearchInput.canonical : null)
+    const readyDomains = resultDomains.filter((domain) =>
+      extensionResults.some((result) => result.ok && result.domain === domain),
     )
     if (extensionCheckPending && extensionCheckPhase === "fallback") {
       return uniqueDomains([
         ...(anchor ? [anchor] : []),
         ...readyDomains.filter((domain) => domain !== anchor),
-        ...fallbackDomainSearchDomains,
+        ...resultDomains,
       ]).slice(0, 5)
     }
 
     return uniqueDomains([
       ...(anchor ? [anchor] : []),
       ...readyDomains.filter((domain) => domain !== anchor),
-      ...allDomainSearchDomains.filter((domain) => domain !== anchor && !readyDomains.includes(domain)),
-    ]).slice(0, 5)
+      ...resultDomains.filter((domain) => domain !== anchor && !readyDomains.includes(domain)),
+    ]).slice(0, extensionSearchDomains?.length && extensionSearchDomains.length > 5 ? 10 : 5)
   }, [
-    allDomainSearchDomains,
     extensionCheckPending,
     extensionCheckPhase,
+    extensionSearchDomains,
     extensionResults,
-    fallbackDomainSearchDomains,
+    extensionSearchAnchor,
+    domainSearchInput,
     newDomainSearchPrimaryDomain,
-    recommendedDomainSearchDomains,
   ])
   const domainLooksCheckable = Boolean(
-    newDomainSearchPrimaryDomain &&
     domainSearchInput.kind !== "invalid" &&
     domainSearchInput.kind !== "empty" &&
     domainSearchName.length >= 2,
@@ -717,16 +732,6 @@ export function PreviewCheckout({
   ])
 
   React.useEffect(() => {
-    const controller = new AbortController()
-    void fetch(prewarmHref, {
-      method: "POST",
-      credentials: "same-origin",
-      signal: controller.signal,
-    }).catch(() => {})
-    return () => controller.abort()
-  }, [prewarmHref])
-
-  React.useEffect(() => {
     if (
       checkState.domain &&
       checkState.domain === normalizedDomainValue &&
@@ -769,15 +774,12 @@ export function PreviewCheckout({
         (checkState.migrationPublicEvidence?.transferBlockers?.length ?? 0) > 0
       ) {
         setMigrationSourceMethod("")
-      } else if (
-        existingDomainMigrationEnabled &&
-        detectedMigrationDnsProvider === "cloudflare" &&
-        availableMigrationSourceMethods.includes("cloudflare_api_v1")
-      ) {
-        // Cloudflare is the only source that can continue without a
-        // customer-supplied secret. AXFR must remain unselected until its
-        // owner provides the required TSIG details and authorization.
-        setMigrationSourceMethod("cloudflare_api_v1")
+      } else if (existingDomainMigrationEnabled) {
+        setMigrationSourceMethod((current) =>
+          current && availableMigrationSourceMethods.includes(current)
+            ? current
+            : defaultMigrationSourceMethod(availableMigrationSourceMethods),
+        )
       }
     }
   }, [
@@ -865,7 +867,7 @@ export function PreviewCheckout({
 
   const extensionSelectionApplies = Boolean(
     checkedDomain && extensionResults.some((result) =>
-      result.ok && result.domain === checkedDomain && Boolean(result.quotes)),
+      result.ok && result.domain === checkedDomain),
   )
   const selectedDomain = checkedDomain &&
     (checkedDomain === normalizedDomainValue || extensionSelectionApplies)
@@ -877,7 +879,7 @@ export function PreviewCheckout({
     quotes.annual.quote.domainMode === domainMode &&
     (
       extensionResults.some((result) =>
-        result.ok && result.domain === selectedDomain && Boolean(result.quotes)) ||
+        result.ok && result.domain === selectedDomain) ||
       (domainMode === "existing_domain" && checkAppliesToCurrentInput
         ? checkState.ok
         : selectedDomain === readyDomain)
@@ -927,7 +929,12 @@ export function PreviewCheckout({
     setExtensionResults([])
     setExtensionCheckPending(false)
     setExtensionCheckPhase("idle")
+    setExtensionSearchAnchor(null)
+    setExtensionSearchDomains(null)
     extensionRequestRef.current = null
+    extensionAbortRef.current?.abort()
+    extensionAbortRef.current = null
+    latestQuoteRequestTokenRef.current = null
     lastDomainSearchKeyRef.current = null
     if (value.trim().toLowerCase() !== checkedDomain) {
       setCheckedDomain(null)
@@ -939,94 +946,66 @@ export function PreviewCheckout({
   }
 
   const checkSelectedExtensions = React.useCallback(async (force = false) => {
-    if (recommendedDomainSearchDomains.length === 0) return
-    const searchKey = allDomainSearchDomains.join("|")
+    if (!domainSearchHref) return
+    const searchKey = `${domainValue}|primary`
     if (!force && lastDomainSearchKeyRef.current === searchKey) return
     lastDomainSearchKeyRef.current = searchKey
     const requestToken = nextRequestToken()
     extensionRequestRef.current = requestToken
     setExtensionCheckPending(true)
     setExtensionCheckPhase("recommended")
+    setExtensionSearchAnchor(newDomainSearchPrimaryDomain)
+    setExtensionSearchDomains(null)
     setCheckedDomain(null)
     setQuotes(null)
     setExtensionResults([])
-    const checkBatch = async (
-      domains: string[],
-      phase: "recommended" | "fallback",
-    ): Promise<PreviewCheckoutActionState[]> => {
-      if (checkDomainBatchAction) {
-        try {
-          const formData = new FormData()
-          formData.set("domain", domainValue)
-          formData.set("phase", phase)
-          formData.set("requestToken", requestToken)
-          const received = await checkDomainBatchAction(formData)
-          if (received?.results?.length) return received.results
-        } catch {
-          // Keep the established recoverable row-level error presentation.
-        }
-        return domains.map((domain) => ({
-          ok: false,
-          status: "service_error" as const,
-          domain,
-          domainMode: "new_registration" as const,
-          message: t("checkoutDomainServiceUnavailable"),
-          requestToken,
-        }))
-      }
-
-      return Promise.all(domains.map(async (domain) => {
-      let result: PreviewCheckoutActionState
-      try {
-        const formData = new FormData()
-        formData.set("domain", domain)
-        formData.set("domainMode", "new_registration")
-        formData.set("requestToken", requestToken)
-        const received = await checkDomainAction(initialActionState, formData)
-        result = received ?? {
-          ok: false,
-          status: "service_error",
-          domain,
-          domainMode: "new_registration",
-          message: t("checkoutDomainServiceUnavailable"),
-        }
-      } catch {
-        result = {
-          ok: false,
-          status: "service_error" as const,
-          domain,
-          domainMode: "new_registration" as const,
-          message: t("checkoutDomainServiceUnavailable"),
-        }
-      }
-      return result
-      }))
-    }
-    const recommendedResults = await checkBatch(recommendedDomainSearchDomains, "recommended")
-    if (extensionRequestRef.current !== requestToken) return
-    const readyCount = recommendedResults.filter(checkoutReadyDomainResult).length
-    setExtensionResults(recommendedResults)
-    if (readyCount < 4 && fallbackDomainSearchDomains.length > 0) {
-      setExtensionCheckPhase("fallback")
-      const fallbackResults = await checkBatch(fallbackDomainSearchDomains, "fallback")
+    extensionAbortRef.current?.abort()
+    const controller = new AbortController()
+    extensionAbortRef.current = controller
+    try {
+      const response = await fetch(domainSearchHref, {
+        method: "POST", credentials: "same-origin", signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: domainValue, mode: "primary" }),
+      })
+      if (!response.ok) throw new Error("Domain discovery failed.")
+      const received = await response.json() as { ok?: boolean; results?: PreviewDomainDiscovery[]; hasMore?: boolean }
       if (extensionRequestRef.current !== requestToken) return
-      setExtensionResults([...recommendedResults, ...fallbackResults])
+      const results = (received.results ?? []).map((result): PreviewCheckoutActionState => ({
+        ok: result.purchasable,
+        status: result.availability === "available" ? result.extraFee ? "available_extra" : "available" : result.availability === "unsupported" ? "release_pending" : result.availability === "unknown" ? "service_error" : result.availability,
+        message: result.availability === "unavailable" ? t("checkoutDomainUnavailable", { domain: result.domain }) : result.availability === "premium" ? t("checkoutDomainPremium", { domain: result.domain }) : result.availability === "unsupported" ? t("checkoutDomainReleasePending", { domain: result.domain }) : result.availability === "unknown" ? t("checkoutDomainServiceUnavailable") : "",
+        domain: result.domain, included: result.included,
+        extraFeeAmount: result.extraFee?.amount ?? null, extraFeeCurrency: result.extraFee?.currency ?? null,
+        domainMode: "new_registration", requestToken,
+      }))
+      setExtensionResults(results)
+      setExtensionSearchDomains(results.map((result) => result.domain!).filter(Boolean))
+      setHasMoreExtensions(received.hasMore === true)
+    } catch {
+      if (extensionRequestRef.current === requestToken) setExtensionResults([{
+        ok: false,
+        status: "service_error",
+        domain: normalizedDomainValue,
+        domainMode: "new_registration",
+        message: t("checkoutDomainServiceUnavailable"),
+        requestToken,
+      }])
     }
+    if (extensionRequestRef.current !== requestToken) return
+    extensionAbortRef.current = null
     setExtensionCheckPhase("idle")
     setExtensionCheckPending(false)
   }, [
-    allDomainSearchDomains,
-    checkDomainBatchAction,
-    checkDomainAction,
+    domainSearchHref,
     domainValue,
-    fallbackDomainSearchDomains,
-    recommendedDomainSearchDomains,
+    normalizedDomainValue,
     t,
   ])
 
   React.useEffect(() => {
     if (step !== "domain" || domainMode !== "new_registration") return
-    if (!domainLooksCheckable || recommendedDomainSearchDomains.length === 0) return
+    if (!domainLooksCheckable) return
     if (checkedDomain === normalizedDomainValue && quotes) return
     const timer = window.setTimeout(() => void checkSelectedExtensions(), 250)
     return () => window.clearTimeout(timer)
@@ -1037,25 +1016,78 @@ export function PreviewCheckout({
     domainMode,
     normalizedDomainValue,
     quotes,
-    recommendedDomainSearchDomains.length,
     step,
   ])
 
-  const selectExtensionResult = (result: PreviewCheckoutActionState) => {
-    if (!result.ok || !result.domain || !result.quotes) return
-    setCheckedDomain(result.domain)
-    lastDomainSearchKeyRef.current = result.domain
-    setDomainValue(result.domain)
-    setQuotes(result.quotes)
+  const selectExtensionResult = async (result: PreviewCheckoutActionState) => {
+    if (!result.ok || !result.domain || !quoteDomainAction) return
+    const quoteToken = nextRequestToken()
+    latestQuoteRequestTokenRef.current = quoteToken
+    setDomainQuotePending(true)
+    const formData = new FormData()
+    formData.set("domain", result.domain)
+    formData.set("domainMode", "new_registration")
+    formData.set("requestToken", quoteToken)
+    try {
+      const quoted = await quoteDomainAction(formData)
+      if (latestQuoteRequestTokenRef.current !== quoteToken || !quoted.ok || !quoted.quotes || quoted.domain !== result.domain) return
+      setCheckedDomain(quoted.domain)
+      lastDomainSearchKeyRef.current = quoted.domain
+      setDomainValue(quoted.domain)
+      setQuotes(quoted.quotes)
+    } finally {
+      if (latestQuoteRequestTokenRef.current === quoteToken) setDomainQuotePending(false)
+    }
+  }
+
+  const showMoreExtensions = async () => {
+    if (!domainSearchHref || extensionCheckPending) return
+    const requestToken = nextRequestToken()
+    extensionRequestRef.current = requestToken
+    extensionAbortRef.current?.abort()
+    const controller = new AbortController()
+    extensionAbortRef.current = controller
+    setExtensionCheckPending(true)
+    setExtensionCheckPhase("fallback")
+    try {
+      const response = await fetch(domainSearchHref, {
+        method: "POST", credentials: "same-origin", signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: domainValue, mode: "more" }),
+      })
+      const received = await response.json() as { results?: PreviewDomainDiscovery[] }
+      if (extensionRequestRef.current !== requestToken) return
+      const more = (received.results ?? []).map((result): PreviewCheckoutActionState => ({
+        ok: result.purchasable,
+        status: result.availability === "available" ? result.extraFee ? "available_extra" : "available" : result.availability === "unsupported" ? "release_pending" : result.availability === "unknown" ? "service_error" : result.availability,
+        message: "", domain: result.domain, included: result.included,
+        extraFeeAmount: result.extraFee?.amount ?? null, extraFeeCurrency: result.extraFee?.currency ?? null,
+        domainMode: "new_registration", requestToken,
+      }))
+      setExtensionResults((current) => [...current, ...more])
+      setExtensionSearchDomains((current) => [...(current ?? []), ...more.map((result) => result.domain!).filter(Boolean)])
+      setHasMoreExtensions(false)
+    } catch {
+      // Keep already-rendered discovery rows when a cancellable "more" request
+      // is superseded or the provider is temporarily unavailable.
+    } finally {
+      if (extensionRequestRef.current === requestToken) {
+        setExtensionCheckPending(false)
+        setExtensionCheckPhase("idle")
+      }
+    }
   }
 
   const updateDomainMode = (mode: "new_registration" | "existing_domain") => {
     if (mode === domainMode) return
+    latestQuoteRequestTokenRef.current = null
     setDomainMode(mode)
     setCheckedDomain(null)
     setQuotes(null)
     setMigrationSourceMethod("")
     setMigrationPreflight(null)
+    setExtensionSearchAnchor(null)
+    setExtensionSearchDomains(null)
     setDomainValue("")
     lastDomainSearchKeyRef.current = null
     lastSubmittedDomainRef.current = null
@@ -1910,7 +1942,7 @@ export function PreviewCheckout({
                             visibleDomainSearchDomains.indexOf(left.domain ?? "") -
                             visibleDomainSearchDomains.indexOf(right.domain ?? ""))
                           .map((result) => {
-                          const available = Boolean(result.ok && result.domain && result.quotes)
+                          const available = Boolean(result.ok && result.domain)
                           const premium = result.status === "premium"
                           const resultExtension = result.domain?.split(".").at(-1) ?? ""
                           const resultName = resultExtension
@@ -1929,11 +1961,11 @@ export function PreviewCheckout({
                                 </span>
                               </span>
                               <span className="grid self-center text-right">
-                                <strong className="text-[0.8125rem] font-bold tabular-nums">{available && result.quotes ? (result.quotes.annual.quote.domainSurchargeNetMinor > 0 ? `+ ${money(locale, result.quotes.annual.quote.domainSurchargeNetMinor, result.quotes.annual.quote.currency)}` : t("checkoutDomainIncludedBadge")) : result.extraFeeLabel ?? "—"}</strong>
-                                {available && result.quotes && result.quotes.annual.quote.domainSurchargeNetMinor > 0 && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
+                                <strong className="text-[0.8125rem] font-bold tabular-nums">{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+                                {available && result.extraFeeAmount && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant="ghost" className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground")} onClick={() => selectExtensionResult(result)}>
+                                <Button type="button" size="sm" variant="ghost" disabled={domainQuotePending} className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground")} onClick={() => void selectExtensionResult(result)}>
                                   {checkedDomain === result.domain && <Check className="size-[15px]" aria-hidden />}
                                   {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
                                 </Button>
@@ -1947,6 +1979,11 @@ export function PreviewCheckout({
                           )
                         })}
                         </div>
+                        {hasMoreExtensions && !extensionCheckPending && (
+                          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => void showMoreExtensions()}>
+                            {t("checkoutShowMoreExtensions")}
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2033,13 +2070,18 @@ export function PreviewCheckout({
                             ] as const)
                               .filter(([value]) => availableMigrationSourceMethods.includes(value))
                               .map(([value, label]) => (
-                                <div
+                                <Label
                                   key={value}
-                                  className="flex cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm"
+                                  htmlFor={`checkout-migration-source-${value}`}
+                                  className="flex min-h-[72px] w-full cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm font-normal leading-relaxed hover:bg-muted/40 has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
                                 >
-                                  <RadioGroupItem id={`checkout-migration-source-${value}`} value={value} className="mt-0.5" />
-                                  <Label htmlFor={`checkout-migration-source-${value}`} className="cursor-pointer font-normal leading-relaxed">{t(label)}</Label>
-                                </div>
+                                  <RadioGroupItem
+                                    id={`checkout-migration-source-${value}`}
+                                    value={value}
+                                    className="mt-0.5"
+                                  />
+                                  <span>{t(label)}</span>
+                                </Label>
                               ))}
                           </RadioGroup>
                         </fieldset>
