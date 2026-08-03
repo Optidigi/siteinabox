@@ -36,7 +36,7 @@ const server = await createServer({
       viteServer.middlewares.use("/checkout/domain-search", (request, response) => {
         let raw = ""
         request.on("data", (chunk) => { raw += chunk })
-        request.on("end", () => {
+        request.on("end", async () => {
           const body = JSON.parse(raw || "{}")
           if (String(body.query ?? "").includes("service-error")) {
             response.statusCode = 502
@@ -45,6 +45,9 @@ const server = await createServer({
             return
           }
           const query = String(body.query ?? "").replace(/\..*$/, "")
+          if (query === "loading-state") {
+            await new Promise((resolve) => setTimeout(resolve, 1_000))
+          }
           const extensions = body.mode === "more" ? ["net", "be", "de", "online", "shop"] : ["nl", "com", "info", "org", "eu"]
           const results = extensions.map((extension) => ({ domain: `${query}.${extension}`, availability: extension === "com" ? "unavailable" : extension === "eu" ? "premium" : "available", purchasable: !["com", "eu"].includes(extension), included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z" }))
           response.setHeader("Content-Type", "application/json")

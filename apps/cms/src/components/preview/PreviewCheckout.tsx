@@ -619,7 +619,10 @@ export function PreviewCheckout({
     const resultDomains = extensionSearchDomains ?? extensionResults
       .map((result) => result.domain)
       .filter((domain): domain is string => Boolean(domain))
-    const anchor = extensionSearchAnchor ?? resultDomains[0] ?? newDomainSearchPrimaryDomain
+    const anchor = extensionSearchAnchor ??
+      resultDomains[0] ??
+      newDomainSearchPrimaryDomain ??
+      (domainSearchInput.kind === "bare" ? domainSearchInput.canonical : null)
     const readyDomains = resultDomains.filter((domain) =>
       extensionResults.some((result) => result.ok && result.domain === domain),
     )
@@ -642,6 +645,7 @@ export function PreviewCheckout({
     extensionSearchDomains,
     extensionResults,
     extensionSearchAnchor,
+    domainSearchInput,
     newDomainSearchPrimaryDomain,
   ])
   const domainLooksCheckable = Boolean(
