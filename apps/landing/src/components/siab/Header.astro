@@ -1,6 +1,12 @@
 ---
 import { site } from '../../content/site';
 import { SiteHeader } from './SiteHeader';
+
+interface Props {
+  hero?: boolean;
+}
+
+const { hero = false } = Astro.props;
 ---
 
 <SiteHeader
@@ -8,4 +14,5 @@ import { SiteHeader } from './SiteHeader';
   nav={site.nav}
   intakeHref={site.links.intake}
   loginHref={site.links.beheer}
+  hero={hero}
 />

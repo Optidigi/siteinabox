@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Menu, Moon, Sun } from 'lucide-react';
+import { Menu, Moon, Sun, X } from 'lucide-react';
 import { buttonVariants, Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -18,9 +18,10 @@ type Props = {
   nav: NavItem[];
   intakeHref: string;
   loginHref: string;
+  hero?: boolean;
 };
 
-export function SiteHeader({ nav, intakeHref, loginHref }: Props) {
+export function SiteHeader({ nav, intakeHref, loginHref, hero = false }: Props) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [scrolled, setScrolled] = useState(false);
 
@@ -44,8 +45,12 @@ export function SiteHeader({ nav, intakeHref, loginHref }: Props) {
   return (
     <header
       data-site-header
+      data-hero={hero ? '' : undefined}
       data-scrolled={scrolled ? '' : undefined}
-      className="fixed inset-x-0 top-0 z-40 border-b-2 border-transparent bg-background transition-[background-color,border-color] data-[scrolled]:border-border"
+      className={cn(
+        'fixed inset-x-0 top-0 z-40 border-b-2 border-transparent transition-[background-color,border-color] data-[scrolled]:border-border data-[scrolled]:bg-background dark:bg-background',
+        hero ? 'bg-cream/95' : 'bg-background',
+      )}
     >
       <div className="mx-auto flex h-24 w-[calc(100%-24px)] max-w-none items-center gap-4 lg:grid lg:h-[104px] lg:grid-cols-[1fr_auto_1fr]">
         <a href="/" aria-label="Site in a Box — naar homepage" className="shrink-0 lg:justify-self-start" data-analytics-action="navigate_home" data-analytics-placement="header" data-analytics-destination="home">
@@ -88,7 +93,7 @@ export function SiteHeader({ nav, intakeHref, loginHref }: Props) {
 
           <Sheet>
             <SheetTrigger
-              render={<Button variant="secondary" size="icon-lg" className="size-11 bg-black text-white lg:hidden dark:border-black dark:bg-card dark:text-foreground" />}
+              render={<Button variant="ghost" size="icon-lg" className="size-11 border-2 border-black bg-black text-white hover:bg-plum hover:text-white lg:hidden dark:bg-card dark:text-foreground dark:hover:bg-plum" />}
               aria-label="Open navigatie"
               data-analytics-action="open_mobile_menu"
               data-analytics-placement="header"
@@ -96,10 +101,17 @@ export function SiteHeader({ nav, intakeHref, loginHref }: Props) {
             >
               <Menu aria-hidden />
             </SheetTrigger>
-            <SheetContent side="right" className="border-border bg-background p-0" aria-label="Mobiele navigatie">
-              <SheetHeader className="border-b-2 border-border p-6">
-                <SheetTitle className="text-2xl font-bold">Menu</SheetTitle>
-                <SheetDescription>Ga direct naar een onderdeel van Site in a Box.</SheetDescription>
+            <SheetContent side="right" showCloseButton={false} className="border-border bg-background p-0" aria-label="Mobiele navigatie">
+              <SheetHeader className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b-2 border-border p-6">
+                <SheetTitle className="col-start-1 row-start-1 text-2xl font-bold">Menu</SheetTitle>
+                <SheetDescription className="col-start-1 row-start-2">Ga direct naar een onderdeel van Site in a Box.</SheetDescription>
+                <SheetClose
+                  aria-label="Sluit navigatie"
+                  className="col-start-2 row-span-2 row-start-1 self-start"
+                  render={<Button type="button" variant="ghost" size="icon-lg" className="size-12 border-2 border-border bg-foreground text-background shadow-none focus-visible:outline-yellow hover:bg-primary hover:text-primary-foreground" />}
+                >
+                  <X className="size-6" aria-hidden />
+                </SheetClose>
               </SheetHeader>
               <nav aria-label="Mobiele navigatie" className="p-6">
                 <ul className="grid gap-3">
