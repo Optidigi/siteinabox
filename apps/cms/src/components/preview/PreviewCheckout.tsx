@@ -205,6 +205,7 @@ type PreviewCheckoutProps = {
   provisioningStatus?: CustomerProvisioningStatus | null
   billingAgreement?: CustomerBillingAgreementView | null
   acceptedOrderId?: string | number | null
+  acceptedBillingPeriod?: BillingPeriod | null
   requiresMigrationRecollection?: boolean
   catalog: PreviewCheckoutCatalog
   paymentStatus: string
@@ -340,6 +341,7 @@ export function PreviewCheckout({
   provisioningStatus: initialProvisioningStatus = null,
   billingAgreement: initialBillingAgreement = null,
   acceptedOrderId = null,
+  acceptedBillingPeriod = null,
   requiresMigrationRecollection = false,
   catalog,
   paymentStatus,
@@ -435,7 +437,7 @@ export function PreviewCheckout({
     return "address"
   })
   const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(
-    initialQuotes?.annual.quote.billingPeriod ?? initialProgress?.billingPeriod ?? "annual",
+    acceptedBillingPeriod ?? initialProgress?.billingPeriod ?? "monthly",
   )
   const [domainMode, setDomainMode] = React.useState<
     "new_registration" | "existing_domain"
@@ -2231,7 +2233,7 @@ export function PreviewCheckout({
                 <ShieldCheck className="mt-0.5 size-[15px] shrink-0" aria-hidden />
                 <span>{t("checkoutSignedQuoteNote")}</span>
               </p>
-              <Button type="button" className="hidden min-h-11 shrink-0 min-[880px]:inline-flex" disabled={!domainIsReady} onClick={() => setStep("review")}>
+              <Button type="button" variant="brand" className="hidden min-h-11 shrink-0 min-[880px]:inline-flex" disabled={!domainIsReady} onClick={() => setStep("review")}>
                 {t("checkoutContinueReview")}
                 <ArrowRight className="size-[18px]" aria-hidden />
               </Button>
@@ -2748,7 +2750,7 @@ export function PreviewCheckout({
                   spacing={1}
                   className="grid w-full grid-cols-1 gap-[9px] min-[420px]:grid-cols-2"
                 >
-                {(acceptedOrderId == null ? ["annual", "monthly"] as const : [billingPeriod] as const).map((period) => {
+                {(acceptedOrderId == null ? ["monthly", "annual"] as const : [billingPeriod] as const).map((period) => {
                   const option = quotes?.[period]?.quote
                   return (
                     <ToggleGroupItem

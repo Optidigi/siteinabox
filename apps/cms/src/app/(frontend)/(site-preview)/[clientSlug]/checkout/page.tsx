@@ -222,6 +222,7 @@ export default async function PreviewCheckoutPage({
         provisioningStatus={provisioningStatus}
         billingAgreement={billingAgreement}
         acceptedOrderId={acceptedResume?.orderId ?? null}
+        acceptedBillingPeriod={acceptedResume?.billingPeriod ?? null}
         requiresMigrationRecollection={
           acceptedResume?.requiresMigrationRecollection ?? false
         }

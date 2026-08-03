@@ -132,6 +132,61 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
   })
 
+  it("defaults fresh pricing to monthly while preserving resumed and accepted choices", () => {
+    const fresh = render(<PreviewCheckout {...baseCheckoutProps()} initialStep="overview" />)
+    const freshOptions = Array.from(
+      fresh.container.querySelectorAll<HTMLElement>('[data-slot="toggle-group-item"]'),
+    )
+    expect(freshOptions.map((option) => option.getAttribute("data-state")))
+      .toEqual(["on", "off"])
+    expect(freshOptions[0]?.textContent).toContain("checkoutPlanMonthly")
+    fresh.unmount()
+
+    const resumed = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      initialStep="overview"
+      initialProgress={{
+        domainMode: "new_registration",
+        domainQuery: "analytical-engines.nl",
+        selectedDomain: "analytical-engines.nl",
+        decision: "review",
+        billingPeriod: "annual",
+        migrationSourceMechanism: null,
+        profileDraft: {},
+        expiresAt: "2026-08-17T12:00:00.000Z",
+      }}
+    />)
+    expect(screen.getByText("checkoutPlanAnnual").closest("button")?.getAttribute("data-state"))
+      .toBe("on")
+    resumed.unmount()
+
+    render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      initialStep="overview"
+      acceptedOrderId="order-1"
+      acceptedBillingPeriod="monthly"
+      initialProgress={{
+        domainMode: "new_registration",
+        domainQuery: "analytical-engines.nl",
+        selectedDomain: "analytical-engines.nl",
+        decision: "review",
+        billingPeriod: "annual",
+        migrationSourceMechanism: null,
+        profileDraft: {},
+        expiresAt: "2026-08-17T12:00:00.000Z",
+      }}
+    />)
+    expect(screen.getByText("checkoutPlanMonthly").closest("button")?.getAttribute("data-state"))
+      .toBe("on")
+  })
+
+  it("uses the brand treatment for the enabled desktop review-progress action", () => {
+    render(<PreviewCheckout {...baseCheckoutProps()} />)
+    const progress = screen.getByRole("button", { name: "checkoutContinueReview" })
+    expect(progress.hasAttribute("disabled")).toBe(false)
+    expect(progress.getAttribute("data-variant")).toBe("brand")
+  })
+
   it("uses one compact primary discovery request only after explicit submit", async () => {
     const checkDomainAction = vi.fn()
     const fetchMock = vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
@@ -516,7 +571,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(paymentForm?.querySelector('[name="companyName"]')).toBeNull()
     expect(paymentForm?.querySelector('[name="firstName"]')).toBeNull()
     expect((paymentForm?.querySelector('[name="checkoutQuoteToken"]') as HTMLInputElement).value)
-      .toBe("signed-annual")
+      .toBe("signed-monthly")
     expect(screen.getAllByRole("checkbox")).toHaveLength(2)
     const previewApproval = paymentForm?.querySelector('[name="previewApproval"]') as HTMLInputElement
     expect(previewApproval.value).toBe("")
