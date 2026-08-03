@@ -117,7 +117,7 @@ try {
   assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "2")
   assert.equal(await accessibleProgress.getByText("Step 1 of 2", { exact: true }).isVisible(), true)
   assert.equal(await accessibleProgress.getByText("Choose or connect", { exact: true }).isVisible(), true)
-  assert.equal(await page.locator("[data-checkout-progress-fill]").getAttribute("style"), "width: 50%;")
+  assert.equal(await page.locator('[data-checkout-progress-segment][data-complete="true"]').count(), 1)
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
@@ -224,7 +224,7 @@ try {
   assert.equal(await reviewProgress.getAttribute("aria-valuenow"), "2")
   assert.equal(await reviewProgress.getByText("Step 2 of 2", { exact: true }).isVisible(), true)
   assert.equal(await reviewProgress.getByText("Confirm and launch", { exact: true }).isVisible(), true)
-  assert.equal(await page.locator("[data-checkout-progress-fill]").getAttribute("style"), "width: 100%;")
+  assert.equal(await page.locator('[data-checkout-progress-segment][data-complete="true"]').count(), 2)
 
   assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
   await page.locator('[data-details-group="contact"] [aria-expanded="false"]').click()

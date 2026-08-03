@@ -64,8 +64,15 @@ export function CheckoutStepper<T extends string = string>({
             {current}/{total}
           </span>
         </div>
-        <span className="h-[3px] w-full overflow-hidden rounded-full bg-muted" aria-hidden>
-          <span data-checkout-progress-fill className="block h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${(current / total) * 100}%` }} />
+        <span data-checkout-progress-fill data-current={current} className="flex h-[3px] w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+          {steps.map((entry, index) => (
+            <span
+              key={entry.id}
+              data-checkout-progress-segment
+              data-complete={index < current}
+              className={cn("h-full flex-1", index < current && "bg-brand")}
+            />
+          ))}
         </span>
       </section>
     )
