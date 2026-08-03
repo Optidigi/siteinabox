@@ -374,8 +374,8 @@ try {
   assert.ok(compactGeometry.cardLeft >= compactGeometry.shellLeft)
   assert.ok(compactGeometry.shellRight != null && compactGeometry.cardRight != null)
   assert.ok(compactGeometry.cardRight <= compactGeometry.shellRight)
-  assert.equal(compactGeometry.progressLeft, compactGeometry.cardLeft)
-  assert.equal(compactGeometry.progressRight, compactGeometry.cardRight)
+  assert.equal(compactGeometry.progressLeft, compactGeometry.cardLeft + 1)
+  assert.equal(compactGeometry.progressRight, compactGeometry.cardRight - 1)
   assert.ok(
     compactGeometry.progressHeight != null &&
       compactGeometry.progressHeight >= 60 &&
@@ -483,11 +483,11 @@ try {
   const desktopPage = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   desktopPage.setDefaultTimeout(5_000)
   await desktopPage.goto(`${origin}?scenario=review-ready`, { waitUntil: "networkidle" })
-  await desktopPage.getByRole("heading", { name: /launch$/i }).first().waitFor()
+  await desktopPage.getByRole("heading", { name: "Review & pay", exact: true }).waitFor()
   const desktopGeometry = await desktopPage.evaluate(() => {
     const shell = document.querySelector("[data-checkout-shell]")
     const card = document.querySelector("[data-checkout-main-card]")
-    const launchSheet = card?.parentElement
+    const launchSheet = card
     const summary = document.querySelector("[data-checkout-summary]")
     const grid = summary?.parentElement
     const shellBox = shell?.getBoundingClientRect()
@@ -675,7 +675,7 @@ try {
   ).check()
   await axfrPage.getByRole("button", { name: "Check connection" }).click()
   await axfrPage.getByRole("button", { name: "Continue" }).click()
-  await axfrPage.getByRole("heading", { name: /launch$/i }).first().waitFor()
+  await axfrPage.getByRole("heading", { name: "Review & pay", exact: true }).waitFor()
   await axfrPage.getByRole("heading", {
     name: "Plan",
   }).waitFor()

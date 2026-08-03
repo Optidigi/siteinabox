@@ -32,7 +32,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
+import { Card, CardContent } from "@siteinabox/ui/components/card"
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
@@ -1185,11 +1185,6 @@ export function PreviewCheckout({
     : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive)
       ? t("checkoutPaymentNotCompletedTitle")
       : t("checkoutPaymentProcessingTitle")
-  const addressSheetDescription = domainMode === "existing_domain"
-    ? checkAppliesToCurrentInput && checkState.message
-      ? checkState.message
-      : t("checkoutDomainModeExistingPreflight")
-    : t("checkoutDomainHeroDescription")
   const primaryActionHandlers = {
     onDomainNext: () => setStep("review" as const),
     onDomainCheck: () => {
@@ -1285,14 +1280,10 @@ export function PreviewCheckout({
               </p>
             </div>
         </section>
-        <PreviewCheckoutStepper
-          step={presentation.phase === "address" ? step : "review"}
-          activeHeadingRef={stepHeadingRef}
-        />
-
         {(presentation.phase === "payment" || presentation.phase === "fulfilment" || (requiresMigrationRecollection && acceptedOrderId != null)) && (
           <div className={cn("grid min-w-0 gap-[18px]", presentation.phase === "payment" && "min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start")}>
-          <Card data-checkout-main-card className={cn("relative w-full scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]", presentation.phase !== "payment" && "mx-auto max-w-[820px]")}>
+          <Card data-checkout-main-card className={cn("relative w-full scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 shadow-sm min-[560px]:rounded-[22px]", presentation.phase !== "payment" && "mx-auto max-w-[820px]")}>
+            <PreviewCheckoutStepper step="review" activeHeadingRef={stepHeadingRef} />
             <CardContent className="grid gap-[14px] px-[17px] py-5 min-[560px]:gap-[18px] min-[560px]:px-[26px] min-[560px]:py-6 [&_[role=status]]:rounded-[14px] [&_[role=status]]:border [&_[role=status]]:p-[13px]">
         {paymentReturn && presentation.phase === "payment" && (
           <section className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5" aria-live="polite">
@@ -1738,19 +1729,8 @@ export function PreviewCheckout({
 
         {presentation.phase === "address" && step === "domain" && (
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start min-[880px]:gap-[18px]">
-          <Card data-checkout-main-card className="relative scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
-            <CardHeader className="!flex items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
-              <CardTitle>
-                <h2 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
-                  {t("checkoutStepDomain")}
-                </h2>
-                <p className="mt-1 max-w-xl text-sm font-normal leading-relaxed text-muted-foreground">{addressSheetDescription}</p>
-              </CardTitle>
-              <Badge className="ml-auto min-h-6 shrink-0 gap-1 bg-success/10 px-2 text-[0.625rem] font-bold text-success hover:bg-success/10">
-                <Globe2 className="size-[15px]" aria-hidden />
-                1 / 2
-              </Badge>
-            </CardHeader>
+          <Card data-checkout-main-card className="relative scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 shadow-sm min-[560px]:rounded-[22px]">
+            <PreviewCheckoutStepper step="domain" activeHeadingRef={stepHeadingRef} />
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[26px] min-[560px]:pt-[22px]">
               {cloudflareSourceResult === "failed" && (
                 <Alert variant="destructive" role="alert">
@@ -2245,20 +2225,9 @@ export function PreviewCheckout({
 
         {presentation.phase === "review" && step === "review" && (
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start min-[880px]:gap-[18px]">
-          <div className="relative scroll-mb-28 min-w-0 overflow-hidden rounded-[17px] border bg-card pt-[5px] shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:bg-gradient-to-r before:from-brand before:to-brand/20 min-[560px]:rounded-[22px]">
-          <Card data-checkout-main-card className="gap-0 rounded-none border-0 py-0 shadow-none">
-            <CardHeader className="!flex items-start gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[19px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-6">
-              <CardTitle>
-                <h2 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
-                  {t("checkoutReviewSheetTitle", { site: savedProfile?.contractingPartyName ?? details.registeredBusinessName ?? details.intendedCompanyName ?? t("checkoutLaunchWorkspace") })}
-                </h2>
-                <p className="mt-1 max-w-xl text-sm font-normal leading-relaxed text-muted-foreground">{t("checkoutReviewSheetDescription")}</p>
-              </CardTitle>
-              <Badge className="ml-auto hidden min-h-6 shrink-0 gap-1 bg-success/10 px-2 text-[0.625rem] font-bold text-success hover:bg-success/10 min-[360px]:inline-flex">
-                <Check className="size-[15px]" aria-hidden />
-                {t("checkoutKnownDetailsLabel")}
-              </Badge>
-            </CardHeader>
+          <div data-checkout-main-card className="relative scroll-mb-28 min-w-0 overflow-hidden rounded-[17px] border bg-card shadow-sm min-[560px]:rounded-[22px]">
+          <PreviewCheckoutStepper step="review" activeHeadingRef={stepHeadingRef} />
+          <Card className="gap-0 rounded-none border-0 py-0 shadow-none">
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[22px] min-[560px]:pt-[22px]">
               <div className="border-y" aria-label={t("checkoutKnownDetailsLabel")}>
                 <ReviewGroup

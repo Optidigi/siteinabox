@@ -46,7 +46,7 @@ export function CheckoutStepper<T extends string = string>({
         aria-valuemax={total}
         aria-valuenow={current}
         aria-valuetext={progressText(current, total, activeEntry?.label ?? "")}
-        className="mb-4 grid min-w-0 gap-3 rounded-[13px] border bg-card/75 px-[14px] py-3.5 shadow-sm min-[560px]:rounded-[15px] min-[560px]:px-[18px] min-[560px]:py-4"
+        className="grid min-w-0 gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[17px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-5"
       >
         <div className="flex min-w-0 items-start justify-between gap-4">
           <div className="min-w-0">
