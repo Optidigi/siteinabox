@@ -71,6 +71,8 @@ export type PreviewDomainOrderCheckOptions = {
   requireProductionCapability?: boolean
   /** Only the payment/commit check may bypass presentation availability cache. */
   forceFresh?: boolean
+  /** Read-only discovery may propagate a browser cancellation signal. */
+  signal?: AbortSignal
 }
 
 type NormalizedPreviewDomainOrderCandidate = {
@@ -331,8 +333,12 @@ export async function checkPreviewDomainOrders(
   if (candidates.length === 0) return []
 
   const candidateDomains = candidates.map((candidate) => candidate.domain)
-  const availabilityResults = options?.forceFresh
-    ? await checkOpenProviderDomainsAvailability(candidateDomains, { forceFresh: true })
+  const availabilityOptions = {
+    ...(options?.forceFresh ? { forceFresh: true } : {}),
+    ...(options?.signal ? { signal: options.signal } : {}),
+  }
+  const availabilityResults = Object.keys(availabilityOptions).length > 0
+    ? await checkOpenProviderDomainsAvailability(candidateDomains, availabilityOptions)
     : await checkOpenProviderDomainsAvailability(candidateDomains)
   const availabilityByDomain = new Map<string, OpenProviderAvailabilityResult>()
   for (const availability of availabilityResults) {

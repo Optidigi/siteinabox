@@ -181,6 +181,8 @@ type OpenProviderAvailabilityOptions = OpenProviderOptions & {
   forceFresh?: boolean
   /** Internal/test override; production availability reads remain bounded. */
   availabilityTimeoutMs?: number
+  /** Caller cancellation is only used for unshared discovery work. */
+  signal?: AbortSignal
 }
 
 const DEFAULT_API_BASE = "https://api.openprovider.eu/v1beta"
@@ -503,7 +505,7 @@ const fetchOpenProviderAvailability = async (
   token: string,
   domains: Array<{ name: string; extension: string }>,
   withPrice: boolean,
-  options?: OpenProviderOptions,
+  options?: OpenProviderAvailabilityOptions,
   availabilityTimeoutMs = OPENPROVIDER_AVAILABILITY_TIMEOUT_MS,
 ): Promise<Response> =>
   fetcher(options)(`${apiBase(env)}/domains/check`, {
@@ -513,7 +515,9 @@ const fetchOpenProviderAvailability = async (
       domains: domains.map((domain) => ({ name: domain.name, extension: domain.extension })),
       with_price: withPrice,
     }),
-    signal: AbortSignal.timeout(availabilityTimeoutMs),
+    signal: options?.signal
+      ? AbortSignal.any([AbortSignal.timeout(availabilityTimeoutMs), options.signal])
+      : AbortSignal.timeout(availabilityTimeoutMs),
   })
 
 const normalizedAvailabilityTimeoutMs = (value: number | undefined): number => {
@@ -671,6 +675,8 @@ export async function checkOpenProviderDomainsAvailability(
 
   const env = options?.env ?? process.env
   const withPrice = options?.withPrice ?? true
+  // A caller-owned signal must never abort a request joined by another caller.
+  // It can still consume and populate the normal presentation cache.
   const canUseProcessCache = !options?.token && !options?.forceFresh
   const fetchImpl = fetcher(options)
   const cacheScope = canUseProcessCache
@@ -699,7 +705,7 @@ export async function checkOpenProviderDomainsAvailability(
     return results
   }
 
-  const inFlightKey = cacheScope
+  const inFlightKey = cacheScope && !options?.signal
     ? availabilityBatchKey(cacheScope, domainsToFetch, withPrice)
     : null
   let pending = inFlightKey ? pendingAvailabilityBatches.get(inFlightKey) : undefined

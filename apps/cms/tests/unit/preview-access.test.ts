@@ -131,6 +131,23 @@ describe("preview access grants", () => {
     expect(context.pages.map((page) => page.id)).toEqual([100])
   })
 
+  it("loads discovery authority without querying preview pages", async () => {
+    const { loadPreviewGrantAuthority } = await import("@/lib/preview/previewAccess")
+
+    const authority = await loadPreviewGrantAuthority({
+      clientSlug: "preview-studio",
+      email: "Customer@Example.com",
+      now: previewNow,
+    })
+
+    expect(authority.clientSlug).toBe("preview-studio")
+    expect(authority.run.id).toBe(500)
+    expect("pages" in authority).toBe(false)
+    expect(mocks.payload.find).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "pages" }),
+    )
+  })
+
   it("blocks wrong email, wrong slug, expired grants, revoked grants, and suspended tenants", async () => {
     const { tenant, grants } = createState()
     const { loadPreviewGrantContext } = await import("@/lib/preview/previewAccess")

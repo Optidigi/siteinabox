@@ -112,7 +112,6 @@ const baseCheckoutProps = () => ({
   },
   paymentStatus: "not_started",
   previewHref: "/ami-care",
-  prewarmHref: "/ami-care/checkout/prewarm",
   checkDomainAction: vi.fn(),
   saveProfileAction: vi.fn(),
   startPaymentAction: vi.fn(),
@@ -133,366 +132,169 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
   })
 
-  it("lets a current release-pending recheck invalidate an older ready draft", async () => {
-    const checkDomainAction = vi.fn(async (
-      _state: unknown,
-      formData: FormData,
-    ) => ({
-      ok: false,
-      status: "release_pending" as const,
-      domain: "analytical-engines.nl",
-      domainMode: "new_registration" as const,
-      message: "example.nl is available, but registration is not released.",
-      requestToken: String(formData.get("requestToken") ?? ""),
-    }))
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        supportedDomainExtensions={["nl"]}
-        checkDomainAction={checkDomainAction}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "analytical-engines.nl" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(1))
-    const status = await screen.findByRole("status")
-    expect(status.textContent).toContain("checkoutDomainReleasePendingTitle")
-    expect(status.textContent).toContain(
-      "example.nl is available, but registration is not released.",
-    )
-    expect(screen.queryByRole("button", { name: "checkoutNext" })).toBeNull()
-    expect(screen.queryByText(/checkoutDomainAvailableDetail/)).toBeNull()
-  })
-
-  it("starts the configured extension checks together and publishes their rows as one batch", async () => {
-    const resolvers = new Map<string, (state: PreviewCheckoutActionState) => void>()
-    const checkDomainAction = vi.fn((_state: unknown, formData: FormData) =>
-      new Promise<PreviewCheckoutActionState>((resolve) => {
-        resolvers.set(String(formData.get("domain")), resolve)
-      }))
-    const { container } = render(
-      <PreviewCheckout {...baseCheckoutProps()} checkDomainAction={checkDomainAction} />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "acme" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(5))
-    expect(checkDomainAction.mock.calls.map(([, formData]) =>
-      String((formData as FormData).get("domain")))).toEqual([
-      "acme.nl", "acme.com", "acme.info", "acme.org", "acme.eu",
-    ])
-
-    await act(async () => {
-      resolvers.get("acme.nl")?.({
-        ok: false,
-        status: "unavailable",
-        domain: "acme.nl",
-        domainMode: "new_registration",
-        message: "acme.nl is unavailable.",
-      })
-    })
-    expect(container.querySelector('[data-domain-status="unavailable"]')).toBeNull()
-
-    await act(async () => {
-      for (const domain of ["acme.com", "acme.info", "acme.org", "acme.eu"]) {
-        resolvers.get(domain)?.({
-          ok: false,
-          status: "unavailable",
-          domain,
-          domainMode: "new_registration",
-          message: `${domain} is unavailable.`,
-        })
-      }
-    })
-    await waitFor(() => expect(
-      container.querySelectorAll('[data-domain-status="unavailable"]'),
-    ).toHaveLength(5))
-  })
-
-  it("uses one server-derived batch action for the recommended phase when available", async () => {
-    const checkDomainBatchAction = vi.fn(async (formData: FormData) => ({
+  it("uses one compact primary discovery request after the debounce", async () => {
+    const checkDomainAction = vi.fn()
+    const fetchMock = vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
       ok: true,
-      message: "",
-      phase: "recommended" as const,
-      requestToken: String(formData.get("requestToken") ?? ""),
-      results: ["nl", "com", "info", "org", "eu"].map((extension) => ({
-        ok: true,
-        status: "available" as const,
-        domain: `acme.${extension}`,
-        domainMode: "new_registration" as const,
-        included: true,
-        message: `acme.${extension} is available.`,
-        quotes: { monthly: quote("monthly"), annual: quote("annual") },
-      })),
-    }))
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        checkDomainBatchAction={checkDomainBatchAction}
-      />,
-    )
+      hasMore: true,
+      results: [
+        {
+          domain: "acme.nl", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+        {
+          domain: "acme.com", availability: "unavailable", purchasable: false,
+          included: false, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+      ],
+    })))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      domainSearchHref="/ami-care/checkout/domain-search"
+      checkDomainAction={checkDomainAction}
+    />)
 
     fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "acme" },
     })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
 
-    await waitFor(() => expect(checkDomainBatchAction).toHaveBeenCalledTimes(1))
-    const formData = checkDomainBatchAction.mock.calls[0]?.[0] as FormData
-    expect(formData.get("domain")).toBe("acme")
-    expect(formData.get("phase")).toBe("recommended")
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const [href, options] = fetchMock.mock.calls[0]!
+    expect(href).toBe("/ami-care/checkout/domain-search")
+    expect(options).toMatchObject({ method: "POST", credentials: "same-origin" })
+    expect(JSON.parse(String((options as RequestInit).body))).toEqual({
+      query: "acme", mode: "primary",
+    })
+    expect(checkDomainAction).not.toHaveBeenCalled()
+    expect(container.querySelectorAll('[data-domain-status="available"]')).toHaveLength(1)
+    expect(container.querySelectorAll('[data-domain-status="unavailable"]')).toHaveLength(1)
+    expect(screen.getByRole("button", { name: "checkoutShowMoreExtensions" })).toBeTruthy()
+  })
 
-    const availableSelects = await screen.findAllByRole("button", {
+  it("loads more extensions only after the customer asks", async () => {
+    const fetchMock = vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: true, hasMore: true,
+        results: [{
+          domain: "acme.nl", availability: "unavailable", purchasable: false,
+          included: false, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        }],
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: true, hasMore: false,
+        results: [{
+          domain: "acme.net", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        }],
+      })))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      domainSearchHref="/ami-care/checkout/domain-search"
+    />)
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "acme" },
+    })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(container.textContent).not.toContain("acme.net")
+
+    fireEvent.click(screen.getByRole("button", { name: "checkoutShowMoreExtensions" }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body))).toEqual({
+      query: "acme", mode: "more",
+    })
+    await waitFor(() => expect(container.querySelectorAll('[data-domain-status="available"]')
+      .item(0)?.textContent).toContain("acme.net"))
+    expect(screen.queryByRole("button", { name: "checkoutShowMoreExtensions" })).toBeNull()
+  })
+
+  it("aborts superseded discovery and ignores its stale result", async () => {
+    let resolveFirst: ((response: Response) => void) | undefined
+    const fetchMock = vi.mocked(fetch)
+      .mockImplementationOnce((_href, options) => new Promise<Response>((resolve) => {
+        resolveFirst = resolve
+        expect((options as RequestInit).signal).toBeInstanceOf(AbortSignal)
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: true, hasMore: false,
+        results: [{
+          domain: "second.nl", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        }],
+      })))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      domainSearchHref="/ami-care/checkout/domain-search"
+    />)
+    const input = screen.getByLabelText(/checkout(?:Existing)?DomainLabel/)
+
+    fireEvent.change(input, { target: { value: "first" } })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const firstSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal as AbortSignal
+    fireEvent.change(input, { target: { value: "second" } })
+    expect(firstSignal.aborted).toBe(true)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await act(async () => {
+      resolveFirst?.(new Response(JSON.stringify({
+        ok: true, hasMore: false,
+        results: [{
+          domain: "first.nl", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        }],
+      })))
+    })
+
+    await waitFor(() => expect(container.querySelectorAll('[data-domain-status="available"]')
+      .item(0)?.textContent).toContain("second.nl"))
+    expect(container.textContent).not.toContain("first.nl")
+  })
+
+  it("quotes exactly the selected purchasable domain", async () => {
+    const quoteDomainAction = vi.fn(async (formData: FormData) => ({
+      ok: true,
+      status: "available" as const,
+      message: "",
+      domain: String(formData.get("domain")),
+      domainMode: "new_registration" as const,
+      requestToken: String(formData.get("requestToken")),
+      quotes: { monthly: quote("monthly"), annual: quote("annual") },
+    }))
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      ok: true, hasMore: false,
+      results: [
+        {
+          domain: "acme.nl", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+        {
+          domain: "acme.com", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+      ],
+    })))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      domainSearchHref="/ami-care/checkout/domain-search"
+      quoteDomainAction={quoteDomainAction}
+    />)
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "acme" },
+    })
+    const selectButtons = await screen.findAllByRole("button", {
       name: "checkoutSelectDomain",
     })
-    const resultRowsBeforeSelection = [...container.querySelectorAll(
-      '[data-domain-status="available"]',
-    )].map((row) => row.querySelector("strong")?.textContent)
-    fireEvent.click(availableSelects[2]!)
+    fireEvent.click(selectButtons[1]!)
 
-    const selectedRow = await waitFor(() => {
-      const row = container.querySelector('[data-domain-selected="true"]')
-      expect(row).toBeTruthy()
-      return row!
-    })
-    expect(selectedRow.className).toContain("bg-success/[0.07]")
-    const selectedButton = screen.getByRole("button", { name: "checkoutDomainSelected" })
-    expect(selectedButton.querySelector("svg")).toBeTruthy()
-    expect([...container.querySelectorAll('[data-domain-status="available"]')]
-      .map((row) => row.querySelector("strong")?.textContent))
-      .toEqual(resultRowsBeforeSelection)
-  })
-
-  it("keeps the typed extension first and shows recommended unavailable options when every extension is taken", async () => {
-    const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
-      const domain = String(formData.get("domain"))
-      return {
-        ok: false,
-        status: "unavailable" as const,
-        domain,
-        domainMode: "new_registration" as const,
-        message: `${domain} is unavailable.`,
-      }
-    })
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
-        checkDomainAction={checkDomainAction}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "taken.nl" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(10))
-    expect(checkDomainAction.mock.calls.map(([, formData]) =>
-      String((formData as FormData).get("domain")))).toEqual([
-      "taken.nl", "taken.com", "taken.info", "taken.org", "taken.eu",
-      "taken.net", "taken.be", "taken.de", "taken.online", "taken.shop",
-    ])
-    const unavailableRows = [...container.querySelectorAll('[data-domain-status="unavailable"]')]
-    expect(unavailableRows).toHaveLength(5)
-    expect(unavailableRows[0]?.textContent).toContain("taken.nl")
-    expect(unavailableRows.map((row) => row.textContent).join(" ")).not.toContain("taken.net")
-  })
-
-  it("runs the fallback extensions together until the result surface has four selectable alternatives", async () => {
-    const fallbackDomains = new Set([
-      "unavailable.net",
-      "unavailable.be",
-      "unavailable.de",
-      "unavailable.online",
-      "unavailable.shop",
-    ])
-    const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
-      const domain = String(formData.get("domain"))
-      if (!fallbackDomains.has(domain)) {
-        return {
-          ok: false,
-          status: "unavailable" as const,
-          domain,
-          domainMode: "new_registration" as const,
-          message: `${domain} is unavailable.`,
-        }
-      }
-      return {
-        ok: true,
-        status: "available" as const,
-        domain,
-        domainMode: "new_registration" as const,
-        message: `${domain} is available.`,
-        quotes: { monthly: quote("monthly"), annual: quote("annual") },
-      }
-    })
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
-        checkDomainAction={checkDomainAction}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "unavailable" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(quoteDomainAction).toHaveBeenCalledTimes(1))
+    const formData = quoteDomainAction.mock.calls[0]?.[0] as FormData
+    expect(formData.get("domain")).toBe("acme.com")
+    expect(formData.get("domainMode")).toBe("new_registration")
+    expect(formData.get("requestToken")).toBeTruthy()
     await waitFor(() => expect(
-      container.querySelectorAll('[data-domain-status="available"]'),
-    ).toHaveLength(4))
-    const resultRows = [...container.querySelectorAll("[data-domain-status]")]
-    expect(resultRows[0]?.textContent).toContain("unavailable.nl")
-    expect(resultRows.map((row) => row.textContent).join(" ")).toContain("unavailable.net")
-    expect(resultRows.map((row) => row.textContent).join(" ")).toContain("unavailable.online")
-    expect(resultRows.map((row) => row.textContent).join(" ")).not.toContain("unavailable.shop")
-  })
-
-  it("launches every recommended extension before waiting for a response", async () => {
-    const recommendedDomains = new Set([
-      "primary.nl",
-      "primary.com",
-      "primary.info",
-      "primary.org",
-      "primary.eu",
-    ])
-    const checkDomainAction = vi.fn((_state: unknown, formData: FormData) => {
-      const domain = String(formData.get("domain"))
-      if (recommendedDomains.has(domain)) {
-        return new Promise<PreviewCheckoutActionState>(() => {})
-      }
-      return Promise.resolve({ ok: false, message: "" })
-    })
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
-        checkDomainAction={checkDomainAction}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "primary" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(5))
-    expect(checkDomainAction.mock.calls.map(([, formData]) =>
-      String((formData as FormData).get("domain")))).toEqual([
-      "primary.nl", "primary.com", "primary.info", "primary.org", "primary.eu",
-    ])
-  })
-
-  it("launches every fallback extension before waiting for a fallback response", async () => {
-    const fallbackDomains = new Set([
-      "parallel.net",
-      "parallel.be",
-      "parallel.de",
-      "parallel.online",
-      "parallel.shop",
-    ])
-    const checkDomainAction = vi.fn((_state: unknown, formData: FormData) => {
-      const domain = String(formData.get("domain"))
-      if (fallbackDomains.has(domain)) {
-        return new Promise<PreviewCheckoutActionState>(() => {})
-      }
-      return Promise.resolve({
-        ok: false,
-        status: "unavailable" as const,
-        domain,
-        domainMode: "new_registration" as const,
-        message: `${domain} is unavailable.`,
-      })
-    })
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
-        checkDomainAction={checkDomainAction}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "parallel" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(10))
-    expect(checkDomainAction.mock.calls.slice(5).map(([, formData]) =>
-      String((formData as FormData).get("domain")))).toEqual([
-      "parallel.net", "parallel.be", "parallel.de", "parallel.online", "parallel.shop",
-    ])
-  })
-
-  it("keeps an explicitly typed non-recommended OpenProvider TLD as the first result", async () => {
-    const readyDomains = new Set([
-      "direct.ai",
-      "direct.net",
-      "direct.be",
-      "direct.de",
-      "direct.online",
-      "direct.shop",
-    ])
-    const checkDomainAction = vi.fn(async (_state: unknown, formData: FormData) => {
-      const domain = String(formData.get("domain"))
-      const ready = readyDomains.has(domain)
-      return {
-        ok: ready,
-        status: ready ? "available" as const : "unavailable" as const,
-        domain,
-        domainMode: "new_registration" as const,
-        message: ready ? `${domain} is available.` : `${domain} is unavailable.`,
-        ...(ready ? { quotes: { monthly: quote("monthly"), annual: quote("annual") } } : {}),
-      }
-    })
-    const { container } = render(
-      <PreviewCheckout
-        {...baseCheckoutProps()}
-        supportedDomainExtensions={["nl", "com", "info", "org", "eu", "net", "be", "de", "online", "shop"]}
-        checkDomainAction={checkDomainAction}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
-      target: { value: "direct.ai" },
-    })
-    fireEvent.submit(
-      container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
-    )
-
-    await waitFor(() => expect(checkDomainAction).toHaveBeenCalledTimes(11))
-    expect(checkDomainAction.mock.calls.slice(0, 6).map(([, formData]) =>
-      String((formData as FormData).get("domain")))).toEqual([
-      "direct.ai", "direct.nl", "direct.com", "direct.info", "direct.org", "direct.eu",
-    ])
-    await waitFor(() => expect(
-      container.querySelectorAll('[data-domain-status="available"]'),
-    ).toHaveLength(5))
-    expect(container.querySelector("[data-domain-status]")?.textContent).toContain("direct.ai")
+      container.querySelector('[data-domain-selected="true"]')?.textContent,
+    ).toContain("acme.com"))
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
   })
 
   it("shows the frozen transfer-renewal effect in the final review", () => {
@@ -574,7 +376,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
         }}
         paymentStatus="not_started"
         previewHref="/ami-care"
-        prewarmHref="/ami-care/checkout/prewarm"
         checkDomainAction={vi.fn()}
         saveProfileAction={saveProfileAction}
         startPaymentAction={vi.fn()}
@@ -707,7 +508,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       },
       paymentStatus: "not_started",
       previewHref: "/ami-care",
-      prewarmHref: "/ami-care/checkout/prewarm",
       checkDomainAction,
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),
@@ -1023,7 +823,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       },
       paymentStatus: "not_started",
       previewHref: "/example",
-      prewarmHref: "/example/checkout/prewarm",
       checkDomainAction,
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),
@@ -1212,7 +1011,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       },
       paymentStatus: "canceled",
       previewHref: "/example",
-      prewarmHref: "/example/checkout/prewarm",
       checkDomainAction: vi.fn(),
       saveProfileAction: vi.fn(),
       startPaymentAction: vi.fn(),

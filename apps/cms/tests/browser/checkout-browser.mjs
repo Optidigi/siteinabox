@@ -30,7 +30,29 @@ const server = await createServer({
   root: browserRoot,
   publicDir: path.join(cmsRoot, "public"),
   configFile: false,
-  plugins: [react()],
+  plugins: [react(), {
+    name: "checkout-domain-search-fixture",
+    configureServer(viteServer) {
+      viteServer.middlewares.use("/checkout/domain-search", (request, response) => {
+        let raw = ""
+        request.on("data", (chunk) => { raw += chunk })
+        request.on("end", () => {
+          const body = JSON.parse(raw || "{}")
+          if (String(body.query ?? "").includes("service-error")) {
+            response.statusCode = 502
+            response.setHeader("Content-Type", "application/json")
+            response.end(JSON.stringify({ ok: false, results: [], hasMore: false }))
+            return
+          }
+          const query = String(body.query ?? "").replace(/\..*$/, "")
+          const extensions = body.mode === "more" ? ["net", "be", "de", "online", "shop"] : ["nl", "com", "info", "org", "eu"]
+          const results = extensions.map((extension) => ({ domain: `${query}.${extension}`, availability: extension === "com" ? "unavailable" : extension === "eu" ? "premium" : "available", purchasable: !["com", "eu"].includes(extension), included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z" }))
+          response.setHeader("Content-Type", "application/json")
+          response.end(JSON.stringify({ ok: true, results, hasMore: body.mode !== "more" }))
+        })
+      })
+    },
+  }],
   resolve: {
     alias: {
       "@": path.join(cmsRoot, "src"),
@@ -55,6 +77,28 @@ try {
   page.setDefaultTimeout(5_000)
   const pageErrors = []
   page.on("pageerror", (error) => pageErrors.push(error.message))
+  await page.context().route("**/checkout/domain-search", async (route) => {
+    const body = route.request().postDataJSON()
+    const query = String(body.query ?? "").replace(/\..*$/, "")
+    const mode = body.mode === "more" ? "more" : "primary"
+    if (String(body.query).includes("service-error")) {
+      await route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ ok: false, results: [], hasMore: false }) })
+      return
+    }
+    if (query === "stale-result") await new Promise((resolve) => setTimeout(resolve, 700))
+    const extensions = mode === "more"
+      ? ["net", "be", "de", "online", "shop"]
+      : ["nl", "com", "info", "org", "eu"]
+    const results = extensions.map((extension) => ({
+      domain: `${query}.${extension}`,
+      availability: extension === "com" ? "unavailable" : extension === "eu" ? "premium" : "available",
+      purchasable: !["com", "eu"].includes(extension),
+      included: true,
+      extraFee: null,
+      checkedAt: "2026-08-03T10:00:00.000Z",
+    }))
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, results, hasMore: mode === "primary" }) })
+  })
   await page.goto(origin, { waitUntil: "networkidle" })
 
   const steps = page.locator("ol > li")
@@ -96,15 +140,14 @@ try {
   await page.getByText("analytical-engines.nl", { exact: true }).waitFor()
   assert.equal(
     await page.getByText("analytical-engines.com", { exact: true }).count(),
-    0,
-    "Unavailable primary extensions must yield to checkout-ready alternatives in the five-row result surface.",
+    1,
+    "Primary discovery must preserve the server-owned candidate order and status.",
   )
-  assert.equal(
-    await page.getByText("analytical-engines.net", { exact: true }).isVisible(),
-    true,
-    "The fallback batch must supplement a qualified query when fewer than four domains are ready.",
-  )
+  assert.equal(await page.getByText("analytical-engines.net", { exact: true }).count(), 0)
+  await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
+  await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await domainInput.fill("analytical-engines")
+  await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.setViewportSize({ width: 320, height: 568 })
   await page.getByText("Live results", { exact: true }).evaluate((node) => {
@@ -113,8 +156,8 @@ try {
   })
   await capture(page, "phone-light-domain-results-320x568")
   await page.setViewportSize({ width: 390, height: 844 })
-  assert.equal(await page.getByText("Unavailable", { exact: true }).count(), 0)
-  assert.equal(await page.getByText("Premium", { exact: true }).count(), 0)
+  assert.equal(await page.getByText("Unavailable", { exact: true }).count(), 1)
+  assert.equal(await page.getByText("Premium", { exact: true }).count(), 1)
   assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
@@ -138,6 +181,7 @@ try {
     "Automatic extension checks must not expose a separate extension picker.",
   )
   await domainInput.fill("analytical-engines")
+  await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
@@ -263,6 +307,8 @@ try {
     "The phone action row must not compete with domain search before a domain is selected.",
   )
   await compactPage.locator("#checkout-domain").fill("analytical-engines")
+  await compactPage.getByText("analytical-engines.nl", { exact: true }).waitFor()
+  await compactPage.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await compactPage.getByText("analytical-engines.net", { exact: true }).waitFor()
   await compactPage.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
     .getByRole("button", { name: "Choose", exact: true }).click()
@@ -625,6 +671,10 @@ try {
       if (scenarioId === "domain-loading") {
         await scenarioPage.locator('[data-domain-status="loading"]').first().waitFor()
         return
+      }
+      if (scenarioId !== "domain-premium") {
+        await scenarioPage.getByText("analytical-engines.nl", { exact: true }).waitFor()
+        await scenarioPage.getByRole("button", { name: "Show more extensions", exact: true }).click()
       }
       await scenarioPage.getByText(
         scenarioId === "domain-premium" ? "analytical-engines.eu" : "analytical-engines.net",

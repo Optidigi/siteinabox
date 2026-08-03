@@ -191,7 +191,6 @@ createRoot(document.getElementById("root")!).render(
             annual: quote("annual", initialDomain),
           }
         : null}
-      supportedDomainExtensions={["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"]}
       initialStep={reviewInitially || pending || failed ? "overview" : "domain"}
       existingDomainMigrationEnabled={Boolean(existingScenario)}
       cloudflareSourceOAuthEnabled={Boolean(existingScenario)}
@@ -250,7 +249,22 @@ createRoot(document.getElementById("root")!).render(
         message: "Transfer code saved.",
       })}
       previewHref="/preview"
-      prewarmHref="/prewarm"
+      domainSearchHref="/checkout/domain-search"
+      quoteDomainAction={async (formData) => {
+        const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
+        return {
+          ok: true,
+          status: "available" as const,
+          domain,
+          domainMode: "new_registration" as const,
+          included: true,
+          message: `${domain} is available.`,
+          quotes: {
+            monthly: quote("monthly", domain),
+            annual: quote("annual", domain),
+          },
+        }
+      }}
       checkDomainAction={async (_previous, formData) => {
         const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
         const domainMode = String(formData.get("domainMode") ?? "new_registration")

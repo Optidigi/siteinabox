@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   headers: new Headers({ host: "preview.siteinabox.nl" }),
   getSession: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
+  loadPreviewGrantAuthority: vi.fn(),
   checkAndRecordPreviewDomainOrder: vi.fn(),
   checkPreviewDomainOrders: vi.fn(),
   requireReadyPreviewDomainOrder: vi.fn(),
@@ -110,6 +111,7 @@ vi.mock("@/lib/preview/betterAuth", () => ({
 
 vi.mock("@/lib/preview/previewAccess", () => ({
   loadPreviewGrantContext: mocks.loadPreviewGrantContext,
+  loadPreviewGrantAuthority: mocks.loadPreviewGrantAuthority,
   normalizePreviewClientSlug: (value: string) => value,
 }))
 
@@ -346,6 +348,13 @@ describe("preview checkout domain suggestion action", () => {
       run: { id: 500, updatedAt: "draft-500" },
       tenant: { id: 12, name: "Ami Care" },
       pages: [],
+      customerEmail: "customer@example.com",
+      clientSlug: "ami-care",
+    })
+    mocks.loadPreviewGrantAuthority.mockResolvedValue({
+      payload: { update: mocks.payloadUpdate },
+      run: { id: 500, updatedAt: "draft-500" },
+      tenant: { id: 12, name: "Ami Care" },
       customerEmail: "customer@example.com",
       clientSlug: "ami-care",
     })
@@ -981,7 +990,10 @@ describe("preview checkout domain suggestion action", () => {
         },
       },
     })
-    const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
+    const context = await mocks.loadPreviewGrantAuthority.mock.results[0]?.value
+    expect(mocks.loadPreviewGrantContext).not.toHaveBeenCalled()
+    expect(mocks.loadPreviewGrantAuthority).toHaveBeenCalledTimes(1)
+    expect(mocks.loadLatestCheckoutProfile).toHaveBeenCalledTimes(1)
     expect(mocks.checkAndRecordPreviewDomainOrder).toHaveBeenCalledWith(
       context.payload,
       context.run,
@@ -993,58 +1005,6 @@ describe("preview checkout domain suggestion action", () => {
         requireProductionCapability: false,
       },
     )
-    expect(context.payload.update).not.toHaveBeenCalled()
-  })
-
-  it("checks a server-derived domain phase in one non-persistent batch", async () => {
-    mocks.productionTldCapabilitiesAt.mockReturnValue([
-      { tld: "nl" }, { tld: "com" }, { tld: "info" }, { tld: "org" }, { tld: "eu" },
-    ])
-    mocks.checkPreviewDomainOrders.mockResolvedValue([
-      {
-        run: { id: 500 },
-        messageKey: "checkoutDomainAvailable",
-        domain: "ami-care.nl",
-        included: true,
-        extraFeeAmount: null,
-        extraFeeCurrency: null,
-        providerPriceAmount: "10.00",
-        providerPriceCurrency: "EUR",
-        providerQuotedAt: "2026-08-03T10:00:00.000Z",
-        productionOperationEnabled: true,
-        suggestions: [],
-      },
-    ])
-    const { checkPreviewCheckoutDomainBatchAction } = await import(
-      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
-    )
-    const formData = new FormData()
-    formData.set("domain", "ami-care")
-    formData.set("phase", "recommended")
-    formData.set("requestToken", "domain-batch-1")
-
-    const actionResult = await checkPreviewCheckoutDomainBatchAction("ami-care", formData)
-    expect(actionResult).toMatchObject({
-      ok: true,
-      phase: "recommended",
-      requestToken: "domain-batch-1",
-    })
-    expect(actionResult.results[0]).toMatchObject({
-      domain: "ami-care.nl",
-      ok: true,
-      quotes: expect.any(Object),
-    })
-    const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
-    expect(mocks.checkPreviewDomainOrders).toHaveBeenCalledWith(
-      context.run,
-      ["ami-care.nl", "ami-care.com", "ami-care.info", "ami-care.org", "ami-care.eu"],
-      null,
-      {
-        includedProviderPrice: { amount: "10.00", currency: "EUR" },
-        requireProductionCapability: false,
-      },
-    )
-    expect(mocks.loadLatestCheckoutProfile).toHaveBeenCalledTimes(1)
     expect(context.payload.update).not.toHaveBeenCalled()
   })
 
@@ -2199,45 +2159,6 @@ describe("preview checkout domain suggestion action", () => {
       status: "invalid_input",
       message: "checkoutMigrationActionInvalidInput",
     })
-  })
-
-  it("prewarms the OpenProvider token after the authenticated preview grant check", async () => {
-    const { POST } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/prewarm/route")
-    const request = new NextRequest("https://preview.siteinabox.nl/ami-care/checkout/prewarm", {
-      method: "POST",
-      headers: { cookie: "preview=1" },
-    })
-
-    const response = await POST(request, { params: Promise.resolve({ clientSlug: "ami-care" }) })
-
-    expect(response.status).toBe(204)
-    expect(mocks.loadPreviewGrantContext).toHaveBeenCalledWith({
-      clientSlug: "ami-care",
-      email: "Customer@Example.com",
-    })
-    expect(mocks.loginOpenProvider).toHaveBeenCalledTimes(1)
-    expect(mocks.loadPreviewGrantContext.mock.invocationCallOrder[0])
-      .toBeLessThan(mocks.loginOpenProvider.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
-    expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
-  })
-
-  it("returns 401 JSON from the prewarm route when preview auth is missing", async () => {
-    mocks.getSession.mockResolvedValue(null)
-    const { POST } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/prewarm/route")
-    const request = new NextRequest("https://preview.siteinabox.nl/ami-care/checkout/prewarm", {
-      method: "POST",
-    })
-
-    const response = await POST(request, { params: Promise.resolve({ clientSlug: "ami-care" }) })
-    const json = await response.json()
-
-    expect(response.status).toBe(401)
-    expect(json).toMatchObject({ ok: false })
-    expect(mocks.loadPreviewGrantContext).not.toHaveBeenCalled()
-    expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
-    expect(mocks.checkAndRecordPreviewDomainOrder).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
   })
 
   it("derives period-end cancellation only from authenticated checkout authority", async () => {

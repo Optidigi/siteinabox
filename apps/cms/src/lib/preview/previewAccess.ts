@@ -17,6 +17,13 @@ export type PreviewGrantContext = {
   clientSlug: string
 }
 
+/**
+ * The authority needed by non-page preview operations.  Keep this deliberately
+ * smaller than PreviewGrantContext: autocomplete and other checkout reads must
+ * not materialize the preview page collection.
+ */
+export type PreviewGrantAuthority = Omit<PreviewGrantContext, "pages">
+
 export type PreviewAccessRequest = {
   clientSlug: string
   email: string
@@ -128,7 +135,7 @@ export async function hasActivePreviewGrantForTenant(
   return (result.docs as PreviewAccessGrant[]).some((grant) => grantIsActive(grant, now))
 }
 
-export async function loadPreviewGrantContext(request: PreviewAccessRequest): Promise<PreviewGrantContext> {
+export async function loadPreviewGrantAuthority(request: PreviewAccessRequest): Promise<PreviewGrantAuthority> {
   const payload = await getPayload({ config })
   const customerEmail = normalizeEmail(request.email)
   const clientSlug = normalizePreviewClientSlug(request.clientSlug)
@@ -144,7 +151,7 @@ export async function loadPreviewGrantContext(request: PreviewAccessRequest): Pr
     },
     sort: "-updatedAt",
     limit: 10,
-    depth: 2,
+    depth: 1,
     overrideAccess: true,
   })
   const now = request.now ?? new Date()
@@ -180,17 +187,22 @@ export async function loadPreviewGrantContext(request: PreviewAccessRequest): Pr
     throw new Error("Preview run is not available")
   }
 
-  const pageResult = await payload.find({
+  return { grant, payload, tenant, run, customerEmail, clientSlug }
+}
+
+export async function loadPreviewGrantContext(request: PreviewAccessRequest): Promise<PreviewGrantContext> {
+  const authority = await loadPreviewGrantAuthority(request)
+  const pageResult = await authority.payload.find({
     collection: "pages",
-    where: { tenant: { equals: tenant.id } },
+    where: { tenant: { equals: authority.tenant.id } },
     sort: "slug",
     limit: 100,
     depth: 2,
     overrideAccess: true,
   })
   const allTenantPages = pageResult.docs as Page[]
-  const runPageIds = new Set(relationIds(run.pages))
-  const grantPageIds = relationIds(grant.pages)
+  const runPageIds = new Set(relationIds(authority.run.pages))
+  const grantPageIds = relationIds(authority.grant.pages)
   const allowedIds = grantPageIds.length > 0 ? new Set(grantPageIds) : runPageIds
   const pages = allTenantPages.filter((page) => allowedIds.has(String(page.id)))
   if (pages.length === 0) throw new Error("Preview page is not available")
@@ -198,7 +210,7 @@ export async function loadPreviewGrantContext(request: PreviewAccessRequest): Pr
     throw new Error("Preview page is not available")
   }
 
-  return { grant, payload, tenant, run, pages, customerEmail, clientSlug }
+  return { ...authority, pages }
 }
 
 export async function createOrRefreshPreviewGrant(input: {

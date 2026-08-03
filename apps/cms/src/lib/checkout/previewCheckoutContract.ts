@@ -54,14 +54,6 @@ export type PreviewCheckoutActionState = {
   } | null
 }
 
-export type PreviewCheckoutDomainBatchActionState = {
-  ok: boolean
-  message: string
-  results: PreviewCheckoutActionState[]
-  requestToken?: string
-  phase?: "recommended" | "fallback"
-}
-
 export type PreviewCheckoutProfileActionState = {
   ok: boolean
   message: string

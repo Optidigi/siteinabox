@@ -4,7 +4,6 @@ import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
-import { productionTldCapabilitiesAt } from "@siteinabox/contracts/tld-capabilities"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
@@ -26,7 +25,6 @@ import {
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import {
-  checkPreviewCheckoutDomainBatchAction,
   checkPreviewCheckoutDomainAction,
   loadPreviewCheckoutLiveStatusAction,
   recollectAcceptedMigrationInputAction,
@@ -200,9 +198,6 @@ export default async function PreviewCheckoutPage({
         initialDetails={initialDetails}
         initialQuotes={initialQuotes}
         initialProgress={initialProgress}
-        supportedDomainExtensions={productionTldCapabilitiesAt("registration").map(
-          (capability) => capability.tld,
-        )}
         initialStep={
           paymentReturn && initialProfile && initialQuotes
             ? "overview"
@@ -253,9 +248,13 @@ export default async function PreviewCheckoutPage({
         }}
         paymentStatus={payment?.status ?? "not_started"}
         previewHref={`/${context.clientSlug}`}
-        prewarmHref={`/${context.clientSlug}/checkout/prewarm`}
+        domainSearchHref={`/${context.clientSlug}/checkout/domain-search`}
+        quoteDomainAction={async (formData) => checkPreviewCheckoutDomainAction(
+          context.clientSlug,
+          { ok: false, message: "" },
+          formData,
+        )}
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
-        checkDomainBatchAction={checkPreviewCheckoutDomainBatchAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         saveProgressAction={savePreviewCheckoutProgressAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
