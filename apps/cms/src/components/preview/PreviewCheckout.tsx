@@ -2065,14 +2065,23 @@ export function PreviewCheckout({
                             ] as const)
                               .filter(([value]) => availableMigrationSourceMethods.includes(value))
                               .map(([value, label]) => (
-                                <RadioGroupItem
+                                <Label
                                   key={value}
-                                  id={`checkout-migration-source-${value}`}
-                                  value={value}
-                                  className="flex aspect-auto size-auto min-h-[72px] w-full cursor-pointer items-start justify-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-left text-sm font-normal leading-relaxed text-foreground shadow-none hover:bg-muted/40 data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background data-[state=checked]:hover:bg-foreground [&_[data-slot=radio-group-indicator]]:order-first [&_[data-slot=radio-group-indicator]]:mt-0.5 [&_[data-slot=radio-group-indicator]_svg]:fill-current"
+                                  htmlFor={`checkout-migration-source-${value}`}
+                                  data-migration-source-card={value}
+                                  className={cn(
+                                    "flex min-h-[72px] w-full cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-left text-sm font-normal leading-relaxed text-foreground transition-[background-color,border-color,box-shadow] hover:bg-muted/40 focus-within:ring-[3px] focus-within:ring-ring/50",
+                                    migrationSourceMethod === value &&
+                                      "border-foreground bg-muted/50 shadow-[0_0_0_1px_color-mix(in_oklab,var(--foreground)_20%,transparent)] hover:bg-muted/60",
+                                  )}
                                 >
+                                  <RadioGroupItem
+                                    id={`checkout-migration-source-${value}`}
+                                    value={value}
+                                    className="mt-0.5 border-foreground text-foreground data-[state=checked]:border-foreground data-[state=checked]:text-foreground [&_svg]:fill-current"
+                                  />
                                   <span>{t(label)}</span>
-                                </RadioGroupItem>
+                                </Label>
                               ))}
                           </RadioGroup>
                         </fieldset>

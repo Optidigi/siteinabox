@@ -954,8 +954,13 @@ describe("PreviewCheckout Phase 3 flow", () => {
       name: "checkoutMigrationSourceAxfr",
     })
     expect(cloudflareSource.getAttribute("aria-checked")).toBe("true")
-    expect(cloudflareSource.className).toContain("data-[state=checked]:bg-foreground")
+    expect(cloudflareSource.className).toContain("data-[state=checked]:text-foreground")
     expect(cloudflareSource.className).not.toContain("bg-brand")
+    const cloudflareCard = container.querySelector(
+      '[data-migration-source-card="cloudflare_api_v1"]',
+    )
+    expect(cloudflareCard?.className).toContain("bg-muted/50")
+    expect(cloudflareCard?.className).not.toContain("text-background")
     fireEvent.click(screen.getByText("checkoutMigrationSourceAxfr"))
     expect(axfrSource.getAttribute("aria-checked")).toBe("true")
     fireEvent.click(screen.getByText("checkoutMigrationSourceCloudflare"))
