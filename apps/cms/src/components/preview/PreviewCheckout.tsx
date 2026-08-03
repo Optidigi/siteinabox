@@ -12,7 +12,6 @@ import {
   CircleAlert,
   CircleX,
   CreditCard,
-  FileText,
   Globe2,
   Info,
   Link2,
@@ -115,8 +114,6 @@ type DetailsGroup = "company" | "contact" | "address"
 type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
-const checkoutStepOrder: CheckoutStep[] = ["domain", "review"]
-
 const defaultMigrationSourceMethod = (
   methods: AutomaticMigrationSourceMethod[],
 ): AutomaticMigrationSourceMethod | "" =>
@@ -370,9 +367,6 @@ export function PreviewCheckout({
       ? "domain"
       : "review"
   const [step, setStep] = React.useState<CheckoutStep>(initialDecision)
-  const [highestReachedStep, setHighestReachedStep] = React.useState(
-    checkoutStepOrder.indexOf(initialDecision),
-  )
   const [checkState, checkAction, checkPending] = useActionState(
     checkDomainAction,
     initialActionState,
@@ -823,9 +817,6 @@ export function PreviewCheckout({
     if (profileState.status !== "invalid") {
       stepHeadingRef.current?.focus()
     }
-    setHighestReachedStep((current) =>
-      Math.max(current, checkoutStepOrder.indexOf(step)),
-    )
   }, [profileState.status, step])
 
   React.useEffect(() => {
@@ -1282,22 +1273,21 @@ export function PreviewCheckout({
       <div data-checkout-shell className="mx-auto grid w-[calc(100%_-_20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%_-_28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%_-_40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
         <section className="grid gap-2">
             <div>
-              <h1 ref={stepHeadingRef} tabIndex={-1} className="text-[1.75rem] font-[760] leading-[1.07] tracking-[-0.04em] outline-none min-[880px]:text-[2.5rem]">
+              <h1 className="text-[1.75rem] font-[760] leading-[1.07] tracking-[-0.04em] min-[880px]:text-[2.5rem]">
                 {presentation.phase === "fulfilment" || presentation.phase === "payment"
                   ? t("checkoutLaunchWorkspace")
-                    : step === "domain" ? t("checkoutDomainHeroTitle") : t("checkoutReviewHeroTitle")}
+                  : t("checkoutOnlineTitle")}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground min-[880px]:text-[0.9375rem]">
                 {presentation.phase === "fulfilment" || presentation.phase === "payment"
                   ? t("checkoutLifecycleShellDescription")
-                    : step === "domain" ? t("checkoutDomainHeroDescription") : t("checkoutReviewHeroDescription")}
+                  : t("checkoutOnlineDescription")}
               </p>
             </div>
         </section>
         <PreviewCheckoutStepper
           step={presentation.phase === "address" ? step : "review"}
-          highestReachedStep={presentation.phase === "address" ? highestReachedStep : 1}
-          onStepSelect={presentation.phase === "address" || presentation.phase === "review" ? setStep : undefined}
+          activeHeadingRef={stepHeadingRef}
         />
 
         {(presentation.phase === "payment" || presentation.phase === "fulfilment" || (requiresMigrationRecollection && acceptedOrderId != null)) && (
@@ -3033,27 +3023,24 @@ const migrationStateLabel = (
 
 function PreviewCheckoutStepper({
   step,
-  highestReachedStep,
-  onStepSelect,
+  activeHeadingRef,
 }: {
   step: CheckoutStep
-  highestReachedStep: number
-  onStepSelect?: (step: CheckoutStep) => void
+  activeHeadingRef: React.Ref<HTMLHeadingElement>
 }) {
   const t = useTranslations("preview")
-  const steps: Array<{ id: CheckoutStep; label: string; description: string; icon: React.ElementType }> = [
-    { id: "domain", label: t("checkoutStepDomain"), description: t("checkoutStepDomainDescription"), icon: Globe2 },
-    { id: "review", label: t("checkoutStepPayment"), description: t("checkoutStepPaymentDescription"), icon: FileText },
+  const steps: Array<{ id: CheckoutStep; label: string; description: string }> = [
+    { id: "domain", label: t("checkoutStepDomain"), description: t("checkoutStepDomainDescription") },
+    { id: "review", label: t("checkoutStepPayment"), description: t("checkoutStepPaymentDescription") },
   ]
   return (
     <CheckoutStepper
       steps={steps}
       activeStep={step}
-      reachableSteps={steps
-        .slice(0, highestReachedStep + 1)
-        .map((entry) => entry.id)}
-      onStepSelect={onStepSelect}
+      variant="panel"
+      activeHeadingRef={activeHeadingRef}
       progressText={(current, total, label) => t("checkoutProgressText", { current, total, label })}
+      stepText={(current, total) => t("checkoutProgressStep", { current, total })}
     />
   )
 }

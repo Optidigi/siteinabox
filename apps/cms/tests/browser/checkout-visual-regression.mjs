@@ -64,7 +64,7 @@ export const assertCheckoutGeometry = (assert, visualCase, geometry) => {
   if (visualCase.width < 880) {
     assert.equal(geometry.desktopSummaryVisible, false, `${visualCase.id} exposes the desktop rail below 880px.`)
     if (geometry.mobileProgressHeight != null) {
-      assert.ok(geometry.mobileProgressHeight <= 56, `${visualCase.id} progress exceeds 56px.`)
+      assert.ok(geometry.mobileProgressHeight >= 80 && geometry.mobileProgressHeight <= 120, `${visualCase.id} progress panel geometry drifted.`)
     }
   } else {
     assert.equal(geometry.mobileActionVisible, false, `${visualCase.id} exposes the mobile bar at/above 880px.`)
