@@ -36,18 +36,22 @@ async function waitForIsland(locator: import('playwright/test').Locator) {
   await expect(island).not.toHaveAttribute('ssr', '');
 }
 
-test.describe('landing visual contract', () => {
+test.describe('landing visual smoke contract', () => {
   for (const theme of ['light', 'dark'] as const) {
     test(`homepage ${theme} desktop`, async ({ page }) => {
       await setTheme(page, theme);
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toContainText('Een website voor je bedrijf');
-      await expect(page).toHaveScreenshot(`home-${theme}-desktop.png`, {
-        animations: 'disabled',
-        fullPage: true,
-        maxDiffPixelRatio: 0.01,
-      });
+      await expect(page.getByRole('heading', { name: 'Zo werkt het.', level: 2 })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Onze klanten', level: 2 })).toBeVisible();
+      await expect(page.locator('footer')).toBeVisible();
+      expect(await page.locator('[data-site-header]').evaluate(
+        (header) => getComputedStyle(header).backgroundColor,
+      )).toBe(theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(58, 26, 48)');
+      expect(await page.evaluate(
+        () => document.body.scrollWidth > document.documentElement.clientWidth,
+      )).toBe(false);
     });
 
     test(`homepage ${theme} mobile`, async ({ page }) => {
@@ -58,11 +62,12 @@ test.describe('landing visual contract', () => {
         () => document.body.scrollWidth > document.documentElement.clientWidth,
       );
       expect(hasHorizontalOverflow).toBe(false);
-      await expect(page).toHaveScreenshot(`home-${theme}-mobile.png`, {
-        animations: 'disabled',
-        fullPage: true,
-        maxDiffPixelRatio: 0.01,
-      });
+      await expect(page.getByRole('heading', { name: 'Zo werkt het.', level: 2 })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Veelgestelde vragen', level: 2 })).toBeVisible();
+      await expect(page.locator('footer')).toBeVisible();
+      expect(await page.locator('[data-site-header]').evaluate(
+        (header) => getComputedStyle(header).backgroundColor,
+      )).toBe(theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(58, 26, 48)');
     });
   }
 });

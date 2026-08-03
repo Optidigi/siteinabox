@@ -45,7 +45,7 @@ export function SiteHeader({ nav, intakeHref, loginHref }: Props) {
     <header
       data-site-header
       data-scrolled={scrolled ? '' : undefined}
-      className="fixed inset-x-0 top-0 z-40 border-b-2 border-transparent bg-background/95 transition-[background-color,border-color] data-[scrolled]:border-border"
+      className="fixed inset-x-0 top-0 z-40 border-b-2 border-transparent bg-background transition-[background-color,border-color] data-[scrolled]:border-border"
     >
       <div className="mx-auto flex h-24 w-[calc(100%-24px)] max-w-none items-center gap-4 lg:grid lg:h-[104px] lg:grid-cols-[1fr_auto_1fr]">
         <a href="/" aria-label="Site in a Box — naar homepage" className="shrink-0 lg:justify-self-start" data-analytics-action="navigate_home" data-analytics-placement="header" data-analytics-destination="home">

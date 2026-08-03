@@ -133,11 +133,11 @@ jobs:
         run: pnpm --dir apps/landing test:analytics-browser
       - name: Verify landing UI, responsive, and accessibility contracts
         run: pnpm --dir apps/landing test:ui
-      - name: Upload landing visual-test diagnostics
+      - name: Upload landing browser-test diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: landing-visual-test-diagnostics
+          name: landing-browser-test-diagnostics
           path: apps/landing/test-results/
           if-no-files-found: ignore
           retention-days: 7
