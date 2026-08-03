@@ -255,10 +255,13 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(formData.get("domain")).toBe("acme")
     expect(formData.get("phase")).toBe("recommended")
 
-    const [firstAvailableSelect] = await screen.findAllByRole("button", {
+    const availableSelects = await screen.findAllByRole("button", {
       name: "checkoutSelectDomain",
     })
-    fireEvent.click(firstAvailableSelect!)
+    const resultRowsBeforeSelection = [...container.querySelectorAll(
+      '[data-domain-status="available"]',
+    )].map((row) => row.querySelector("strong")?.textContent)
+    fireEvent.click(availableSelects[2]!)
 
     const selectedRow = await waitFor(() => {
       const row = container.querySelector('[data-domain-selected="true"]')
@@ -268,6 +271,9 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(selectedRow.className).toContain("bg-success/[0.07]")
     const selectedButton = screen.getByRole("button", { name: "checkoutDomainSelected" })
     expect(selectedButton.querySelector("svg")).toBeTruthy()
+    expect([...container.querySelectorAll('[data-domain-status="available"]')]
+      .map((row) => row.querySelector("strong")?.textContent))
+      .toEqual(resultRowsBeforeSelection)
   })
 
   it("keeps the typed extension first and shows recommended unavailable options when every extension is taken", async () => {
@@ -753,6 +759,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
       container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
     )
     await screen.findByText("checkoutMigrationSourceLegend")
+    const axfrSource = screen.getByRole("radio", {
+      name: "checkoutMigrationSourceAxfr",
+    })
+    expect(axfrSource.getAttribute("aria-checked")).toBe("true")
+    expect(screen.getByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
     expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
     expect(screen.queryByRole("radio", {
       name: "checkoutMigrationSourceExport",
@@ -765,9 +776,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })).toBeNull()
     expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
     expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
-    fireEvent.click(screen.getByRole("radio", {
-      name: "checkoutMigrationSourceAxfr",
-    }))
+    fireEvent.click(axfrSource.closest("label")!)
+    expect(axfrSource.getAttribute("aria-checked")).toBe("true")
     fireEvent.submit(
       container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
     )
@@ -1052,12 +1062,17 @@ describe("PreviewCheckout Phase 3 flow", () => {
     )
     expect(container.querySelectorAll("form form")).toHaveLength(0)
     expect(screen.queryByLabelText("checkoutMigrationSourceTokenLabel")).toBeNull()
-    expect(screen.getByRole("radio", {
+    const cloudflareSource = screen.getByRole("radio", {
       name: "checkoutMigrationSourceCloudflare",
-    })).toBeTruthy()
-    expect(screen.getByRole("radio", {
+    })
+    const axfrSource = screen.getByRole("radio", {
       name: "checkoutMigrationSourceAxfr",
-    })).toBeTruthy()
+    })
+    expect(cloudflareSource.getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(axfrSource.closest("label")!)
+    expect(axfrSource.getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(cloudflareSource.closest("label")!)
+    expect(cloudflareSource.getAttribute("aria-checked")).toBe("true")
     expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
 
     rerender(<PreviewCheckout

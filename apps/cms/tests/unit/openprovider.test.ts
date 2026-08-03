@@ -25,6 +25,7 @@ import {
   updateOpenProviderDomainDnssec,
   updateOpenProviderDomainNameservers,
 } from "@/lib/domains/openprovider"
+import { normalizeDomain } from "@/lib/domains/normalize"
 
 const ORIGINAL_FETCH = globalThis.fetch
 
@@ -264,6 +265,47 @@ describe("OpenProvider adapter", () => {
         with_price: true,
       }),
     }))
+  })
+
+  it("uses the longest qualified TLD suffix for a read-only availability check", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [{
+          domain: { name: "example", extension: "co.uk" },
+          status: "free",
+          price: { price: "8.50", currency: "EUR" },
+        }],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainAvailability("Example.Co.Uk", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "available",
+      domain: "example.co.uk",
+      price: { amount: "8.50", currency: "EUR" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        domains: [{ name: "example", extension: "co.uk" }],
+        with_price: true,
+      }),
+    }))
+  })
+
+  it("accepts authoritative qualified suffixes through the normalization hook", () => {
+    expect(normalizeDomain("Example.Com.Au", {
+      qualifiedTldSuffixes: ["au", "com.au"],
+    })).toMatchObject({
+      ok: true,
+      domain: "example.com.au",
+      name: "example",
+      extension: "com.au",
+    })
   })
 
   it("restores requested order when OpenProvider returns nested-price results out of order", async () => {

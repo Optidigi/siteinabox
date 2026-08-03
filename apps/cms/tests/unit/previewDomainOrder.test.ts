@@ -507,6 +507,38 @@ describe("preview domain order", () => {
     expect(payload.update).not.toHaveBeenCalled()
   })
 
+  it("checks an explicitly entered qualified TLD through OpenProvider with its EUR quote", async () => {
+    const run = { id: 123, domainOrder: null }
+    vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
+      status: "available",
+      domain: "acme.co.uk",
+      available: true,
+      premium: false,
+      price: { amount: "14.00", currency: "EUR" },
+      internalReason: null,
+    })
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload({ update: vi.fn() }),
+      cast<SiteGenerationRun>(run),
+      "Acme.Co.Uk",
+      null,
+      {
+        record: false,
+        capabilityEffectiveAt: "2026-08-02T00:00:00.000Z",
+        requireProductionCapability: false,
+      },
+    )).resolves.toMatchObject({
+      domain: "acme.co.uk",
+      messageKey: "checkoutDomainAvailableExtraFee",
+      providerPriceAmount: "14.00",
+      providerPriceCurrency: "EUR",
+      extraFeeAmount: "4.00",
+      extraFeeCurrency: "EUR",
+    })
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.co.uk")
+  })
+
   it("rechecks availability before accepting an existing ready order for payment", async () => {
     const registrant: DomainRegistrantDetails = {
       companyName: "Acme Studio",

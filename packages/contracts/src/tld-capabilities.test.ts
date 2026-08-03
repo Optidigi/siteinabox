@@ -110,6 +110,29 @@ describe("effective-dated TLD capability catalog", () => {
     ).toBeNull()
   })
 
+  it("permits an explicitly requested qualified OpenProvider TLD", () => {
+    const effectiveAt = "2026-08-02T00:00:00.000Z"
+    const capability = getTldCapabilityForProductionOperation(
+      "co.uk",
+      "registration",
+      effectiveAt,
+    )
+
+    expect(capability).toMatchObject({
+      tld: "co.uk",
+      capabilityVersion: "tld-co-uk-2026-08-02.1",
+      production: { registration: true },
+    })
+    expect(getTldCapabilityByVersion("tld-co-uk-2026-08-02.1")).toMatchObject({
+      tld: "co.uk",
+    })
+    expect(
+      productionTldCapabilitiesAt("registration", effectiveAt).some(
+        (entry) => entry.tld === "co.uk",
+      ),
+    ).toBe(false)
+  })
+
   it("enables only registration and its required verification for every intended TLD", () => {
     expect(
       productionTldCapabilitiesAt(

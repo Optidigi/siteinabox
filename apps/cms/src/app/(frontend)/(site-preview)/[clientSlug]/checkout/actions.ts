@@ -128,6 +128,11 @@ import {
   checkoutProfileConflict,
   checkoutVersionConflict,
 } from "@/lib/checkout/previewCheckoutResults"
+import {
+  saveCheckoutProgressDraft,
+  type CheckoutProgressDraft,
+  type LoadedCheckoutProgressDraft,
+} from "@/lib/checkout/checkoutProgress"
 
 export type {
   MigrationCustomerActionState,
@@ -138,6 +143,30 @@ export type {
   PreviewCheckoutProfileActionState,
   PreviewCheckoutSuggestionsState,
 } from "@/lib/checkout/previewCheckoutContract"
+
+export type PreviewCheckoutProgressActionState = {
+  ok: boolean
+  message: string
+  progress?: LoadedCheckoutProgressDraft
+}
+
+/**
+ * Stores only the strict resumable-intent contract for the authenticated
+ * preview grant. It intentionally does not accept legal, quote, payment, or
+ * provider-source data.
+ */
+export async function savePreviewCheckoutProgressAction(
+  clientSlug: string,
+  draft: CheckoutProgressDraft,
+): Promise<PreviewCheckoutProgressActionState> {
+  try {
+    const context = await requirePreviewCheckoutContext(clientSlug)
+    const progress = await saveCheckoutProgressDraft({ context, draft })
+    return { ok: true, message: "", progress }
+  } catch {
+    return { ok: false, message: "Checkout progress could not be saved." }
+  }
+}
 
 function migrationAssessmentMessage(
   t: Awaited<ReturnType<typeof getTranslations>>,
@@ -891,10 +920,12 @@ export async function checkPreviewCheckoutDomainBatchAction(
       }],
     }
   }
-  const invalidCandidates = new Set(candidates.filter((candidate) => {
-    const normalized = normalizeDomain(candidate)
-    return !normalized.ok || !tldCapabilityAt(normalized.extension)
-  }))
+  // A typed, qualified domain is an explicit customer request. Recommended
+  // extensions remain a presentation choice, but must not become a second
+  // allow-list that rejects another TLD before OpenProvider can authoritatively
+  // check it. `checkPreviewDomainOrders` still applies the existing server-side
+  // capability, price and quote rules to every provider result.
+  const invalidCandidates = new Set(candidates.filter((candidate) => !normalizeDomain(candidate).ok))
   const checkableCandidates = candidates.filter((candidate) => !invalidCandidates.has(candidate))
   if (checkableCandidates.length === 0) {
     const message = t("checkoutDomainInvalid")

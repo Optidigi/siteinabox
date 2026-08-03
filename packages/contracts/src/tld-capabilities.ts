@@ -96,7 +96,7 @@ export const tldCapabilitySchema = z.object({
     "Use a governed TLD capability version.",
   ),
   catalogVersion: z.literal(TLD_CAPABILITY_CATALOG_VERSION),
-  tld: z.string().regex(/^[a-z]{2,63}$/),
+  tld: z.string().regex(/^[a-z]{2,63}(?:\.[a-z]{2,63})*$/),
   effectiveFrom: z.iso.datetime(),
   effectiveUntil: z.iso.datetime().nullable(),
   production: tldProductionEnablementSchema,
@@ -911,7 +911,7 @@ const OPENPROVIDER_ON_DEMAND_CAPABILITY_EFFECTIVE_FROM =
   "2026-08-02T00:00:00.000Z"
 const OPENPROVIDER_ON_DEMAND_CAPABILITY_VERSION_SUFFIX = "2026-08-02.1"
 const onDemandCapabilityVersion = (tld: string): string =>
-  `tld-${tld}-${OPENPROVIDER_ON_DEMAND_CAPABILITY_VERSION_SUFFIX}`
+  `tld-${tld.replaceAll(".", "-")}-${OPENPROVIDER_ON_DEMAND_CAPABILITY_VERSION_SUFFIX}`
 
 const onDemandOpenProviderRegistrationCapability = (
   tld: string,
@@ -920,7 +920,7 @@ const onDemandOpenProviderRegistrationCapability = (
   const normalized = normalizedTld(tld)
   const at = validEffectiveDate(effectiveAt)
   if (
-    !/^[a-z]{2,63}$/.test(normalized) ||
+    !/^[a-z]{2,63}(?:\.[a-z]{2,63})*$/.test(normalized) ||
     at.getTime() < Date.parse(OPENPROVIDER_ON_DEMAND_CAPABILITY_EFFECTIVE_FROM)
   ) {
     return null
@@ -1132,10 +1132,10 @@ export function getTldCapabilityByVersion(
   }
   if (matches[0]) return matches[0]
   const match = capabilityVersion.match(
-    /^tld-([a-z]{2,63})-2026-08-02\.1$/,
+    /^tld-([a-z]{2,63}(?:-[a-z]{2,63})*)-2026-08-02\.1$/,
   )
   return match?.[1]
-    ? onDemandOpenProviderRegistrationCapability(match[1])
+    ? onDemandOpenProviderRegistrationCapability(match[1].replaceAll("-", "."))
     : null
 }
 

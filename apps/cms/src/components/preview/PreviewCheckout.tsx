@@ -70,6 +70,10 @@ import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import type { CustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 import type { CustomerBillingAgreementView } from "@/lib/billing/customerBillingAgreement"
 import type {
+  CheckoutProgressDraft,
+  LoadedCheckoutProgressDraft,
+} from "@/lib/checkout/checkoutProgress"
+import type {
   MigrationCustomerActionState,
   PreviewCheckoutActionState,
   PreviewCheckoutCancellationState,
@@ -109,6 +113,13 @@ type AutomaticMigrationSourceMethod =
   | "cloudflare_api_v1"
   | "authorized_axfr_v1"
 const checkoutStepOrder: CheckoutStep[] = ["domain", "review"]
+
+const defaultMigrationSourceMethod = (
+  methods: AutomaticMigrationSourceMethod[],
+): AutomaticMigrationSourceMethod | "" =>
+  methods.includes("cloudflare_api_v1")
+    ? "cloudflare_api_v1"
+    : methods[0] ?? ""
 
 const SiteinaboxMark = ({ className }: { className?: string }) => (
   <img src="/logos/favicon.svg" alt="" className={className} />
@@ -178,6 +189,7 @@ type PreviewCheckoutProps = {
   initialProfile?: CheckoutProfileView | null
   initialDetails: CheckoutProfileDraft
   initialQuotes?: CheckoutQuoteSet | null
+  initialProgress?: LoadedCheckoutProgressDraft | null
   supportedDomainExtensions?: string[]
   initialStep?: LegacyCheckoutStep
   paymentReturn?: boolean
@@ -199,6 +211,7 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   checkDomainBatchAction?: PreviewCheckoutDomainBatchAction
   saveProfileAction: PreviewCheckoutProfileAction
+  saveProgressAction?: (draft: CheckoutProgressDraft) => Promise<unknown>
   startPaymentAction: PreviewCheckoutAction
   loadLiveStatusAction?: () => Promise<PreviewCheckoutLiveStatus>
   recollectAcceptedMigrationInputAction?: (
@@ -316,6 +329,7 @@ export function PreviewCheckout({
   initialProfile,
   initialDetails,
   initialQuotes = null,
+  initialProgress = null,
   supportedDomainExtensions = defaultSupportedDomainExtensions,
   initialStep = "domain",
   paymentReturn = false,
@@ -337,6 +351,7 @@ export function PreviewCheckout({
   checkDomainAction,
   checkDomainBatchAction,
   saveProfileAction,
+  saveProgressAction,
   startPaymentAction,
   loadLiveStatusAction,
   recollectAcceptedMigrationInputAction,
@@ -349,7 +364,12 @@ export function PreviewCheckout({
   locale,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
-  const initialDecision: CheckoutStep = initialStep === "domain" ? "domain" : "review"
+  // A restored decision never bypasses a fresh quote: progress is intent only.
+  const initialDecision: CheckoutStep = initialStep === "domain"
+    ? "domain"
+    : initialProgress?.decision === "review" && !initialQuotes
+      ? "domain"
+      : "review"
   const [step, setStep] = React.useState<CheckoutStep>(initialDecision)
   const [highestReachedStep, setHighestReachedStep] = React.useState(
     checkoutStepOrder.indexOf(initialDecision),
@@ -405,7 +425,7 @@ export function PreviewCheckout({
   const [billingAgreement, setBillingAgreement] =
     React.useState(initialBillingAgreement)
   const [details, setDetails] = React.useState<CheckoutProfileDraft>(
-    initialProfile ?? initialDetails,
+    { ...initialDetails, ...(initialProgress?.profileDraft ?? {}), ...(initialProfile ?? {}) },
   )
   const [savedProfile, setSavedProfile] = React.useState<CheckoutProfileView | null>(
     initialProfile ?? null,
@@ -418,14 +438,14 @@ export function PreviewCheckout({
     return "address"
   })
   const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(
-    initialQuotes?.annual.quote.billingPeriod ?? "annual",
+    initialQuotes?.annual.quote.billingPeriod ?? initialProgress?.billingPeriod ?? "annual",
   )
   const [domainMode, setDomainMode] = React.useState<
     "new_registration" | "existing_domain"
   >(
     cloudflareSourceAuthorization
       ? "existing_domain"
-      : initialQuotes?.annual.quote.domainMode ?? "new_registration",
+      : initialQuotes?.annual.quote.domainMode ?? initialProgress?.domainMode ?? "new_registration",
   )
   const [migrationSourceMethod, setMigrationSourceMethod] =
     React.useState<AutomaticMigrationSourceMethod | "">(() => {
@@ -433,7 +453,10 @@ export function PreviewCheckout({
       if (cloudflareSourceAuthorization) return "cloudflare_api_v1"
       return source === "cloudflare_api_v1" || source === "authorized_axfr_v1"
         ? source
-        : ""
+        : initialProgress?.migrationSourceMechanism === "cloudflare_api_v1" ||
+            initialProgress?.migrationSourceMechanism === "authorized_axfr_v1"
+          ? initialProgress.migrationSourceMechanism
+          : ""
     })
   const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
   const [migrationPreflight, setMigrationPreflight] = React.useState<{
@@ -443,7 +466,7 @@ export function PreviewCheckout({
   } | null>(null)
   const readyDomain = domainReady && currentDomain ? currentDomain : null
   const [domainValue, setDomainValue] = React.useState(
-    cloudflareSourceDomain ?? readyDomain ?? "",
+    cloudflareSourceDomain ?? readyDomain ?? initialProgress?.domainQuery ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
   const supportedExtensionsKey = supportedDomainExtensions.join(",")
@@ -462,6 +485,12 @@ export function PreviewCheckout({
   const [extensionCheckPhase, setExtensionCheckPhase] = React.useState<
     "idle" | "recommended" | "fallback"
   >("idle")
+  const [extensionSearchAnchor, setExtensionSearchAnchor] = React.useState<
+    string | null
+  >(null)
+  const [extensionSearchDomains, setExtensionSearchDomains] = React.useState<
+    string[] | null
+  >(null)
   const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
   const extensionRequestRef = React.useRef<string | null>(null)
   const lastDomainSearchKeyRef = React.useRef<string | null>(null)
@@ -480,6 +509,32 @@ export function PreviewCheckout({
   const [termsAccepted, setTermsAccepted] = React.useState(false)
   const [legalSubmitRequested, setLegalSubmitRequested] = React.useState(false)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
+  React.useEffect(() => {
+    if (!saveProgressAction) return
+    const timer = window.setTimeout(() => {
+      void saveProgressAction({
+        domainMode,
+        domainQuery: normalizedDomainValue,
+        selectedDomain: checkedDomain,
+        decision: step,
+        billingPeriod,
+        migrationSourceMechanism: domainMode === "existing_domain"
+          ? migrationSourceMethod || null
+          : null,
+        profileDraft: details,
+      })
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [
+    billingPeriod,
+    checkedDomain,
+    details,
+    domainMode,
+    migrationSourceMethod,
+    normalizedDomainValue,
+    saveProgressAction,
+    step,
+  ])
   const domainSearchInput = React.useMemo(
     () => parseDomainSearchInput(domainValue),
     [domainValue],
@@ -606,8 +661,9 @@ export function PreviewCheckout({
       return recommendedDomainSearchDomains.slice(0, 5)
     }
 
-    const anchor = newDomainSearchPrimaryDomain
-    const readyDomains = allDomainSearchDomains.filter((domain) =>
+    const resultDomains = extensionSearchDomains ?? allDomainSearchDomains
+    const anchor = extensionSearchAnchor ?? resultDomains[0] ?? newDomainSearchPrimaryDomain
+    const readyDomains = resultDomains.filter((domain) =>
       checkoutReadyDomainResult(extensionResults.find((result) => result.domain === domain) ?? initialActionState),
     )
     if (extensionCheckPending && extensionCheckPhase === "fallback") {
@@ -621,13 +677,15 @@ export function PreviewCheckout({
     return uniqueDomains([
       ...(anchor ? [anchor] : []),
       ...readyDomains.filter((domain) => domain !== anchor),
-      ...allDomainSearchDomains.filter((domain) => domain !== anchor && !readyDomains.includes(domain)),
+      ...resultDomains.filter((domain) => domain !== anchor && !readyDomains.includes(domain)),
     ]).slice(0, 5)
   }, [
     allDomainSearchDomains,
     extensionCheckPending,
     extensionCheckPhase,
+    extensionSearchDomains,
     extensionResults,
+    extensionSearchAnchor,
     fallbackDomainSearchDomains,
     newDomainSearchPrimaryDomain,
     recommendedDomainSearchDomains,
@@ -769,15 +827,12 @@ export function PreviewCheckout({
         (checkState.migrationPublicEvidence?.transferBlockers?.length ?? 0) > 0
       ) {
         setMigrationSourceMethod("")
-      } else if (
-        existingDomainMigrationEnabled &&
-        detectedMigrationDnsProvider === "cloudflare" &&
-        availableMigrationSourceMethods.includes("cloudflare_api_v1")
-      ) {
-        // Cloudflare is the only source that can continue without a
-        // customer-supplied secret. AXFR must remain unselected until its
-        // owner provides the required TSIG details and authorization.
-        setMigrationSourceMethod("cloudflare_api_v1")
+      } else if (existingDomainMigrationEnabled) {
+        setMigrationSourceMethod((current) =>
+          current && availableMigrationSourceMethods.includes(current)
+            ? current
+            : defaultMigrationSourceMethod(availableMigrationSourceMethods),
+        )
       }
     }
   }, [
@@ -927,6 +982,8 @@ export function PreviewCheckout({
     setExtensionResults([])
     setExtensionCheckPending(false)
     setExtensionCheckPhase("idle")
+    setExtensionSearchAnchor(null)
+    setExtensionSearchDomains(null)
     extensionRequestRef.current = null
     lastDomainSearchKeyRef.current = null
     if (value.trim().toLowerCase() !== checkedDomain) {
@@ -947,6 +1004,8 @@ export function PreviewCheckout({
     extensionRequestRef.current = requestToken
     setExtensionCheckPending(true)
     setExtensionCheckPhase("recommended")
+    setExtensionSearchAnchor(newDomainSearchPrimaryDomain)
+    setExtensionSearchDomains(allDomainSearchDomains)
     setCheckedDomain(null)
     setQuotes(null)
     setExtensionResults([])
@@ -1056,6 +1115,8 @@ export function PreviewCheckout({
     setQuotes(null)
     setMigrationSourceMethod("")
     setMigrationPreflight(null)
+    setExtensionSearchAnchor(null)
+    setExtensionSearchDomains(null)
     setDomainValue("")
     lastDomainSearchKeyRef.current = null
     lastSubmittedDomainRef.current = null
@@ -2033,13 +2094,18 @@ export function PreviewCheckout({
                             ] as const)
                               .filter(([value]) => availableMigrationSourceMethods.includes(value))
                               .map(([value, label]) => (
-                                <div
+                                <Label
                                   key={value}
-                                  className="flex cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm"
+                                  htmlFor={`checkout-migration-source-${value}`}
+                                  className="flex min-h-[72px] w-full cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm font-normal leading-relaxed hover:bg-muted/40 has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
                                 >
-                                  <RadioGroupItem id={`checkout-migration-source-${value}`} value={value} className="mt-0.5" />
-                                  <Label htmlFor={`checkout-migration-source-${value}`} className="cursor-pointer font-normal leading-relaxed">{t(label)}</Label>
-                                </div>
+                                  <RadioGroupItem
+                                    id={`checkout-migration-source-${value}`}
+                                    value={value}
+                                    className="mt-0.5"
+                                  />
+                                  <span>{t(label)}</span>
+                                </Label>
                               ))}
                           </RadioGroup>
                         </fieldset>
