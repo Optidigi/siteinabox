@@ -580,6 +580,37 @@ try {
   await existingReadyPage.locator("#checkout-domain").fill("existing-example.nl")
   await existingReadyPage.getByRole("button", { name: "Check connection" }).click()
   await existingReadyPage.getByRole("status").getByText("We found a low-risk path", { exact: false }).waitFor()
+  const cloudflareMigrationRadio = existingReadyPage.getByRole("radio", {
+    name: "My DNS is on Cloudflare — authorize read-only access for this domain through Cloudflare",
+  })
+  const axfrMigrationRadio = existingReadyPage.getByRole("radio", {
+    name: "My DNS provider permits an authorized AXFR",
+  })
+  const cloudflareMigrationCard = existingReadyPage.locator(
+    '[data-migration-source-card="cloudflare_api_v1"]',
+  )
+  assert.equal(await cloudflareMigrationRadio.getAttribute("aria-checked"), "true")
+  assert.deepEqual(await cloudflareMigrationRadio.evaluate((node) => {
+    const box = node.getBoundingClientRect()
+    return { width: box.width, height: box.height }
+  }), { width: 16, height: 16 })
+  await cloudflareMigrationCard.click({ position: { x: 500, y: 36 } })
+  assert.equal(await cloudflareMigrationRadio.getAttribute("aria-checked"), "true")
+  const axfrMigrationCard = existingReadyPage.locator(
+    '[data-migration-source-card="authorized_axfr_v1"]',
+  )
+  await axfrMigrationCard.click({ position: { x: 500, y: 36 } })
+  assert.equal(await axfrMigrationRadio.getAttribute("aria-checked"), "true")
+  const selectedCardColors = await axfrMigrationCard.evaluate((node) => {
+    const style = getComputedStyle(node)
+    return { background: style.backgroundColor, foreground: style.color }
+  })
+  assert.notEqual(
+    selectedCardColors.background,
+    selectedCardColors.foreground,
+    "The selected migration card must not invert into a foreground-colored slab.",
+  )
+  await axfrMigrationCard.scrollIntoViewIfNeeded()
   await capture(existingReadyPage, "desktop-dark-existing-cloudflare-ready", true)
   await existingReadyPage.close()
 
