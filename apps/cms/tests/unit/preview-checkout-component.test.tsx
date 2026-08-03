@@ -303,6 +303,82 @@ describe("PreviewCheckout Phase 3 flow", () => {
       .toContain("acme.com")
   })
 
+  it("revalidates a saved review selection once and resumes the review step", async () => {
+    const saveProgressAction = vi.fn().mockResolvedValue({ ok: true })
+    const quoteDomainAction = vi.fn(async (formData: FormData) => ({
+      ok: true,
+      status: "available" as const,
+      message: "",
+      domain: String(formData.get("domain")),
+      domainMode: "new_registration" as const,
+      requestToken: String(formData.get("requestToken")),
+      quotes: { monthly: quote("monthly"), annual: quote("annual") },
+    }))
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      ok: true,
+      hasMore: false,
+      results: [{
+        domain: "acme.nl", availability: "available", purchasable: true,
+        included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+      }],
+    })))
+
+    render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      currentDomain={null}
+      domainReady={false}
+      initialQuotes={null}
+      initialProgress={{
+        domainMode: "new_registration",
+        domainQuery: "acme.nl",
+        selectedDomain: "acme.nl",
+        decision: "review",
+        billingPeriod: "monthly",
+        migrationSourceMechanism: null,
+        profileDraft: { city: "Utrecht" },
+        expiresAt: "2026-08-17T12:00:00.000Z",
+      }}
+      domainSearchHref="/ami-care/checkout/domain-search"
+      quoteDomainAction={quoteDomainAction}
+      saveProgressAction={saveProgressAction}
+    />)
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(quoteDomainAction).toHaveBeenCalledTimes(1))
+    await screen.findByRole("heading", { name: "checkoutStepPayment" })
+    expect(screen.getByRole("button", { name: "checkoutBackToDomain" })).toBeTruthy()
+    expect(saveProgressAction.mock.calls.some(([draft]) =>
+      draft.selectedDomain === "acme.nl" && draft.decision === "review"))
+      .toBe(true)
+  })
+
+  it("checkpoints the review decision before changing steps and can return", async () => {
+    let releaseSave: (() => void) | undefined
+    const saveProgressAction = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        releaseSave = () => resolve({ ok: true })
+      }))
+      .mockResolvedValue({ ok: true })
+    render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      initialStep="domain"
+      saveProgressAction={saveProgressAction}
+    />)
+
+    fireEvent.click(screen.getAllByRole("button", { name: "checkoutNext" })[0]!)
+    expect(screen.getByRole("progressbar", { name: "checkoutStepDomain" })).toBeTruthy()
+    await waitFor(() => expect(saveProgressAction).toHaveBeenCalled())
+    expect(saveProgressAction.mock.calls[0]?.[0]).toMatchObject({
+      decision: "review",
+      selectedDomain: "analytical-engines.nl",
+    })
+
+    await act(async () => releaseSave?.())
+    await screen.findByRole("heading", { name: "checkoutStepPayment" })
+    fireEvent.click(screen.getByRole("button", { name: "checkoutBackToDomain" }))
+    await screen.findByRole("heading", { name: "checkoutStepDomain" })
+  })
+
   it("loads more extensions only after the customer asks", async () => {
     const fetchMock = vi.mocked(fetch)
       .mockResolvedValueOnce(new Response(JSON.stringify({

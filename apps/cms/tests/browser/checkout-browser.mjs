@@ -117,6 +117,8 @@ try {
   assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "2")
   assert.equal(await accessibleProgress.getByText("Step 1 of 2", { exact: true }).isVisible(), true)
   assert.equal(await accessibleProgress.getByText("Choose or connect", { exact: true }).isVisible(), true)
+  assert.equal(await page.getByRole("heading", { name: "Choose your domain", exact: true }).isVisible(), true)
+  assert.equal(await page.getByText("Search for a new domain or connect one you already own.", { exact: true }).isVisible(), true)
   assert.equal(await page.locator('[data-checkout-progress-segment][data-complete="true"]').count(), 1)
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -225,6 +227,11 @@ try {
   assert.equal(await reviewProgress.getByText("Step 2 of 2", { exact: true }).isVisible(), true)
   assert.equal(await reviewProgress.getByText("Confirm and launch", { exact: true }).isVisible(), true)
   assert.equal(await page.locator('[data-checkout-progress-segment][data-complete="true"]').count(), 2)
+  await page.getByRole("button", { name: "Back to domain", exact: true }).click()
+  await page.getByRole("heading", { name: "Choose your domain", exact: true }).waitFor()
+  assert.equal(await page.locator('[data-domain-selected="true"]', { hasText: "analytical-engines.nl" }).count(), 1)
+  await page.getByRole("button", { name: "Continue", exact: true }).click()
+  await page.getByRole("heading", { name: "Review & pay", exact: true }).waitFor()
 
   assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
   await page.locator('[data-details-group="contact"] [aria-expanded="false"]').click()
