@@ -1,0 +1,43 @@
+---
+const TEST_SITE_KEY = '1x00000000000000000000AA';
+const productionHostnames = new Set(['siteinabox.nl', 'www.siteinabox.nl']);
+const isProductionBuild = productionHostnames.has(Astro.site?.hostname ?? '');
+const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY
+  ?? (isProductionBuild ? '' : TEST_SITE_KEY);
+
+if (!siteKey) {
+  throw new Error('PUBLIC_TURNSTILE_SITE_KEY is required for a production landing build.');
+}
+---
+
+<div
+  class="mb-7"
+  data-siab-turnstile
+  tabindex="-1"
+  aria-describedby="siab-turnstile-error"
+>
+  <div
+    class="cf-turnstile min-h-[65px] w-full"
+    data-sitekey={siteKey}
+    data-action="platform-contact"
+    data-appearance="interaction-only"
+    data-language="nl"
+    data-size="flexible"
+    data-theme="auto"
+  ></div>
+  <p
+    id="siab-turnstile-error"
+    class="mt-2 hidden text-sm font-semibold text-destructive"
+    role="alert"
+    data-siab-turnstile-error
+  >
+    Bevestig dat je geen robot bent en probeer het opnieuw.
+  </p>
+</div>
+
+<script
+  is:inline
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+  async
+  defer
+></script>

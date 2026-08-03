@@ -3,236 +3,109 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/siab/Header.astro';
 import Footer from '../components/siab/Footer.astro';
 import FaqSection from '../components/siab/FaqSection.astro';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { site } from '../content/site';
-
-const pageTitle = 'Beheer login';
-const pageDescription = 'Log in op de beheeromgeving van je Site in a Box website.';
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription} noindex>
+<BaseLayout title="Beheer login" description="Log in op de beheeromgeving van je Site in a Box website." noindex>
   <Header />
-  <main>
-    <section class="siab-beheer-hero mt-180 lg-mt-80" aria-labelledby="beheer-heading">
-      <div class="container lg">
-        <div class="row align-items-center gx-xxl-5">
-          <div class="col-lg-6">
-            <div class="title-eleven mb-25 lg-mb-10">
-              <h1 id="beheer-heading">Log in op je beheeromgeving.</h1>
-            </div>
-            <p class="fs-22 text-dark opacity-75 m0">
-              Vul het domein van je website in. We sturen je naar de juiste beheeromgeving, bijvoorbeeld admin.jouwdomein.nl.
-            </p>
-          </div>
-
-          <div class="col-lg-6 mt-40 mt-lg-0">
-            <section class="siab-beheer-card" aria-label="Login domein kiezen">
-              <p class="siab-beheer-eyebrow">Beheer login</p>
-              <h2>Waar staat je website?</h2>
-              <form id="tenant-login-form" class="siab-beheer-form" novalidate>
-                <label for="tenant-domain">Website domein</label>
-                <div class="siab-beheer-control">
-                  <input
-                    id="tenant-domain"
-                    name="domain"
-                    type="text"
-                    inputmode="url"
-                    autocomplete="url"
-                    placeholder="jouwdomein.nl"
-                    aria-describedby="tenant-domain-help tenant-domain-error"
-                    required
-                  />
-                  <button type="submit" class="btn-eighteen">Inloggen</button>
-                </div>
-                <p id="tenant-domain-help" class="siab-beheer-help">
-                  Gebruik het domein van je website. Als je admin.jouwdomein.nl invult, gebruiken we die direct.
-                </p>
-                <p id="tenant-domain-error" class="siab-beheer-error" role="alert" hidden>
-                  Vul een geldig domein in, bijvoorbeeld ami-care.nl.
-                </p>
-              </form>
-
-              <div class="siab-beheer-admin">
-                <span>Site in a Box beheerder?</span>
-                <a href={site.links.platformAdminLogin}>Open platform login</a>
-              </div>
-            </section>
-          </div>
+  <main class="pt-36 md:pt-[180px]">
+    <section class="pb-16 md:pb-24" aria-labelledby="beheer-heading" data-analytics-section="beheer_login" data-analytics-position="1">
+      <div class="site-container grid items-center gap-12 lg:grid-cols-2">
+        <div>
+          <h1 id="beheer-heading" class="text-[40px] leading-[1.2]">Log in op je beheeromgeving.</h1>
+          <p class="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">Vul het domein van je website in. We sturen je naar de juiste beheeromgeving, bijvoorbeeld admin.jouwdomein.nl.</p>
         </div>
+        <Card className="p-7 shadow-[6px_6px_0_#090709] md:p-12">
+        <section aria-label="Login domein kiezen">
+          <p class="font-head text-sm font-bold uppercase tracking-[.16em] text-muted-foreground">Beheer login</p>
+          <h2 class="mb-7 mt-2 text-4xl md:text-[56px]">Waar staat je website?</h2>
+          <form id="tenant-login-form" novalidate data-analytics-component="beheer-domain-form" data-analytics-component-type="form" data-analytics-component-role="login">
+            <Label className="mb-2 block font-bold" htmlFor="tenant-domain">Website domein</Label>
+            <div class="grid gap-4 sm:grid-cols-[1fr_auto]">
+              <Input className="min-h-14 px-4 text-base" id="tenant-domain" name="domain" type="text" inputMode="url" autoComplete="url" placeholder="jouwdomein.nl" aria-describedby="tenant-domain-help tenant-domain-error" required />
+              <Button type="submit" size="lg" className="min-h-14" data-analytics-action="submit_beheer_domain" data-analytics-placement="beheer" data-analytics-destination="tenant_admin">Inloggen</Button>
+            </div>
+            <p id="tenant-domain-help" class="mt-3 text-sm leading-relaxed text-muted-foreground">Gebruik het domein van je website. Als je admin.jouwdomein.nl invult, gebruiken we die direct.</p>
+            <p id="tenant-domain-error" class="mt-3 font-bold text-destructive" role="alert" hidden>Vul een geldig domein in, bijvoorbeeld ami-care.nl.</p>
+          </form>
+          <div class="mt-8 flex flex-wrap gap-2 border-t border-border/20 pt-6 text-sm text-muted-foreground">
+            <span>Site in a Box beheerder?</span>
+            <a class="font-bold text-foreground underline underline-offset-4" href={site.links.platformAdminLogin} data-analytics-action="open_platform_login" data-analytics-placement="beheer" data-analytics-destination="platform_admin">Open platform login</a>
+          </div>
+        </section>
+        </Card>
       </div>
     </section>
-
     <FaqSection />
   </main>
   <Footer />
 
-  <script is:inline>
-    (function () {
-      var form = document.getElementById('tenant-login-form');
-      var input = document.getElementById('tenant-domain');
-      var error = document.getElementById('tenant-domain-error');
-      if (!form || !input || !error) return;
+  <script>
+    import { captureLandingEvent } from '../lib/landing-analytics';
 
-      function normalizeDomain(value) {
-        var raw = String(value || '').trim().toLowerCase();
-        raw = raw.replace(/^https?:\/\//, '').replace(/^\/+/, '');
-        raw = raw.split('/')[0].split('?')[0].split('#')[0];
-        raw = raw.replace(/:\d+$/, '');
-        raw = raw.replace(/^www\./, '');
-        return raw;
-      }
+    const form = document.querySelector<HTMLFormElement>('#tenant-login-form');
+    const input = document.querySelector<HTMLInputElement>('#tenant-domain');
+    const error = document.querySelector<HTMLElement>('#tenant-domain-error');
+    let formStarted = false;
 
-      function isValidDomain(domain) {
-        return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain);
-      }
+    const normalizeDomain = (value: string) => {
+      let normalized = value.trim().toLowerCase();
+      normalized = normalized.replace(/^https?:\/\//, '').replace(/^\/+/, '');
+      normalized = normalized.split('/')[0].split('?')[0].split('#')[0];
+      return normalized.replace(/:\d+$/, '').replace(/^www\./, '');
+    };
+    const isValidDomain = (domain: string) =>
+      /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain);
 
-      form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        error.hidden = true;
-
-        var domain = normalizeDomain(input.value);
-        var host = domain.startsWith('admin.') ? domain : 'admin.' + domain;
-
-        if (!isValidDomain(domain) || !isValidDomain(host)) {
-          error.hidden = false;
-          input.setAttribute('aria-invalid', 'true');
-          input.focus();
-          return;
-        }
-
-        input.removeAttribute('aria-invalid');
-        window.location.assign('https://' + host + '/login');
+    form?.addEventListener('focusin', () => {
+      if (formStarted) return;
+      formStarted = true;
+      captureLandingEvent('site_form_started', {
+        form_id: 'beheer_domain',
+        form_type: 'beheer_login',
+        form_state: 'started',
       });
-    })();
+    });
+
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!input || !error) return;
+      error.hidden = true;
+      const domain = normalizeDomain(input.value);
+      const host = domain.startsWith('admin.') ? domain : `admin.${domain}`;
+      if (!isValidDomain(domain) || !isValidDomain(host)) {
+        error.hidden = false;
+        input.setAttribute('aria-invalid', 'true');
+        input.focus();
+        captureLandingEvent('site_journey_step', {
+          journey_name: 'beheer_login',
+          journey_step: 'validation_blocked',
+          form_id: 'beheer_domain',
+          form_type: 'beheer_login',
+          form_state: 'invalid',
+          error_category: 'invalid_domain',
+        });
+        return;
+      }
+      input.removeAttribute('aria-invalid');
+      captureLandingEvent('site_form_submitted', {
+        form_id: 'beheer_domain',
+        form_type: 'beheer_login',
+        form_state: 'redirecting',
+      });
+      captureLandingEvent('site_journey_step', {
+        journey_name: 'beheer_login',
+        journey_step: 'tenant_admin_redirect',
+        form_id: 'beheer_domain',
+        form_type: 'beheer_login',
+        form_state: 'redirecting',
+        destination_type: 'tenant_admin',
+      });
+      window.location.assign(`https://${host}/login`);
+    });
   </script>
 </BaseLayout>
-
-<style>
-  .siab-beheer-hero {
-    padding-bottom: 80px;
-  }
-
-  .siab-beheer-card {
-    background: var(--siab-bg-surface);
-    border: 2px solid var(--siab-border);
-    border-radius: 0;
-    box-shadow: 6px 6px var(--siab-shadow-color);
-    padding: clamp(28px, 4vw, 48px);
-  }
-
-  .siab-beheer-eyebrow {
-    font-family: 'Chivo', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--siab-text-muted);
-    margin: 0 0 12px;
-  }
-
-  .siab-beheer-card h2 {
-    color: var(--siab-text);
-    font-size: 56px;
-    line-height: 1;
-    margin: 0 0 28px;
-  }
-
-  .siab-beheer-form {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .siab-beheer-form label {
-    font-family: 'Chivo', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--siab-text);
-  }
-
-  .siab-beheer-control {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 14px;
-    align-items: stretch;
-  }
-
-  .siab-beheer-control input {
-    width: 100%;
-    min-height: 56px;
-    border: 2px solid var(--siab-border);
-    border-radius: 0;
-    background: var(--siab-bg-page);
-    color: var(--siab-text);
-    padding: 0 18px;
-    font-family: 'Chivo', sans-serif;
-    font-size: 17px;
-    font-weight: 500;
-  }
-
-  .siab-beheer-control input::placeholder {
-    color: var(--siab-text-muted);
-    opacity: 0.75;
-  }
-
-  .siab-beheer-control input[aria-invalid='true'] {
-    border-color: #f96a00;
-  }
-
-  .siab-beheer-control .btn-eighteen {
-    border: 2px solid var(--siab-border);
-    min-height: 56px;
-    white-space: nowrap;
-  }
-
-  .siab-beheer-help,
-  .siab-beheer-error {
-    font-family: 'Chivo', sans-serif;
-    font-size: 15px;
-    line-height: 1.5;
-    margin: 0;
-  }
-
-  .siab-beheer-help {
-    color: var(--siab-text-muted);
-  }
-
-  .siab-beheer-error {
-    color: #c44800;
-    font-weight: 700;
-  }
-
-  .siab-beheer-admin {
-    border-top: 1px solid color-mix(in srgb, var(--siab-border) 18%, transparent);
-    margin-top: 28px;
-    padding-top: 22px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-    align-items: center;
-    font-family: 'Chivo', sans-serif;
-    font-size: 15px;
-    color: var(--siab-text-muted);
-  }
-
-  .siab-beheer-admin a {
-    color: var(--siab-text);
-    font-weight: 700;
-    text-decoration: underline 2px solid var(--siab-border);
-    text-underline-offset: 4px;
-  }
-
-  @media (max-width: 767px) {
-    .siab-beheer-card h2 {
-      font-size: 34px;
-      line-height: 1.08;
-    }
-
-    .siab-beheer-control {
-      grid-template-columns: 1fr;
-    }
-
-    .siab-beheer-control .btn-eighteen {
-      width: 100%;
-    }
-  }
-</style>

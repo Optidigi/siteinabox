@@ -108,8 +108,8 @@ const graph = [
     url: `${baseUrl}/`,
     logo: logoUrl,
     description: site.description,
-    email: 'info@siteinabox.nl',
-    telephone: '+31625052591',
+    email: site.contact.email,
+    telephone: site.contact.phone.e164,
     areaServed: site.serviceArea ?? ['Nederland'],
     address: {
       '@type': 'PostalAddress',
@@ -134,8 +134,8 @@ const graph = [
       {
         '@type': 'ContactPoint',
         contactType: 'customer support',
-        email: 'info@siteinabox.nl',
-        telephone: '+31625052591',
+        email: site.contact.email,
+        telephone: site.contact.phone.e164,
         areaServed: site.serviceArea ?? ['NL'],
         availableLanguage: ['Dutch'],
       },

@@ -3,629 +3,296 @@ import { getEntry } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/siab/Header.astro';
 import Footer from '../components/siab/Footer.astro';
-import InfoTip from '../components/siab/InfoTip.astro';
 import FaqSection from '../components/siab/FaqSection.astro';
-
-const TIP_PROFESSIONAL = 'Homepage en contactpagina, met je bedrijfsinfo, diensten en een duidelijke call-to-action.';
-const TIP_FINDABLE = 'Je website wordt gevonden door zoekmachines én door AI-tools die mensen voor advies gebruiken.';
-const TIP_DOMAIN = 'Nieuw .nl-domein op jouw naam: het eerste jaar gratis. Daarna verlengingskosten. Of we koppelen je huidige domein.';
-const TIP_EMAIL = 'Een zakelijk adres zoals info@jouwbedrijf.nl. Ontvangen én versturen vanaf je eigen domein.';
+import DevicePreview from '../components/siab/DevicePreview.astro';
+import BentoIcon from '../components/siab/BentoIcon.astro';
+import { PricingTabs } from '../components/siab/PricingTabs';
+import { Testimonials } from '../components/siab/Testimonials';
+import { buttonVariants } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 
 const home = await getEntry('pages', 'index');
-if (!home) {
-  throw new Error('Missing required content entry: pages/index');
-}
+if (!home) throw new Error('Missing required content entry: pages/index');
 
 const ctaSignup = '/intake/';
-
+const professions = ['kapper', 'schilder', 'coach', 'fotograaf', 'hovenier', 'personal trainer', 'loodgieter', 'klusser', 'schoonheidsspecialist', 'timmerman', 'stukadoor', 'kok'];
+const guarantees = [
+  { title: 'Jij levert input, wij bouwen', text: "Een 15 minuten vragenlijst en wat foto's. Wij verwerken het tot je website.", color: 'text-yellow', shadow: 'bg-yellow', paths: ['M9 5h6', 'M9 9h6', 'M9 13h4', 'M5 3h14v18H5z'] },
+  { title: 'Privacy en cookies geregeld', text: 'Inclusief een passende privacyverklaring en cookiemelding voor je Site in a Box-website.', color: 'text-green', shadow: 'bg-green', paths: ['M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3', 'm9 12 2 2 4-4'] },
+  { title: 'Aanpassen kan altijd', text: "Tekst, foto's of openingstijden? Pas zelf aan via je beheeromgeving.", color: 'text-orange', shadow: 'bg-orange', paths: ['M4 20h4l11-11-4-4L4 16v4', 'm13.5 6.5 4 4'] },
+];
 const comparisonRows = [
-  {
-    label: 'Tijd van jou',
-    iconPaths: [
-      'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0',
-      'M12 7v5l3 3',
-    ],
-    selfBuild: 'Veel',
-    agency: 'Intake + feedback',
-    siteInABox: '± 15 minuten',
-  },
-  {
-    label: 'Tijd tot livegang',
-    iconPaths: [
-      'M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12',
-      'M16 3v4',
-      'M8 3v4',
-      'M4 11h16',
-    ],
-    selfBuild: 'Wanneer jij klaar bent',
-    agency: 'Vaak meerdere weken',
-    siteInABox: 'Binnen 3 werkdagen',
-  },
-  {
-    label: 'Investering vooraf',
-    iconPaths: [
-      'M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12',
-      'M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
-    ],
-    selfBuild: 'Laag in geld, hoog in tijd',
-    agency: 'Hoger projectbedrag',
-    siteInABox: 'Geen opstartkosten',
-  },
-  {
-    label: 'Techniek na oplevering',
-    iconPaths: [
-      'M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065',
-      'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
-    ],
-    selfBuild: 'Zelf regelen',
-    agency: 'Afhankelijk van afspraken',
-    siteInABox: 'Inbegrepen',
-  },
-  {
-    label: 'Beste keuze voor',
-    iconPaths: [
-      'M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0',
-      'M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0',
-      'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0',
-    ],
-    selfBuild: 'Handige doeners',
-    agency: 'Complex maatwerk',
-    siteInABox: 'Snel en zorgeloos online',
-  },
+  { label: 'Tijd van jou', iconPaths: ['M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0', 'M12 7v5l3 3'], selfBuild: 'Veel', agency: 'Intake + feedback', siteInABox: '± 15 minuten' },
+  { label: 'Tijd tot livegang', iconPaths: ['M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12', 'M16 3v4', 'M8 3v4', 'M4 11h16'], selfBuild: 'Wanneer jij klaar bent', agency: 'Vaak meerdere weken', siteInABox: 'Binnen 3 werkdagen' },
+  { label: 'Investering vooraf', iconPaths: ['M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12', 'M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0'], selfBuild: 'Laag in geld, hoog in tijd', agency: 'Hoger projectbedrag', siteInABox: 'Geen opstartkosten' },
+  { label: 'Techniek na oplevering', iconPaths: ['M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065', 'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0'], selfBuild: 'Zelf regelen', agency: 'Afhankelijk van afspraken', siteInABox: 'Inbegrepen' },
+  { label: 'Beste keuze voor', iconPaths: ['M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0', 'M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0', 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'], selfBuild: 'Handige doeners', agency: 'Complex maatwerk', siteInABox: 'Snel en zorgeloos online' },
 ];
 ---
 
-<BaseLayout
-  title={home.data.title}
-  description={home.data.description}
-  ogImage={home.data.ogImage}
-  hasFaq
->
+<BaseLayout title={home.data.title} description={home.data.description} ogImage={home.data.ogImage} hasFaq>
   <Header />
-
   <main>
-  <!-- ============================== Above-the-fold (hero + cards strip) ============================== -->
-  <div class="siab-above-fold">
-  <!-- ============================== Hero ============================== -->
-  <section class="hero-banner-nine z-1 position-relative pt-225 md-pt-150 pb-225 xl-pb-200 md-pb-120" aria-label="Introductie">
-    <div class="container lg">
-      <div class="row">
-        <div class="col-lg-6 d-flex flex-column justify-content-center">
-          {/* Space before <br /> is intentional: the <br /> is hidden on mobile via siab-overrides.css so the heading wraps as one string; the space preserves natural word spacing in that mode. */}
-          <h1 class="hero-heading">Een website voor je bedrijf. <br />Zonder gedoe.</h1>
-          <p class="fs-24 text-dark pt-35 lg-pt-30 pe-xxl-5">Voorbeeld binnen 24 uur · Geen startkosten · €19 p/m</p>
-          <div class="siab-cta-group d-flex align-items-center flex-wrap gap-3 pt-30 lg-pt-20">
-            <a href={ctaSignup} class="btn-eighteen">Maak mijn website</a>
-            <a href="#zo-werkt-het" class="siab-see-how">Hoe werkt het? →</a>
-          </div>
-        </div>
-        <div class="col-12 col-lg-6 mt-4 mt-lg-0">
-          <div class="illustration">
-            <div
-              id="hero-rocket"
-              class="lottie-rocket"
-              role="img"
-              aria-label="Animatie: jouw bedrijfswebsite klaar voor lancering"
-            ></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================== Promise cards (purple strip, seamless with reassurance below) ============================== -->
-  <section class="hero-cards-strip" aria-labelledby="eerst-zien-hero-heading">
-    <h2 id="eerst-zien-hero-heading" class="visually-hidden">Eerst zien, dan betalen</h2>
-    <div class="container lg">
-      <div class="row gx-xxl-5 align-items-stretch">
-        <div class="col-lg-4 d-flex">
-          <div class="card-style-eleven">
-            <div class="card-style-eleven-top">
-              <div class="card-icon-circle card-icon-cyan" aria-hidden="true">1</div>
-              <h3 class="card-style-eleven-heading">Jij vult in</h3>
+    <div class="bg-cream dark:bg-background">
+      <section class="relative pb-36 pt-28 md:pb-44 md:pt-36 lg:pb-32 lg:pt-36" aria-label="Introductie" data-analytics-section="hero" data-analytics-position="1">
+        <div class="site-container grid items-center gap-8 lg:grid-cols-2 lg:gap-5">
+          <div class="relative z-10">
+            <h1 class="max-w-[570px] text-[clamp(3.25rem,6.1vw,5.9rem)] font-medium leading-[.88] tracking-[-.055em]">Een website voor je bedrijf. <br class="hidden md:block" />Zonder gedoe.</h1>
+            <p class="mt-8 text-[17px] font-medium leading-relaxed text-muted-foreground md:text-2xl md:text-foreground">Voorbeeld binnen 24 uur · Geen startkosten · €19 p/m</p>
+            <div class="mt-7 flex flex-wrap items-center gap-4 md:gap-6">
+              <a
+                href={ctaSignup}
+                class={buttonVariants({ size: 'lg', className: 'min-h-[60px] min-w-[220px]' })}
+                data-analytics-component="cta-start-intake-hero"
+                data-analytics-component-type="cta"
+                data-analytics-component-role="primary"
+                data-analytics-action="start_intake"
+                data-analytics-placement="hero"
+                data-analytics-destination="intake"
+                data-analytics-conversion="true"
+                data-analytics-conversion-source="intake_handoff"
+              >Maak mijn website</a>
+              <a
+                href="#zo-werkt-het"
+                class="inline-flex min-h-[60px] items-center font-body text-lg font-bold text-muted-foreground underline decoration-2 decoration-dashed underline-offset-[5px]"
+                data-analytics-action="view_how_it_works"
+                data-analytics-placement="hero"
+                data-analytics-destination="section"
+              >Hoe werkt het? →</a>
             </div>
-            <p class="card-style-eleven-text">Een vragenlijst van een kwartier en wat foto’s. Meer niet.</p>
-            <div class="siab-risk-visual siab-risk-visual--intake" aria-hidden="true">
-              <div class="siab-risk-form">
-                <div class="siab-risk-form__title">
-                  <img src="/theme/images/icon/tabler-clipboard-list.svg" alt="" width="20" height="20" />
-                  <span>Vragenlijst</span>
+          </div>
+          <div id="hero-rocket" class="mx-auto aspect-[4/3] w-full max-w-[680px] lg:origin-left" role="img" aria-label="Animatie: jouw bedrijfswebsite klaar voor lancering"></div>
+        </div>
+      </section>
+
+      <section class="bg-plum pb-14 text-white md:pb-10" aria-labelledby="eerst-zien-heading" data-analytics-section="process" data-analytics-position="2">
+        <h2 id="eerst-zien-heading" class="sr-only">Eerst zien, dan betalen</h2>
+        <div class="site-container -translate-y-24">
+          <div class="grid gap-7 lg:grid-cols-3">
+            <Card as="article" className="min-h-[410px] border-black bg-card text-card-foreground shadow-md lg:min-h-0">
+              <div class="p-6 md:p-7">
+                <div class="flex items-center gap-4">
+                  <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-cyan font-head text-xl font-bold text-black">1</span>
+                  <h3 class="text-2xl tracking-[-.02em]">Jij vult in</h3>
                 </div>
-                <div class="siab-risk-form__field">
-                  <span class="siab-risk-form__label">Bedrijfsnaam</span>
-                  <span class="siab-risk-form__input is-active">Jouw Bedrijf<span class="siab-risk-form__caret"></span></span>
-                </div>
-                <div class="siab-risk-form__field">
-                  <span class="siab-risk-form__label">Wat doe je?</span>
-                  <span class="siab-risk-form__input is-filled">Diensten &amp; aanpak</span>
-                </div>
-                <div class="siab-risk-form__uploads">
-                  <span class="siab-risk-form__label">Foto’s</span>
-                  <div class="siab-risk-form__photos">
-                    <span class="siab-risk-form__photo is-done"><img src="/theme/images/icon/tabler-check.svg" alt="" /></span>
-                    <span class="siab-risk-form__photo is-done"><img src="/theme/images/icon/tabler-check.svg" alt="" /></span>
-                    <span class="siab-risk-form__photo is-add"><img src="/theme/images/icon/tabler-plus.svg" alt="" /></span>
+                <p class="mt-4 leading-relaxed text-muted-foreground">Een vragenlijst van een kwartier en wat foto’s. Meer niet.</p>
+              </div>
+              <div data-process-visual class="mx-6 mb-6 mt-auto h-[210px] overflow-hidden border-2 border-border bg-muted p-2.5 lg:h-[200px]">
+                <div data-process-form class="flex h-full min-h-0 flex-col justify-between gap-1 overflow-hidden border-2 border-border bg-card p-2 shadow-[2px_2px_0_#090709]">
+                  <p class="flex items-center gap-1.5 font-head text-sm font-extrabold leading-none"><img src="/theme/images/icon/tabler-clipboard-list.svg" alt="" width="16" height="16" />Vragenlijst</p>
+                  <div class="flex flex-col gap-0.5">
+                    <p class="text-[10px] leading-none">Bedrijfsnaam</p>
+                    <div class="flex min-h-7 items-center border-2 border-border bg-input px-2 py-1 text-[13px] leading-tight">Jouw Bedrijf<span class="ml-0.5 inline-block h-4 border-l border-current motion-safe:animate-pulse"></span></div>
+                  </div>
+                  <div class="flex flex-col gap-0.5">
+                    <p class="text-[10px] leading-none">Wat doe je?</p>
+                    <div class="flex min-h-7 items-center border-2 border-border bg-input px-2 py-1 text-[13px] leading-tight">Diensten &amp; aanpak</div>
+                  </div>
+                  <div class="flex flex-col gap-0.5">
+                    <p class="text-[10px] leading-none">Foto’s</p>
+                    <div data-process-photos class="grid grid-cols-3 gap-1.5">
+                      <span class="grid min-h-7 place-items-center border-2 border-border bg-cyan"><img src="/theme/images/icon/tabler-check.svg" alt="" width="14" height="14" /></span>
+                      <span class="grid min-h-7 place-items-center border-2 border-border bg-orange"><img src="/theme/images/icon/tabler-check.svg" alt="" width="14" height="14" /></span>
+                      <span class="grid min-h-7 place-items-center border-2 border-border bg-card"><img src="/theme/images/icon/tabler-plus.svg" alt="" width="14" height="14" /></span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
+
+            <Card as="article" className="min-h-[410px] border-black bg-card text-card-foreground shadow-md lg:min-h-0">
+              <div class="p-6 md:p-7">
+                <div class="flex items-center gap-4">
+                  <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-orange font-head text-xl font-bold text-black">2</span>
+                  <h3 class="text-2xl tracking-[-.02em]">Wij maken je site</h3>
+                </div>
+                <p class="mt-4 leading-relaxed text-muted-foreground">Binnen 24 uur zie je hoe jouw website eruitziet.</p>
+              </div>
+              <div data-process-visual class="mx-6 mb-6 mt-auto flex h-[210px] flex-col overflow-hidden border-2 border-border bg-muted lg:h-[200px]">
+                <div class="flex items-center gap-2 border-b-2 border-border px-3 py-2">
+                  <span class="flex gap-1" aria-hidden="true"><i class="size-2 rounded-full bg-orange"></i><i class="size-2 rounded-full bg-yellow"></i><i class="size-2 rounded-full bg-green"></i></span>
+                  <span class="min-w-0 flex-1 border border-border bg-card px-2 py-0.5 text-[9px]">jouwbedrijf.nl/preview</span>
+                </div>
+                <img src="/theme/images/assets/example-desktop.webp" alt="" width="600" height="375" class="min-h-0 w-full flex-1 object-cover object-top" />
+              </div>
+            </Card>
+
+            <Card as="article" className="min-h-[410px] border-black bg-card text-card-foreground shadow-md lg:min-h-0">
+              <div class="p-6 md:p-7">
+                <div class="flex items-center gap-4">
+                  <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-green font-head text-xl font-bold text-black">3</span>
+                  <h3 class="text-2xl tracking-[-.02em]">Jij beslist</h3>
+                </div>
+                <p class="mt-4 leading-relaxed text-muted-foreground">Tevreden? Live. Zo niet? Niks betalen.</p>
+              </div>
+              <div data-process-visual class="mx-6 mb-6 mt-auto grid h-[210px] grid-cols-2 place-items-center gap-7 border-2 border-border bg-muted px-4 pb-5 pt-7 lg:h-[200px]">
+                <span class="relative grid size-[68px] place-items-center rounded-full border-2 border-black bg-green text-black shadow-sm">
+                  <span class="pointer-events-none absolute inset-0" aria-hidden="true">
+                    <i class="absolute left-1/2 top-1/2 h-0.5 w-2.5 origin-left rounded-sm bg-black [transform:rotate(-122deg)_translateX(42px)]"></i>
+                    <i class="absolute left-1/2 top-1/2 h-0.5 w-3 origin-left rounded-sm bg-black [transform:rotate(-90deg)_translateX(44px)]"></i>
+                    <i class="absolute left-1/2 top-1/2 h-0.5 w-2.5 origin-left rounded-sm bg-black [transform:rotate(-58deg)_translateX(42px)]"></i>
+                  </span>
+                  <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M20 6 9 17l-5-5"></path></svg>
+                </span>
+                <span class="relative grid size-[68px] place-items-center rounded-full border-2 border-black bg-orange text-black shadow-sm">
+                  <span class="pointer-events-none absolute inset-0" aria-hidden="true">
+                    <i class="absolute left-1/2 top-1/2 h-0.5 w-2.5 origin-left rounded-sm bg-black [transform:rotate(-122deg)_translateX(42px)]"></i>
+                    <i class="absolute left-1/2 top-1/2 h-0.5 w-3 origin-left rounded-sm bg-black [transform:rotate(-90deg)_translateX(44px)]"></i>
+                    <i class="absolute left-1/2 top-1/2 h-0.5 w-2.5 origin-left rounded-sm bg-black [transform:rotate(-58deg)_translateX(42px)]"></i>
+                  </span>
+                  <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="m18 6-12 12M6 6l12 12"></path></svg>
+                </span>
+              </div>
+            </Card>
           </div>
         </div>
-        <div class="col-lg-4 d-flex">
-          <div class="card-style-eleven">
-            <div class="card-style-eleven-top">
-              <div class="card-icon-circle card-icon-orange" aria-hidden="true">2</div>
-              <h3 class="card-style-eleven-heading">Wij maken je site</h3>
-            </div>
-            <p class="card-style-eleven-text">Binnen 24 uur zie je hoe jouw website eruitziet.</p>
-            <div class="siab-risk-visual siab-risk-visual--preview" aria-hidden="true">
-              <div class="siab-risk-browser">
-                <div class="siab-risk-browser__bar">
-                  <span class="siab-risk-browser__dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                  <span class="siab-risk-browser__url">jouwbedrijf.nl/preview</span>
-                </div>
-                <div class="siab-risk-browser__screen">
-                  <img src="/theme/images/assets/example-desktop.webp" alt="" width="600" height="375" loading="eager" decoding="async" />
-                </div>
+
+        <div class="site-container pt-7 text-center md:pt-10">
+          <h2 class="font-medium text-[clamp(26px,3.8vw,44px)] leading-[1.15] tracking-[-.015em]">Voor elke starter die professioneel online wil staan.</h2>
+          <div class="mt-6 h-[72px] overflow-hidden border-2 border-black bg-white/[.21] md:mt-8 md:h-[94px]">
+            <p class="sr-only">Voor deze beroepen werken wij: {professions.join(', ')}.</p>
+            <div class="h-full overflow-hidden [mask-image:linear-gradient(90deg,transparent_0,#000_80px_calc(100%-80px),transparent_100%)]" aria-hidden="true">
+              <div class="siab-marquee-track flex h-full w-max items-center">
+                {[0, 1].map(() => (
+                  <div data-marquee-group class="flex h-full shrink-0 items-center px-8">
+                    {professions.map((profession) => <span class="mx-6 shrink-0 font-body text-[17px] font-medium text-white md:mx-10 md:text-xl">{profession}</span>)}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
-        <div class="col-lg-4 d-flex">
-          <div class="card-style-eleven">
-            <div class="card-style-eleven-top">
-              <div class="card-icon-circle card-icon-green" aria-hidden="true">3</div>
-              <h3 class="card-style-eleven-heading">Jij beslist</h3>
-            </div>
-            <p class="card-style-eleven-text">Tevreden? Live. Zo niet? Niks betalen.</p>
-            <div class="siab-risk-visual siab-risk-visual--decide" aria-hidden="true">
-              <div class="siab-risk-decide-stage">
-                <div class="siab-risk-decide siab-risk-decide--yes">
-                  <span class="siab-risk-decide__rays" aria-hidden="true"><i></i><i></i><i></i></span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                </div>
-                <div class="siab-risk-decide siab-risk-decide--no">
-                  <span class="siab-risk-decide__rays" aria-hidden="true"><i></i><i></i><i></i></span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-  </div>
-
-  <!-- ============================== Audience reassurance (continues purple seamlessly) ============================== -->
-  <section class="block-feature-twentyFour pb-80 lg-pb-40" aria-labelledby="audience-heading">
-    <div class="container lg">
-      <h3 id="audience-heading" class="siab-heading">Voor elke starter die professioneel online wil staan.</h3>
-
-      <!-- Infinite marquee: beroepsnamen scrollen rechts naar links. CSS-only. -->
-      <div class="siab-marquee" aria-label="Voor deze beroepen werken wij">
-        <div class="siab-marquee__viewport">
-          <ul class="siab-marquee__track">
-            <li>kapper</li>
-            <li>schilder</li>
-            <li>coach</li>
-            <li>fotograaf</li>
-            <li>hovenier</li>
-            <li>personal trainer</li>
-            <li>loodgieter</li>
-            <li>klusser</li>
-            <li>schoonheidsspecialist</li>
-            <li>timmerman</li>
-            <li>stukadoor</li>
-            <li>kok</li>
-          </ul>
-          <ul class="siab-marquee__track" aria-hidden="true">
-            <li>kapper</li>
-            <li>schilder</li>
-            <li>coach</li>
-            <li>fotograaf</li>
-            <li>hovenier</li>
-            <li>personal trainer</li>
-            <li>loodgieter</li>
-            <li>klusser</li>
-            <li>schoonheidsspecialist</li>
-            <li>timmerman</li>
-            <li>stukadoor</li>
-            <li>kok</li>
+          <ul class="mt-5 flex flex-col items-center justify-center gap-3 text-[15px] font-medium text-white/90 md:mt-6 md:flex-row md:flex-wrap md:gap-x-10 md:text-base">
+            <li class="inline-flex items-center gap-2.5"><svg class="size-5 shrink-0 text-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Klaar voor Google én ChatGPT</li>
+            <li class="inline-flex items-center gap-2.5"><svg class="size-5 shrink-0 text-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Zelf aanpassen, zonder technische kennis</li>
+            <li class="inline-flex items-center gap-2.5"><svg class="size-5 shrink-0 text-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Niet tevreden? Geen factuur.</li>
           </ul>
         </div>
-      </div>
-
-      <ul class="siab-perks">
-        <li>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-          Klaar voor Google én ChatGPT
-        </li>
-        <li>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-          Zelf aanpassen, zonder technische kennis
-        </li>
-        <li>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-          Niet tevreden? Geen factuur.
-        </li>
-      </ul>
+      </section>
     </div>
-  </section>
 
-  <!-- Waarde / Sterke indruk section temporarily hidden from homepage.
-       Restore from git history (siab-value-section) when needed. -->
-
-  <!-- Eerst-zien step copy now fills the hero promise cards above. -->
-
-  <!-- ============================== Zo werkt het ============================== -->
-  <section id="zo-werkt-het" class="block-feature-twentySix mt-180 xl-mt-150 lg-mt-80" aria-labelledby="zo-werkt-het-heading">
-    <div class="container lg">
-      <div class="row">
-        <div class="col-xl-7 col-lg-7 m-auto">
-          <div class="title-eleven text-center mb-30 lg-mb-10">
-            <h2 id="zo-werkt-het-heading">Zo werkt het.</h2>
-          </div>
+    <section id="zo-werkt-het" class="py-20 md:py-0 lg:mt-20 min-[1200px]:mt-[150px] min-[1400px]:mt-[180px]" aria-labelledby="zo-werkt-het-heading" data-analytics-section="how_it_works" data-analytics-position="3">
+      <div class="site-container">
+        <h2 id="zo-werkt-het-heading" class="mb-10 text-center text-[42px] leading-[1.1029] min-[1200px]:!mb-20 min-[1200px]:!text-[52px] min-[1400px]:!text-[68px]">Zo werkt het.</h2>
+        <div class="siab-bento-grid grid gap-[30px] min-[1200px]:gap-y-[50px]">
+          <Card as="article" className="min-h-[250px] justify-between border-black bg-[#f6f6f6] p-6 text-black shadow-[4px_4px_0_#090709] dark:bg-white/[.07] dark:text-foreground md:p-8 lg:col-span-4 lg:justify-start lg:px-[15px] lg:py-5 min-[1200px]:!px-[45px] min-[1200px]:!pb-[50px] min-[1200px]:!pt-[76px]">
+            <BentoIcon name="shield" />
+            <h3 class="text-[26px] !font-medium leading-[1.238] lg:mt-10 min-[1200px]:!mt-[90px] min-[1200px]:!text-[35px] min-[1400px]:!text-[42px]">Een vragenlijst van een kwartier, meer niet.</h3>
+          </Card>
+          <Card as="article" className="min-h-[300px] overflow-hidden border-black bg-[#1f4531] p-6 text-white shadow-[4px_4px_0_#090709] dark:bg-white/[.07] md:p-7 lg:col-span-8 lg:px-[15px] lg:pb-0 lg:pt-5 min-[1200px]:!px-20 min-[1200px]:!pb-0 min-[1200px]:!pt-[60px]">
+            <h3 class="mb-7 text-[26px] !font-medium leading-[1.208] text-white lg:mb-2 min-[1200px]:!w-[calc((200%-24px)/3)] min-[1200px]:!text-[35px] min-[1400px]:!text-[48px]">Zo ziet een website van Site in a Box eruit.</h3>
+            <DevicePreview />
+          </Card>
+          <Card as="article" className="relative min-h-[270px] overflow-hidden border-black bg-[#cde1ff] p-6 text-black shadow-[4px_4px_0_#090709] dark:bg-white/[.07] dark:text-foreground md:p-8 lg:col-span-8 lg:min-h-[460px] lg:px-10 lg:py-20 lg:pb-[120px] min-[1400px]:!px-20">
+            <div class="relative z-10 ml-auto max-w-full text-right md:max-w-2/3 min-[1200px]:!w-[calc((200%-24px)/3)] min-[1200px]:!max-w-none">
+              <span class="ml-auto grid size-14 place-items-center rounded-full border-2 border-black bg-yellow lg:size-[70px]"><img src="/theme/images/icon/icon_54.svg" alt="" width="28" height="28" /></span>
+              <blockquote class="mb-0 mt-5 text-[26px] font-medium leading-[1.444] lg:mb-[45px] lg:mt-[25px] lg:text-[24px] min-[1200px]:!text-[28px] min-[1400px]:!text-[32px]">“Strak, modern en mooi design. Mensen merken het op.<br />Een echte aanrader.”</blockquote>
+            </div>
+            <img src="/theme/images/assets/avatar_woman.webp" alt="" width="640" height="960" class="absolute bottom-0 left-[6.5%] hidden h-[96%] w-auto max-w-[46%] object-contain object-bottom md:block lg:left-[1%] lg:h-[78%] min-[1400px]:!left-[6.5%] min-[1400px]:!h-[96%]" loading="lazy" />
+            <img data-bento-stars src="/theme/images/shape/shape_80.svg" alt="" width="481" height="343" class="absolute left-[6%] top-[14%] hidden w-1/2 max-w-[50%] md:block" />
+          </Card>
+          <Card as="article" className="min-h-[250px] justify-center border-black bg-[#f6f6f6] p-6 text-black shadow-[4px_4px_0_#090709] dark:bg-white/[.07] dark:text-foreground md:p-8 lg:col-span-4 lg:min-h-[460px] lg:px-[15px] lg:py-5 min-[1200px]:!px-[45px] min-[1200px]:!py-[50px]">
+            <h3 class="mb-10 text-[26px] !font-medium leading-[1.238] min-[1200px]:mb-[90px] min-[1200px]:!text-[28px] min-[1400px]:!text-[42px]">Eerste versie binnen 24 uur, online binnen 3 werkdagen.</h3>
+            <BentoIcon name="speed" />
+          </Card>
         </div>
       </div>
-      <div class="row gx-xxl-5">
-        <div class="col-lg-4 d-flex">
-          <div class="block-one d-flex flex-column justify-content-center w-100 mt-50 lg-mt-30">
-            <div>
-              <img src="/theme/images/icon/icon_53.svg" alt="" />
-              <h3>Een vragenlijst van een kwartier, meer niet.</h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-lg-8 d-flex">
-          <div class="block-two w-100 mt-50 lg-mt-30">
-            <div class="row">
-              <div class="col-xl-8 col-lg-7">
-                <h3 class="md-mt-20">Zo ziet een website van Site in a Box eruit.</h3>
-              </div>
-            </div>
-            <div class="device-stack">
-              <!-- Safari frame (Magic UI, simple variant) -->
-              <div class="safari-frame">
-                <div class="safari-screen">
-                  <img src="/theme/images/assets/example-desktop.webp" alt="Voorbeeld bedrijfswebsite op desktop" width="1200" height="750" loading="lazy" decoding="async" />
-                </div>
-                <svg viewBox="0 0 1203 753" fill="none" xmlns="http://www.w3.org/2000/svg" class="safari-chrome" aria-hidden="true">
-                  <defs>
-                    <mask id="safariPunch" maskUnits="userSpaceOnUse">
-                      <rect x="0" y="0" width="1203" height="753" fill="white"/>
-                      <path d="M1 52H1201V741C1201 747.075 1196.08 752 1190 752H12C5.92486 752 1 747.075 1 741V52Z" fill="black"/>
-                    </mask>
-                    <clipPath id="safariClip">
-                      <rect width="1203" height="753" fill="white"/>
-                    </clipPath>
-                  </defs>
-                  <g clip-path="url(#safariClip)" mask="url(#safariPunch)">
-                    <path d="M0 52H1202V741C1202 747.627 1196.63 753 1190 753H12C5.37258 753 0 747.627 0 741V52Z" fill="#E5E5E5"/>
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M0 12C0 5.37258 5.37258 0 12 0H1190C1196.63 0 1202 5.37258 1202 12V52H0L0 12Z" fill="#E5E5E5"/>
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M1.06738 12C1.06738 5.92487 5.99225 1 12.0674 1H1189.93C1196.01 1 1200.93 5.92487 1200.93 12V51H1.06738V12Z" fill="white"/>
-                    <circle cx="27" cy="25" r="6" fill="#E5E5E5"/>
-                    <circle cx="47" cy="25" r="6" fill="#E5E5E5"/>
-                    <circle cx="67" cy="25" r="6" fill="#E5E5E5"/>
-                  </g>
-                </svg>
-              </div>
-              <!-- iPhone 15 Pro frame (Magic UI) -->
-              <div class="iphone-frame">
-                <div class="iphone-screen">
-                  <img src="/theme/images/assets/example-mobile.webp" alt="Voorbeeld bedrijfswebsite op mobiel" width="430" height="880" loading="lazy" decoding="async" />
-                </div>
-                <svg viewBox="0 0 433 882" fill="none" xmlns="http://www.w3.org/2000/svg" class="iphone-chrome" aria-hidden="true">
-                  <defs>
-                    <mask id="iphonePunch" maskUnits="userSpaceOnUse">
-                      <rect x="0" y="0" width="433" height="882" fill="white"/>
-                      <rect x="21.25" y="19.25" width="389.5" height="843.5" rx="55.75" ry="55.75" fill="black"/>
-                    </mask>
-                  </defs>
-                  <g mask="url(#iphonePunch)">
-                    <path d="M2 73C2 32.6832 34.6832 0 75 0H357C397.317 0 430 32.6832 430 73V809C430 849.317 397.317 882 357 882H75C34.6832 882 2 849.317 2 809V73Z" fill="#1d1d1f"/>
-                    <path d="M0 171C0 170.448 0.447715 170 1 170H3V204H1C0.447715 204 0 203.552 0 203V171Z" fill="#1d1d1f"/>
-                    <path d="M1 234C1 233.448 1.44772 233 2 233H3.5V300H2C1.44772 300 1 299.552 1 299V234Z" fill="#1d1d1f"/>
-                    <path d="M1 319C1 318.448 1.44772 318 2 318H3.5V385H2C1.44772 385 1 384.552 1 384V319Z" fill="#1d1d1f"/>
-                    <path d="M430 279H432C432.552 279 433 279.448 433 280V384C433 384.552 432.552 385 432 385H430V279Z" fill="#1d1d1f"/>
-                    <path d="M6 74C6 35.3401 37.3401 4 76 4H356C394.66 4 426 35.3401 426 74V808C426 846.66 394.66 878 356 878H76C37.3401 878 6 846.66 6 808V74Z" fill="white"/>
-                  </g>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-lg-8 d-flex">
-          <div class="block-three w-100 mt-50 lg-mt-30">
-            <div class="row">
-              <div class="col-md-8 ms-auto text-end">
-                <div class="icon d-flex align-items-center justify-content-center rounded-circle"><img src="/theme/images/icon/icon_54.svg" alt="" /></div>
-                <blockquote>"Strak, modern en mooi design. Mensen merken het op.<br />Een echte aanrader."</blockquote>
-              </div>
-            </div>
-            <img src="/theme/images/assets/avatar_4.webp" alt="" class="shapes shape_01" loading="lazy" decoding="async" />
-            <img src="/theme/images/shape/shape_80.svg" alt="" class="shapes shape_02" />
-          </div>
-        </div>
-        <div class="col-lg-4 d-flex">
-          <div class="block-four d-flex flex-column justify-content-center w-100 mt-50 lg-mt-30">
-            <div>
-              <h3>Eerste versie binnen 24 uur, online binnen 3 werkdagen.</h3>
-              <img src="/theme/images/icon/icon_55.svg" alt="" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ============================== Vertrouwens-trio ============================== -->
-  <section class="block-feature-twentyFive mt-180 lg-mt-80" aria-labelledby="garanties-heading">
-    <h2 id="garanties-heading" class="visually-hidden">Onze garanties</h2>
-    <div class="container lg">
-      <div class="border-top border-bottom border-dark border-2 pt-90 lg-pt-40 pb-90 lg-pb-40">
-        <div class="row gx-xxl-5">
-          <div class="col-lg-4">
-            <div class="card-style-twelve text-center mt-20">
-              <div class="card-icon-circle-twelve card-icon-yellow"><img src="/theme/images/icon/tabler-clipboard-list.svg" alt="" /></div>
-              <h3 class="card-style-twelve-heading">Jij levert input, wij bouwen</h3>
-              <p class="pe-xxl-4 ps-xxl-4">Een 15 minuten vragenlijst en wat foto's. Wij verwerken het tot je website.</p>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="card-style-twelve text-center mt-20">
-              <div class="card-icon-circle-twelve card-icon-green"><img src="/theme/images/icon/tabler-shield-lock.svg" alt="" /></div>
-              <h3 class="card-style-twelve-heading">Privacy en cookies geregeld</h3>
-              <p class="pe-xxl-4 ps-xxl-4">Inclusief een passende privacyverklaring en cookiemelding voor je Site in a Box-website.</p>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="card-style-twelve text-center mt-20">
-              <div class="card-icon-circle-twelve card-icon-orange"><img src="/theme/images/icon/tabler-edit.svg" alt="" /></div>
-              <h3 class="card-style-twelve-heading">Aanpassen kan altijd</h3>
-              <p class="pe-xxl-4 ps-xxl-4">Tekst, foto's of openingstijden? Pas zelf aan via je beheeromgeving.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================== Prijzen ============================== -->
-  <section id="prijzen" class="pricing-section-six siab-pricing-billing mt-170 lg-mt-80" aria-labelledby="prijzen-heading">
-    <div class="container lg">
-      <div class="row justify-content-center align-items-xl-start gx-xl-5">
-        <div class="col-xl-5 col-lg-6 m-auto m-xl-0 text-center text-xl-start">
-          <div class="title-eleven">
-            <h2 id="prijzen-heading">Eén prijs. Alles inbegrepen.</h2>
-            <p class="fs-20 text-dark opacity-75 pt-25">Eén ding minder om te regelen voor je nieuwe bedrijf.<br class="d-none d-xl-inline" /> Wij doen de techniek, jij houdt je bezig met je klanten.</p>
-          </div>
-          <div class="fs-20 fw-500 text-dark mt-55 lg-mt-40 mb-15">Facturatie</div>
-          <nav class="pricing-nav-four d-flex justify-content-center justify-content-xl-start">
-            <div class="nav nav-tabs" role="tablist">
-              <a class="nav-link active" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="true">Maandelijks</a>
-              <a class="nav-link" id="yearly-tab" data-bs-toggle="tab" data-bs-target="#yearly" type="button" role="tab" aria-controls="yearly" aria-selected="false">Jaarlijks <span class="pricing-save-hint">−17%</span></a>
-            </div>
-          </nav>
-          <p class="fs-14 opacity-75 mt-2 mb-0 text-center text-xl-start lg-mb-40">Alle prijzen excl. btw</p>
-        </div>
-        <div class="col-xl-5 col-lg-6">
-          <div class="tab-content">
-            <!-- Monthly (default) -->
-            <div class="tab-pane show active fade" id="monthly" role="tabpanel" aria-labelledby="monthly-tab" tabindex="0">
-              <div class="pr-column w-100">
-                <div class="pr-header text-center mb-25">
-                  <div class="plane-name">Site in a Box</div>
-                  <div class="plan-tagline">Jouw bedrijfswebsite, helemaal verzorgd</div>
-                  <div class="save-line fs-20 fw-500">Maandelijks opzegbaar</div>
-                  <div class="price">€19<sub>/maand</sub></div>
-                </div>
-                <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
-                <h3 class="pricing-section-heading">Inbegrepen</h3>
-                <ul class="style-none package-feature">
-                  <li>Professionele website <InfoTip title={TIP_PROFESSIONAL} /></li>
-                  <li>Klaar voor Google én ChatGPT <InfoTip title={TIP_FINDABLE} /></li>
-                  <li>Bliksemsnelle laadtijd</li>
-                  <li>Veilig en betrouwbaar online</li>
-                  <li>.nl-domein eerste jaar gratis <InfoTip title={TIP_DOMAIN} /></li>
-                  <li>Zelf teksten en foto’s aanpassen</li>
-                  <li>NL-support</li>
-                  <li class="optional">Zakelijke e-mail <InfoTip title={TIP_EMAIL} /></li>
-                </ul>
-              </div>
-            </div>
-            <!-- Yearly -->
-            <div class="tab-pane fade" id="yearly" role="tabpanel" aria-labelledby="yearly-tab" tabindex="0">
-              <div class="pr-column pr-column-recommended w-100">
-                <div class="pr-header text-center mb-25">
-                  <div class="plane-name">Site in a Box</div>
-                  <div class="plan-tagline">Jouw bedrijfswebsite, helemaal verzorgd</div>
-                  <div class="save-line fs-20 fw-500">Je bespaart €38 per jaar</div>
-                  <div class="price">€190<sub>/jaar</sub></div>
-                </div>
-                <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
-                <h3 class="pricing-section-heading">Inbegrepen</h3>
-                <ul class="style-none package-feature">
-                  <li>Professionele website <InfoTip title={TIP_PROFESSIONAL} /></li>
-                  <li>Klaar voor Google én ChatGPT <InfoTip title={TIP_FINDABLE} /></li>
-                  <li>Bliksemsnelle laadtijd</li>
-                  <li>Veilig en betrouwbaar online</li>
-                  <li>.nl-domein eerste jaar gratis <InfoTip title={TIP_DOMAIN} /></li>
-                  <li>Zelf teksten en foto’s aanpassen</li>
-                  <li>NL-support</li>
-                  <li class="optional">Zakelijke e-mail <InfoTip title={TIP_EMAIL} /></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================== Onze klanten ============================== -->
-  <section class="feedback-section-nine position-relative z-1 pt-120 xl-pt-100 lg-pt-70 pb-130 lg-pb-80 mt-180 lg-mt-80" aria-labelledby="klanten-heading">
-    <div class="container">
-      <div class="text-center mb-70 lg-mb-30">
-        <h2 id="klanten-heading">Onze klanten</h2>
-        <p class="fs-28 text-white opacity-75">We vroegen ze hoe het ging. Dit kwam terug.</p>
-      </div>
-    </div>
-    <div class="wrapper">
-      <div class="feedback-slider-six">
-        <div class="item">
-          <div class="feedback-block">
-            <img src="/theme/images/logo/clients/amblast.png" alt="AMBLAST Facility Services" class="logo" />
-            <blockquote>"Professioneel en strak, precies wat ik zocht. Meerdere mensen merken hoe overzichtelijk de site is. Absoluut een aanrader."</blockquote>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="name text-white"><span class="fw-500">AMBLAST</span> Facility Services</div>
-              <img src="/theme/images/icon/icon_56.svg" alt="" class="icon" />
-            </div>
-          </div>
-        </div>
-        <div class="item">
-          <div class="feedback-block">
-            <img src="/theme/images/logo/clients/quitantie.png" alt="Quitantie Inkomensbeheer & Bewindvoering" class="logo" />
-            <blockquote>"Professioneel, gebruiksvriendelijk, en weerspiegelt perfect onze kernwaarden. Het team wist onze verwachtingen te overtreffen."</blockquote>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="name text-white"><span class="fw-500">Rick,</span> Quitantie</div>
-              <img src="/theme/images/icon/icon_56.svg" alt="" class="icon" />
-            </div>
-          </div>
-        </div>
-        <div class="item">
-          <div class="feedback-block">
-            <img src="/theme/images/logo/clients/kbkc.png" alt="KBKC & Partners" class="logo" />
-            <blockquote>"Veel zorg en expertise. De samenwerking verliep professioneel en efficiënt, met een duidelijke focus op onze doelen."</blockquote>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="name text-white"><span class="fw-500">KBKC & Partners</span></div>
-              <img src="/theme/images/icon/icon_56.svg" alt="" class="icon" />
-            </div>
-          </div>
-        </div>
-        <div class="item">
-          <div class="feedback-block">
-            <img src="/theme/images/logo/clients/rasko.png" alt="RASKO Bouw en Renovatie" class="logo" />
-            <blockquote>"Een professionele website die perfect aansluit bij mijn bedrijf. Heldere communicatie, heel tevreden met het resultaat."</blockquote>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="name text-white"><span class="fw-500">RASKO Bouw en Renovatie</span></div>
-              <img src="/theme/images/icon/icon_56.svg" alt="" class="icon" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <ul class="slider-arrows slick-arrow-one d-flex justify-content-center style-none mt-50">
-        <li class="prev_b slick-arrow" aria-label="Vorige">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32L109.2 224 214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>
-        </li>
-        <li class="next_b slick-arrow" aria-label="Volgende">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"/></svg>
-        </li>
-      </ul>
-    </div>
-    <img src="/theme/images/shape/shape_81.svg" alt="" class="shapes shape_01" />
-  </section>
-
-  <!-- ============================== Vergelijking ============================== -->
-  <section id="vergelijking" class="siab-compare-section mt-180 lg-mt-80" aria-labelledby="vergelijking-heading">
-    <div class="container lg">
-      <div class="siab-compare-intro">
-        <h2 id="vergelijking-heading">Wat past bij jou?</h2>
-        <p class="siab-compare-lead">Niet elke route past bij elk bedrijf. Vergelijk tijd, verantwoordelijkheid en investering.</p>
-      </div>
-
-      <div class="siab-compare-scroll" tabindex="0" role="region" aria-label="Vergelijkingstabel">
-        <table class="siab-compare-table">
-          <thead>
-            <tr>
-              <th scope="col" class="siab-compare-table__corner"><span class="visually-hidden">Criterium</span></th>
-              <th scope="col">
-                <span class="siab-compare-colhead">
-                  <span class="siab-compare-colhead__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"/><path d="M14.5 5.5l4 4"/><path d="M12 8l-5 -5l-4 4l5 5"/><path d="M7 8l-1.5 1.5"/><path d="M16 12l5 5l-4 4l-5 -5"/><path d="M16 17l-1.5 1.5"/></svg>
-                  </span>
-                  <span class="siab-compare-colhead__label">Zelf bouwen</span>
-                </span>
-              </th>
-              <th scope="col">
-                <span class="siab-compare-colhead">
-                  <span class="siab-compare-colhead__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l18 0"/><path d="M5 21v-14l8 -4v18"/><path d="M19 21v-10l-6 -4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>
-                  </span>
-                  <span class="siab-compare-colhead__label">Webbureau</span>
-                </span>
-              </th>
-              <th scope="col" class="siab-compare-table__siab">
-                <span class="siab-compare-colhead">
-                  <img
-                    class="siab-compare-logo"
-                    src="/theme/images/logo/siab_logo.svg"
-                    alt="Site in a Box"
-                    width="160"
-                    height="40"
-                  />
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {comparisonRows.map((row) => (
-              <tr>
-                <th scope="row">
-                  <span class="siab-compare-criterion">
-                    <span class="siab-compare-criterion__icon" aria-hidden="true">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        {row.iconPaths.map((path) => <path d={path} />)}
-                      </svg>
-                    </span>
-                    <span>{row.label}</span>
-                  </span>
-                </th>
-                <td>{row.selfBuild}</td>
-                <td>{row.agency}</td>
-                <td class="siab-compare-table__siab"><strong>{row.siteInABox}</strong></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="siab-compare-mobile" role="list" aria-label="Vergelijking per criterium">
-        {comparisonRows.map((row) => (
-          <article class="siab-compare-card" role="listitem">
-            <h3 class="siab-compare-card__title">
-              <span class="siab-compare-card__icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  {row.iconPaths.map((path) => <path d={path} />)}
-                </svg>
+    <section class="pb-20 md:mt-[180px] md:pb-32" aria-labelledby="garanties-heading" data-analytics-section="guarantees" data-analytics-position="4">
+      <div class="site-container border-y-2 border-border py-14 md:py-20">
+        <h2 id="garanties-heading" class="sr-only">Onze garanties</h2>
+        <div class="grid gap-12 md:grid-cols-3">
+          {guarantees.map((item) => (
+            <article class="text-center">
+              <span class="relative mx-auto block h-[75px] w-[68px]" aria-hidden="true">
+                <i class:list={['absolute left-1/2 top-2 size-[67px] -translate-x-1/2 rounded-full dark:hidden', item.shadow]}></i>
+                <i class:list={['absolute left-1/2 top-0 grid size-[67px] -translate-x-1/2 place-items-center rounded-full border-2 border-transparent bg-black dark:border-current dark:bg-[#07142d]', item.color]}>
+                  <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{item.paths.map((path) => <path d={path}></path>)}</svg>
+                </i>
               </span>
-              {row.label}
-            </h3>
-            <dl class="siab-compare-card__options">
-              <div>
-                <dt>Zelf bouwen</dt>
-                <dd>{row.selfBuild}</dd>
-              </div>
-              <div>
-                <dt>Webbureau</dt>
-                <dd>{row.agency}</dd>
-              </div>
-              <div class="siab-compare-card__recommended">
-                <dt>Site in a Box</dt>
-                <dd>{row.siteInABox}</dd>
-              </div>
-            </dl>
-          </article>
-        ))}
+              <h3 class="mt-5 text-xl md:text-2xl">{item.title}</h3>
+              <p class="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground md:text-base">{item.text}</p>
+            </article>
+          ))}
+        </div>
       </div>
+    </section>
 
-    </div>
-  </section>
+    <section id="prijzen" class="py-16 md:mt-[120px] md:py-0" aria-labelledby="prijzen-heading" data-analytics-section="pricing" data-analytics-position="5">
+      <PricingTabs client:visible intakeHref={ctaSignup} />
+    </section>
 
-  <!-- ============================== FAQ ============================== -->
-  <FaqSection />
+    <section class="relative overflow-hidden bg-plum pb-36 pt-20 text-white md:mt-[140px] md:pb-[260px] md:pt-[100px]" aria-labelledby="klanten-heading" data-analytics-section="testimonials" data-analytics-position="6">
+      <div class="site-container mb-12 text-center md:mb-[70px]">
+        <h2 id="klanten-heading" class="text-5xl md:text-7xl">Onze klanten</h2>
+        <p class="mt-3 text-lg text-white/75 md:text-2xl">We vroegen ze hoe het ging. Dit kwam terug.</p>
+      </div>
+      <Testimonials client:visible />
+      <img src="/theme/images/shape/shape_81.svg" alt="" width="1472" height="35" class="pointer-events-none absolute left-1/2 top-[19%] w-[80%] max-w-none -translate-x-1/2" />
+    </section>
+
+    <section id="vergelijking" class="pb-0 pt-24 md:mt-[180px] md:pb-12 md:pt-0" aria-labelledby="vergelijking-heading" data-analytics-section="comparison" data-analytics-position="7">
+      <div class="site-container">
+        <div class="mx-auto mb-10 max-w-2xl text-center">
+          <h2 id="vergelijking-heading" class="text-5xl md:text-6xl">Wat past bij jou?</h2>
+          <p id="vergelijking-uitleg" class="mt-4 text-lg text-muted-foreground">Niet elke route past bij elk bedrijf. Vergelijk tijd, verantwoordelijkheid en investering.</p>
+        </div>
+
+        <Card as="div" className="overflow-hidden rounded-none border-black bg-card shadow-[4px_4px_0_#090709] dark:border-border dark:shadow-[4px_4px_0_#5a2b46]">
+          <table class="w-full table-fixed border-collapse" aria-describedby="vergelijking-uitleg">
+            <caption class="sr-only">Vergelijking tussen Site in a Box, zelf een website bouwen en een webbureau inschakelen.</caption>
+            <colgroup>
+              <col class="w-1/3" />
+              <col class="w-[22.222%]" />
+              <col class="w-[22.222%]" />
+              <col class="w-[22.222%]" />
+            </colgroup>
+            <thead>
+              <tr class="min-h-16">
+                <th class="border-b-2 border-r border-border bg-muted px-2 py-3 text-left text-[11px] font-bold uppercase leading-tight tracking-[.06em] text-muted-foreground sm:px-3 sm:text-xs md:px-5 md:py-5 md:text-sm">
+                  Vergelijk
+                </th>
+                <th scope="col" class="relative border-b-2 border-r border-border bg-plum px-1 py-3 text-white sm:px-2 md:px-4 md:py-5">
+                  <img src="/theme/images/logo/siab_logo_dark.svg" alt="Site in a Box" width="160" height="40" class="mx-auto h-6 max-w-full object-contain sm:h-8 md:h-10" />
+                  <span class="absolute right-0.5 top-0.5 border border-black bg-yellow px-1 py-0.5 font-head text-[7px] font-bold leading-none tracking-wide text-black sm:right-1 sm:top-1 sm:text-[8px] md:px-1.5 md:text-[9px]">BESTE</span>
+                </th>
+                <th scope="col" class="border-b-2 border-r border-border bg-muted px-1 py-3 text-center text-[11px] font-bold leading-tight sm:px-2 sm:text-xs md:px-4 md:py-5 md:text-base">
+                  Zelf bouwen
+                </th>
+                <th scope="col" class="border-b-2 border-border bg-muted px-1 py-3 text-center text-[11px] font-bold leading-tight sm:px-2 sm:text-xs md:px-4 md:py-5 md:text-base">
+                  Webbureau
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparisonRows.map((row) => (
+                <tr class="border-b border-border/50 last:border-b-0">
+                  <th scope="row" class="border-r border-border bg-card px-2 py-3 text-left text-[11px] font-bold leading-[1.3] sm:px-3 sm:text-xs md:px-5 md:py-4 md:text-sm lg:text-base">
+                    <span class="flex items-center gap-2 md:gap-3">
+                      <svg class="hidden size-7 shrink-0 text-muted-foreground sm:block md:size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        {row.iconPaths.map((path) => <path d={path}></path>)}
+                      </svg>
+                      {row.label}
+                    </span>
+                  </th>
+                  <td class="break-words border-r border-border bg-yellow/10 px-1 py-3 text-center text-[11px] font-bold leading-[1.3] text-foreground dark:bg-yellow/[.08] sm:px-2 sm:text-xs md:px-4 md:py-4 md:text-sm lg:text-base">
+                    {row.siteInABox}
+                  </td>
+                  <td class="break-words border-r border-border px-1 py-3 text-center text-[11px] font-medium leading-[1.3] text-muted-foreground sm:px-2 sm:text-xs md:px-4 md:py-4 md:text-sm lg:text-base">
+                    {row.selfBuild}
+                  </td>
+                  <td class="break-words px-1 py-3 text-center text-[11px] font-medium leading-[1.3] text-muted-foreground sm:px-2 sm:text-xs md:px-4 md:py-4 md:text-sm lg:text-base">
+                    {row.agency}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+    </section>
+
+    <FaqSection />
   </main>
-
   <Footer />
 </BaseLayout>

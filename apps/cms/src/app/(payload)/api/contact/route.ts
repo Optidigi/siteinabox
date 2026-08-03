@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { sendPlatformContactEmail } from "@/lib/contact/platformContact"
+import { verifyTurnstile } from "@/lib/security/turnstile"
 import config from "@/payload.config"
 
 const MAX_CONTACT_BYTES = 32 * 1024
@@ -30,6 +31,7 @@ async function parseBody(req: NextRequest): Promise<Record<string, unknown> | nu
       subjectTopic: formValue(form.get("subject_topic")) ?? formValue(form.get("subjectTopic")),
       message: formValue(form.get("message")),
       source: formValue(form.get("source")) ?? "siteinabox.nl/contact",
+      turnstileToken: formValue(form.get("cf-turnstile-response")),
     }
   }
   return null
@@ -60,6 +62,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Invalid contact body" }, { status: 400 })
   }
   if (!body) return NextResponse.json({ message: "Contact body required" }, { status: 400 })
+
+  const turnstileToken = body.turnstileToken ?? body["cf-turnstile-response"]
+  const verification = await verifyTurnstile({
+    token: turnstileToken,
+  })
+  if (!verification.ok) {
+    const message = verification.status === 503
+      ? "Contact verification temporarily unavailable"
+      : "Contact verification failed"
+    return NextResponse.json(
+      { message, code: verification.code },
+      { status: verification.status },
+    )
+  }
 
   const result = await sendPlatformContactEmail(payload, body)
   if (!result.ok) {
