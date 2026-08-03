@@ -104,20 +104,20 @@ try {
   })
   await page.goto(origin, { waitUntil: "networkidle" })
 
-  const steps = page.locator("ol > li")
-  assert.equal(await steps.count(), 2)
-  assert.equal(await steps.nth(0).getAttribute("aria-current"), "step")
-  assert.equal(await steps.nth(0).getAttribute("aria-label"), "Website address")
-  assert.equal(await steps.nth(1).getAttribute("aria-label"), "Review & pay")
+  await page.getByRole("heading", { name: "Put your website online" }).waitFor()
+  assert.equal(await page.getByText("Only check what is still needed. Your details and design are saved.").isVisible(), true)
   assert.equal(await page.locator("[aria-live]").count() > 0, true)
   const phoneProgress = await page.locator("[data-checkout-mobile-progress]").evaluate((node) => {
     const box = node.getBoundingClientRect()
     return { height: box.height, left: box.left, right: box.right }
   })
-  assert.ok(phoneProgress.height >= 60, "The phone progress cards must retain their intended presence.")
+  assert.ok(phoneProgress.height >= 80, "The phone progress panel must retain its intended presence.")
   const accessibleProgress = page.getByRole("progressbar", { name: "Website address" })
   assert.equal(await accessibleProgress.getAttribute("aria-valuenow"), "1")
   assert.equal(await accessibleProgress.getAttribute("aria-valuemax"), "2")
+  assert.equal(await accessibleProgress.getByText("Step 1 of 2", { exact: true }).isVisible(), true)
+  assert.equal(await accessibleProgress.getByText("Choose or connect", { exact: true }).isVisible(), true)
+  assert.equal(await page.locator('[data-checkout-progress-segment][data-complete="true"]').count(), 1)
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
@@ -214,15 +214,17 @@ try {
   assert.equal(await desktopReviewButton.getAttribute("data-variant"), "brand")
   await continueButton.focus()
   await page.keyboard.press("Enter")
-  await page.getByRole("heading", { name: "One last review" }).waitFor()
+  await page.getByRole("heading", { name: "Review & pay" }).waitFor()
   assert.equal(
     await page.evaluate(() => document.activeElement?.textContent?.trim()),
-    "One last review",
+    "Review & pay",
   )
 
-  const domainStepButton = page.getByRole("button", { name: "Website address", exact: true })
-  assert.equal(await domainStepButton.isVisible(), true)
-  assert.equal(await page.locator("[data-checkout-mobile-progress]").isVisible(), true)
+  const reviewProgress = page.getByRole("progressbar", { name: "Review & pay" })
+  assert.equal(await reviewProgress.getAttribute("aria-valuenow"), "2")
+  assert.equal(await reviewProgress.getByText("Step 2 of 2", { exact: true }).isVisible(), true)
+  assert.equal(await reviewProgress.getByText("Confirm and launch", { exact: true }).isVisible(), true)
+  assert.equal(await page.locator('[data-checkout-progress-segment][data-complete="true"]').count(), 2)
 
   assert.equal(await page.getByText("Ada Lovelace", { exact: true }).isVisible(), true)
   await page.locator('[data-details-group="contact"] [aria-expanded="false"]').click()
@@ -308,7 +310,7 @@ try {
   assert.equal(await pendingPage.getByRole("button", { name: /Approve & pay/ }).count(), 0)
   assert.equal(await pendingPage.locator("[data-checkout-action-bar]").count(), 0)
   assert.equal(await pendingPage.locator("[data-checkout-mobile-progress]").isVisible(), true)
-  assert.equal(await pendingPage.locator("[data-checkout-mobile-progress] li").count(), 2)
+  assert.equal(await pendingPage.getByRole("progressbar", { name: "Review & pay" }).getAttribute("aria-valuenow"), "2")
   await pendingPage.close()
 
   const failedPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
@@ -377,8 +379,8 @@ try {
   assert.ok(
     compactGeometry.progressHeight != null &&
       compactGeometry.progressHeight >= 60 &&
-      compactGeometry.progressHeight <= 90,
-    "The compact progress cards must stay prominent without dominating the viewport.",
+      compactGeometry.progressHeight <= 120,
+    "The compact progress panel must stay prominent without dominating the viewport.",
   )
   assert.equal(compactGeometry.shellWidth, 300, "The 320px prototype workspace is 300px wide.")
   assert.ok(
@@ -518,8 +520,10 @@ try {
     )
   }
   await assertStickySummary("review")
-  await desktopPage.getByRole("button", { name: "Website address", exact: true }).click()
-  await desktopPage.getByRole("heading", { name: "Website address", exact: true }).waitFor()
+  await desktopPage.locator('[data-details-group="account"]')
+    .getByRole("button", { name: /Edit/ }).click()
+  await desktopPage.getByRole("progressbar", { name: "Website address" })
+    .getByRole("heading", { name: "Website address", exact: true }).waitFor()
   await assertStickySummary("domain")
   await desktopPage.close()
 

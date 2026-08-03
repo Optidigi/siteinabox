@@ -528,14 +528,21 @@ describe("PreviewCheckout Phase 3 flow", () => {
       />,
     )
 
-    expect(screen.getByRole("listitem", { name: "checkoutStepDomain" }).getAttribute("aria-current"))
-      .toBe("step")
-    expect(screen.getByRole("listitem", { name: "checkoutStepPayment" })).toBeTruthy()
-    expect(screen.getAllByRole("listitem")).toHaveLength(2)
+    const progress = screen.getByRole("progressbar", { name: "checkoutStepDomain" })
+    expect(progress.getAttribute("aria-valuenow")).toBe("1")
+    expect(progress.getAttribute("aria-valuemax")).toBe("2")
+    expect(screen.getByText("checkoutStepDomainDescription")).toBeTruthy()
+    expect(container.querySelectorAll('[data-checkout-progress-segment][data-complete="true"]'))
+      .toHaveLength(1)
 
     fireEvent.click(screen.getAllByRole("button", { name: "checkoutNext" })[0]!)
-    const detailsHeading = await screen.findByRole("heading", { name: "checkoutReviewHeroTitle" })
+    const detailsHeading = await screen.findByRole("heading", { name: "checkoutStepPayment" })
     expect(document.activeElement).toBe(detailsHeading)
+    expect(screen.getByRole("progressbar", { name: "checkoutStepPayment" }).getAttribute("aria-valuenow"))
+      .toBe("2")
+    expect(screen.getByText("checkoutStepPaymentDescription")).toBeTruthy()
+    expect(container.querySelectorAll('[data-checkout-progress-segment][data-complete="true"]'))
+      .toHaveLength(2)
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "checkoutContactGroup Ada Lovelace", expanded: false }))
     expect(screen.getAllByText("owner@example.test")).toHaveLength(1)
@@ -578,13 +585,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(container.querySelector("#checkout-preview-approval")!)
     expect(previewApproval.value).toBe("accepted")
 
-    fireEvent.click(screen.getByRole("button", { name: "checkoutStepDomain" }))
-    const domainHeading = await screen.findByRole("heading", { name: "checkoutDomainHeroTitle" })
-    expect(document.activeElement).toBe(domainHeading)
-    fireEvent.click(screen.getByRole("button", { name: "checkoutStepPayment" }))
-    expect(document.activeElement).toBe(
-      await screen.findByRole("heading", { name: "checkoutReviewHeroTitle" }),
-    )
+    expect(screen.queryByRole("button", { name: "checkoutStepDomain" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "checkoutStepPayment" })).toBeNull()
   })
 
   it("keeps existing-domain migration fail-closed and exposes its authorized source inputs only when enabled", async () => {
