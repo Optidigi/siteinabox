@@ -45,11 +45,11 @@ function Plan({ yearly, intakeHref }: { yearly: boolean; intakeHref: string }) {
     )}>
       {yearly && <Badge className="absolute -top-4 right-6 h-auto px-3.5 py-1.5 font-bold shadow-sm">VOORDELIGST</Badge>}
       <div className="text-center">
-        <p className="font-head text-[26px] font-medium min-[1400px]:text-[36px]">Site in a Box</p>
+        <p className="font-head text-[32px] font-medium tracking-[-.02em] sm:text-[36px] min-[1400px]:text-[42px]">Site in a Box</p>
         <p className="mt-1.5 text-base text-black/60 dark:text-white">Jouw bedrijfswebsite, helemaal verzorgd</p>
         <p className="mx-auto mt-5 flex min-h-11 max-w-sm items-center justify-center bg-[#eaf5fc] px-3 font-head text-base font-medium text-black dark:border-2 dark:border-black dark:bg-plum dark:text-white min-[1400px]:mt-10 min-[1400px]:text-xl">{yearly ? 'Je bespaart €38 per jaar' : 'Maandelijks opzegbaar'}</p>
-        <p className="my-4 font-head text-[42px] font-semibold tracking-[-.02em] min-[1200px]:text-[65px] min-[1400px]:text-[80px]">
-          {yearly ? '€190' : '€19'}<span className="ml-1 text-lg tracking-normal min-[1400px]:text-2xl">/{yearly ? 'jaar' : 'maand'}</span>
+        <p className="my-4 flex items-baseline justify-center whitespace-nowrap font-head text-[56px] font-semibold tracking-[-.03em] sm:text-[64px] min-[1200px]:text-[72px] min-[1400px]:text-[80px]">
+          {yearly ? '€190' : '€19'}<span className="ml-1 text-xl tracking-normal min-[1400px]:text-2xl">/{yearly ? 'jaar' : 'maand'}</span>
         </p>
       </div>
       <a
@@ -129,7 +129,7 @@ export function PricingTabs({ intakeHref }: { intakeHref: string }) {
                 !yearly && 'text-muted-foreground',
               )}
             >
-              Jaarlijks <Badge className="font-bold shadow-sm">−17%</Badge>
+              Jaarlijks <Badge className="h-6 px-2 py-0 font-bold leading-none shadow-sm">−17%</Badge>
             </button>
           </div>
           <p className="mt-3 text-sm text-foreground/60 dark:text-white/55">Alle prijzen excl. btw</p>

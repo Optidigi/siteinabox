@@ -31,7 +31,7 @@ const comparisonRows = [
 ---
 
 <BaseLayout title={home.data.title} description={home.data.description} ogImage={home.data.ogImage} hasFaq>
-  <Header />
+  <Header hero />
   <main>
     <div class="bg-cream dark:bg-background">
       <section class="relative pb-36 pt-28 md:pb-44 md:pt-36 lg:pb-32 lg:pt-36" aria-label="Introductie" data-analytics-section="hero" data-analytics-position="1">
@@ -69,7 +69,7 @@ const comparisonRows = [
         <h2 id="eerst-zien-heading" class="sr-only">Eerst zien, dan betalen</h2>
         <div class="site-container -translate-y-24">
           <div class="grid gap-7 lg:grid-cols-3">
-            <Card as="article" className="min-h-[410px] border-black bg-card text-card-foreground shadow-md lg:min-h-0">
+            <Card as="article" className="border-black bg-card text-card-foreground shadow-md">
               <div class="p-6 md:p-7">
                 <div class="flex items-center gap-4">
                   <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-cyan font-head text-xl font-bold text-black">1</span>
@@ -77,7 +77,7 @@ const comparisonRows = [
                 </div>
                 <p class="mt-4 leading-relaxed text-muted-foreground">Een vragenlijst van een kwartier en wat foto’s. Meer niet.</p>
               </div>
-              <div data-process-visual class="mx-6 mb-6 mt-auto h-[210px] overflow-hidden border-2 border-border bg-muted p-2.5 lg:h-[200px]">
+              <div data-process-visual class="mx-6 mb-6 h-[210px] overflow-hidden border-2 border-border bg-muted p-2.5 lg:mt-auto lg:h-[200px]">
                 <div data-process-form class="flex h-full min-h-0 flex-col justify-between gap-1 overflow-hidden border-2 border-border bg-card p-2 shadow-[2px_2px_0_#090709]">
                   <p class="flex items-center gap-1.5 font-head text-sm font-extrabold leading-none"><img src="/theme/images/icon/tabler-clipboard-list.svg" alt="" width="16" height="16" />Vragenlijst</p>
                   <div class="flex flex-col gap-0.5">
@@ -100,7 +100,7 @@ const comparisonRows = [
               </div>
             </Card>
 
-            <Card as="article" className="min-h-[410px] border-black bg-card text-card-foreground shadow-md lg:min-h-0">
+            <Card as="article" className="border-black bg-card text-card-foreground shadow-md">
               <div class="p-6 md:p-7">
                 <div class="flex items-center gap-4">
                   <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-orange font-head text-xl font-bold text-black">2</span>
@@ -108,7 +108,7 @@ const comparisonRows = [
                 </div>
                 <p class="mt-4 leading-relaxed text-muted-foreground">Binnen 24 uur zie je hoe jouw website eruitziet.</p>
               </div>
-              <div data-process-visual class="mx-6 mb-6 mt-auto flex h-[210px] flex-col overflow-hidden border-2 border-border bg-muted lg:h-[200px]">
+              <div data-process-visual class="mx-6 mb-6 flex h-[210px] flex-col overflow-hidden border-2 border-border bg-muted lg:mt-auto lg:h-[200px]">
                 <div class="flex items-center gap-2 border-b-2 border-border px-3 py-2">
                   <span class="flex gap-1" aria-hidden="true"><i class="size-2 rounded-full bg-orange"></i><i class="size-2 rounded-full bg-yellow"></i><i class="size-2 rounded-full bg-green"></i></span>
                   <span class="min-w-0 flex-1 border border-border bg-card px-2 py-0.5 text-[9px]">jouwbedrijf.nl/preview</span>
@@ -117,15 +117,15 @@ const comparisonRows = [
               </div>
             </Card>
 
-            <Card as="article" className="min-h-[410px] border-black bg-card text-card-foreground shadow-md lg:min-h-0">
+            <Card as="article" className="border-black bg-card text-card-foreground shadow-md">
               <div class="p-6 md:p-7">
                 <div class="flex items-center gap-4">
                   <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-green font-head text-xl font-bold text-black">3</span>
                   <h3 class="text-2xl tracking-[-.02em]">Jij beslist</h3>
                 </div>
-                <p class="mt-4 leading-relaxed text-muted-foreground">Tevreden? Live. Zo niet? Niks betalen.</p>
+                <p class="mt-4 leading-relaxed text-muted-foreground">Tevreden? Dan gaan we live. Zo niet? Geen verplichting.</p>
               </div>
-              <div data-process-visual class="mx-6 mb-6 mt-auto grid h-[210px] grid-cols-2 place-items-center gap-7 border-2 border-border bg-muted px-4 pb-5 pt-7 lg:h-[200px]">
+              <div data-process-visual class="mx-6 mb-6 grid h-[210px] grid-cols-2 place-items-center gap-7 border-2 border-border bg-muted px-4 pb-5 pt-7 lg:mt-auto lg:h-[200px]">
                 <span class="relative grid size-[68px] place-items-center rounded-full border-2 border-black bg-green text-black shadow-sm">
                   <span class="pointer-events-none absolute inset-0" aria-hidden="true">
                     <i class="absolute left-1/2 top-1/2 h-0.5 w-2.5 origin-left rounded-sm bg-black [transform:rotate(-122deg)_translateX(42px)]"></i>
@@ -254,7 +254,6 @@ const comparisonRows = [
                 </th>
                 <th scope="col" class="relative border-b-2 border-r border-border bg-plum px-1 py-3 text-white sm:px-2 md:px-4 md:py-5">
                   <img src="/theme/images/logo/siab_logo_dark.svg" alt="Site in a Box" width="160" height="40" class="mx-auto h-6 max-w-full object-contain sm:h-8 md:h-10" />
-                  <span class="absolute right-0.5 top-0.5 border border-black bg-yellow px-1 py-0.5 font-head text-[7px] font-bold leading-none tracking-wide text-black sm:right-1 sm:top-1 sm:text-[8px] md:px-1.5 md:text-[9px]">BESTE</span>
                 </th>
                 <th scope="col" class="border-b-2 border-r border-border bg-muted px-1 py-3 text-center text-[11px] font-bold leading-tight sm:px-2 sm:text-xs md:px-4 md:py-5 md:text-base">
                   Zelf bouwen
