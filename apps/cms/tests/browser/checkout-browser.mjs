@@ -206,6 +206,12 @@ try {
     .getByRole("button", { name: "Choose", exact: true }).click()
 
   const continueButton = page.getByRole("button", { name: "Continue" })
+  const desktopReviewButton = page.getByRole("button", {
+    name: "Review details",
+    exact: true,
+    includeHidden: true,
+  })
+  assert.equal(await desktopReviewButton.getAttribute("data-variant"), "brand")
   await continueButton.focus()
   await page.keyboard.press("Enter")
   await page.getByRole("heading", { name: "One last review" }).waitFor()
@@ -241,10 +247,15 @@ try {
   await page
     .getByRole("heading", { name: "Plan" })
     .waitFor()
+  assert.match(
+    await page.locator('[data-slot="toggle-group-item"][data-state="on"]').textContent(),
+    /Monthly/,
+    "A fresh checkout must default to the monthly plan.",
+  )
   await page.setViewportSize({ width: 1280, height: 900 })
   await capture(page, "desktop-light-review-ready")
   await page.setViewportSize({ width: 390, height: 844 })
-  assert.equal(await page.locator("[data-checkout-action-bar]").getByText(/229[.,]90/, { exact: false }).first().isVisible(), true)
+  assert.equal(await page.locator("[data-checkout-action-bar]").getByText(/22[.,]99/, { exact: false }).first().isVisible(), true)
   assert.equal(
     await page.locator('[role="checkbox"]:visible').count(),
     2,

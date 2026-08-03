@@ -179,6 +179,8 @@ describe("customer preview UI", () => {
     expect(stepper).toContain('complete && "bg-success/10')
     expect(stepper).toContain("min-h-[60px]")
     expect(stepper).toContain("min-[560px]:min-h-[72px]")
+    expect(checkout).toContain('acceptedBillingPeriod ?? initialProgress?.billingPeriod ?? "monthly"')
+    expect(checkout).toContain('variant="brand"')
     expect(checkout).toContain("data-migration-source-card")
     expect(checkout).toContain("border-foreground bg-muted/50")
     expect(checkout).not.toContain("data-[state=checked]:bg-foreground")
