@@ -164,7 +164,7 @@ describe("customer preview UI", () => {
     expect(checkout).toContain("domainFormRef")
     expect(checkout).toContain("AbortController")
     expect(checkout).toContain("credentials: \"same-origin\"")
-    expect(checkout).toContain("controller.abort()")
+    expect(checkout).toContain("extensionAbortRef.current?.abort()")
     expect(checkout).toContain("const visibleDomainSearchDomains = React.useMemo")
     expect(checkout).toContain('mode: "primary"')
     expect(checkout).toContain('mode: "more"')
