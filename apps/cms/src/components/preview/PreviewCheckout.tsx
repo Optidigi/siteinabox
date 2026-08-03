@@ -466,13 +466,13 @@ export function PreviewCheckout({
     cloudflareSourceDomain ?? readyDomain ?? initialProgress?.domainQuery ?? "",
   )
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
+  const [selectedDomainIntent, setSelectedDomainIntent] = React.useState<string | null>(
+    readyDomain ?? initialProgress?.selectedDomain ?? null,
+  )
   const [extensionResults, setExtensionResults] = React.useState<PreviewCheckoutActionState[]>([])
   const [extensionCheckPending, setExtensionCheckPending] = React.useState(false)
   const [domainQuotePending, setDomainQuotePending] = React.useState(false)
   const [hasMoreExtensions, setHasMoreExtensions] = React.useState(false)
-  const [extensionCheckPhase, setExtensionCheckPhase] = React.useState<
-    "idle" | "recommended" | "fallback"
-  >("idle")
   const [extensionSearchAnchor, setExtensionSearchAnchor] = React.useState<
     string | null
   >(null)
@@ -505,7 +505,7 @@ export function PreviewCheckout({
       void saveProgressAction({
         domainMode,
         domainQuery: normalizedDomainValue,
-        selectedDomain: checkedDomain,
+        selectedDomain: selectedDomainIntent,
         decision: step,
         billingPeriod,
         migrationSourceMechanism: domainMode === "existing_domain"
@@ -517,12 +517,12 @@ export function PreviewCheckout({
     return () => window.clearTimeout(timer)
   }, [
     billingPeriod,
-    checkedDomain,
     details,
     domainMode,
     migrationSourceMethod,
     normalizedDomainValue,
     saveProgressAction,
+    selectedDomainIntent,
     step,
   ])
   const domainSearchInput = React.useMemo(
@@ -623,37 +623,19 @@ export function PreviewCheckout({
       resultDomains[0] ??
       newDomainSearchPrimaryDomain ??
       (domainSearchInput.kind === "bare" ? domainSearchInput.canonical : null)
-    const readyDomains = resultDomains.filter((domain) =>
-      extensionResults.some((result) => result.ok && result.domain === domain),
-    )
-    if (extensionCheckPending && extensionCheckPhase === "fallback") {
-      return uniqueDomains([
-        ...(anchor ? [anchor] : []),
-        ...readyDomains.filter((domain) => domain !== anchor),
-        ...resultDomains,
-      ]).slice(0, 5)
-    }
-
-    return uniqueDomains([
+    const stableDomains = extensionSearchDomains ?? uniqueDomains([
       ...(anchor ? [anchor] : []),
-      ...readyDomains.filter((domain) => domain !== anchor),
-      ...resultDomains.filter((domain) => domain !== anchor && !readyDomains.includes(domain)),
-    ]).slice(0, extensionSearchDomains?.length && extensionSearchDomains.length > 5 ? 10 : 5)
+      ...resultDomains,
+    ])
+    return stableDomains.slice(0, stableDomains.length > 5 ? 10 : 5)
   }, [
     extensionCheckPending,
-    extensionCheckPhase,
     extensionSearchDomains,
     extensionResults,
     extensionSearchAnchor,
     domainSearchInput,
     newDomainSearchPrimaryDomain,
   ])
-  const domainLooksCheckable = Boolean(
-    domainSearchInput.kind !== "invalid" &&
-    domainSearchInput.kind !== "empty" &&
-    domainSearchName.length >= 2,
-  )
-
   React.useEffect(() => {
     if (cancellationState.agreement) {
       setBillingAgreement(cancellationState.agreement)
@@ -928,7 +910,6 @@ export function PreviewCheckout({
     setDomainValue(value)
     setExtensionResults([])
     setExtensionCheckPending(false)
-    setExtensionCheckPhase("idle")
     setExtensionSearchAnchor(null)
     setExtensionSearchDomains(null)
     extensionRequestRef.current = null
@@ -943,7 +924,37 @@ export function PreviewCheckout({
       setMigrationPreflight(null)
       if (step !== "domain") setStep("domain")
     }
+    if (value.trim().toLowerCase() !== selectedDomainIntent) {
+      setSelectedDomainIntent(null)
+    }
   }
+
+  const quoteExtensionResult = React.useCallback(async (
+    result: PreviewCheckoutActionState,
+  ) => {
+    if (!result.ok || !result.domain || !quoteDomainAction) return
+    const quoteToken = nextRequestToken()
+    latestQuoteRequestTokenRef.current = quoteToken
+    setDomainQuotePending(true)
+    const formData = new FormData()
+    formData.set("domain", result.domain)
+    formData.set("domainMode", "new_registration")
+    formData.set("requestToken", quoteToken)
+    try {
+      const quoted = await quoteDomainAction(formData)
+      if (
+        latestQuoteRequestTokenRef.current !== quoteToken ||
+        !quoted.ok ||
+        !quoted.quotes ||
+        quoted.domain !== result.domain
+      ) return
+      setCheckedDomain(quoted.domain)
+      setSelectedDomainIntent(quoted.domain)
+      setQuotes(quoted.quotes)
+    } finally {
+      if (latestQuoteRequestTokenRef.current === quoteToken) setDomainQuotePending(false)
+    }
+  }, [quoteDomainAction])
 
   const checkSelectedExtensions = React.useCallback(async (force = false) => {
     if (!domainSearchHref) return
@@ -953,7 +964,6 @@ export function PreviewCheckout({
     const requestToken = nextRequestToken()
     extensionRequestRef.current = requestToken
     setExtensionCheckPending(true)
-    setExtensionCheckPhase("recommended")
     setExtensionSearchAnchor(newDomainSearchPrimaryDomain)
     setExtensionSearchDomains(null)
     setCheckedDomain(null)
@@ -982,6 +992,13 @@ export function PreviewCheckout({
       setExtensionResults(results)
       setExtensionSearchDomains(results.map((result) => result.domain!).filter(Boolean))
       setHasMoreExtensions(received.hasMore === true)
+      const restoredSelection = results.find((result) =>
+        result.domain === selectedDomainIntent && result.ok)
+      if (restoredSelection) {
+        await quoteExtensionResult(restoredSelection)
+      } else if (results.some((result) => result.domain === selectedDomainIntent)) {
+        setSelectedDomainIntent(null)
+      }
     } catch {
       if (extensionRequestRef.current === requestToken) setExtensionResults([{
         ok: false,
@@ -994,50 +1011,18 @@ export function PreviewCheckout({
     }
     if (extensionRequestRef.current !== requestToken) return
     extensionAbortRef.current = null
-    setExtensionCheckPhase("idle")
     setExtensionCheckPending(false)
   }, [
     domainSearchHref,
     domainValue,
     normalizedDomainValue,
+    quoteExtensionResult,
+    selectedDomainIntent,
     t,
   ])
 
-  React.useEffect(() => {
-    if (step !== "domain" || domainMode !== "new_registration") return
-    if (!domainLooksCheckable) return
-    if (checkedDomain === normalizedDomainValue && quotes) return
-    const timer = window.setTimeout(() => void checkSelectedExtensions(), 250)
-    return () => window.clearTimeout(timer)
-  }, [
-    checkSelectedExtensions,
-    checkedDomain,
-    domainLooksCheckable,
-    domainMode,
-    normalizedDomainValue,
-    quotes,
-    step,
-  ])
-
   const selectExtensionResult = async (result: PreviewCheckoutActionState) => {
-    if (!result.ok || !result.domain || !quoteDomainAction) return
-    const quoteToken = nextRequestToken()
-    latestQuoteRequestTokenRef.current = quoteToken
-    setDomainQuotePending(true)
-    const formData = new FormData()
-    formData.set("domain", result.domain)
-    formData.set("domainMode", "new_registration")
-    formData.set("requestToken", quoteToken)
-    try {
-      const quoted = await quoteDomainAction(formData)
-      if (latestQuoteRequestTokenRef.current !== quoteToken || !quoted.ok || !quoted.quotes || quoted.domain !== result.domain) return
-      setCheckedDomain(quoted.domain)
-      lastDomainSearchKeyRef.current = quoted.domain
-      setDomainValue(quoted.domain)
-      setQuotes(quoted.quotes)
-    } finally {
-      if (latestQuoteRequestTokenRef.current === quoteToken) setDomainQuotePending(false)
-    }
+    await quoteExtensionResult(result)
   }
 
   const showMoreExtensions = async () => {
@@ -1048,7 +1033,6 @@ export function PreviewCheckout({
     const controller = new AbortController()
     extensionAbortRef.current = controller
     setExtensionCheckPending(true)
-    setExtensionCheckPhase("fallback")
     try {
       const response = await fetch(domainSearchHref, {
         method: "POST", credentials: "same-origin", signal: controller.signal,
@@ -1067,13 +1051,19 @@ export function PreviewCheckout({
       setExtensionResults((current) => [...current, ...more])
       setExtensionSearchDomains((current) => [...(current ?? []), ...more.map((result) => result.domain!).filter(Boolean)])
       setHasMoreExtensions(false)
+      const restoredSelection = more.find((result) =>
+        result.domain === selectedDomainIntent && result.ok)
+      if (restoredSelection) {
+        await quoteExtensionResult(restoredSelection)
+      } else if (more.some((result) => result.domain === selectedDomainIntent)) {
+        setSelectedDomainIntent(null)
+      }
     } catch {
       // Keep already-rendered discovery rows when a cancellable "more" request
       // is superseded or the provider is temporarily unavailable.
     } finally {
       if (extensionRequestRef.current === requestToken) {
         setExtensionCheckPending(false)
-        setExtensionCheckPhase("idle")
       }
     }
   }
@@ -1083,6 +1073,7 @@ export function PreviewCheckout({
     latestQuoteRequestTokenRef.current = null
     setDomainMode(mode)
     setCheckedDomain(null)
+    setSelectedDomainIntent(null)
     setQuotes(null)
     setMigrationSourceMethod("")
     setMigrationPreflight(null)
@@ -1953,7 +1944,11 @@ export function PreviewCheckout({
                               <span className="grid min-w-0 gap-1.5">
                                 <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-[730] tracking-[-0.012em] text-foreground">
                                   {resultName}
-                                  {resultExtension && <span className={available ? "text-success" : "text-brand"}>.{resultExtension}</span>}
+                                  {resultExtension && <span className={cn(
+                                    available && "text-success",
+                                    ["unavailable", "premium", "release_pending"].includes(result.status ?? "") && "text-warning",
+                                    ["service_error", "invalid"].includes(result.status ?? "") && "text-destructive",
+                                  )}>.{resultExtension}</span>}
                                 </strong>
                                 <span className={cn("flex min-h-6 w-fit items-center gap-1 rounded-full px-2 text-[0.625rem] font-bold", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", !available && !premium && "bg-muted text-muted-foreground")}>
                                   {available ? <Check className="size-[15px]" aria-hidden /> : premium ? <TriangleAlert className="size-[15px]" aria-hidden /> : result.status === "unavailable" ? <X className="size-[15px]" aria-hidden /> : <CircleAlert className="size-[15px]" aria-hidden />}
@@ -2070,18 +2065,14 @@ export function PreviewCheckout({
                             ] as const)
                               .filter(([value]) => availableMigrationSourceMethods.includes(value))
                               .map(([value, label]) => (
-                                <Label
+                                <RadioGroupItem
                                   key={value}
-                                  htmlFor={`checkout-migration-source-${value}`}
-                                  className="flex min-h-[72px] w-full cursor-pointer items-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-sm font-normal leading-relaxed hover:bg-muted/40 has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
+                                  id={`checkout-migration-source-${value}`}
+                                  value={value}
+                                  className="flex aspect-auto size-auto min-h-[72px] w-full cursor-pointer items-start justify-start gap-3 rounded-[11px] border bg-muted/20 p-3 text-left text-sm font-normal leading-relaxed text-foreground shadow-none hover:bg-muted/40 data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background data-[state=checked]:hover:bg-foreground [&_[data-slot=radio-group-indicator]]:order-first [&_[data-slot=radio-group-indicator]]:mt-0.5 [&_[data-slot=radio-group-indicator]_svg]:fill-current"
                                 >
-                                  <RadioGroupItem
-                                    id={`checkout-migration-source-${value}`}
-                                    value={value}
-                                    className="mt-0.5"
-                                  />
                                   <span>{t(label)}</span>
-                                </Label>
+                                </RadioGroupItem>
                               ))}
                           </RadioGroup>
                         </fieldset>

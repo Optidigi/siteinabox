@@ -52,11 +52,11 @@ export function CheckoutStepper<T extends string = string>({
           const content = (
             <>
               <span className={cn(
-                "grid size-[25px] shrink-0 place-items-center rounded-[8px] bg-muted text-muted-foreground min-[560px]:size-7 min-[560px]:rounded-[9px]",
+                "grid size-7 shrink-0 place-items-center rounded-[8px] bg-muted text-muted-foreground min-[560px]:size-8 min-[560px]:rounded-[9px]",
                 active && "bg-brand text-brand-foreground",
                 complete && "bg-success/10 text-success",
               )}>
-                {complete ? <Check className="size-[15px]" aria-hidden /> : <StepIcon className="size-[15px]" aria-hidden />}
+                {complete ? <Check className="size-4" aria-hidden /> : <StepIcon className="size-4" aria-hidden />}
               </span>
               <span className="grid min-w-0 text-left leading-tight">
                 <strong className="truncate text-[0.8125rem] font-[760] max-[355px]:text-[0.6875rem]">{entry.label}</strong>
@@ -70,7 +70,7 @@ export function CheckoutStepper<T extends string = string>({
               aria-label={entry.label}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "flex min-h-[50px] min-w-0 items-center gap-[7px] rounded-[11px] border bg-card/75 px-2 py-[7px] text-muted-foreground min-[560px]:min-h-[58px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3 min-[560px]:py-2",
+                "flex min-h-[60px] min-w-0 items-center gap-2 rounded-[11px] border bg-card/75 px-3 py-2.5 text-muted-foreground min-[560px]:min-h-[72px] min-[560px]:gap-3 min-[560px]:rounded-[13px] min-[560px]:px-4 min-[560px]:py-3",
                 active && "border-border bg-card text-foreground shadow-sm",
               )}
             >
@@ -79,7 +79,7 @@ export function CheckoutStepper<T extends string = string>({
                   type="button"
                   aria-label={entry.label}
                   variant="ghost"
-                  className="-m-2 flex h-auto min-h-[50px] min-w-0 flex-1 justify-start gap-[7px] rounded-[11px] px-2 text-inherit hover:bg-transparent min-[560px]:-m-3 min-[560px]:min-h-[58px] min-[560px]:gap-2.5 min-[560px]:rounded-[13px] min-[560px]:px-3"
+                  className="-m-3 flex h-auto min-h-[60px] min-w-0 flex-1 justify-start gap-2 rounded-[11px] px-3 text-inherit hover:bg-transparent min-[560px]:-m-4 min-[560px]:min-h-[72px] min-[560px]:gap-3 min-[560px]:rounded-[13px] min-[560px]:px-4"
                   onClick={() => onStepSelect(entry.id)}
                 >
                   {content}

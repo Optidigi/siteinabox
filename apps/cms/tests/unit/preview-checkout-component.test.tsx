@@ -132,7 +132,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })
   })
 
-  it("uses one compact primary discovery request after the debounce", async () => {
+  it("uses one compact primary discovery request only after explicit submit", async () => {
     const checkDomainAction = vi.fn()
     const fetchMock = vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
       ok: true,
@@ -158,6 +158,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
       target: { value: "acme" },
     })
 
+    expect(fetchMock).not.toHaveBeenCalled()
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const [href, options] = fetchMock.mock.calls[0]!
     expect(href).toBe("/ami-care/checkout/domain-search")
@@ -168,7 +170,82 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(checkDomainAction).not.toHaveBeenCalled()
     expect(container.querySelectorAll('[data-domain-status="available"]')).toHaveLength(1)
     expect(container.querySelectorAll('[data-domain-status="unavailable"]')).toHaveLength(1)
+    expect(
+      container.querySelector('[data-domain-status="available"] strong span')?.className,
+    ).toContain("text-success")
+    const unavailableExtension = container.querySelector(
+      '[data-domain-status="unavailable"] strong span',
+    )
+    expect(unavailableExtension?.className).toContain("text-warning")
+    expect(unavailableExtension?.className).not.toContain("text-brand")
     expect(screen.getByRole("button", { name: "checkoutShowMoreExtensions" })).toBeTruthy()
+  })
+
+  it("retains restored domain intent until an explicit fresh availability check", async () => {
+    const saveProgressAction = vi.fn().mockResolvedValue({ ok: true })
+    const quoteDomainAction = vi.fn(async (formData: FormData) => ({
+      ok: true,
+      status: "available" as const,
+      message: "",
+      domain: String(formData.get("domain")),
+      domainMode: "new_registration" as const,
+      requestToken: String(formData.get("requestToken")),
+      quotes: { monthly: quote("monthly"), annual: quote("annual") },
+    }))
+    const fetchMock = vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: true,
+        hasMore: true,
+        results: [{
+          domain: "acme.nl", availability: "unavailable", purchasable: false,
+          included: false, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        }],
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: true,
+        hasMore: false,
+        results: [{
+          domain: "acme.com", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        }],
+      })))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      currentDomain={null}
+      domainReady={false}
+      initialQuotes={null}
+      initialProgress={{
+        domainMode: "new_registration",
+        domainQuery: "acme",
+        selectedDomain: "acme.com",
+        decision: "domain",
+        billingPeriod: "monthly",
+        migrationSourceMechanism: null,
+        profileDraft: { city: "Utrecht" },
+        expiresAt: "2026-08-17T12:00:00.000Z",
+      }}
+      domainSearchHref="/ami-care/checkout/domain-search"
+      quoteDomainAction={quoteDomainAction}
+      saveProgressAction={saveProgressAction}
+    />)
+
+    expect((screen.getByLabelText(/checkout(?:Existing)?DomainLabel/) as HTMLInputElement).value)
+      .toBe("acme")
+    expect(fetchMock).not.toHaveBeenCalled()
+    await waitFor(() => expect(saveProgressAction).toHaveBeenCalled())
+    expect(saveProgressAction.mock.calls.at(-1)?.[0]).toMatchObject({
+      selectedDomain: "acme.com",
+      billingPeriod: "monthly",
+      profileDraft: expect.objectContaining({ city: "Utrecht" }),
+    })
+
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(quoteDomainAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "checkoutShowMoreExtensions" }))
+    await waitFor(() => expect(quoteDomainAction).toHaveBeenCalledTimes(1))
+    expect(container.querySelector('[data-domain-selected="true"]')?.textContent)
+      .toContain("acme.com")
   })
 
   it("loads more extensions only after the customer asks", async () => {
@@ -195,6 +272,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "acme" },
     })
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(container.textContent).not.toContain("acme.net")
 
@@ -229,10 +307,12 @@ describe("PreviewCheckout Phase 3 flow", () => {
     const input = screen.getByLabelText(/checkout(?:Existing)?DomainLabel/)
 
     fireEvent.change(input, { target: { value: "first" } })
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const firstSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal as AbortSignal
     fireEvent.change(input, { target: { value: "second" } })
     expect(firstSignal.aborted).toBe(true)
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     await act(async () => {
       resolveFirst?.(new Response(JSON.stringify({
@@ -281,6 +361,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "acme" },
     })
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
     const selectButtons = await screen.findAllByRole("button", {
       name: "checkoutSelectDomain",
     })
@@ -294,6 +375,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
     await waitFor(() => expect(
       container.querySelector('[data-domain-selected="true"]')?.textContent,
     ).toContain("acme.com"))
+    expect((screen.getByLabelText(/checkout(?:Existing)?DomainLabel/) as HTMLInputElement).value)
+      .toBe("acme")
+    expect(Array.from(container.querySelectorAll("[data-domain-status]")).map(
+      (row) => row.querySelector("strong")?.textContent,
+    )).toEqual(["acme.nl", "acme.com"])
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
   })
 
@@ -576,7 +662,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     })).toBeNull()
     expect(screen.queryByText("checkoutMigrationAssistedChoice")).toBeNull()
     expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
-    fireEvent.click(axfrSource.closest("label")!)
+    fireEvent.click(screen.getByText("checkoutMigrationSourceAxfr"))
     expect(axfrSource.getAttribute("aria-checked")).toBe("true")
     fireEvent.submit(
       container.querySelector<HTMLFormElement>("#checkout-domain-form")!,
@@ -868,9 +954,11 @@ describe("PreviewCheckout Phase 3 flow", () => {
       name: "checkoutMigrationSourceAxfr",
     })
     expect(cloudflareSource.getAttribute("aria-checked")).toBe("true")
-    fireEvent.click(axfrSource.closest("label")!)
+    expect(cloudflareSource.className).toContain("data-[state=checked]:bg-foreground")
+    expect(cloudflareSource.className).not.toContain("bg-brand")
+    fireEvent.click(screen.getByText("checkoutMigrationSourceAxfr"))
     expect(axfrSource.getAttribute("aria-checked")).toBe("true")
-    fireEvent.click(cloudflareSource.closest("label")!)
+    fireEvent.click(screen.getByText("checkoutMigrationSourceCloudflare"))
     expect(cloudflareSource.getAttribute("aria-checked")).toBe("true")
     expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeTruthy()
 
