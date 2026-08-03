@@ -18,10 +18,9 @@ type Props = {
   nav: NavItem[];
   intakeHref: string;
   loginHref: string;
-  hero?: boolean;
 };
 
-export function SiteHeader({ nav, intakeHref, loginHref, hero = false }: Props) {
+export function SiteHeader({ nav, intakeHref, loginHref }: Props) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [scrolled, setScrolled] = useState(false);
 
@@ -46,10 +45,7 @@ export function SiteHeader({ nav, intakeHref, loginHref, hero = false }: Props) 
     <header
       data-site-header
       data-scrolled={scrolled ? '' : undefined}
-      className={cn(
-        'fixed inset-x-0 top-0 z-40 border-b-2 border-transparent transition-[background-color,border-color] data-[scrolled]:border-border data-[scrolled]:bg-background/95 dark:bg-background/95',
-        hero ? 'bg-cream/95' : 'bg-background/95',
-      )}
+      className="fixed inset-x-0 top-0 z-40 border-b-2 border-transparent bg-background/95 transition-[background-color,border-color] data-[scrolled]:border-border"
     >
       <div className="mx-auto flex h-24 w-[calc(100%-24px)] max-w-none items-center gap-4 lg:grid lg:h-[104px] lg:grid-cols-[1fr_auto_1fr]">
         <a href="/" aria-label="Site in a Box — naar homepage" className="shrink-0 lg:justify-self-start" data-analytics-action="navigate_home" data-analytics-placement="header" data-analytics-destination="home">
