@@ -621,7 +621,7 @@ const fetchAvailabilityResults = async (
   }
 
   if (!response.ok) {
-    if (domains.length > 1 && response.status === 400) {
+    if (domains.length > 1 && (response.status === 400 || response.status === 501)) {
       const fallbackResults = await Promise.allSettled(
         domains.map((domain) => fetchAvailabilityResults(env, [domain], withPrice, options))
       )
@@ -629,7 +629,7 @@ const fetchAvailabilityResults = async (
       fallbackResults.forEach((result, index) => {
         if (result.status === "fulfilled") {
           for (const [key, value] of result.value.entries()) {
-            if (value.status === "internal" && value.internalReason === "provider_http_400") {
+            if (value.status === "internal" && (value.internalReason === "provider_http_400" || value.internalReason === "provider_http_501")) {
               merged.set(key, { ...value, status: "unavailable" })
             } else {
               merged.set(key, value)
@@ -643,14 +643,14 @@ const fetchAvailabilityResults = async (
             available: false,
             premium: false,
             price: null,
-            internalReason: "provider_http_400"
+            internalReason: `provider_http_${response.status}`
           })
         }
       })
       return merged
     }
     
-    if (response.status === 400) {
+    if (response.status === 400 || response.status === 501) {
       return new Map(domains.map((domain) => [
         domain.domain,
         {
@@ -659,7 +659,7 @@ const fetchAvailabilityResults = async (
           available: false,
           premium: false,
           price: null,
-          internalReason: "provider_http_400"
+          internalReason: `provider_http_${response.status}`
         }
       ]))
     }
