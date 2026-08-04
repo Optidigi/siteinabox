@@ -1038,7 +1038,12 @@ export function PreviewCheckout({
         extraFeeAmount: result.extraFee?.amount ?? null, extraFeeCurrency: result.extraFee?.currency ?? null,
         domainMode: "new_registration", requestToken,
       }))
-      setExtensionResults(results)
+      setExtensionResults((current) => {
+        if (!selectedDomainIntent) return results
+        const newDomains = new Set(results.map(r => r.domain))
+        const preserved = current.filter(r => r.domain === selectedDomainIntent && !newDomains.has(r.domain))
+        return [...preserved, ...results]
+      })
       setExtensionSearchDomains(results.map((result) => result.domain!).filter(Boolean))
       setHasMoreExtensions(received.hasMore === true)
     } catch {
@@ -1150,43 +1155,51 @@ export function PreviewCheckout({
   React.useEffect(() => {
     if (
       resumeAttemptedRef.current ||
-      !initialProgress?.selectedDomain ||
       initialQuotes
     ) return
+    if (!initialProgress?.domainQuery && !initialProgress?.selectedDomain) return
+
     resumeAttemptedRef.current = true
     if (initialProgress.domainMode === "new_registration") {
-      const selectedDomain = initialProgress.selectedDomain!
-      const restoredState: PreviewCheckoutActionState = {
-        ok: true,
-        status: "available",
-        message: "",
-        domain: selectedDomain,
-        domainMode: "new_registration",
-        requestToken: "restore",
-      }
-      setExtensionResults([restoredState])
-      void quoteExtensionResult(restoredState).then(async (quoted) => {
-        if (quoted && initialProgress.decision === "review") {
-          if (await persistProgress({ decision: "review", selectedDomain })) {
-            resumeReviewRef.current = false
-            setStep("review")
-          }
-        } else if (!quoted) {
-          setSelectedDomainIntent(null)
-          setExtensionResults([{
-             ok: false,
-             status: "unavailable",
-             message: t("checkoutDomainUnavailable", { domain: selectedDomain }),
-             domain: selectedDomain,
-             domainMode: "new_registration",
-             requestToken: "restore",
-          }])
+      if (initialProgress.selectedDomain) {
+        const selectedDomain = initialProgress.selectedDomain
+        const restoredState: PreviewCheckoutActionState = {
+          ok: true,
+          status: "available",
+          message: "",
+          domain: selectedDomain,
+          domainMode: "new_registration",
+          requestToken: "restore",
         }
-      })
+        setExtensionResults([restoredState])
+        void quoteExtensionResult(restoredState).then(async (quoted) => {
+          if (quoted && initialProgress.decision === "review") {
+            if (await persistProgress({ decision: "review", selectedDomain })) {
+              resumeReviewRef.current = false
+              setStep("review")
+            }
+          } else if (!quoted) {
+            setSelectedDomainIntent(null)
+            setExtensionResults((current) => current.map(r => r.domain === selectedDomain ? {
+               ok: false,
+               status: "unavailable",
+               message: t("checkoutDomainUnavailable", { domain: selectedDomain }),
+               domain: selectedDomain,
+               domainMode: "new_registration",
+               requestToken: "restore",
+            } : r))
+          }
+          if (initialProgress.decision !== "review") {
+             void checkSelectedExtensions(true)
+          }
+        })
+      } else {
+        void checkSelectedExtensions(true)
+      }
       return
     }
     window.setTimeout(() => domainFormRef.current?.requestSubmit(), 0)
-  }, [initialProgress, initialQuotes, quoteExtensionResult, t])
+  }, [checkSelectedExtensions, initialProgress, initialQuotes, quoteExtensionResult, t])
 
   const updateDetail = <K extends keyof CheckoutProfileDraft>(
     key: K,
