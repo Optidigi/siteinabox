@@ -500,25 +500,27 @@ export function PreviewCheckout({
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const persistProgress = React.useCallback((overrides: Partial<CheckoutProgressDraft> = {}) => {
     if (!saveProgressAction) return Promise.resolve(true)
-    const cleanDetails = {
-      partyType: details.partyType,
-      firstName: details.firstName,
-      lastName: details.lastName,
-      registeredBusinessName: details.registeredBusinessName,
-      kvkNumber: details.kvkNumber,
-      intendedCompanyName: details.intendedCompanyName,
-      street: details.street,
-      number: details.number,
-      suffix: details.suffix,
-      zipcode: details.zipcode,
-      city: details.city,
-      country: details.country,
-      phoneCountryCode: details.phoneCountryCode,
-      phoneAreaCode: details.phoneAreaCode,
-      phoneSubscriberNumber: details.phoneSubscriberNumber,
-      euEligibilityBasis: details.euEligibilityBasis,
-      euEligibilityCountry: details.euEligibilityCountry,
-    }
+    const cleanDetails = Object.fromEntries(
+      Object.entries({
+        partyType: details.partyType,
+        firstName: details.firstName,
+        lastName: details.lastName,
+        registeredBusinessName: details.registeredBusinessName,
+        kvkNumber: details.kvkNumber,
+        intendedCompanyName: details.intendedCompanyName,
+        street: details.street,
+        number: details.number,
+        suffix: details.suffix,
+        zipcode: details.zipcode,
+        city: details.city,
+        country: details.country,
+        phoneCountryCode: details.phoneCountryCode,
+        phoneAreaCode: details.phoneAreaCode,
+        phoneSubscriberNumber: details.phoneSubscriberNumber,
+        euEligibilityBasis: details.euEligibilityBasis,
+        euEligibilityCountry: details.euEligibilityCountry,
+      }).filter(([, v]) => v !== undefined)
+    )
     const draft: CheckoutProgressDraft = {
       domainMode,
       domainQuery: normalizedDomainValue,
