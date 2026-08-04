@@ -145,8 +145,10 @@ export default async function PreviewCheckoutPage({
       }),
       loadCheckoutProgressDraft({ context }),
     ])
-    const selectedDomain = acceptedResume?.domain ??
-      (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
+    const draftDomain = initialProgress !== null
+      ? (initialProgress.selectedDomain ?? null)
+      : (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
+    const selectedDomain = acceptedResume?.domain ?? draftDomain
     const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
     const [migrationStatus, provisioningStatus, billingAgreement] = await Promise.all([
       loadCustomerMigrationStatus(context.payload, {
