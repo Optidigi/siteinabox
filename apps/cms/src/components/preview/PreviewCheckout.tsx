@@ -1155,18 +1155,19 @@ export function PreviewCheckout({
     ) return
     resumeAttemptedRef.current = true
     if (initialProgress.domainMode === "new_registration") {
+      const selectedDomain = initialProgress.selectedDomain!
       const restoredState: PreviewCheckoutActionState = {
         ok: true,
         status: "available",
         message: "",
-        domain: initialProgress.selectedDomain,
+        domain: selectedDomain,
         domainMode: "new_registration",
         requestToken: "restore",
       }
       setExtensionResults([restoredState])
       void quoteExtensionResult(restoredState).then(async (quoted) => {
         if (quoted && initialProgress.decision === "review") {
-          if (await persistProgress({ decision: "review", selectedDomain: initialProgress.selectedDomain })) {
+          if (await persistProgress({ decision: "review", selectedDomain })) {
             resumeReviewRef.current = false
             setStep("review")
           }
@@ -1175,8 +1176,8 @@ export function PreviewCheckout({
           setExtensionResults([{
              ok: false,
              status: "unavailable",
-             message: t("checkoutDomainUnavailable", { domain: initialProgress.selectedDomain }),
-             domain: initialProgress.selectedDomain,
+             message: t("checkoutDomainUnavailable", { domain: selectedDomain }),
+             domain: selectedDomain,
              domainMode: "new_registration",
              requestToken: "restore",
           }])
