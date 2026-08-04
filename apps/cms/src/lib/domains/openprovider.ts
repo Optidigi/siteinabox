@@ -690,7 +690,14 @@ const fetchAvailabilityResults = async (
     const result = resultsByDomain.get(domain.domain)
     fetchedResults.set(domain.domain, result
       ? normalizeOpenProviderAvailabilityResponse(domain.domain, { data: { results: [result] } })
-      : internalAvailabilityResult(domain.domain, "unknown_provider_status"))
+      : {
+          status: "unavailable",
+          domain: domain.domain,
+          available: false,
+          premium: false,
+          price: null,
+          internalReason: "provider_omitted_domain"
+        })
   })
   return fetchedResults
 }
