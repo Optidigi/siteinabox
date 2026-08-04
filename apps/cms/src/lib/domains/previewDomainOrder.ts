@@ -322,25 +322,9 @@ export async function checkPreviewDomainOrders(
   options?: PreviewDomainOrderCheckOptions,
 ): Promise<PreviewDomainOrderResult[]> {
   const candidatesByDomain = new Map<string, NormalizedPreviewDomainOrderCandidate>()
-  const invalidCandidates: Omit<PreviewDomainOrderResult, "run">[] = []
   for (const domainInput of domainInputs) {
-    try {
-      const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
-      candidatesByDomain.set(candidate.domain, candidate)
-    } catch {
-      invalidCandidates.push({
-        messageKey: "checkoutDomainUnavailable",
-        domain: domainInput,
-        included: false,
-        extraFeeAmount: null,
-        extraFeeCurrency: null,
-        providerPriceAmount: null,
-        providerPriceCurrency: null,
-        providerQuotedAt: new Date().toISOString(),
-        productionOperationEnabled: false,
-        suggestions: [],
-      })
-    }
+    const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
+    candidatesByDomain.set(candidate.domain, candidate)
   }
   const candidates = [...candidatesByDomain.values()]
   if (candidates.length > MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE) {
@@ -362,17 +346,14 @@ export async function checkPreviewDomainOrders(
     if (normalized.ok) availabilityByDomain.set(normalized.domain, availability)
   }
 
-  return [
-    ...invalidCandidates.map((result) => ({ run, ...result })),
-    ...candidates.map((candidate) => {
-      const availability = availabilityByDomain.get(candidate.domain)
-      if (!availability) {
-        throw new Error(`OpenProvider returned no availability result for ${candidate.domain}.`)
-      }
-      const mapping = previewDomainOrderMapping(run, candidate, availability, registrant, options)
-      return { run, ...mapping.result }
-    }),
-  ]
+  return candidates.map((candidate) => {
+    const availability = availabilityByDomain.get(candidate.domain)
+    if (!availability) {
+      throw new Error(`OpenProvider returned no availability result for ${candidate.domain}.`)
+    }
+    const mapping = previewDomainOrderMapping(run, candidate, availability, registrant, options)
+    return { run, ...mapping.result }
+  })
 }
 
 export async function checkAndRecordPreviewDomainOrder(
@@ -384,24 +365,7 @@ export async function checkAndRecordPreviewDomainOrder(
     record?: boolean
   },
 ): Promise<PreviewDomainOrderResult> {
-  let candidate: NormalizedPreviewDomainOrderCandidate
-  try {
-    candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
-  } catch {
-    return {
-      run,
-      messageKey: "checkoutDomainUnavailable",
-      domain: domainInput,
-      included: false,
-      extraFeeAmount: null,
-      extraFeeCurrency: null,
-      providerPriceAmount: null,
-      providerPriceCurrency: null,
-      providerQuotedAt: new Date().toISOString(),
-      productionOperationEnabled: false,
-      suggestions: [],
-    }
-  }
+  const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
   const availability = options?.forceFresh
     ? await checkOpenProviderDomainAvailability(candidate.domain, { forceFresh: true })
     : await checkOpenProviderDomainAvailability(candidate.domain)
