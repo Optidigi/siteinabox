@@ -636,9 +636,10 @@ const fetchAvailabilityResults = async (
             }
           }
         } else {
-          merged.set(domains[index].domain, {
+          const domainName = domains[index]?.domain ?? "unknown"
+          merged.set(domainName, {
             status: "unavailable",
-            domain: domains[index].domain,
+            domain: domainName,
             available: false,
             premium: false,
             price: null,

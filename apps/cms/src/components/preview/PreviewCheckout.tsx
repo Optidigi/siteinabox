@@ -1200,9 +1200,6 @@ export function PreviewCheckout({
                requestToken: "restore",
             } : r))
           }
-          if (initialProgress.decision !== "review") {
-             void checkSelectedExtensions(true)
-          }
         })
       } else {
         void checkSelectedExtensions(true)
