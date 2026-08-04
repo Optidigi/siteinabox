@@ -1044,7 +1044,15 @@ export function PreviewCheckout({
         const preserved = current.filter(r => r.domain === selectedDomainIntent && !newDomains.has(r.domain))
         return [...preserved, ...results]
       })
-      setExtensionSearchDomains(results.map((result) => result.domain!).filter(Boolean))
+      setExtensionSearchDomains((current) => {
+        const resultDomains = results.map(r => r.domain!).filter(Boolean)
+        if (!selectedDomainIntent) return resultDomains
+        const newDomains = new Set(resultDomains)
+        if (!newDomains.has(selectedDomainIntent)) {
+          return [selectedDomainIntent, ...resultDomains]
+        }
+        return resultDomains
+      })
       setHasMoreExtensions(received.hasMore === true)
     } catch {
       if (extensionRequestRef.current === requestToken) setExtensionResults([{
