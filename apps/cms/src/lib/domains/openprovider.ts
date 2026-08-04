@@ -620,7 +620,51 @@ const fetchAvailabilityResults = async (
     throw error
   }
 
-  if (!response.ok) return availabilityProviderErrorResults(domains, `provider_http_${response.status}`)
+  if (!response.ok) {
+    if (domains.length > 1 && response.status === 400) {
+      const fallbackResults = await Promise.allSettled(
+        domains.map((domain) => fetchAvailabilityResults(env, [domain], withPrice, options))
+      )
+      const merged = new Map<string, OpenProviderAvailabilityResult>()
+      fallbackResults.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          for (const [key, value] of result.value.entries()) {
+            if (value.status === "internal" && value.internalReason === "provider_http_400") {
+              merged.set(key, { ...value, status: "unavailable" })
+            } else {
+              merged.set(key, value)
+            }
+          }
+        } else {
+          merged.set(domains[index].domain, {
+            status: "unavailable",
+            domain: domains[index].domain,
+            available: false,
+            premium: false,
+            price: null,
+            internalReason: "provider_http_400"
+          })
+        }
+      })
+      return merged
+    }
+    
+    if (response.status === 400) {
+      return new Map(domains.map((domain) => [
+        domain.domain,
+        {
+          status: "unavailable",
+          domain: domain.domain,
+          available: false,
+          premium: false,
+          price: null,
+          internalReason: "provider_http_400"
+        }
+      ]))
+    }
+    
+    return availabilityProviderErrorResults(domains, `provider_http_${response.status}`)
+  }
 
   const payload = await json(response)
   const data = dataObject(payload)

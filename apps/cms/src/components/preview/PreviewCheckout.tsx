@@ -957,6 +957,8 @@ export function PreviewCheckout({
     setExtensionCheckPending(false)
     setExtensionSearchAnchor(null)
     setExtensionSearchDomains(null)
+    setCheckedDomain(null)
+    setPremiumInfoDomain(null)
     extensionRequestRef.current = null
     extensionAbortRef.current?.abort()
     extensionAbortRef.current = null
