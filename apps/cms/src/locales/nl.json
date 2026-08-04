@@ -1336,6 +1336,7 @@
     "checkoutDomainReleasePending": "{domain} is beschikbaar, maar deze extensie is nog niet vrijgegeven voor registratie. Je kunt pas bestellen zodra de provider dit heeft goedgekeurd.",
     "checkoutDomainReleasePendingTitle": "Beschikbaar, vrijgave nog niet afgerond",
     "checkoutDomainUnavailable": "{domain} is helaas niet beschikbaar. Kies een andere domeinnaam.",
+    "checkoutProgressSaveWarning": "Uw voortgang kon niet worden opgeslagen in uw account. U kunt doorgaan, maar uw bestelling wordt niet hersteld als u de pagina vernieuwt.",
     "checkoutDomainPremium": "{domain} is een premiumdomein en valt niet binnen dit vaste pakket. Kies een andere domeinnaam.",
     "checkoutDomainCheckFailed": "We konden {domain} nu niet controleren. Probeer het later opnieuw.",
     "checkoutDomainInvalid": "Vul een geldige domeinnaam in, bijvoorbeeld voorbeeld.nl.",

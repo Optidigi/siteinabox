@@ -1336,6 +1336,7 @@
     "checkoutDomainReleasePending": "{domain} is available, but registration for this extension is not yet released. Nothing can be ordered or paid until its provider rehearsal is approved.",
     "checkoutDomainReleasePendingTitle": "Available, release pending",
     "checkoutDomainUnavailable": "{domain} is not available. Choose another domain name.",
+    "checkoutProgressSaveWarning": "Your progress could not be saved to your account. You can continue, but your checkout will not be restored if you refresh the page.",
     "checkoutDomainPremium": "{domain} is a premium domain and is not included in this fixed package. Choose another domain name.",
     "checkoutDomainCheckFailed": "We could not check {domain} right now. Try again later.",
     "checkoutDomainInvalid": "Enter a valid domain name, for example example.com.",

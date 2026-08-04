@@ -160,7 +160,18 @@ export async function savePreviewCheckoutProgressAction(
     const context = await requirePreviewCheckoutContext(clientSlug)
     const progress = await saveCheckoutProgressDraft({ context, draft })
     return { ok: true, message: "", progress }
-  } catch {
+  } catch (error) {
+    const isZodError = error != null && typeof error === "object" && "name" in error && error.name === "ZodError" && "issues" in error
+    const errorRecord = error as Record<string, unknown>
+    const zodPaths = isZodError && Array.isArray(errorRecord.issues)
+      ? (errorRecord.issues as Record<string, unknown>[]).map(i => i.path).join(", ")
+      : undefined
+    console.error("Preview checkout progress save failed:", {
+      operation: "savePreviewCheckoutProgressAction",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      safeCode: error != null && typeof error === "object" && "code" in error ? String(errorRecord.code) : undefined,
+      zodPaths,
+    })
     return { ok: false, message: "Checkout progress could not be saved." }
   }
 }

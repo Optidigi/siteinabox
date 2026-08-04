@@ -236,7 +236,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(screen.getByRole("button", { name: "checkoutShowMoreExtensions" })).toBeTruthy()
   })
 
-  it("retains restored domain intent until an explicit fresh availability check", async () => {
+  it("directly revalidates exact saved domain without discovery requests", async () => {
     const saveProgressAction = vi.fn().mockResolvedValue({ ok: true })
     const quoteDomainAction = vi.fn(async (formData: FormData) => ({
       ok: true,
@@ -248,22 +248,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
       quotes: { monthly: quote("monthly"), annual: quote("annual") },
     }))
     const fetchMock = vi.mocked(fetch)
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        ok: true,
-        hasMore: true,
-        results: [{
-          domain: "acme.nl", availability: "unavailable", purchasable: false,
-          included: false, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
-        }],
-      })))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        ok: true,
-        hasMore: false,
-        results: [{
-          domain: "acme.com", availability: "available", purchasable: true,
-          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
-        }],
-      })))
     const { container } = render(<PreviewCheckout
       {...baseCheckoutProps()}
       currentDomain={null}
@@ -287,18 +271,8 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect((screen.getByLabelText(/checkout(?:Existing)?DomainLabel/) as HTMLInputElement).value)
       .toBe("acme")
     expect(fetchMock).not.toHaveBeenCalled()
-    await waitFor(() => expect(saveProgressAction).toHaveBeenCalled())
-    expect(saveProgressAction.mock.calls.at(-1)?.[0]).toMatchObject({
-      selectedDomain: "acme.com",
-      billingPeriod: "monthly",
-      profileDraft: expect.objectContaining({ city: "Utrecht" }),
-    })
-
-    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    expect(quoteDomainAction).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole("button", { name: "checkoutShowMoreExtensions" }))
     await waitFor(() => expect(quoteDomainAction).toHaveBeenCalledTimes(1))
+    
     expect(container.querySelector('[data-domain-selected="true"]')?.textContent)
       .toContain("acme.com")
   })
@@ -314,14 +288,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       requestToken: String(formData.get("requestToken")),
       quotes: { monthly: quote("monthly"), annual: quote("annual") },
     }))
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
-      ok: true,
-      hasMore: false,
-      results: [{
-        domain: "acme.nl", availability: "available", purchasable: true,
-        included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
-      }],
-    })))
+    const fetchMock = vi.mocked(fetch)
 
     render(<PreviewCheckout
       {...baseCheckoutProps()}
@@ -343,7 +310,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
       saveProgressAction={saveProgressAction}
     />)
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    expect(fetchMock).not.toHaveBeenCalled()
     await waitFor(() => expect(quoteDomainAction).toHaveBeenCalledTimes(1))
     await screen.findByRole("heading", { name: "checkoutStepPayment" })
     expect(screen.getByRole("button", { name: "checkoutBackToDomain" })).toBeTruthy()

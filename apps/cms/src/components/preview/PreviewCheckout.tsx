@@ -497,6 +497,7 @@ export function PreviewCheckout({
   const progressSaveChainRef = React.useRef<Promise<unknown>>(Promise.resolve())
   const resumeAttemptedRef = React.useRef(false)
   const resumeReviewRef = React.useRef(initialProgress?.decision === "review")
+  const [progressSaveError, setProgressSaveError] = React.useState(false)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const persistProgress = React.useCallback((overrides: Partial<CheckoutProgressDraft> = {}) => {
     if (!saveProgressAction) return Promise.resolve(true)
@@ -537,7 +538,16 @@ export function PreviewCheckout({
       .catch(() => undefined)
       .then(() => saveProgressAction(draft))
     progressSaveChainRef.current = save
-    return save.then((result) => result.ok, () => false)
+    return save.then(
+      (result) => {
+        setProgressSaveError(!result.ok)
+        return true
+      },
+      () => {
+        setProgressSaveError(true)
+        return true
+      }
+    )
   }, [
     billingPeriod,
     details,
@@ -1031,19 +1041,6 @@ export function PreviewCheckout({
       setExtensionResults(results)
       setExtensionSearchDomains(results.map((result) => result.domain!).filter(Boolean))
       setHasMoreExtensions(received.hasMore === true)
-      const restoredSelection = results.find((result) =>
-        result.domain === selectedDomainIntent && result.ok)
-      if (restoredSelection) {
-        const restored = await quoteExtensionResult(restoredSelection)
-        if (restored && resumeReviewRef.current) {
-          if (await persistProgress({ decision: "review", selectedDomain: restoredSelection.domain })) {
-            resumeReviewRef.current = false
-            setStep("review")
-          }
-        }
-      } else if (results.some((result) => result.domain === selectedDomainIntent)) {
-        setSelectedDomainIntent(null)
-      }
     } catch {
       if (extensionRequestRef.current === requestToken) setExtensionResults([{
         ok: false,
@@ -1097,19 +1094,6 @@ export function PreviewCheckout({
       setExtensionResults((current) => [...current, ...more])
       setExtensionSearchDomains((current) => [...(current ?? []), ...more.map((result) => result.domain!).filter(Boolean)])
       setHasMoreExtensions(false)
-      const restoredSelection = more.find((result) =>
-        result.domain === selectedDomainIntent && result.ok)
-      if (restoredSelection) {
-        const restored = await quoteExtensionResult(restoredSelection)
-        if (restored && resumeReviewRef.current) {
-          if (await persistProgress({ decision: "review", selectedDomain: restoredSelection.domain })) {
-            resumeReviewRef.current = false
-            setStep("review")
-          }
-        }
-      } else if (more.some((result) => result.domain === selectedDomainIntent)) {
-        setSelectedDomainIntent(null)
-      }
     } catch {
       // Keep already-rendered discovery rows when a cancellable "more" request
       // is superseded or the provider is temporarily unavailable.
@@ -1167,16 +1151,41 @@ export function PreviewCheckout({
     if (
       resumeAttemptedRef.current ||
       !initialProgress?.selectedDomain ||
-      initialProgress.decision !== "review" ||
       initialQuotes
     ) return
     resumeAttemptedRef.current = true
     if (initialProgress.domainMode === "new_registration") {
-      void checkSelectedExtensions(true)
+      const restoredState: PreviewCheckoutActionState = {
+        ok: true,
+        status: "available",
+        message: "",
+        domain: initialProgress.selectedDomain,
+        domainMode: "new_registration",
+        requestToken: "restore",
+      }
+      setExtensionResults([restoredState])
+      void quoteExtensionResult(restoredState).then(async (quoted) => {
+        if (quoted && initialProgress.decision === "review") {
+          if (await persistProgress({ decision: "review", selectedDomain: initialProgress.selectedDomain })) {
+            resumeReviewRef.current = false
+            setStep("review")
+          }
+        } else if (!quoted) {
+          setSelectedDomainIntent(null)
+          setExtensionResults([{
+             ok: false,
+             status: "unavailable",
+             message: t("checkoutDomainUnavailable", { domain: initialProgress.selectedDomain }),
+             domain: initialProgress.selectedDomain,
+             domainMode: "new_registration",
+             requestToken: "restore",
+          }])
+        }
+      })
       return
     }
     window.setTimeout(() => domainFormRef.current?.requestSubmit(), 0)
-  }, [checkSelectedExtensions, initialProgress, initialQuotes])
+  }, [initialProgress, initialQuotes, quoteExtensionResult, t])
 
   const updateDetail = <K extends keyof CheckoutProfileDraft>(
     key: K,
@@ -1407,6 +1416,13 @@ export function PreviewCheckout({
           <div className={cn("grid min-w-0 gap-[18px]", presentation.phase === "payment" && "min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start")}>
           <Card data-checkout-main-card className={cn("relative w-full scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 shadow-sm min-[560px]:rounded-[22px]", presentation.phase !== "payment" && "mx-auto max-w-[820px]")}>
             <PreviewCheckoutStepper step="review" activeHeadingRef={stepHeadingRef} />
+            {progressSaveError && (
+              <div className="mx-[17px] mt-[17px] min-[560px]:mx-[26px] min-[560px]:mt-[22px]">
+                <Alert className="border-warning/30 bg-warning/10 text-warning" role="status">
+                  <AlertDescription>{t("checkoutProgressSaveWarning")}</AlertDescription>
+                </Alert>
+              </div>
+            )}
             <CardContent className="grid gap-[14px] px-[17px] py-5 min-[560px]:gap-[18px] min-[560px]:px-[26px] min-[560px]:py-6 [&_[role=status]]:rounded-[14px] [&_[role=status]]:border [&_[role=status]]:p-[13px]">
         {paymentReturn && presentation.phase === "payment" && (
           <section className="grid justify-items-center gap-3 py-2 text-center min-[560px]:px-5 min-[560px]:pb-5" aria-live="polite">
@@ -1854,6 +1870,13 @@ export function PreviewCheckout({
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start min-[880px]:gap-[18px]">
           <Card data-checkout-main-card className="relative scroll-mb-28 gap-0 overflow-hidden rounded-[17px] border bg-card py-0 shadow-sm min-[560px]:rounded-[22px]">
             <PreviewCheckoutStepper step="domain" activeHeadingRef={stepHeadingRef} />
+            {progressSaveError && (
+              <div className="mx-[17px] mt-[17px] min-[560px]:mx-[26px] min-[560px]:mt-[22px]">
+                <Alert className="border-warning/30 bg-warning/10 text-warning" role="status">
+                  <AlertDescription>{t("checkoutProgressSaveWarning")}</AlertDescription>
+                </Alert>
+              </div>
+            )}
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[26px] min-[560px]:pt-[22px]">
               <div>
                 <h3 className="text-lg font-bold leading-tight tracking-[-0.025em] min-[880px]:text-xl">
@@ -2359,6 +2382,13 @@ export function PreviewCheckout({
           <div className="grid min-w-0 gap-4 min-[880px]:grid-cols-[minmax(0,1fr)_348px] min-[880px]:items-start min-[880px]:gap-[18px]">
           <div data-checkout-main-card className="relative scroll-mb-28 min-w-0 overflow-hidden rounded-[17px] border bg-card shadow-sm min-[560px]:rounded-[22px]">
           <PreviewCheckoutStepper step="review" activeHeadingRef={stepHeadingRef} />
+          {progressSaveError && (
+            <div className="mx-[17px] mt-[17px] min-[560px]:mx-[26px] min-[560px]:mt-[22px]">
+              <Alert className="border-warning/30 bg-warning/10 text-warning" role="status">
+                <AlertDescription>{t("checkoutProgressSaveWarning")}</AlertDescription>
+              </Alert>
+            </div>
+          )}
           <Card className="gap-0 rounded-none border-0 py-0 shadow-none">
             <CardContent className="grid gap-5 px-[17px] py-[17px] min-[560px]:px-[26px] min-[560px]:pb-[22px] min-[560px]:pt-[22px]">
               {acceptedOrderId == null && (
