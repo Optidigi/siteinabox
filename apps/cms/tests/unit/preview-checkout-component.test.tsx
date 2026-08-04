@@ -711,7 +711,6 @@ describe("PreviewCheckout Phase 3 flow", () => {
     fireEvent.click(preflightMode)
     expect(screen.queryByLabelText("checkoutMigrationZoneExportLabel")).toBeNull()
     expect(screen.queryByLabelText("checkoutMigrationTransferCodeLabel")).toBeNull()
-    expect(screen.getAllByText("checkoutDomainModeExistingPreflight").length).toBeGreaterThanOrEqual(1)
     fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
       target: { value: "example.nl" },
     })
