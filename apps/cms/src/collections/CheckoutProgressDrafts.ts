@@ -115,7 +115,7 @@ export const CheckoutProgressDrafts: CollectionConfig = {
         { label: "Existing domain", value: "existing_domain" },
       ],
     },
-    { name: "domainQuery", type: "text", required: true, defaultValue: "" },
+    { name: "domainQuery", type: "text", defaultValue: "" },
     { name: "selectedDomain", type: "text", index: true },
     {
       name: "decision",
