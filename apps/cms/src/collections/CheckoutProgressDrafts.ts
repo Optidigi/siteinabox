@@ -21,6 +21,12 @@ export const protectCheckoutProgressDraft: CollectionBeforeChangeHook = (args) =
   if (args.operation !== "update") return args.data
 
   const allowed = new Set([
+    "id",
+    "createdAt",
+    "updatedAt",
+    "previewAccessGrant",
+    "tenant",
+    "generationRun",
     "domainMode",
     "domainQuery",
     "selectedDomain",
@@ -29,10 +35,10 @@ export const protectCheckoutProgressDraft: CollectionBeforeChangeHook = (args) =
     "migrationSourceMechanism",
     "profileDraft",
     "expiresAt",
-    "updatedAt",
   ])
   const invalid = Object.keys(args.data ?? {}).find((field) => !allowed.has(field))
   if (invalid) {
+    console.error(`Immutable field error in CheckoutProgressDrafts: ${invalid} was provided. args.data:`, args.data)
     throw new Error(`Checkout progress draft field "${invalid}" is immutable.`)
   }
   return args.data

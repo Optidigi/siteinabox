@@ -169,6 +169,8 @@ export async function savePreviewCheckoutProgressAction(
     console.error("Preview checkout progress save failed:", {
       operation: "savePreviewCheckoutProgressAction",
       errorName: error instanceof Error ? error.name : "UnknownError",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
       safeCode: error != null && typeof error === "object" && "code" in error ? String(errorRecord.code) : undefined,
       zodPaths,
     })
