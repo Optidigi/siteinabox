@@ -95,6 +95,7 @@ import * as migration_20260730_030555_cloudflare_source_oauth from './20260730_0
 import * as migration_20260730_102220_durable_pre_commerce_routing_adoption from './20260730_102220_durable_pre_commerce_routing_adoption';
 import * as migration_20260803_090830_checkout_progress_drafts from './20260803_090830_checkout_progress_drafts';
 import * as migration_20260803_091129_checkout_progress_profile_draft from './20260803_091129_checkout_progress_profile_draft';
+import * as migration_20260804_131545_optional_domain_query from './20260804_131545_optional_domain_query';
 
 export const migrations = [
   {
@@ -580,6 +581,11 @@ export const migrations = [
   {
     up: migration_20260803_091129_checkout_progress_profile_draft.up,
     down: migration_20260803_091129_checkout_progress_profile_draft.down,
-    name: '20260803_091129_checkout_progress_profile_draft'
+    name: '20260803_091129_checkout_progress_profile_draft',
+  },
+  {
+    up: migration_20260804_131545_optional_domain_query.up,
+    down: migration_20260804_131545_optional_domain_query.down,
+    name: '20260804_131545_optional_domain_query'
   },
 ];
