@@ -77,10 +77,20 @@ describe("preview domain-search route", () => {
     const crossOrigin = await POST(request({ query: "acme" }, { origin: "https://attacker.example" }), routeContext)
 
     expect(nonPreview.status).toBe(403)
+    expect(await nonPreview.json()).toEqual({ ok: false, errorCode: "request_authority_rejected" })
     expect(missingOrigin.status).toBe(403)
+    expect(await missingOrigin.json()).toEqual({ ok: false, errorCode: "request_authority_rejected" })
     expect(crossOrigin.status).toBe(403)
+    expect(await crossOrigin.json()).toEqual({ ok: false, errorCode: "request_authority_rejected" })
     expect(mocks.requireContext).not.toHaveBeenCalled()
     expect(mocks.search).not.toHaveBeenCalled()
+    expect(mocks.logTiming).toHaveBeenCalledTimes(3)
+    expect(mocks.logTiming).toHaveBeenCalledWith(
+      "domain_search_total",
+      100,
+      { clientSlug: "acme" },
+      { mode: "primary", ok: false, failureCode: "request_authority_rejected" },
+    )
   })
 
   it("returns 401 when minimal preview search authority cannot be established", async () => {
@@ -89,9 +99,15 @@ describe("preview domain-search route", () => {
     const response = await POST(request({ query: "acme" }), routeContext)
 
     expect(response.status).toBe(401)
-    expect(await response.json()).toEqual({ ok: false })
+    expect(await response.json()).toEqual({ ok: false, errorCode: "preview_context_unavailable" })
     expect(mocks.providerReadsAllowed).not.toHaveBeenCalled()
     expect(mocks.search).not.toHaveBeenCalled()
+    expect(mocks.logTiming).toHaveBeenCalledWith(
+      "domain_search_total",
+      100,
+      { clientSlug: "acme" },
+      { mode: "primary", ok: false, failureCode: "preview_context_unavailable" },
+    )
   })
 
   it("returns 503 while provider reads are gated without running discovery", async () => {
@@ -100,8 +116,19 @@ describe("preview domain-search route", () => {
     const response = await POST(request({ query: "acme" }), routeContext)
 
     expect(response.status).toBe(503)
-    expect(await response.json()).toEqual({ ok: false, results: [], hasMore: false })
+    expect(await response.json()).toEqual({
+      ok: false,
+      errorCode: "provider_reads_disabled",
+      results: [],
+      hasMore: false,
+    })
     expect(mocks.search).not.toHaveBeenCalled()
+    expect(mocks.logTiming).toHaveBeenCalledWith(
+      "domain_search_total",
+      100,
+      { clientSlug: "acme" },
+      { mode: "primary", ok: false, failureCode: "provider_reads_disabled" },
+    )
   })
 
   it("returns compact, uncached discovery data and propagates the request cancellation signal", async () => {
@@ -135,6 +162,27 @@ describe("preview domain-search route", () => {
       100,
       { clientSlug: "acme" },
       { mode: "more", candidateCount: 1, ok: true },
+    )
+  })
+
+  it("maps unexpected discovery failures to domain_search_failed with safe timing diagnostics", async () => {
+    mocks.search.mockRejectedValue(new Error("provider outage"))
+
+    const response = await POST(request({ query: "acme" }), routeContext)
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({
+      ok: false,
+      errorCode: "domain_search_failed",
+      results: [],
+      hasMore: false,
+    })
+    expect(mocks.logTiming).toHaveBeenCalledWith(
+      "domain_search_total",
+      100,
+      { clientSlug: "acme" },
+      { mode: "primary", ok: false, failureCode: "domain_search_failed", errorName: "Error" },
     )
   })
 })

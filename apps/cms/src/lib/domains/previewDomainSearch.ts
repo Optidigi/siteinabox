@@ -51,6 +51,7 @@ export async function searchPreviewDomains(input: {
   const results = await checkPreviewDomainOrders(input.run, candidates, null, {
     // Discovery deliberately has no profile, quote, localized text, or writes.
     requireProductionCapability: false,
+    allowUnconfiguredTldCapability: false,
     signal: input.signal,
   })
   return {

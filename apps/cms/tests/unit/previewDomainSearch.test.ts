@@ -33,7 +33,7 @@ describe("preview domain discovery", () => {
 
     expect(mocks.check).toHaveBeenCalledWith(
       { id: 1 }, ["acme.nl", "acme.com", "acme.info", "acme.org", "acme.eu"], null,
-      { requireProductionCapability: false, signal },
+      { allowUnconfiguredTldCapability: false, requireProductionCapability: false, signal },
     )
     expect(response).toEqual({
       hasMore: true,

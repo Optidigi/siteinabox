@@ -14,6 +14,13 @@ import config from "@/payload.config"
  * (payload)/api/[...slug] from a different group. Static "health" beats
  * the catch-all in the same group.
  */
+const normalizeRevision = (value: string | undefined): string => {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : "unknown"
+}
+
+export const normalizeBuildRevision = (value: string | undefined): string => normalizeRevision(value)
+
 export async function GET() {
   const dataDirPath = path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 
@@ -43,7 +50,8 @@ export async function GET() {
     {
       status: ok ? "ok" : "degraded",
       db: dbOk ? "connected" : "down",
-      dataDir: dirOk ? "writable" : "unwritable"
+      dataDir: dirOk ? "writable" : "unwritable",
+      revision: normalizeBuildRevision(process.env.SIAB_BUILD_REVISION),
     },
     {
       status: ok ? 200 : 503,

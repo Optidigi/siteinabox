@@ -65,10 +65,21 @@ export type PreviewDomainOrderResult = {
  */
 export const MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE = 15
 
+export type PreviewDomainCandidateRejectionCode =
+  | "invalid_domain"
+  | "unsupported_tld"
+  | "unsupported_label"
+
 export type PreviewDomainOrderCheckOptions = {
   includedProviderPrice?: FixedDomainOrderPrice
   capabilityEffectiveAt?: string | Date
   requireProductionCapability?: boolean
+  /**
+   * When false and `requireProductionCapability` is false, require a configured
+   * production TLD capability rather than falling back to generated
+   * on-demand OpenProvider capability.
+   */
+  allowUnconfiguredTldCapability?: boolean
   /** Only the payment/commit check may bypass presentation availability cache. */
   forceFresh?: boolean
   /** Read-only discovery may propagate a browser cancellation signal. */
@@ -209,36 +220,6 @@ const providerPriceIsUsable = (
   includedProviderPrice: FixedDomainOrderPrice,
 ): boolean => providerPrice !== null && compareMoney(providerPrice, includedProviderPrice) !== null
 
-const normalizePreviewDomainOrderCandidate = (
-  domainInput: string,
-  options?: PreviewDomainOrderCheckOptions,
-): NormalizedPreviewDomainOrderCandidate => {
-  const normalized = normalizeDomain(domainInput)
-  if (!normalized.ok) {
-    throw new Error(`Invalid domain: ${normalized.reason}`)
-  }
-  const productionCapability = getTldCapabilityForProductionOperation(
-    normalized.extension,
-    "registration",
-    options?.capabilityEffectiveAt,
-  )
-  const capability = options?.requireProductionCapability === false
-    ? tldCapabilityAt(normalized.extension, options?.capabilityEffectiveAt) ?? productionCapability
-    : productionCapability
-  if (!capability) {
-    throw new Error(`TLD .${normalized.extension} is not enabled for checkout.`)
-  }
-  if (!validateTldRegistrationLabel(capability, normalized.name)) {
-    throw new Error(`Domain label is not supported for .${normalized.extension}.`)
-  }
-  return {
-    domain: normalized.domain,
-    name: normalized.name,
-    extension: normalized.extension,
-    productionCapability,
-  }
-}
-
 const previewDomainOrderMapping = (
   run: SiteGenerationRun,
   candidate: NormalizedPreviewDomainOrderCandidate,
@@ -309,6 +290,107 @@ const previewDomainOrderMapping = (
   }
 }
 
+type PreviewDomainOrderCandidateValidation =
+  | {
+      ok: true
+      candidate: NormalizedPreviewDomainOrderCandidate
+    }
+  | {
+      ok: false
+      code: PreviewDomainCandidateRejectionCode
+      reason: string
+      extension?: string
+      name?: string
+    }
+
+type PreviewDomainOrderCandidateEntry =
+  | { kind: "invalid"; result: Omit<PreviewDomainOrderResult, "run"> }
+  | { kind: "candidate"; domain: string }
+
+const unavailableCandidateResult = (domainInput: string): Omit<PreviewDomainOrderResult, "run"> => ({
+  messageKey: "checkoutDomainUnavailable",
+  domain: domainInput,
+  included: false,
+  extraFeeAmount: null,
+  extraFeeCurrency: null,
+  providerPriceAmount: null,
+  providerPriceCurrency: null,
+  providerQuotedAt: new Date().toISOString(),
+  productionOperationEnabled: false,
+  suggestions: [],
+})
+
+const validatePreviewDomainOrderCandidate = (
+  domainInput: string,
+  options?: PreviewDomainOrderCheckOptions,
+): PreviewDomainOrderCandidateValidation => {
+  const normalized = normalizeDomain(domainInput)
+  if (!normalized.ok) {
+    return {
+      ok: false,
+      code: "invalid_domain",
+      reason: normalized.reason,
+    }
+  }
+  const productionCapability = getTldCapabilityForProductionOperation(
+    normalized.extension,
+    "registration",
+    options?.capabilityEffectiveAt,
+  )
+  const allowUnconfigured = options?.allowUnconfiguredTldCapability ?? true
+  const catalogCapability = tldCapabilityAt(normalized.extension, options?.capabilityEffectiveAt)
+  const capability = options?.requireProductionCapability === false
+    ? allowUnconfigured
+      ? catalogCapability ?? productionCapability
+      : catalogCapability
+    : productionCapability
+  if (!capability) {
+    return {
+      ok: false,
+      code: "unsupported_tld",
+      reason: "disabled_tld",
+      extension: normalized.extension,
+      name: normalized.name,
+    }
+  }
+  if (!validateTldRegistrationLabel(capability, normalized.name)) {
+    return {
+      ok: false,
+      code: "unsupported_label",
+      reason: "unsupported_label",
+      extension: normalized.extension,
+      name: normalized.name,
+    }
+  }
+  return {
+    ok: true,
+    candidate: {
+      domain: normalized.domain,
+      name: normalized.name,
+      extension: normalized.extension,
+      productionCapability,
+    },
+  }
+}
+
+const throwOnPreviewDomainOrderCandidateValidation = (
+  domainInput: string,
+  options?: PreviewDomainOrderCheckOptions,
+): NormalizedPreviewDomainOrderCandidate => {
+  const validation = validatePreviewDomainOrderCandidate(domainInput, options)
+  if (validation.ok) return validation.candidate
+  switch (validation.code) {
+    case "invalid_domain":
+      throw new Error(`Invalid domain: ${validation.reason}`)
+    case "unsupported_tld":
+      throw new Error(`TLD .${validation.extension} is not enabled for checkout.`)
+    case "unsupported_label":
+      throw new Error(`Domain label is not supported for .${validation.extension}.`)
+    default:
+      throw new Error(`Invalid domain: ${domainInput}`)
+  }
+}
+
 /**
  * Check a bounded set of checkout candidates without changing the persisted
  * domain-order state. The caller must derive candidates from the customer
@@ -322,32 +404,19 @@ export async function checkPreviewDomainOrders(
   options?: PreviewDomainOrderCheckOptions,
 ): Promise<PreviewDomainOrderResult[]> {
   const candidatesByDomain = new Map<string, NormalizedPreviewDomainOrderCandidate>()
-  const orderedCandidates: Array<
-    { kind: "invalid"; result: Omit<PreviewDomainOrderResult, "run"> } |
-    { kind: "candidate"; domain: string }
-  > = []
+  const orderedCandidates: PreviewDomainOrderCandidateEntry[] = []
   for (const domainInput of domainInputs) {
-    try {
-      const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
+    const validation = validatePreviewDomainOrderCandidate(domainInput, options)
+    if (validation.ok) {
+      const candidate = validation.candidate
       if (!candidatesByDomain.has(candidate.domain)) {
         candidatesByDomain.set(candidate.domain, candidate)
         orderedCandidates.push({ kind: "candidate", domain: candidate.domain })
       }
-    } catch {
+    } else {
       orderedCandidates.push({
         kind: "invalid",
-        result: {
-        messageKey: "checkoutDomainUnavailable",
-        domain: domainInput,
-        included: false,
-        extraFeeAmount: null,
-        extraFeeCurrency: null,
-        providerPriceAmount: null,
-        providerPriceCurrency: null,
-        providerQuotedAt: new Date().toISOString(),
-        productionOperationEnabled: false,
-        suggestions: [],
-        },
+        result: unavailableCandidateResult(domainInput),
       })
     }
   }
@@ -394,7 +463,7 @@ export async function checkAndRecordPreviewDomainOrder(
     record?: boolean
   },
 ): Promise<PreviewDomainOrderResult> {
-  const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
+  const candidate = throwOnPreviewDomainOrderCandidateValidation(domainInput, options)
   const availability = options?.forceFresh
     ? await checkOpenProviderDomainAvailability(candidate.domain, { forceFresh: true })
     : await checkOpenProviderDomainAvailability(candidate.domain)

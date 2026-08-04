@@ -72,6 +72,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SIAB_BUILD_REVISION=${{ github.sha }}
           cache-from: |
             type=registry,ref=ghcr.io/optidigi/siteinabox-cms:buildcache
             type=gha
@@ -109,13 +111,23 @@ jobs:
             "$IMAGE_REF"
 
           deadline=$((SECONDS + 90))
-          until curl --fail --silent --show-error http://127.0.0.1:3000/api/health; do
+          response=""
+          until response="$(curl --fail --silent --show-error http://127.0.0.1:3000/api/health)"; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               docker logs "$container_name" || true
               exit 1
             fi
             sleep 3
           done
+
+          revision=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.revision || '');")
+          status=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.status || '');")
+          db=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.db || '');")
+          dataDir=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.dataDir || '');")
+          if [ "$revision" != "${GITHUB_SHA}" ] || [ "$status" != "ok" ] || [ "$db" != "connected" ] || [ "$dataDir" != "writable" ]; then
+            echo "Healthcheck mismatch: status=$status db=$db dataDir=$dataDir revision=$revision expectedRevision=${GITHUB_SHA}" >&2
+            exit 1
+          fi
 
       - name: Record verified image digest
         run: echo "Verified CMS image \`ghcr.io/optidigi/siteinabox-cms@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"

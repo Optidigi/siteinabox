@@ -47,8 +47,10 @@ RUN pnpm --filter siab-payload payload generate:types \
 # 2. Runtime
 FROM node:26-alpine AS runner
 WORKDIR /app
+ARG SIAB_BUILD_REVISION=unknown
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV SIAB_BUILD_REVISION=${SIAB_BUILD_REVISION}
 # Bind Next.js standalone server to all interfaces. Without this, the server
 # binds only to the container hostname, making /api/health (which curls
 # localhost:3000) and the Docker healthcheck fail with "connection refused".

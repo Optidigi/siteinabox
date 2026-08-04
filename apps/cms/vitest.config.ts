@@ -11,7 +11,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
-    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    include: ["tests/**/*.test.ts", "tests/**/*.integration.test.ts", "tests/**/*.test.tsx"],
     exclude: ["tests/e2e/**"],
     globals: true,
     pool: "forks",

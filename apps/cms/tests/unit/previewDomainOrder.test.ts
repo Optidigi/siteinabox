@@ -548,6 +548,45 @@ describe("preview domain order", () => {
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(["acme.nl", "acme.com"])
   })
 
+  it("classifies unsupported-label discovery candidates without affecting valid candidates", async () => {
+    const run = { id: 123, domainOrder: null }
+    vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([{
+      status: "available",
+      domain: "acme.nl",
+      available: true,
+      premium: false,
+      price: { amount: "6.50", currency: "EUR" },
+      internalReason: null,
+    }])
+
+    await expect(checkPreviewDomainOrders(
+      cast<SiteGenerationRun>(run),
+      ["a.org", "acme.nl"],
+      null,
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+        capabilityEffectiveAt: "2026-07-28T14:59:59.999Z",
+        requireProductionCapability: false,
+      },
+    )).resolves.toMatchObject([
+      {
+        run,
+        domain: "a.org",
+        messageKey: "checkoutDomainUnavailable",
+        included: false,
+        productionOperationEnabled: false,
+      },
+      {
+        run,
+        domain: "acme.nl",
+        messageKey: "checkoutDomainAvailable",
+        included: true,
+      },
+    ])
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledTimes(1)
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(["acme.nl"])
+  })
+
   it("does not call provider reads when candidates fail normalization and no valid domains remain", async () => {
     await expect(checkPreviewDomainOrders(
       cast<SiteGenerationRun>({ id: 123, domainOrder: null }),
@@ -560,6 +599,44 @@ describe("preview domain order", () => {
     )).resolves.toMatchObject([])
 
     expect(checkOpenProviderDomainsAvailability).not.toHaveBeenCalled()
+    expect(checkOpenProviderDomainAvailability).not.toHaveBeenCalled()
+  })
+
+  it("throws typed validation failures for direct selected-domain checks with meaningful messages", async () => {
+    const run = { id: 123, domainOrder: null }
+    const payload = { update: vi.fn() }
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>(run),
+      "acme.invalid",
+      null,
+      {
+        record: false,
+        capabilityEffectiveAt: "2026-07-20T00:00:00.000Z",
+      },
+    )).rejects.toThrow("TLD .invalid is not enabled for checkout.")
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>({ ...run }),
+      "a.org",
+      null,
+      {
+        record: false,
+        capabilityEffectiveAt: "2026-08-02T00:00:00.000Z",
+      },
+    )).rejects.toThrow("Domain label is not supported for .org.")
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>({ ...run }),
+      "-bad.name",
+      null,
+      {
+        record: false,
+        capabilityEffectiveAt: "2026-08-02T00:00:00.000Z",
+      },
+    )).rejects.toThrow("Invalid domain: invalid_format")
+
     expect(checkOpenProviderDomainAvailability).not.toHaveBeenCalled()
   })
 
