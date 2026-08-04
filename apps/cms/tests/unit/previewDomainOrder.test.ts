@@ -453,6 +453,116 @@ describe("preview domain order", () => {
     expect(run.domainOrder).toBeNull()
   })
 
+  it("marks invalid discovery candidates as unavailable without skipping valid candidates", async () => {
+    const run = { id: 123, domainOrder: null }
+    vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
+      {
+        status: "unavailable",
+        domain: "acme.com",
+        available: false,
+        premium: false,
+        price: null,
+        internalReason: null,
+      },
+      {
+        status: "available",
+        domain: "acme.nl",
+        available: true,
+        premium: false,
+        price: { amount: "6.50", currency: "EUR" },
+        internalReason: null,
+      },
+    ])
+
+    await expect(checkPreviewDomainOrders(
+      cast<SiteGenerationRun>(run),
+      ["acme.invalid", "acme.nl", "acme.com"],
+      null,
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+        capabilityEffectiveAt: "2026-07-28T14:59:59.999Z",
+        requireProductionCapability: false,
+      },
+    )).resolves.toMatchObject([
+      {
+        run,
+        domain: "acme.invalid",
+        messageKey: "checkoutDomainUnavailable",
+        included: false,
+        productionOperationEnabled: false,
+      },
+      {
+        run,
+        domain: "acme.nl",
+        messageKey: "checkoutDomainAvailable",
+        included: true,
+      },
+      {
+        run,
+        domain: "acme.com",
+        messageKey: "checkoutDomainUnavailable",
+      },
+    ])
+
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledTimes(1)
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(["acme.nl", "acme.com"])
+    expect(checkOpenProviderDomainAvailability).not.toHaveBeenCalled()
+  })
+
+  it("preserves candidate order while short-circuiting invalid discovery entries", async () => {
+    const run = { id: 123, domainOrder: null }
+    vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
+      {
+        status: "available",
+        domain: "acme.nl",
+        available: true,
+        premium: false,
+        price: { amount: "6.50", currency: "EUR" },
+        internalReason: null,
+      },
+      {
+        status: "unavailable",
+        domain: "acme.com",
+        available: false,
+        premium: false,
+        price: null,
+        internalReason: null,
+      },
+    ])
+
+    await expect(checkPreviewDomainOrders(
+      cast<SiteGenerationRun>(run),
+      ["acme.nl", "-bad.tld", "acme.com"],
+      null,
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+        capabilityEffectiveAt: "2026-07-28T14:59:59.999Z",
+        requireProductionCapability: false,
+      },
+    )).resolves.toMatchObject([
+      { run, domain: "acme.nl", messageKey: "checkoutDomainAvailable", included: true },
+      { run, domain: "-bad.tld", messageKey: "checkoutDomainUnavailable", included: false },
+      { run, domain: "acme.com", messageKey: "checkoutDomainUnavailable", included: false },
+    ])
+
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(["acme.nl", "acme.com"])
+  })
+
+  it("does not call provider reads when candidates fail normalization and no valid domains remain", async () => {
+    await expect(checkPreviewDomainOrders(
+      cast<SiteGenerationRun>({ id: 123, domainOrder: null }),
+      ["-bad.name", ".invalid", "foo"],
+      null,
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+        capabilityEffectiveAt: "2026-07-28T14:59:59.999Z",
+      },
+    )).resolves.toMatchObject([])
+
+    expect(checkOpenProviderDomainsAvailability).not.toHaveBeenCalled()
+    expect(checkOpenProviderDomainAvailability).not.toHaveBeenCalled()
+  })
+
   it("rejects checkout batches above the bounded provider limit before calling OpenProvider", async () => {
     const domainInputs = Array.from(
       { length: MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE + 1 },

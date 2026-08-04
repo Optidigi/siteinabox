@@ -322,9 +322,34 @@ export async function checkPreviewDomainOrders(
   options?: PreviewDomainOrderCheckOptions,
 ): Promise<PreviewDomainOrderResult[]> {
   const candidatesByDomain = new Map<string, NormalizedPreviewDomainOrderCandidate>()
+  const orderedCandidates: Array<
+    { kind: "invalid"; result: Omit<PreviewDomainOrderResult, "run"> } |
+    { kind: "candidate"; domain: string }
+  > = []
   for (const domainInput of domainInputs) {
-    const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
-    candidatesByDomain.set(candidate.domain, candidate)
+    try {
+      const candidate = normalizePreviewDomainOrderCandidate(domainInput, options)
+      if (!candidatesByDomain.has(candidate.domain)) {
+        candidatesByDomain.set(candidate.domain, candidate)
+        orderedCandidates.push({ kind: "candidate", domain: candidate.domain })
+      }
+    } catch {
+      orderedCandidates.push({
+        kind: "invalid",
+        result: {
+        messageKey: "checkoutDomainUnavailable",
+        domain: domainInput,
+        included: false,
+        extraFeeAmount: null,
+        extraFeeCurrency: null,
+        providerPriceAmount: null,
+        providerPriceCurrency: null,
+        providerQuotedAt: new Date().toISOString(),
+        productionOperationEnabled: false,
+        suggestions: [],
+        },
+      })
+    }
   }
   const candidates = [...candidatesByDomain.values()]
   if (candidates.length > MAX_PREVIEW_DOMAIN_ORDER_BATCH_SIZE) {
@@ -346,13 +371,17 @@ export async function checkPreviewDomainOrders(
     if (normalized.ok) availabilityByDomain.set(normalized.domain, availability)
   }
 
-  return candidates.map((candidate) => {
+  return orderedCandidates.flatMap((entry) => {
+    if (entry.kind === "invalid") return [{ run, ...entry.result }]
+
+    const candidate = candidatesByDomain.get(entry.domain)
+    if (!candidate) return []
     const availability = availabilityByDomain.get(candidate.domain)
     if (!availability) {
       throw new Error(`OpenProvider returned no availability result for ${candidate.domain}.`)
     }
     const mapping = previewDomainOrderMapping(run, candidate, availability, registrant, options)
-    return { run, ...mapping.result }
+    return [{ run, ...mapping.result }]
   })
 }
 
