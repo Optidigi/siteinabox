@@ -1018,6 +1018,7 @@ export function PreviewCheckout({
     setCheckedDomain(null)
     setQuotes(null)
     setExtensionResults([])
+    setPremiumInfoDomain(null)
     extensionAbortRef.current?.abort()
     const controller = new AbortController()
     extensionAbortRef.current = controller
@@ -1943,13 +1944,6 @@ export function PreviewCheckout({
                     <span>{t("checkoutDomainModeExisting")}</span>
                   </ToggleGroupItem>
                 </ToggleGroup>
-                {domainMode === "existing_domain" && (
-                  <p className="text-xs leading-snug text-muted-foreground">
-                    {existingDomainMigrationEnabled
-                      ? t("checkoutDomainModeExistingHelp")
-                      : t("checkoutDomainModeExistingPreflight")}
-                  </p>
-                )}
               </fieldset>
 
               <form
