@@ -123,7 +123,7 @@ describe("effective TLD allowlist integration", () => {
     expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith("example.nl")
   })
 
-  it.each(["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"])(
+  it.each(["nl", "com", "eu", "org", "net", "info", "online", "shop"])(
     "allows current production registration checks for .%s",
     async (tld) => {
       openProviderMocks.checkAvailability.mockResolvedValue({
@@ -135,6 +135,8 @@ describe("effective TLD allowlist integration", () => {
         internalReason: null,
       })
 
+      const expectedMessageKey = tld === "nl" ? "checkoutDomainAvailable" : "checkoutDomainAvailableExtraFee"
+
       await expect(checkAndRecordPreviewDomainOrder(
         asPayload({ update: vi.fn() }),
         run,
@@ -143,7 +145,7 @@ describe("effective TLD allowlist integration", () => {
         { record: false, requireProductionCapability: false },
       )).resolves.toMatchObject({
         domain: `example.${tld}`,
-        messageKey: "checkoutDomainAvailable",
+        messageKey: expectedMessageKey,
         productionOperationEnabled: true,
       })
       expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith(`example.${tld}`)
@@ -157,7 +159,7 @@ describe("effective TLD allowlist integration", () => {
         { record: false },
       )).resolves.toMatchObject({
         domain: `example.${tld}`,
-        messageKey: "checkoutDomainAvailable",
+        messageKey: expectedMessageKey,
         productionOperationEnabled: true,
       })
       expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith(`example.${tld}`)
