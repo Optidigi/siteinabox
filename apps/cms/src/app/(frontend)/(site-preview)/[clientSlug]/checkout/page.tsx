@@ -242,8 +242,7 @@ export default async function PreviewCheckoutPage({
               netAmountMinor: COMMERCIAL_CATALOG.subscriptions.annual.netAmountMinor,
             },
           },
-          domainIncludedAllowanceNetMinor:
-            COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor ?? 0,
+          domainIncludedAllowanceNetMinor: 0,
           migrations: {
             automaticNetAmountMinor:
               COMMERCIAL_CATALOG.migrations.automatic.netAmountMinor,

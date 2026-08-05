@@ -197,10 +197,7 @@ const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): strin
   }).format(amount)
 }
 
-const catalogDomainAllowance = (): FixedDomainOrderPrice => ({
-  amount: ((COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor ?? 1000) / 100).toFixed(2),
-  currency: COMMERCIAL_CATALOG.currency,
-})
+
 
 const checkoutQuoteSigningSecret = (): string => {
   const secret = process.env.PAYLOAD_SECRET?.trim()
@@ -623,8 +620,7 @@ async function checkExistingDomainMigration(
       migrationSourceMechanism: acquiredSource.mechanism,
       migrationPublicEvidence: assessment.publicEvidence,
       message: migrationAssessmentMessage(t, assessment),
-      included: providerPrice.netAmountMinor <=
-        COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
+      included: quotes.annual.quote.domainSurchargeNetMinor === 0,
       domainSurchargeNetMinor: quotes.annual.quote.domainSurchargeNetMinor,
       totalPriceLabel: null,
       quotes,
@@ -706,7 +702,6 @@ export async function checkPreviewCheckoutDomainAction(
       null,
       {
         record: false,
-        includedProviderPrice: catalogDomainAllowance(),
         requireProductionCapability: false,
       },
     )
@@ -1275,7 +1270,6 @@ export async function savePreviewCheckoutProfileAction(
       null,
       {
         record: false,
-        includedProviderPrice: catalogDomainAllowance(),
       },
     )
     if (
@@ -1571,7 +1565,6 @@ export async function startPreviewCheckoutPaymentAction(
         context.run,
         domain,
         registrant,
-        { includedProviderPrice: catalogDomainAllowance() },
       )
       readyRun = ready.run
       readyDomain = ready.domain

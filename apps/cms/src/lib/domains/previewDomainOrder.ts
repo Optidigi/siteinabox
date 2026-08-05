@@ -235,11 +235,10 @@ const previewDomainOrderMapping = (
     ? { amount: availability.price.amount, currency: availability.price.currency }
     : null
   const priceUsable = availability.status === "available" && providerPriceIsUsable(candidate.domain, providerPrice, includedProviderPrice)
-  const includedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, includedProviderPrice)
   const extraFee = domainExtraFeeForProviderPrice(candidate.domain, providerPrice, includedProviderPrice)
   const hasExtraFee = extraFee !== null
   const productionOperationEnabled = candidate.productionCapability !== null
-  const status = priceUsable && productionOperationEnabled && (includedPrice || hasExtraFee)
+  const status = priceUsable && productionOperationEnabled
     ? "ready_to_register"
     : availability.status === "premium"
       ? "premium"
@@ -261,16 +260,14 @@ const previewDomainOrderMapping = (
         ? "registration_release_pending"
           : availability.status === "available" && !priceUsable
           ? "provider_price_unavailable"
-          : availability.status === "available" && (!includedPrice && !hasExtraFee)
-            ? "domain_cost_above_limit"
-            : null),
+          : null),
     now,
   })
   return {
     domainOrder,
     result: {
       domain: candidate.domain,
-      included: includedPrice,
+      included: !hasExtraFee,
       extraFeeAmount: extraFee?.amount ?? null,
       extraFeeCurrency: extraFee?.currency ?? null,
       providerPriceAmount: providerPrice?.amount ?? null,
@@ -278,15 +275,15 @@ const previewDomainOrderMapping = (
       providerQuotedAt: now,
       productionOperationEnabled,
       suggestions: [],
-      messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled && (includedPrice || hasExtraFee)
+      messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled
         ? "checkoutDomainReleasePending"
-        : includedPrice
+        : (availability.status === "available" && priceUsable && !hasExtraFee)
           ? "checkoutDomainAvailable"
-          : (priceUsable && hasExtraFee)
+          : (availability.status === "available" && priceUsable && hasExtraFee)
             ? "checkoutDomainAvailableExtraFee"
             : availability.status === "premium"
               ? "checkoutDomainPremium"
-              : availability.status === "unavailable" || (!priceUsable || (!includedPrice && !hasExtraFee))
+              : availability.status === "unavailable" || (availability.status === "available" && !priceUsable)
                 ? "checkoutDomainUnavailable"
                 : "checkoutDomainCheckFailed",
     },

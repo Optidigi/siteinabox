@@ -225,7 +225,7 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuote {
     packageCode: subscription.code,
     billingPeriod: input.billingPeriod,
     lineItems,
-    domainIncludedAllowanceNetMinor: catalog.domain.includedAllowanceNetMinor ?? 0,
+    domainIncludedAllowanceNetMinor: 0,
     providerOperationPriceNetMinor: input.providerOperationPriceNetMinor,
     domainSurchargeNetMinor,
     migrationServiceFeeNetMinor: input.migrationClassification === "assisted_standard"
