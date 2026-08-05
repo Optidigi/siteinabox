@@ -356,7 +356,7 @@ describe("preview domain order", () => {
     })
     expect(run.domainOrder).toMatchObject({
       status: "failed",
-      reason: "domain_cost_above_limit",
+      reason: "provider_price_unavailable",
       domain: "levelweb.nl",
       fixedPriceAmount: null,
       providerPriceAmount: "30.00",
@@ -781,7 +781,7 @@ describe("preview domain order", () => {
       status: "failed",
       domain: "levelweb.nl",
       providerPriceAmount: "30.00",
-      reason: "domain_cost_above_limit",
+      reason: "provider_price_unavailable",
       registrant,
     })
   })

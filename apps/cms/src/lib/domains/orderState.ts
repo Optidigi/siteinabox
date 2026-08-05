@@ -124,7 +124,10 @@ export function isDomainPriceSupported(
   const providerCents = moneyToCents(providerPrice)
   if (providerCents === null) return false
   try {
-    calculateDomainSurchargeNetMinor(tld, providerCents)
+    const surcharge = calculateDomainSurchargeNetMinor(tld, providerCents)
+    if (surcharge === 0 && !providerPriceWithinCap(providerPrice, maxDomainProviderPriceFromEnv())) {
+      return false
+    }
     return true
   } catch {
     return false

@@ -267,7 +267,7 @@ const previewDomainOrderMapping = (
     domainOrder,
     result: {
       domain: candidate.domain,
-      included: !hasExtraFee,
+      included: priceUsable && !hasExtraFee,
       extraFeeAmount: extraFee?.amount ?? null,
       extraFeeCurrency: extraFee?.currency ?? null,
       providerPriceAmount: providerPrice?.amount ?? null,
