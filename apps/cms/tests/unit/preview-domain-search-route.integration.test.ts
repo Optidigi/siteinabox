@@ -143,7 +143,8 @@ describe("preview domain-search route", () => {
     expect(body.results).toContainEqual(expect.objectContaining({
       domain: "acme.com",
       purchasable: true,
-      included: true,
+      included: false,
+      extraFee: { amount: "14.00", currency: "EUR" },
       availability: "available",
     }))
 

@@ -732,10 +732,7 @@ describe("preview checkout domain suggestion action", () => {
         companyName: "Ami Care B.V.",
         email: "customer@example.com",
         firstName: "Customer",
-      }),
-      {
-        includedProviderPrice: { amount: "10.00", currency: "EUR" },
-      },
+      })
     )
     expect(mocks.requireReadyPreviewDomainOrder).not.toHaveBeenCalledWith(
       expect.anything(),
@@ -1001,7 +998,6 @@ describe("preview checkout domain suggestion action", () => {
       null,
       {
         record: false,
-        includedProviderPrice: { amount: "10.00", currency: "EUR" },
         requireProductionCapability: false,
       },
     )
