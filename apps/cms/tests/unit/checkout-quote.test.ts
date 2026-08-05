@@ -79,18 +79,21 @@ describe("Phase 3 checkout quote", () => {
     })
   })
 
-  it("adds only the uncovered domain operation price before VAT", () => {
+  it("adds the fixed domain surcharge before VAT for non-included TLDs", () => {
     expect(buildCheckoutQuote({
       billingPeriod: "monthly",
       providerOperationPriceNetMinor: 1_250,
-      ...quoteContext,
+      selectedDomain: "example.com",
+      providerQuotedAt: "2026-07-28T10:00:00.000Z",
+      draftVersion: "draft-1",
+      now: new Date("2026-07-28T10:00:00.000Z"),
     })).toMatchObject({
-      netAmountMinor: 2_150,
-      vatAmountMinor: 452,
-      grossAmountMinor: 2_602,
+      netAmountMinor: 3_264,
+      vatAmountMinor: 685,
+      grossAmountMinor: 3_949,
       lineItems: [
         { code: "siteinabox-monthly", netAmountMinor: 1_900 },
-        { code: "domain-operation-surcharge", netAmountMinor: 250 },
+        { code: "domain-operation-surcharge", netAmountMinor: 1_364 },
       ],
     })
   })

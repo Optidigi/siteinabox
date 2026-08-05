@@ -65,25 +65,29 @@ describe("domain order state", () => {
     expect(providerPriceWithinCap({ amount: "9.99", currency: "USD" }, cap)).toBe(false)
   })
 
-  it("computes extra domain fees without an offer cap", () => {
+  it("computes extra domain fees according to retail policy", () => {
     expect(domainExtraFeeForProviderPrice(
+      "example.com",
       { amount: "12.50", currency: "EUR" },
       { amount: "10.00", currency: "EUR" },
-    )).toEqual({ amount: "2.50", currency: "EUR" })
+    )).toEqual({ amount: "16.50", currency: "EUR" })
     expect(domainCheckoutPrice({
+      domain: "example.com",
       basePrice: { amount: "228.00", currency: "EUR" },
       providerPrice: { amount: "12.50", currency: "EUR" },
       includedProviderPrice: { amount: "10.00", currency: "EUR" },
-    })).toEqual({ amount: "230.50", currency: "EUR" })
+    })).toEqual({ amount: "244.50", currency: "EUR" })
     expect(domainExtraFeeForProviderPrice(
+      "example.com",
       { amount: "30.00", currency: "EUR" },
       { amount: "10.00", currency: "EUR" },
-    )).toEqual({ amount: "20.00", currency: "EUR" })
+    )).toEqual({ amount: "39.49", currency: "EUR" })
     expect(domainCheckoutPrice({
+      domain: "example.com",
       basePrice: { amount: "228.00", currency: "EUR" },
       providerPrice: { amount: "30.00", currency: "EUR" },
       includedProviderPrice: { amount: "10.00", currency: "EUR" },
-    })).toEqual({ amount: "248.00", currency: "EUR" })
+    })).toEqual({ amount: "267.49", currency: "EUR" })
   })
 
   it("creates timestamped operational states", () => {

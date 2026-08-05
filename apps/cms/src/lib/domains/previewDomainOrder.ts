@@ -10,6 +10,7 @@ import {
   compareMoney,
   createDomainOrderState,
   domainExtraFeeForProviderPrice,
+  isDomainPriceSupported,
   maxDomainProviderPriceFromEnv,
   normalizeDomainOrderState,
   providerPriceWithinCap,
@@ -108,7 +109,7 @@ const suggestionForAvailability = (
   providerPrice: FixedDomainOrderPrice | null,
   includedProviderPrice: FixedDomainOrderPrice,
 ): PreviewDomainSuggestion => {
-  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
+  const extraFee = domainExtraFeeForProviderPrice(domain, providerPrice, includedProviderPrice)
   return {
     domain,
     included: !extraFee,
@@ -200,7 +201,7 @@ export async function suggestAvailablePreviewDomainBatch(
       if (
         availability.status === "available" &&
         !existingDomains.has(availability.domain) &&
-        providerPriceIsUsable(providerPrice, includedProviderPrice)
+        providerPriceIsUsable(availability.domain, providerPrice, includedProviderPrice)
       ) {
         suggestions.push(suggestionForAvailability(availability.domain, providerPrice, includedProviderPrice))
         existingDomains.add(availability.domain)
@@ -216,9 +217,10 @@ export async function suggestAvailablePreviewDomainBatch(
 }
 
 const providerPriceIsUsable = (
+  domain: string,
   providerPrice: FixedDomainOrderPrice | null,
   includedProviderPrice: FixedDomainOrderPrice,
-): boolean => providerPrice !== null && compareMoney(providerPrice, includedProviderPrice) !== null
+): boolean => providerPrice !== null && compareMoney(providerPrice, includedProviderPrice) !== null && isDomainPriceSupported(domain, providerPrice)
 
 const previewDomainOrderMapping = (
   run: SiteGenerationRun,
@@ -232,11 +234,12 @@ const previewDomainOrderMapping = (
   const providerPrice = availability.price
     ? { amount: availability.price.amount, currency: availability.price.currency }
     : null
-  const priceUsable = availability.status === "available" && providerPriceIsUsable(providerPrice, includedProviderPrice)
+  const priceUsable = availability.status === "available" && providerPriceIsUsable(candidate.domain, providerPrice, includedProviderPrice)
   const includedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, includedProviderPrice)
-  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
+  const extraFee = domainExtraFeeForProviderPrice(candidate.domain, providerPrice, includedProviderPrice)
+  const hasExtraFee = extraFee !== null
   const productionOperationEnabled = candidate.productionCapability !== null
-  const status = priceUsable && productionOperationEnabled
+  const status = priceUsable && productionOperationEnabled && (includedPrice || hasExtraFee)
     ? "ready_to_register"
     : availability.status === "premium"
       ? "premium"
@@ -256,9 +259,9 @@ const previewDomainOrderMapping = (
     reason: availability.internalReason
       ?? (availability.status === "available" && !productionOperationEnabled
         ? "registration_release_pending"
-        : availability.status === "available" && !priceUsable
+          : availability.status === "available" && !priceUsable
           ? "provider_price_unavailable"
-          : availability.status === "available" && !includedPrice
+          : availability.status === "available" && (!includedPrice && !hasExtraFee)
             ? "domain_cost_above_limit"
             : null),
     now,
@@ -275,15 +278,15 @@ const previewDomainOrderMapping = (
       providerQuotedAt: now,
       productionOperationEnabled,
       suggestions: [],
-      messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled
+      messageKey: availability.status === "available" && priceUsable && !productionOperationEnabled && (includedPrice || hasExtraFee)
         ? "checkoutDomainReleasePending"
         : includedPrice
           ? "checkoutDomainAvailable"
-          : priceUsable
+          : (priceUsable && hasExtraFee)
             ? "checkoutDomainAvailableExtraFee"
             : availability.status === "premium"
               ? "checkoutDomainPremium"
-              : availability.status === "unavailable"
+              : availability.status === "unavailable" || (!priceUsable || (!includedPrice && !hasExtraFee))
                 ? "checkoutDomainUnavailable"
                 : "checkoutDomainCheckFailed",
     },

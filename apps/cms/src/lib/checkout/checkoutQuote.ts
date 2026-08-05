@@ -9,6 +9,7 @@ import {
   migrationClassificationAvailableForCheckout,
   type CommercialAmount,
   type MigrationClassification,
+  calculateDomainSurchargeNetMinor,
 } from "@siteinabox/contracts/commerce"
 import type { MigrationSourceMechanism } from "@siteinabox/contracts/domain-migration"
 import {
@@ -118,6 +119,9 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuote {
     )
   const domainMode = input.domainMode ?? "new_registration"
   const tld = input.selectedDomain.split(".").at(-1)?.toLowerCase() ?? ""
+  const domainSurchargeNetMinor = input.domainMode !== "existing_domain"
+    ? calculateDomainSurchargeNetMinor(tld, input.providerOperationPriceNetMinor, catalog.catalogVersion)
+    : 0
   const transferRenewalEffect = domainMode === "existing_domain"
     ? input.transferRenewalEffect ??
       tldCapabilityAt(tld, new Date(input.providerQuotedAt))?.transfer.renewalEffect ??
@@ -185,11 +189,7 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuote {
     throw new Error("New-domain checkout cannot contain migration input evidence.")
   }
   const subscription = catalog.subscriptions[input.billingPeriod]
-  const domainSurchargeNetMinor = Math.max(
-    input.providerOperationPriceNetMinor -
-      catalog.domain.includedAllowanceNetMinor,
-    0,
-  )
+
   const lineItems: CheckoutQuoteLineItem[] = [{
     code: subscription.code,
     description: input.billingPeriod === "annual"
@@ -225,7 +225,7 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuote {
     packageCode: subscription.code,
     billingPeriod: input.billingPeriod,
     lineItems,
-    domainIncludedAllowanceNetMinor: catalog.domain.includedAllowanceNetMinor,
+    domainIncludedAllowanceNetMinor: catalog.domain.includedAllowanceNetMinor ?? 0,
     providerOperationPriceNetMinor: input.providerOperationPriceNetMinor,
     domainSurchargeNetMinor,
     migrationServiceFeeNetMinor: input.migrationClassification === "assisted_standard"

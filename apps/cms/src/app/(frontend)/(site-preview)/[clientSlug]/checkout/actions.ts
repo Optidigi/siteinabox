@@ -198,7 +198,7 @@ const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): strin
 }
 
 const catalogDomainAllowance = (): FixedDomainOrderPrice => ({
-  amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
+  amount: ((COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor ?? 1000) / 100).toFixed(2),
   currency: COMMERCIAL_CATALOG.currency,
 })
 

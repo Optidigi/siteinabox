@@ -55,7 +55,6 @@ describe("versioned commercial catalog", () => {
       },
       domain: {
         registrant: "customer",
-        includedAllowanceNetMinor: 1_000,
         includedOperations: ["registration", "transfer", "renewal"],
         siteinaboxContactRoles: ["administrative", "technical", "billing"],
       },
@@ -88,11 +87,11 @@ describe("versioned commercial catalog", () => {
     })
   })
 
-  it("uses the provider-operation allowance as a surcharge floor", () => {
-    expect(calculateDomainSurchargeNetMinor(0)).toBe(0)
-    expect(calculateDomainSurchargeNetMinor(1_000)).toBe(0)
-    expect(calculateDomainSurchargeNetMinor(1_250)).toBe(250)
-    expect(() => calculateDomainSurchargeNetMinor(-1)).toThrow("non-negative safe integer")
+  it("computes surcharges based on the domain retail policy", () => {
+    expect(calculateDomainSurchargeNetMinor("nl", 900)).toBe(0)
+    expect(calculateDomainSurchargeNetMinor("com", 800)).toBe(1157)
+    expect(calculateDomainSurchargeNetMinor("com", 1250)).toBe(1364)
+    expect(() => calculateDomainSurchargeNetMinor("nl", -1)).toThrow("non-negative safe integer")
     expect(() => commercialAmountFromNet(1.5)).toThrow("non-negative safe integer")
   })
 
@@ -442,18 +441,18 @@ describe("Phase 7 billing and renewal contracts", () => {
     )).toBe("2027-07-24T00:00:00.000Z")
   })
 
-  it("freezes renewal allowance and surcharge coverage in minor units", () => {
-    expect(renewalFinancialCoverage(900)).toEqual({
+  it("computes renewal financial coverage using the retail policy", () => {
+    expect(renewalFinancialCoverage("nl", 900)).toEqual({
       providerOperationPriceNetMinor: 900,
-      includedAllowanceNetMinor: 1_000,
+      includedAllowanceNetMinor: 0,
       surchargeNetMinor: 0,
       initialState: "included_allowance",
     })
-    expect(renewalFinancialCoverage(1_250)).toEqual({
-      providerOperationPriceNetMinor: 1_250,
-      includedAllowanceNetMinor: 1_000,
-      surchargeNetMinor: 250,
-      initialState: "uncovered",
+    expect(renewalFinancialCoverage("com", 800)).toEqual({
+      providerOperationPriceNetMinor: 800,
+      includedAllowanceNetMinor: 0,
+      surchargeNetMinor: 1157,
+      initialState: "payment_pending",
     })
   })
 

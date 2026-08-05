@@ -320,7 +320,7 @@ describe("preview domain order", () => {
     })
   })
 
-  it("marks available domains above the included cap as ready with an extra fee and no offer cap", async () => {
+  it("marks available domains above the included cap as unavailable when there is no fixed surcharge", async () => {
     const run = { id: 123, domainOrder: null }
     const payload = {
       update: vi.fn(async ({ data }: MockCreateArgs) => {
@@ -347,19 +347,20 @@ describe("preview domain order", () => {
     )
 
     expect(result).toMatchObject({
-      messageKey: "checkoutDomainAvailableExtraFee",
+      messageKey: "checkoutDomainUnavailable",
       domain: "levelweb.nl",
       included: false,
-      extraFeeAmount: "20.00",
-      extraFeeCurrency: "EUR",
+      extraFeeAmount: null,
+      extraFeeCurrency: null,
       suggestions: [],
     })
     expect(run.domainOrder).toMatchObject({
-      status: "ready_to_register",
-      providerPriceAmount: "30.00",
+      status: "failed",
       reason: "domain_cost_above_limit",
-      maxOfferPriceAmount: null,
-      maxOfferPriceCurrency: null,
+      domain: "levelweb.nl",
+      fixedPriceAmount: null,
+      providerPriceAmount: "30.00",
+      providerPriceCurrency: "EUR",
     })
   })
 
@@ -443,7 +444,7 @@ describe("preview domain order", () => {
         domain: "acme.com",
         messageKey: "checkoutDomainReleasePending",
         included: false,
-        extraFeeAmount: "2.50",
+        extraFeeAmount: "16.50",
       },
     ])
 
@@ -687,7 +688,7 @@ describe("preview domain order", () => {
       messageKey: "checkoutDomainAvailableExtraFee",
       domain: "acme.ai",
       included: false,
-      extraFeeAmount: "4.00",
+      extraFeeAmount: "179.00",
     })
     expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.ai")
     expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
@@ -698,7 +699,7 @@ describe("preview domain order", () => {
     const run = { id: 123, domainOrder: null }
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
-      domain: "acme.co.uk",
+      domain: "acme.com",
       available: true,
       premium: false,
       price: { amount: "14.00", currency: "EUR" },
@@ -708,7 +709,7 @@ describe("preview domain order", () => {
     await expect(checkAndRecordPreviewDomainOrder(
       asPayload({ update: vi.fn() }),
       cast<SiteGenerationRun>(run),
-      "Acme.Co.Uk",
+      "Acme.Com",
       null,
       {
         record: false,
@@ -716,14 +717,14 @@ describe("preview domain order", () => {
         requireProductionCapability: false,
       },
     )).resolves.toMatchObject({
-      domain: "acme.co.uk",
+      domain: "acme.com",
       messageKey: "checkoutDomainAvailableExtraFee",
       providerPriceAmount: "14.00",
       providerPriceCurrency: "EUR",
-      extraFeeAmount: "4.00",
+      extraFeeAmount: "18.50",
       extraFeeCurrency: "EUR",
     })
-    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.co.uk")
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.com")
   })
 
   it("rechecks availability before accepting an existing ready order for payment", async () => {
@@ -771,15 +772,16 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    const result = await requireReadyPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "levelweb.nl", registrant)
+    await expect(requireReadyPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "levelweb.nl", registrant))
+      .rejects.toThrow("checkoutDomainUnavailable")
 
-    expect(result).toMatchObject({ domain: "levelweb.nl" })
     expect(payload.update).toHaveBeenCalledTimes(1)
     expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("levelweb.nl", { forceFresh: true })
     expect(run.domainOrder).toMatchObject({
-      status: "ready_to_register",
+      status: "failed",
       domain: "levelweb.nl",
       providerPriceAmount: "30.00",
+      reason: "domain_cost_above_limit",
       registrant,
     })
   })

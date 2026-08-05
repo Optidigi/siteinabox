@@ -5,18 +5,20 @@ import {
   contractingPartyTypeSchema,
 } from "./commerce"
 
-export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-30.4" as const
+export const TLD_CAPABILITY_CATALOG_VERSION = "2026-08-05.1" as const
 
 export const INTENDED_TLD_CATALOG = Object.freeze([
   "nl",
   "com",
-  "eu",
   "org",
   "net",
-  "be",
-  "de",
-  "info",
   "online",
+  "info",
+  "eu",
+  "me",
+  "site",
+  "ai",
+  "store",
   "shop",
 ] as const)
 
@@ -27,6 +29,8 @@ export const ICANN_GTLD_TRANSFER_POLICY_TLDS = Object.freeze([
   "online",
   "org",
   "shop",
+  "site",
+  "store",
 ] as const)
 
 export function tldUsesIcannTransferPolicy(tld: string): boolean {
@@ -118,7 +122,7 @@ export const tldCapabilitySchema = z.object({
   }).strict(),
   registration: z.object({
     supported: z.literal(true),
-    periodYears: z.literal(1),
+    periodYears: z.number().int().positive().max(10),
     labelLength: z.object({
       min: z.number().int().positive(),
       max: z.number().int().positive(),
@@ -889,6 +893,99 @@ const productionCatalogInput: TldCapability[] = catalogInput.flatMap(
   },
 )
 
+const RETAIL_POLICY_EFFECTIVE_FROM = "2026-08-05T12:00:00.000Z"
+
+const retailPolicyCatalogInput: TldCapability[] = productionCatalogInput.flatMap(
+  (capability) => {
+    if (capability.effectiveUntil !== null) return [capability]
+    
+    // De-enable .be and .de, they are no longer in INTENDED_TLD_CATALOG
+    const isIntended = (INTENDED_TLD_CATALOG as readonly string[]).includes(capability.tld)
+    return [
+      {
+        ...capability,
+        effectiveUntil: RETAIL_POLICY_EFFECTIVE_FROM,
+      },
+      tldCapabilitySchema.parse({
+        ...capability,
+        capabilityVersion: `tld-${capability.tld}-2026-08-05.1`,
+        catalogVersion: TLD_CAPABILITY_CATALOG_VERSION,
+        production: isIntended ? PRODUCTION_ENABLED : PRODUCTION_DISABLED,
+        effectiveFrom: RETAIL_POLICY_EFFECTIVE_FROM,
+        effectiveUntil: null,
+        evidence: {
+          ...capability.evidence,
+          reviewedAt: RETAIL_POLICY_EFFECTIVE_FROM,
+        },
+      }),
+    ]
+  },
+)
+
+const newRetailTlds = [
+  { tld: "me", idn: true, registryPolicyUrl: "https://domain.me/policies/" },
+  { tld: "site", idn: true, registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en" },
+  { tld: "store", idn: true, registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en" },
+  { tld: "ai", idn: false, periodYears: 2, registryPolicyUrl: "https://whois.ai/faq.html" },
+]
+
+for (const entry of newRetailTlds) {
+  retailPolicyCatalogInput.push(tldCapabilitySchema.parse({
+    ...commonCapability,
+    capabilityVersion: `tld-${entry.tld}-2026-08-05.1`,
+    catalogVersion: TLD_CAPABILITY_CATALOG_VERSION,
+    tld: entry.tld,
+    effectiveFrom: RETAIL_POLICY_EFFECTIVE_FROM,
+    effectiveUntil: null,
+    production: PRODUCTION_ENABLED,
+    registration: {
+      ...commonCapability.registration,
+      periodYears: entry.periodYears ?? 1,
+      labelLength: { min: 2, max: 63 },
+      idn: entry.idn,
+    },
+    transfer: {
+      supported: true,
+      authorization: "required",
+      authorizationFormat: "opaque",
+      authorizationValidityDays: null,
+      completion: "pending_confirmation",
+      maximumExpectedWaitDays: 6,
+      customerConfirmation: "registrant_email",
+      confirmation: commonCapability.registration.confirmation,
+      validRegistrantPhoneRequired: false,
+      renewalEffect: "provider_determined",
+      outgoing: {
+        supported: true,
+        mechanism: "openprovider_external_auth_code",
+        providerEvidenceUrl: "https://docs.openprovider.com/doc/all#tag/AuthCode",
+      },
+    },
+    dnssec: {
+      ...commonCapability.dnssec,
+      productionEvidenceComplete: true,
+    },
+    verification: {
+      ...commonCapability.verification,
+      requirement: "provider_reported",
+    },
+    restoration: {
+      supported: true,
+      providerWindowDays: 40,
+      registryQuarantineDays: 40,
+      redemptionPeriodDays: 30,
+      pendingDeleteDays: 5,
+      mode: "provider_restore",
+      ordinaryCheckout: false,
+    },
+    evidence: {
+      reviewedAt: RETAIL_POLICY_EFFECTIVE_FROM,
+      providerPolicyUrl: `https://www.openprovider.com/domains/tlds/${entry.tld}`,
+      registryPolicyUrl: entry.registryPolicyUrl,
+    },
+  }))
+}
+
 const deepFreeze = <T extends object>(value: T): Readonly<T> => {
   for (const entry of Object.values(value)) {
     if (entry && typeof entry === "object") deepFreeze(entry)
@@ -897,7 +994,7 @@ const deepFreeze = <T extends object>(value: T): Readonly<T> => {
 }
 
 export const TLD_CAPABILITY_CATALOG = deepFreeze(
-  tldCapabilityCatalogSchema.parse(productionCatalogInput),
+  tldCapabilityCatalogSchema.parse(retailPolicyCatalogInput),
 )
 
 const normalizedTld = (value: string): string => value.trim().toLowerCase().replace(/^\./, "")

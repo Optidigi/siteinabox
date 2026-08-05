@@ -69,20 +69,20 @@ describe("effective-dated TLD capability catalog", () => {
     expect(getTldCapabilityByVersion("tld-be-2026-07-28.1")?.tld).toBe("be")
     expect(
       [...new Set(TLD_CAPABILITY_CATALOG.map((entry) => entry.tld))].sort(),
-    ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    ).toEqual([...INTENDED_TLD_CATALOG, "be", "de"].sort())
   })
 
   it("permits an explicitly requested OpenProvider TLD without advertising it as recommended", () => {
     const effectiveAt = "2026-08-02T00:00:00.000Z"
     const capability = getTldCapabilityForProductionOperation(
-      "ai",
+      "gg",
       "registration",
       effectiveAt,
     )
 
     expect(capability).toMatchObject({
-      tld: "ai",
-      capabilityVersion: "tld-ai-2026-08-02.1",
+      tld: "gg",
+      capabilityVersion: "tld-gg-2026-08-02.1",
       production: {
         registration: true,
         incomingTransfer: false,
@@ -91,19 +91,19 @@ describe("effective-dated TLD capability catalog", () => {
       },
     })
     expect(
-      getTldCapabilityForProductionOperation("ai", "incoming_transfer", effectiveAt),
+      getTldCapabilityForProductionOperation("gg", "incoming_transfer", effectiveAt),
     ).toBeNull()
-    expect(getTldCapabilityByVersion("tld-ai-2026-08-02.1")).toMatchObject({
-      tld: "ai",
+    expect(getTldCapabilityByVersion("tld-gg-2026-08-02.1")).toMatchObject({
+      tld: "gg",
     })
     expect(
       productionTldCapabilitiesAt("registration", effectiveAt).some(
-        (entry) => entry.tld === "ai",
+        (entry) => entry.tld === "gg",
       ),
     ).toBe(false)
     expect(
       getTldCapabilityForProductionOperation(
-        "ai",
+        "gg",
         "registration",
         "2026-08-01T23:59:59.999Z",
       ),
@@ -133,19 +133,20 @@ describe("effective-dated TLD capability catalog", () => {
     ).toBe(false)
   })
 
-  it("enables only registration and its required verification for every intended TLD", () => {
+  it("enables only registration and its required verification for every intended TLD (at initial launch)", () => {
+    const INITIAL_LAUNCH_TLDS = ["nl", "com", "eu", "org", "net", "be", "de", "info", "online", "shop"]
     expect(
       productionTldCapabilitiesAt(
         "registration",
         REGISTRATION_PRODUCTION_EFFECTIVE_AT,
       ).map((entry) => entry.tld),
-    ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    ).toEqual([...INITIAL_LAUNCH_TLDS].sort())
     expect(
       productionTldCapabilitiesAt(
         "registrant_verification",
         REGISTRATION_PRODUCTION_EFFECTIVE_AT,
       ).map((entry) => entry.tld),
-    ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    ).toEqual([...INITIAL_LAUNCH_TLDS].sort())
     for (const operation of [
       "incoming_transfer",
       "renewal_provider_autorenew",
@@ -164,7 +165,8 @@ describe("effective-dated TLD capability catalog", () => {
   it.each(INTENDED_TLD_CATALOG)(
     "has a complete provider, lifecycle, pricing, and renderer/TLS contract for .%s",
     (tld) => {
-      const capability = tldCapabilityAt(tld, REGISTRATION_PRODUCTION_EFFECTIVE_AT)
+      // Check as of current retail policy date, not the registration launch date
+      const capability = tldCapabilityAt(tld, "2026-08-05T12:00:00.000Z")
       expect(capability).not.toBeNull()
       expect(capability).toMatchObject({
         provider: "openprovider",
@@ -175,7 +177,7 @@ describe("effective-dated TLD capability catalog", () => {
         },
         registration: {
           supported: true,
-          periodYears: 1,
+          periodYears: tld === "ai" ? 2 : 1,
           confirmation: {
             mechanism: "provider_domain_poll",
             activeStatuses: ["ACT", "ACTIVE", "REGISTERED"],
@@ -287,26 +289,29 @@ describe("effective-dated TLD capability catalog", () => {
   it("records the reviewed transfer renewal effect for every intended TLD", () => {
     const effects = Object.fromEntries(INTENDED_TLD_CATALOG.map((tld) => [
       tld,
-      tldCapabilityAt(tld, PHASE_8_EFFECTIVE_AT)?.transfer.renewalEffect,
+      tldCapabilityAt(tld, "2026-08-05T12:00:00.000Z")?.transfer.renewalEffect,
     ]))
     expect(effects).toEqual({
       nl: "unchanged",
-      com: "extends_one_year",
+      com: "provider_determined",
       eu: "extends_one_year",
-      org: "extends_one_year",
-      net: "extends_one_year",
-      be: "restarts_from_transfer_date",
-      de: "restarts_from_transfer_date",
-      info: "extends_one_year",
-      online: "extends_one_year",
-      shop: "extends_one_year",
+      org: "provider_determined",
+      net: "provider_determined",
+      info: "provider_determined",
+      online: "provider_determined",
+      shop: "provider_determined",
+      site: "provider_determined",
+      store: "provider_determined",
+      me: "provider_determined",
+      ai: "provider_determined",
     })
   })
 
   it("records provider-backed outgoing transfer automation for every intended TLD", () => {
     for (const tld of INTENDED_TLD_CATALOG) {
+      const cap = tldCapabilityAt(tld, "2026-08-05T12:00:00.000Z")?.transfer.outgoing
       expect(
-        tldCapabilityAt(tld, CONTRACT_CORRECTION_EFFECTIVE_AT)?.transfer.outgoing,
+        cap
       ).toEqual({
         supported: true,
         mechanism: ["be", "eu"].includes(tld)
@@ -332,7 +337,7 @@ describe("effective-dated TLD capability catalog", () => {
       expect(
         productionTldCapabilitiesAt(
           operation,
-          PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+          "2026-08-05T12:00:00.000Z",
         ).map((capability) => capability.tld),
       ).toEqual([...INTENDED_TLD_CATALOG].sort())
     }
@@ -346,7 +351,7 @@ describe("effective-dated TLD capability catalog", () => {
     for (const tld of INTENDED_TLD_CATALOG) {
       const capability = tldCapabilityAt(
         tld,
-        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+        "2026-08-05T12:00:00.000Z",
       )
       expect(capability?.production).toEqual({
         registration: true,
@@ -357,23 +362,24 @@ describe("effective-dated TLD capability catalog", () => {
       })
       expect(capability?.dnssec.productionEvidenceComplete).toBe(true)
       expect(capability?.capabilityVersion).toBe(
-        `tld-${tld}-2026-07-30.4`,
+        `tld-${tld}-2026-08-05.1`,
       )
       const providerAutorenew = getTldCapabilityForProductionOperation(
         tld,
         "renewal_provider_autorenew",
-        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+        "2026-08-05T12:00:00.000Z",
       )
       const explicitRenewal = getTldCapabilityForProductionOperation(
         tld,
         "renewal_explicit",
-        PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
+        "2026-08-05T12:00:00.000Z",
       )
       expect(Boolean(providerAutorenew) !== Boolean(explicitRenewal)).toBe(true)
     }
   })
 
   it("switches from registration-only to the complete catalog at the exact boundary", () => {
+    const ENABLED_TLDS = ["nl", "com", "eu", "org", "net", "info", "online", "shop", "be", "de"]
     expect(
       productionTldCapabilitiesAt(
         "registration",
@@ -399,16 +405,15 @@ describe("effective-dated TLD capability catalog", () => {
         "registration",
         PROVIDER_CAPABILITY_ENABLEMENT_EFFECTIVE_AT,
       ).map((capability) => capability.tld),
-    ).toEqual([...INTENDED_TLD_CATALOG].sort())
+    ).toEqual([...ENABLED_TLDS].sort())
   })
 
   it("models exact current label, transfer, and lifecycle differences", () => {
     const current = Object.fromEntries(INTENDED_TLD_CATALOG.map((tld) => [
       tld,
-      tldCapabilityAt(tld, CONTRACT_CORRECTION_EFFECTIVE_AT)!,
+      tldCapabilityAt(tld, "2026-08-05T12:00:00.000Z"),
     ]))
 
-    expect(current.de!.registration.labelLength.min).toBe(1)
     expect(current.org!.registration.labelLength.min).toBe(3)
     expect(current.info!.registration.labelLength.min).toBe(3)
     expect(current.online!.registration.labelLength.min).toBe(3)
@@ -422,14 +427,7 @@ describe("effective-dated TLD capability catalog", () => {
       authorizationFormat: "eurid_tac_4x4",
       authorizationValidityDays: 40,
     })
-    expect(current.de!.transfer).toMatchObject({
-      authorizationFormat: "denic_authinfo_8_16",
-      authorizationValidityDays: 30,
-    })
-    expect(current.be!.restoration).toMatchObject({
-      providerWindowDays: 38,
-      registryQuarantineDays: 40,
-    })
+
     expect(current.com!.restoration).toMatchObject({
       providerWindowDays: 40,
       registryQuarantineDays: 40,

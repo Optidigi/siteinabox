@@ -355,7 +355,7 @@ describe("Openprovider renewal_date cycles", () => {
       providerRenewalMode: "provider_autorenew",
       financialCoverageState: "payment_secured",
       providerOperationPriceNetMinor: 800,
-      includedAllowanceNetMinor: 1_000,
+      includedAllowanceNetMinor: 0,
       surchargeNetMinor: 0,
     })
     expect(first.setAutorenew).not.toHaveBeenCalled()
@@ -371,13 +371,23 @@ describe("Openprovider renewal_date cycles", () => {
   })
 
   it("looks ahead 90 days so the indicative notice cycle exists on time", async () => {
-    const store = createStore()
+    const store = createStore({
+      domain: {
+        domainNameAscii: "example.eu",
+        tld: "eu",
+      },
+    })
     const before = dependencies({ now: "2027-04-26T23:59:59.999Z" })
     await expect(reconcileManagedDomainRenewal(store.payload, 950, before.deps))
       .resolves.toEqual({ status: "not_due" })
     expect(store.cycles).toHaveLength(0)
 
-    const due = dependencies({ now: "2027-04-27T00:00:00.000Z" })
+    const due = dependencies({
+      now: "2027-04-27T00:00:00.000Z",
+      provider: {
+        domain: "example.eu",
+      },
+    })
     await reconcileManagedDomainRenewal(store.payload, 950, due.deps)
     expect(store.cycles).toHaveLength(1)
     expect(ensureCommerceNotification).toHaveBeenCalledWith(
@@ -386,10 +396,18 @@ describe("Openprovider renewal_date cycles", () => {
   })
 
   it("replaces indicative pricing with the actionable quote without changing renewal authority", async () => {
-    const store = createStore()
+    const store = createStore({
+      domain: {
+        domainNameAscii: "example.eu",
+        tld: "eu",
+      },
+    })
     const indicative = dependencies({
       now: "2027-04-27T00:00:00.000Z",
       priceNetMinor: 1_250,
+      provider: {
+        domain: "example.eu",
+      },
     })
 
     await reconcileManagedDomainRenewal(store.payload, 950, indicative.deps)
@@ -400,44 +418,46 @@ describe("Openprovider renewal_date cycles", () => {
       renewalIntentSnapshot: true,
       financialCoverageState: "payment_pending",
       providerOperationPriceNetMinor: 1_250,
-      includedAllowanceNetMinor: 1_000,
-      surchargeNetMinor: 250,
-      netAmountMinor: 250,
-      vatAmountMinor: 53,
-      grossAmountMinor: 303,
+      includedAllowanceNetMinor: 0,
+      surchargeNetMinor: 1364,
+      netAmountMinor: 1364,
+      vatAmountMinor: 286,
+      grossAmountMinor: 1650,
       pricingEvidence: {
         operation: "renew",
         quotedAt: "2027-04-27T00:00:00.000Z",
         providerOperationPriceNetMinor: 1_250,
-        includedAllowanceNetMinor: 1_000,
-        surchargeNetMinor: 250,
+        includedAllowanceNetMinor: 0,
+        surchargeNetMinor: 1364,
       },
     })
 
     const actionable = dependencies({
       now: "2027-05-27T00:00:00.000Z",
       priceNetMinor: 800,
+      provider: {
+        domain: "example.eu",
+      },
     })
     await reconcileManagedDomainRenewal(store.payload, 950, actionable.deps)
 
     expect(store.cycles[0]).toMatchObject({
-      state: "payment_committed",
+      state: "payment_required",
       paymentChargeAt: "2027-05-27T00:00:00.000Z",
       renewalIntentSnapshot: true,
-      financialCoverageState: "payment_secured",
+      financialCoverageState: "payment_pending",
       providerOperationPriceNetMinor: 800,
-      includedAllowanceNetMinor: 1_000,
-      surchargeNetMinor: 0,
-      netAmountMinor: 0,
-      vatAmountMinor: 0,
-      grossAmountMinor: 0,
-      paymentSecuredAt: "2027-05-27T00:00:00.000Z",
+      includedAllowanceNetMinor: 0,
+      surchargeNetMinor: 868,
+      netAmountMinor: 868,
+      vatAmountMinor: 182,
+      grossAmountMinor: 1050,
       pricingEvidence: {
         operation: "renew",
         quotedAt: "2027-05-27T00:00:00.000Z",
         providerOperationPriceNetMinor: 800,
-        includedAllowanceNetMinor: 1_000,
-        surchargeNetMinor: 0,
+        includedAllowanceNetMinor: 0,
+        surchargeNetMinor: 868,
       },
     })
   })
@@ -477,32 +497,36 @@ describe("Openprovider renewal_date cycles", () => {
     expect(fixture.deps.loginOpenProvider).not.toHaveBeenCalled()
   })
 
-  it("continues a .be renewal obligation accepted under its historical enabled capability", async () => {
+  it("continues a .eu renewal obligation accepted under its historical enabled capability", async () => {
     const store = createStore({
       domain: {
-        domainNameAscii: "example.be",
-        tld: "be",
+        domainNameAscii: "example.eu",
+        tld: "eu",
       },
     })
     store.orders[0]!.quoteEvidence = {
       tldCapability: {
-        tld: "be",
-        capabilityVersion: "tld-be-2026-07-27.1",
+        tld: "eu",
+        capabilityVersion: "tld-eu-2026-07-28.1",
       },
     }
     const fixture = dependencies({
       now: "2027-06-26T00:00:00.000Z",
-      provider: { domain: "example.be" },
+      provider: {
+        domain: "example.eu",
+      },
     })
-
+    
     const result = await reconcileManagedDomainRenewal(store.payload, 950, fixture.deps)
-
-    expect(result.status).toBe("payment_committed")
+    
+    expect(result.status).toBe("payment_required")
     expect(store.cycles[0]).toMatchObject({
       providerRenewalMode: "provider_autorenew",
+      financialCoverageState: "payment_pending",
+      state: "payment_required",
       pricingEvidence: {
-        tld: "be",
-        tldCapabilityVersion: "tld-be-2026-07-27.1",
+        tld: "eu",
+        tldCapabilityVersion: "tld-eu-2026-07-28.1",
       },
     })
   })
@@ -577,6 +601,46 @@ describe("Openprovider renewal_date cycles", () => {
 
   it("turns autorenew off while a surcharge is uncovered and creates a recurring Mollie attempt", async () => {
     const store = createStore({
+      domain: {
+        domainNameAscii: "example.eu",
+        tld: "eu",
+      },
+      cycles: [
+        {
+          id: 1000,
+          managedDomain: 950,
+          providerRenewalDate: "2027-07-26T00:00:00.000Z",
+          providerSafeCutoffAt: "2027-07-24T00:00:00.000Z",
+          state: "scheduled",
+          providerRenewalMode: "provider_autorenew",
+          providerAutorenew: "on",
+          financialCoverageState: "payment_pending",
+          providerOperationPriceNetMinor: 1_250,
+          includedAllowanceNetMinor: 0,
+          surchargeNetMinor: 1364,
+          pricingEvidence: {
+            version: 1,
+            provider: "openprovider",
+            tld: "eu",
+            tldCapabilityVersion: "2024-11-20.1",
+            operation: "renew",
+            quotedAt: "2027-04-27T00:00:00.000Z",
+            premium: false,
+            currency: "EUR",
+            providerOperationPriceNetMinor: 1_250,
+            includedAllowanceNetMinor: 0,
+            surchargeNetMinor: 1364,
+          },
+          netAmountMinor: 1364,
+          vatAmountMinor: 286,
+          grossAmountMinor: 1650,
+          paymentChargeAt: "2027-05-27T00:00:00.000Z",
+          renewalIntentSnapshot: true,
+          providerEvidence: null,
+          paymentSecuredAt: null,
+          tenant: 1,
+        },
+      ],
       agreement: {
         currentPeriodEndsAt: "2027-07-01T00:00:00.000Z",
         nextChargeAt: "2027-07-01T00:00:00.000Z",
@@ -591,14 +655,14 @@ describe("Openprovider renewal_date cycles", () => {
     expect(store.cycles[0]).toMatchObject({
       state: "payment_required",
       financialCoverageState: "payment_pending",
-      surchargeNetMinor: 250,
       providerAutorenew: "off",
+      surchargeNetMinor: 1364,
     })
     expect(store.orders[1]).toMatchObject({
       orderKind: "domain_renewal",
-      subtotalNetMinor: 250,
-      vatAmountMinor: 53,
-      totalGrossMinor: 303,
+      subtotalNetMinor: 1364,
+      vatAmountMinor: 286,
+      totalGrossMinor: 1650,
     })
     expect(createApplicationRecurringMolliePayment).toHaveBeenCalledWith(
       store.payload,
@@ -626,13 +690,13 @@ describe("Openprovider renewal_date cycles", () => {
       providerWriteState: "not_required",
       currency: "EUR",
       providerOperationPriceNetMinor: 1_250,
-      includedAllowanceNetMinor: 1_000,
-      surchargeNetMinor: 250,
+      includedAllowanceNetMinor: 0,
+      surchargeNetMinor: 1364,
       financialCoverageState: "payment_pending",
       pricingEvidence: {},
-      netAmountMinor: 250,
-      vatAmountMinor: 53,
-      grossAmountMinor: 303,
+      netAmountMinor: 1364,
+      vatAmountMinor: 286,
+      grossAmountMinor: 1650,
       reconciliationRequired: false,
       stateHistory: [],
       createdAt: "2027-06-01T00:00:00.000Z",

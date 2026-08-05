@@ -114,27 +114,53 @@ export function providerPriceWithinCap(providerPrice: FixedDomainOrderPrice | nu
   return comparison !== null && comparison <= 0
 }
 
+import { calculateDomainSurchargeNetMinor, commercialAmountFromNet } from "@siteinabox/contracts/commerce"
+
+export function isDomainPriceSupported(
+  domain: string,
+  providerPrice: FixedDomainOrderPrice,
+): boolean {
+  const tld = domain.split(".").pop() ?? ""
+  const providerCents = moneyToCents(providerPrice)
+  if (providerCents === null) return false
+  try {
+    calculateDomainSurchargeNetMinor(tld, providerCents)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function domainExtraFeeForProviderPrice(
+  domain: string,
   providerPrice: FixedDomainOrderPrice | null,
   includedPrice: FixedDomainOrderPrice,
 ): FixedDomainOrderPrice | null {
   if (!providerPrice || providerPrice.currency !== includedPrice.currency) return null
   const providerCents = moneyToCents(providerPrice)
-  const includedCents = moneyToCents(includedPrice)
-  if (providerCents === null || includedCents === null || providerCents <= includedCents) return null
-  const extraCents = providerCents - includedCents
-  return {
-    amount: `${Math.floor(extraCents / 100)}.${String(extraCents % 100).padStart(2, "0")}`,
-    currency: providerPrice.currency,
+  if (providerCents === null) return null
+  
+  const tld = domain.split(".").pop() ?? ""
+  try {
+    const netSurcharge = calculateDomainSurchargeNetMinor(tld, providerCents)
+    if (netSurcharge === 0) return null
+    const amount = commercialAmountFromNet(netSurcharge)
+    return {
+      amount: `${Math.floor(amount.grossAmountMinor / 100)}.${String(amount.grossAmountMinor % 100).padStart(2, "0")}`,
+      currency: "EUR",
+    }
+  } catch {
+    return null
   }
 }
 
 export function domainCheckoutPrice(input: {
+  domain: string
   basePrice: FixedDomainOrderPrice
   providerPrice: FixedDomainOrderPrice | null
   includedProviderPrice: FixedDomainOrderPrice
 }): FixedDomainOrderPrice {
-  const extra = domainExtraFeeForProviderPrice(input.providerPrice, input.includedProviderPrice)
+  const extra = domainExtraFeeForProviderPrice(input.domain, input.providerPrice, input.includedProviderPrice)
   if (!extra) return input.basePrice
   if (extra.currency !== input.basePrice.currency) return input.basePrice
   const baseCents = moneyToCents(input.basePrice)

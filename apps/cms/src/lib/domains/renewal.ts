@@ -400,6 +400,7 @@ const renewalPricingProjection = (input: {
     throw new Error("Openprovider renewal price must be quoted in EUR.")
   }
   const { initialState, ...financial } = renewalFinancialCoverage(
+    input.capability.tld,
     input.price.netAmountMinor,
   )
   const amount = commercialAmountFromNet(financial.surchargeNetMinor)

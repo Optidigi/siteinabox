@@ -35,8 +35,21 @@ export type CommercialCatalog = {
     readonly registrant: "customer"
     readonly siteinaboxContactRoles: readonly ["administrative", "technical", "billing"]
     readonly includedOperations: readonly ["registration", "transfer", "renewal"]
-    readonly includedAllowanceNetMinor: number
-    readonly surchargeFormula: "max(provider_operation_price_net_minor - included_allowance_net_minor, 0)"
+    readonly includedAllowanceNetMinor?: number
+    readonly surchargeFormula?: "max(provider_operation_price_net_minor - included_allowance_net_minor, 0)"
+    readonly retailPolicy?: {
+      readonly includedTlds: readonly string[]
+      readonly fixedGrossTargets: Readonly<Record<string, number>>
+      readonly exactLedgerNetTargets: Readonly<Record<string, number>>
+      readonly registryTerms: Readonly<Record<string, number>>
+      readonly minimumMarkupBasisPoints: number
+      readonly minimumMarkupCents: number
+      readonly grossRoundingIncrement: number
+      readonly registrationCostBasis: "max(registration, renewal)"
+      readonly renewalCostBasis: "renewal"
+      readonly premiumPolicy: "unsupported"
+      readonly exceptionalDomainPolicy: "unsupported"
+    }
   }
   readonly migrations: {
     readonly automatic: {
@@ -82,14 +95,17 @@ const catalogBase = {
     registrant: "customer",
     siteinaboxContactRoles: Object.freeze(["administrative", "technical", "billing"] as const),
     includedOperations: Object.freeze(["registration", "transfer", "renewal"] as const),
-    includedAllowanceNetMinor: 1_000,
-    surchargeFormula: "max(provider_operation_price_net_minor - included_allowance_net_minor, 0)",
   }),
 } as const
 
 export const LEGACY_ASSISTED_MIGRATION_CATALOG = Object.freeze({
   ...catalogBase,
   catalogVersion: LEGACY_ASSISTED_MIGRATION_CATALOG_VERSION,
+  domain: Object.freeze({
+    ...catalogBase.domain,
+    includedAllowanceNetMinor: 1_000,
+    surchargeFormula: "max(provider_operation_price_net_minor - included_allowance_net_minor, 0)",
+  }),
   migrations: Object.freeze({
     automatic: Object.freeze({
       netAmountMinor: 0,
@@ -113,6 +129,58 @@ export const LEGACY_ASSISTED_MIGRATION_CATALOG = Object.freeze({
 export const COMMERCIAL_CATALOG = Object.freeze({
   ...catalogBase,
   catalogVersion: COMMERCIAL_CATALOG_VERSION,
+  domain: Object.freeze({
+    ...catalogBase.domain,
+    retailPolicy: Object.freeze({
+      includedTlds: Object.freeze(["nl"]),
+      fixedGrossTargets: Object.freeze({
+        com: 1400,
+        org: 1400,
+        net: 1400,
+        eu: 650,
+        me: 1700,
+        site: 2650,
+        info: 2800,
+        online: 3150,
+        shop: 3150,
+        store: 4899,
+        ai: 17900,
+      }),
+      exactLedgerNetTargets: Object.freeze({
+        com: 1157,
+        org: 1157,
+        net: 1157,
+        eu: 537,
+        me: 1405,
+        site: 2190,
+        info: 2314,
+        online: 2603,
+        shop: 2603,
+        store: 4049,
+        ai: 14793,
+      }),
+      registryTerms: Object.freeze({
+        com: 1,
+        org: 1,
+        net: 1,
+        eu: 1,
+        me: 1,
+        site: 1,
+        info: 1,
+        online: 1,
+        shop: 1,
+        store: 1,
+        ai: 2,
+      }),
+      minimumMarkupBasisPoints: 800,
+      minimumMarkupCents: 50,
+      grossRoundingIncrement: 50,
+      registrationCostBasis: "max(registration, renewal)",
+      renewalCostBasis: "renewal",
+      premiumPolicy: "unsupported",
+      exceptionalDomainPolicy: "unsupported",
+    }),
+  }),
   migrations: Object.freeze({
     automatic: Object.freeze({
       netAmountMinor: 0,
@@ -216,12 +284,72 @@ export const commercialAmountSchema = z.object({
   }
 })
 
-export function calculateDomainSurchargeNetMinor(providerOperationPriceNetMinor: number): number {
+export function calculateDomainSurchargeNetMinor(
+  tld: string,
+  providerOperationPriceNetMinor: number,
+  catalogVersion: string = COMMERCIAL_CATALOG_VERSION,
+): number {
+  const catalog = getCommercialCatalog(catalogVersion)
   requireMinorAmount(providerOperationPriceNetMinor, "providerOperationPriceNetMinor")
-  return Math.max(
-    providerOperationPriceNetMinor - COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
-    0,
+
+  if (catalog.domain.includedAllowanceNetMinor !== undefined) {
+    return Math.max(
+      providerOperationPriceNetMinor - catalog.domain.includedAllowanceNetMinor,
+      0,
+    )
+  }
+
+  const policy = catalog.domain.retailPolicy
+  if (!policy) throw new Error("Catalog missing domain retail policy")
+
+  const normalizedTld = tld.toLowerCase()
+  if (policy.includedTlds.includes(normalizedTld)) {
+    return 0
+  }
+
+  const fixedNetTarget = policy.exactLedgerNetTargets[normalizedTld]
+  if (fixedNetTarget === undefined) {
+    throw new Error(`TLD .${normalizedTld} is not supported by retail policy`)
+  }
+
+  const minimumMarkupNet = Math.max(
+    policy.minimumMarkupCents,
+    Math.ceil(providerOperationPriceNetMinor * policy.minimumMarkupBasisPoints / 10000)
   )
+
+  const minimumPermittedGross = Math.ceil(
+    commercialAmountFromNet(providerOperationPriceNetMinor + minimumMarkupNet).grossAmountMinor / policy.grossRoundingIncrement
+  ) * policy.grossRoundingIncrement
+
+  const fixedGross = policy.fixedGrossTargets[normalizedTld]
+  if (fixedGross === undefined) {
+    throw new Error(`TLD .${normalizedTld} missing fixed gross target`)
+  }
+
+  const actualCustomerGross = Math.max(fixedGross, minimumPermittedGross)
+
+  if (actualCustomerGross === fixedGross) {
+    return fixedNetTarget
+  }
+
+  let bestNet = Math.floor(actualCustomerGross / (1 + DUTCH_VAT_RATE_BASIS_POINTS / 10000))
+  let currentAmount = commercialAmountFromNet(bestNet)
+  
+  while (currentAmount.grossAmountMinor < actualCustomerGross) {
+    bestNet++
+    const nextAmount = commercialAmountFromNet(bestNet)
+    if (nextAmount.grossAmountMinor > actualCustomerGross) {
+      bestNet--
+      break
+    }
+    currentAmount = nextAmount
+  }
+  
+  while (commercialAmountFromNet(bestNet).grossAmountMinor > actualCustomerGross) {
+    bestNet--
+  }
+
+  return bestNet
 }
 
 const validDate = (value: string | Date, field: string): Date => {
@@ -321,20 +449,24 @@ export const renewalFinancialCoverageStateSchema = z.enum(renewalFinancialCovera
 export type RenewalFinancialCoverageState = z.infer<typeof renewalFinancialCoverageStateSchema>
 
 export function renewalFinancialCoverage(
+  tld: string,
   providerOperationPriceNetMinor: number,
+  catalogVersion: string = COMMERCIAL_CATALOG_VERSION,
 ): {
   providerOperationPriceNetMinor: number
   includedAllowanceNetMinor: number
   surchargeNetMinor: number
-  initialState: Extract<RenewalFinancialCoverageState, "included_allowance" | "uncovered">
+  initialState: Extract<RenewalFinancialCoverageState, "included_allowance" | "payment_pending">
 } {
   requireMinorAmount(providerOperationPriceNetMinor, "providerOperationPriceNetMinor")
-  const surchargeNetMinor = calculateDomainSurchargeNetMinor(providerOperationPriceNetMinor)
+  const surchargeNetMinor = calculateDomainSurchargeNetMinor(tld, providerOperationPriceNetMinor, catalogVersion)
+  const catalog = getCommercialCatalog(catalogVersion)
+  const includedAllowanceNetMinor = catalog.domain.includedAllowanceNetMinor ?? 0
   return {
     providerOperationPriceNetMinor,
-    includedAllowanceNetMinor: COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
+    includedAllowanceNetMinor,
     surchargeNetMinor,
-    initialState: surchargeNetMinor === 0 ? "included_allowance" : "uncovered",
+    initialState: surchargeNetMinor === 0 ? "included_allowance" : "payment_pending",
   }
 }
 

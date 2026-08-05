@@ -162,7 +162,11 @@ export function PreviewCustomizer({
     inFlightSaveRef.current = request
     setThemeSaveStatus("saving")
 
-    if (!request.normalizedTheme) return
+    if (!request.normalizedTheme) {
+      inFlightSaveRef.current = null
+      flushThemeSaveQueue()
+      return
+    }
     void setPreviewTheme(access, request.normalizedTheme)
       .then((saved) => {
         const savedTheme = normalizePreviewThemeForSave(saved)
