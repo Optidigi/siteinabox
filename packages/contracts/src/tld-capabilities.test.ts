@@ -177,7 +177,7 @@ describe("effective-dated TLD capability catalog", () => {
         },
         registration: {
           supported: true,
-          periodYears: tld === "ai" ? 2 : 1,
+          periodYears: 1,
           confirmation: {
             mechanism: "provider_domain_poll",
             activeStatuses: ["ACT", "ACTIVE", "REGISTERED"],
@@ -303,7 +303,6 @@ describe("effective-dated TLD capability catalog", () => {
       site: "provider_determined",
       store: "provider_determined",
       me: "provider_determined",
-      ai: "provider_determined",
     })
   })
 

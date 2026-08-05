@@ -17,7 +17,6 @@ export const INTENDED_TLD_CATALOG = Object.freeze([
   "eu",
   "me",
   "site",
-  "ai",
   "store",
   "shop",
 ] as const)
@@ -926,7 +925,6 @@ const newRetailTlds = [
   { tld: "me", idn: true, registryPolicyUrl: "https://domain.me/policies/" },
   { tld: "site", idn: true, registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en" },
   { tld: "store", idn: true, registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en" },
-  { tld: "ai", idn: false, periodYears: 2, registryPolicyUrl: "https://whois.ai/faq.html" },
 ]
 
 for (const entry of newRetailTlds) {
@@ -940,7 +938,7 @@ for (const entry of newRetailTlds) {
     production: PRODUCTION_ENABLED,
     registration: {
       ...commonCapability.registration,
-      periodYears: entry.periodYears ?? 1,
+      periodYears: 1,
       labelLength: { min: 2, max: 63 },
       idn: entry.idn,
     },
