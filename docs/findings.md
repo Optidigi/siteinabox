@@ -99,64 +99,6 @@ SIAB-004, and SIAB-005 are tracked together in
 - **Review trigger:** Horizontal scaling, multiple writer processes, or shared
   storage-topology changes.
 
-## SIAB-009 — Ami Care compatibility renderer retirement
-
-- **Classification:** Historical / closed; **confidence:** high from production
-  migration and browser verification.
-- **Scope:** Contracts, shared renderer, CMS preview, persisted CMS data, and
-  published snapshots.
-- **Evidence:** The canonical Ami Care fixture now uses approved provider
-  blocks and chrome, the shared terracotta theme, structured media and contact
-  bindings, and the generic published-snapshot schema. Tenant-by-host renderer
-  selection, tenant-only variants, CSS, rich-text import matchers, repair tools,
-  and save-time auto-publish wiring were removed. The owning migration rebuilds
-  current Ami Care CMS rows and activates a generic snapshot before dropping
-  the retired chrome enum values; focused contract, renderer, CMS, and migration
-  tests cover the cutover. A fresh disposable PostgreSQL migration rehearsal
-  and local desktop/mobile browser smoke cover the schema, provider blocks,
-  media bindings, navigation, terracotta theme, consent chrome, and responsive
-  layout without contacting real analytics ingestion. Production deployment on
-  2026-07-19 applied both cutover migrations and activated snapshot version 112.
-  Read-only browser verification proved the home and privacy routes return 200,
-  the intended provider variants and terracotta tokens are active, all bound
-  media loads, the fixed consent chrome remains in the viewport, desktop and
-  mobile have no horizontal overflow or browser errors, the privacy link and
-  legal-content block render, and retired `amicZen` output is absent. Form
-  submission behavior remains covered by CI and was intentionally not exercised
-  against production.
-- **Review trigger:** Reopen if Ami Care regains tenant-specific renderer code,
-  retired variants or tokens, non-provider snapshots, or loses its media,
-  consent, contact, or legal-page coverage.
-
-## SIAB-010 — Renderer page-lifecycle ownership conflicts with the contract
-
-- **Classification:** Historical / closed; **confidence:** high from event-level
-  browser regression.
-- **Scope:** Public renderer analytics counts and PostHog web analytics.
-- **Evidence:** The renderer now delegates `$pageview` and `$pageleave` only to
-  PostHog JS. The local intercepted-ingestion browser regression decodes SDK
-  batches and beacons, proves one event of each kind after consent, preserves
-  native duration and scroll properties, and rejects real PostHog requests.
-- **Review trigger:** Reopen if lifecycle events are emitted outside PostHog JS
-  or the event-level browser regression loses native duration/scroll coverage.
-
-## SIAB-011 — Legal-content changes do not trigger a renderer image
-
-- **Classification:** Historical / closed; **confidence:** high from hosted
-  workflow selection and repository coverage.
-- **Scope:** Renderer image publication and governed legal content.
-- **Evidence:** `apps/renderer/package.json` directly depends on
-  `@siteinabox/legal-content`, and its Dockerfile copies that workspace package,
-  while `build-renderer-image.yml` now includes `packages/legal-content/**` in
-  its push paths. The deploy-contract check exercises a legal-content-only
-  changed-path fixture and requires that dependency/path relationship. Push
-  `c9b8f179136bc81ae502d735101b276e650c166e` selected and completed the hosted
-  `build-renderer-image` workflow successfully in GitHub Actions run
-  `29639715030`.
-- **Review trigger:** Reopen if the renderer loses its legal-content workspace
-  dependency, Docker build input, workflow path selection, or deploy-contract
-  fixture.
-
 ## SIAB-012 — Public analytics activation requires production proof
 
 - **Classification:** Verification pending; **confidence:** high from the
@@ -178,47 +120,6 @@ SIAB-004, and SIAB-005 are tracked together in
   provider before closing. Reopen after closure if the consent version,
   generated tenant defaults, public build token, banner, provider setting, or
   event-level browser regressions are removed or weakened.
-
-## SIAB-013 — Page-editor saves can diverge from the active snapshot
-
-- **Classification:** Historical/closed; **confidence:** high from production
-  database, release, authenticated-save, and live-renderer evidence.
-- **Scope:** CMS page editor, tenant themes/settings, snapshot publication, and
-  generated-site consent chrome.
-- **Evidence:** On 2026-07-19 the Ami Care tenant stored the newer
-  `red-confident`/`rounded` theme and a four-block home page while active
-  snapshot version 112 still served `terracotta-warm`/`soft` and five blocks.
-  The former browser save flow committed related writes before a separate
-  publication request, collapsed every related failure to “Save failed,” and
-  logged no publication error. `banner-03` also used a deliberately translucent
-  `bg-primary/10` surface. The replacement route owns page, theme, navigation,
-  chrome, snapshot construction, and activation in one Payload/PostgreSQL
-  transaction, returns and logs the failing stage, and the banner now uses an
-  opaque semantic surface. Focused tests cover commit and rollback behavior and
-  the opaque banner contract. Commit `0c062027` was deployed to both production
-  images on 2026-07-19 after the CMS and renderer image workflows, packaged
-  image smokes, complete CMS suite, renderer browser suite, and four-mode
-  provider parity matrix passed. Both containers were healthy, CMS boot found
-  no pending migrations, and desktop/mobile production probes showed the
-  consent chrome fixed at the viewport bottom with an opaque semantic surface.
-  A later authenticated save exposed two additional publication defects:
-  Payload rehydrated unset CTA groups as `{ label: null, href: null }`, and the
-  transactional route stringified the PostgreSQL tenant relationship ID before
-  snapshot creation. Commits `b8453c10` and `a99eb2f6` respectively canonicalize
-  only empty CTA groups while preserving strict rejection of meaningful
-  unsupported slots, and preserve Payload's native relationship ID type. After
-  successful CI and CMS image smoke runs, exact CMS revision `a99eb2f6` was
-  deployed on 2026-07-19. An authenticated Ami Care page-24 save committed
-  snapshot 134/version 113 as active. A fresh authenticated comparison proved
-  the current five-block page and normalized `red-confident`/
-  `classic-editorial`/`rounded` theme equal the active snapshot; both `cta-03`
-  and `cta-02` omit `secondary`, while `cta-03` retains `Neem contact op` →
-  `#contact`. The live renderer returned 200 with the same theme and CTA
-  markers.
-- **Review trigger:** Reopen if page/theme/settings publication leaves the
-  transaction, empty CTA group canonicalization is removed, native relationship
-  IDs are stringified before snapshot writes, or current-state/live parity
-  regresses.
 
 ## SIAB-014 — Commerce compatibility cleanup is runtime-complete
 
