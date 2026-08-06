@@ -27,16 +27,11 @@ const previewSessionEmail = async (loginRequiredMessage: string): Promise<string
 
 export async function setPreviewTheme(access: PreviewCustomizerAccess, theme: ThemeTokens) {
   const t = await getTranslations("preview")
-  const result = await persistPreviewThemeForGrant({
+  return persistPreviewThemeForGrant({
     clientSlug: access.clientSlug,
     customerEmail: await previewSessionEmail(t("previewLoginRequired")),
     theme,
   })
-  
-  const { revalidatePath } = await import("next/cache")
-  revalidatePath(`/${access.clientSlug}`, "layout")
-  
-  return result
 }
 
 export async function approvePreviewSite(access: PreviewCustomizerAccess): Promise<{

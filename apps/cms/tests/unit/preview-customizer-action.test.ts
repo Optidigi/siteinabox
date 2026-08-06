@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { readFileSync } from "node:fs"
 
 const mocks = vi.hoisted(() => ({
   headers: new Headers({ host: "preview.siteinabox.nl" }),
   getSession: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
   createMollieCheckoutForGenerationRun: vi.fn(),
+  persistPreviewThemeForGrant: vi.fn(),
+  revalidatePath: vi.fn(),
 }))
 
 vi.mock("next/headers", () => ({
@@ -30,6 +33,14 @@ vi.mock("@/lib/preview/previewAccess", () => ({
   loadPreviewGrantContext: mocks.loadPreviewGrantContext,
 }))
 
+vi.mock("next/cache", () => ({
+  revalidatePath: mocks.revalidatePath,
+}))
+
+vi.mock("@/lib/preview/customizer", () => ({
+  persistPreviewThemeForGrant: mocks.persistPreviewThemeForGrant,
+}))
+
 vi.mock("@/lib/payments/molliePayments", () => ({
   createMollieCheckoutForGenerationRun: mocks.createMollieCheckoutForGenerationRun,
 }))
@@ -48,6 +59,41 @@ describe("preview customizer actions", () => {
       payment: { status: "pending_provider", provider: "mollie" },
       reused: false,
     })
+    mocks.persistPreviewThemeForGrant.mockResolvedValue({
+      version: 3,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
+    })
+  })
+
+  it("persists preview theme without revalidating the preview layout", async () => {
+    const { setPreviewTheme } = await import("@/lib/actions/previewCustomizer")
+    const theme = {
+      version: 3,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
+    } as const
+
+    const saved = await setPreviewTheme({ type: "grant", clientSlug: "preview-studio" }, theme)
+
+    expect(saved).toEqual(theme)
+    expect(mocks.persistPreviewThemeForGrant).toHaveBeenCalledWith({
+      clientSlug: "preview-studio",
+      customerEmail: "Customer@Example.com",
+      theme,
+    })
+    expect(mocks.revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it("keeps preview theme saves free of layout revalidation in source", () => {
+    const source = readFileSync("src/lib/actions/previewCustomizer.ts", "utf8")
+    const setPreviewThemeBody = source.split("export async function setPreviewTheme")[1]?.split("export async function approvePreviewSite")[0] ?? ""
+
+    expect(setPreviewThemeBody).not.toContain("revalidatePath")
   })
 
   it("starts Mollie checkout from an approved grant preview using the logged-in customer", async () => {
