@@ -1,5 +1,6 @@
 import type { CollectionBeforeChangeHook, CollectionConfig, PayloadRequest } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
+import { relationshipId, type RelationshipIdRef } from "@/lib/relationshipId"
 import {
   archiveTenantDir,
   clearTenantCookieIfStale,
@@ -60,6 +61,18 @@ const validateDomain = (val: unknown, { req }: { req?: PayloadRequest }) => {
   return true
 }
 
+const billingSuspensionAgreementUnchanged = (
+  nextValue: unknown,
+  originalValue: unknown,
+): boolean =>
+  relationshipId(nextValue as RelationshipIdRef) ===
+  relationshipId(originalValue as RelationshipIdRef)
+
+const billingSuspendedAtUnchanged = (
+  nextValue: unknown,
+  originalValue: unknown,
+): boolean => (nextValue ?? null) === (originalValue ?? null)
+
 export const protectBillingSuspensionMetadata: CollectionBeforeChangeHook = ({
   data,
   operation,
@@ -68,9 +81,20 @@ export const protectBillingSuspensionMetadata: CollectionBeforeChangeHook = ({
 }) => {
   if (operation !== "update" || !data) return data
   const billingMutation = req.context?.billingTenantLifecycleMutation === true
+  // Payload beforeValidate backfills omitted fields from originalDoc into
+  // `data` before collection beforeChange hooks run. Key presence alone is
+  // therefore not an intentional write — compare values to originalDoc.
   const writesBillingMetadata =
-    "billingSuspensionAgreement" in data ||
-    "billingSuspendedAt" in data
+    ("billingSuspensionAgreement" in data &&
+      !billingSuspensionAgreementUnchanged(
+        data.billingSuspensionAgreement,
+        originalDoc?.billingSuspensionAgreement,
+      )) ||
+    ("billingSuspendedAt" in data &&
+      !billingSuspendedAtUnchanged(
+        data.billingSuspendedAt,
+        originalDoc?.billingSuspendedAt,
+      ))
   if (writesBillingMetadata && !billingMutation) {
     throw new Error("Billing suspension metadata is system-owned.")
   }
