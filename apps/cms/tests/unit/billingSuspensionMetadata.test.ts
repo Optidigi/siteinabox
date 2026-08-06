@@ -1,3 +1,4 @@
+/** Regression: Payload beforeValidate backfills billing fields on theme-only updates. */
 import { describe, expect, it } from "vitest"
 import { protectBillingSuspensionMetadata } from "@/collections/Tenants"
 import { hookArgsFor } from "../_helpers/hookFixtures"
