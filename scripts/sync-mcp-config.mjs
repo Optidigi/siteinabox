@@ -69,12 +69,37 @@ function validateNoEmbeddedSecret(value, location) {
 function targetSupports(server, target) {
   const policy = server.clientPolicy
   if (!policy.defaultEnabled && target !== "codex") return false
-  if (policy.approval.required && target !== "codex") return false
+  // Cursor approximates approval via generated .cursor/permissions.json; other non-Codex
+  // targets cannot preserve prompt-mode approval and must omit those servers.
+  if (policy.approval.required && target !== "codex" && target !== "cursor") return false
   if ((policy.enabledTools.required || policy.disabledTools.required) && target !== "codex") return false
   if (server.requiredEnv.length > 0 && (target === "genericJson" || target === "genericToml")) return false
   if (server.workingDirectory && target !== "codex") return false
   if ((Object.keys(server.staticEnv).length > 0 || Object.keys(server.staticHeaders).length > 0 || Object.keys(server.secretHeaders).length > 0) && target === "genericToml") return false
   return true
+}
+
+const CURSOR_PROMPT_BLOCK_INSTRUCTIONS = {
+  "cloudflare-api": "Require explicit user approval before any Cloudflare provider write, mutation, or configuration change.",
+  openprovider: "Require explicit user approval before any Openprovider domain, DNS, SSL, customer, contact, email, or license write.",
+  posthog: "Require explicit user approval before any PostHog project mutation or analytics configuration write.",
+  shadcn: "Require explicit user approval before any shadcn component installation or file-writing operation.",
+}
+
+function cursorPermissions(registry) {
+  const projected = Object.entries(registry.servers)
+    .filter(([, server]) => server.projectionTargets.includes("cursor"))
+    .sort(([a], [b]) => a.localeCompare(b))
+  const mcpAllowlist = projected
+    .filter(([, server]) => server.clientPolicy.approval.mode === "auto")
+    .map(([name]) => `${name}:*`)
+  const block_instructions = projected
+    .filter(([name, server]) => server.clientPolicy.approval.required || Object.hasOwn(CURSOR_PROMPT_BLOCK_INSTRUCTIONS, name))
+    .map(([name]) => CURSOR_PROMPT_BLOCK_INSTRUCTIONS[name] ?? `Require explicit user approval before mutating through the ${name} MCP server.`)
+  return `${JSON.stringify({
+    mcpAllowlist,
+    autoRun: { block_instructions },
+  }, null, 2)}\n`
 }
 
 function validateEnforcement(server, control, location) {
@@ -311,6 +336,7 @@ export function renderProjections(registry) {
     [resolve(root, ".codex/config.toml"), tomlFor("codex")],
     [resolve(root, ".codex/mcp.toml"), tomlFor("codex")],
     [resolve(root, ".cursor/mcp.json"), jsonFor("cursor")],
+    [resolve(root, ".cursor/permissions.json"), cursorPermissions(registry)],
     [resolve(root, postgres.path), dbhub],
   ])
 }

@@ -1,0 +1,16 @@
+{
+  "mcpAllowlist": [
+    "better-auth:*",
+    "context7:*",
+    "github:*",
+    "sequential-thinking:*"
+  ],
+  "autoRun": {
+    "block_instructions": [
+      "Require explicit user approval before any Cloudflare provider write, mutation, or configuration change.",
+      "Require explicit user approval before any Openprovider domain, DNS, SSL, customer, contact, email, or license write.",
+      "Require explicit user approval before any PostHog project mutation or analytics configuration write.",
+      "Require explicit user approval before any shadcn component installation or file-writing operation."
+    ]
+  }
+}

@@ -38,6 +38,7 @@ url = "https://mcp.openprovider.com/mcp"
 enabled = true
 required = false
 default_tools_approval_mode = "prompt"
+env_http_headers = { "Authorization" = "OPENPROVIDER_MCP_AUTHORIZATION" }
 
 [mcp_servers.postgres]
 command = "npx"

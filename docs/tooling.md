@@ -15,7 +15,9 @@ opened at its root:
 - `.mcp.toml` — generic TOML compatibility;
 - `.codex/config.toml` — Codex project configuration;
 - `.codex/mcp.toml` — compatibility for clients probing that filename;
-- `.cursor/mcp.json` — Cursor project configuration.
+- `.cursor/mcp.json` — Cursor project configuration;
+- `.cursor/permissions.json` — Cursor Auto-review allowlist and steering derived
+  from registry approval policy.
 
 Do not edit projections by hand or create app-local copies. The generator omits
 a server from a target that cannot preserve its mandatory controls; it never
@@ -33,10 +35,33 @@ A declaration proves policy, not startup, authentication, or effective runtime
 permission. Inspect the generated target and the server's advertised tools
 before relying on it.
 
-`docker` remains a stable policy name but is disabled and omitted where a
-client cannot express disabled state. No reviewed server combines an explicit
-SIAB-container allowlist with a server-enforced inspection-only surface. Use
-Docker or Podman CLI under the normal sandbox and approval policy instead.
+Cursor receives the same enabled Codex MCP set (`better-auth`, `cloudflare-api`,
+`context7`, `github`, `openprovider`, `posthog`, `sequential-thinking`,
+`shadcn`). Cursor cannot encode Codex `default_tools_approval_mode` or
+`enabled = false` in `mcp.json`, so prompt-mode servers stay off the generated
+`mcpAllowlist` and rely on Auto-review plus `autoRun.block_instructions` in
+`.cursor/permissions.json`. That is best-effort parity, not identical
+enforcement: allowlists and Auto-review are not a hard security boundary, and
+`Run Everything` bypasses allowlist gating. Credentials, OAuth sessions, and
+personal paths remain in user scope.
+
+Authenticate remote provider MCPs in user scope only after an approved
+investigation needs them:
+
+- `cloudflare-api` and `posthog` — complete the Cursor OAuth connect flow from
+  Settings → MCP (or the needs-auth prompt). Do not put provider tokens in the
+  committed projection.
+- `openprovider` — set user-local `OPENPROVIDER_MCP_AUTHORIZATION` to
+  `Bearer op_live_…` from https://mcp.openprovider.com/dashboard (API keys
+  page; shown once). Do not use application `OPENPROVIDER_*` credentials.
+  The Cursor projection sends it as
+  `Authorization: ${env:OPENPROVIDER_MCP_AUTHORIZATION}`.
+
+`docker` and `postgres` remain disabled Codex-only projections. Cursor has no
+disabled-server field; projecting them would start them enabled and weaken the
+reviewed policy. `docker` stays disabled until a least-privilege
+inspection-only replacement exists. Use Docker or Podman CLI under the normal
+sandbox and approval policy instead.
 
 ## MCP use
 

@@ -4,6 +4,10 @@
       "type": "http",
       "url": "https://mcp.better-auth.com/mcp"
     },
+    "cloudflare-api": {
+      "type": "http",
+      "url": "https://mcp.cloudflare.com/mcp"
+    },
     "context7": {
       "command": "npx",
       "args": [
@@ -32,11 +36,33 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
       }
     },
+    "openprovider": {
+      "type": "http",
+      "url": "https://mcp.openprovider.com/mcp",
+      "env": {
+        "OPENPROVIDER_MCP_AUTHORIZATION": "${env:OPENPROVIDER_MCP_AUTHORIZATION}"
+      },
+      "headers": {
+        "Authorization": "${env:OPENPROVIDER_MCP_AUTHORIZATION}"
+      }
+    },
+    "posthog": {
+      "type": "http",
+      "url": "https://mcp.posthog.com/mcp"
+    },
     "sequential-thinking": {
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-sequential-thinking@2026.7.4"
+      ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "shadcn@4.13.1",
+        "mcp"
       ]
     }
   }

@@ -66,9 +66,17 @@ test("dynamic executable versions fail validation", () => {
 })
 
 test("a target that cannot preserve mandatory policy fails closed", () => {
-  const registry = clone()
-  registry.servers.shadcn.projectionTargets.push("cursor")
-  assert.throws(() => validateRegistry(registry), /cannot preserve mandatory policy in cursor/)
+  const dockerOnCursor = clone()
+  dockerOnCursor.servers.docker.projectionTargets.push("cursor")
+  assert.throws(() => validateRegistry(dockerOnCursor), /cannot preserve mandatory policy in cursor/)
+
+  const postgresOnCursor = clone()
+  postgresOnCursor.servers.postgres.projectionTargets.push("cursor")
+  assert.throws(() => validateRegistry(postgresOnCursor), /cannot preserve mandatory policy in cursor/)
+
+  const approvalOnGeneric = clone()
+  approvalOnGeneric.servers.shadcn.projectionTargets.push("genericJson")
+  assert.throws(() => validateRegistry(approvalOnGeneric), /cannot preserve mandatory policy in genericJson/)
 })
 
 test("declared server enforcement must be present in the transport", () => {
@@ -80,27 +88,45 @@ test("declared server enforcement must be present in the transport", () => {
   assert.throws(() => validateRegistry(registry), /argument enforcement is missing from args/)
 })
 
-test("Codex receives policy fields while basic clients omit unsafe servers", () => {
+test("Codex receives policy fields while Cursor gets enabled servers and permissions", () => {
   const projections = renderProjections(clone())
   const codex = projections.get([...projections.keys()].find((path) => path.endsWith(".codex/config.toml")))
-  const cursor = projections.get([...projections.keys()].find((path) => path.endsWith(".cursor/mcp.json")))
+  const cursor = JSON.parse(projections.get([...projections.keys()].find((path) => path.endsWith(".cursor/mcp.json"))))
+  const permissions = JSON.parse(projections.get([...projections.keys()].find((path) => path.endsWith(".cursor/permissions.json"))))
   assert.match(codex, /\[mcp_servers\.cloudflare-api\][^[]*enabled = true[^[]*default_tools_approval_mode = "prompt"/)
   assert.match(codex, /\[mcp_servers\.posthog\][^[]*enabled = true[^[]*default_tools_approval_mode = "prompt"/)
   assert.match(codex, /env_vars = \["SIAB_MCP_POSTGRES_URL"\]/)
-  const cursorServers = Object.keys(JSON.parse(cursor).mcpServers)
-  for (const omitted of ["cloudflare-api", "docker", "postgres", "posthog", "shadcn"]) {
-    assert(!cursorServers.includes(omitted), `${omitted} must be omitted from Cursor`)
+
+  for (const included of ["better-auth", "cloudflare-api", "context7", "github", "openprovider", "posthog", "sequential-thinking", "shadcn"]) {
+    assert(Object.hasOwn(cursor.mcpServers, included), `${included} must be projected to Cursor`)
   }
+  for (const omitted of ["docker", "postgres"]) {
+    assert(!Object.hasOwn(cursor.mcpServers, omitted), `${omitted} must be omitted from Cursor`)
+  }
+
+  assert.deepEqual(permissions.mcpAllowlist, [
+    "better-auth:*",
+    "context7:*",
+    "github:*",
+    "sequential-thinking:*",
+  ])
+  for (const promptServer of ["cloudflare-api", "openprovider", "posthog", "shadcn"]) {
+    assert(!permissions.mcpAllowlist.includes(`${promptServer}:*`), `${promptServer} must not be auto-allowlisted`)
+  }
+  assert.equal(permissions.autoRun.block_instructions.length, 4)
+  assert.match(permissions.autoRun.block_instructions.join("\n"), /Cloudflare/)
+  assert.match(permissions.autoRun.block_instructions.join("\n"), /Openprovider/)
+  assert.match(permissions.autoRun.block_instructions.join("\n"), /PostHog/)
+  assert.match(permissions.autoRun.block_instructions.join("\n"), /shadcn/)
 })
 
 test("HTTP secret headers do not generate stdio env forwarding", () => {
-  const registry = clone()
-  registry.servers.openprovider.requiredEnv = ["OPENPROVIDER_MCP_AUTHORIZATION"]
-  registry.servers.openprovider.secretHeaders = { Authorization: "OPENPROVIDER_MCP_AUTHORIZATION" }
-  const projections = renderProjections(registry)
+  const projections = renderProjections(clone())
   const codex = projections.get([...projections.keys()].find((path) => path.endsWith(".codex/config.toml")))
+  const cursor = JSON.parse(projections.get([...projections.keys()].find((path) => path.endsWith(".cursor/mcp.json"))))
   assert.match(codex, /\[mcp_servers\.openprovider\][^[]*env_http_headers = \{ "Authorization" = "OPENPROVIDER_MCP_AUTHORIZATION" \}/)
   assert.doesNotMatch(codex, /\[mcp_servers\.openprovider\][^[]*env_vars =/)
+  assert.equal(cursor.mcpServers.openprovider.headers.Authorization, "${env:OPENPROVIDER_MCP_AUTHORIZATION}")
 })
 
 test("GitHub projections retain official server-side least privilege", () => {

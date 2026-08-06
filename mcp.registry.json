@@ -58,7 +58,7 @@
         "disabledTools": { "required": false, "values": [] }
       },
       "preconditions": ["Authenticate in user scope only after an approved provider investigation requires it."],
-      "projectionTargets": ["codex"],
+      "projectionTargets": ["codex", "cursor"],
       "fallback": "Use repository configuration and Cloudflare primary documentation; do not mutate the provider."
     },
     "context7": {
@@ -183,10 +183,12 @@
         "reviewedAt": "2026-08-02",
         "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
       },
-      "requiredEnv": [],
+      "requiredEnv": ["OPENPROVIDER_MCP_AUTHORIZATION"],
       "staticEnv": {},
       "staticHeaders": {},
-      "secretHeaders": {},
+      "secretHeaders": {
+        "Authorization": "OPENPROVIDER_MCP_AUTHORIZATION"
+      },
       "serverPolicy": {
         "readOnly": { "required": false, "enforcement": null },
         "toolsets": { "required": false, "values": [], "enforcement": null },
@@ -199,10 +201,10 @@
         "disabledTools": { "required": false, "values": [] }
       },
       "preconditions": [
-        "Configure an Openprovider Bearer Authorization header in user-local Codex configuration; do not use application Openprovider credentials.",
+        "Set user-local OPENPROVIDER_MCP_AUTHORIZATION to Bearer <op_live_…> from https://mcp.openprovider.com/dashboard (API keys); do not use application OPENPROVIDER_* credentials or commit the key.",
         "Use read-only inspection first. Any external-provider write, including DNS, domain, SSL, customer, contact, email, or license changes, requires explicit approval."
       ],
-      "projectionTargets": ["codex"],
+      "projectionTargets": ["codex", "cursor"],
       "fallback": "Use the repository Openprovider integration and Openprovider primary documentation; do not mutate the provider."
     },
     "postgres": {
@@ -285,7 +287,7 @@
         "disabledTools": { "required": false, "values": [] }
       },
       "preconditions": ["Authenticate in user scope only after an approved provider investigation requires it."],
-      "projectionTargets": ["codex"],
+      "projectionTargets": ["codex", "cursor"],
       "fallback": "Use repository analytics contracts and PostHog primary documentation; do not mutate the provider."
     },
     "sequential-thinking": {
@@ -343,7 +345,7 @@
         "disabledTools": { "required": false, "values": [] }
       },
       "preconditions": ["Review any component-installation or file-writing operation before approval."],
-      "projectionTargets": ["codex"],
+      "projectionTargets": ["codex", "cursor"],
       "fallback": "Inspect the existing component registry and repository UI primitives directly."
     }
   }
