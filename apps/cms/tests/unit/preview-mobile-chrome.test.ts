@@ -6,7 +6,7 @@ const root = join(__dirname, "..", "..")
 const read = (file: string) => readFileSync(join(root, file), "utf8")
 
 describe("preview mobile chrome", () => {
-  it("stacks edit above launch at bottom-right with a left-aligned theme bar", () => {
+  it("pairs edit left of launch at bottom-right with a left-aligned theme bar", () => {
     const chrome = read("src/components/preview/preview-mobile-chrome.tsx")
     const themeBar = read("src/components/preview/preview-mobile-theme-bar.tsx")
     const tone = read("src/components/preview/preview-mobile-chrome-tone.ts")
@@ -16,8 +16,10 @@ describe("preview mobile chrome", () => {
     expect(chrome).toContain('surface="theme"')
     expect(chrome).toContain("previewMobileChromeWrapperClass")
     expect(chrome).toContain('position="bottom-right"')
-    expect(chrome).toContain("PREVIEW_MOBILE_CHROME_STACK_OFFSET")
-    expect(chrome).toContain("verticalOffset={PREVIEW_MOBILE_CHROME_STACK_OFFSET}")
+    expect(chrome).toContain("PREVIEW_MOBILE_CHROME_PAIR_OFFSET")
+    expect(chrome).toContain("offset={PREVIEW_MOBILE_CHROME_PAIR_OFFSET}")
+    expect(chrome).not.toContain("verticalOffset")
+    expect(chrome).not.toContain("PREVIEW_MOBILE_CHROME_STACK_OFFSET")
     expect(chrome).not.toContain('position="top-left"')
     expect(chrome).not.toContain('position="top-right"')
     expect(chrome).toContain("SquarePen")
@@ -28,8 +30,8 @@ describe("preview mobile chrome", () => {
     expect(chrome).toContain("PreviewMobileThemeBar")
     expect(chrome).toContain("md:hidden")
 
-    expect(chrome.match(/verticalOffset=\{PREVIEW_MOBILE_CHROME_STACK_OFFSET\}/g)?.length).toBe(1)
-    expect(chrome.indexOf("verticalOffset={PREVIEW_MOBILE_CHROME_STACK_OFFSET}")).toBeLessThan(
+    expect(chrome.match(/offset=\{PREVIEW_MOBILE_CHROME_PAIR_OFFSET\}/g)?.length).toBe(1)
+    expect(chrome.indexOf("offset={PREVIEW_MOBILE_CHROME_PAIR_OFFSET}")).toBeLessThan(
       chrome.indexOf('"data-mobile-preview-review"'),
     )
     expect(chrome.indexOf('"data-mobile-preview-review"')).toBeLessThan(
@@ -47,7 +49,8 @@ describe("preview mobile chrome", () => {
     expect(tone).toContain("resolveColorMode")
     expect(tone).toContain("systemPrefersDark")
     expect(tone).toContain("preview-mobile-chrome-light")
-    expect(tone).toContain("PREVIEW_MOBILE_CHROME_STACK_OFFSET")
+    expect(tone).toContain("PREVIEW_MOBILE_CHROME_PAIR_OFFSET")
+    expect(tone).not.toContain("PREVIEW_MOBILE_CHROME_STACK_OFFSET")
     expect(tone).toContain('"4rem"')
 
     expect(themeBar).toContain("MobileInlinePill")

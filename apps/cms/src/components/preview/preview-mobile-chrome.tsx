@@ -6,7 +6,7 @@ import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
 import { PreviewMobileThemeBar } from "@/components/preview/preview-mobile-theme-bar"
 import {
   PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
-  PREVIEW_MOBILE_CHROME_STACK_OFFSET,
+  PREVIEW_MOBILE_CHROME_PAIR_OFFSET,
   previewMobileChromeWrapperClass,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -35,7 +35,7 @@ function PreviewMobileNavPills({
     <>
       <MobileFloatingPill
         position="bottom-right"
-        verticalOffset={PREVIEW_MOBILE_CHROME_STACK_OFFSET}
+        offset={PREVIEW_MOBILE_CHROME_PAIR_OFFSET}
         surface="theme"
         sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
         icon={<SquarePen className="h-5 w-5" aria-hidden />}
