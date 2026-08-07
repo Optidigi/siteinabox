@@ -37,7 +37,7 @@ export function ReviewGroup({
 }) {
   const [expanded, setExpanded] = React.useState(!defaultCollapsed)
   return (
-    <section data-details-group={group} className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 border-b py-[18px] transition-colors hover:bg-muted/25 focus-within:bg-muted/25">
+    <section data-details-group={group} className="grid min-w-0 grid-cols-[1.875rem_minmax(0,1fr)_auto] items-start gap-2.5 border-b py-[18px] transition-colors hover:bg-muted/25 focus-within:bg-muted/25 max-[559px]:gap-x-3">
       <span className={cn("grid size-[30px] place-items-center rounded-[9px] bg-success/10 text-success", attention && "bg-destructive/10 text-destructive")}>
         <Icon className="size-4" aria-hidden />
       </span>
@@ -56,9 +56,9 @@ export function ReviewGroup({
         </span>
         <p className="min-w-0 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{summary}</p>
       </Button>
-      <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground" onClick={(event) => onEdit(event.currentTarget)} aria-label={`${editLabel} ${title}`}>
-        <Pencil className="size-3.5" aria-hidden />
-        <span className="hidden min-[360px]:inline">{editLabel}</span>
+      <Button type="button" variant="ghost" size="sm" className="min-h-11 shrink-0 gap-1.5 self-start px-2.5 py-2 text-xs text-muted-foreground max-[559px]:-mr-1" onClick={(event) => onEdit(event.currentTarget)} aria-label={`${editLabel} ${title}`}>
+        <Pencil className="size-3.5 shrink-0" aria-hidden />
+        <span>{editLabel}</span>
       </Button>
       {expanded && <dl id={`checkout-review-${group}`} className="col-start-2 col-end-4 mt-2 grid min-w-0 grid-cols-1 gap-x-5 gap-y-2 min-[560px]:grid-cols-2">
         {details.map((detail) => <ReviewDetail key={`${detail.label}-${detail.value}`} {...detail} />)}

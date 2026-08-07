@@ -10,6 +10,7 @@ import {
   Check,
   CheckCircle2,
   CircleAlert,
+  Plus,
   CircleX,
   CreditCard,
   Globe2,
@@ -1355,6 +1356,11 @@ export function PreviewCheckout({
     action.action === "provide_epp_code" && ["required", "failed"].includes(action.status)))
   const transferCodeDeadline = migrationStatus?.actions.find((action) =>
     action.action === "provide_epp_code" && ["required", "failed"].includes(action.status))?.deadlineAt
+  // Hide only when the in-card stepper already carries the step title — keep the
+  // page hero on payment/fulfilment shells where it is the primary mobile heading.
+  const pageHeroHiddenOnMobile =
+    (presentation.phase === "address" && step === "domain") ||
+    (presentation.phase === "review" && step === "review")
 
   return (
     <main data-checkout-phase={presentation.phase} className="min-h-dvh overflow-x-clip bg-muted/25 pb-24 font-sans text-foreground antialiased dark:bg-background">
@@ -1409,18 +1415,18 @@ export function PreviewCheckout({
             <span>{step === "review" ? "2 / 2" : "1 / 2"}</span>
           </div>
           <div className="flex items-center justify-end">
-            <Button asChild variant="ghost" className="h-9 shrink-0 px-2 text-muted-foreground">
+            <Button asChild variant="ghost" className="h-11 min-h-11 shrink-0 px-2 text-muted-foreground min-[560px]:h-9 min-[560px]:min-h-9">
               <a href={previewHref}>
                 <ArrowLeft className="size-4" aria-hidden />
-                <span className="hidden min-[380px]:inline">{t("checkoutBackToPreview")}</span>
+                <span className="hidden min-[360px]:inline">{t("checkoutBackToPreview")}</span>
               </a>
             </Button>
           </div>
         </div>
       </header>
 
-      <div data-checkout-shell className="mx-auto grid w-[calc(100%_-_20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[98px] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%_-_28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%_-_40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
-        <section className="grid gap-2">
+      <div data-checkout-shell className="mx-auto grid w-[calc(100%_-_20px)] min-w-0 max-w-[74rem] content-start gap-4 pb-[7.5rem] pt-[17px] [&>*]:min-w-0 min-[560px]:w-[min(45rem,calc(100%_-_28px))] min-[560px]:pb-24 min-[560px]:pt-[22px] min-[880px]:w-[calc(100%_-_40px)] min-[880px]:py-[30px] min-[880px]:pb-24">
+        <section className={cn("gap-2", pageHeroHiddenOnMobile ? "hidden min-[880px]:grid" : "grid")}>
             <div>
               <h1 className="text-[1.75rem] font-[760] leading-[1.07] tracking-[-0.04em] min-[880px]:text-[2.5rem]">
                 {presentation.phase === "fulfilment" || presentation.phase === "payment"
@@ -1934,13 +1940,13 @@ export function PreviewCheckout({
                   data-checkout-domain-mode
                   className="grid w-full grid-cols-2 rounded-xl bg-muted p-[3px]"
                 >
-                  <ToggleGroupItem value="new_registration" className="min-h-[42px] min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
+                  <ToggleGroupItem value="new_registration" className="min-h-11 min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
                     <Search className="size-4" aria-hidden />
-                    <span>{t("checkoutDomainModeNew")}</span>
+                    <span>{t("checkoutDomainModeNewShort")}</span>
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="existing_domain" className="min-h-[42px] min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
+                  <ToggleGroupItem value="existing_domain" className="min-h-11 min-w-0 gap-2 rounded-[9px] border-0 px-2 text-center text-xs leading-tight whitespace-normal sm:text-sm data-[state=on]:bg-card data-[state=on]:shadow-sm">
                     <RefreshCw className="size-4" aria-hidden />
-                    <span>{t("checkoutDomainModeExisting")}</span>
+                    <span>{t("checkoutDomainModeExistingShort")}</span>
                   </ToggleGroupItem>
                 </ToggleGroup>
               </fieldset>
@@ -2011,7 +2017,7 @@ export function PreviewCheckout({
                       ) : null}
                     </div>
                   </div>
-                  <Button type="submit" className="h-12 min-h-12 md:h-12 md:min-h-12 rounded-[11px] px-4 shadow-sm max-[559px]:h-11 max-[559px]:min-h-11 min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
+                  <Button type="submit" className="h-12 min-h-12 rounded-[11px] px-4 shadow-sm min-[560px]:min-w-40" disabled={checkPending || extensionCheckPending}>
                     {checkPending || extensionCheckPending ? <Loader2 className="size-[18px] animate-spin" aria-hidden /> : <Search className="size-[18px]" aria-hidden />}
                     {domainMode === "existing_domain" ? t("checkoutDomainCheckConnection") : t("checkoutCheckDomain")}
                   </Button>
@@ -2062,10 +2068,10 @@ export function PreviewCheckout({
                         {extensionCheckPending && visibleDomainSearchDomains
                           .filter((domain) => !extensionResults.some((result) => result.domain === domain))
                           .map((domain) => (
-                          <div key={domain} data-domain-status="loading" className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-3.5">
-                            <span className="grid min-w-0 gap-1.5"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-20 animate-pulse rounded-full bg-muted" /></span>
+                          <div key={domain} data-domain-status="loading" className="grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0 min-[560px]:min-h-16 min-[560px]:gap-3.5 min-[560px]:py-2.5">
+                            <span className="flex min-w-0 items-center gap-2"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-16 animate-pulse rounded-full bg-muted" /></span>
                             <span className="h-4 w-14 animate-pulse rounded bg-muted" />
-                            <span className="col-span-2 h-[34px] w-full animate-pulse rounded-[9px] bg-muted min-[560px]:col-auto min-[560px]:w-[68px]" />
+                            <span className="h-11 w-11 animate-pulse rounded-[9px] bg-muted min-[560px]:h-9 min-[560px]:w-9" />
                           </div>
                         ))}
                         {[...extensionResults]
@@ -2080,9 +2086,21 @@ export function PreviewCheckout({
                           const resultName = resultExtension
                             ? result.domain?.slice(0, -(resultExtension.length + 1))
                             : result.domain
+                          const statusLabel = premium
+                            ? t("checkoutExtensionPremium")
+                            : result.status === "unavailable"
+                              ? t("checkoutExtensionUnavailable")
+                              : result.status === "release_pending"
+                                ? t("checkoutDomainReleasePendingTitle")
+                                : result.status === "service_error"
+                                  ? t("checkoutExtensionError")
+                                  : result.status === "invalid"
+                                    ? t("checkoutDomainInvalid")
+                                    : t("checkoutExtensionAvailable")
+                          const domainSelected = checkedDomain === result.domain
                           return (
-                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={checkedDomain === result.domain || undefined} className={cn("grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-[9px] gap-y-2 border-b px-3 py-2.5 text-sm last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] min-[560px]:gap-x-3.5", checkedDomain === result.domain && "bg-success/[0.07] shadow-[inset_3px_0_0_var(--success)]")}>
-                              <span className="grid min-w-0 gap-1.5">
+                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={domainSelected || undefined} className={cn("grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 border-b px-3 py-2 text-sm last:border-b-0 min-[560px]:min-h-16 min-[560px]:gap-x-3.5 min-[560px]:py-2.5", domainSelected && "bg-success/[0.07] shadow-[inset_3px_0_0_var(--success)]")}>
+                              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 min-[560px]:grid min-[560px]:gap-1.5">
                                 <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-[730] tracking-[-0.012em] text-foreground">
                                   {resultName}
                                   {resultExtension && <span className={cn(
@@ -2091,23 +2109,48 @@ export function PreviewCheckout({
                                     ["service_error", "invalid"].includes(result.status ?? "") && "text-destructive",
                                   )}>.{resultExtension}</span>}
                                 </strong>
-                                <span className={cn("flex min-h-6 w-fit items-center gap-1 rounded-full px-2 text-[0.625rem] font-bold", available && "bg-success/10 text-success", premium && "bg-warning/10 text-warning", !available && !premium && "bg-muted text-muted-foreground")}>
+                                <span
+                                  className={cn(
+                                    "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
+                                    "min-[560px]:h-6 min-[560px]:w-fit min-[560px]:justify-self-start min-[560px]:gap-1 min-[560px]:px-2 min-[560px]:text-[0.625rem] min-[560px]:font-bold",
+                                    available && "bg-success/10 text-success",
+                                    premium && "bg-warning/10 text-warning",
+                                    !available && !premium && "bg-muted text-muted-foreground",
+                                  )}
+                                  aria-label={statusLabel}
+                                >
                                   {available ? <Check className="size-[15px]" aria-hidden /> : premium ? <TriangleAlert className="size-[15px]" aria-hidden /> : result.status === "unavailable" ? <X className="size-[15px]" aria-hidden /> : <CircleAlert className="size-[15px]" aria-hidden />}
-                                  {premium ? t("checkoutExtensionPremium") : result.status === "unavailable" ? t("checkoutExtensionUnavailable") : result.status === "release_pending" ? t("checkoutDomainReleasePendingTitle") : result.status === "service_error" ? t("checkoutExtensionError") : result.status === "invalid" ? t("checkoutDomainInvalid") : t("checkoutExtensionAvailable")}
+                                  <span className="hidden min-[560px]:inline">{statusLabel}</span>
                                 </span>
                               </span>
                               <span className="grid self-center text-right">
-                                <strong className="text-[0.8125rem] font-bold tabular-nums">{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
-                                {available && result.extraFeeAmount && <span className="text-[0.625rem] text-muted-foreground">{t("checkoutPriceExVat")}</span>}
+                                <strong className="text-xs font-bold tabular-nums min-[560px]:text-[0.8125rem]">{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+                                {available && result.extraFeeAmount && <span className="text-xs text-muted-foreground min-[560px]:text-[0.625rem]">{t("checkoutPriceExVat")}</span>}
                               </span>
                               {available && (
-                                <Button type="button" size="sm" variant="ghost" disabled={domainQuotePending} className={cn("col-span-2 min-h-9 w-full shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-[11px] text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground min-[560px]:col-auto min-[560px]:w-auto", checkedDomain === result.domain && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground")} onClick={() => void selectExtensionResult(result)}>
-                                  {checkedDomain === result.domain && <Check className="size-[15px]" aria-hidden />}
-                                  {checkedDomain === result.domain ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={domainQuotePending}
+                                  aria-label={domainSelected ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+                                  className={cn(
+                                    "min-h-11 min-w-11 shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-0 text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground",
+                                    "min-[560px]:min-h-9 min-[560px]:min-w-0 min-[560px]:gap-1.5 min-[560px]:px-[11px]",
+                                    domainSelected && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground",
+                                  )}
+                                  onClick={() => void selectExtensionResult(result)}
+                                >
+                                  {domainSelected
+                                    ? <Check className="size-[15px]" aria-hidden />
+                                    : <Plus className="size-[15px] min-[560px]:hidden" aria-hidden />}
+                                  <span className="hidden min-[560px]:inline">
+                                    {domainSelected ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+                                  </span>
                                 </Button>
                               )}
                               {premium && (
-                                <Button type="button" size="sm" variant="ghost" className="col-span-2 min-h-9 w-full rounded-[9px] px-[11px] text-xs text-muted-foreground min-[560px]:col-auto min-[560px]:w-auto" onClick={() => setPremiumInfoDomain(result.domain ?? null)}>
+                                <Button type="button" size="sm" variant="ghost" className="min-h-11 shrink-0 rounded-[9px] px-2.5 text-xs text-muted-foreground min-[560px]:min-h-9 min-[560px]:px-[11px]" onClick={() => setPremiumInfoDomain(result.domain ?? null)}>
                                   {t("checkoutPremiumWhy")}
                                 </Button>
                               )}
@@ -2869,7 +2912,7 @@ export function PreviewCheckout({
               </Sheet>
             </CardContent>
           </Card>
-          {savedProfile && <section data-details-group="plan" className="border-b bg-card">
+          {savedProfile && <section data-details-group="plan" className="scroll-mt-24 border-b bg-card max-[879px]:scroll-mt-28">
             <div className="flex items-center gap-3 px-[17px] pb-0 pt-[17px] min-[560px]:px-[26px] min-[560px]:pt-[18px]">
               <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-success/10 text-success">
                 <CreditCard className="size-4" aria-hidden />
@@ -2882,7 +2925,7 @@ export function PreviewCheckout({
               </div>
             </div>
             <div className="grid min-w-0 gap-5 px-[17px] pb-[17px] pt-3 [&>*]:min-w-0 min-[560px]:px-[26px] min-[560px]:pb-[22px]">
-              <fieldset className="ml-10 grid min-w-0 gap-2">
+              <fieldset className="ml-0 grid min-w-0 gap-2 min-[560px]:ml-10">
                 <legend className="sr-only">{t("checkoutPlanLegend")}</legend>
                 <ToggleGroup
                   type="single"
@@ -2892,7 +2935,7 @@ export function PreviewCheckout({
                   }}
                   variant="outline"
                   spacing={1}
-                  className="grid w-full grid-cols-1 gap-[9px] min-[420px]:grid-cols-2"
+                  className="grid w-full grid-cols-2 gap-2"
                 >
                 {(acceptedOrderId == null ? ["monthly", "annual"] as const : [billingPeriod] as const).map((period) => {
                   const option = quotes?.[period]?.quote
@@ -2902,7 +2945,7 @@ export function PreviewCheckout({
                       value={period}
                       disabled={acceptedOrderId != null}
                       className={cn(
-                    "h-auto min-h-[5.25rem] w-full min-w-0 justify-start rounded-[13px] border bg-card p-3 text-left shadow-none",
+                    "h-auto min-h-[4.5rem] w-full min-w-0 justify-start rounded-[13px] border bg-card p-2.5 text-left shadow-none min-[560px]:min-h-[5.25rem] min-[560px]:p-3",
                         "data-[state=on]:border-foreground data-[state=on]:bg-muted/40 data-[state=on]:ring-1 data-[state=on]:ring-foreground",
                       )}
                     >
@@ -2913,13 +2956,12 @@ export function PreviewCheckout({
                             : t("checkoutPlanMonthly")}
                           {period === "annual" && <Badge className="h-[18px] rounded-full bg-success/10 px-1.5 py-0 text-[0.5625rem] font-extrabold leading-none text-success hover:bg-success/10">{t("checkoutPlanAnnualSaving")}</Badge>}
                         </span>
-                        <span className="mt-1 text-lg font-bold leading-tight tracking-tight text-foreground">
+                        <span className="mt-1 text-base font-bold leading-tight tracking-tight text-foreground min-[560px]:text-lg">
                           {money(
                             locale,
                             option?.planPriceNetMinor ?? 0,
                             option?.currency ?? catalog.currency,
                           )}
-                          <span className="ml-1 text-[0.625rem] font-medium text-muted-foreground">{period === "annual" ? t("checkoutPlanPerYear") : t("checkoutPlanPerMonth")} · {t("checkoutPriceExVat")}</span>
                         </span>
                       </span>
                     </ToggleGroupItem>
@@ -2987,7 +3029,7 @@ export function PreviewCheckout({
                 <input type="hidden" name="expectedPrivacyVersion" value={privacyVersion} />
               </form>
 
-              <div className="grid min-w-0 gap-2 border-t pt-[18px]">
+              <div className="grid min-w-0 scroll-mt-24 gap-2 border-t pt-[18px] max-[879px]:scroll-mt-28">
                 <div className="mb-1">
                   <h3 className="text-sm font-bold text-foreground">{t("checkoutDeclarationsRequiredTitle")}</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("checkoutDeclarationsIntro")}</p>

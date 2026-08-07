@@ -13,7 +13,7 @@ export function PreviewLoginShell({
   description: string
 }) {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+    <main className="flex min-h-svh flex-col items-center justify-start bg-muted px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)] md:justify-center md:p-10">
       <div className="w-full max-w-sm md:max-w-4xl">
         <AuthShell
           media={
