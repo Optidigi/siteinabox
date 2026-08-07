@@ -78,9 +78,13 @@ Email magic links also require the normal app email transport:
 
 ```bash
 CLOUDFLARE_ACCOUNT_ID=
-CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_EMAIL_API_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
 ```
+
+Use the dedicated mail-scoped `CLOUDFLARE_EMAIL_API_TOKEN`. Never reuse
+`CLOUDFLARE_API_TOKEN` (DNS/zone automation) to send mail. Optional SMTP
+fallback remains `CLOUDFLARE_EMAIL_SMTP_TOKEN`.
 
 CMS magic-link signup remains closed. A CMS login link is only sent when the
 submitted email matches exactly one existing eligible Payload `users` record.

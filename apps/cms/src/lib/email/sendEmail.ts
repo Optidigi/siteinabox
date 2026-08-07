@@ -233,7 +233,7 @@ export function createCloudflareRestProvider(config: { accountId: string; token:
         const disposition = validateCloudflareRestDisposition(input.to, body)
         return {
           provider: "cloudflare-rest",
-          providerMessageId: disposition.messageId,
+          ...(disposition.messageId ? { providerMessageId: disposition.messageId } : {}),
         }
       } finally {
         clearTimeout(timeout)
@@ -288,25 +288,27 @@ function validateCloudflareRestDisposition(
   body: CloudflareRestResponse,
 ) {
   const result = body.result
-  const messageId = result?.message_id?.trim()
+  const messageId = result?.message_id?.trim() || undefined
+  const hasDispositionArrays = Array.isArray(result?.delivered)
+    && Array.isArray(result.queued)
+    && Array.isArray(result.permanent_bounces)
   const delivered = normalizeEmailSet(result?.delivered)
   const queued = normalizeEmailSet(result?.queued)
   const permanentBounces = normalizeEmailSet(result?.permanent_bounces)
   const requested = normalizeEmailSet(Array.isArray(recipients) ? recipients : [recipients])
+  const accepted = new Set([...delivered, ...queued])
+  const bouncedRequested = [...requested].filter((recipient) => permanentBounces.has(recipient))
+  const accounted = [...requested].every(
+    (recipient) => accepted.has(recipient) || permanentBounces.has(recipient),
+  )
 
-  if (
-    !messageId ||
-    !Array.isArray(result?.delivered) ||
-    !Array.isArray(result.queued) ||
-    !Array.isArray(result.permanent_bounces) ||
-    requested.size === 0
-  ) {
+  if (requested.size === 0 || !result || (!messageId && !hasDispositionArrays)) {
     throw cloudflareDispositionError(
       "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
       "Cloudflare Email REST API returned incomplete delivery evidence",
     )
   }
-  if (permanentBounces.size > 0) {
+  if (bouncedRequested.length > 0) {
     throw cloudflareDispositionError(
       "E_CLOUDFLARE_PERMANENT_BOUNCE",
       "Cloudflare Email REST API reported a permanent recipient bounce",
@@ -314,22 +316,33 @@ function validateCloudflareRestDisposition(
       messageId,
     )
   }
-  const accepted = new Set([...delivered, ...queued])
-  if ([...requested].some((recipient) => !accepted.has(recipient))) {
-    throw cloudflareDispositionError(
-      "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
-      "Cloudflare Email REST API did not account for every requested recipient",
-      undefined,
-      messageId,
-    )
+  // Cloudflare often accepts the message asynchronously: success + message_id
+  // with empty delivered/queued/permanent_bounces. Treat message acceptance as
+  // success unless a requested recipient permanently bounced.
+  if (messageId) return { messageId }
+  if (hasDispositionArrays && accounted && accepted.size === requested.size) {
+    return { messageId: undefined }
   }
-  return { messageId }
+  throw cloudflareDispositionError(
+    "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
+    "Cloudflare Email REST API did not account for every requested recipient",
+    undefined,
+    messageId,
+  )
+}
+
+function normalizeEmailAddress(value: string) {
+  const trimmed = value.trim().toLowerCase()
+  if (!trimmed) return ""
+  const angle = trimmed.match(/<([^<>@\s]+@[^<>@\s]+)>/)
+  if (angle?.[1]) return angle[1]
+  return trimmed
 }
 
 function normalizeEmailSet(values: string[] | undefined) {
   return new Set(
     (values ?? [])
-      .map((value) => value.trim().toLowerCase())
+      .map((value) => normalizeEmailAddress(value))
       .filter(Boolean),
   )
 }

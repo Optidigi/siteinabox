@@ -304,27 +304,20 @@ describe("sendEmail", () => {
 
   it.each([
     {
-      name: "partial recipient disposition",
+      name: "missing result evidence",
+      result: undefined,
+      error: "incomplete delivery evidence",
+    },
+    {
+      name: "partial recipient disposition without message ID",
       result: {
         delivered: ["one@example.com"],
         queued: [],
         permanent_bounces: [],
-        message_id: "cf-partial-123",
       },
+      error: "did not account for every requested recipient",
     },
-    {
-      name: "missing result evidence",
-      result: undefined,
-    },
-    {
-      name: "missing message ID",
-      result: {
-        delivered: ["one@example.com", "two@example.com"],
-        queued: [],
-        permanent_bounces: [],
-      },
-    },
-  ])("fails closed for a REST $name", async ({ result }) => {
+  ])("fails closed for a REST $name", async ({ result, error }) => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
     mocks.fetch.mockResolvedValueOnce({
@@ -340,23 +333,18 @@ describe("sendEmail", () => {
       subject: "Preview",
       html: "<p>Preview</p>",
       payload,
-    })).rejects.toThrow("Cloudflare Email REST API")
+    })).rejects.toThrow(error)
     expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
       collection: "mail-logs",
       data: expect.objectContaining({
         status: "failed",
         providerErrorCode: "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
         retryState: "none",
-        ...(
-          result && "message_id" in result && typeof result.message_id === "string"
-            ? { providerMessageId: result.message_id }
-            : {}
-        ),
       }),
     }))
   })
 
-  it("raises an immediate commerce alert for an unknown REST disposition", async () => {
+  it("accepts Cloudflare async acceptance when disposition lists are empty", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
     mocks.fetch.mockResolvedValueOnce({
@@ -367,7 +355,73 @@ describe("sendEmail", () => {
           delivered: [],
           queued: [],
           permanent_bounces: [],
-          message_id: "cf-commerce-unknown",
+          message_id: "<cf-async-123@siteinabox.nl>",
+        },
+      })),
+    })
+    const payload = mockPayload()
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await expect(sendEmail({
+      intent: "preview.magic_link",
+      to: "customer@example.com",
+      subject: "Preview access",
+      html: "<p>Login</p>",
+      text: "Login",
+      payload,
+    })).resolves.toEqual({
+      provider: "cloudflare-rest",
+      providerMessageId: "<cf-async-123@siteinabox.nl>",
+    })
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "mail-logs",
+      data: expect.objectContaining({
+        status: "sent",
+        provider: "cloudflare-rest",
+        providerMessageId: "<cf-async-123@siteinabox.nl>",
+      }),
+    }))
+  })
+
+  it("accepts documented REST responses that omit message_id when every recipient is delivered", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
+    mocks.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn(async () => ({
+        success: true,
+        result: {
+          delivered: ["customer@example.com"],
+          queued: [],
+          permanent_bounces: [],
+        },
+      })),
+    })
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await expect(sendEmail({
+      intent: "preview.magic_link",
+      to: "customer@example.com",
+      subject: "Preview access",
+      html: "<p>Login</p>",
+    })).resolves.toEqual({
+      provider: "cloudflare-rest",
+      providerMessageId: undefined,
+    })
+  })
+
+  it("raises an immediate commerce alert for a REST permanent bounce", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
+    mocks.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn(async () => ({
+        success: true,
+        result: {
+          delivered: [],
+          queued: [],
+          permanent_bounces: ["customer@example.com"],
+          message_id: "cf-commerce-bounce",
         },
       })),
     })
@@ -381,7 +435,7 @@ describe("sendEmail", () => {
       subject: "Domain status",
       html: "<p>Status</p>",
       payload,
-    })).rejects.toThrow("did not account for every requested recipient")
+    })).rejects.toThrow("permanent recipient bounce")
     expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
       collection: "operational-alerts",
       data: expect.objectContaining({
@@ -393,8 +447,9 @@ describe("sendEmail", () => {
     expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
       collection: "mail-logs",
       data: expect.objectContaining({
-        providerMessageId: "cf-commerce-unknown",
-        retryState: "none",
+        providerMessageId: "cf-commerce-bounce",
+        providerErrorCode: "E_CLOUDFLARE_PERMANENT_BOUNCE",
+        retryState: "permanent",
         status: "failed",
       }),
     }))
