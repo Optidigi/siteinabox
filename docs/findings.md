@@ -22,18 +22,20 @@ SIAB-004, and SIAB-005 are tracked together in
 - **Classification:** Accepted external constraint / closed; **confidence:**
   high as of the recorded provider verification.
 - **Scope:** Analytics privacy and operations.
-- **Evidence:** PostHog MCP and API verification on 2026-07-11 found event
-  retention set to 84 months with enforcement disabled. Repository governance
-  requires 13 months. The strict privacy audit continues to report this
-  difference as a monitoring signal.
-- **Disposition:** On 2026-07-18, the owner explicitly accepted the current
-  plan-derived 84-month, unenforced provider retention as an external
-  constraint. No implementation action remains. This acceptance does not
-  represent 84 months as the repository governance target or as provider-
-  enforced deletion.
+- **Evidence:** PostHog MCP and API verification on 2026-08-07 found event
+  retention set to 12 months with enforcement disabled (previously 84 months
+  on 2026-07-11). Repository governance requires 13 months with enforcement.
+  The privacy audit logs this governance gap and fails only when provider
+  retention exceeds the accepted 84-month ceiling or mutable privacy settings
+  drift.
+- **Disposition:** On 2026-07-18, the owner explicitly accepted plan-derived,
+  unenforced provider retention as an external constraint within an 84-month
+  ceiling. No implementation action remains while retention stays at or below
+  that ceiling. This acceptance does not represent the current provider value
+  as the repository governance target or as provider-enforced deletion.
 - **Review trigger:** Reopen only if the PostHog plan/API gains a supported
   13-month enforcement control, applicable legal obligations change, or the
-  actual provider retention exceeds the accepted 84-month state.
+  actual provider retention exceeds the accepted 84-month ceiling.
 
 ## SIAB-003 — Legal-notice interaction needs production smoke
 

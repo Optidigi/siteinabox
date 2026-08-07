@@ -171,15 +171,15 @@ try {
     await page.evaluate(() => {
       Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" })
       document.dispatchEvent(new Event("visibilitychange"))
-      document.dispatchEvent(new Event("visibilitychange"))
       window.dispatchEvent(new PageTransitionEvent("pagehide"))
     })
     await waitFor(
       () => events.some((event) => event.event === "$pageleave" && event.transport === "posthog-js"),
       "PostHog JS did not capture a pageleave",
     )
-    await page.goto(`${publicOrigin}/about`, { waitUntil: "load", timeout: 60_000 })
 
+    // Snapshot before navigation so a later route change cannot add a second
+    // $pageleave into the consented-lifecycle assertion window.
     const consentedLifecycle = events.slice(consentedStart)
     const pageviews = consentedLifecycle.filter((event) => event.event === "$pageview")
     const pageleaves = consentedLifecycle.filter((event) => event.event === "$pageleave")

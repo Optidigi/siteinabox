@@ -3,6 +3,10 @@
 const DEFAULT_HOST = "https://app.posthog.com"
 const DEFAULT_WEB_VITALS = ["CLS", "FCP", "INP", "LCP"]
 const DEFAULT_EVENT_RETENTION_MONTHS = 13
+// SIAB-002: plan-derived retention remains outside the 13-month governance
+// target. Fail the audit only when provider retention exceeds this accepted
+// ceiling; otherwise log the governance gap and keep mutable settings strict.
+const ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX = 84
 
 const usage = () => {
   console.error(`usage: node scripts/sync-posthog-project-settings.mjs [--app-url <url> ...] [--dry-run | --check]
@@ -137,15 +141,35 @@ if (checkOnly) {
   const comparable = (key, value) => key === "app_urls" && Array.isArray(value)
     ? [...value].filter(Boolean).sort()
     : value
-  const expectedSettings = { ...patch, ...retentionBaseline }
-  const drift = Object.entries(expectedSettings).filter(([key, expected]) =>
+  const drifted = (expectedSettings) => Object.entries(expectedSettings).filter(([key, expected]) =>
     JSON.stringify(comparable(key, current[key])) !== JSON.stringify(comparable(key, expected)),
   )
-  if (drift.length > 0) {
-    for (const [key, expected] of drift) {
+  const mutableDrift = drifted(patch)
+  const retentionDrift = drifted(retentionBaseline)
+  if (mutableDrift.length > 0) {
+    for (const [key, expected] of mutableDrift) {
       console.error(`PostHog privacy drift: ${key} expected=${JSON.stringify(expected)} actual=${JSON.stringify(current[key])}`)
     }
     process.exit(1)
+  }
+  if (retentionDrift.length > 0) {
+    for (const [key, expected] of retentionDrift) {
+      console.error(`PostHog privacy drift: ${key} expected=${JSON.stringify(expected)} actual=${JSON.stringify(current[key])}`)
+    }
+    const actualMonths = current.event_retention_months
+    const withinAcceptedCeiling = Number.isInteger(actualMonths)
+      && actualMonths >= 1
+      && actualMonths <= ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX
+    if (!withinAcceptedCeiling) {
+      console.error(
+        `PostHog retention exceeds the SIAB-002 accepted provider ceiling of ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months.`,
+      )
+      process.exit(1)
+    }
+    console.log(
+      `PostHog retention remains outside the ${retentionMonths}-month governance target `
+      + `(SIAB-002 accepted provider constraint; ceiling ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months).`,
+    )
   }
   console.log(`PostHog privacy baseline verified for project ${projectId}`)
 } else if (dryRun) {

@@ -27,5 +27,7 @@ describe("PostHog privacy settings sync", () => {
     expect(source).toContain("process.exit(1)")
     expect(source).toContain('key === "app_urls"')
     expect(source).toContain("filter(Boolean).sort()")
+    expect(source).toContain("ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX = 84")
+    expect(source).toContain("SIAB-002 accepted provider constraint")
   })
 })

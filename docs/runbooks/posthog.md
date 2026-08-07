@@ -85,9 +85,10 @@ environment APIs expose `event_retention_months` and
 `events_retention_enforced` as plan-derived read-only values. A personal API
 key, including one with `project:write`, cannot change them. If the audit shows
 retention drift, compare it with the accepted provider constraint in SIAB-002.
-The current 84-month, unenforced value is owner-accepted; a value beyond that
-or a newly available 13-month enforcement control reopens review. Do not treat
-the 30-day session-recording retention control as event retention.
+Retention at or below the accepted 84-month ceiling with enforcement disabled
+is owner-accepted; a value beyond that or a newly available 13-month
+enforcement control reopens review. Do not treat the 30-day session-recording
+retention control as event retention.
 
 Run with `--dry-run` to inspect the PATCH payload.
 
@@ -114,10 +115,11 @@ PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
 - `heatmaps_opt_in: false`
 - `capture_console_log_opt_in: false`
 - `capture_dead_clicks: false`
-- Event retention remains provider-managed at 84 months with enforcement
-  disabled. The owner accepted this external constraint on 2026-07-18. The
-  strict audit continues to expose the difference from the 13-month governance
-  target as a monitoring signal; it is not outstanding implementation work.
+- Event retention remains provider-managed at 12 months with enforcement
+  disabled as of 2026-08-07 (previously 84 months). The owner accepted this
+  class of external constraint on 2026-07-18 within an 84-month ceiling. The
+  privacy audit logs the difference from the 13-month governance target and
+  fails only when retention exceeds that ceiling or mutable settings drift.
 
 PostHog SDK health reported healthy with no outdated SDKs. Fresh `$pageview`
 events were present for `ami-care.nl`. CMS semantic events use

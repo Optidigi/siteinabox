@@ -180,10 +180,11 @@ The sync enforces IP anonymization, disables project-level browser autocapture,
 console capture, session recording, heatmaps and dead-click capture, and audits
 the 13-month event-retention target. PostHog exposes retention as a plan-managed
 read-only setting, so the command cannot enforce it. The daily
-`.github/workflows/posthog-privacy-audit.yml` check continues to expose the
-difference from the governed target. The current 84-month, unenforced provider
-value is an accepted external constraint rather than outstanding implementation
-work; see SIAB-002.
+`.github/workflows/posthog-privacy-audit.yml` check fails on mutable privacy
+drift or retention above the SIAB-002 accepted 84-month ceiling, and otherwise
+logs the governance gap when retention is still short of 13 months with
+enforcement. The current 12-month, unenforced provider value is an accepted
+external constraint rather than outstanding implementation work; see SIAB-002.
 
 Keep Payload job autorun enabled in the long-lived CMS process. Setting
 `PAYLOAD_DISABLE_JOBS_AUTORUN=1` disables legal re-acceptance email delivery as

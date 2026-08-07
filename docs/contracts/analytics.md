@@ -157,8 +157,9 @@ Privacy rules:
 - Server capture passes properties through the allowlist in `redaction.ts`.
 
 The governance policy requires no direct identifiers and defines a 13-month
-retention target. The provider-managed 84-month, unenforced value is an accepted
-external constraint; see SIAB-002.
+retention target. Provider-managed retention at or below the accepted 84-month
+unenforced ceiling is an external constraint; see SIAB-002. As of 2026-08-07 the
+live project reports 12 months with enforcement disabled.
 
 ## Public runtime behavior
 
