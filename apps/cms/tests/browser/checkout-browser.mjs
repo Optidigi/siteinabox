@@ -168,7 +168,7 @@ try {
   await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
   await page.setViewportSize({ width: 320, height: 568 })
-  await page.getByText("Live results", { exact: true }).evaluate((node) => {
+  await page.locator('[data-domain-results="recommended"]').evaluate((node) => {
     node.scrollIntoView({ block: "start" })
     window.scrollBy(0, -64)
   })
@@ -857,7 +857,7 @@ try {
       )
       await driveReviewScenario(visualPage, visualCase.scenario)
       if (visualCase.scenario === "domain-results") {
-        await visualPage.getByText("Live results", { exact: true }).evaluate((node) => {
+        await visualPage.locator('[data-domain-results="recommended"]').evaluate((node) => {
           node.scrollIntoView({ block: "start" })
           window.scrollBy(0, -64)
         })

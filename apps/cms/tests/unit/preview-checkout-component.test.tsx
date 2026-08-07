@@ -231,9 +231,53 @@ describe("PreviewCheckout Phase 3 flow", () => {
     const unavailableExtension = container.querySelector(
       '[data-domain-status="unavailable"] strong span',
     )
-    expect(unavailableExtension?.className).toContain("text-warning")
+    expect(unavailableExtension?.className).toContain("text-muted-foreground")
+    expect(unavailableExtension?.className).not.toContain("text-warning")
     expect(unavailableExtension?.className).not.toContain("text-brand")
     expect(screen.getByRole("button", { name: "checkoutShowMoreExtensions" })).toBeTruthy()
+  })
+
+  it("groups the searched domain and .nl into a recommended results card", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      ok: true,
+      hasMore: false,
+      results: [
+        {
+          domain: "testsite.me", availability: "available", purchasable: true,
+          included: false, extraFee: { amount: "12.00", currency: "EUR" }, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+        {
+          domain: "testsite.nl", availability: "available", purchasable: true,
+          included: true, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+        {
+          domain: "testsite.com", availability: "unavailable", purchasable: false,
+          included: false, extraFee: null, checkedAt: "2026-08-03T10:00:00.000Z",
+        },
+      ],
+    })))
+    const { container } = render(<PreviewCheckout
+      {...baseCheckoutProps()}
+      domainSearchHref="/ami-care/checkout/domain-search"
+    />)
+
+    fireEvent.change(screen.getByLabelText(/checkout(?:Existing)?DomainLabel/), {
+      target: { value: "testsite.me" },
+    })
+    fireEvent.submit(container.querySelector<HTMLFormElement>("#checkout-domain-form")!)
+    await waitFor(() => expect(container.querySelector('[data-domain-results="recommended"]')).toBeTruthy())
+
+    const recommended = container.querySelector('[data-domain-results="recommended"]')!
+    expect(recommended.textContent).toContain("checkoutDomainRecommended")
+    expect(Array.from(recommended.querySelectorAll("[data-domain-status]")).map(
+      (row) => row.querySelector("strong")?.textContent,
+    )).toEqual(["testsite.me", "testsite.nl"])
+
+    const other = container.querySelector('[data-domain-results="other"]')!
+    expect(other.textContent).toContain("checkoutDomainOtherExtensions")
+    expect(Array.from(other.querySelectorAll("[data-domain-status]")).map(
+      (row) => row.querySelector("strong")?.textContent,
+    )).toEqual(["testsite.com"])
   })
 
   it("directly revalidates exact saved domain without discovery requests", async () => {

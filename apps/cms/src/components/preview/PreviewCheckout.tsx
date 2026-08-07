@@ -22,11 +22,9 @@ import {
   Pencil,
   Search,
   ShieldCheck,
-  Sparkles,
   ReceiptText,
   RefreshCw,
   Server,
-  TriangleAlert,
   UserRound,
   X,
 } from "lucide-react"
@@ -296,6 +294,115 @@ const money = (locale: string, minor: number, currency: string): string =>
 const decimalMoney = (locale: string, amount: string, currency: string): string =>
   new Intl.NumberFormat(locale, { style: "currency", currency }).format(Number(amount))
 
+function DomainExtensionResultRow({
+  result,
+  checkedDomain,
+  domainQuotePending,
+  locale,
+  onSelect,
+}: {
+  result: PreviewCheckoutActionState
+  checkedDomain: string | null
+  domainQuotePending: boolean
+  locale: string
+  onSelect: (result: PreviewCheckoutActionState) => void
+}) {
+  const t = useTranslations("preview")
+  const available = Boolean(result.ok && result.domain)
+  const resultExtension = result.domain?.split(".").at(-1) ?? ""
+  const resultName = resultExtension
+    ? result.domain?.slice(0, -(resultExtension.length + 1))
+    : result.domain
+  const statusLabel = available
+    ? t("checkoutExtensionAvailable")
+    : result.status === "release_pending"
+      ? t("checkoutDomainReleasePendingTitle")
+      : result.status === "service_error"
+        ? t("checkoutExtensionError")
+        : result.status === "invalid"
+          ? t("checkoutDomainInvalid")
+          : t("checkoutExtensionUnavailable")
+  const domainSelected = checkedDomain === result.domain
+  const mutedUnavailable = !available && result.status !== "release_pending" &&
+    result.status !== "service_error" && result.status !== "invalid"
+  return (
+    <div
+      data-domain-status={result.status}
+      data-domain-selected={domainSelected || undefined}
+      className={cn(
+        "grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 border-b px-3 py-2 text-sm last:border-b-0 min-[560px]:min-h-16 min-[560px]:gap-x-3.5 min-[560px]:py-2.5",
+        domainSelected && "bg-success/[0.07] shadow-[inset_3px_0_0_var(--success)]",
+      )}
+    >
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 min-[560px]:grid min-[560px]:gap-1.5">
+        <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-[730] tracking-[-0.012em] text-foreground">
+          {resultName}
+          {resultExtension && <span className={cn(
+            available && "text-success",
+            result.status === "release_pending" && "text-warning",
+            ["service_error", "invalid"].includes(result.status ?? "") && "text-destructive",
+            mutedUnavailable && "text-muted-foreground",
+          )}>.{resultExtension}</span>}
+        </strong>
+        <span
+          className={cn(
+            "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
+            "min-[560px]:h-6 min-[560px]:w-fit min-[560px]:justify-self-start min-[560px]:gap-1 min-[560px]:px-2 min-[560px]:text-[0.625rem] min-[560px]:font-bold",
+            available && "bg-success/10 text-success",
+            result.status === "release_pending" && "bg-warning/10 text-warning",
+            ["service_error", "invalid"].includes(result.status ?? "") && "bg-destructive/10 text-destructive",
+            mutedUnavailable && "bg-muted text-muted-foreground",
+          )}
+          aria-label={statusLabel}
+        >
+          {available
+            ? <Check className="size-[15px]" aria-hidden />
+            : mutedUnavailable || result.status === "unavailable" || result.status === "premium"
+              ? <X className="size-[15px]" aria-hidden />
+              : <CircleAlert className="size-[15px]" aria-hidden />}
+          <span className="hidden min-[560px]:inline">{statusLabel}</span>
+        </span>
+      </span>
+      <span className="grid self-center text-right">
+        <strong className="text-xs font-bold tabular-nums min-[560px]:text-[0.8125rem]">{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+        {available && result.extraFeeAmount && <span className="text-xs text-muted-foreground min-[560px]:text-[0.625rem]">{t("checkoutPriceExVat")}</span>}
+      </span>
+      {available && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={domainQuotePending}
+          aria-label={domainSelected ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+          className={cn(
+            "min-h-11 min-w-11 shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-0 text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground",
+            "min-[560px]:min-h-9 min-[560px]:min-w-0 min-[560px]:gap-1.5 min-[560px]:px-[11px]",
+            domainSelected && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground",
+          )}
+          onClick={() => onSelect(result)}
+        >
+          {domainSelected
+            ? <Check className="size-[15px]" aria-hidden />
+            : <Plus className="size-[15px] min-[560px]:hidden" aria-hidden />}
+          <span className="hidden min-[560px]:inline">
+            {domainSelected ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
+          </span>
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function DomainExtensionLoadingRow({ domain }: { domain: string }) {
+  return (
+    <div data-domain-status="loading" data-domain-loading={domain} className="grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0 min-[560px]:min-h-16 min-[560px]:gap-3.5 min-[560px]:py-2.5">
+      <span className="flex min-w-0 items-center gap-2"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-16 animate-pulse rounded-full bg-muted" /></span>
+      <span className="h-4 w-14 animate-pulse rounded bg-muted" />
+      <span className="h-11 w-11 animate-pulse rounded-[9px] bg-muted min-[560px]:h-9 min-[560px]:w-9" />
+    </div>
+  )
+}
+
 const nextRequestToken = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
@@ -475,7 +582,6 @@ export function PreviewCheckout({
   const [extensionSearchDomains, setExtensionSearchDomains] = React.useState<
     string[] | null
   >(null)
-  const [premiumInfoDomain, setPremiumInfoDomain] = React.useState<string | null>(null)
   const extensionRequestRef = React.useRef<string | null>(null)
   const extensionAbortRef = React.useRef<AbortController | null>(null)
   const lastDomainSearchKeyRef = React.useRef<string | null>(null)
@@ -680,6 +786,52 @@ export function PreviewCheckout({
     domainSearchInput,
     newDomainSearchPrimaryDomain,
   ])
+  const recommendedDomainNames = React.useMemo(() => {
+    const recommended: string[] = []
+    if (newDomainSearchPrimaryDomain) recommended.push(newDomainSearchPrimaryDomain)
+    if (domainSearchName) {
+      const nlDomain = `${domainSearchName}.nl`
+      if (!recommended.includes(nlDomain)) recommended.push(nlDomain)
+    }
+    return recommended
+  }, [domainSearchName, newDomainSearchPrimaryDomain])
+  const orderedVisibleExtensionResults = React.useMemo(
+    () => [...extensionResults]
+      .filter((result) => result.domain && visibleDomainSearchDomains.includes(result.domain))
+      .sort((left, right) =>
+        visibleDomainSearchDomains.indexOf(left.domain ?? "") -
+        visibleDomainSearchDomains.indexOf(right.domain ?? "")),
+    [extensionResults, visibleDomainSearchDomains],
+  )
+  const recommendedExtensionResults = React.useMemo(
+    () => recommendedDomainNames
+      .map((domain) => orderedVisibleExtensionResults.find((result) => result.domain === domain))
+      .filter((result): result is PreviewCheckoutActionState => Boolean(result)),
+    [orderedVisibleExtensionResults, recommendedDomainNames],
+  )
+  const otherExtensionResults = React.useMemo(() => {
+    const recommended = new Set(recommendedDomainNames)
+    return orderedVisibleExtensionResults.filter(
+      (result) => result.domain && !recommended.has(result.domain),
+    )
+  }, [orderedVisibleExtensionResults, recommendedDomainNames])
+  const pendingDomainNames = React.useMemo(() => {
+    if (!extensionCheckPending) return [] as string[]
+    return uniqueDomains([
+      ...recommendedDomainNames,
+      ...visibleDomainSearchDomains,
+    ]).filter((domain) => !extensionResults.some((result) => result.domain === domain))
+  }, [
+    extensionCheckPending,
+    extensionResults,
+    recommendedDomainNames,
+    visibleDomainSearchDomains,
+  ])
+  const pendingRecommendedDomains = recommendedDomainNames.filter((domain) =>
+    pendingDomainNames.includes(domain))
+  const pendingOtherDomains = pendingDomainNames.filter(
+    (domain) => !recommendedDomainNames.includes(domain),
+  )
   React.useEffect(() => {
     if (cancellationState.agreement) {
       setBillingAgreement(cancellationState.agreement)
@@ -959,7 +1111,6 @@ export function PreviewCheckout({
     setExtensionSearchAnchor(null)
     setExtensionSearchDomains(null)
     setCheckedDomain(null)
-    setPremiumInfoDomain(null)
     extensionRequestRef.current = null
     extensionAbortRef.current?.abort()
     extensionAbortRef.current = null
@@ -1021,7 +1172,6 @@ export function PreviewCheckout({
     setCheckedDomain(null)
     setQuotes(null)
     setExtensionResults([])
-    setPremiumInfoDomain(null)
     extensionAbortRef.current?.abort()
     const controller = new AbortController()
     extensionAbortRef.current = controller
@@ -2031,13 +2181,6 @@ export function PreviewCheckout({
                   <div className="grid gap-3 pt-3">
                     {(extensionCheckPending || extensionResults.length > 0) && (
                       <div className="grid gap-2" aria-live="polite" aria-busy={extensionCheckPending}>
-                        {premiumInfoDomain && (
-                          <Alert className="mb-1 border-warning/30 bg-warning/10 text-warning" role="status">
-                            <CircleAlert className="size-4" aria-hidden />
-                            <AlertTitle>{t("checkoutExtensionPremium")}</AlertTitle>
-                            <AlertDescription>{t("checkoutDomainPremium", { domain: premiumInfoDomain })}</AlertDescription>
-                          </Alert>
-                        )}
                         {extensionResults.some((result) => result.status === "release_pending") && (
                           <Alert className="mb-1 border-warning/30 bg-warning/10 text-warning" role="status">
                             <CircleAlert className="size-4" aria-hidden />
@@ -2057,107 +2200,46 @@ export function PreviewCheckout({
                             </AlertDescription>
                           </Alert>
                         )}
-                        <div className="flex items-center justify-between gap-3 text-xs">
-                          <strong className="flex items-center gap-1.5 font-semibold">
-                            {extensionCheckPending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
-                            {extensionCheckPending ? t("checkoutDomainCheckingShort") : t("checkoutDomainLiveResults")}
-                          </strong>
-                          <span className="text-muted-foreground">{extensionCheckPending ? domainSearchName : t("checkoutDomainCheckedNow")}</span>
-                        </div>
-                        <div className="overflow-hidden rounded-[14px] border bg-card">
-                        {extensionCheckPending && visibleDomainSearchDomains
-                          .filter((domain) => !extensionResults.some((result) => result.domain === domain))
-                          .map((domain) => (
-                          <div key={domain} data-domain-status="loading" className="grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0 min-[560px]:min-h-16 min-[560px]:gap-3.5 min-[560px]:py-2.5">
-                            <span className="flex min-w-0 items-center gap-2"><span className="h-3.5 w-2/3 animate-pulse rounded bg-muted" /><span className="h-5 w-16 animate-pulse rounded-full bg-muted" /></span>
-                            <span className="h-4 w-14 animate-pulse rounded bg-muted" />
-                            <span className="h-11 w-11 animate-pulse rounded-[9px] bg-muted min-[560px]:h-9 min-[560px]:w-9" />
-                          </div>
-                        ))}
-                        {[...extensionResults]
-                          .filter((result) => result.domain && visibleDomainSearchDomains.includes(result.domain))
-                          .sort((left, right) =>
-                            visibleDomainSearchDomains.indexOf(left.domain ?? "") -
-                            visibleDomainSearchDomains.indexOf(right.domain ?? ""))
-                          .map((result) => {
-                          const available = Boolean(result.ok && result.domain)
-                          const premium = result.status === "premium"
-                          const resultExtension = result.domain?.split(".").at(-1) ?? ""
-                          const resultName = resultExtension
-                            ? result.domain?.slice(0, -(resultExtension.length + 1))
-                            : result.domain
-                          const statusLabel = premium
-                            ? t("checkoutExtensionPremium")
-                            : result.status === "unavailable"
-                              ? t("checkoutExtensionUnavailable")
-                              : result.status === "release_pending"
-                                ? t("checkoutDomainReleasePendingTitle")
-                                : result.status === "service_error"
-                                  ? t("checkoutExtensionError")
-                                  : result.status === "invalid"
-                                    ? t("checkoutDomainInvalid")
-                                    : t("checkoutExtensionAvailable")
-                          const domainSelected = checkedDomain === result.domain
-                          return (
-                            <div key={result.domain ?? result.message} data-domain-status={result.status} data-domain-selected={domainSelected || undefined} className={cn("grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 border-b px-3 py-2 text-sm last:border-b-0 min-[560px]:min-h-16 min-[560px]:gap-x-3.5 min-[560px]:py-2.5", domainSelected && "bg-success/[0.07] shadow-[inset_3px_0_0_var(--success)]")}>
-                              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 min-[560px]:grid min-[560px]:gap-1.5">
-                                <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-[730] tracking-[-0.012em] text-foreground">
-                                  {resultName}
-                                  {resultExtension && <span className={cn(
-                                    available && "text-success",
-                                    ["unavailable", "premium", "release_pending"].includes(result.status ?? "") && "text-warning",
-                                    ["service_error", "invalid"].includes(result.status ?? "") && "text-destructive",
-                                  )}>.{resultExtension}</span>}
-                                </strong>
-                                <span
-                                  className={cn(
-                                    "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
-                                    "min-[560px]:h-6 min-[560px]:w-fit min-[560px]:justify-self-start min-[560px]:gap-1 min-[560px]:px-2 min-[560px]:text-[0.625rem] min-[560px]:font-bold",
-                                    available && "bg-success/10 text-success",
-                                    premium && "bg-warning/10 text-warning",
-                                    !available && !premium && "bg-muted text-muted-foreground",
-                                  )}
-                                  aria-label={statusLabel}
-                                >
-                                  {available ? <Check className="size-[15px]" aria-hidden /> : premium ? <TriangleAlert className="size-[15px]" aria-hidden /> : result.status === "unavailable" ? <X className="size-[15px]" aria-hidden /> : <CircleAlert className="size-[15px]" aria-hidden />}
-                                  <span className="hidden min-[560px]:inline">{statusLabel}</span>
-                                </span>
-                              </span>
-                              <span className="grid self-center text-right">
-                                <strong className="text-xs font-bold tabular-nums min-[560px]:text-[0.8125rem]">{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
-                                {available && result.extraFeeAmount && <span className="text-xs text-muted-foreground min-[560px]:text-[0.625rem]">{t("checkoutPriceExVat")}</span>}
-                              </span>
-                              {available && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={domainQuotePending}
-                                  aria-label={domainSelected ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
-                                  className={cn(
-                                    "min-h-11 min-w-11 shrink-0 rounded-[9px] border border-foreground/20 bg-muted/20 px-0 text-xs text-foreground opacity-100 shadow-xs [&&:hover]:bg-muted/70 [&&:hover]:text-foreground",
-                                    "min-[560px]:min-h-9 min-[560px]:min-w-0 min-[560px]:gap-1.5 min-[560px]:px-[11px]",
-                                    domainSelected && "border-success bg-success text-success-foreground [&&:hover]:bg-success/85 [&&:hover]:text-success-foreground",
-                                  )}
-                                  onClick={() => void selectExtensionResult(result)}
-                                >
-                                  {domainSelected
-                                    ? <Check className="size-[15px]" aria-hidden />
-                                    : <Plus className="size-[15px] min-[560px]:hidden" aria-hidden />}
-                                  <span className="hidden min-[560px]:inline">
-                                    {domainSelected ? t("checkoutDomainSelected") : t("checkoutSelectDomain")}
-                                  </span>
-                                </Button>
-                              )}
-                              {premium && (
-                                <Button type="button" size="sm" variant="ghost" className="min-h-11 shrink-0 rounded-[9px] px-2.5 text-xs text-muted-foreground min-[560px]:min-h-9 min-[560px]:px-[11px]" onClick={() => setPremiumInfoDomain(result.domain ?? null)}>
-                                  {t("checkoutPremiumWhy")}
-                                </Button>
-                              )}
+                        {(pendingRecommendedDomains.length > 0 || recommendedExtensionResults.length > 0) && (
+                          <section data-domain-results="recommended" className="grid gap-2">
+                            <p className="px-0.5 text-xs font-semibold text-muted-foreground">{t("checkoutDomainRecommended")}</p>
+                            <div className="overflow-hidden rounded-[14px] border bg-card">
+                              {pendingRecommendedDomains.map((domain) => (
+                                <DomainExtensionLoadingRow key={`loading-${domain}`} domain={domain} />
+                              ))}
+                              {recommendedExtensionResults.map((result) => (
+                                <DomainExtensionResultRow
+                                  key={result.domain ?? result.message}
+                                  result={result}
+                                  checkedDomain={checkedDomain}
+                                  domainQuotePending={domainQuotePending}
+                                  locale={locale}
+                                  onSelect={(entry) => void selectExtensionResult(entry)}
+                                />
+                              ))}
                             </div>
-                          )
-                        })}
-                        </div>
+                          </section>
+                        )}
+                        {(pendingOtherDomains.length > 0 || otherExtensionResults.length > 0) && (
+                          <section data-domain-results="other" className="grid gap-2">
+                            <p className="px-0.5 text-xs font-semibold text-muted-foreground">{t("checkoutDomainOtherExtensions")}</p>
+                            <div className="overflow-hidden rounded-[14px] border bg-card">
+                              {pendingOtherDomains.map((domain) => (
+                                <DomainExtensionLoadingRow key={`loading-${domain}`} domain={domain} />
+                              ))}
+                              {otherExtensionResults.map((result) => (
+                                <DomainExtensionResultRow
+                                  key={result.domain ?? result.message}
+                                  result={result}
+                                  checkedDomain={checkedDomain}
+                                  domainQuotePending={domainQuotePending}
+                                  locale={locale}
+                                  onSelect={(entry) => void selectExtensionResult(entry)}
+                                />
+                              ))}
+                            </div>
+                          </section>
+                        )}
                         {hasMoreExtensions && !extensionCheckPending && (
                           <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => void showMoreExtensions()}>
                             {t("checkoutShowMoreExtensions")}
