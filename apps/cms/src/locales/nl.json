@@ -1160,6 +1160,8 @@
     "checkoutShowMoreExtensions": "Meer extensies tonen",
     "checkoutDomainCheckingShort": "Controleren",
     "checkoutDomainLiveResults": "Live resultaten",
+    "checkoutDomainRecommended": "Aanbevolen",
+    "checkoutDomainOtherExtensions": "Andere extensies",
     "checkoutDomainCheckedNow": "Zojuist gecontroleerd",
     "checkoutPriceExVat": "excl. BTW",
     "checkoutAutomaticExtensionHint": "We controleren {extensions} tegelijk. Beschikbaarheid en prijs worden vóór betaling opnieuw bevestigd.",

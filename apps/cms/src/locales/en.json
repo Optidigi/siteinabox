@@ -1160,6 +1160,8 @@
     "checkoutShowMoreExtensions": "Show more extensions",
     "checkoutDomainCheckingShort": "Checking",
     "checkoutDomainLiveResults": "Live results",
+    "checkoutDomainRecommended": "Recommended",
+    "checkoutDomainOtherExtensions": "Other extensions",
     "checkoutDomainCheckedNow": "Checked just now",
     "checkoutPriceExVat": "ex VAT",
     "checkoutAutomaticExtensionHint": "We check {extensions} together. Availability and price are confirmed again before payment.",
