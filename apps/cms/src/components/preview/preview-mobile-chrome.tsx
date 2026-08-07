@@ -6,6 +6,7 @@ import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
 import { PreviewMobileThemeBar } from "@/components/preview/preview-mobile-theme-bar"
 import {
   PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
+  PREVIEW_MOBILE_CHROME_STACK_OFFSET,
   previewMobileChromeWrapperClass,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -33,7 +34,8 @@ function PreviewMobileNavPills({
   return (
     <>
       <MobileFloatingPill
-        position="top-left"
+        position="bottom-right"
+        verticalOffset={PREVIEW_MOBILE_CHROME_STACK_OFFSET}
         surface="theme"
         sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
         icon={<SquarePen className="h-5 w-5" aria-hidden />}
@@ -47,7 +49,7 @@ function PreviewMobileNavPills({
 
       {canCompleteOrder ? (
         <MobileFloatingPill
-          position="top-right"
+          position="bottom-right"
           surface="theme"
           sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
           icon={<Rocket className="h-5 w-5" aria-hidden />}
@@ -60,7 +62,7 @@ function PreviewMobileNavPills({
         />
       ) : paymentSatisfied ? (
         <MobileFloatingPill
-          position="top-right"
+          position="bottom-right"
           surface="theme"
           sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
           icon={<CheckCircle2 className="h-5 w-5" aria-hidden />}

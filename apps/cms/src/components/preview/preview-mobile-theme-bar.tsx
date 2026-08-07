@@ -91,11 +91,11 @@ export function PreviewMobileThemeBar({
         <div
           role="group"
           aria-label={previewT("themeControls")}
-          className="pointer-events-auto relative flex items-center justify-center gap-3"
+          className="pointer-events-auto relative flex items-center justify-start gap-3"
         >
           <PopoverAnchor asChild>
             <div
-              className="pointer-events-none absolute top-0 left-1/2 h-px w-px -translate-x-1/2"
+              className="pointer-events-none absolute top-0 left-0 h-px w-px"
               aria-hidden
             />
           </PopoverAnchor>
@@ -119,7 +119,7 @@ export function PreviewMobileThemeBar({
         </div>
         <PopoverContent
           side="top"
-          align="center"
+          align="start"
           sideOffset={12}
           className={cn(
             previewMobileChromeToneClass(theme, systemPrefersDark),

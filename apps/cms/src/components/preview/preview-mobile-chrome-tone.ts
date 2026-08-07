@@ -33,3 +33,7 @@ export const PREVIEW_MOBILE_CHROME_INSET = "px-[max(env(safe-area-inset-left),0.
 
 /** Shared tap target for preview chrome pills and popover option circles (52px). */
 export const PREVIEW_MOBILE_CHROME_CONTROL_SIZE = "size-[3.25rem]"
+
+/** Vertical gap from a bottom-corner chrome pill to the one stacked above it
+ *  (control size 3.25rem + 0.75rem gap). */
+export const PREVIEW_MOBILE_CHROME_STACK_OFFSET = "4rem"

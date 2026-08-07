@@ -26,6 +26,9 @@ export interface MobileFloatingPillProps {
   /** Extra inset (CSS length) along the pill's horizontal edge — lets a
    *  second pill sit beside another that shares the same corner. */
   offset?: string
+  /** Extra inset (CSS length) along the pill's vertical edge — lets a
+   *  second pill sit above/below another that shares the same corner. */
+  verticalOffset?: string
   /** Stable test/data attrs (`data-mobile-*`). */
   dataAttrs?: Record<string, string | undefined>
   /** `theme` follows token background/foreground (for preview chrome wrappers). */
@@ -56,6 +59,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   disabled,
   visible = true,
   offset,
+  verticalOffset,
   dataAttrs,
   surface = "inverted",
   sizeClassName = "size-12",
@@ -72,10 +76,12 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
     "bottom-right": "bottom-3 right-3",
   }[position]
   const safeOffset = formatRuntimeCssValue(offset)
+  const safeVerticalOffset = formatRuntimeCssValue(verticalOffset)
   const horizontalOffset = safeOffset ? ` + ${safeOffset}` : ""
+  const edgeVerticalOffset = safeVerticalOffset ? ` + ${safeVerticalOffset}` : ""
   const positionRule = [
-    position.startsWith("top") ? "top:calc(env(safe-area-inset-top) + 0.75rem);" : "",
-    position.startsWith("bottom") ? "bottom:calc(env(safe-area-inset-bottom) + 0.75rem);" : "",
+    position.startsWith("top") ? `top:calc(env(safe-area-inset-top) + 0.75rem${edgeVerticalOffset});` : "",
+    position.startsWith("bottom") ? `bottom:calc(env(safe-area-inset-bottom) + 0.75rem${edgeVerticalOffset});` : "",
     position.endsWith("left") ? `left:calc(env(safe-area-inset-left) + 0.75rem${horizontalOffset});` : "",
     position.endsWith("right") ? `right:calc(env(safe-area-inset-right) + 0.75rem${horizontalOffset});` : "",
   ].join("")
