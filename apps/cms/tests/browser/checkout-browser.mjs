@@ -13,6 +13,7 @@ import {
 } from "./checkout-visual-regression.mjs"
 
 const browserRoot = path.dirname(fileURLToPath(import.meta.url))
+const paymentActionPattern = /Approve & pay|Pay |Goedkeuren|Betalen /
 const cmsRoot = path.resolve(browserRoot, "../..")
 const screenshotRoot = process.env.CHECKOUT_SCREENSHOT_DIR
 if (screenshotRoot) await fs.mkdir(screenshotRoot, { recursive: true })
@@ -104,8 +105,16 @@ try {
   })
   await page.goto(origin, { waitUntil: "networkidle" })
 
-  await page.getByRole("heading", { name: "Put your website online" }).waitFor()
-  assert.equal(await page.getByText("Only check what is still needed. Your details and design are saved.").isVisible(), true)
+  await page.getByRole("heading", { name: "Choose your domain", exact: true }).waitFor()
+  assert.equal(
+    await page.getByRole("heading", { name: "Put your website online" }).isVisible(),
+    false,
+    "Phone checkout hides the duplicated page hero when the in-card stepper is shown.",
+  )
+  assert.equal(
+    await page.getByText("Only check what is still needed. Your details and design are saved.").isVisible(),
+    false,
+  )
   assert.equal(await page.locator("[aria-live]").count() > 0, true)
   const phoneProgress = await page.locator("[data-checkout-mobile-progress]").evaluate((node) => {
     const box = node.getBoundingClientRect()
@@ -165,9 +174,9 @@ try {
   })
   await capture(page, "phone-light-domain-results-320x568")
   await page.setViewportSize({ width: 390, height: 844 })
-  assert.equal(await page.getByText("Unavailable", { exact: true }).count(), 1)
-  assert.equal(await page.getByText("Premium", { exact: true }).count(), 1)
-  assert.equal(await page.getByText("Available", { exact: true }).first().isVisible(), true)
+  assert.equal(await page.locator('[data-domain-status="unavailable"]').count(), 1)
+  assert.equal(await page.locator('[data-domain-status="premium"]').count(), 1)
+  assert.equal(await page.locator('[data-domain-status="available"]').first().isVisible(), true)
   const domainOrderBeforeSelection = await page.locator("[data-domain-status]").evaluateAll((rows) =>
     rows.map((row) => row.querySelector("strong")?.textContent?.trim()))
   await page.locator('[data-domain-status="available"]', { hasText: "analytical-engines.nl" })
@@ -270,7 +279,7 @@ try {
     2,
     "Terms/privacy and website approval must be the two required checkout confirmations.",
   )
-  const payButton = page.getByRole("button", { name: /Approve & pay/ })
+  const payButton = page.locator("[data-checkout-action-bar]").getByRole("button", { name: paymentActionPattern })
   assert.equal(await payButton.isDisabled(), true, "Payment stays unavailable until every required confirmation is accepted.")
   await page.locator("#checkout-terms").check()
   assert.equal(await payButton.isDisabled(), true)
@@ -314,7 +323,7 @@ try {
     true,
     `Checkout overflows a 320px viewport: ${JSON.stringify(mobileOverflow)}`,
   )
-  assert.equal(await pendingPage.getByRole("button", { name: /Approve & pay/ }).count(), 0)
+  assert.equal(await pendingPage.locator("[data-checkout-action-bar]").getByRole("button", { name: paymentActionPattern }).count(), 0)
   assert.equal(await pendingPage.locator("[data-checkout-action-bar]").count(), 0)
   assert.equal(await pendingPage.locator("[data-checkout-mobile-progress]").isVisible(), true)
   assert.equal(await pendingPage.getByRole("progressbar", { name: "Review & pay" }).getAttribute("aria-valuenow"), "2")
@@ -339,7 +348,7 @@ try {
     }
   })
   assert.equal(domainControlGeometry.inputHeight, 48, "The prototype domain input is 48px high.")
-  assert.equal(domainControlGeometry.submitHeight, 44, "The prototype domain check action is 44px high.")
+  assert.equal(domainControlGeometry.submitHeight, 48, "The prototype domain check action matches the 48px input on mobile.")
   assert.equal(
     await compactPage.locator("[data-checkout-action-bar]").count(),
     0,
@@ -598,7 +607,7 @@ try {
   const existingReadyPage = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   existingReadyPage.setDefaultTimeout(5_000)
   await existingReadyPage.goto(`${origin}?scenario=existing-ready&existing=cloudflare-ready`, { waitUntil: "networkidle" })
-  await existingReadyPage.getByText("Use an existing domain", { exact: true }).click()
+  await existingReadyPage.getByText(/Existing domain|Bestaand domein/i, { exact: true }).click()
   await existingReadyPage.locator("#checkout-domain").fill("existing-example.nl")
   await existingReadyPage.getByRole("button", { name: "Check connection" }).click()
   await existingReadyPage.getByRole("status").getByText("We found a low-risk path", { exact: false }).waitFor()
@@ -643,7 +652,7 @@ try {
   await unsupportedPage.goto(`${origin}?existing=unsupported`, {
     waitUntil: "networkidle",
   })
-  await unsupportedPage.getByText("Use an existing domain", { exact: true }).click()
+  await unsupportedPage.getByText(/Existing domain|Bestaand domein/i, { exact: true }).click()
   await unsupportedPage.locator("#checkout-domain").fill("existing-example.nl")
   await unsupportedPage.getByRole("button", { name: "Check connection" }).click()
   await unsupportedPage.getByRole("alert").filter({
@@ -669,7 +678,7 @@ try {
   })
   axfrPage.setDefaultTimeout(5_000)
   await axfrPage.goto(`${origin}?existing=axfr`, { waitUntil: "networkidle" })
-  await axfrPage.getByText("Use an existing domain", { exact: true }).click()
+  await axfrPage.getByText(/Existing domain|Bestaand domein/i, { exact: true }).click()
   await axfrPage.locator("#checkout-domain").fill("existing-example.nl")
   await axfrPage.getByRole("button", { name: "Check connection" }).click()
   await axfrPage.getByRole("radio", {
@@ -765,7 +774,7 @@ try {
         await scenarioPage.locator('[data-domain-selected="true"]').waitFor()
       }
       if (scenarioId === "domain-premium") {
-        await scenarioPage.getByText("Premium", { exact: true }).waitFor()
+        await scenarioPage.locator('[data-domain-status="premium"]').first().waitFor()
       }
       return
     }
@@ -776,7 +785,7 @@ try {
       return
     }
     if (["existing-ready", "existing-blocked"].includes(scenarioId)) {
-      await scenarioPage.getByText(/Use an existing domain|Gebruik een bestaand domein/i, { exact: true }).click()
+      await scenarioPage.getByText(/Existing domain|Bestaand domein/i, { exact: true }).click()
       await scenarioPage.getByLabel(/Business or domain name|Domain name|Domain you already own|Domeinnaam|Domein dat je al bezit/i).fill("existing-example.nl")
       await scenarioPage.getByRole("button", { name: /Check connection|Verbinding controleren/i }).click()
       await scenarioPage.getByRole(scenarioId === "existing-blocked" ? "alert" : "status").first().waitFor()
@@ -794,7 +803,7 @@ try {
     if (["declaration-block", "quote-refreshed", "payment-redirecting"].includes(scenarioId)) {
       if (scenarioId === "declaration-block") {
         await scenarioPage.locator("#checkout-terms").check()
-        const paymentButton = scenarioPage.getByRole("button", { name: /Approve & pay/ }).first()
+        const paymentButton = scenarioPage.getByRole("button", { name: paymentActionPattern }).first()
         if (!(await paymentButton.isDisabled())) {
           throw new Error("Payment action must remain disabled until all checkout declarations are accepted")
         }
@@ -802,7 +811,7 @@ try {
       } else {
         for (const checkbox of await scenarioPage.locator('[role="checkbox"]').all()) await checkbox.check()
       }
-      await scenarioPage.getByRole("button", { name: /Approve & pay/ }).first().click()
+      await scenarioPage.getByRole("button", { name: paymentActionPattern }).first().click()
       if (scenarioId === "quote-refreshed") {
         await scenarioPage.getByText("signed quote was refreshed", { exact: false }).waitFor()
       } else {

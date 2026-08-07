@@ -46,11 +46,11 @@ export function CheckoutStepper<T extends string = string>({
         aria-valuemax={total}
         aria-valuenow={current}
         aria-valuetext={progressText(current, total, activeEntry?.label ?? "")}
-        className="grid min-w-0 gap-3 border-b bg-transparent px-[17px] pb-[15px] pt-[17px] min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-5"
+        className="grid min-w-0 gap-2.5 border-b bg-transparent px-[17px] pb-3 pt-3.5 min-[560px]:gap-3 min-[560px]:px-[26px] min-[560px]:pb-[18px] min-[560px]:pt-5"
       >
         <div className="flex min-w-0 items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
               {stepText(current, total)}
             </p>
             <h2 ref={activeHeadingRef} tabIndex={-1} className="mt-0.5 text-sm font-bold leading-tight tracking-[-0.012em] outline-none min-[560px]:text-[0.9375rem]">

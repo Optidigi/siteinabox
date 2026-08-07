@@ -37,7 +37,7 @@ export const checkoutGeometry = async (page) => page.evaluate(() => {
   const domainAction = document.querySelector("#checkout-domain-form button[type=submit]")
   return {
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
-    headingCount: document.querySelectorAll("h1").length,
+    headingCount: Array.from(document.querySelectorAll("h1")).filter((node) => node.checkVisibility()).length,
     legalCheckboxCount: document.querySelectorAll('[role="checkbox"]').length,
     mobileActionVisible: visible("[data-checkout-action-bar]"),
     desktopSummaryVisible: visible("[data-checkout-summary]"),
@@ -50,7 +50,11 @@ export const checkoutGeometry = async (page) => page.evaluate(() => {
 
 export const assertCheckoutGeometry = (assert, visualCase, geometry) => {
   assert.equal(geometry.horizontalOverflow, false, `${visualCase.id} has horizontal overflow.`)
-  assert.equal(geometry.headingCount, 1, `${visualCase.id} must have exactly one h1.`)
+  assert.equal(
+    geometry.headingCount,
+    visualCase.width >= 880 ? 1 : 0,
+    `${visualCase.id} must expose one page h1 only at desktop widths.`,
+  )
   const expectedShellWidth = visualCase.width >= 880
     ? Math.min(visualCase.width - 40, 1184)
     : visualCase.width < 560
@@ -59,7 +63,7 @@ export const assertCheckoutGeometry = (assert, visualCase, geometry) => {
   assert.equal(geometry.shellWidth, expectedShellWidth, `${visualCase.id} shell geometry drifted.`)
   if (visualCase.scenario.startsWith("domain") || visualCase.scenario.startsWith("existing")) {
     assert.equal(geometry.domainInputHeight, 48, `${visualCase.id} domain input must be 48px.`)
-    assert.equal(geometry.domainActionHeight, visualCase.width < 560 ? 44 : 48, `${visualCase.id} domain action height drifted.`)
+    assert.equal(geometry.domainActionHeight, 48, `${visualCase.id} domain action height drifted.`)
   }
   if (visualCase.width < 880) {
     assert.equal(geometry.desktopSummaryVisible, false, `${visualCase.id} exposes the desktop rail below 880px.`)

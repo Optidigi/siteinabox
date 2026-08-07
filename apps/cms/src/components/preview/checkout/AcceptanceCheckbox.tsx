@@ -35,7 +35,7 @@ export function AcceptanceCheckbox({
         aria-invalid={invalid ? true : undefined}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
-        className="mt-0.5 size-5 rounded-md"
+        className="-m-1 size-6 shrink-0 rounded-md"
       />
       <span id={`${id}-label`} className="min-w-0 break-words">
         <strong className="flex flex-wrap items-center gap-1.5 font-semibold text-foreground">

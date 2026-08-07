@@ -17,10 +17,12 @@ export function CheckoutPrimaryActionButton({
   action,
   dueNow,
   handlers,
+  compact = false,
 }: {
   action: CheckoutPrimaryAction
   dueNow: string
   handlers: CheckoutPrimaryActionHandlers
+  compact?: boolean
 }) {
   const t = useTranslations("preview")
   const labels = {
@@ -28,10 +30,14 @@ export function CheckoutPrimaryActionButton({
     check_again: t("checkoutCheckAgain"),
     domain_unavailable: t("checkoutDomainOccupied"),
     migration_no_order: t("checkoutMigrationPreflightNoOrder"),
-    verify_migration_source: t("checkoutMigrationVerifySource"),
+    verify_migration_source: compact
+      ? t("checkoutMigrationVerifySourceShort")
+      : t("checkoutMigrationVerifySource"),
     continue_to_review: t("checkoutNext"),
     complete_details: t("checkoutDetailsSave"),
-    pay: t("checkoutStartPaymentAmount", { amount: dueNow }),
+    pay: compact
+      ? t("checkoutStartPaymentAmountShort", { amount: dueNow })
+      : t("checkoutStartPaymentAmount", { amount: dueNow }),
     payment_complete: t("paymentCompleted"),
     wait: t("checkoutPaymentReturnPending"),
   } as const

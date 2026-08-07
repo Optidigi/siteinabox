@@ -44,13 +44,13 @@ export function MobileCheckoutBar({
         : "mx-auto flex min-h-12 w-full max-w-[65rem] min-w-0 items-center gap-3"}>
         <span className="min-w-0 flex-1 text-left leading-tight">
           <strong className="block truncate text-sm font-bold tabular-nums">{decision === "review" ? dueNow : selectedDomain || "—"}</strong>
-          <span className="mt-0.5 block truncate text-[0.625rem] text-muted-foreground">
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
             {decision === "review" ? t("checkoutSummaryDueNowInclVat") : t("checkoutSummaryDomain")}
           </span>
           {decision === "review" && quote && <Sheet>
             <SheetTrigger asChild>
-              <Button type="button" variant="link" className="mt-0.5 h-auto min-h-6 gap-0.5 p-0 text-[0.625rem] text-muted-foreground underline-offset-2">
-                {t("checkoutMobileBreakdownAction")}<ChevronUp className="size-3" aria-hidden />
+              <Button type="button" variant="link" className="mt-1 h-auto min-h-8 gap-1 px-0 py-1 text-xs font-medium text-foreground underline-offset-2 hover:text-foreground/80">
+                {t("checkoutMobileBreakdownAction")}<ChevronUp className="size-3.5 shrink-0" aria-hidden />
               </Button>
             </SheetTrigger>
             <SheetContent side="bottom" className="max-h-[75dvh] overflow-y-auto rounded-t-lg pb-[max(env(safe-area-inset-bottom),1rem)]">
@@ -70,8 +70,8 @@ export function MobileCheckoutBar({
             </SheetContent>
           </Sheet>}
         </span>
-        <span className="flex min-w-0 shrink-0 [&>button]:h-auto [&>button]:min-h-12 [&>button]:max-w-[12rem] [&>button]:px-3 [&>button]:text-xs [&>button]:leading-tight min-[375px]:[&>button]:px-4">
-          <CheckoutPrimaryActionButton action={action} dueNow={dueNow} handlers={handlers} />
+        <span className="flex min-w-0 max-w-[52%] shrink-0 [&>button]:h-auto [&>button]:min-h-12 [&>button]:px-3 [&>button]:text-xs [&>button]:leading-snug min-[375px]:[&>button]:px-4">
+          <CheckoutPrimaryActionButton action={action} dueNow={dueNow} handlers={handlers} compact />
         </span>
       </div>
     </div>
