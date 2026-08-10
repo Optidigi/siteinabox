@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intakeStepMeta } from '../src/components/intake/flow';
+import { getIntakeBackPhase, intakeStepMeta } from '../src/components/intake/flow';
 import type { IntakePhase } from '../src/components/intake/domain/types';
 
 const phases: IntakePhase[] = [
@@ -37,5 +37,35 @@ describe('intake wizard phase contract', () => {
       finalDetails: 7,
       success: null,
     });
+  });
+
+  it('preserves the current back-transition table', () => {
+    expect([
+      getIntakeBackPhase('lookup', null),
+      getIntakeBackPhase('manual', null),
+      getIntakeBackPhase('confirm', 'kvk'),
+      getIntakeBackPhase('content', 'manual'),
+      getIntakeBackPhase('content', 'kvk'),
+      getIntakeBackPhase('contact', 'kvk'),
+      getIntakeBackPhase('contactDetails', 'kvk'),
+      getIntakeBackPhase('visualLogo', 'kvk'),
+      getIntakeBackPhase('visualColors', 'kvk'),
+      getIntakeBackPhase('visualStyle', 'kvk'),
+      getIntakeBackPhase('finalDetails', 'kvk'),
+      getIntakeBackPhase('success', 'kvk'),
+    ]).toEqual([
+      null,
+      'lookup',
+      'lookup',
+      'manual',
+      'confirm',
+      'content',
+      'contact',
+      'contactDetails',
+      'visualLogo',
+      'visualColors',
+      'visualStyle',
+      null,
+    ]);
   });
 });
