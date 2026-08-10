@@ -1412,6 +1412,91 @@ describe("PreviewCheckout live lifecycle status", () => {
     })).toBe(false)
   })
 
+  it("characterizes every polling terminal branch before lifecycle extraction", () => {
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: false,
+      paymentStatus: "pending_provider",
+      migrationStatus: null,
+      provisioningStatus: null,
+    })).toBe(false)
+
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "pending_provider",
+      migrationStatus: null,
+      provisioningStatus: null,
+    })).toBe(true)
+
+    for (const paymentStatus of ["failed", "canceled", "cancelled", "expired"]) {
+      expect(checkoutStatusNeedsPolling({
+        paymentReturn: true,
+        paymentStatus,
+        migrationStatus: null,
+        provisioningStatus: null,
+      })).toBe(false)
+    }
+
+    const provisioningBase = {
+      domain: "existing.nl",
+      registrantVerificationDueAt: null,
+      updatedAt: "2026-07-30T10:00:00.000Z",
+    }
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "completed",
+      migrationStatus: null,
+      provisioningStatus: {
+        ...provisioningBase,
+        stages: [{ code: "payment" as const, status: "complete" as const }],
+      },
+    })).toBe(true)
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "completed",
+      migrationStatus: null,
+      provisioningStatus: {
+        ...provisioningBase,
+        stages: [{ code: "activation" as const, status: "complete" as const }],
+      },
+    })).toBe(false)
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "completed",
+      migrationStatus: null,
+      provisioningStatus: {
+        ...provisioningBase,
+        stages: [{ code: "activation" as const, status: "review" as const }],
+      },
+    })).toBe(false)
+
+    const migrationBase = {
+      migrationId: 7,
+      domain: "existing.nl",
+      classification: "automatic" as const,
+      sourceMechanism: "cloudflare_api_v1" as const,
+      operatorAuthorization: "not_required" as const,
+      updatedAt: "2026-07-30T10:00:00.000Z",
+    }
+    for (const state of ["completed", "custom_quote_required", "failed", "rolled_back"] as const) {
+      expect(checkoutStatusNeedsPolling({
+        paymentReturn: true,
+        paymentStatus: "completed",
+        provisioningStatus: null,
+        migrationStatus: { ...migrationBase, state, actions: [] },
+      })).toBe(false)
+    }
+    expect(checkoutStatusNeedsPolling({
+      paymentReturn: true,
+      paymentStatus: "completed",
+      provisioningStatus: null,
+      migrationStatus: {
+        ...migrationBase,
+        state: "awaiting_provider",
+        actions: [{ action: "provide_epp_code", status: "required", deadlineAt: null }],
+      },
+    })).toBe(false)
+  })
+
   it("restarts lifecycle polling after a customer migration action succeeds", async () => {
     vi.useFakeTimers()
     const submitMigrationTransferCodeAction = vi.fn(async () => ({
