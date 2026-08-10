@@ -57,6 +57,7 @@ import { OrderSummaryRail } from "@/components/preview/checkout/OrderSummaryRail
 import { AcceptanceCheckbox } from "@/components/preview/checkout/AcceptanceCheckbox"
 import { CheckoutTextField } from "@/components/preview/checkout/CheckoutTextField"
 import { checkoutStatusNeedsPolling } from "@/components/preview/checkout/checkoutLifecycle"
+import { useCheckoutPolling } from "@/components/preview/checkout/checkoutPolling"
 import { LifecycleRow } from "@/components/preview/checkout/LifecycleRow"
 import { MigrationSourceEvidenceFields } from "@/components/preview/checkout/MigrationSourceEvidenceFields"
 import { ReviewGroup, ReviewDetail } from "@/components/preview/checkout/ReviewGroup"
@@ -801,76 +802,23 @@ export function PreviewCheckout({
     }
   }, [cancellationState.agreement])
 
-  React.useEffect(() => {
-    const customerActionJustSaved =
-      transferCodeState.ok && transferCodeState.status === "saved"
-    if (
-      !loadLiveStatusAction ||
-      (
-        !customerActionJustSaved &&
-        !checkoutStatusNeedsPolling({
-          paymentReturn: paymentReturn || customerActionJustSaved,
-          paymentStatus: paymentStatusLive,
-          migrationStatus,
-          provisioningStatus,
-        })
-      )
-    ) {
-      return
-    }
+  const applyLiveStatus = React.useCallback((next: PreviewCheckoutLiveStatus) => {
+    setPaymentStatusLive(next.paymentStatus)
+    setMigrationStatus(next.migrationStatus)
+    setProvisioningStatus(next.provisioningStatus)
+    setBillingAgreement(next.billingAgreement)
+  }, [])
 
-    let stopped = false
-    let timeout: ReturnType<typeof setTimeout> | undefined
-    let attempts = 0
-    const schedule = (delay: number) => {
-      timeout = setTimeout(() => {
-        void poll()
-      }, delay)
-    }
-    const poll = async () => {
-      if (stopped) return
-      if (document.visibilityState === "hidden") {
-        schedule(5_000)
-        return
-      }
-      attempts += 1
-      try {
-        const next = await loadLiveStatusAction()
-        if (stopped) return
-        setPaymentStatusLive(next.paymentStatus)
-        setMigrationStatus(next.migrationStatus)
-        setProvisioningStatus(next.provisioningStatus)
-        setBillingAgreement(next.billingAgreement)
-        if (
-          attempts >= 30 ||
-          !checkoutStatusNeedsPolling({
-            paymentReturn: paymentReturn || customerActionJustSaved,
-            paymentStatus: next.paymentStatus,
-            migrationStatus: next.migrationStatus,
-            provisioningStatus: next.provisioningStatus,
-          })
-        ) {
-          return
-        }
-      } catch {
-        if (stopped || attempts >= 30) return
-      }
-      schedule(Math.min(3_000 + attempts * 750, 15_000))
-    }
-    schedule(1_500)
-    return () => {
-      stopped = true
-      if (timeout) clearTimeout(timeout)
-    }
-    // The bound server action is stable for this mounted checkout. Restarting
-    // the loop on every status projection would create overlapping polls.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
+  useCheckoutPolling({
     loadLiveStatusAction,
     paymentReturn,
-    transferCodeState.ok,
-    transferCodeState.status,
-  ])
+    paymentStatus: paymentStatusLive,
+    migrationStatus,
+    provisioningStatus,
+    transferCodeActionSucceeded: transferCodeState.ok,
+    transferCodeActionStatus: transferCodeState.status,
+    applyLiveStatus,
+  })
 
   React.useEffect(() => {
     if (
