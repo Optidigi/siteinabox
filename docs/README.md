@@ -11,6 +11,7 @@ canonical for executable facts.
 - [`engineering.md`](engineering.md) — evidence, risk, implementation, review,
   and handoff workflow.
 - [`tooling.md`](tooling.md) — root toolchain and repository MCP configuration.
+- [`test-taxonomy.md`](test-taxonomy.md) — test boundaries, retention rules, and replacement evidence.
 - [`findings.md`](findings.md) — active defects, risks, accepted constraints,
   and unresolved unknowns.
 - [`contracts/`](contracts/) — durable cross-cutting CMS, rendering, UI,
