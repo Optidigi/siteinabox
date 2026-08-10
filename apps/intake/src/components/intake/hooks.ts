@@ -3,6 +3,11 @@ import {
   createIntakeCardFocusScheduler,
   type IntakeCardFocusScheduler,
 } from "./focus";
+import {
+  createIntakeSubmissionController,
+  type IntakeSubmissionController,
+  type IntakeSubmissionState,
+} from "./submission";
 
 export function useDebouncedValue<T>(value: T, delay = 400) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -52,4 +57,36 @@ export function useIntakeCardFocus() {
   }, []);
 
   return focusIntakeCard;
+}
+
+export function useIntakeSubmission<T>({
+  submit,
+  onSuccess,
+}: {
+  submit: (values: T) => Promise<unknown>;
+  onSuccess: () => void;
+}) {
+  const [state, setState] = useState<IntakeSubmissionState>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const controllerRef = useRef<IntakeSubmissionController<T> | null>(null);
+
+  if (!controllerRef.current) {
+    controllerRef.current = createIntakeSubmissionController({
+      submit,
+      onStateChange: setState,
+      onError: setError,
+      onSuccess,
+    });
+  }
+
+  useEffect(() => {
+    return () => controllerRef.current?.dispose();
+  }, []);
+
+  return {
+    error,
+    isSubmitting: state === "submitting",
+    resetError: controllerRef.current.resetError,
+    submit: controllerRef.current.submit,
+  };
 }
