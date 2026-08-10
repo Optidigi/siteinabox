@@ -5,13 +5,15 @@
       "mcp-check",
       "docs-check",
       "type-safety",
-      "packages-typecheck"
+      "packages-typecheck",
+      "static-deployment-parity"
     ],
     "ci": [
       "mcp-check",
       "docs-check",
       "type-safety",
       "packages-typecheck",
+      "static-deployment-parity",
       "contracts-test",
       "site-renderer-test",
       "provider-cutover",
@@ -47,6 +49,7 @@
     { "id": "docs-check", "command": "pnpm docs:check", "run": ["pnpm", "docs:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
     { "id": "type-safety", "command": "pnpm type-safety:check", "run": ["pnpm", "type-safety:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
     { "id": "packages-typecheck", "command": "pnpm packages:typecheck", "run": ["pnpm", "packages:typecheck"], "owner": "packages", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
+    { "id": "static-deployment-parity", "command": "pnpm deployment:static-parity", "run": ["pnpm", "deployment:static-parity"], "owner": "deployment", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
     { "id": "contracts-test", "command": "pnpm --dir packages/contracts test", "run": ["pnpm", "--dir", "packages/contracts", "test"], "owner": "packages/contracts", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
     { "id": "site-renderer-test", "command": "pnpm --dir packages/site-renderer test", "run": ["pnpm", "--dir", "packages/site-renderer", "test"], "owner": "packages/site-renderer", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
     { "id": "provider-cutover", "command": "pnpm audit:provider-cutover", "run": ["pnpm", "audit:provider-cutover"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },

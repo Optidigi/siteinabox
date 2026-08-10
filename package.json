@@ -12,6 +12,7 @@
     "check:ci": "node scripts/run-verification.mjs ci",
     "check:fast": "node scripts/run-verification.mjs fast",
     "check:toolchain": "node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
+    "deployment:static-parity": "node scripts/check-static-deployment-parity.mjs",
     "cms:cleanup-test-data": "node scripts/cleanup-cms-test-data.mjs",
     "cms:cleanup-test-data:test": "node --test scripts/cleanup-cms-test-data.test.mjs",
     "cms:typecheck": "pnpm --dir apps/cms typecheck",

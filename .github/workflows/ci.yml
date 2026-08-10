@@ -24,6 +24,8 @@ jobs:
           node-version: 26
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Static deployment parity
+        run: pnpm deployment:static-parity
       - name: Repository configuration contracts
         run: |
           pnpm mcp:check
