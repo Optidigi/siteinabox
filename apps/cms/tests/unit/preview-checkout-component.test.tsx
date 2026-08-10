@@ -1384,6 +1384,89 @@ describe("PreviewCheckout live lifecycle status", () => {
     expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
   })
 
+  it("does not update or reschedule after unmount while a poll is in flight", async () => {
+    vi.useFakeTimers()
+    let resolveStatus: ((value: {
+      paymentStatus: string
+      migrationStatus: null
+      provisioningStatus: null
+      billingAgreement: null
+    }) => void) | undefined
+    const pendingStatus = new Promise<{
+      paymentStatus: string
+      migrationStatus: null
+      provisioningStatus: null
+      billingAgreement: null
+    }>((resolve) => {
+      resolveStatus = resolve
+    })
+    const loadLiveStatusAction = vi.fn(() => pendingStatus)
+    const view = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        paymentReturn
+        paymentStatus="pending_provider"
+        loadLiveStatusAction={loadLiveStatusAction}
+      />,
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+    view.unmount()
+
+    await act(async () => {
+      resolveStatus?.({
+        paymentStatus: "pending_provider",
+        migrationStatus: null,
+        provisioningStatus: null,
+        billingAgreement: null,
+      })
+      await pendingStatus
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+  })
+
+  it("defers lifecycle requests while the document is hidden", async () => {
+    vi.useFakeTimers()
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    })
+    const loadLiveStatusAction = vi.fn(async () => ({
+      paymentStatus: "failed",
+      migrationStatus: null,
+      provisioningStatus: null,
+      billingAgreement: null,
+    }))
+    const view = render(
+      <PreviewCheckout
+        {...baseCheckoutProps()}
+        paymentReturn
+        paymentStatus="pending_provider"
+        loadLiveStatusAction={loadLiveStatusAction}
+      />,
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500)
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    expect(loadLiveStatusAction).not.toHaveBeenCalled()
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    expect(loadLiveStatusAction).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+
   it("stops polling for terminal payments and customer-action states", () => {
     expect(checkoutStatusNeedsPolling({
       paymentReturn: true,
