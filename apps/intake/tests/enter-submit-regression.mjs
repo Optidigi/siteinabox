@@ -85,6 +85,22 @@ async function run() {
     });
 
     await page.goto(intakeUrl, { waitUntil: "networkidle" });
+
+    const buildMarker = page.locator("[data-intake-build]");
+    if ((await buildMarker.count()) !== 1) {
+      throw new Error("Expected exactly one intake build marker");
+    }
+
+    const buildMarkerValue = await buildMarker.getAttribute("data-intake-build");
+    if (buildMarkerValue !== "prefix-route-20260630") {
+      throw new Error(`Unexpected intake build marker: ${buildMarkerValue}`);
+    }
+
+    const initialHeading = await page.locator("h1").first().innerText();
+    if (initialHeading !== "Voor welk bedrijf maken we de website?") {
+      throw new Error(`Expected lookup heading, got: ${initialHeading}`);
+    }
+
     await page.getByText("Vul je gegevens liever zelf in?").click();
     await page.getByRole("button", { name: /^Verder$/ }).click();
     await page.getByLabel(/bedrijfsnaam/i).fill("Testbedrijf");
@@ -111,6 +127,16 @@ async function run() {
 
     if (heading !== "Vertel over je bedrijf") {
       throw new Error(`Expected to stay on content step, got heading: ${heading}`);
+    }
+
+    await page.locator('button[aria-label="Terug"]:visible').first().click();
+    await page.waitForFunction(
+      () => document.querySelector("h1")?.textContent?.trim() === "Vul je bedrijfsgegevens in",
+    );
+
+    const backHeading = await page.locator("h1").first().innerText();
+    if (backHeading !== "Vul je bedrijfsgegevens in") {
+      throw new Error(`Expected manual step after back, got: ${backHeading}`);
     }
   } finally {
     await browser?.close();
