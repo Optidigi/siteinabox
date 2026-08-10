@@ -56,6 +56,7 @@ import { MobileCheckoutBar } from "@/components/preview/checkout/MobileCheckoutB
 import { OrderSummaryRail } from "@/components/preview/checkout/OrderSummaryRail"
 import { AcceptanceCheckbox } from "@/components/preview/checkout/AcceptanceCheckbox"
 import { CheckoutTextField } from "@/components/preview/checkout/CheckoutTextField"
+import { checkoutStatusNeedsPolling } from "@/components/preview/checkout/checkoutLifecycle"
 import { LifecycleRow } from "@/components/preview/checkout/LifecycleRow"
 import { MigrationSourceEvidenceFields } from "@/components/preview/checkout/MigrationSourceEvidenceFields"
 import { ReviewGroup, ReviewDetail } from "@/components/preview/checkout/ReviewGroup"
@@ -86,6 +87,8 @@ export type {
   PreviewCheckoutLiveStatus,
   PreviewCheckoutProfileActionState,
 } from "@/lib/checkout/previewCheckoutContract"
+
+export { checkoutStatusNeedsPolling } from "@/components/preview/checkout/checkoutLifecycle"
 
 type PreviewCheckoutAction = (
   previousState: PreviewCheckoutActionState,
@@ -247,46 +250,6 @@ const initialCancellationState: PreviewCheckoutCancellationState = {
   message: "",
 }
 const uniqueDomains = (domains: string[]): string[] => [...new Set(domains)]
-
-export const checkoutStatusNeedsPolling = (input: {
-  paymentReturn: boolean
-  paymentStatus: string
-  migrationStatus: CustomerMigrationStatus | null
-  provisioningStatus: CustomerProvisioningStatus | null
-}): boolean => {
-  if (!input.paymentReturn) return false
-  if (
-    ["failed", "canceled", "cancelled", "expired"].includes(
-      input.paymentStatus,
-    )
-  ) {
-    return false
-  }
-  if (
-    input.provisioningStatus?.stages.some(
-      (stage) =>
-        stage.status === "review" ||
-        (stage.code === "activation" && stage.status === "complete"),
-    )
-  ) {
-    return false
-  }
-  if (input.migrationStatus) {
-    if (
-      ["completed", "custom_quote_required", "failed", "rolled_back"]
-        .includes(input.migrationStatus.state)
-    ) {
-      return false
-    }
-    if (
-      input.migrationStatus.actions.some((action) =>
-        ["required", "failed", "overdue"].includes(action.status))
-    ) {
-      return false
-    }
-  }
-  return true
-}
 
 const money = (locale: string, minor: number, currency: string): string =>
   new Intl.NumberFormat(locale, { style: "currency", currency }).format(minor / 100)
