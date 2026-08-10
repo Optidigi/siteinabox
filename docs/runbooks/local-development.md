@@ -138,6 +138,27 @@ Then sign in at http://localhost:3000/login.
   `pnpm cms:cleanup-test-data` to list matching `apps/cms/.data-test-<pid>`
   directories. Review the list, then rerun with `--apply` to remove them.
 
+## Verify all four applications
+
+The steps above cover the database-backed CMS setup. Use the matrix below from
+the repository root when verifying a change across the monorepo. These checks
+use local fixtures and services only; provider operations, paid checkout,
+production smoke, and image publication are separate release activities.
+
+| Surface | Owner | Minimum gate | Extra prerequisite |
+| --- | --- | --- | --- |
+| Shared contracts and repository policy | `packages/*` and root | `pnpm check:fast` | None |
+| Marketing site | `apps/landing` | `pnpm site:build` and `pnpm site:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
+| Intake flow | `apps/intake` | `pnpm intake:build` and `pnpm intake:test` | Browser regression uses the intake workspace |
+| CMS | `apps/cms` | Generate Payload types/import map, then `pnpm --dir apps/cms typecheck` and `pnpm --dir apps/cms test` | Local PostgreSQL, `DATABASE_URI`, and `PAYLOAD_SECRET` |
+| Published-site renderer | `apps/renderer` | `pnpm renderer:deploy-contract`, `pnpm renderer:typecheck`, `pnpm renderer:test`, and `pnpm renderer:build` | Browser checks need Chromium; renderer provider checks use local fixtures |
+
+For the complete CI command sequence, run `pnpm check:ci` after installing the
+documented prerequisites. The profile does not install PostgreSQL, operating
+system packages, or browser binaries for you. Use `pnpm check:toolchain` to
+verify the repository's Node, pnpm, workflow, Docker, and verification-matrix
+authorities.
+
 ## Common operations
 
 - **Reset the local DB (lose all data):**
