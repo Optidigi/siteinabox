@@ -19,7 +19,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { LoadingDots, SegmentedProgress } from "@/components/intake/progress";
 import { submitIntake } from "@/components/intake/domain/submission";
-import { intakeStepMeta } from "@/components/intake/flow";
+import {
+  getIntakeBackPhase,
+  intakeStepMeta,
+} from "@/components/intake/flow";
 import { cn } from "@/components/ui/utils";
 import {
   defaultIntakeValues,
@@ -225,8 +228,39 @@ function IntakeShellContent() {
       showFinalDetailsCompletionHint) &&
       "flex-col gap-3 min-[1360px]:flex-row min-[1360px]:gap-6",
   );
-  function handleBackToLookup() {
-    setPhase("lookup");
+  function handleBackFromPhase(currentPhase: IntakePhase) {
+    const previousPhase = getIntakeBackPhase(
+      currentPhase,
+      companyValues.source,
+    );
+
+    if (!previousPhase) return;
+
+    if (currentPhase === "content") {
+      setContentValidationVisible(false);
+    }
+
+    if (currentPhase === "contactDetails") {
+      setContactDetailsContinueAttempted(false);
+    }
+
+    if (currentPhase === "visualLogo") {
+      setVisualLogoContinueAttempted(false);
+    }
+
+    if (currentPhase === "visualColors") {
+      setVisualColorsContinueAttempted(false);
+    }
+
+    if (currentPhase === "visualStyle") {
+      setVisualStyleContinueAttempted(false);
+    }
+
+    if (currentPhase === "finalDetails") {
+      setFinalDetailsContinueAttempted(false);
+    }
+
+    setPhase(previousPhase);
   }
 
   useEffect(() => {
@@ -292,40 +326,6 @@ function IntakeShellContent() {
       shell.removeEventListener("scroll", resetDesktopShellScroll);
     };
   }, []);
-
-  function handleBackFromContent() {
-    setContentValidationVisible(false);
-    setPhase(companyValues.source === "manual" ? "manual" : "confirm");
-  }
-
-  function handleBackFromContact() {
-    setPhase("content");
-  }
-
-  function handleBackFromContactDetails() {
-    setContactDetailsContinueAttempted(false);
-    setPhase("contact");
-  }
-
-  function handleBackFromVisualLogo() {
-    setVisualLogoContinueAttempted(false);
-    setPhase("contactDetails");
-  }
-
-  function handleBackFromVisualColors() {
-    setVisualColorsContinueAttempted(false);
-    setPhase("visualLogo");
-  }
-
-  function handleBackFromVisualStyle() {
-    setVisualStyleContinueAttempted(false);
-    setPhase("visualColors");
-  }
-
-  function handleBackFromFinalDetails() {
-    setFinalDetailsContinueAttempted(false);
-    setPhase("visualStyle");
-  }
 
   function prefillContentRegion() {
     const region = getRegionFromCompanyDetails(intakeForm.getValues("company"));
@@ -648,7 +648,7 @@ function IntakeShellContent() {
             {isConfirmingCompany ? (
               <CompanyConfirmationStep
                 company={selectedCompany}
-                onBack={handleBackToLookup}
+                onBack={() => handleBackFromPhase("confirm")}
               />
             ) : isContentEntry ? (
               <ContentCanvasStep
@@ -659,7 +659,7 @@ function IntakeShellContent() {
                   setContentValidationVisible(false);
                   setOpenContentCard(cardId);
                 }}
-                onBack={handleBackFromContent}
+                onBack={() => handleBackFromPhase("content")}
               />
             ) : isContactEntry ? (
               <ContactStep
@@ -667,44 +667,44 @@ function IntakeShellContent() {
                 openCard={openContactSection}
                 showAttemptedErrors={showContactAttemptedErrors}
                 onOpenCardChange={setOpenContactSection}
-                onBack={handleBackFromContact}
+                onBack={() => handleBackFromPhase("contact")}
               />
             ) : isContactDetailsEntry ? (
               <ContactDetailsStep
                 form={intakeForm}
                 showAttemptedErrors={contactDetailsContinueAttempted}
-                onBack={handleBackFromContactDetails}
+                onBack={() => handleBackFromPhase("contactDetails")}
               />
             ) : isVisualLogoEntry ? (
               <VisualLogoStep
                 form={intakeForm}
                 showAttemptedErrors={visualLogoContinueAttempted}
-                onBack={handleBackFromVisualLogo}
+                onBack={() => handleBackFromPhase("visualLogo")}
               />
             ) : isVisualColorsEntry ? (
               <VisualColorsStep
                 form={intakeForm}
                 showAttemptedErrors={visualColorsContinueAttempted}
-                onBack={handleBackFromVisualColors}
+                onBack={() => handleBackFromPhase("visualColors")}
               />
             ) : isVisualStyleEntry ? (
               <VisualStyleStep
                 form={intakeForm}
                 showAttemptedErrors={visualStyleContinueAttempted}
-                onBack={handleBackFromVisualStyle}
+                onBack={() => handleBackFromPhase("visualStyle")}
               />
             ) : isFinalDetailsEntry ? (
               <FinalDetailsStep
                 form={intakeForm}
                 showAttemptedErrors={finalDetailsContinueAttempted}
-                onBack={handleBackFromFinalDetails}
+                onBack={() => handleBackFromPhase("finalDetails")}
               />
             ) : isSuccess ? (
               <SuccessStep />
             ) : isManualEntry ? (
               <ManualEntryStep
                 onCanContinueChange={setCanContinueManual}
-                onBack={handleBackToLookup}
+                onBack={() => handleBackFromPhase("manual")}
                 onSubmit={handleManualSubmit}
               />
             ) : (
@@ -731,23 +731,7 @@ function IntakeShellContent() {
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={
-                    isFinalDetailsEntry
-                      ? handleBackFromFinalDetails
-                      : isVisualStyleEntry
-                      ? handleBackFromVisualStyle
-                      : isVisualColorsEntry
-                        ? handleBackFromVisualColors
-                        : isVisualLogoEntry
-                          ? handleBackFromVisualLogo
-                          : isContactDetailsEntry
-                      ? handleBackFromContactDetails
-                      : isContactEntry
-                        ? handleBackFromContact
-                        : isContentEntry
-                          ? handleBackFromContent
-                          : handleBackToLookup
-                  }
+                  onClick={() => handleBackFromPhase(phase)}
                   aria-label="Terug"
                   className="hidden size-14 rounded-[8px] border-intake-border-strong bg-background text-intake-text shadow-none hover:bg-intake-panel min-[1360px]:inline-flex"
                 >

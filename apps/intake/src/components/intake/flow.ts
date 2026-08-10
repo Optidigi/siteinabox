@@ -1,4 +1,4 @@
-import type { IntakePhase } from "./model";
+import type { CompanySource, IntakePhase } from "./model";
 
 export type IntakeStepMeta = {
   heading: string;
@@ -65,3 +65,31 @@ export const intakeStepMeta: Record<IntakePhase, IntakeStepMeta> = {
     progress: null,
   },
 };
+
+export function getIntakeBackPhase(
+  phase: IntakePhase,
+  companySource: CompanySource,
+): IntakePhase | null {
+  switch (phase) {
+    case "manual":
+    case "confirm":
+      return "lookup";
+    case "content":
+      return companySource === "manual" ? "manual" : "confirm";
+    case "contact":
+      return "content";
+    case "contactDetails":
+      return "contact";
+    case "visualLogo":
+      return "contactDetails";
+    case "visualColors":
+      return "visualLogo";
+    case "visualStyle":
+      return "visualColors";
+    case "finalDetails":
+      return "visualStyle";
+    case "lookup":
+    case "success":
+      return null;
+  }
+}
