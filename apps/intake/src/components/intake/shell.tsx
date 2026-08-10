@@ -18,6 +18,7 @@ import {
 } from "@/components/intake/steps";
 import { Button } from "@/components/ui/button";
 import { LoadingDots, SegmentedProgress } from "@/components/intake/progress";
+import { useIntakeCardFocus } from "@/components/intake/hooks";
 import { submitIntake } from "@/components/intake/domain/submission";
 import {
   getIntakeBackPhase,
@@ -92,6 +93,7 @@ function IntakeShellContent() {
   const [contactAttemptVersion, setContactAttemptVersion] = useState(0);
   const mainShellRef = useRef<HTMLElement>(null);
   const taskScrollRef = useRef<HTMLDivElement>(null);
+  const focusIntakeCard = useIntakeCardFocus();
   const intakeForm = useForm<IntakeFormValues>({
     resolver: zodResolver(intakeFormSchema),
     mode: "onChange",
@@ -361,33 +363,6 @@ function IntakeShellContent() {
         shouldValidate: true,
       });
     }
-  }
-
-  function focusIntakeCard(panelId: string) {
-    const focusFirstRelevantControl = () => {
-      const panel = document.querySelector(
-        `[data-intake-card-panel="${panelId}"]`,
-      );
-      const focusSelectors = [
-        "input[aria-invalid='true']:not([disabled])",
-        "textarea[aria-invalid='true']:not([disabled])",
-        "[role='radiogroup'][aria-invalid='true'] [role='radio']:not([disabled])",
-        "textarea:not([disabled])",
-        "input:not([disabled])",
-        "button:not([disabled])",
-        "[tabindex]:not([tabindex='-1'])",
-      ];
-      const focusTarget = focusSelectors
-        .map((selector) => panel?.querySelector<HTMLElement>(selector))
-        .find(Boolean);
-
-      focusTarget?.focus({ preventScroll: true });
-      focusTarget?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    };
-
-    window.setTimeout(focusFirstRelevantControl, 120);
-    window.setTimeout(focusFirstRelevantControl, 320);
-    window.setTimeout(focusFirstRelevantControl, 700);
   }
 
   async function handleFinalSubmit() {
