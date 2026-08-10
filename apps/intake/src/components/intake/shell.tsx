@@ -18,7 +18,10 @@ import {
 } from "@/components/intake/steps";
 import { Button } from "@/components/ui/button";
 import { LoadingDots, SegmentedProgress } from "@/components/intake/progress";
-import { useIntakeCardFocus } from "@/components/intake/hooks";
+import {
+  useIntakeCardFocus,
+  useIntakeSubmission,
+} from "@/components/intake/hooks";
 import { submitIntake } from "@/components/intake/domain/submission";
 import {
   getIntakeBackPhase,
@@ -87,8 +90,6 @@ function IntakeShellContent() {
     useState(false);
   const [finalDetailsContinueAttempted, setFinalDetailsContinueAttempted] =
     useState(false);
-  const [submitState, setSubmitState] = useState<"idle" | "submitting">("idle");
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [contactEntryVersion, setContactEntryVersion] = useState(0);
   const [contactAttemptVersion, setContactAttemptVersion] = useState(0);
   const mainShellRef = useRef<HTMLElement>(null);
@@ -99,13 +100,21 @@ function IntakeShellContent() {
     mode: "onChange",
     defaultValues: defaultIntakeValues,
   });
+  const {
+    error: submitError,
+    isSubmitting: isLoading,
+    resetError: resetSubmitError,
+    submit: submitForm,
+  } = useIntakeSubmission({
+    submit: submitIntake,
+    onSuccess: () => setPhase("success"),
+  });
   const companyValues = intakeForm.watch("company");
   const contentValues = intakeForm.watch("content");
   const contactValues = intakeForm.watch("contact");
   const visualValues = intakeForm.watch("visual");
   const finalDetailsValues = intakeForm.watch("finalDetails");
   const legalValues = intakeForm.watch("legal");
-  const isLoading = submitState === "submitting";
   const isManualEntry = phase === "manual";
   const isConfirmingCompany = phase === "confirm" && selectedCompany;
   const isContentEntry = phase === "content";
@@ -298,7 +307,7 @@ function IntakeShellContent() {
       setFinalDetailsContinueAttempted(false);
       intakeForm.clearErrors("finalDetails");
       intakeForm.clearErrors("legal");
-      setSubmitError(null);
+      resetSubmitError();
     }
   }, [intakeForm, phase]);
 
@@ -365,23 +374,9 @@ function IntakeShellContent() {
     }
   }
 
-  async function handleFinalSubmit() {
+  function handleFinalSubmit() {
     setFinalDetailsContinueAttempted(false);
-    setSubmitError(null);
-    setSubmitState("submitting");
-
-    try {
-      await submitIntake(intakeForm.getValues());
-      setPhase("success");
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Je aanvraag kon niet worden verstuurd.",
-      );
-    } finally {
-      setSubmitState("idle");
-    }
+    void submitForm(intakeForm.getValues());
   }
 
   function handleContinue() {
