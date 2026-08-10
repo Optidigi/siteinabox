@@ -10,7 +10,6 @@
     "test": "vitest run && node tests/enter-submit-regression.mjs"
   },
   "dependencies": {
-    "@astrojs/preact": "^5.1.2",
     "@astrojs/react": "5.0.7",
     "@astrojs/sitemap": "^3.7.2",
     "@hookform/resolvers": "^5.4.0",
@@ -23,9 +22,7 @@
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
     "lottie-web": "^5.13.0",
-    "lucide-preact": "^1.14.0",
     "lucide-react": "1.17.0",
-    "preact": "^10.29.1",
     "radix-ui": "1.4.3",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -46,11 +43,5 @@
     "typescript": "^6.0.3",
     "vite": "^7.3.5",
     "vitest": "^4.1.5"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ]
   }
 }
