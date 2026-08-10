@@ -8,7 +8,16 @@ The remaining manual non-commerce production smokes for SIAB-001, SIAB-003,
 SIAB-004, and SIAB-005 are tracked together in
 [#22](https://github.com/Optidigi/siteinabox/issues/22).
 
-## SIAB-001 — Generated-site visual fidelity is not accepted
+## Status ownership
+
+GitHub Issues own actionable execution state, assignment, and closure. This
+register owns the durable engineering record: classification, confidence,
+scope, evidence, accepted constraints, compatibility windows, and the proof
+required before an issue can be closed. Do not copy issue status into this
+file. Link the issue when work is actionable; retain historical and accepted
+constraints here even after the related issue is closed.
+
+## SIAB-001 - Generated-site visual fidelity is not accepted
 
 - **Classification:** Risk; **confidence:** high for the recorded acceptance gap.
 - **Scope:** Shared renderer and provider variants.
