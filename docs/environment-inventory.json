@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "scope": "environment names read by deployable application source and tests",
+  "classificationStatus": "owner-review-required",
+  "apps": {
+    "cms": {
+      "names": [
+        "APPLE_CLIENT_ID",
+        "APPLE_CLIENT_SECRET",
+        "BETTER_AUTH_ALLOWED_HOSTS",
+        "BETTER_AUTH_PREVIEW_SECRET",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "BOOTSTRAP_TOKEN",
+        "CHECKOUT_SCREENSHOT_DIR",
+        "CHECKOUT_VISUAL_MATRIX_DIR",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_EMAIL_API_TOKEN",
+        "CLOUDFLARE_EMAIL_SMTP_TOKEN",
+        "DATABASE_URI",
+        "DATABASE_URI_OVERRIDDEN",
+        "DATA_DIR",
+        "DATA_DIR_OVERRIDDEN",
+        "EMAIL_FROM",
+        "FORMS_RETENTION_DAYS",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "KVK_API_BASE_URL",
+        "KVK_API_KEY",
+        "KVK_PROFILE_BASE_URL",
+        "KVK_SEARCH_BASE_URL",
+        "MICROSOFT_CLIENT_ID",
+        "MICROSOFT_CLIENT_SECRET",
+        "MICROSOFT_TENANT_ID",
+        "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
+        "NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE",
+        "NEXT_PUBLIC_SIAB_SITE_URL",
+        "NEXT_PUBLIC_SUPER_ADMIN_DOMAIN",
+        "NODE_ENV",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "PAYLOAD_DISABLE_ADMIN",
+        "PAYLOAD_DISABLE_JOBS_AUTORUN",
+        "PAYLOAD_MIGRATION_DIR",
+        "PAYLOAD_SECRET",
+        "PG_CONN_TIMEOUT_MS",
+        "PG_POOL_MAX",
+        "POSTHOG_ANALYTICS_DISABLED",
+        "POSTHOG_API_KEY",
+        "POSTHOG_APP_URLS",
+        "POSTHOG_ENVIRONMENT",
+        "POSTHOG_EVENT_RETENTION_MONTHS",
+        "POSTHOG_HOST",
+        "POSTHOG_ORGANIZATION_ID",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID",
+        "POSTHOG_PROJECT_TOKEN",
+        "POSTHOG_PUBLIC_HOST",
+        "SIAB_ALLOWED_DEV_ORIGINS",
+        "SIAB_ALLOW_TEST_EMAIL",
+        "SIAB_APPLE_OAUTH_CALLBACK_HOSTS",
+        "SIAB_BUILD_REVISION",
+        "SIAB_EMAIL_PREFERENCE_SECRET",
+        "SIAB_FORM_TARGET_RATE_LIMIT_POINTS",
+        "SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS",
+        "SIAB_GIT_SHA",
+        "SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS",
+        "SIAB_LEGAL_MANIFEST_URL",
+        "SIAB_MAIL_SEND_TIMEOUT_MS",
+        "SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS",
+        "SIAB_OPERATIONAL_HASH_KEY",
+        "SIAB_RENDERER_API_TOKEN",
+        "SIAB_SITE_BUILD_ID",
+        "SITE_GENERATION_OPENAI_MODEL",
+        "SITE_GENERATION_PROVIDER",
+        "SITE_URL",
+        "STATUS_MONITOR_INVENTORY_TOKEN",
+        "TURNSTILE_EXPECTED_HOSTNAMES",
+        "TURNSTILE_SECRET_KEY",
+        "VITEST"
+      ],
+      "notes": [
+        "Includes server runtime, build-time, test, provider, and deployment reads.",
+        "Requiredness and secret/public classification are intentionally not inferred."
+      ]
+    },
+    "intake": {
+      "names": [
+        "PUBLIC_INTAKE_SUBMIT_ENDPOINT",
+        "PUBLIC_KVK_PROFILE_ENDPOINT",
+        "PUBLIC_KVK_SEARCH_ENDPOINT",
+        "SITE_URL"
+      ],
+      "notes": [
+        "The PUBLIC_* values are build-time browser configuration; requiredness remains owner-review."
+      ]
+    },
+    "landing": {
+      "names": [
+        "CI",
+        "POSTHOG_HOST",
+        "POSTHOG_PROJECT_TOKEN",
+        "POSTHOG_PUBLIC_HOST",
+        "PUBLIC_TURNSTILE_SITE_KEY",
+        "SITE_URL"
+      ],
+      "notes": [
+        "The public analytics and Turnstile values are build-time browser configuration; requiredness remains owner-review."
+      ]
+    },
+    "renderer": {
+      "names": [
+        "DATA_DIR",
+        "DEV",
+        "IMAGE_TAG",
+        "NODE_ENV",
+        "SIAB_CMS_URL",
+        "SIAB_PROVIDER_VARIANT",
+        "SIAB_RENDERER_API_TOKEN",
+        "SIAB_RENDERER_API_TOKEN_FILE",
+        "SIAB_RENDERER_DEV_ALLOWED_HOSTS",
+        "SIAB_RENDERER_FIXTURE_MODE",
+        "SIAB_VISUAL_ARTIFACT_DIR",
+        "SIAB_VITE_CACHE_DIR",
+        "SITE_URL"
+      ],
+      "notes": [
+        "Token and token-file settings are runtime security boundaries and must not be treated as ordinary public configuration."
+      ]
+    }
+  }
+}
