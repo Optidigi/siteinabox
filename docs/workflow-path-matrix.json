@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "scope": "minimum path coverage for deployable image workflows",
+  "workflows": {
+    "build-cms-image.yml": {
+      "application": "cms",
+      "requiredPaths": [
+        "apps/cms/**",
+        "packages/contracts/**",
+        "packages/legal-content/**",
+        "packages/site-renderer/**",
+        "packages/ui/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        ".github/workflows/build-cms-image.yml",
+        ".dockerignore"
+      ]
+    },
+    "build-intake-image.yml": {
+      "application": "intake",
+      "requiredPaths": [
+        "apps/intake/**",
+        "packages/contracts/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        ".github/workflows/build-intake-image.yml"
+      ]
+    },
+    "build-renderer-image.yml": {
+      "application": "renderer",
+      "requiredPaths": [
+        "apps/renderer/**",
+        "packages/contracts/**",
+        "packages/legal-content/**",
+        "packages/site-renderer/**",
+        "packages/ui/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        ".github/workflows/build-renderer-image.yml"
+      ]
+    },
+    "build-site-image.yml": {
+      "application": "site",
+      "requiredPaths": [
+        "apps/landing/**",
+        "packages/contracts/**",
+        "packages/legal-content/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        ".github/workflows/build-site-image.yml"
+      ]
+    }
+  }
+}
