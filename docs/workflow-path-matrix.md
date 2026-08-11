@@ -1,16 +1,18 @@
 # Image workflow path matrix
 
 `docs/workflow-path-matrix.json` records the minimum source paths that must
-trigger each deployable image workflow. `pnpm workflow:check` compares the
-matrix with the tracked workflow YAML and fails when a required trigger is
-removed or a new `build-*-image.yml` workflow is not recorded.
+trigger each deployable image workflow. Because these workflows build with the
+repository root as Docker context, the root `.dockerignore` is also a required
+trigger for every image. `pnpm workflow:check` compares the matrix with the
+tracked workflow YAML and fails when a required trigger is removed or a new
+`build-*-image.yml` workflow is not recorded.
 
 | Image workflow | Application | Shared paths covered |
 | --- | --- | --- |
-| `build-cms-image.yml` | CMS | contracts, legal content, site renderer, UI, root install inputs |
-| `build-intake-image.yml` | Intake | contracts and root install inputs |
-| `build-renderer-image.yml` | Renderer | contracts, legal content, site renderer, UI, root install inputs |
-| `build-site-image.yml` | Landing site | contracts, legal content, root install inputs |
+| `build-cms-image.yml` | CMS | contracts, legal content, site renderer, UI, root install inputs, `.dockerignore` |
+| `build-intake-image.yml` | Intake | contracts and root install inputs, `.dockerignore` |
+| `build-renderer-image.yml` | Renderer | contracts, legal content, site renderer, UI, root install inputs, `.dockerignore` |
+| `build-site-image.yml` | Landing site | contracts, legal content, root install inputs, `.dockerignore` |
 
 This is a minimum trigger guard, not a complete dependency graph. Dynamic
 imports, generated inputs, external operator scripts, and published snapshot

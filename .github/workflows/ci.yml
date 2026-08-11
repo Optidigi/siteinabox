@@ -6,6 +6,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -112,7 +116,6 @@ jobs:
       - name: Generate Payload types
         run: |
           pnpm --dir apps/cms payload generate:types
-          pnpm --dir apps/cms payload generate:importmap
       - name: Commerce failure rehearsals and staged release gate
         run: pnpm --dir apps/cms check:commerce-release
       - name: Run vitest (unit + integration)
@@ -138,6 +141,8 @@ jobs:
       - name: Verify landing analytics consent lifecycle
         run: pnpm --dir apps/landing test:analytics-browser
       - name: Verify landing UI, responsive, and accessibility contracts
+        env:
+          SIAB_REUSE_LANDING_BUILD: "1"
         run: pnpm --dir apps/landing test:ui
       - name: Upload landing browser-test diagnostics
         if: failure()

@@ -72,15 +72,16 @@ export function ShadcnUiBannerView({ variant, settings }: { variant: string; set
   const model = adaptBanner(settings)
   if (!model) return null
   const isConsentChrome = variant === "shadcnui-blocks.banner-03" && model.consent
+  const renderedModel = isConsentChrome ? model : { ...model, consent: false }
   return (
     <aside
-      className={isConsentChrome ? "pointer-events-none fixed inset-x-0 z-50 px-3 sm:px-6" : undefined}
+      className={isConsentChrome ? "ph-no-capture pointer-events-none fixed inset-x-0 z-50 px-3 sm:px-6" : undefined}
       data-site-chrome="banner"
       data-provider-variant={variant}
       data-provider-token-mode="theme"
       data-siab-cookie-consent={isConsentChrome ? "true" : undefined}
     >
-      {isConsentChrome ? <div className="pointer-events-auto"><BannerThreeCard model={model} /></div> : <Banner model={model} variant={variant} />}
+      {isConsentChrome ? <div className="pointer-events-auto"><BannerThreeCard model={renderedModel} /></div> : <Banner model={renderedModel} variant={variant} />}
     </aside>
   )
 }

@@ -25,6 +25,7 @@
         "package.json",
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",
+        ".dockerignore",
         ".github/workflows/build-intake-image.yml"
       ]
     },
@@ -39,6 +40,7 @@
         "package.json",
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",
+        ".dockerignore",
         ".github/workflows/build-renderer-image.yml"
       ]
     },
@@ -51,6 +53,7 @@
         "package.json",
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",
+        ".dockerignore",
         ".github/workflows/build-site-image.yml"
       ]
     }

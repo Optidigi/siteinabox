@@ -71,12 +71,24 @@ try {
     })
     const events = []
     const externalAnalyticsRequests = []
+    let failConsentedRequests = false
+    let failedConsentedRequests = 0
+    let revoked = false
+    let consentedAttemptsAfterRevoke = 0
     page.on("request", (request) => {
       if (/posthog/i.test(new URL(request.url()).hostname)) externalAnalyticsRequests.push(request.url())
     })
 
     await page.route(`${ingestOrigin}/**`, async (route) => {
-      events.push(...decodedEvents(route.request()))
+      const decoded = decodedEvents(route.request())
+      const isConsented = decoded.some((event) => event.properties?.analytics_tier === "consented")
+      if (revoked && isConsented) consentedAttemptsAfterRevoke += 1
+      if (failConsentedRequests && isConsented) {
+        failedConsentedRequests += 1
+        await route.abort("failed")
+        return
+      }
+      events.push(...decoded)
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -123,6 +135,13 @@ try {
       await route.fulfill({ status: response.status, headers, body })
     })
 
+    await page.addInitScript(({ key }) => {
+      if (!sessionStorage.getItem("siab_lifecycle_stale_seeded")) {
+        localStorage.setItem(key, JSON.stringify({ version: "stale", categories: { necessary: true, analytics: true } }))
+        sessionStorage.setItem("siab_lifecycle_stale_seeded", "1")
+      }
+    }, { key: "siab_lifecycle_test_consent" })
+
     await page.goto(`${publicOrigin}/?email=private%40example.test&utm_campaign=secret`, { waitUntil: "networkidle", timeout: 60_000 })
     await page.waitForFunction(
       () => typeof window.SIABAnalytics?.grantConsent === "function",
@@ -155,16 +174,78 @@ try {
     await page.evaluate(() => window.SIABAnalytics.grantConsent())
     await waitFor(() => events.some((event) => event.event === "site_journey_step"), "semantic analytics did not activate")
     assert.equal(events.filter((event) => event.event === "$pageview").length, 1, "consent transition does not duplicate the current pageview")
-    await page.evaluate(() => localStorage.setItem("siab_lifecycle_test_consent", JSON.stringify({
-      version: "test",
-      categories: { necessary: true, analytics: true },
-    })))
+    assert.deepEqual(
+      await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
+      { version: "test", categories: { necessary: true, analytics: true } },
+      "runtime consent transition persists the accepted receipt",
+    )
+
+    const journeyBeforeRevoke = events.filter((event) => event.event === "site_journey_step").length
+    const eventsBeforeRevoke = events.length
+    failConsentedRequests = true
+    await page.evaluate(() => {
+      const action = document.querySelector("button:not([data-consent-action])")
+      action?.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
+    })
+    await waitFor(() => failedConsentedRequests > 0, "consented request fixture did not fail")
+    await page.evaluate(() => window.SIABAnalytics.revokeConsent())
+    revoked = true
+    assert.deepEqual(
+      await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
+      { version: "test", categories: { necessary: true, analytics: false } },
+      "runtime revoke persists the declined receipt",
+    )
+    await page.evaluate(() => {
+      const action = document.querySelector("a,button")
+      action?.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
+      window.dispatchEvent(new Event("scroll"))
+    })
+    await page.waitForTimeout(800)
+    await page.waitForTimeout(6_500)
+    assert.equal(
+      events.slice(eventsBeforeRevoke).some((event) => event.event.startsWith("site_")),
+      false,
+      "revocation tears down renderer-owned interaction listeners and delayed events",
+    )
+    assert.equal(
+      consentedAttemptsAfterRevoke,
+      0,
+      "revocation drops failed consented requests before the SDK retry queue can resend them",
+    )
+    failConsentedRequests = false
+    revoked = false
+
+    await page.evaluate(() => window.SIABAnalytics.grantConsent())
+    await waitFor(
+      () => events.filter((event) => event.event === "site_journey_step").length > journeyBeforeRevoke,
+      "re-consent did not rebuild the renderer analytics lifecycle",
+    )
+    assert.deepEqual(
+      await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
+      { version: "test", categories: { necessary: true, analytics: true } },
+      "runtime re-consent persists the accepted receipt",
+    )
+
+    const preReloadPageleaves = events.filter(
+      (event) => event.event === "$pageleave" && event.properties?.analytics_tier === "consented",
+    ).length
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" })
+      document.dispatchEvent(new Event("visibilitychange"))
+      window.dispatchEvent(new PageTransitionEvent("pagehide"))
+    })
+    await waitFor(
+      () => events.filter((event) => event.event === "$pageleave" && event.properties?.analytics_tier === "consented").length > preReloadPageleaves,
+      "pre-reload lifecycle did not emit a consented pageleave",
+    )
+    const consentedLifecycleStart = events.length
     await page.reload({ waitUntil: "networkidle", timeout: 60_000 })
     await waitFor(
-      () => events.some((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented"),
+      () => events.slice(consentedLifecycleStart).some(
+        (event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented",
+      ),
       `stored consent did not start a consented renderer lifecycle\n${output}`,
     )
-    const consentedStart = events.findIndex((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented")
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await page.waitForTimeout(250)
 
@@ -174,13 +255,15 @@ try {
       window.dispatchEvent(new PageTransitionEvent("pagehide"))
     })
     await waitFor(
-      () => events.some((event) => event.event === "$pageleave" && event.transport === "posthog-js"),
+      () => events.slice(consentedLifecycleStart).some(
+        (event) => event.event === "$pageleave" && event.transport === "posthog-js",
+      ),
       "PostHog JS did not capture a pageleave",
     )
 
     // Snapshot before navigation so a later route change cannot add a second
     // $pageleave into the consented-lifecycle assertion window.
-    const consentedLifecycle = events.slice(consentedStart)
+    const consentedLifecycle = events.slice(consentedLifecycleStart)
     const pageviews = consentedLifecycle.filter((event) => event.event === "$pageview")
     const pageleaves = consentedLifecycle.filter((event) => event.event === "$pageleave")
     const groupIdentify = consentedLifecycle.find((event) => event.event === "$groupidentify")
@@ -190,9 +273,13 @@ try {
     assert.equal(pageleaves.length, 1, `one lifecycle must emit one $pageleave: ${JSON.stringify(pageleaves)}`)
     assert.ok(events.some((event) => event.event === "site_journey_step"), "semantic SIAB events remain active")
     assert.equal(events.some((event) => event.transport === "siab-direct"), false, "semantic events use PostHog JS")
-    assert.equal(typeof nativePageleave?.properties?.$prev_pageview_duration, "number")
-    assert.equal(typeof nativePageleave?.properties?.$prev_pageview_max_scroll, "number")
-    assert.equal(typeof nativePageleave?.properties?.$prev_pageview_max_scroll_percentage, "number")
+    assert.equal(
+      typeof nativePageleave?.properties?.page_duration_ms,
+      "number",
+      `pageleave lifecycle properties missing: ${JSON.stringify(nativePageleave)}`,
+    )
+    assert.equal(typeof nativePageleave?.properties?.scroll_depth, "number")
+    assert.equal(nativePageleave?.properties?.interaction_type, "leave")
     assert.equal(nativePageleave?.properties?.tenant_id, "tenant-test", "common enrichment remains on native lifecycle events")
     assert.deepEqual(pageviews.map((event) => event.properties.analytics_tier), ["consented"])
     assert.deepEqual(pageviews[0]?.properties?.$groups, { tenant: "tenant-test" })
@@ -208,8 +295,8 @@ try {
     console.log(JSON.stringify({
       pageviews: pageviews.map(({ transport }) => transport),
       pageleaves: pageleaves.map(({ transport }) => transport),
-      nativeDuration: nativePageleave.properties.$prev_pageview_duration,
-      nativeMaxScroll: nativePageleave.properties.$prev_pageview_max_scroll,
+      nativeDuration: nativePageleave.properties.page_duration_ms,
+      nativeMaxScroll: nativePageleave.properties.scroll_depth,
       semanticJourneyEvents: events.filter((event) => event.event === "site_journey_step").length,
     }))
   } finally {

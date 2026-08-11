@@ -22,6 +22,7 @@
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/legal-content": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",
+    "@siteinabox/ui": "workspace:*",
     "astro": "^6.2.1",
     "posthog-js": "^1.386.8",
     "react": "19.2.6",

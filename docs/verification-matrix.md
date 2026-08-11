@@ -1,7 +1,10 @@
 # Verification matrix
 
-The executable matrix is verification-matrix.json. It records each check's
-command, owner, CI job, prerequisites, and risk.
+The executable matrix is `verification-matrix.json`. It records each check's
+command, owner, CI job, prerequisites, and risk. `pnpm check:toolchain` also
+validates that every command still exists in the owning package manifest or
+script file and that the declared CI job actually runs it; package manifests
+and workflow YAML remain the executable authorities.
 
 ## Profiles
 

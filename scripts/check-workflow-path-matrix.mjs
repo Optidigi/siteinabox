@@ -2,6 +2,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import process from "node:process"
 
+import { extractWorkflowPaths, usesRootDockerContext } from "./workflow-path-parser.mjs"
+
 const root = process.cwd()
 const workflowDir = path.join(root, ".github/workflows")
 const matrixPath = path.join(root, "docs/workflow-path-matrix.json")
@@ -17,14 +19,7 @@ function difference(left, right) {
 
 function workflowPaths(file) {
   const source = readFileSync(path.join(workflowDir, file), "utf8")
-  const block = source.match(/^\s{4}paths:\s*\n((?:\s{6}-\s+[^\n]+\n?)+)/m)?.[1]
-  if (!block) throw new Error(`${file}: could not find an on.push.paths block`)
-
-  return block
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^-\s+/, "").replace(/^['"]|['"]$/g, ""))
+  return extractWorkflowPaths(source, file)
 }
 
 function pathBase(entry) {
@@ -44,6 +39,16 @@ for (const workflow of expectedWorkflows) {
   const actualPaths = workflowPaths(workflow)
   const missingPaths = difference(expectedPaths, actualPaths)
   const duplicatePaths = actualPaths.filter((entry, index) => actualPaths.indexOf(entry) !== index)
+
+  const source = readFileSync(path.join(workflowDir, workflow), "utf8")
+  if (usesRootDockerContext(source)) {
+    if (!expectedPaths.includes(".dockerignore")) {
+      errors.push(`${workflow}: root Docker context requires .dockerignore in matrix`)
+    }
+    if (!actualPaths.includes(".dockerignore")) {
+      errors.push(`${workflow}: root Docker context requires .dockerignore in workflow paths`)
+    }
+  }
 
   if (missingPaths.length > 0) errors.push(`${workflow}: required paths missing from workflow: ${missingPaths.join(", ")}`)
   if (duplicatePaths.length > 0) errors.push(`${workflow}: duplicate paths: ${[...new Set(duplicatePaths)].join(", ")}`)

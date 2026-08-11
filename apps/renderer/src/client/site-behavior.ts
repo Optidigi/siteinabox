@@ -104,9 +104,6 @@ document.addEventListener("click", (event) => {
   if (!button) return
   const accepted = button.dataset.consentAction === "accept"
   const banner = button.closest<HTMLElement>("[data-siab-cookie-consent='true']")
-  const storageKey = consentConfig.consentStorageKey || "siab_cookie_consent_v1"
-  const receipt = { version: consentConfig.consentVersion || "1", categories: { necessary: true, analytics: accepted } }
-  window.localStorage.setItem(storageKey, JSON.stringify(receipt))
   if (accepted) window.SIABAnalytics?.grantConsent()
   else window.SIABAnalytics?.revokeConsent()
   if (banner) banner.hidden = true

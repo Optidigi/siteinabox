@@ -9,6 +9,7 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
+      - ".dockerignore"
       - ".github/workflows/build-intake-image.yml"
   workflow_dispatch: {}
 

@@ -105,10 +105,11 @@
         "POSTHOG_PROJECT_TOKEN",
         "POSTHOG_PUBLIC_HOST",
         "PUBLIC_TURNSTILE_SITE_KEY",
+        "SIAB_REUSE_LANDING_BUILD",
         "SITE_URL"
       ],
       "notes": [
-        "The public analytics and Turnstile values are build-time browser configuration; requiredness remains operation-specific and is not inferred from VPS presence."
+        "The public analytics and Turnstile values are build-time browser configuration; SIAB_REUSE_LANDING_BUILD is a non-secret CI/browser-test optimization; requiredness remains operation-specific and is not inferred from VPS presence."
       ]
     },
     "renderer": {

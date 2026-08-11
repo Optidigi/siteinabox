@@ -9,7 +9,7 @@ without an inventory update.
 | --- | ---: | --- |
 | CMS | 76 | Researched contract |
 | Intake | 4 | Researched contract |
-| Landing | 6 | Researched contract |
+| Landing | 7 | Researched contract |
 | Renderer | 13 | Researched contract |
 
 The inventory now has a non-mutating classification contract in

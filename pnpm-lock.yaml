@@ -462,6 +462,9 @@ importers:
       '@siteinabox/site-renderer':
         specifier: workspace:*
         version: link:../../packages/site-renderer
+      '@siteinabox/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       astro:
         specifier: ^6.2.1
         version: 6.4.7(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.0)(sass@1.77.4)(tsx@4.22.4)(yaml@2.9.0)

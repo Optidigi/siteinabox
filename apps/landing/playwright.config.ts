@@ -18,7 +18,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 4399',
+    command: process.env.SIAB_REUSE_LANDING_BUILD === '1'
+      ? 'pnpm preview --host 127.0.0.1 --port 4399'
+      : 'pnpm build && pnpm preview --host 127.0.0.1 --port 4399',
     env: {
       ...process.env,
       PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',

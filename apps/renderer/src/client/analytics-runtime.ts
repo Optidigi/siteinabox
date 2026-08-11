@@ -28,6 +28,14 @@ type AnalyticsConfig = {
 
 export {}
 
+type PostHogRequest = {
+  data?: unknown
+}
+
+type PostHogRetryQueue = {
+  _enqueue?: (request: PostHogRequest) => void
+}
+
 type PostHogClient = {
   init: (token: string, config: Record<string, unknown>, name?: string) => void
   register: (properties: Record<string, unknown>) => void
@@ -37,6 +45,8 @@ type PostHogClient = {
   opt_out_capturing?: () => void
   clear_opt_in_out_capturing?: () => void
   reset?: () => void
+  _send_request?: (request: PostHogRequest) => void
+  _retryQueue?: PostHogRetryQueue
 }
 
 type RuntimeState = {
@@ -101,6 +111,109 @@ const state: RuntimeState = {
   startedForms: new WeakSet(),
 }
 
+type ConsentCleanup = () => void
+
+const consentCleanups = new Set<ConsentCleanup>()
+let consentEpoch = 0
+let posthogStartupToken = 0
+const gatedPostHogInstances = new WeakSet<object>()
+const gatedPostHogRetryQueues = new WeakSet<object>()
+
+const isBaselinePostHogRequest = (request: PostHogRequest) => {
+  const records = Array.isArray(request.data) ? request.data : [request.data]
+  return records.length > 0 && records.every((record) => {
+    if (!record || typeof record !== "object") return false
+    const properties = (record as { properties?: unknown }).properties
+    return Boolean(
+      properties &&
+      typeof properties === "object" &&
+      (properties as Record<string, unknown>).analytics_tier === "baseline",
+    )
+  })
+}
+
+const canSendPostHogRequest = (request: PostHogRequest) =>
+  state.consentGranted || isBaselinePostHogRequest(request)
+
+const installPostHogConsentGate = (instance: PostHogClient) => {
+  if (!gatedPostHogInstances.has(instance)) {
+    const sendRequest = instance._send_request
+    if (sendRequest) {
+      instance._send_request = (request) => {
+        if (!canSendPostHogRequest(request)) return
+        sendRequest.call(instance, request)
+      }
+      gatedPostHogInstances.add(instance)
+    }
+  }
+
+  const retryQueue = instance._retryQueue
+  if (!retryQueue || gatedPostHogRetryQueues.has(retryQueue)) return
+  const enqueue = retryQueue._enqueue
+  if (enqueue) {
+    retryQueue._enqueue = (request) => {
+      if (!canSendPostHogRequest(request)) return
+      enqueue.call(retryQueue, request)
+    }
+    gatedPostHogRetryQueues.add(retryQueue)
+  }
+}
+
+const registerConsentCleanup = (cleanup: ConsentCleanup) => {
+  consentCleanups.add(cleanup)
+  return () => consentCleanups.delete(cleanup)
+}
+
+const resetConsentedState = () => {
+  state.initialized = false
+  state.lastAutocaptureAction = null
+  state.pageStartedAt = performance.now()
+  state.maxScrollDepth = 0
+  state.capturedScrollDepths.clear()
+  state.journeyStepIndex = 0
+  state.viewedSections = new WeakSet()
+  state.engagedSections = new WeakSet()
+  state.sectionVisibleSince = new WeakMap()
+  state.viewedComponents = new WeakSet()
+  state.componentStats = new WeakMap()
+  state.startedForms = new WeakSet()
+}
+
+const teardownConsentedResources = () => {
+  const cleanups = [...consentCleanups]
+  consentCleanups.clear()
+  cleanups.forEach((cleanup) => cleanup())
+  resetConsentedState()
+}
+
+const scheduleConsentTimer = (callback: () => void, delay: number) => {
+  const epoch = consentEpoch
+  let active = true
+  let timer: number | undefined
+  const unregister = registerConsentCleanup(() => {
+    active = false
+    if (timer !== undefined) window.clearTimeout(timer)
+  })
+  timer = window.setTimeout(() => {
+    if (!active) return
+    active = false
+    unregister()
+    if (!state.consentGranted || epoch !== consentEpoch) return
+    callback()
+  }, delay)
+}
+
+const addConsentListener = (
+  target: Document | Window,
+  type: string,
+  listener: EventListener,
+  options?: AddEventListenerOptions | boolean,
+) => {
+  target.addEventListener(type, listener, options)
+  const capture = typeof options === "boolean" ? options : options?.capture ?? false
+  registerConsentCleanup(() => target.removeEventListener(type, listener, capture))
+}
+
 const legacyCookieConsentStorageKey = "siab_cookie_consent_v1"
 const POSTHOG_TENANT_GROUP_TYPE = "tenant"
 
@@ -133,10 +246,10 @@ const baseProperties = () => {
     theme_id: config?.themeId ?? null,
     site_build_id: config?.siteBuildId ?? null,
     manifest_version: config?.manifestVersion ?? null,
-    $current_url: location.href,
+    $current_url: `${location.origin}${location.pathname}`,
     $host: location.hostname,
     $pathname: location.pathname,
-    $referrer: document.referrer || null,
+    $referrer: safeReferrerPath(),
     ...browserProperties(),
     ...trafficProperties(),
     ...campaignProperties(),
@@ -245,12 +358,30 @@ const sanitizeAutocaptureEvent = (event: Record<string, unknown> | null | undefi
 }
 
 const afterIdle = (callback: () => void) => {
-  const idle = (window as Window & { requestIdleCallback?: (cb: () => void, options?: { timeout?: number }) => number }).requestIdleCallback
-  if (idle) {
-    idle(callback, { timeout: 2500 })
-    return
+  const idleWindow = window as Window & {
+    requestIdleCallback?: (cb: () => void, options?: { timeout?: number }) => number
+    cancelIdleCallback?: (id: number) => void
   }
-  window.setTimeout(callback, 750)
+  let cancelled = false
+  let idleId: number | undefined
+  let timer: number | undefined
+  const run = () => {
+    if (cancelled) return
+    callback()
+  }
+  const cancel = () => {
+    cancelled = true
+    if (idleId !== undefined) idleWindow.cancelIdleCallback?.(idleId)
+    if (timer !== undefined) window.clearTimeout(timer)
+  }
+
+  const idle = idleWindow.requestIdleCallback
+  if (idle) {
+    idleId = idle(run, { timeout: 2500 })
+    return cancel
+  }
+  timer = window.setTimeout(run, 750)
+  return cancel
 }
 
 const setupPostHogAutocapture = () => {
@@ -258,17 +389,28 @@ const setupPostHogAutocapture = () => {
   const config = state.config
   if (!config?.enabled || !config.posthogProjectToken || !config.posthogHost) return
   state.posthogStarted = true
+  const startupToken = ++posthogStartupToken
+  const startupEpoch = consentEpoch
+  let unregisterStartup = () => {}
 
-  afterIdle(() => {
+  const cancelStartup = afterIdle(() => {
+    unregisterStartup()
     void import("posthog-js").then((module) => {
+      if (startupToken !== posthogStartupToken) return
+      if (startupEpoch !== consentEpoch && !state.consentGranted) {
+        state.posthogStarted = false
+        return
+      }
       const posthog = (module.default ?? module) as unknown as PostHogClient
       state.posthog = posthog
+      installPostHogConsentGate(posthog)
       posthog.init(config.posthogProjectToken!, {
         api_host: config.posthogHost,
         ui_host: config.posthogUiHost,
         defaults: "2026-01-30",
         capture_pageview: true,
         capture_pageleave: true,
+        request_batching: false,
         disable_scroll_properties: false,
         capture_performance: {
           web_vitals: true,
@@ -297,10 +439,16 @@ const setupPostHogAutocapture = () => {
           if (state.consentGranted) activateConsentedPostHog(instance)
         },
       })
+      installPostHogConsentGate(posthog)
     }).catch(() => {
+      if (startupToken !== posthogStartupToken) return
       state.posthogStarted = false
       state.posthog = null
     })
+  })
+  unregisterStartup = registerConsentCleanup(() => {
+    cancelStartup()
+    if (!state.posthog) state.posthogStarted = false
   })
 }
 
@@ -413,6 +561,20 @@ const safeReferrerPath = () => {
   }
 }
 
+const persistConsentReceipt = (accepted: boolean) => {
+  const config = state.config
+  const storageKey = config?.consentStorageKey || legacyCookieConsentStorageKey
+  const receipt = {
+    version: config?.consentVersion || "1",
+    categories: { necessary: true, analytics: accepted },
+  }
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(receipt))
+  } catch {
+    // Consent still controls the current page when storage is unavailable.
+  }
+}
+
 const sectionProperties = (section: Element) => ({
   section_id: section.getAttribute("data-siab-section-id") || null,
   section_type: section.getAttribute("data-siab-section-type") || "unknown",
@@ -447,6 +609,7 @@ const capture = (event: string, properties: Record<string, unknown> = {}) => {
 }
 
 const captureJourneyStep = (step: string, properties: Record<string, unknown> = {}) => {
+  if (!state.consentGranted) return
   state.journeyStepIndex += 1
   capture("site_journey_step", {
     journey_step_index: state.journeyStepIndex,
@@ -460,7 +623,7 @@ const closestSection = (target: EventTarget | null) =>
   target instanceof Element ? target.closest("[data-siab-analytics-section='true']") : null
 
 const captureSectionEngaged = (section: Element) => {
-  if (state.engagedSections.has(section)) return
+  if (!state.consentGranted || state.engagedSections.has(section)) return
   state.engagedSections.add(section)
   capture("site_section_engaged", sectionProperties(section))
 }
@@ -469,20 +632,22 @@ const observeSections = () => {
   const sections = Array.from(document.querySelectorAll("[data-siab-analytics-section='true']"))
   if (!sections.length) return
 
+  const epoch = consentEpoch
   const observer = new IntersectionObserver((entries) => {
+    if (!state.consentGranted || epoch !== consentEpoch) return
     for (const entry of entries) {
       const section = entry.target
       if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
         if (!state.sectionVisibleSince.has(section)) state.sectionVisibleSince.set(section, performance.now())
         if (!state.viewedSections.has(section)) {
-          window.setTimeout(() => {
+          scheduleConsentTimer(() => {
             const visibleSince = state.sectionVisibleSince.get(section)
             if (!visibleSince || performance.now() - visibleSince < 500 || state.viewedSections.has(section)) return
             state.viewedSections.add(section)
             capture("site_section_viewed", sectionProperties(section))
           }, 500)
         }
-        window.setTimeout(() => {
+        scheduleConsentTimer(() => {
           const visibleSince = state.sectionVisibleSince.get(section)
           if (!visibleSince || performance.now() - visibleSince < 3000) return
           captureSectionEngaged(section)
@@ -493,6 +658,7 @@ const observeSections = () => {
     }
   }, { threshold: [0, 0.5] })
 
+  registerConsentCleanup(() => observer.disconnect())
   for (const section of sections) observer.observe(section)
 }
 
@@ -511,6 +677,9 @@ const componentRole = (element: Element) => {
 
 const trackedAction = (target: EventTarget | null) =>
   target instanceof Element ? target.closest<HTMLAnchorElement | HTMLButtonElement>("a,button") : null
+
+const isConsentControl = (target: EventTarget | null) =>
+  target instanceof Element && target.closest("[data-siab-cookie-consent='true']") !== null
 
 const actionKey = (
   action: HTMLAnchorElement | HTMLButtonElement,
@@ -601,7 +770,9 @@ const observeComponents = () => {
   const actions = Array.from(document.querySelectorAll("a,button"))
   if (!actions.length) return
 
+  const epoch = consentEpoch
   const observer = new IntersectionObserver((entries) => {
+    if (!state.consentGranted || epoch !== consentEpoch) return
     for (const entry of entries) {
       const action = entry.target as HTMLAnchorElement | HTMLButtonElement
       const stats = componentStats(action)
@@ -610,7 +781,7 @@ const observeComponents = () => {
         if (stats.visibleSince == null) stats.visibleSince = now
         if (stats.firstVisibleAt == null) stats.firstVisibleAt = now
         if (!state.viewedComponents.has(action)) {
-          window.setTimeout(() => {
+          scheduleConsentTimer(() => {
             const latest = componentStats(action)
             if (latest.visibleSince == null || performance.now() - latest.visibleSince < 500 || state.viewedComponents.has(action)) return
             const section = closestSection(action)
@@ -638,11 +809,14 @@ const observeComponents = () => {
     }
   }, { threshold: [0, 0.5] })
 
-  for (const action of actions) observer.observe(action)
+  registerConsentCleanup(() => observer.disconnect())
+  for (const action of actions) {
+    if (!isConsentControl(action)) observer.observe(action)
+  }
 }
 
 const setupDelegatedListeners = () => {
-  document.addEventListener("pointerenter", (event) => {
+  addConsentListener(document, "pointerenter", (event) => {
     if ((event as PointerEvent).pointerType === "touch") return
     const action = trackedAction(event.target)
     if (!action) return
@@ -650,7 +824,7 @@ const setupDelegatedListeners = () => {
     if (stats.hoverStartedAt == null) stats.hoverStartedAt = performance.now()
   }, { capture: true })
 
-  document.addEventListener("pointerleave", (event) => {
+  addConsentListener(document, "pointerleave", (event) => {
     if ((event as PointerEvent).pointerType === "touch") return
     const action = trackedAction(event.target)
     if (!action) return
@@ -660,14 +834,14 @@ const setupDelegatedListeners = () => {
     stats.hoverStartedAt = null
   }, { capture: true })
 
-  document.addEventListener("focusin", (event) => {
+  addConsentListener(document, "focusin", (event) => {
     const action = trackedAction(event.target)
     if (!action) return
     const stats = componentStats(action)
     if (stats.hoverStartedAt == null) stats.hoverStartedAt = performance.now()
   })
 
-  document.addEventListener("focusout", (event) => {
+  addConsentListener(document, "focusout", (event) => {
     const action = trackedAction(event.target)
     if (!action) return
     const stats = componentStats(action)
@@ -676,8 +850,9 @@ const setupDelegatedListeners = () => {
     stats.hoverStartedAt = null
   })
 
-  document.addEventListener("click", (event) => {
+  addConsentListener(document, "click", (event) => {
     const target = event.target
+    if (isConsentControl(target)) return
     const action = trackedAction(target)
     const section = closestSection(target)
     if (section) captureSectionEngaged(section)
@@ -711,7 +886,7 @@ const setupDelegatedListeners = () => {
     }
   }, { capture: true })
 
-  document.addEventListener("focusin", (event) => {
+  addConsentListener(document, "focusin", (event) => {
     const form = event.target instanceof Element ? event.target.closest<HTMLFormElement>("form[data-siab-analytics-form='true']") : null
     if (!form || state.startedForms.has(form)) return
     state.startedForms.add(form)
@@ -727,7 +902,7 @@ const setupDelegatedListeners = () => {
     })
   })
 
-  document.addEventListener("submit", (event) => {
+  addConsentListener(document, "submit", (event) => {
     const form = event.target instanceof Element ? event.target.closest<HTMLFormElement>("form[data-siab-analytics-form='true']") : null
     if (!form) return
     const section = closestSection(form)
@@ -741,7 +916,7 @@ const setupDelegatedListeners = () => {
     })
   }, { capture: true })
 
-  document.addEventListener("change", (event) => {
+  addConsentListener(document, "change", (event) => {
     const field = event.target instanceof Element ? event.target.closest<HTMLElement>("input,select,textarea") : null
     if (!field) return
     const section = closestSection(field)
@@ -775,12 +950,12 @@ const setupScrollDepth = () => {
       }
     }
   }
-  window.addEventListener("scroll", onScroll, { passive: true })
+  addConsentListener(window, "scroll", onScroll, { passive: true })
   onScroll()
 }
 
 const initializeAfterConsent = () => {
-  if (state.initialized) return
+  if (state.initialized || !state.consentGranted) return
   state.initialized = true
   captureJourneyStep("page-viewed")
   observeSections()
@@ -795,18 +970,37 @@ window.SIABAnalytics = {
   grantConsent() {
     if (state.consentGranted) return
     state.consentGranted = true
-    if (state.posthog) activateConsentedPostHog(state.posthog)
+    consentEpoch += 1
+    persistConsentReceipt(true)
+    if (state.posthog) {
+      installPostHogConsentGate(state.posthog)
+      activateConsentedPostHog(state.posthog)
+    }
     else setupPostHogAutocapture()
   },
   revokeConsent() {
     const wasGranted = state.consentGranted
     state.consentGranted = false
+    consentEpoch += 1
+    posthogStartupToken += 1
+    teardownConsentedResources()
+    if (!state.posthog) state.posthogStarted = false
     if (wasGranted && state.posthog) {
+      // PostHog has no public API to abort an in-flight request. The gate above
+      // prevents consented payloads from entering or re-entering its transport
+      // after revoke; a request already accepted by the network cannot be recalled.
+      installPostHogConsentGate(state.posthog)
       state.posthog.opt_out_capturing?.()
       state.posthog.clear_opt_in_out_capturing?.()
     }
-    window.localStorage.removeItem("siab_analytics_distinct_id")
-    window.sessionStorage.removeItem("siab_analytics_session_id")
+    persistConsentReceipt(false)
+    try {
+      window.localStorage.removeItem("siab_analytics_distinct_id")
+      window.sessionStorage.removeItem("siab_analytics_session_id")
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
+    if (!state.posthog) setupPostHogAutocapture()
   },
 }
 
