@@ -24,9 +24,34 @@ vi.mock("@/components/status-feedback", () => ({
   useStatusFeedback: () => statusMocks,
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
+
+const ResizeObserverStub = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+Object.defineProperty(globalThis, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverStub,
+})
+Object.defineProperty(window, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverStub,
+})
+
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = vi.fn()
+}
+
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { ApiKeyManager } from "@/components/forms/ApiKeyManager"
+import { CreateUserForm } from "@/components/forms/CreateUserForm"
 
 const read = (path: string) => readFileSync(path, "utf8")
 
@@ -86,13 +111,34 @@ describe("observed UI bug regressions", () => {
     vi.unstubAllGlobals()
   })
 
-  it("resets pending state when create-user network work throws", () => {
-    const form = read("src/components/forms/CreateUserForm.tsx")
+  it("resets create-user pending state when the create request throws", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ docs: [{ id: 1, name: "Tenant", slug: "tenant" }] }) })
+      .mockRejectedValueOnce(new Error("network offline"))
+    vi.stubGlobal("fetch", fetchMock)
+    statusMocks.error.mockReset()
 
-    expect(form).toContain("try {")
-    expect(form).toContain("status.error(tCommon(\"networkError\"))")
-    expect(form).toContain("finally {\n      setPending(false)\n    }")
-    expect(form).toContain("const patchRes = await fetch(`/api/users/${newId}`")
+    render(createElement(CreateUserForm))
+    fireEvent.click(screen.getByRole("button", { name: "create" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/tenants?limit=200&sort=name"))
+    fireEvent.change(screen.getByRole("textbox", { name: "email" }), {
+      target: { value: "new@example.com" },
+    })
+    fireEvent.change(screen.getByRole("textbox", { name: "name" }), {
+      target: { value: "New User" },
+    })
+    fireEvent.change(screen.getByLabelText("password"), {
+      target: { value: "correct horse battery" },
+    })
+    fireEvent.click(screen.getByRole("combobox", { name: "site" }))
+    fireEvent.click(screen.getByRole("option", { name: "Tenant (tenant)" }))
+    const submit = screen.getAllByRole("button", { name: "create" }).at(-1) as HTMLButtonElement
+    fireEvent.submit(submit.closest("form")!)
+
+    await waitFor(() => expect(statusMocks.error).toHaveBeenCalledWith("networkError"))
+    expect(submit.disabled).toBe(false)
+    vi.unstubAllGlobals()
   })
 
   it("resets pending state when user-edit save fetch throws", () => {
