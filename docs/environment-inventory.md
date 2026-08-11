@@ -7,17 +7,18 @@ without an inventory update.
 
 | Application | Source-read names | Classification status |
 | --- | ---: | --- |
-| CMS | 76 | Owner review required |
-| Intake | 4 | Owner review required |
-| Landing | 6 | Owner review required |
-| Renderer | 13 | Owner review required |
+| CMS | 76 | Researched contract |
+| Intake | 4 | Researched contract |
+| Landing | 6 | Researched contract |
+| Renderer | 13 | Researched contract |
 
-This first boundary deliberately records names without guessing whether a value
-is build-time or runtime, public or secret, required or optional, validated or
-unvalidated, or current or deprecated. Those classifications affect auth,
-tenancy, providers, legal/privacy behavior, renderer access, and deployment, so
-each application contract needs owner and deployment evidence before it can
-enforce requirements.
+The inventory now has a non-mutating classification contract in
+`docs/environment-contracts.md`. It distinguishes build/runtime/test phase,
+public/secret/internal exposure, and startup-required/operation-scoped/optional
+requiredness. Source evidence proves CMS startup requirements for
+`PAYLOAD_SECRET` and `DATABASE_URI`; other provider and security variables are
+classified by operation scope rather than inferred as universal startup
+requirements.
 
 The inventory includes names read by application source and tests. It does not
 copy values from local or production environment files and never prints them.
@@ -25,13 +26,13 @@ Dockerfiles, Compose declarations, workflows, examples, and runbooks remain
 separate consumers to be reconciled by the subsequent per-application contract
 PRs.
 
-## Planned follow-up boundaries
+## Remaining evidence boundaries
 
-1. Classify the CMS names and add validation without changing existing reads.
-2. Classify the renderer token/file and fixture boundaries.
-3. Classify the public build-time settings for landing and intake.
-4. Reconcile examples, Compose, workflows, Docker build arguments, and runbooks.
+1. Reconcile the classified source inventory with future deployment changes.
+2. Add runtime validation only for requirements proven by an application contract
+   and a compatibility-tested rollout.
+3. Keep provider, legal, tenancy, commerce, and renderer operation checks at
+   their existing call sites.
 
-Until those reviews are complete, `owner-review-required` is an intentional
-guard against treating an incomplete inventory as a security or deployment
-contract.
+The CI contract check is intentionally non-mutating: it never reads or prints
+VPS values and does not change application startup behavior.

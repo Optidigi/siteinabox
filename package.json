@@ -12,7 +12,7 @@
     "check:ci": "node scripts/run-verification.mjs ci",
     "check:fast": "node scripts/run-verification.mjs fast",
     "check:toolchain": "node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
-    "environment:check": "node scripts/check-environment-inventory.mjs",
+    "environment:check": "node --test scripts/check-environment-contract.test.mjs && node scripts/check-environment-inventory.mjs",
     "workflow:check": "node scripts/check-workflow-path-matrix.mjs",
     "workflow:actions:check": "node scripts/check-workflow-actions.mjs",
     "deployment:static-parity": "node scripts/check-static-deployment-parity.mjs",
