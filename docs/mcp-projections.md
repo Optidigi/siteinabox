@@ -8,12 +8,12 @@ listed below are generated projections and must not be hand-edited. Run
 
 | Projection | Target | Status |
 | --- | --- | --- |
-| `.codex/config.toml` | Codex configuration projection | Retain; active use is not established by repository evidence. |
-| `.codex/mcp.toml` | Codex MCP compatibility projection | Retain; it may be consumed by an alternate Codex integration. |
+| `.codex/config.toml` | Codex configuration projection | Retain; owner-confirmed active Codex compatibility. |
+| `.codex/mcp.toml` | Codex MCP compatibility projection | Retain; owner-confirmed filename compatibility. |
 | `.cursor/mcp.json` | Cursor server projection | Retain. |
 | `.cursor/permissions.json` | Cursor command permission projection | Retain; security-relevant. |
-| `.mcp.json` | Generic MCP client compatibility projection | Retain; external client use is unknown. |
-| `.mcp.toml` | Generic MCP TOML compatibility projection | Retain; external client use is unknown. |
+| `.mcp.json` | Generic MCP client compatibility projection | Retain; owner-confirmed generic-agent compatibility. |
+| `.mcp.toml` | Generic MCP TOML compatibility projection | Retain; owner-confirmed generic-agent compatibility. |
 | `.mcp/dbhub-postgres.toml` | DBHub PostgreSQL projection | Retain; disabled/read-only guardrails are security-relevant. |
 
 The compatibility projections are not removable based on an empty in-workspace
@@ -54,7 +54,13 @@ The owning implementation is `scripts/sync-mcp-config.mjs`; its tests are
 `scripts/sync-mcp-config.test.mjs`. Generated files remain reviewable output,
 not independent policy authorities.
 
-## Owner evidence still required
+## Filename compatibility evidence
+
+The owner confirms that all ten registry servers are actively used by the
+supported agent setup and that Codex and Cursor compatibility must remain.
+The individual generated filenames remain supported aliases; no projection is
+removable solely because its exact client-level consumer is not observable in
+the repository.
 
 The following questions cannot be answered safely from repository contents:
 
