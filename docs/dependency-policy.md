@@ -26,11 +26,11 @@ request to align every workspace to one version.
 | Next / Payload | CMS-only `16.2.6` / `3.86.0` | CMS framework and schema boundary; do not align with Astro apps. |
 | Tailwind | `^4.2.4` in static apps, `^4.3` in CMS/UI, `^4.3.1` in renderer | Compare generated CSS and framework support before alignment. |
 | Vite | `^7.3.5` in Astro apps, `^8.0.14` in CMS | Framework/tooling constrained. |
-| Vitest | exact `4.1.9` in CMS, caret ranges elsewhere, same lockfile resolution | Candidate for catalog review, not an upgrade target by itself. |
+| Vitest | exact `4.1.9` in all direct consumers | Keep the test runner reproducible; upgrade only as one reviewed toolchain change. |
 | React Hook Form | `^7.77.0` in CMS/UI, `^7.79.0` in intake | Peer/runtime compatibility; no blanket alignment. |
 | PostHog | `^1.382.0` in CMS, `^1.386.8` in landing/renderer | Privacy-sensitive runtime drift; require lifecycle checks. |
 | Motion | `^12.23.24` in UI, `^12.42.2` in renderer | Shared runtime divergence; compare generated client bundles first. |
-| TypeScript | exact `6.0.3` in CMS/shared packages, caret in static apps | Root toolchain authority; package ranges are not proof of safe upgrade. |
+| TypeScript | exact `6.0.3` in all direct consumers | Keep the compiler reproducible; upgrade only as one reviewed toolchain change. |
 | `@types/node` | CMS-only exact `25.9.1` | Workspace-specific type surface. |
 | Playwright | exact `1.61.0` in direct consumers | Retain exact browser/tool alignment. |
 | Zod | `^4.4.3` across apps and packages | Shared contract runtime; preserve lockfile identity. |

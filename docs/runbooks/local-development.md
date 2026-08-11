@@ -148,7 +148,7 @@ production smoke, and image publication are separate release activities.
 | Surface | Owner | Minimum gate | Extra prerequisite |
 | --- | --- | --- | --- |
 | Shared contracts and repository policy | `packages/*` and root | `pnpm check:fast` | None |
-| Marketing site | `apps/landing` | `pnpm site:build` and `pnpm site:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
+| Marketing site | `apps/landing` | `pnpm landing:build` and `pnpm landing:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
 | Intake flow | `apps/intake` | `pnpm intake:build` and `pnpm intake:test` | Browser regression uses the intake workspace |
 | CMS | `apps/cms` | Generate Payload types/import map, then `pnpm --dir apps/cms typecheck` and `pnpm --dir apps/cms test` | Local PostgreSQL, `DATABASE_URI`, and `PAYLOAD_SECRET` |
 | Published-site renderer | `apps/renderer` | `pnpm renderer:deploy-contract`, `pnpm renderer:typecheck`, `pnpm renderer:test`, and `pnpm renderer:build` | Browser checks need Chromium; renderer provider checks use local fixtures |

@@ -7,17 +7,11 @@ This monorepo has one root toolchain and one repository MCP registry.
 `mcp.registry.json` is the single human-authored canonical policy. It records
 transport, pinned implementation, required environment-variable names,
 server-enforced controls, client tool and approval policy, preconditions,
-supported targets, and the fallback for an unavailable server. These generated
-client projections are committed so supported tools work when the repository is
-opened at its root:
-
-- `.mcp.json` — basic JSON compatibility;
-- `.mcp.toml` — generic TOML compatibility;
-- `.codex/config.toml` — Codex project configuration;
-- `.codex/mcp.toml` — compatibility for clients probing that filename;
-- `.cursor/mcp.json` — Cursor project configuration;
-- `.cursor/permissions.json` — Cursor Auto-review allowlist and steering derived
-  from registry approval policy.
+supported targets, and the fallback for an unavailable server. The complete
+generated projection inventory, compatibility aliases, and projection-policy
+checks are documented in [MCP registry and client projections](mcp-projections.md).
+Generated client projections are committed so supported tools work when the
+repository is opened at its root.
 
 Do not edit projections by hand or create app-local copies. The generator omits
 a server from a target that cannot preserve its mandatory controls; it never
