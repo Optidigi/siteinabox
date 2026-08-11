@@ -50,12 +50,9 @@ describe("observed UI bug regressions", () => {
   })
 
   it("does not offer owner invites unless the route explicitly allows them", () => {
-    const form = read("src/components/forms/UserInviteForm.tsx")
     const selectedSiteRoute = read("src/app/(frontend)/(admin)/sites/[slug]/users/page.tsx")
     const tenantRoute = read("src/app/(frontend)/(admin)/users/page.tsx")
 
-    expect(form).toContain("canInviteOwners = false")
-    expect(form).toContain('canInviteOwners ? ["owner", "editor", "viewer"] : ["editor", "viewer"]')
     expect(selectedSiteRoute).toContain('canInviteOwners={user.role === "super-admin"}')
     expect(tenantRoute).toContain("<UserInviteForm tenantId={tenantId} />")
   })

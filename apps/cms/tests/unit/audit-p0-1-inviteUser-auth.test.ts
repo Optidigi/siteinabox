@@ -1,6 +1,8 @@
+// @vitest-environment jsdom
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { createElement } from "react"
 
 // Audit finding #1 (P0, T2 primary / T1 secondary) — `inviteUser` server action
 // is unauthenticated and uses `overrideAccess: true`, so any caller (and
@@ -38,6 +40,9 @@ vi.mock("payload", async () => {
 
 const mocks = vi.hoisted(() => ({
   signInMagicLink: vi.fn(),
+  routerRefresh: vi.fn(),
+  statusError: vi.fn(),
+  statusSuccess: vi.fn(),
 }))
 vi.mock("@/lib/betterAuth", () => ({
   auth: {
@@ -47,10 +52,29 @@ vi.mock("@/lib/betterAuth", () => ({
   },
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: mocks.routerRefresh }),
+}))
+
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
+}))
+
+vi.mock("@/components/status-feedback", () => ({
+  useStatusFeedback: () => ({
+    error: mocks.statusError,
+    success: mocks.statusSuccess,
+  }),
+}))
+
 // Import AFTER the mocks above (vi.mock is hoisted, so this is safe).
 import { inviteUser, resendUserInvitation } from "@/lib/actions/inviteUser"
+import { UserInviteForm } from "@/components/forms/UserInviteForm"
 
 beforeEach(() => {
+  if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = vi.fn()
+  }
   fakePayload.auth.mockReset()
   fakePayload.create.mockReset()
   fakePayload.findByID.mockReset()
@@ -193,14 +217,41 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
     expect(fakePayload.create).toHaveBeenCalledTimes(1)
   })
 
-  it("OBS-6: invite UI requires re-entering the target email before sending", () => {
-    const src = readFileSync(
-      join(process.cwd(), "src/components/forms/UserInviteForm.tsx"),
-      "utf8",
-    )
-    expect(src).toContain("confirmEmail")
-    expect(src).toContain('t("validation.emailMatch")')
-    expect(src).toContain('t("inviteDescription")')
+  it("OBS-6: invite UI requires re-entering the target email before sending", async () => {
+    render(createElement(UserInviteForm, { tenantId: 1 }))
+
+    fireEvent.click(screen.getByRole("button", { name: "users.invite" }))
+    expect(screen.getByText("users.inviteDescription")).toBeTruthy()
+    expect(screen.getByRole("textbox", { name: "users.confirmEmail" })).toBeTruthy()
+
+    fireEvent.change(screen.getByRole("textbox", { name: "table.email" }), {
+      target: { value: "new@example.com" },
+    })
+    fireEvent.change(screen.getByRole("textbox", { name: "users.confirmEmail" }), {
+      target: { value: "different@example.com" },
+    })
+    fireEvent.change(screen.getByRole("textbox", { name: "table.name" }), {
+      target: { value: "New User" },
+    })
+
+    const submit = screen.getByRole("button", { name: "users.sendInvite" })
+    fireEvent.submit(submit.closest("form")!)
+
+    await waitFor(() => {
+      expect(screen.getByText("users.validation.emailMatch")).toBeTruthy()
+    })
+    expect(fakePayload.auth).not.toHaveBeenCalled()
+    expect(fakePayload.create).not.toHaveBeenCalled()
+    expect(mocks.signInMagicLink).not.toHaveBeenCalled()
+  })
+
+  it("does not expose owner invites in the tenant-local form", () => {
+    render(createElement(UserInviteForm, { tenantId: 1 }))
+
+    fireEvent.click(screen.getByRole("button", { name: "users.invite" }))
+    fireEvent.click(screen.getByRole("combobox", { name: "table.role" }))
+
+    expect(screen.queryByRole("option", { name: "common.role.owner" })).toBeNull()
   })
 
   it("resends an invitation only to a member of the caller's own tenant", async () => {
