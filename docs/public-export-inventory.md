@@ -120,3 +120,39 @@ support checks as a named subpath.
    cleanup PR on current variant internals.
 4. If an export is later internalized, make that a focused package-boundary PR
    with a compatibility window and no dependency or schema upgrade mixed in.
+
+## External reachability research collected on 2026-08-11
+
+The public npm registry returned `E404 Not Found` for the four workspace package
+names checked: `@siteinabox/contracts`, `@siteinabox/site-renderer`,
+`@siteinabox/legal-content`, and `@siteinabox/ui`. The packages are therefore
+not published through the public npm registry under these names.
+
+Public GitHub code search for the three higher-risk subpaths found only current
+workspace references:
+
+- `@siteinabox/contracts/fixtures/tenants` is used by renderer smoke routing,
+  CMS staging seed code, and CMS compatibility tests.
+- `@siteinabox/contracts/deploy-targets` is used by the renderer snapshot
+  loader.
+- `@siteinabox/site-renderer/source-templates` is used by the CMS provider
+  compatibility test and remains a build-time/generated boundary.
+
+Commands used:
+
+```text
+gh search code '"@siteinabox/contracts/fixtures/tenants"' --limit 100 --json repository,path
+gh search code '"@siteinabox/contracts/deploy-targets"' --limit 100 --json repository,path
+gh search code '"@siteinabox/site-renderer/source-templates"' --limit 100 --json repository,path
+npm view @siteinabox/contracts name version dist-tags.private --json
+npm view @siteinabox/site-renderer name version dist-tags.private --json
+npm view @siteinabox/legal-content name version dist-tags.private --json
+npm view @siteinabox/ui name version dist-tags.private --json
+```
+
+This is stronger evidence for workspace-internal ownership, but it is not proof
+that no consumer uses a git URL, private registry, vendored tarball, or a
+published snapshot. No export is removal-ready. Keep the current public export
+surface until a compatibility window and package-consumer inventory exist.
+F17 catalog and block replacement remains a separate deferred change and does
+not justify changing these exports now.
