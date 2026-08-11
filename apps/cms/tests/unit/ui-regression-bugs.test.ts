@@ -1,5 +1,32 @@
+// @vitest-environment jsdom
+
 import { readFileSync } from "node:fs"
-import { describe, expect, it } from "vitest"
+import { createElement } from "react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => {
+    const translate = ((key: string) => key) as ((key: string) => string) & {
+      rich: (_key: string, values: { phrase: () => unknown }) => unknown
+    }
+    translate.rich = (_key, values) => values.phrase()
+    return translate
+  },
+}))
+
+const statusMocks = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}))
+
+vi.mock("@/components/status-feedback", () => ({
+  useStatusFeedback: () => statusMocks,
+}))
+
+import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
+import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
+import { ApiKeyManager } from "@/components/forms/ApiKeyManager"
 
 const read = (path: string) => readFileSync(path, "utf8")
 
@@ -11,24 +38,52 @@ describe("observed UI bug regressions", () => {
     expect(sidebar).toContain("[--sidebar-primary-foreground:var(--brand-foreground)]")
   })
 
-  it("renders the typed confirmation phrase through next-intl rich markup", () => {
-    const dialog = read("src/components/typed-confirm-dialog.tsx")
-    const en = read("src/locales/en.json")
-    const nl = read("src/locales/nl.json")
+  it("renders the typed confirmation phrase and enables confirmation only for an exact match", async () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined)
+    const onOpenChange = vi.fn()
 
-    expect(dialog).toContain('t.rich("typeToConfirm"')
-    expect(en).toContain('"typeToConfirm": "Type <phrase></phrase> to confirm:"')
-    expect(nl).toContain('"typeToConfirm": "Typ <phrase></phrase> om te bevestigen:"')
+    render(createElement(TypedConfirmDialog, {
+      open: true,
+      onOpenChange,
+      title: "Delete user",
+      description: "This cannot be undone.",
+      confirmPhrase: "example@example.com",
+      confirmLabel: "Delete",
+      onConfirm,
+    }))
+
+    expect(screen.getByText("example@example.com")).toBeTruthy()
+    const input = screen.getByRole("textbox")
+    const confirm = screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement
+    expect(confirm.disabled).toBe(true)
+
+    fireEvent.change(input, { target: { value: "example@example.co" } })
+    expect(confirm.disabled).toBe(true)
+
+    fireEvent.change(input, { target: { value: " example@example.com " } })
+    expect(confirm.disabled).toBe(false)
+    fireEvent.click(confirm)
+
+    await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
 
-  it("resets pending state when API key fetches throw before a response exists", () => {
-    const manager = read("src/components/forms/ApiKeyManager.tsx")
+  it("resets API-key pending state when the enable request fails before a response exists", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("network offline"))
+    vi.stubGlobal("fetch", fetchMock)
+    statusMocks.error.mockReset()
 
-    expect(manager).toContain('const tCommon = useTranslations("common")')
-    expect(manager).toContain("try {")
-    expect(manager).toContain("status.error(tCommon(\"networkError\"))")
-    expect(manager).toContain("finally {\n      setPending(false)\n    }")
+    const user = { id: 42, enableAPIKey: false } as Parameters<typeof ApiKeyManager>[0]["user"]
+    render(createElement(ApiKeyManager, { user }))
+
+    const toggle = screen.getByRole("switch", { name: "API key" }) as HTMLButtonElement
+    fireEvent.click(toggle)
+
+    await waitFor(() => expect(statusMocks.error).toHaveBeenCalledWith("networkError"))
+    expect(toggle.disabled).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    vi.unstubAllGlobals()
   })
 
   it("resets pending state when create-user network work throws", () => {
@@ -65,12 +120,16 @@ describe("observed UI bug regressions", () => {
   })
 
   it("disables the shared mobile save pill when the form is clean, saved, or already saving", () => {
-    const pill = read("src/components/save-ui/mobile-save-pill.tsx")
+    const onSave = vi.fn()
+    const view = render(createElement(MobileSavePill, { status: "idle", onSave }))
 
-    expect(pill).toContain('displayStatus === "idle"')
-    expect(pill).toContain('displayStatus === "saved"')
-    expect(pill).toContain('displayStatus === "saving"')
-    expect(pill).toContain("disabled={disabled}")
+    expect((screen.getByRole("button", { name: "saved" }) as HTMLButtonElement).disabled).toBe(true)
+
+    view.rerender(createElement(MobileSavePill, { status: "saved", onSave }))
+    expect((screen.getByRole("button", { name: "saved" }) as HTMLButtonElement).disabled).toBe(true)
+
+    view.rerender(createElement(MobileSavePill, { status: "saving", onSave }))
+    expect((screen.getByRole("button", { name: "saving" }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it("reads analytics measuredFromVisitors as a raw ICU template", () => {
