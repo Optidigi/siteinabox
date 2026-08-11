@@ -298,16 +298,27 @@ describe('intake payload contract', () => {
     }, '2026-07-10T12:00:00.000Z');
     const { termsAcceptance: _termsAcceptance, ...legalWithoutTerms } = serialized.legal
     const withoutTerms = { ...serialized, legal: legalWithoutTerms }
-    const falseAcceptance = structuredClone(serialized)
-    falseAcceptance.legal.termsAcceptance = {
-      ...falseAcceptance.legal.termsAcceptance,
-      accepted: false,
-    } as typeof falseAcceptance.legal.termsAcceptance
-    const staleAcceptance = structuredClone(serialized)
-    staleAcceptance.legal.termsAcceptance = {
-      ...staleAcceptance.legal.termsAcceptance,
-      documentVersion: '2026-01-01.1',
-    } as typeof staleAcceptance.legal.termsAcceptance
+    const serializedClone = structuredClone(serialized)
+    const falseAcceptance = {
+      ...serializedClone,
+      legal: {
+        ...serializedClone.legal,
+        termsAcceptance: {
+          ...serializedClone.legal.termsAcceptance,
+          accepted: false,
+        },
+      },
+    }
+    const staleAcceptance = {
+      ...serializedClone,
+      legal: {
+        ...serializedClone.legal,
+        termsAcceptance: {
+          ...serializedClone.legal.termsAcceptance,
+          documentVersion: '2026-01-01.1',
+        },
+      },
+    }
 
     expect(PublicIntakeSubmissionSchema.safeParse(withoutTerms).success).toBe(false);
     expect(PublicIntakeSubmissionSchema.safeParse(falseAcceptance).success).toBe(false);
