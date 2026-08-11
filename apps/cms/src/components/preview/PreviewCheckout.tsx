@@ -58,6 +58,7 @@ import { AcceptanceCheckbox } from "@/components/preview/checkout/AcceptanceChec
 import { CheckoutTextField } from "@/components/preview/checkout/CheckoutTextField"
 import { checkoutStatusNeedsPolling } from "@/components/preview/checkout/checkoutLifecycle"
 import { useCheckoutPolling } from "@/components/preview/checkout/checkoutPolling"
+import { createCheckoutProgressDraft } from "@/components/preview/checkout/checkoutProgressDraft"
 import { LifecycleRow } from "@/components/preview/checkout/LifecycleRow"
 import { MigrationSourceEvidenceFields } from "@/components/preview/checkout/MigrationSourceEvidenceFields"
 import { ReviewGroup, ReviewDetail } from "@/components/preview/checkout/ReviewGroup"
@@ -572,28 +573,8 @@ export function PreviewCheckout({
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const persistProgress = React.useCallback((overrides: Partial<CheckoutProgressDraft> = {}) => {
     if (!saveProgressAction) return Promise.resolve(true)
-    const cleanDetails = Object.fromEntries(
-      Object.entries({
-        partyType: details.partyType,
-        firstName: details.firstName,
-        lastName: details.lastName,
-        registeredBusinessName: details.registeredBusinessName,
-        kvkNumber: details.kvkNumber,
-        intendedCompanyName: details.intendedCompanyName,
-        street: details.street,
-        number: details.number,
-        suffix: details.suffix,
-        zipcode: details.zipcode,
-        city: details.city,
-        country: details.country,
-        phoneCountryCode: details.phoneCountryCode,
-        phoneAreaCode: details.phoneAreaCode,
-        phoneSubscriberNumber: details.phoneSubscriberNumber,
-        euEligibilityBasis: details.euEligibilityBasis,
-        euEligibilityCountry: details.euEligibilityCountry,
-      }).filter(([, v]) => v !== undefined)
-    )
-    const draft: CheckoutProgressDraft = {
+    const draft = createCheckoutProgressDraft({
+      details,
       domainMode,
       domainQuery: normalizedDomainValue,
       selectedDomain: selectedDomainIntent,
@@ -602,9 +583,8 @@ export function PreviewCheckout({
       migrationSourceMechanism: domainMode === "existing_domain"
         ? migrationSourceMethod || null
         : null,
-      profileDraft: cleanDetails,
-      ...overrides,
-    }
+      overrides,
+    })
     const save = progressSaveChainRef.current
       .catch(() => undefined)
       .then(() => saveProgressAction(draft))
