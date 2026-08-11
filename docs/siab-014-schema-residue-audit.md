@@ -283,3 +283,82 @@ git grep -nE '20260727_142003_phase10_assisted_migration|20260728_130835_commerc
 
 No database connection, production query, migration, provider mutation, or
 data write was performed.
+
+## Production evidence collected on 2026-08-11
+
+A read-only probe was run against the running `siteinabox-cms-postgres`
+container using the container's configured database credentials. The session
+reported database `payload`, PostgreSQL 18, user `payload`, and
+`pg_is_in_recovery() = false`. No application, schema, or provider write was
+performed.
+
+Exact current row counts were:
+
+| Table | Rows |
+| --- | ---: |
+| `accounting_documents` | 0 |
+| `checkout_profiles` | 1 |
+| `domain_migrations` | 0 |
+| `domain_renewal_cycles` | 0 |
+| `managed_domains` | 0 |
+| `migration_checkout_secrets` | 0 |
+| `migration_source_authorizations` | 0 |
+| `orders` | 1 |
+| `payment_attempts` | 1 |
+
+The following nullable migration/provider fields had zero non-null values:
+
+- `domain_migrations.provider_customer_handle`
+- `domain_migrations.provider_transfer_state`
+- `domain_migrations.operator_work_classification`
+- `domain_migrations.supplemental_order_id`
+- `domain_migrations.encrypted_source_refresh_authority`
+- `migration_checkout_secrets.secret_key`
+- `migration_source_authorizations.authorization_key`
+- `managed_domains.provider_customer_handle`
+
+The incident and migration labels remain physical schema objects. Current
+production enum labels include `paused_supplemental_order`,
+`custom_quote_required`, `non_billable_incident_authorized`,
+`siteinabox_incident_recovery`, and `incident_recovery_migration_fee_charged`.
+The current migration history contains the commerce and migration migrations
+through `20260804_131545_optional_domain_query`; migration history is retained
+as permanent rollback and provenance evidence.
+
+A bounded JSONB-key probe over the migration, domain, checkout, order, payment,
+and accounting tables found zero rows containing the checked historical keys.
+This does not remove compatibility obligations: the application still reads
+and writes the typed columns and enum values, and old application versions and
+rollback images may depend on them.
+
+### Backup and rehearsal evidence
+
+The VPS contains repeated application/deployment database artifacts, including
+pre-deploy dumps through `payload-before-f526be2-20260810T163148Z.dump`, as well
+as checksummed dump artifacts. The inspected backup-related systemd timer and
+root-cron surfaces did not show an application-specific scheduler. Backup
+creation is therefore an infrastructure/deployment responsibility, not a
+repository-local application mechanism.
+
+Before any physical schema PR, the operator must select a recent dump, verify
+its checksum, restore it into disposable PostgreSQL, run the candidate
+migration and rollback rehearsal, and record the old-image compatibility
+result. The production ordering remains: verified backup, maintenance/change
+window, forward migration, application rollout, read-only post-deployment
+checks, and rollback to the previous image plus restored schema only if the
+compatibility checks fail.
+
+### Commands and logs
+
+The exact redacted commands and outputs are stored outside the repository:
+
+- `/tmp/siteinabox-maintainability-audit-logs/f18-production-schema-readonly.sql`
+- `/tmp/siteinabox-maintainability-audit-logs/f18-production-schema-readonly.txt`
+- `/tmp/siteinabox-maintainability-audit-logs/f18-production-counts.sql`
+- `/tmp/siteinabox-maintainability-audit-logs/f18-production-counts.txt`
+- `/tmp/siteinabox-maintainability-audit-logs/f18-production-targeted.sql`
+- `/tmp/siteinabox-maintainability-audit-logs/f18-production-targeted.txt`
+- `/tmp/siteinabox-maintainability-audit-logs/f18-vps-backup-evidence.txt`
+
+Disposition remains `defer`: no physical field, enum value, index, table, or
+migration file is removal-ready from this evidence alone.
