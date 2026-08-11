@@ -368,3 +368,51 @@ The exact redacted commands and outputs are stored outside the repository:
 
 Disposition remains `defer`: no physical field, enum value, index, table, or
 migration file is removal-ready from this evidence alone.
+
+## F18 completion evidence — 2026-08-11
+
+The physical-schema audit was completed under explicit operator approval using
+read-only production inspection and an isolated restore rehearsal. No
+production migration, DDL, data update, provider mutation, or application
+write was performed.
+
+- Production database: `payload`, PostgreSQL 18.4, primary (`pg_is_in_recovery() = false`).
+- Production migration history: migration `99`,
+  `20260804_131545_optional_domain_query`, batch `56`.
+- Current bounded counts: `accounting_documents=0`, `checkout_profiles=1`,
+  `domain_migrations=0`, `domain_renewal_cycles=0`, `managed_domains=0`,
+  `migration_checkout_secrets=0`, `migration_source_authorizations=0`,
+  `orders=1`, `payment_attempts=1`.
+- The scoped provider, operator, transfer, supplemental-order, encrypted
+  authority, checkout-secret, and source-authorization fields were all null
+  in the current production rows. This is an observation, not proof that the
+  fields can be removed.
+- Production enum types still include governed incident, operator-authorization,
+  provider-transfer, and checkout state labels, including
+  `paused_supplemental_order`, `custom_quote_required`,
+  `non_billable_incident_authorized`, and `siteinabox_incident_recovery`.
+- The checksummed backup
+  `/srv/saas/infra/stacks/siteinabox/deploy-backups/payload-before-f526be2-20260810T163148Z.dump`
+  passed `sha256sum -c` and `pg_restore --list` validation.
+- The same backup restored successfully into a disposable PostgreSQL 18.4
+  container on an internal temporary Docker network. The restored database
+  retained the candidate relations, columns, enum types, and the expected
+  bounded counts.
+- The latest source references include active checkout polling, migration
+  decision, operator recovery, provider reconciliation, migration-secret, and
+  Cloudflare source-authorization code. Git history shows relevant changes as
+  recent as 2026-08-10 and 2026-08-11.
+
+### Final disposition
+
+No field, enum value, table, index, schema type, or migration history entry
+passes the removal proof gate. Empty current tables and null current values do
+not override active code consumers, typed contracts, security-sensitive
+authorization/secret lifecycles, published rollback images, or governed
+migration history. F18 is therefore **retain/defer**, not a physical cleanup
+migration.
+
+Any future physical cleanup must be a separate high-risk change with a new
+production-data audit, explicit compatibility-window decision, fresh verified
+backup, disposable restore/rehearsal, old-image compatibility test, staged
+rollout, post-deployment inventory, and a restore-based rollback plan.
