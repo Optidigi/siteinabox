@@ -138,12 +138,12 @@ jobs:
       - run: pnpm landing:test
       - name: Install site browser-test browser
         run: pnpm --dir apps/landing exec playwright install --with-deps chromium
-      - name: Verify landing analytics consent lifecycle
-        run: pnpm --dir apps/landing test:analytics-browser
       - name: Verify landing UI, responsive, and accessibility contracts
         env:
           SIAB_REUSE_LANDING_BUILD: "1"
         run: pnpm --dir apps/landing test:ui
+      - name: Verify landing analytics consent lifecycle
+        run: pnpm --dir apps/landing test:analytics-browser
       - name: Upload landing browser-test diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
