@@ -137,8 +137,10 @@ constraints here even after the related issue is closed.
 - **Classification:** Runtime cleanup complete; persisted schema cleanup remains
   separately gated.
 - **Confidence:** High for static reachability and owner-confirmed absence of
-  customers on the retired routes. No production database or provider inventory
-  was queried by the coding task.
+  customers on the retired routes. A later bounded, read-only production
+  inventory recorded zero rows for the scoped migration/provider residue; it
+  did not establish removal readiness because active schemas, rollback images,
+  typed contracts, and historical evidence still depend on those objects.
 - **Removed runtime routes:** assisted-migration supplemental checkout and
   synchronization, the `applyMollieWebhookPayment` alias, the
   `mollie_subscription` retry input, order-only Mollie attempt synthesis,

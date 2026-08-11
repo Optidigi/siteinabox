@@ -1,7 +1,9 @@
 # SIAB-014 physical schema residue audit plan
 
-Status: research only. This document does not authorize a migration, schema
-change, production query, data update, or deletion of migration history.
+Status: research complete; physical removal remains deferred. This document
+does not authorize a migration, data update, or deletion of migration history.
+The bounded read-only production evidence recorded below was collected under
+explicit operator approval; no schema or data write was performed.
 
 Physical schema cleanup is separate from normal maintainability cleanup because
 the database may contain records written by older application versions,
@@ -123,7 +125,9 @@ migration_source_authorizations_expires_at_idx
 
 ## Read-only production audit query plan
 
-No query in this section has been executed by this audit.
+The query plan below is the reviewable baseline for any future audit extension.
+The bounded production probe recorded later in this document did not execute
+these full queries and did not perform a schema or data write.
 
 ### Preconditions
 
@@ -281,8 +285,10 @@ git grep -nE 'CREATE TYPE|ALTER TYPE|DROP TYPE|CREATE TABLE|DROP TABLE|ADD COLUM
 git grep -nE '20260727_142003_phase10_assisted_migration|20260728_130835_commerce_existing_domain_safety|20260730_030555_cloudflare_source_oauth' -- apps/cms/src/migrations/index.ts apps/cms/src/migrations
 ```
 
-No database connection, production query, migration, provider mutation, or
-data write was performed.
+No migration, provider mutation, or data write was performed. The bounded
+read-only production evidence recorded below is intentionally narrower than
+this full query plan and does not make any physical removal candidate
+removal-ready.
 
 ## Production evidence collected on 2026-08-11
 
