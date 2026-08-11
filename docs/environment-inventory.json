@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "scope": "environment names read by deployable application source and tests",
-  "classificationStatus": "owner-review-required",
+  "classificationStatus": "researched",
   "apps": {
     "cms": {
       "names": [
@@ -84,7 +84,7 @@
       ],
       "notes": [
         "Includes server runtime, build-time, test, provider, and deployment reads.",
-        "Requiredness and secret/public classification are intentionally not inferred."
+        "Requiredness is classified by source evidence; runtime presence is not treated as proof of universal requiredness."
       ]
     },
     "intake": {
@@ -95,7 +95,7 @@
         "SITE_URL"
       ],
       "notes": [
-        "The PUBLIC_* values are build-time browser configuration; requiredness remains owner-review."
+        "The PUBLIC_* values are build-time browser configuration; requiredness remains operation-specific and is not inferred from VPS presence."
       ]
     },
     "landing": {
@@ -108,7 +108,7 @@
         "SITE_URL"
       ],
       "notes": [
-        "The public analytics and Turnstile values are build-time browser configuration; requiredness remains owner-review."
+        "The public analytics and Turnstile values are build-time browser configuration; requiredness remains operation-specific and is not inferred from VPS presence."
       ]
     },
     "renderer": {

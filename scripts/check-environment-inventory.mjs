@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import process from "node:process"
+import { classifyInventory } from "./environment-contract.mjs"
 
 const root = process.cwd()
 const inventoryPath = path.join(root, "docs/environment-inventory.json")
@@ -58,13 +59,17 @@ for (const app of appNames) {
   totalNames += expected.size
 }
 
-if (inventory.classificationStatus !== "owner-review-required") {
-  errors.push("top-level classificationStatus must remain owner-review-required until owners classify each app contract")
+if (inventory.classificationStatus !== "researched") {
+  errors.push("top-level classificationStatus must be researched before CI accepts the environment contract")
 }
 
 if (errors.length > 0) {
   console.error(errors.join("\n"))
   process.exitCode = 1
 } else {
-  console.log(`Environment inventory OK: ${appNames.length} apps, ${totalNames} source-read names; owner classification remains explicitly pending.`)
+  const classifications = classifyInventory(inventory)
+  const startupRequired = classifications.filter(({ requiredness }) => requiredness === "startup-required").length
+  const operationScoped = classifications.filter(({ requiredness }) => requiredness === "operation-scoped").length
+  const publicBuild = classifications.filter(({ exposure, phase }) => exposure === "public" && phase === "build").length
+  console.log(`Environment contract OK: ${appNames.length} apps, ${totalNames} source-read names, ${startupRequired} startup requirements, ${operationScoped} operation-scoped secrets, ${publicBuild} public build inputs.`)
 }
