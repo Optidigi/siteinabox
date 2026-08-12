@@ -33,16 +33,25 @@ function decodedEvents(request) {
   if (!body) return []
 
   if (url.pathname.endsWith("/capture/")) {
-    return [{ ...JSON.parse(body.toString("utf8")), transport: "siab-direct" }]
+    const text = decodePayload(body)
+    return [{ ...JSON.parse(text), transport: "siab-direct" }]
   }
   if (!url.pathname.endsWith("/e/")) return []
 
-  const text = url.searchParams.get("compression") === "gzip-js"
-    ? gunzipSync(body).toString("utf8")
-    : body.toString("utf8")
+  const text = decodePayload(body, url.searchParams.get("compression") === "gzip-js")
   const decoded = JSON.parse(text)
   const events = Array.isArray(decoded) ? decoded : decoded.batch ?? [decoded]
   return events.map((event) => ({ ...event, transport: "posthog-js" }))
+}
+
+function decodePayload(body, compressed = false) {
+  const encoded = body.toString("utf8")
+  const data = encoded.startsWith("data=")
+    ? new URLSearchParams(encoded).get("data")
+    : null
+  const payload = data ? Buffer.from(data, "base64") : body
+  const isGzip = compressed || (payload[0] === 0x1f && payload[1] === 0x8b)
+  return isGzip ? gunzipSync(payload).toString("utf8") : payload.toString("utf8")
 }
 
 const port = await getOpenPort()

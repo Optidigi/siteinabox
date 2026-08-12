@@ -67,9 +67,16 @@ function decodedEvents(request) {
   const body = request.postDataBuffer()
   if (!body || !url.pathname.endsWith("/e/")) return []
 
-  const text = url.searchParams.get("compression") === "gzip-js"
-    ? gunzipSync(body).toString("utf8")
-    : body.toString("utf8")
+  const encoded = body.toString("utf8")
+  const data = encoded.startsWith("data=")
+    ? new URLSearchParams(encoded).get("data")
+    : null
+  const payload = data ? Buffer.from(data, "base64") : body
+  const compressed = url.searchParams.get("compression") === "gzip-js"
+    || (payload[0] === 0x1f && payload[1] === 0x8b)
+  const text = compressed
+    ? gunzipSync(payload).toString("utf8")
+    : payload.toString("utf8")
   const decoded = JSON.parse(text)
   return Array.isArray(decoded) ? decoded : decoded.batch ?? [decoded]
 }
