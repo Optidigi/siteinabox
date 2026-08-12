@@ -167,6 +167,13 @@ try {
   await page.getByRole("button", { name: "Check availability", exact: true }).click()
   await page.getByRole("button", { name: "Show more extensions", exact: true }).click()
   await page.getByText("analytical-engines.net", { exact: true }).waitFor()
+  const domainResultsGap = await page.evaluate(() => {
+    const recommendedCard = document.querySelector('[data-domain-results="recommended"] > div.overflow-hidden')
+    const otherHeading = document.querySelector('[data-domain-results="other"] > p')
+    if (!recommendedCard || !otherHeading) return null
+    return Math.round(otherHeading.getBoundingClientRect().top - recommendedCard.getBoundingClientRect().bottom)
+  })
+  assert.equal(domainResultsGap, 32, "The Other extensions heading must sit 32px below the recommended results card.")
   await page.setViewportSize({ width: 320, height: 568 })
   await page.locator('[data-domain-results="recommended"]').evaluate((node) => {
     node.scrollIntoView({ block: "start" })
