@@ -1,7 +1,6 @@
 "use client"
 import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "@/components/data-table"
+import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
 import { relativeTime } from "@/lib/relativeTime"
@@ -15,7 +14,7 @@ export function FormsTable({ data, emptyState }: { data: FormDoc[]; emptyState?:
   const tCommon = useTranslations("common")
   const [active, setActive] = useState<FormDoc | null>(null)
 
-  const cols: ColumnDef<FormDoc, any>[] = [
+  const cols: DataTableColumn<FormDoc>[] = [
     {
       accessorKey: "createdAt",
       header: tTable("when"),

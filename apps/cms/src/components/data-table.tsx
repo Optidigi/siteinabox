@@ -1,7 +1,19 @@
 "use client"
 import {
-  type ColumnDef, flexRender, getCoreRowModel, getFilteredRowModel,
-  getPaginationRowModel, getSortedRowModel, type SortingState, useReactTable
+  type CellContext,
+  type ColumnDef,
+  type RowData,
+  columnFilteringFeature,
+  createFilteredRowModel,
+  createPaginatedRowModel,
+  createSortedRowModel,
+  flexRender,
+  globalFilteringFeature,
+  rowPaginationFeature,
+  rowSortingFeature,
+  tableFeatures,
+  type SortingState,
+  useTable,
 } from "@tanstack/react-table"
 import { useState } from "react"
 import Link from "next/link"
@@ -14,8 +26,22 @@ import { ChevronLeft, ChevronRight, FileQuestion, Search, X } from "lucide-react
 import { EmptyState } from "@/components/empty-state"
 import { cn } from "@siteinabox/ui/lib/utils"
 
-type Props<T> = {
-  columns: ColumnDef<T, any>[]
+export const dataTableFeatures = tableFeatures({
+  columnFilteringFeature,
+  globalFilteringFeature,
+  rowSortingFeature,
+  rowPaginationFeature,
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+})
+
+export type DataTableFeatures = typeof dataTableFeatures
+export type DataTableColumn<T extends RowData> = ColumnDef<DataTableFeatures, T>
+export type DataTableCellContext<T extends RowData, TValue = unknown> = CellContext<DataTableFeatures, T, TValue>
+
+type Props<T extends RowData> = {
+  columns: DataTableColumn<T>[]
   data: T[]
   filterColumn?: string
   filterPlaceholder?: string
@@ -28,21 +54,18 @@ export function DataTable<T extends { id: string | number }>({ columns, data, fi
   const [sorting, setSorting] = useState<SortingState>([])
   const [filter, setFilter] = useState("")
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
     state: { sorting, globalFilter: filter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel()
   })
 
   const isEmpty = table.getRowModel().rows.length === 0
-  const pageIndex = table.getState().pagination.pageIndex
-  const pageSize = table.getState().pagination.pageSize
+  const pageIndex = table.state.pagination.pageIndex
+  const pageSize = table.state.pagination.pageSize
   const filteredRows = table.getFilteredRowModel().rows.length
   const currentFrom = filteredRows === 0 ? 0 : pageIndex * pageSize + 1
   const currentTo = Math.min((pageIndex + 1) * pageSize, filteredRows)
@@ -102,7 +125,7 @@ export function DataTable<T extends { id: string | number }>({ columns, data, fi
           {/* Phone card view */}
           <div className="md:hidden flex flex-col gap-2">
             {table.getRowModel().rows.map((row) => {
-              const cells = row.getVisibleCells()
+              const cells = row.getAllCells()
               const primary = cells.find((c) => c.column.columnDef.meta?.mobilePriority === "primary")
               const action = cells.find((c) => c.column.columnDef.meta?.mobilePriority === "action")
               const secondary = cells.filter((c) => {
@@ -202,7 +225,7 @@ export function DataTable<T extends { id: string | number }>({ columns, data, fi
               <TableBody>
                 {table.getRowModel().rows.map((r) => {
                   const rHref = getRowHref?.(r.original)
-                  const cells = r.getVisibleCells()
+                  const cells = r.getAllCells()
                   // Identify the row's "primary" cell (the column marked for
                   // mobile-card primary slot). When getRowHref is provided,
                   // we wrap that ONE cell's content in a Link — that Link is
@@ -255,7 +278,7 @@ export function DataTable<T extends { id: string | number }>({ columns, data, fi
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="px-2 text-xs text-muted-foreground">
-              {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              {table.state.pagination.pageIndex + 1} / {table.getPageCount()}
             </span>
             <Button
               type="button"

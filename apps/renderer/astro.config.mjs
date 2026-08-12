@@ -35,7 +35,7 @@ export default defineConfig({
     // workspaces and the shared site behavior entry. Pre-bundle them before
     // the first browser request so Vite cannot invalidate an in-flight catalog
     // check when it discovers the analytics or animated-number imports.
-    optimizeDeps: { include: ['@number-flow/react', 'posthog-js', 'web-vitals'] },
+    optimizeDeps: { include: ['@number-flow/react', 'posthog-js'] },
     plugins: [tailwindcss()],
   },
   build: {

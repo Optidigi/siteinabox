@@ -6,11 +6,16 @@ const repoRoot = resolve(new URL("..", import.meta.url).pathname)
 const rootPackage = JSON.parse(await readFile(resolve(repoRoot, "package.json"), "utf8"))
 const expectedPnpm = rootPackage.packageManager.replace(/^pnpm@/, "")
 const nodeRange = rootPackage.engines?.node ?? ""
+const expectedNode = (await readFile(resolve(repoRoot, ".nvmrc"), "utf8")).trim()
 const lowerNode = Number(nodeRange.match(/>=([0-9]+)/)?.[1])
 const upperNode = Number(nodeRange.match(/<([0-9]+)/)?.[1])
 const actualNode = Number(process.versions.node.split(".")[0])
 const actualPnpm = execFileSync("pnpm", ["--version"], { encoding: "utf8" }).trim()
 const errors = []
+
+if (!/^\d+\.\d+\.\d+$/.test(expectedNode)) {
+  errors.push(".nvmrc must contain an exact Node version: " + expectedNode)
+}
 
 if (!Number.isInteger(lowerNode) || !Number.isInteger(upperNode)) {
   errors.push("root engines.node is not a bounded major range: " + nodeRange)
@@ -21,11 +26,15 @@ if (actualPnpm !== expectedPnpm) errors.push("pnpm " + actualPnpm + " does not m
 
 async function listFiles(directory, predicate) {
   const entries = await readdir(resolve(repoRoot, directory), { withFileTypes: true })
+  const ignoredDirectories = new Set([".next", ".turbo", ".cache", "coverage", "dist", "node_modules"])
   const files = []
   for (const entry of entries) {
     const relative = resolve(directory, entry.name)
-    if (entry.isDirectory()) files.push(...(await listFiles(relative, predicate)))
-    else if (predicate(relative)) files.push(relative)
+    if (entry.isDirectory()) {
+      if (!ignoredDirectories.has(entry.name)) files.push(...(await listFiles(relative, predicate)))
+    } else if (predicate(relative)) {
+      files.push(relative)
+    }
   }
   return files
 }
@@ -33,8 +42,12 @@ async function listFiles(directory, predicate) {
 const workflowFiles = await listFiles(".github/workflows", (file) => /\.(yml|yaml)$/.test(file))
 for (const file of workflowFiles) {
   const content = await readFile(resolve(repoRoot, file), "utf8")
-  for (const match of content.matchAll(/node-version:\s*["']?(\d+)/g)) {
+  for (const match of content.matchAll(/node-version:\s*["']?(\d+(?:\.\d+){0,2})/g)) {
     if (Number(match[1]) !== lowerNode) errors.push(file + " declares Node " + match[1])
+  }
+  for (const match of content.matchAll(/node-version-file:\s*["']?([^"'\s]+)["']?/g)) {
+    const declared = (await readFile(resolve(repoRoot, match[1]), "utf8")).trim()
+    if (declared !== expectedNode) errors.push(file + " reads " + match[1] + "=" + declared)
   }
 }
 
@@ -42,11 +55,14 @@ const dockerfiles = await listFiles("apps", (file) => file.endsWith("Dockerfile"
 for (const file of dockerfiles) {
   const content = await readFile(resolve(repoRoot, file), "utf8")
   const nodeDeclarations = [
-    ...content.matchAll(/FROM\s+node:(\d+)/g),
-    ...content.matchAll(/ARG\s+NODE_VERSION=(\d+)/g),
+    ...content.matchAll(/FROM\s+node:(\d+(?:\.\d+){0,2})/g),
+    ...content.matchAll(/ARG\s+NODE_VERSION=(\d+(?:\.\d+){0,2})(?:-[^\s]+)?/g),
   ]
   for (const match of nodeDeclarations) {
-    if (Number(match[1]) !== lowerNode) errors.push(file + " declares Node " + match[1])
+    if (Number(match[1].split(".")[0]) !== lowerNode) errors.push(file + " declares Node " + match[1])
+    if (match[1].includes(".") && match[1] !== expectedNode) {
+      errors.push(file + " declares Node " + match[1] + ", expected " + expectedNode)
+    }
   }
   for (const match of content.matchAll(/pnpm@(\d+\.\d+\.\d+)/g)) {
     if (match[1] !== expectedPnpm) errors.push(file + " declares pnpm " + match[1])

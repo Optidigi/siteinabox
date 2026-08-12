@@ -32,7 +32,7 @@ reviewed exception list in `scripts/check-ui-composition.mjs`.
 
 ## Primitive overwrite policy
 
-Use `pnpm dlx shadcn@latest add @shadcn/<item> --diff` before accepting an
+Use `pnpm dlx shadcn@4.13.1 add @shadcn/<item> --diff` before accepting an
 overwrite. Apply accepted primitive changes in `packages/ui/src/components/`
 and keep the CMS shim intact. Do not bulk-overwrite primitives.
 

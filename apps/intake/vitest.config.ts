@@ -8,5 +8,10 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     globals: false,
+    server: {
+      deps: {
+        inline: ["@material/material-color-utilities"],
+      },
+    },
   },
 })

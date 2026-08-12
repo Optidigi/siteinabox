@@ -560,6 +560,7 @@ export function PreviewCheckout({
   const stepHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
   const profileErrorSummaryRef = React.useRef<HTMLDivElement | null>(null)
   const detailsEditorTriggerRef = React.useRef<HTMLElement | null>(null)
+  const focusStepHeadingAfterProfileSaveRef = React.useRef(false)
   const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
   const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
@@ -870,6 +871,7 @@ export function PreviewCheckout({
       setSavedProfile(profileState.profile)
       setDetails(profileState.profile)
       setDetailsDirty(false)
+      focusStepHeadingAfterProfileSaveRef.current = true
       setDetailsEditorOpen(false)
       if (profileState.quotes) setQuotes(profileState.quotes)
       setStep("review")
@@ -904,7 +906,7 @@ export function PreviewCheckout({
     setTermsAccepted(false)
   }, [paymentState])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (profileState.status !== "invalid") {
       stepHeadingRef.current?.focus()
     }
@@ -2495,7 +2497,17 @@ export function PreviewCheckout({
                   window.setTimeout(() => detailsEditorTriggerRef.current?.focus(), 0)
                 }
               }}>
-                <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-full sm:max-w-xl sm:rounded-none sm:border-l">
+                <SheetContent
+                  side="bottom"
+                  className="max-h-[92dvh] overflow-y-auto rounded-t-xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-full sm:max-w-xl sm:rounded-none sm:border-l"
+                  onCloseAutoFocus={(event) => {
+                    if (!focusStepHeadingAfterProfileSaveRef.current) return
+                    event.preventDefault()
+                    focusStepHeadingAfterProfileSaveRef.current = false
+                    stepHeadingRef.current?.focus()
+                    window.setTimeout(() => stepHeadingRef.current?.focus(), 0)
+                  }}
+                >
                   <SheetHeader className="border-b px-5">
                     <SheetTitle>
                       {detailsEditorGroup === "company"

@@ -3,6 +3,7 @@ import path from "node:path"
 import { NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { normalizeBuildRevision } from "@/lib/health/normalizeBuildRevision"
 
 /**
  * Liveness probe. Returns 200 when:
@@ -14,13 +15,6 @@ import config from "@/payload.config"
  * (payload)/api/[...slug] from a different group. Static "health" beats
  * the catch-all in the same group.
  */
-const normalizeRevision = (value: string | undefined): string => {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : "unknown"
-}
-
-export const normalizeBuildRevision = (value: string | undefined): string => normalizeRevision(value)
-
 export async function GET() {
   const dataDirPath = path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 

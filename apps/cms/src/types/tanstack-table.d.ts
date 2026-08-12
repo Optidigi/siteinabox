@@ -1,10 +1,8 @@
 import "@tanstack/react-table"
-import type { RowData } from "@tanstack/react-table"
+import type { CellData, RowData, TableFeatures } from "@tanstack/react-table"
 
 declare module "@tanstack/react-table" {
-  // Generics are required by the upstream interface signature.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData extends RowData, TValue> {
+  interface ColumnMeta<TFeatures extends TableFeatures, TData extends RowData, TValue extends CellData> {
     /**
      * Mobile rendering priority for this column when DataTable
      * switches to stacked-card layout below md breakpoint.

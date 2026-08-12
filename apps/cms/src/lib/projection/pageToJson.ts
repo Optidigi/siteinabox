@@ -1,7 +1,7 @@
+import { sha256 } from "@noble/hashes/sha2.js"
 import type { Page } from "@/payload-types"
 import { EDITOR_ARRAY_ROW_KEYS } from "@/lib/editor/blockArrayFields"
 import { asRecord } from "@/lib/record"
-import crypto from "node:crypto"
 import { isSafeHref } from "@/lib/security/safeHref"
 import { isPopulatedMediaShape, mediaToJson } from "@/lib/projection/media"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
@@ -96,7 +96,9 @@ const stableStringify = (value: unknown): string => {
 }
 
 const contentSignature = (block: Json): string =>
-  crypto.createHash("sha256").update(stableStringify(block)).digest("hex").slice(0, 24)
+  Array.from(sha256(new TextEncoder().encode(stableStringify(block))), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("").slice(0, 24)
 
 const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
   const sectionType = typeof block.blockType === "string" ? block.blockType : "unknown"

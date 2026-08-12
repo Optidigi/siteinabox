@@ -1,10 +1,15 @@
-# Production Deploy Runbook — `siteinabox-cms`
+# Production Deploy Runbook — SiteInABox platform
 
 ## Overview
 
 This runbook walks a fresh production VPS to a healthy `https://admin.siteinabox.nl`
 serving the Payload-based admin console for SiteInABox. Use it for an initial
 deploy, recovery from a wiped VPS, or replicating the stack onto a new VPS.
+
+The platform also includes the landing and intake static applications and the
+published-site renderer. Their image workflows and health checks remain
+application-owned; this runbook's Compose procedure is specifically for CMS
+operations.
 
 It captures the gotchas hit during the first production deploy so they don't
 bite the next operator.
@@ -52,7 +57,7 @@ Two containers, one Compose project, two networks:
 - The Postgres volume is pinned to the legacy Docker volume name
   `siab-payload_postgres-data` so container/project renames never create an
   empty database.
-- Source of truth for compose values: the repo's `docker-compose.yml`, copied
+- Source of truth for compose values: the repo's `apps/cms/docker-compose.yml`, copied
   to the VPS as `compose.yml`.
 
 ## Step 1 — VPS directories (requires root)
@@ -67,11 +72,11 @@ Gotcha 2 if you're running the host as a different UID.
 
 ## Step 2 — Compose + `.env`
 
-Copy the repo's `docker-compose.yml` to the stack dir as `compose.yml`:
+Copy the repo's `apps/cms/docker-compose.yml` to the stack dir as `compose.yml`:
 
 ```bash
 # From a workstation with the repo cloned, or via curl from a tagged release:
-scp docker-compose.yml serveradmin@<vps>:/srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml
+scp apps/cms/docker-compose.yml serveradmin@<vps>:/srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml
 ```
 
 Then write `/srv/saas/infra/stacks/siteinabox/apps/cms/.env` with the following

@@ -7,7 +7,7 @@ Targets a developer who has just cloned the monorepo and wants `pnpm dev` in
 ## Prerequisites
 
 - **Node 26** — verify with `node -v`; `.nvmrc` pins the current local target
-- **pnpm 11** — install with `npm install -g pnpm@11.5.0`
+- **pnpm 11** — install with `npm install -g pnpm@11.21.0`
 - **Container runtime** — Docker or Podman
 - **Git** — for `git clone`
 
@@ -19,7 +19,7 @@ Targets a developer who has just cloned the monorepo and wants `pnpm dev` in
 ```bash
 git clone https://github.com/Optidigi/siteinabox.git
 cd siteinabox
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 The root `pnpm-lock.yaml` is the only dependency lock for CMS and shared

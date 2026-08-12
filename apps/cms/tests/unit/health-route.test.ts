@@ -15,7 +15,8 @@ vi.mock("@/payload.config", () => ({
   default: {},
 }))
 
-import { GET, normalizeBuildRevision } from "@/app/(payload)/api/health/route"
+import { GET } from "@/app/(payload)/api/health/route"
+import { normalizeBuildRevision } from "@/lib/health/normalizeBuildRevision"
 
 describe("health endpoint", () => {
   let dataDir: string

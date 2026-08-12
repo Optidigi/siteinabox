@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config"
 import react from "@vitejs/plugin-react"
-import path from "path"
+import path from "node:path"
 
 export default defineConfig({
   // tsconfig sets `jsx: "preserve"` for Next.js' SWC pipeline. Vitest's
@@ -29,11 +29,11 @@ export default defineConfig({
     // their JSX and the CMS test renderer onto one React module identity.
     dedupe: ["react", "react-dom"],
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": path.resolve(import.meta.dirname, "src"),
       // Stub Next.js' `server-only` marker — not installed in this repo
       // (Next bundles it implicitly), so vitest fails to resolve it
       // when a unit test imports a module guarded by `import "server-only"`.
-      "server-only": path.resolve(__dirname, "tests/__mocks__/server-only.ts"),
+      "server-only": path.resolve(import.meta.dirname, "tests/__mocks__/server-only.ts"),
     }
   }
 })

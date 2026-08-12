@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:26-alpine AS builder
+FROM node:26.7.0-alpine AS builder
 WORKDIR /repo
 RUN apk add --no-cache libc6-compat \
-  && npm install -g pnpm@11.5.0
+  && npm install -g pnpm@11.21.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/renderer/package.json apps/renderer/package.json
@@ -24,7 +24,7 @@ RUN pnpm --filter @siteinabox/renderer build \
   && pnpm --filter @siteinabox/renderer deploy --prod --legacy /app \
   && cp -R apps/renderer/dist /app/dist
 
-FROM node:26-alpine AS runner
+FROM node:26.7.0-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

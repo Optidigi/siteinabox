@@ -358,13 +358,10 @@ compatibility checks fail.
 
 The exact redacted commands and outputs are stored outside the repository:
 
-- `/tmp/siteinabox-maintainability-audit-logs/f18-production-schema-readonly.sql`
-- `/tmp/siteinabox-maintainability-audit-logs/f18-production-schema-readonly.txt`
-- `/tmp/siteinabox-maintainability-audit-logs/f18-production-counts.sql`
-- `/tmp/siteinabox-maintainability-audit-logs/f18-production-counts.txt`
-- `/tmp/siteinabox-maintainability-audit-logs/f18-production-targeted.sql`
-- `/tmp/siteinabox-maintainability-audit-logs/f18-production-targeted.txt`
-- `/tmp/siteinabox-maintainability-audit-logs/f18-vps-backup-evidence.txt`
+The F18 SQL plans and VPS evidence were generated during the private research
+session and are intentionally not repository artifacts. Recreate them from the
+read-only query plan in this document against an approved target; do not copy
+production values or credentials into the repository.
 
 Disposition remains `defer`: no physical field, enum value, index, table, or
 migration file is removal-ready from this evidence alone.

@@ -7,10 +7,10 @@ workspace has no static import for it.
 
 ## Audit commands
 
-The manifest list was generated on 2026-08-11 with:
+The manifest list was generated on 2026-08-12 with:
 
 ```text
-node --input-type=module -e 'read packages/*/package.json and print Object.keys(exports)'
+node --input-type=module -e 'import { readFile } from "node:fs/promises"; for (const p of ["packages/contracts/package.json", "packages/legal-content/package.json", "packages/site-renderer/package.json", "packages/ui/package.json"]) { const m = JSON.parse(await readFile(p, "utf8")); console.log(p, Object.keys(m.exports ?? {})); }'
 git grep -nE '@siteinabox/(contracts|legal-content|site-renderer|ui)/' -- apps packages docs scripts
 git grep -nE 'source-templates|iframe-editor|fixtures/tenants' -- .
 ```
@@ -32,7 +32,7 @@ Package: `packages/contracts/package.json`
 | `legal` | CMS legal records and legal package consumers. | retain public | Manifest-public; governed legal consumer. | High: legal history and consent. |
 | `block-catalog` | CMS block registry/site settings and renderer catalog. | retain public | Manifest-public; active product catalog. | High: published snapshots and planned F17 replacement. |
 | `commerce` | CMS checkout, commerce records, and contract tests. | retain public | Manifest-public; active commerce consumer. | High: payment and rollback behavior. |
-| `deploy-targets` | No complete static-consumer proof in this audit. | unknown/defer | Public by manifest; external use unknown. | High until deployment and rollback consumers are checked. |
+| `deploy-targets` | Workspace consumer confirmed; external consumer unknown. | unknown/defer | Public by manifest; external use unknown. | High until deployment and rollback consumers are checked. |
 | `renderer-routing` | CMS renderer-domain alias script and renderer routing. | retain public | Manifest-public; active workspace consumer. | High: tenant/domain routing. |
 | `tld-capabilities` | CMS checkout/domain actions and contract tests. | retain public | Manifest-public; active domain capability contract. | High: provider and IDN behavior. |
 | `domain-migration` | CMS checkout, collections, migration domain logic, and tests. | retain public | Manifest-public; active migration consumer. | High: provider, tenancy, commerce, rollback. |

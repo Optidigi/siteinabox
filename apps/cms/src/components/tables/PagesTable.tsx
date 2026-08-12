@@ -3,8 +3,7 @@ import type { PayloadRequest } from "payload"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ColumnDef, CellContext } from "@tanstack/react-table"
-import { DataTable } from "@/components/data-table"
+import { DataTable, type DataTableCellContext, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
@@ -55,7 +54,7 @@ export function PagesTable({
     router.refresh()
   }
 
-  const cols: ColumnDef<Page, any>[] = [
+  const cols: DataTableColumn<Page>[] = [
     {
       accessorKey: "title",
       header: tTable("title"),
@@ -85,7 +84,7 @@ export function PagesTable({
           id: "actions",
           header: "",
           meta: { mobilePriority: "action" },
-          cell: ({ row }: CellContext<Page, unknown>) => {
+          cell: ({ row }: DataTableCellContext<Page>) => {
             const p = row.original as Page
             return (
               <DropdownMenu>
@@ -122,7 +121,7 @@ export function PagesTable({
               </DropdownMenu>
             )
           }
-        }] as ColumnDef<Page, any>[])
+        }] as DataTableColumn<Page>[])
       : [])
   ]
 

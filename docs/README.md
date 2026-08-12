@@ -19,6 +19,18 @@ canonical for executable facts.
 - [`runbooks/`](runbooks/) — current local-development and operator procedures.
 - [`compliance/`](compliance/) — current retention and supplier registers.
 
+## Policies and inventories
+
+- [Dependency policy](dependency-policy.md)
+- [Environment contracts](environment-contracts.md)
+- [Environment inventory](environment-inventory.md)
+- [MCP projections](mcp-projections.md)
+- [Public export inventory](public-export-inventory.md)
+- [SIAB-014 schema residue audit](siab-014-schema-residue-audit.md)
+- [Test durability](test-durability.md)
+- [Verification matrix](verification-matrix.md)
+- [Workflow path matrix](workflow-path-matrix.md)
+
 Historical reports and completed implementation diaries are kept in Git
 history, not alongside current guidance. Runtime content such as versioned legal
 documents and landing-page Markdown remains beside the code that consumes it.

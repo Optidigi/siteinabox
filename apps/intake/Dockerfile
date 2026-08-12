@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
-ARG NODE_VERSION=26-alpine
+ARG NODE_VERSION=26.7.0-alpine
 ARG NGINX_VERSION=alpine
 
 FROM node:${NODE_VERSION} AS build
 WORKDIR /repo
-RUN npm install -g pnpm@11.5.0
+RUN npm install -g pnpm@11.21.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/intake/package.json apps/intake/package.json

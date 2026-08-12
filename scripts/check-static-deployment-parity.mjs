@@ -34,7 +34,7 @@ function presentInBoth(label, expected) {
 
 const staticDockerContracts = [
   ["Node build stage", "FROM node:${NODE_VERSION} AS build"],
-  ["pinned pnpm bootstrap", "RUN npm install -g pnpm@11.5.0"],
+  ["pinned pnpm bootstrap", "RUN npm install -g pnpm@11.21.0"],
   ["frozen dependency installation", "RUN pnpm install --frozen-lockfile"],
   ["Nginx static runtime", "FROM nginx:${NGINX_VERSION}"],
   ["default Nginx config removal", "RUN rm -f /etc/nginx/conf.d/default.conf"],

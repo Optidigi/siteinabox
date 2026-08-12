@@ -1,18 +1,16 @@
 # syntax=docker/dockerfile:1.7
-ARG NODE_VERSION=26-alpine
+ARG NODE_VERSION=26.7.0-alpine
 ARG NGINX_VERSION=alpine
 
 FROM node:${NODE_VERSION} AS build
 WORKDIR /repo
-RUN npm install -g pnpm@11.5.0
+RUN npm install -g pnpm@11.21.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/landing/package.json apps/landing/package.json
-COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/legal-content/package.json packages/legal-content/package.json
 
 COPY apps/landing apps/landing
-COPY packages/contracts packages/contracts
 COPY packages/legal-content packages/legal-content
 RUN pnpm install --frozen-lockfile \
   --filter siteinabox-landing... \

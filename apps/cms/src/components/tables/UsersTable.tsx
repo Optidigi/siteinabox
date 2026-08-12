@@ -3,8 +3,7 @@ import type { PayloadRequest } from "payload"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ColumnDef, CellContext } from "@tanstack/react-table"
-import { DataTable } from "@/components/data-table"
+import { DataTable, type DataTableCellContext, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { roleVariant } from "@/lib/badge-helpers"
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
@@ -66,7 +65,7 @@ export function UsersTable({
     status.success(t("resendInviteSent", { email: user.email }))
   }
 
-  const cols: ColumnDef<User, any>[] = [
+  const cols: DataTableColumn<User>[] = [
     {
       accessorKey: "name",
       header: tTable("name"),
@@ -107,7 +106,7 @@ export function UsersTable({
           id: "actions",
           header: "",
           meta: { mobilePriority: "action" },
-          cell: ({ row }: CellContext<User, unknown>) => {
+          cell: ({ row }: DataTableCellContext<User>) => {
             const u = row.original as User
             const isSelf = currentUserId != null && String(currentUserId) === String(u.id)
             return (
@@ -157,7 +156,7 @@ export function UsersTable({
               </DropdownMenu>
             )
           }
-        }] as ColumnDef<User, any>[])
+        }] as DataTableColumn<User>[])
       : [])
   ]
 

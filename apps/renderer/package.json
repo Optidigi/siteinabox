@@ -16,28 +16,28 @@
     "test:provider-browser": "node src/smoke/provider-catalog-browser.mjs"
   },
   "dependencies": {
-    "@astrojs/node": "^10.1.0",
-    "@astrojs/react": "^5.0.7",
-    "@number-flow/react": "^0.6.0",
+    "@astrojs/node": "^11.1.0",
+    "@astrojs/react": "^6.0.2",
+    "@number-flow/react": "^0.6.2",
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/legal-content": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",
     "@siteinabox/ui": "workspace:*",
-    "astro": "^6.2.1",
-    "posthog-js": "^1.386.8",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "web-vitals": "^5.3.0"
+    "astro": "^7.2.0",
+    "posthog-js": "^1.415.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "vite": "^8.2.1"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.9",
+    "@astrojs/check": "^0.9.10",
     "@tailwindcss/forms": "^0.5.11",
-    "@tailwindcss/vite": "^4.3.1",
-    "@types/react": "19.2.15",
-    "@types/react-dom": "19.2.3",
-    "playwright": "1.61.0",
-    "tailwindcss": "^4.3.1",
-    "tsx": "^4.22.4",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "playwright": "1.62.1",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.12",
     "typescript": "6.0.3"
   }
 }

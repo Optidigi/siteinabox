@@ -72,9 +72,9 @@ Unknown or invalid hosts fail with a tenant-neutral 404.
 
 ### Typed public block variants
 
-All **132** public shadcnui-blocks block variants are direct-bound
-(`bindings.direct` = 132, `bindings.variants` = 0). Each renders through an
-owned typed component under
+All public shadcnui-blocks block variants are direct-bound. The canonical
+catalog and generated inventory own the current count; this prose does not
+maintain a copied count. Each renders through an owned typed component under
 `packages/site-renderer/src/providers/shadcnui-blocks/variants/<name>/`
 with a typed `view.tsx` mapper. Shared helpers live in
 `packages/site-renderer/src/providers/shadcnui-blocks/typed/` (rich-text

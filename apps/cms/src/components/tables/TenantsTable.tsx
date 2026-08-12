@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "@/components/data-table"
+import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
@@ -80,7 +79,7 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
     router.refresh()
   }
 
-  const cols: ColumnDef<Tenant, any>[] = [
+  const cols: DataTableColumn<Tenant>[] = [
     {
       accessorKey: "name",
       header: tTable("name"),

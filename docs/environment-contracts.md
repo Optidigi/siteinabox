@@ -7,7 +7,7 @@ are not falsely presented as application reads.
 
 ## Evidence
 
-The classification was researched on 2026-08-11 from:
+The classification was researched on 2026-08-12 from:
 
 - source access patterns under `apps/`, `packages/`, and `scripts/`;
 - the active VPS `.env` key names for all four application stacks;
@@ -16,8 +16,13 @@ The classification was researched on 2026-08-11 from:
   `.env.example` files.
 
 Only names were collected from the VPS. Values, credentials, tokens, and
-connection strings were not printed or committed. The sanitized inventories are
-under `/tmp/siteinabox-maintainability-audit-logs/`.
+connection strings were not printed or committed. The sanitized inventory is
+recorded in `docs/environment-inventory.json` and checked by
+`pnpm environment:check`.
+
+This document covers variables read by application source. Package-owned
+runtime and test variables, including `SIAB_LEGAL_CONTENT_ROOT`, remain
+documented by the package that owns their behavior.
 
 ## Contract model
 

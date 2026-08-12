@@ -40,7 +40,7 @@ test("pinned catalog is complete and every non-imported registry item is explain
 test("provider interaction dependencies stay pinned to the upstream-compatible release", async () => {
   for (const path of ["packages/ui/package.json", "packages/site-renderer/package.json", "apps/cms/package.json", "apps/intake/package.json"]) {
     const manifest = JSON.parse(await readFile(new URL(path, root), "utf8"))
-    assert.equal(manifest.dependencies?.["radix-ui"], "1.4.3", path)
+    assert.equal(manifest.dependencies?.["radix-ui"], "1.6.7", path)
   }
 })
 
