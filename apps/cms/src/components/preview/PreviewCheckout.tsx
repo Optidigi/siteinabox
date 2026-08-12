@@ -2117,7 +2117,7 @@ export function PreviewCheckout({
                           </section>
                         )}
                         {(pendingOtherDomains.length > 0 || otherExtensionResults.length > 0) && (
-                          <section data-domain-results="other" className="grid gap-2 pt-4">
+                          <section data-domain-results="other" className="mt-6 grid gap-2">
                             <p className="px-0.5 text-xs font-semibold text-muted-foreground">{t("checkoutDomainOtherExtensions")}</p>
                             <div className="overflow-hidden rounded-[14px] border bg-card">
                               {pendingOtherDomains.map((domain) => (
