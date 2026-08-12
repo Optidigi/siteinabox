@@ -329,7 +329,10 @@ function DomainExtensionResultRow({
         </span>
       </span>
       <span className="grid self-center text-right">
-        <strong className="text-xs font-bold tabular-nums min-[560px]:text-[0.8125rem]">{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
+        <strong className={cn(
+          "text-xs font-bold tabular-nums min-[560px]:text-[0.8125rem]",
+          available && !result.extraFeeAmount && "text-success",
+        )}>{available ? (result.extraFeeAmount && result.extraFeeCurrency ? `+ ${decimalMoney(locale, result.extraFeeAmount, result.extraFeeCurrency)}` : t("checkoutDomainIncludedBadge")) : "—"}</strong>
         {available && result.extraFeeAmount && <span className="text-xs text-muted-foreground min-[560px]:text-[0.625rem]">{t("checkoutPriceExVat")}</span>}
       </span>
       {available && (
@@ -2114,7 +2117,7 @@ export function PreviewCheckout({
                           </section>
                         )}
                         {(pendingOtherDomains.length > 0 || otherExtensionResults.length > 0) && (
-                          <section data-domain-results="other" className="grid gap-2">
+                          <section data-domain-results="other" className="grid gap-2 pt-2">
                             <p className="px-0.5 text-xs font-semibold text-muted-foreground">{t("checkoutDomainOtherExtensions")}</p>
                             <div className="overflow-hidden rounded-[14px] border bg-card">
                               {pendingOtherDomains.map((domain) => (
