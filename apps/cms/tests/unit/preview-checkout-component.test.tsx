@@ -275,7 +275,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
 
     const other = container.querySelector('[data-domain-results="other"]')!
     expect(other.textContent).toContain("checkoutDomainOtherExtensions")
-    expect(other.className).toContain("pt-2")
+    expect(other.className).toContain("pt-4")
     expect(Array.from(other.querySelectorAll("[data-domain-status]")).map(
       (row) => row.querySelector("strong")?.textContent,
     )).toEqual(["testsite.com"])
