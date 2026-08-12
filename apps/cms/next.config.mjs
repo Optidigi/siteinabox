@@ -30,6 +30,9 @@ const nextConfig = {
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
   reactCompiler: false,
   allowedDevOrigins,
+  typescript: {
+    tsconfigPath: "./tsconfig.build.json",
+  },
   transpilePackages: ["@siteinabox/ui", "@siteinabox/contracts", "@siteinabox/site-renderer"],
   async redirects() {
     return [
