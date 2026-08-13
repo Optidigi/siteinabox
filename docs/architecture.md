@@ -16,6 +16,8 @@ executable configuration remain authoritative for exact behavior.
 - `packages/site-renderer` owns rendering shared by CMS preview/editor surfaces
   and the public renderer.
 - `packages/legal-content` owns versioned legal text and release metadata.
+- `packages/contracts/src/product.ts` owns shared public product facts used by
+  the landing and intake applications, including approved pricing.
 
 ## Product flow
 
@@ -115,4 +117,6 @@ Re-import and scaffold workflows live under `scripts/shadcnui-blocks/`:
   the renderer's private Tunnel connector.
 - `docs/runbooks/` owns procedures; `docs/contracts/` owns durable behavioral
   boundaries; `docs/findings.md` owns unresolved repository findings.
+- Shared public product facts belong in `packages/contracts/src/product.ts`;
+  application pages and public context files are consumers of those facts.
 - Production and provider mutations remain operator-controlled.

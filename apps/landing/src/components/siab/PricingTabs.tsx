@@ -1,5 +1,6 @@
 import { CircleHelp, Check, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { SITE_IN_A_BOX_PRODUCT } from '@siteinabox/contracts';
 import { captureLandingEvent } from '@/lib/landing-analytics';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -7,6 +8,9 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+
+const { monthlyEur, yearlyEur } = SITE_IN_A_BOX_PRODUCT.pricing;
+const yearlySavingsEur = monthlyEur * 12 - yearlyEur;
 
 const features = [
   ['Professionele website', 'Homepage en contactpagina, met je bedrijfsinfo, diensten en een duidelijke call-to-action.'],
@@ -47,9 +51,9 @@ function Plan({ yearly, intakeHref }: { yearly: boolean; intakeHref: string }) {
       <div className="text-center">
         <p className="font-head text-[32px] font-medium tracking-[-.02em] sm:text-[36px] min-[1400px]:text-[42px]">Site in a Box</p>
         <p className="mt-1.5 text-base text-black/60 dark:text-white">Jouw bedrijfswebsite, helemaal verzorgd</p>
-        <p className="mx-auto mt-5 flex min-h-11 max-w-sm items-center justify-center bg-[#eaf5fc] px-3 font-head text-base font-medium text-black dark:border-2 dark:border-black dark:bg-plum dark:text-white min-[1400px]:mt-10 min-[1400px]:text-xl">{yearly ? 'Je bespaart €38 per jaar' : 'Maandelijks opzegbaar'}</p>
+        <p className="mx-auto mt-5 flex min-h-11 max-w-sm items-center justify-center bg-[#eaf5fc] px-3 font-head text-base font-medium text-black dark:border-2 dark:border-black dark:bg-plum dark:text-white min-[1400px]:mt-10 min-[1400px]:text-xl">{yearly ? `Je bespaart €${yearlySavingsEur} per jaar` : 'Maandelijks opzegbaar'}</p>
         <p className="my-4 flex items-baseline justify-center whitespace-nowrap font-head text-[56px] font-semibold tracking-[-.03em] sm:text-[64px] min-[1200px]:text-[72px] min-[1400px]:text-[80px]">
-          {yearly ? '€190' : '€19'}<span className="ml-1 text-xl tracking-normal min-[1400px]:text-2xl">/{yearly ? 'jaar' : 'maand'}</span>
+          €{yearly ? yearlyEur : monthlyEur}<span className="ml-1 text-xl tracking-normal min-[1400px]:text-2xl">/{yearly ? 'jaar' : 'maand'}</span>
         </p>
       </div>
       <a

@@ -1,5 +1,6 @@
 ---
 import { getEntry } from 'astro:content';
+import { SITE_IN_A_BOX_PRODUCT } from '@siteinabox/contracts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/siab/Header.astro';
 import Footer from '../components/siab/Footer.astro';
@@ -38,7 +39,7 @@ const comparisonRows = [
         <div class="site-container grid items-center gap-8 lg:grid-cols-2 lg:gap-5">
           <div class="relative z-10">
             <h1 class="max-w-[570px] text-[clamp(3.25rem,6.1vw,5.9rem)] font-medium leading-[.88] tracking-[-.055em]">Een website voor je bedrijf. <br class="hidden md:block" />Zonder gedoe.</h1>
-            <p class="mt-8 text-[17px] font-medium leading-relaxed text-muted-foreground md:text-2xl md:text-foreground">Voorbeeld binnen 24 uur · Geen startkosten · €19 p/m</p>
+            <p class="mt-8 text-[17px] font-medium leading-relaxed text-muted-foreground md:text-2xl md:text-foreground">Voorbeeld binnen 24 uur · Geen startkosten · €{SITE_IN_A_BOX_PRODUCT.pricing.monthlyEur} p/m</p>
             <div class="mt-7 flex flex-wrap items-center gap-4 md:gap-6">
               <a
                 href={ctaSignup}

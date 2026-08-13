@@ -1,4 +1,5 @@
 ---
+import { SITE_IN_A_BOX_PRODUCT } from '@siteinabox/contracts';
 import { site } from '../../content/site';
 
 type PageType = 'WebPage' | 'ContactPage';
@@ -29,6 +30,8 @@ const offerCatalogId = `${baseUrl}/#website-packages`;
 const llmsDocumentId = `${baseUrl}/llms.txt#document`;
 const pricingUrl = `${baseUrl}/#prijzen`;
 const logoUrl = new URL('/theme/images/logo/siab_logo.svg', baseUrl).toString();
+const { name: productName, legalEntity, pricing } = SITE_IN_A_BOX_PRODUCT;
+const yearlySavingsEur = pricing.monthlyEur * 12 - pricing.yearlyEur;
 
 const fullTitle = title === site.brand ? title : `${title} | ${site.brand}`;
 const pageSchemaType = pageType;
@@ -40,7 +43,7 @@ const faqItems = [
   },
   {
     q: 'Wat kost Site in a Box, en wat zit erbij?',
-    a: 'Bij jaarbetaling betaal je €190 per jaar vooraf (ongeveer €16 per maand). Zo bespaar je €38 per jaar (17%). Liever maandelijks? Dan is het €19 per maand, opzegbaar. Erbij: professionele website, klaar voor Google én ChatGPT, snelle laadtijd, veilig online, .nl-domein eerste jaar gratis (of je huidige domein), zelf teksten en foto’s aanpassen, NL-support. Optioneel: zakelijke e-mail.',
+    a: `Bij jaarbetaling betaal je €${pricing.yearlyEur} per jaar vooraf (ongeveer €16 per maand). Zo bespaar je €${yearlySavingsEur} per jaar (17%). Liever maandelijks? Dan is het €${pricing.monthlyEur} per maand, opzegbaar. Erbij: professionele website, klaar voor Google én ChatGPT, snelle laadtijd, veilig online, .nl-domein eerste jaar gratis (of je huidige domein), zelf teksten en foto’s aanpassen, NL-support. Optioneel: zakelijke e-mail.`,
   },
   {
     q: 'Wat betekent “alleen betalen als je tevreden bent” precies?',
@@ -56,7 +59,7 @@ const faqItems = [
   },
   {
     q: 'Hoe kan ik opzeggen?',
-    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Bij jaarbetaling betaal je €190 per jaar vooruit. Het abonnement wordt jaarlijks verlengd. Je kunt jaarlijks opzeggen, met één maand opzegtermijn vóór het einde van de lopende periode.',
+    a: `Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Bij jaarbetaling betaal je €${pricing.yearlyEur} per jaar vooruit. Het abonnement wordt jaarlijks verlengd. Je kunt jaarlijks opzeggen, met één maand opzegtermijn vóór het einde van de lopende periode.`,
   },
   {
     q: 'Wie is eigenaar van mijn domein en website?',
@@ -102,9 +105,8 @@ const graph = [
   {
     '@type': 'Organization',
     '@id': organizationId,
-    name: 'Optidigi',
-    legalName: 'Optidigi',
-    alternateName: site.brand,
+    name: productName,
+    legalName: legalEntity,
     url: `${baseUrl}/`,
     logo: logoUrl,
     description: site.description,
@@ -176,8 +178,8 @@ const graph = [
   {
     '@type': 'Service',
     '@id': serviceId,
-    name: 'Site in a Box website abonnement',
-    alternateName: ['Site in a Box'],
+    name: `${productName} website abonnement`,
+    alternateName: [productName],
     serviceType: 'Website laten maken, hosting en beheeromgeving',
     category: ['Website laten maken', 'Website abonnement', 'Webdesign', 'Hosting'],
     url: `${baseUrl}/`,
@@ -222,24 +224,24 @@ const graph = [
   {
     '@type': 'Offer',
     '@id': `${baseUrl}/#offer-yearly`,
-    name: 'Site in a Box - jaarbetaling',
+    name: `${productName} - jaarbetaling`,
     url: pricingUrl,
-    price: 190,
+    price: pricing.yearlyEur,
     priceCurrency: 'EUR',
-    priceSpecification: yearlyPriceSpecification(190),
+    priceSpecification: yearlyPriceSpecification(pricing.yearlyEur),
     availability: 'https://schema.org/InStock',
     category: 'Website abonnement',
-    description: 'Site in a Box voor €190 per jaar vooraf (ongeveer €16 per maand). Je bespaart €38 per jaar. Alle prijzen excl. btw.',
+    description: `${productName} voor €${pricing.yearlyEur} per jaar vooraf (ongeveer €16 per maand). Je bespaart €${yearlySavingsEur} per jaar. Alle prijzen excl. btw.`,
     additionalProperty: [
       {
         '@type': 'PropertyValue',
         name: 'Jaarbedrag',
-        value: '€190 vooraf',
+        value: `€${pricing.yearlyEur} vooraf`,
       },
       {
         '@type': 'PropertyValue',
         name: 'Besparing',
-        value: '€38 per jaar ten opzichte van maandelijks',
+        value: `€${yearlySavingsEur} per jaar ten opzichte van maandelijks`,
       },
     ],
     itemOffered: { '@id': serviceId },
@@ -248,14 +250,14 @@ const graph = [
   {
     '@type': 'Offer',
     '@id': `${baseUrl}/#offer-monthly`,
-    name: 'Site in a Box - maandelijkse facturatie',
+    name: `${productName} - maandelijkse facturatie`,
     url: pricingUrl,
-    price: 19,
+    price: pricing.monthlyEur,
     priceCurrency: 'EUR',
-    priceSpecification: monthlyPriceSpecification(19),
+    priceSpecification: monthlyPriceSpecification(pricing.monthlyEur),
     availability: 'https://schema.org/InStock',
     category: 'Website abonnement',
-    description: 'Site in a Box voor €19 per maand, maandelijks betaald en opzegbaar. Alle prijzen excl. btw.',
+    description: `${productName} voor €${pricing.monthlyEur} per maand, maandelijks betaald en opzegbaar. Alle prijzen excl. btw.`,
     additionalProperty: [
       {
         '@type': 'PropertyValue',

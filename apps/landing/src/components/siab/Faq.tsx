@@ -4,8 +4,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { SITE_IN_A_BOX_PRODUCT } from '@siteinabox/contracts';
 import { captureLandingEvent } from '@/lib/landing-analytics';
 import { useState } from 'react';
+
+const { monthlyEur, yearlyEur } = SITE_IN_A_BOX_PRODUCT.pricing;
+const yearlySavingsEur = monthlyEur * 12 - yearlyEur;
 
 const items = [
   {
@@ -17,7 +21,7 @@ const items = [
   {
     question: 'Wat kost Site in a Box, en wat zit erbij?',
     answer: [
-      'Bij jaarbetaling betaal je €190 per jaar vooraf (ongeveer €16 per maand). Zo bespaar je €38 per jaar. Liever maandelijks? Dan is het €19 per maand, opzegbaar.',
+      `Bij jaarbetaling betaal je €${yearlyEur} per jaar vooraf (ongeveer €16 per maand). Zo bespaar je €${yearlySavingsEur} per jaar. Liever maandelijks? Dan is het €${monthlyEur} per maand, opzegbaar.`,
       'Erbij: professionele website, klaar voor Google én ChatGPT, snelle laadtijd, veilig online, .nl-domein eerste jaar gratis (of je huidige domein), zelf teksten en foto’s aanpassen, NL-support. Optioneel: zakelijke e-mail. Alle prijzen excl. btw.',
     ],
   },
