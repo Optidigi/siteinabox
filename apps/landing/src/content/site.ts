@@ -1,3 +1,5 @@
+import { SITE_IN_A_BOX_PRODUCT } from '@siteinabox/contracts';
+
 export type NAP = {
   legalName: string;
   displayName: string;
@@ -66,12 +68,12 @@ const contact = {
 } satisfies SiteConfig['contact'];
 
 export const site: SiteConfig = {
-  brand: 'Site in a Box',
+  brand: SITE_IN_A_BOX_PRODUCT.name,
   language: 'nl',
   primaryDomain: 'siteinabox.nl',
   aliases: ['www.siteinabox.nl'],
   description:
-    'Een professionele website voor je nieuwe bedrijf. Vanaf €19 per maand. Eerste versie binnen 24 uur, live binnen 3 werkdagen. Pas betalen als je tevreden bent.',
+    `Een professionele website voor je nieuwe bedrijf. Vanaf €${SITE_IN_A_BOX_PRODUCT.pricing.monthlyEur} per maand. Eerste versie binnen 24 uur, live binnen 3 werkdagen. Pas betalen als je tevreden bent.`,
   contact,
   serviceArea: ['Nederland'],
   socials: {

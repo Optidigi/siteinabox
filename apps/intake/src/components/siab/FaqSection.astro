@@ -1,12 +1,16 @@
 ---
+import { SITE_IN_A_BOX_PRODUCT } from '@siteinabox/contracts';
+
+const { monthlyEur, yearlyEur } = SITE_IN_A_BOX_PRODUCT.pricing;
+
 const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'Hoe weten jullie wat er op mijn website moet komen?',
     a: 'Via een korte vragenlijst van ongeveer 15 minuten. Je vertelt ons wat voor bedrijf je hebt, wie je klanten zijn, en welke stijl je aanspreekt. Je levert wat foto’s aan en eventueel je logo. Wij maken op basis daarvan de eerste versie van je website, inclusief teksten. In de feedbackronde stuur jij alles helemaal naar jouw smaak bij.',
   },
   {
-    q: 'Wat zit er bij €19 per maand, en wanneer is €29 logischer?',
-    a: 'Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups, en e-mail forwarding. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet.',
+    q: `Wat zit er bij €${monthlyEur} per maand, en wat zit erbij?`,
+    a: `Voor €${monthlyEur} krijg je het hele pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups en e-mail forwarding. Bij jaarbetaling betaal je €${yearlyEur} per jaar. Zakelijke e-mail is optioneel. Alle prijzen excl. btw.`,
   },
   {
     q: 'Wat betekent “alleen betalen als je tevreden bent” precies?',
@@ -22,7 +26,7 @@ const faqs: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Hoe kan ik opzeggen?',
-    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover. Bij jaarbetaling betaal je ieder jaar vooruit, zonder opstartkosten. Het abonnement wordt jaarlijks verlengd. Je kunt jaarlijks opzeggen, met één maand opzegtermijn vóór het einde van de lopende periode.',
+    a: `Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Er zijn geen opstartkosten. Bij jaarbetaling betaal je €${yearlyEur} per jaar vooruit. Het abonnement wordt jaarlijks verlengd. Je kunt jaarlijks opzeggen, met één maand opzegtermijn vóór het einde van de lopende periode.`,
   },
   {
     q: 'Wie is eigenaar van mijn domein en website?',
@@ -70,13 +74,12 @@ const faqJsonLd = {
           <div class="accordion-item">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwo" aria-expanded="false" aria-controls="faqTwo">
-                Wat zit er bij €19 per maand, en wanneer is €29 logischer?
+                Wat zit er bij €{monthlyEur} per maand, en wat zit erbij?
               </button>
             </h2>
             <div id="faqTwo" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
               <div class="accordion-body">
-                <p class="fs-22">Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups, en e-mail forwarding (info@jouwbedrijf.nl wordt doorgestuurd naar je eigen Gmail of Outlook).</p>
-                <p class="fs-22 mt-3">Klanten zien dan je eigen Gmail-adres in je antwoord, niet info@jouwbedrijf.nl. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet. Geen verborgen kosten op beide pakketten.</p>
+                <p class="fs-22">Voor €{monthlyEur} krijg je het hele pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups en e-mail forwarding. Bij jaarbetaling betaal je €{yearlyEur} per jaar. Zakelijke e-mail is optioneel. Alle prijzen excl. btw.</p>
               </div>
             </div>
           </div>
@@ -125,8 +128,8 @@ const faqJsonLd = {
             </h2>
             <div id="faqSix" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
               <div class="accordion-body">
-                <p class="fs-22">Dat hangt af van hoe je begint. Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover.</p>
-                <p class="fs-22 mt-3">Bij jaarbetaling betaal je ieder jaar vooruit, zonder opstartkosten. Het abonnement wordt jaarlijks verlengd. Je kunt jaarlijks opzeggen, met één maand opzegtermijn vóór het einde van de lopende periode.</p>
+                <p class="fs-22">Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Er zijn geen opstartkosten.</p>
+                <p class="fs-22 mt-3">Bij jaarbetaling betaal je €{yearlyEur} per jaar vooruit. Het abonnement wordt jaarlijks verlengd. Je kunt jaarlijks opzeggen, met één maand opzegtermijn vóór het einde van de lopende periode.</p>
               </div>
             </div>
           </div>

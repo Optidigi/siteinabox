@@ -24,10 +24,12 @@ This file specifies the DOM shape both the CMS editor (Lexical) and the downstre
 
 Each tenant's site CSS styles these class names. The CMS does not own the visual presentation — only the class contract.
 
-A fixture corpus of RtNode trees lives at
-`docs/contracts/rich-text-fixtures.json`. The
-shared renderer's CI should run its renderer against each fixture and assert the
-emitted DOM matches this contract.
+The fixture corpus of RtNode trees lives at
+`docs/contracts/rich-text-fixtures.json`. The site-renderer contract test at
+`packages/site-renderer/src/rich-text.test.mjs` renders every fixture in CI and
+asserts the emitted DOM matches this contract. The TypeScript contract,
+renderer source, and test are authoritative for exact behavior; the JSON is
+test input, not a second schema.
 
 ## Generated block DOM contract
 
