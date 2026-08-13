@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/landing/**"
+      - "packages/contracts/**"
       - "packages/legal-content/**"
       - "package.json"
       - "pnpm-lock.yaml"
