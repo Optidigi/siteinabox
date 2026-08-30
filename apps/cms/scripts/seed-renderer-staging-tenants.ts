@@ -332,7 +332,7 @@ export const cloneForRendererSeedProfile = (fixture: RendererSeedFixture): SiteG
     settings: {
       ...source.settings,
       siteUrl: fixture.siteUrl,
-      aliases: [],
+      ...(fixture.profile === "staging" ? { aliases: [] } : {}),
     },
     generatedAt: GENERATED_AT,
     generator: {
@@ -595,7 +595,7 @@ export const buildRetargetOptionsForRendererSeedFixture = (
   tenantSlug: fixture.slug,
   domain: fixture.domain,
   siteUrl: fixture.siteUrl,
-  aliases: [],
+  aliases: fixture.profile === "production" ? fixture.sourceSpec.settings.aliases ?? [] : [],
   manifestVersion: version,
   publishedAt: now,
 })

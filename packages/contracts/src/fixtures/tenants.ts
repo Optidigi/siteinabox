@@ -50,6 +50,7 @@ const amicareFavicon = {
 const amicareSettings: GeneratedSiteSettings = {
   siteName: "Amicare-Zorg",
   siteUrl: "https://ami-care.nl",
+  aliases: [{ host: "www.ami-care.nl" }],
   description: "Jeugdzorg met hart en toewijding.",
   language: "nl",
   contactEmail: "info@ami-care.nl",

@@ -80,6 +80,7 @@ describe("renderer seed profiles", () => {
     expect(amicare.tenant.slug).toBe("ami-care")
     expect(amicare.tenant.domain).toBe("ami-care.nl")
     expect(amicare.settings.siteUrl).toBe("https://ami-care.nl")
+    expect(amicare.settings.aliases).toEqual([{ host: "www.ami-care.nl" }])
     expect(amicare.generator?.name).toBe("renderer-production-bootstrap")
     expect(amicare.intake.goals).toEqual(expect.arrayContaining([
       expect.stringContaining("production live cutover"),
@@ -107,6 +108,7 @@ describe("renderer seed profiles", () => {
       tenantSlug: "ami-care",
       domain: "ami-care.nl",
       siteUrl: "https://ami-care.nl",
+      aliases: [{ host: "www.ami-care.nl" }],
     })
 
     const amicareSnapshot = retargetPublishedSiteSnapshot(amicarePublishedSiteSnapshot, amicareOptions)
