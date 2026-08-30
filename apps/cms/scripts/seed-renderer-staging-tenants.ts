@@ -135,7 +135,7 @@ type SiteGenerationHelpers = {
 type ExecuteHelpers = SiteGenerationHelpers & {
   promoteGenerationRunPages: typeof import("@/lib/site-generation/promoteGenerationRunPages")["promoteGenerationRunPages"]
   activatePublishedSnapshot: typeof import("@/lib/publish/siteSnapshots")["activatePublishedSnapshot"]
-  retargetPublishedSiteSnapshot: typeof import("@/lib/publish/retargetSnapshot")["retargetPublishedSiteSnapshot"]
+  buildPublishedSiteSnapshot: typeof import("@/lib/publish/siteSnapshots")["buildPublishedSiteSnapshot"]
   recordGenerationRunPaymentState: typeof import("@/lib/payments/generationRunPayment")["recordGenerationRunPaymentState"]
 }
 
@@ -166,18 +166,17 @@ const loadSiteGenerationHelpers = async (): Promise<SiteGenerationHelpers> => {
 
 const loadExecuteHelpers = async (): Promise<ExecuteHelpers> => {
   installServerOnlyShim()
-  const [siteGeneration, promotion, publishing, retargeting, payment] = await Promise.all([
+  const [siteGeneration, promotion, publishing, payment] = await Promise.all([
     loadSiteGenerationHelpers(),
     import("@/lib/site-generation/promoteGenerationRunPages"),
     import("@/lib/publish/siteSnapshots"),
-    import("@/lib/publish/retargetSnapshot"),
     import("@/lib/payments/generationRunPayment"),
   ])
   return {
     ...siteGeneration,
     promoteGenerationRunPages: promotion.promoteGenerationRunPages,
     activatePublishedSnapshot: publishing.activatePublishedSnapshot,
-    retargetPublishedSiteSnapshot: retargeting.retargetPublishedSiteSnapshot,
+    buildPublishedSiteSnapshot: publishing.buildPublishedSiteSnapshot,
     recordGenerationRunPaymentState: payment.recordGenerationRunPaymentState,
   }
 }
@@ -296,22 +295,6 @@ const stableStringify = (value: unknown): string => {
 
 const stableHash = (value: unknown): string =>
   createHash("sha256").update(stableStringify(value)).digest("hex")
-
-const nextPublishedSnapshotVersion = async (
-  payload: Payload,
-  tenantId: string | number,
-): Promise<number> => {
-  const result = await payload.find({
-    collection: "published-site-snapshots",
-    where: { tenant: { equals: tenantId } },
-    sort: "-version",
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const latest = result.docs[0] as { version?: number } | undefined
-  return Number.isFinite(latest?.version) ? Number(latest!.version) + 1 : 1
-}
 
 const requireSuccessfulApplyResult = (
   result: ApplySiteGenerationSpecResult,
@@ -719,21 +702,21 @@ const createStagingPublishedSnapshot = async (
   payload: Payload,
   fixture: RendererSeedFixture,
   tenantId: string | number,
-  generationRunId: string | number,
+  generationRun: SiteGenerationRun,
   helpers: ExecuteHelpers,
   options: CliOptions,
-  now: string,
 ) => {
-  const version = await nextPublishedSnapshotVersion(payload, tenantId)
-  const snapshot = helpers.retargetPublishedSiteSnapshot(
-    fixture.publishedSnapshot,
-    buildRetargetOptionsForRendererSeedFixture(fixture, tenantId, version, now),
-  )
+  // Build from the just-applied CMS rows so the operator seed follows the same
+  // canonical projection as normal publishing. The fixture remains the input
+  // for the rows; publishing the fixture JSON directly would bypass resolved
+  // media, nav links, legal settings, and current page block data.
+  const snapshot = await helpers.buildPublishedSiteSnapshot(payload, tenantId, generationRun)
+  const version = snapshot.manifest.version
   const snapshotWithAnalytics = injectRendererSeedAnalytics(snapshot, fixture, tenantId, version)
   const hash = stableHash(snapshotWithAnalytics)
   const snapshotDoc = await createRecord(payload, "published-site-snapshots", {
     tenant: typeof tenantId === "number" ? tenantId : Number(tenantId),
-    sourceGenerationRun: typeof generationRunId === "number" ? generationRunId : Number(generationRunId),
+    sourceGenerationRun: typeof generationRun.id === "number" ? generationRun.id : Number(generationRun.id),
     snapshotKey: `${snapshotWithAnalytics.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
     version,
     status: "drafted",
@@ -782,7 +765,7 @@ const runFixture = async (
   if (options.verifyDomain) console.log(`           mark ${fixture.profile} domain verified`)
   if (options.waivePayment) console.log("           waive payment gate")
   if (options.promotePages) console.log("           promote run pages")
-  if (options.publish) console.log("           publish retargeted migrated parity snapshot fixture")
+  if (options.publish) console.log("           publish canonical snapshot from the applied CMS rows")
   if (options.activate) console.log("           activate published snapshot with manualActivation=true")
   if (options.replaceExistingPages) console.log("           after activation, move unspecified published pages to draft (reversible)")
 
@@ -819,10 +802,9 @@ const runFixture = async (
       payload,
       fixture,
       successfulApplyResult.tenantId,
-      run.doc.id,
+      run.doc,
       executeHelpers,
       options,
-      now,
     )
     const snapshotId = result.snapshot?.id
     console.log(`  snapshot: ${snapshotId ?? "(unknown)"}${result.activated ? " activated" : " drafted"}`)
