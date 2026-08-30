@@ -1,123 +1,12 @@
 import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+import { clearLegacyRelationalBlocks, stageLegacyRelationalBlocks } from './sitegenLegacyData'
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
-  // This migration changes the meaning of the page block tables. The
-  // generated DDL below intentionally removes legacy tables and columns, so
-  // never let it run against a database that still contains data in one of
-  // those shapes. The operator must export/regenerate that content first;
-  // raising here keeps the transaction before any schema or data change.
-  await db.execute(sql`
-    DO $do$
-    DECLARE
-      table_name text;
-      row_count bigint;
-      findings text[] := ARRAY[]::text[];
-      legacy_pattern text := 'shadcnui-blocks|shadcn-ui-blocks|providerVariant|designVariant|"blockType"[[:space:]]*:[[:space:]]*"(featureList|testimonials|contactSection|contactDetails|gallery|timeline|stats|logoCloud|team|blogCards|contentSection|newsletter|bentoGrid)"';
-      legacy_tables text[] := ARRAY[
-        'pages_blocks_hero',
-        'pages_blocks_hero_pills',
-        'pages_blocks_hero_links',
-        'pages_blocks_hero_stats',
-        'pages_blocks_hero_logos',
-        'pages_blocks_feature_list',
-        'pages_blocks_feature_list_features',
-        'pages_blocks_testimonials',
-        'pages_blocks_testimonials_items',
-        'pages_blocks_faq',
-        'pages_blocks_cta',
-        'pages_blocks_pricing',
-        'pages_blocks_contact_section',
-        'pages_blocks_contact_section_fields',
-        'pages_blocks_contact_section_fields_options',
-        'pages_blocks_contact_section_provider_hidden_fields',
-        'pages_blocks_contact_details',
-        'pages_blocks_contact_details_items',
-        'pages_blocks_gallery',
-        'pages_blocks_gallery_images',
-        'pages_blocks_timeline',
-        'pages_blocks_timeline_items',
-        'pages_blocks_timeline_items_tags',
-        'pages_blocks_pricing_plans',
-        'pages_blocks_pricing_plans_features',
-        'pages_blocks_stats',
-        'pages_blocks_stats_items',
-        'pages_blocks_logo_cloud',
-        'pages_blocks_logo_cloud_logos',
-        'pages_blocks_team',
-        'pages_blocks_team_members',
-        'pages_blocks_team_members_links',
-        'pages_blocks_newsletter',
-        'pages_blocks_newsletter_benefits',
-        'pages_blocks_bento_grid',
-        'pages_blocks_bento_grid_items',
-        'pages_blocks_content_section',
-        'pages_blocks_content_section_features',
-        'pages_blocks_blog_cards',
-        'pages_blocks_blog_cards_posts'
-      ];
-    BEGIN
-      FOREACH table_name IN ARRAY legacy_tables LOOP
-        IF to_regclass(format('public.%I', table_name)) IS NOT NULL THEN
-          EXECUTE format('SELECT count(*) FROM public.%I', table_name) INTO row_count;
-          IF row_count > 0 THEN
-            findings := array_append(findings, table_name || '=' || row_count::text);
-          END IF;
-        END IF;
-      END LOOP;
-
-      IF to_regclass('public.published_site_snapshots') IS NOT NULL THEN
-        EXECUTE format($query$
-          SELECT count(*)
-          FROM public.published_site_snapshots
-          WHERE snapshot::text ~ %L
-        $query$, legacy_pattern) INTO row_count;
-        IF row_count > 0 THEN
-          findings := array_append(findings, 'published_site_snapshots=' || row_count::text);
-        END IF;
-      END IF;
-
-      IF to_regclass('public.site_generation_runs') IS NOT NULL THEN
-        EXECUTE format($query$
-          SELECT count(*)
-          FROM public.site_generation_runs
-          WHERE coalesce(spec::text, '') ~ %L
-             OR coalesce(parsed_output::text, '') ~ %L
-        $query$, legacy_pattern, legacy_pattern) INTO row_count;
-        IF row_count > 0 THEN
-          findings := array_append(findings, 'site_generation_runs=' || row_count::text);
-        END IF;
-      END IF;
-
-      IF to_regclass('public.tenants') IS NOT NULL THEN
-        EXECUTE format($query$
-          SELECT count(*)
-          FROM public.tenants AS t
-          WHERE to_jsonb(t)::text ~ %L
-        $query$, legacy_pattern) INTO row_count;
-        IF row_count > 0 THEN
-          findings := array_append(findings, 'tenants=' || row_count::text);
-        END IF;
-      END IF;
-
-      IF to_regclass('public.block_presets') IS NOT NULL THEN
-        EXECUTE $$
-          SELECT count(*)
-          FROM public.block_presets
-          WHERE block_type::text NOT IN ('hero', 'services', 'about', 'process', 'work', 'reviews', 'pricing', 'faq', 'cta', 'contact', 'richText')
-        $$ INTO row_count;
-        IF row_count > 0 THEN
-          findings := array_append(findings, 'block_presets=' || row_count::text);
-        END IF;
-      END IF;
-
-      IF cardinality(findings) > 0 THEN
-        RAISE EXCEPTION USING
-          MESSAGE = 'Sitegen owned-block migration refused to run with legacy content',
-          DETAIL = array_to_string(findings, ', '),
-          HINT = 'Export the affected content, regenerate it into the first-party Sitegen contract on a disposable database, verify it, then retry this migration. This transaction made no changes.';
-      END IF;
-    END $do$;
-  `)
+  // The generated DDL below drops legacy block tables and removes columns
+  // whose meaning changed. Preserve every old row before running it, then
+  // restore the meaningful fields after the final canonical enums exist.
+  await stageLegacyRelationalBlocks(db)
+  await clearLegacyRelationalBlocks(db)
 
   // Payload's schema diff cannot infer the semantic meaning of removed
   // provider/chrome variants. Normalize values while the old enums are still

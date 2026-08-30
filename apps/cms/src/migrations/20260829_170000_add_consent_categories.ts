@@ -1,5 +1,6 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
+import { dropLegacyBlockStage, removeLegacyPrivacyPages, restoreLegacyRelationalBlocks } from "./sitegenLegacyData"
 
 /** Adds the two optional consent labels used by the first-party consent rail. */
 export async function up({ db }: MigrateUpArgs): Promise<void> {
@@ -8,6 +9,9 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ADD COLUMN IF NOT EXISTS consent_preferences_label varchar,
       ADD COLUMN IF NOT EXISTS consent_marketing_label varchar;
   `)
+  await restoreLegacyRelationalBlocks(db)
+  await removeLegacyPrivacyPages(db)
+  await dropLegacyBlockStage(db)
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {

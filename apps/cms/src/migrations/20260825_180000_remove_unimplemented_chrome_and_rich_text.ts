@@ -1,50 +1,14 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
+import { materializeLegacyPrivacyDisclosure, normalizeLegacySnapshot, normalizeLegacyStoredJson } from "./sitegenLegacyData"
 
-type JsonRecord = Record<string, unknown>
-
-const isRecord = (value: unknown): value is JsonRecord =>
+const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
 
 const rowsFrom = <T,>(value: unknown): T[] =>
   isRecord(value) && Array.isArray(value.rows) ? value.rows as T[] : []
 
-const hasLegacyRichText = (value: unknown): boolean => {
-  if (Array.isArray(value)) return value.some(hasLegacyRichText)
-  if (!isRecord(value)) return false
-  if (value.blockType === "richText") return true
-  return Object.values(value).some(hasLegacyRichText)
-}
-
-const stripReservedVariant = (value: unknown, stripVariant: boolean): unknown => {
-  if (Array.isArray(value)) return value.map((entry) => stripReservedVariant(entry, stripVariant))
-  if (!isRecord(value)) return value
-
-  const output: JsonRecord = {}
-  for (const [key, child] of Object.entries(value)) {
-    if (stripVariant && key === "variant") continue
-    const childStripVariant =
-      key === "chrome" ||
-      key === "consent" ||
-      key === "maintenance" ||
-      key === "systemTemplates" ||
-      key === "notFound" ||
-      key === "navbar" ||
-      key === "footer" ||
-      key === "announcement"
-    output[key] = stripReservedVariant(child, childStripVariant)
-  }
-  return output
-}
-
-const migrateStoredJson = (value: unknown): unknown => {
-  if (hasLegacyRichText(value)) {
-    throw new Error(
-      "Cannot remove the page richText block while persisted JSON still contains one. Move the content into a semantic section or Site Settings > Privacy disclosure, then rerun the migration.",
-    )
-  }
-  return stripReservedVariant(value, false)
-}
+const migrateStoredJson = (value: unknown): unknown => normalizeLegacyStoredJson(value)
 
 const addPrivacyDisclosureFields = async (db: MigrateUpArgs["db"]) => {
   await db.execute(sql`
@@ -153,7 +117,7 @@ const normalizePublishedJson = async (db: MigrateUpArgs["db"]) => {
   for (const row of rowsFrom<{ id: string | number; snapshot: unknown }>(snapshots)) {
     await db.execute(sql`
       UPDATE public.published_site_snapshots
-      SET snapshot = ${JSON.stringify(migrateStoredJson(row.snapshot))}::jsonb
+      SET snapshot = ${JSON.stringify(normalizeLegacySnapshot(row.snapshot))}::jsonb
       WHERE id = ${row.id};
     `)
   }
@@ -186,6 +150,7 @@ const normalizePublishedJson = async (db: MigrateUpArgs["db"]) => {
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await addPrivacyDisclosureFields(db)
+  await materializeLegacyPrivacyDisclosure(db)
   await normalizePublishedJson(db)
   await removeRichTextPresets(db)
   await removePageRichTextTable(db)

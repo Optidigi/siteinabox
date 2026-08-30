@@ -1,6 +1,12 @@
 import crypto from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
+import {
+  dropLegacyRelationalBlockTables,
+  normalizeLegacyManifest,
+  normalizeLegacySnapshot,
+  normalizeLegacyStoredJson,
+} from "./sitegenLegacyData"
 
 type JsonRecord = Record<string, unknown>
 
@@ -17,144 +23,6 @@ const stableStringify = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
   const record = value as JsonRecord
   return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`
-}
-
-const HERO_VARIANTS = new Set(["hero-01", "hero-02", "hero-03", "hero-04", "hero-05"])
-
-const legacyHeroVariants: Record<string, string> = {
-  heroMinimal: "hero-01",
-  heroSplit: "hero-03",
-  heroPortrait: "hero-04",
-  heroBand: "hero-05",
-  heroCard: "hero-04",
-  heroEditorial: "hero-05",
-  heroFramed: "hero-04",
-  heroAngled: "hero-03",
-  heroEdge: "hero-03",
-  heroCoverPanel: "hero-05",
-  heroImageBelow: "hero-05",
-  heroImageFirst: "hero-05",
-  heroRail: "hero-04",
-  heroColorField: "hero-04",
-  heroColorImage: "hero-04",
-  heroPhotoStage: "hero-05",
-  heroPatternSplit: "hero-05",
-  heroPatternBand: "hero-05",
-  heroShowcase: "hero-05",
-  heroCoverActions: "hero-01",
-  heroServiceMosaic: "hero-02",
-  heroServicePanel: "hero-02",
-}
-
-const normalizeLegacyHeroName = (value: unknown): string | null => {
-  if (typeof value !== "string") return null
-  const withoutProvider = value.startsWith("shadcnui-blocks.")
-    ? value.slice("shadcnui-blocks.".length)
-    : value
-  if (withoutProvider === "hero") return "hero-01"
-  if (HERO_VARIANTS.has(withoutProvider)) return withoutProvider
-  return legacyHeroVariants[withoutProvider] ?? null
-}
-
-const highlightText = (value: unknown): string | null => {
-  if (!isRecord(value)) return null
-  const title = typeof value.title === "string" ? value.title.trim() : ""
-  const body = typeof value.body === "string" ? value.body.trim() : ""
-  if (!title && !body) return null
-  if (!title) return body
-  if (!body) return title
-  return `${title}: ${body}`
-}
-
-const appendHighlightsToBody = (body: unknown, highlights: unknown): string | null => {
-  if (!Array.isArray(highlights)) return typeof body === "string" ? body : null
-  const retained = highlights.map(highlightText).filter((value): value is string => Boolean(value))
-  if (retained.length === 0) return typeof body === "string" ? body : null
-  const base = typeof body === "string" ? body.trim() : ""
-  return [base, ...retained].filter(Boolean).join("\n\n")
-}
-
-const normalizeChrome = (value: unknown): unknown => {
-  if (!isRecord(value)) return value
-  const out = { ...value }
-  if (isRecord(out.header) && out.navbar == null) {
-    out.navbar = { ...out.header, variant: "navbar-01" }
-    delete out.header
-  }
-  if (isRecord(out.navbar)) {
-    out.navbar = { ...out.navbar, variant: "navbar-01" }
-  }
-  if (isRecord(out.banner) && out.announcement == null) {
-    out.announcement = { ...out.banner, variant: "announcement-01" }
-    delete out.banner
-  }
-  if (isRecord(out.announcement)) {
-    out.announcement = { ...out.announcement, variant: "announcement-01" }
-  }
-  return out
-}
-
-const normalizeNavigation = (value: unknown): unknown => {
-  if (!isRecord(value)) return value
-  const out = { ...value }
-  if (out.primary == null && out.header != null) {
-    out.primary = out.header
-    delete out.header
-  }
-  return out
-}
-
-const migrateStoredJson = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(migrateStoredJson)
-  if (!isRecord(value)) return value
-
-  const out: JsonRecord = {}
-  for (const [key, child] of Object.entries(value)) {
-    if (key === "chrome") out[key] = normalizeChrome(migrateStoredJson(child))
-    else if (key === "navigation") out[key] = normalizeNavigation(migrateStoredJson(child))
-    else out[key] = migrateStoredJson(child)
-  }
-
-  if (isRecord(out.systemTemplates) && isRecord(out.systemTemplates.notFound)) {
-    out.systemTemplates = {
-      ...out.systemTemplates,
-      notFound: { ...out.systemTemplates.notFound, variant: "not-found-01" },
-    }
-  }
-  if (isRecord(out.maintenance)) {
-    out.maintenance = { ...out.maintenance, variant: "maintenance-01" }
-  }
-  if (isRecord(out.consent)) {
-    out.consent = { ...out.consent, variant: "consent-01" }
-  }
-
-  const legacyVariant = normalizeLegacyHeroName(out.blockType)
-  if (legacyVariant) {
-    const imageAvailable = out.image != null
-    let variant = normalizeLegacyHeroName(out.variant) ?? legacyVariant
-    if (variant === "hero-02" && (!Array.isArray(out.serviceHighlights) || !imageAvailable)) {
-      variant = imageAvailable ? "hero-03" : "hero-01"
-    }
-    if (variant !== "hero-01" && !imageAvailable) variant = "hero-01"
-    const body = appendHighlightsToBody(out.body, out.highlights)
-    out.blockType = "hero"
-    out.variant = variant
-    if (body != null) out.body = body
-    if (variant !== "hero-01" || (Array.isArray(out.highlights) && out.highlights.length === 1)) {
-      delete out.highlights
-    }
-    delete out.eyebrow
-    delete out.designVariant
-    delete out.providerVariant
-    delete out.metadata
-  } else if (typeof out.blockType === "string" && out.blockType !== "hero") {
-    delete out.variant
-    delete out.designVariant
-    delete out.providerVariant
-    delete out.metadata
-  }
-
-  return out
 }
 
 type JsonRow = { id: string | number; snapshot?: unknown; data?: unknown }
@@ -174,7 +42,7 @@ const updateSnapshotHashes = async (db: MigrateUpArgs["db"]) => {
     FROM public.published_site_snapshots
   `)
   for (const row of rowsFrom<JsonRow>(snapshots)) {
-    const snapshot = migrateStoredJson(row.snapshot)
+    const snapshot = normalizeLegacySnapshot(row.snapshot)
     const snapshotHash = crypto.createHash("sha256").update(stableStringify(snapshot)).digest("hex")
     await db.execute(sql`
       UPDATE public.published_site_snapshots
@@ -193,12 +61,28 @@ const updateGenerationRuns = async (db: MigrateUpArgs["db"]) => {
   for (const row of rowsFrom<GenerationRunRow>(runs)) {
     await db.execute(sql`
       UPDATE public.site_generation_runs
-      SET generation_input = ${JSON.stringify(migrateStoredJson(row.generation_input))}::jsonb,
-          raw_output = ${JSON.stringify(migrateStoredJson(row.raw_output))}::jsonb,
-          parsed_output = ${JSON.stringify(migrateStoredJson(row.parsed_output))}::jsonb,
-          spec = ${JSON.stringify(migrateStoredJson(row.spec))}::jsonb,
-          validation = ${JSON.stringify(migrateStoredJson(row.validation))}::jsonb,
-          apply_result = ${JSON.stringify(migrateStoredJson(row.apply_result))}::jsonb
+      SET generation_input = ${JSON.stringify(normalizeLegacyStoredJson(row.generation_input))}::jsonb,
+          raw_output = ${JSON.stringify(normalizeLegacyStoredJson(row.raw_output))}::jsonb,
+          parsed_output = ${JSON.stringify(normalizeLegacyStoredJson(row.parsed_output))}::jsonb,
+          spec = ${JSON.stringify(normalizeLegacyStoredJson(row.spec))}::jsonb,
+          validation = ${JSON.stringify(normalizeLegacyStoredJson(row.validation))}::jsonb,
+          apply_result = ${JSON.stringify(normalizeLegacyStoredJson(row.apply_result))}::jsonb
+      WHERE id = ${row.id}
+    `)
+  }
+}
+
+const updateTenantJson = async (db: MigrateUpArgs["db"]) => {
+  const tenants = await db.execute(sql`
+    SELECT id, site_manifest, theme
+    FROM public.tenants
+    WHERE site_manifest IS NOT NULL OR theme IS NOT NULL
+  `)
+  for (const row of rowsFrom<{ id: string | number; site_manifest: unknown; theme: unknown }>(tenants)) {
+    await db.execute(sql`
+      UPDATE public.tenants
+      SET site_manifest = ${JSON.stringify(normalizeLegacyManifest(row.site_manifest))}::jsonb,
+          theme = ${JSON.stringify(normalizeLegacyStoredJson(row.theme))}::jsonb
       WHERE id = ${row.id}
     `)
   }
@@ -398,6 +282,24 @@ const migrateHeroTables = async (db: MigrateUpArgs["db"]) => {
     CREATE INDEX pages_blocks_hero_service_highlights_parent_id_idx ON public.pages_blocks_hero_service_highlights USING btree ("_parent_id");
     CREATE INDEX pages_blocks_hero_service_highlights_image_idx ON public.pages_blocks_hero_service_highlights USING btree (image_id);
 
+    CREATE TABLE IF NOT EXISTS public.pages_blocks_hero_highlights (
+      "_order" integer NOT NULL,
+      "_parent_id" varchar NOT NULL,
+      id varchar PRIMARY KEY NOT NULL,
+      title varchar NOT NULL,
+      body varchar NOT NULL
+    );
+    DO $do$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pages_blocks_hero_highlights_parent_id_fk') THEN
+        ALTER TABLE public.pages_blocks_hero_highlights
+          ADD CONSTRAINT pages_blocks_hero_highlights_parent_id_fk
+          FOREIGN KEY ("_parent_id") REFERENCES public.pages_blocks_hero(id) ON DELETE cascade ON UPDATE no action;
+      END IF;
+    END $do$;
+    CREATE INDEX IF NOT EXISTS pages_blocks_hero_highlights_order_idx ON public.pages_blocks_hero_highlights USING btree ("_order");
+    CREATE INDEX IF NOT EXISTS pages_blocks_hero_highlights_parent_id_idx ON public.pages_blocks_hero_highlights USING btree ("_parent_id");
+
     DO $do$
     BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pages_blocks_hero_image_id_media_id_fk') THEN
@@ -462,6 +364,7 @@ const migrateHeroTables = async (db: MigrateUpArgs["db"]) => {
     DROP TABLE IF EXISTS public.pages_blocks_hero_framed CASCADE;
     DROP TABLE IF EXISTS public.pages_blocks_hero_pattern_split CASCADE;
   `)
+  await dropLegacyRelationalBlockTables(db)
 }
 
 const normalizeBlockPresets = async (db: MigrateUpArgs["db"]) => {
@@ -469,7 +372,7 @@ const normalizeBlockPresets = async (db: MigrateUpArgs["db"]) => {
   for (const row of rowsFrom<JsonRow>(presets)) {
     await db.execute(sql`
       UPDATE public.block_presets
-      SET data = ${JSON.stringify(migrateStoredJson(row.data))}::jsonb
+      SET data = ${JSON.stringify(normalizeLegacyStoredJson(row.data))}::jsonb
       WHERE id = ${row.id}
     `)
   }
@@ -478,23 +381,23 @@ const normalizeBlockPresets = async (db: MigrateUpArgs["db"]) => {
     UPDATE public.block_presets SET block_type = regexp_replace(block_type, '^shadcnui-blocks\\.', '');
     UPDATE public.block_presets SET block_type = CASE
       WHEN block_type LIKE 'hero%' THEN 'hero'
-      WHEN block_type IN ('featureList', 'integrations') THEN 'services'
+      WHEN block_type IN ('featureList', 'integrations', 'infoCardList', 'serviceCarousel', 'bentoGrid') THEN 'services'
       WHEN block_type IN ('testimonials') THEN 'reviews'
       WHEN block_type IN ('contactSection', 'contactDetails') THEN 'contact'
-      WHEN block_type IN ('gallery') THEN 'work'
+      WHEN block_type IN ('gallery', 'beforeAfterGallery', 'blogCards') THEN 'work'
       WHEN block_type IN ('timeline') THEN 'process'
-      WHEN block_type IN ('team') THEN 'about'
-      WHEN block_type IN ('blogCards') THEN 'richText'
+      WHEN block_type IN ('team', 'stats', 'logoCloud', 'contentSection', 'richText') THEN 'about'
+      WHEN block_type IN ('newsletter') THEN 'cta'
       ELSE block_type
     END;
     DO $do$
     BEGIN
-      IF EXISTS (SELECT 1 FROM public.block_presets WHERE block_type NOT IN ('hero', 'services', 'about', 'process', 'work', 'reviews', 'pricing', 'faq', 'cta', 'contact', 'richText')) THEN
+      IF EXISTS (SELECT 1 FROM public.block_presets WHERE block_type NOT IN ('hero', 'services', 'about', 'process', 'work', 'reviews', 'pricing', 'faq', 'cta', 'contact')) THEN
         RAISE EXCEPTION USING MESSAGE = 'Cannot canonicalize an unknown block preset type', HINT = 'Review the block_presets rows and map them to a supported first-party semantic family before retrying.';
       END IF;
     END $do$;
     DROP TYPE IF EXISTS public.enum_block_presets_block_type;
-    CREATE TYPE public.enum_block_presets_block_type AS ENUM ('hero', 'services', 'about', 'process', 'work', 'reviews', 'pricing', 'faq', 'cta', 'contact', 'richText');
+    CREATE TYPE public.enum_block_presets_block_type AS ENUM ('hero', 'services', 'about', 'process', 'work', 'reviews', 'pricing', 'faq', 'cta', 'contact');
     ALTER TABLE public.block_presets ALTER COLUMN block_type SET DATA TYPE public.enum_block_presets_block_type USING block_type::public.enum_block_presets_block_type;
   `)
 }
@@ -507,6 +410,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   await normalizeBlockPresets(db)
   await updateSnapshotHashes(db)
   await updateGenerationRuns(db)
+  await updateTenantJson(db)
 }
 
 export async function down(_args: MigrateDownArgs): Promise<void> {
