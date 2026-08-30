@@ -329,6 +329,13 @@ const normalizeContactForm = (form: unknown): unknown => {
 const normalizeBlock = (block: GeneratedPageSpec["blocks"][number], mediaIds?: MediaIdMap): Record<string, unknown> => {
   const { id: _id, ...rest } = block
   const normalized = normalizeMediaFields(rest, mediaIds) as Record<string, unknown>
+  if (normalized.blockType === "hero") {
+    // Payload block-array updates are partial at the nested-row level. Send
+    // explicit empty arrays for variant-owned fields that are not accepted by
+    // the selected hero so a variant change also clears stale editor rows.
+    if (normalized.variant !== "hero-01") normalized.highlights = []
+    if (normalized.variant !== "hero-02") normalized.serviceHighlights = []
+  }
   if (normalized.blockType === "reviews") normalized.reviewSourceIds = sourceIdRows(normalized.reviewSourceIds)
   if (normalized.blockType === "pricing") {
     normalized.pricingSourceIds = sourceIdRows(normalized.pricingSourceIds)

@@ -52,6 +52,44 @@ describe("pageToJson — owned block data", () => {
     expect(BlockSchema.safeParse(jsonBlockAt(json, 0)).success).toBe(true)
   })
 
+  it("removes Payload empty optional groups and stale variant-owned rows", () => {
+    const json = pageJson([
+      {
+        blockType: "hero",
+        variant: "hero-05",
+        heading: "Een helder begin",
+        body: "Praktische hulp voor de volgende stap.",
+        primaryAction: { label: "Neem contact op", href: "#contact" },
+        image: "/hero.jpg",
+        highlights: [],
+        serviceHighlights: [],
+      },
+      {
+        blockType: "services",
+        variant: "services-01",
+        heading: "Diensten",
+        items: [
+          { title: "Advies", body: "Duidelijke uitleg.", action: { label: null, href: null } },
+          { title: "Uitvoering", body: "Zorgvuldig uitgevoerd.", action: null },
+        ],
+      },
+      {
+        blockType: "contact",
+        heading: "Contact",
+        contactMethods: [{ kind: "email", label: "E-mail", value: "hello@example.test" }],
+        bookingAction: { label: null, href: null },
+      },
+    ])
+
+    const [hero, services, contact] = jsonBlocks(json)
+    if (!hero || !services || !contact) throw new Error("Expected projected blocks")
+    expect(hero).not.toHaveProperty("highlights")
+    expect(hero).not.toHaveProperty("serviceHighlights")
+    expect((services.items as Array<Record<string, unknown>>).every((item) => !Object.prototype.hasOwnProperty.call(item, "action"))).toBe(true)
+    expect(contact).not.toHaveProperty("bookingAction")
+    for (const block of [hero, services, contact]) expect(BlockSchema.safeParse(block).success).toBe(true)
+  })
+
   it("projects Payload row storage into the canonical evidence and media shapes", () => {
     const json = pageJson([
       {
