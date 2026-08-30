@@ -43,6 +43,10 @@ type PostHogRetryQueue = {
   unload?: () => void
 }
 
+type PostHogRequestQueue = {
+  unload?: () => void
+}
+
 type PostHogClient = {
   init: (token: string, config: Record<string, unknown>, name?: string) => void
   register: (properties: Record<string, unknown>) => void
@@ -53,6 +57,7 @@ type PostHogClient = {
   clear_opt_in_out_capturing?: () => void
   reset?: () => void
   _send_request?: (request: PostHogRequest) => void
+  _requestQueue?: PostHogRequestQueue
   _retryQueue?: PostHogRetryQueue
 }
 
@@ -1003,10 +1008,11 @@ const deactivateAnalyticsConsent = () => {
     // prevents consented payloads from entering or re-entering its transport
     // after revoke; a request already accepted by the network cannot be recalled.
     installPostHogConsentGate(state.posthog)
-    // Clear requests that failed before revocation and are waiting in the SDK's
-    // private retry queue. `unload` attempts a sendBeacon for queued requests,
-    // but the gate above drops every consented request before it reaches the
-    // transport and then clears the queue and its poller.
+    // Clear requests that are waiting in either of the SDK's private queues.
+    // RequestQueue must be drained first because its unload path hands items to
+    // RetryQueue. Both unload paths attempt sendBeacon, but the gate above drops
+    // every consented request before it reaches the transport.
+    state.posthog._requestQueue?.unload?.()
     state.posthog._retryQueue?.unload?.()
     state.posthog.opt_out_capturing?.()
     state.posthog.clear_opt_in_out_capturing?.()
