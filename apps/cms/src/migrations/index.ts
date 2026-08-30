@@ -131,6 +131,7 @@ import * as migration_20260829_150000_sitegen_consent_01 from './20260829_150000
 import * as migration_20260829_170000_add_consent_categories from './20260829_170000_add_consent_categories';
 import * as migration_20260830_151500_repair_published_snapshot_contract from './20260830_151500_repair_published_snapshot_contract';
 import * as migration_20260830_160000_repair_tenant_privacy_snapshot from './20260830_160000_repair_tenant_privacy_snapshot';
+import * as migration_20260830_163000_remove_legacy_provider_privacy_marker from './20260830_163000_remove_legacy_provider_privacy_marker';
 
 export const migrations = [
   {
@@ -797,5 +798,10 @@ export const migrations = [
     up: migration_20260830_160000_repair_tenant_privacy_snapshot.up,
     down: migration_20260830_160000_repair_tenant_privacy_snapshot.down,
     name: '20260830_160000_repair_tenant_privacy_snapshot',
+  },
+  {
+    up: migration_20260830_163000_remove_legacy_provider_privacy_marker.up,
+    down: migration_20260830_163000_remove_legacy_provider_privacy_marker.down,
+    name: '20260830_163000_remove_legacy_provider_privacy_marker',
   },
 ];
