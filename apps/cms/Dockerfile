@@ -62,6 +62,10 @@ RUN apk add --no-cache bind-tools wget
 COPY --from=builder --chown=node:node /repo/apps/cms/.next/standalone ./
 COPY --from=builder --chown=node:node /repo/apps/cms/.next/static ./apps/cms/.next/static
 COPY --from=builder --chown=node:node /repo/apps/cms/public ./apps/cms/public
+# The operator fixture seed bundle resolves its checked-in media relative to
+# the runtime bundle root (/app). Keep the media available at that explicit
+# path as well as the Next public path used by the web application.
+COPY --from=builder --chown=node:node /repo/apps/cms/public/fixture-media ./public/fixture-media
 # Migrate-on-boot bundle: a single self-contained `.mjs` produced by esbuild
 # with payload + db-postgres + drizzle + pg + the config + every migration's
 # up/down all INLINED. The runner stage is Next's `.next/standalone` output,
