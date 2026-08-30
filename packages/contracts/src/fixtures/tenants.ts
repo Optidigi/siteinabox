@@ -40,8 +40,8 @@ const amicareLogo = {
 
 const amicareFavicon = {
   id: "amicare-favicon-svg",
-  url: "/favicon.svg",
-  filename: "favicon.svg",
+  url: "/amicare-favicon.svg",
+  filename: "amicare-favicon.svg",
   alt: "Amicare-Zorg favicon",
   width: 168,
   height: 168,

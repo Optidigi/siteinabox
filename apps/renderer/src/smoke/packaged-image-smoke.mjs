@@ -42,7 +42,7 @@ try {
     "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M0 0h1v1H0z\"/></svg>",
   )
   await writeFile(
-    join(dataDir, "tenants", "tenant-ami-care", "media", "favicon.svg"),
+    join(dataDir, "tenants", "tenant-ami-care", "media", "amicare-favicon.svg"),
     "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",
   )
 

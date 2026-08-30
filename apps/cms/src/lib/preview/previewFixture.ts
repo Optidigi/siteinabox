@@ -158,7 +158,7 @@ const amicarePreviewMedia = (media: MediaRef | undefined): PreviewBlockMedia | n
       ? "/fixture-media/amicare-bedroom.jpg"
       : filename === "amicare-logo.svg"
         ? "/fixture-media/amicare-logo.svg"
-      : filename === "favicon.svg"
+      : filename === "amicare-favicon.svg"
         ? "/fixture-media/amicare-favicon.svg"
         : null
   return {

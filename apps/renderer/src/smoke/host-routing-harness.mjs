@@ -298,7 +298,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /data-siab-consent-frame="true"/)
   assert.match(amicareHtml, /data-siab-consent-action="all"/)
   assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/amicare-logo\.svg/)
-  assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)
+  assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/amicare-favicon\.svg"\/?>/)
   for (const forbiddenPattern of [
     /data-siab-section-variant=/,
     /data-system-template/,
@@ -386,7 +386,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareSvg = await fetchWithHost(
     baseUrl,
     "ami-care.nl",
-    "/siab-media/tenant-ami-care/favicon.svg",
+    "/siab-media/tenant-ami-care/amicare-favicon.svg",
   )
   assert.equal(amicareSvg.status, 200)
   assert.equal(amicareSvg.headers.get("content-type"), "image/svg+xml")

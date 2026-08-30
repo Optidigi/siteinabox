@@ -76,7 +76,7 @@ const AMICARE_MEDIA_ASSETS: readonly SiteGenerationMediaAsset[] = [
   },
   {
     key: "amicare-favicon-svg",
-    filename: "favicon.svg",
+    filename: "amicare-favicon.svg",
     alt: "Amicare-Zorg favicon",
     filePath: path.join(CMS_ROOT, "public/fixture-media/amicare-favicon.svg"),
   },

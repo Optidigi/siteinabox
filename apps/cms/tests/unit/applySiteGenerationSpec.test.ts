@@ -106,6 +106,20 @@ describe("owned Sitegen application", () => {
     ]))
   })
 
+  it("materializes the branding logo into chrome fallbacks during nested settings updates", async () => {
+    const spec = fixtureSpec()
+    spec.settings.branding = { logo: 77 }
+    const { payload, store } = payloadStub()
+
+    const result = await applySiteGenerationSpec(payload, spec)
+
+    expect(result.ok).toBe(true)
+    expect(store["site-settings"][0]?.chrome).toMatchObject({
+      navbar: { logo: 77 },
+      footer: { logo: 77 },
+    })
+  })
+
   it("retires unspecified published pages only in explicit replacement mode", async () => {
     const { payload, store } = payloadStub()
     store.pages.push({ id: 90, tenant: 1, slug: "legacy-page", title: "Legacy page", status: "published" })

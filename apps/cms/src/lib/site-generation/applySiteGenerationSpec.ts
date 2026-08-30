@@ -387,29 +387,56 @@ const normalizeNav = (entries: GeneratedNavEntries, pageBySlug: Map<string, Exis
     : hrefToNavEntry(entry.href ?? "", entry.label, entry.external, pageBySlug))
 }
 
-const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap): Partial<SiteSetting> => omitNullish({
-  tenant: Number(tenantId),
-  siteName: settings.siteName,
-  siteUrl: settings.siteUrl,
-  description: settings.description,
-  language: settings.language || "nl",
-  aliases: settings.aliases,
-  contactEmail: settings.contactEmail,
-  branding: settings.branding ? normalizeMediaFields(settings.branding, mediaIds) : undefined,
-  chrome: settings.chrome ? normalizeMediaFields(settings.chrome, mediaIds) : undefined,
-  consent: settings.consent,
-  systemTemplates: settings.systemTemplates,
-  maintenance: settings.maintenance,
-  privacyDisclosure: settings.privacyDisclosure,
-  contact: settings.contact,
-  nap: settings.nap,
-  hours: settings.hours,
-  serviceArea: settings.serviceArea,
-  navigation: settings.navigation ? {
-    primary: normalizeNav(settings.navigation.primary, pageBySlug),
-    footer: normalizeNav(settings.navigation.footer, pageBySlug),
-  } : undefined,
-}) as Partial<SiteSetting>
+const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap): Partial<SiteSetting> => {
+  const normalizedBranding = settings.branding ? normalizeMediaFields(settings.branding, mediaIds) : undefined
+  const normalizedChrome = settings.chrome ? normalizeMediaFields(settings.chrome, mediaIds) : undefined
+  const brandingLogo = asRecord(normalizedBranding)?.logo ?? null
+  const sourceChrome = asRecord(settings.chrome)
+  const chrome = asRecord(normalizedChrome)
+
+  // Payload updates nested groups as partial updates. Materialize the
+  // documented branding-logo fallback into both chrome branches so a stale
+  // navbar/footer-specific override cannot survive a Sitegen import.
+  const chromeWithLogoFallback = chrome
+    ? (["navbar", "footer"] as const).reduce<Record<string, unknown>>((result, key) => {
+      const section = asRecord(chrome[key])
+      if (!section) return result
+      const sourceSection = asRecord(sourceChrome?.[key])
+      const hasExplicitLogo = sourceSection != null && Object.prototype.hasOwnProperty.call(sourceSection, "logo")
+      result[key] = {
+        ...section,
+        logo: hasExplicitLogo
+          ? normalizeMediaRef(sourceSection?.logo, mediaIds) ?? null
+          : brandingLogo,
+      }
+      return result
+    }, { ...chrome })
+    : normalizedChrome
+
+  return omitNullish({
+    tenant: Number(tenantId),
+    siteName: settings.siteName,
+    siteUrl: settings.siteUrl,
+    description: settings.description,
+    language: settings.language || "nl",
+    aliases: settings.aliases,
+    contactEmail: settings.contactEmail,
+    branding: normalizedBranding,
+    chrome: chromeWithLogoFallback,
+    consent: settings.consent,
+    systemTemplates: settings.systemTemplates,
+    maintenance: settings.maintenance,
+    privacyDisclosure: settings.privacyDisclosure,
+    contact: settings.contact,
+    nap: settings.nap,
+    hours: settings.hours,
+    serviceArea: settings.serviceArea,
+    navigation: settings.navigation ? {
+      primary: normalizeNav(settings.navigation.primary, pageBySlug),
+      footer: normalizeNav(settings.navigation.footer, pageBySlug),
+    } : undefined,
+  }) as Partial<SiteSetting>
+}
 
 const findOne = async <T>(payload: Payload, collection: "tenants" | "pages" | "site-settings" | "media", where: Where): Promise<T | undefined> => {
   const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true })
