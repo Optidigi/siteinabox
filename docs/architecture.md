@@ -113,6 +113,15 @@ never represented as a page block. CMS/admin controls and governed
 legal/analytics infrastructure stay outside the customer page-section
 catalog.
 
+Tenant branding is settings-owned media. The branding wordmark is the default
+logo for navbar, footer, and consent chrome; a chrome-specific logo is used
+only when explicitly configured in CMS. Sitegen settings normalization
+materializes that default into nested chrome updates so partial Payload writes
+cannot preserve a stale logo override. Tenant favicons use tenant-specific
+filenames in published snapshots to avoid serving an old edge-cached asset
+under a reused path. Historical media and snapshots remain retained for
+rollback but are not active rendering dependencies.
+
 ## Operational ownership
 
 - Payload schemas and migrations own persisted CMS shape and upgrades.

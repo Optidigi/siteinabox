@@ -763,6 +763,19 @@ constraints, and rollback sequence are in
 `COMMERCE_ORIGIN_ISOLATION_VERIFIED` unset until that runbook's evidence is
 complete for the deployment environment.
 
+### Tenant branding verification
+
+Branding is part of the tenant snapshot, not a renderer-specific override. The
+snapshot's branding wordmark is used by navbar, footer, and consent chrome
+unless CMS explicitly stores a chrome-specific logo. This fallback is
+materialized during Sitegen settings normalization because Payload nested
+updates are partial. Use a tenant-specific favicon filename when replacing a
+fixture favicon so an old cacheable response cannot survive the cutover. After
+activation, verify the active snapshot and rendered HTML reference the expected
+wordmark and favicon, then compare the public asset bytes with the source
+fixture. Retain inactive historical media when rollback snapshots still refer
+to it; do not delete it solely because the active snapshot no longer does.
+
 ## Customer Domain Provisioning Workflow
 
 Paid customer checkout now owns the first automated domain path:
