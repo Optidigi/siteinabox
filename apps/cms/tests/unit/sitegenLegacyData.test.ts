@@ -64,4 +64,48 @@ describe("Sitegen legacy data normalization", () => {
       ],
     })
   })
+
+  it("repairs the published snapshot envelope after the first-party cutover", () => {
+    const normalized = normalizeLegacySnapshot({
+      tenantId: 7,
+      manifest: {
+        tenantId: 7,
+        version: 1,
+        updatedAt: "2026-08-30T00:00:00.000Z",
+        entries: [{ type: "page", key: "index", updatedAt: "2026-08-30T00:00:00.000Z" }],
+      },
+      settings: {
+        navHeader: [{ label: "Home", href: "/", external: false }],
+        navFooter: [{ label: "Contact", href: "#contact", external: false }],
+        chrome: { announcement: { variant: "announcement-01", visible: false } },
+        systemTemplates: { notFound: { variant: "not-found-01" } },
+        maintenance: { variant: "maintenance-01", enabled: false },
+      },
+      blocks: [
+        { slug: "hero", label: "Hero" },
+        { slug: "featureList", label: "Services" },
+      ],
+      pages: [{ id: 9, slug: "index", title: "Home", blocks: [] }],
+    }) as Record<string, unknown>
+
+    const settings = normalized.settings as Record<string, unknown>
+    const chrome = settings.chrome as Record<string, Record<string, unknown>>
+    const systemTemplates = settings.systemTemplates as Record<string, Record<string, unknown>>
+    const navigation = settings.navigation as Record<string, unknown[]>
+
+    expect(normalized.tenantId).toBe("7")
+    expect((normalized.manifest as Record<string, unknown>).tenantId).toBe("7")
+    expect((normalized.pages as Array<Record<string, unknown>>)[0]?.id).toBe("9")
+    expect(navigation.primary).toEqual([{ label: "Home", href: "/", external: false }])
+    expect(navigation.footer).toEqual([{ label: "Contact", href: "#contact", external: false }])
+    expect(settings.navHeader).toBeUndefined()
+    expect(settings.navFooter).toBeUndefined()
+    expect(chrome.announcement?.variant).toBeUndefined()
+    expect(systemTemplates.notFound?.variant).toBeUndefined()
+    expect((settings.maintenance as Record<string, unknown>).variant).toBeUndefined()
+    expect(normalized.blocks).toEqual([
+      { slug: "hero", label: "Hero" },
+      { slug: "services", label: "Services" },
+    ])
+  })
 })

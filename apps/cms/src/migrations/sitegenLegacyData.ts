@@ -1169,17 +1169,89 @@ export const normalizeLegacyStoredJson = (value: unknown): unknown => {
 export const normalizeLegacySnapshot = (value: unknown): unknown => {
   const normalized = normalizeLegacyStoredJson(value)
   if (!isRecord(normalized)) return normalized
+
+  const snapshot = { ...normalized }
+  const tenantId = clean(snapshot.tenantId)
+  if (tenantId) snapshot.tenantId = tenantId
+
+  if (isRecord(snapshot.manifest)) {
+    const manifest = { ...snapshot.manifest }
+    if (tenantId) manifest.tenantId = tenantId
+    snapshot.manifest = manifest
+  }
+
+  if (isRecord(snapshot.settings)) {
+    const settings = { ...snapshot.settings }
+    const legacyPrimaryNavigation = Array.isArray(settings.navHeader) ? settings.navHeader : null
+    const legacyFooterNavigation = Array.isArray(settings.navFooter) ? settings.navFooter : null
+    const navigation = isRecord(settings.navigation) ? { ...settings.navigation } : {}
+    if (navigation.primary == null && legacyPrimaryNavigation) navigation.primary = legacyPrimaryNavigation
+    if (navigation.footer == null && legacyFooterNavigation) navigation.footer = legacyFooterNavigation
+    if (Object.keys(navigation).length > 0) settings.navigation = navigation
+    delete settings.navHeader
+    delete settings.navFooter
+
+    const chrome = isRecord(settings.chrome) ? { ...settings.chrome } : null
+    if (chrome) {
+      const announcement = isRecord(chrome.announcement) ? { ...chrome.announcement } : null
+      if (announcement) {
+        delete announcement.variant
+        chrome.announcement = announcement
+      }
+      settings.chrome = chrome
+    }
+
+    const systemTemplates = isRecord(settings.systemTemplates) ? { ...settings.systemTemplates } : null
+    if (systemTemplates) {
+      const notFound = isRecord(systemTemplates.notFound) ? { ...systemTemplates.notFound } : null
+      if (notFound) {
+        delete notFound.variant
+        systemTemplates.notFound = notFound
+      }
+      settings.systemTemplates = systemTemplates
+    }
+
+    const maintenance = isRecord(settings.maintenance) ? { ...settings.maintenance } : null
+    if (maintenance) {
+      delete maintenance.variant
+      settings.maintenance = maintenance
+    }
+    snapshot.settings = settings
+  }
+
   const pagesValue = normalized.pages
-  if (!Array.isArray(pagesValue)) return normalized
-  const pages = pagesValue
-    .filter((page): page is JsonRecord => isRecord(page) && page.slug !== "privacy-en-cookieverklaring")
-    .map((page) => ({
-      ...page,
-      blocks: Array.isArray(page.blocks)
-        ? page.blocks.map((block) => canonicalBlock(record(block))).filter((block): block is JsonRecord => Boolean(block))
-        : [],
-    }))
-  return { ...normalized, pages }
+  if (Array.isArray(pagesValue)) {
+    snapshot.pages = pagesValue
+      .filter((page): page is JsonRecord => isRecord(page) && page.slug !== "privacy-en-cookieverklaring")
+      .map((page) => {
+        const normalizedPage = { ...page }
+        const pageId = clean(normalizedPage.id)
+        if (pageId) normalizedPage.id = pageId
+        else delete normalizedPage.id
+        normalizedPage.blocks = Array.isArray(page.blocks)
+          ? page.blocks.map((block) => canonicalBlock(record(block))).filter((block): block is JsonRecord => Boolean(block))
+          : []
+        return normalizedPage
+      })
+  }
+
+  if (Array.isArray(snapshot.blocks)) {
+    const blocks = snapshot.blocks.map((entry) => {
+      const item = record(entry)
+      const slug = legacyBlockType(item.slug ?? item.blockType)
+      if (!slug) return null
+      const output: JsonRecord = { slug }
+      const label = clean(item.label)
+      const defaultAnchor = clean(item.defaultAnchor)
+      if (label) output.label = label
+      if (defaultAnchor) output.defaultAnchor = defaultAnchor
+      return output
+    }).filter((entry): entry is JsonRecord => Boolean(entry))
+    if (blocks.length > 0) snapshot.blocks = blocks
+    else delete snapshot.blocks
+  }
+
+  return snapshot
 }
 
 export const normalizeLegacyManifest = (value: unknown): unknown => {

@@ -129,6 +129,7 @@ import * as migration_20260828_110000_rename_theme_background_mode from './20260
 import * as migration_20260829_130000_add_sitegen_block_background_modes from './20260829_130000_add_sitegen_block_background_modes';
 import * as migration_20260829_150000_sitegen_consent_01 from './20260829_150000_sitegen_consent_01';
 import * as migration_20260829_170000_add_consent_categories from './20260829_170000_add_consent_categories';
+import * as migration_20260830_151500_repair_published_snapshot_contract from './20260830_151500_repair_published_snapshot_contract';
 
 export const migrations = [
   {
@@ -785,5 +786,10 @@ export const migrations = [
     up: migration_20260829_170000_add_consent_categories.up,
     down: migration_20260829_170000_add_consent_categories.down,
     name: '20260829_170000_add_consent_categories',
+  },
+  {
+    up: migration_20260830_151500_repair_published_snapshot_contract.up,
+    down: migration_20260830_151500_repair_published_snapshot_contract.down,
+    name: '20260830_151500_repair_published_snapshot_contract',
   },
 ];
