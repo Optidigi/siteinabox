@@ -59,7 +59,7 @@ describe("themeSchema", () => {
       stylePreset: "warm-care",
     })).toEqual({
       version: 3,
-      appearance: { mode: "dark" },
+      appearance: { mode: "dark", backgroundMode: "animation" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "clear-modern" },
       shape: { schemeId: "rounded" },

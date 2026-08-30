@@ -15,25 +15,30 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   const darkBrand = softDarkBrand.has(id) ? mode.accent[400]! : mode.accent[500]!
   const lightPrimary = yellowBrand.has(id) ? mode.accent[600]! : mode.accent[700]!
   const lightColorAccent = mode.accent[600]!
+  const darkSurfaceTint = `color-mix(in oklab, oklch(0.205 0 0) 99%, ${mode.accent[500]!} 1%)`
+  const darkSecondaryTint = `color-mix(in oklab, oklch(0.269 0 0) 99%, ${mode.accent[500]!} 1%)`
   return ({
   "--background": mode.surface,
   "--foreground": mode.ink,
-  // Cards sit slightly above the canvas wash (higher L / lower C) so panels
-  // stay readable while the page still carries the brand tint.
-  "--card": dark ? `oklch(0.210 0.022 ${hue})` : `oklch(0.994 0.012 ${hue})`,
+  // Cards sit clearly above the quiet canvas wash so panels stay readable
+  // without turning the whole page into a colored surface.
+  "--card": dark ? darkSurfaceTint : `oklch(0.994 0.012 ${hue})`,
   "--card-foreground": mode.ink,
-  "--popover": dark ? `oklch(0.210 0.022 ${hue})` : `oklch(0.994 0.012 ${hue})`,
+  "--popover": dark ? darkSurfaceTint : `oklch(0.994 0.012 ${hue})`,
   "--popover-foreground": mode.ink,
   "--primary": dark ? darkBrand : lightPrimary,
   "--primary-foreground": dark ? `oklch(0.150 0.030 ${hue})` : mode.onAccent,
-  // Recessed panels (`bg-muted` / `bg-secondary`) must sit below the canvas wash
-  // by ~monochrome’s ΔL (≥0.03). Pre-wash muted at L 0.97 vanished on L 0.980 wash.
-  "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.945 0.018 ${hue})`,
+  // Recessed panels (`bg-muted` / `bg-secondary`) remain visible, but their
+  // chroma stays close to neutral so themed surfaces do not dominate content.
+  "--secondary": dark ? darkSecondaryTint : `oklch(0.958 0.010 ${hue})`,
   "--secondary-foreground": mode.ink,
-  "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.945 0.018 ${hue})`,
+  "--muted": dark ? darkSurfaceTint : `oklch(0.958 0.010 ${hue})`,
   "--muted-foreground": mode.muted,
-  // Soft brand wash both modes (light tint / dark shade) — not a generic muted surface.
-  "--accent": dark ? mode.accent[900]! : mode.accent[100]!,
+  // Keep `bg-accent` as a recognizable brand wash, but use the quietest ramp
+  // stops so incidental tokenized surfaces do not compete with the content.
+  "--accent": dark
+    ? `color-mix(in oklab, var(--background) 96%, ${mode.accent[500]!} 4%)`
+    : mode.accent[50]!,
   "--accent-foreground": mode.ink,
   "--border": mode.rule,
   "--input": mode.rule,
@@ -81,10 +86,8 @@ export function generateStaticThemeCss() {
       for (const shade of shades) {
         values[`--siab-neutral-${shade}`] = mode.neutral[shade]!
         values[`--siab-accent-${shade}`] = mode.accent[shade]!
-        values[`--provider-accent-${shade}`] = mode.accent[shade]!
         if (mode.accentSecondary) {
           values[`--siab-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
-          values[`--provider-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
         }
       }
       values["--chart-1"] = dark ? mode.accent[500] : mode.accent[600]
@@ -95,10 +98,10 @@ export function generateStaticThemeCss() {
       // Adapted form controls use this semantic surface in place of the
       // upstream `bg-white dark:bg-background` pair. It is valid for the
       // exact monochrome reference as well as every tinted tenant preset.
-      values["--provider-surface"] = "var(--background)"
+      values["--siab-surface"] = "var(--background)"
       if (id !== "monochrome") {
-        values["--provider-grid-line"] = `oklch(0.55 0.012 ${hues[id]} / 18%)`
-        values["--provider-grid-dot"] = `oklch(0.55 0.012 ${hues[id]} / 24%)`
+        values["--siab-grid-line"] = `oklch(0.55 0.012 ${hues[id]} / 18%)`
+        values["--siab-grid-dot"] = `oklch(0.55 0.012 ${hues[id]} / 24%)`
       }
       const modeSelector = dark ? `${root}[data-rt-mode="dark"],html[data-siab-color-mode="dark"] ${root}` : `${root}:not([data-rt-mode="dark"])`
       rules.push(`${modeSelector}{${declarations(values)};color-scheme:${modeName};background-color:var(--background);color:var(--foreground)}`)
@@ -123,7 +126,7 @@ export function generateStaticThemeCss() {
       "--radius-2xl": radius["2xl"], "--radius-3xl": radius["3xl"], "--radius-4xl": radius["4xl"], "--radius-full": radius.full,
       "--siab-radius-none": radius.none, "--siab-radius-sm": radius.sm, "--siab-radius-md": radius.md, "--siab-radius-lg": radius.lg,
       "--siab-radius-xl": radius.xl, "--siab-radius-2xl": radius["2xl"], "--siab-radius-3xl": radius["3xl"], "--siab-radius-4xl": radius["4xl"], "--siab-radius-full": radius.full,
-      "--provider-radius-hero-gradient": radius.xl,
+      "--siab-radius-hero-gradient": radius.xl,
     })}}`)
   }
   const themedPalettes: Record<string, string> = {}

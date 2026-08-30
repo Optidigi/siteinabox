@@ -6,7 +6,6 @@ const pageEditorCoreHookSource = () => readFileSync("src/components/editor/usePa
 const pageEditorCoreLibSource = () => readFileSync("src/lib/editor/pageEditorCore.ts", "utf8")
 const editorAuthoritySource = () =>
   pageFormSource() + pageEditorCoreHookSource() + pageEditorCoreLibSource()
-const siteChromeDraftSource = () => readFileSync("src/lib/siteChromeDraft.ts", "utf8")
 const draftStoreSource = () => readFileSync("src/lib/editor/pageDraftStore.ts", "utf8")
 const formSubmissionSheetSource = () => readFileSync("src/components/forms/FormSubmissionSheet.tsx", "utf8")
 
@@ -14,7 +13,7 @@ describe("page editor explicit-save contract", () => {
   it("keeps header/footer nav membership changes local until page Save", () => {
     const source = editorAuthoritySource()
 
-    expect(source).toContain("deriveNavDirty(inHeader, inFooter, savedInHeader, savedInFooter")
+    expect(source).toContain("deriveNavDirty(inNavbar, inFooter, savedInNavbar, savedInFooter")
     expect(source).toContain("siteDesign.navigation = navSnapshot")
     expect(source).toContain('fetch("/api/page-editor-save"')
     expect(source).toContain("expectedUpdatedAt: baselineUpdatedAtRef.current")
@@ -56,53 +55,29 @@ describe("page editor explicit-save contract", () => {
     const draftStore = draftStoreSource()
 
     expect(draftStore).toContain("nav?:")
-    expect(draftStore).toContain("chrome?: unknown")
     expect(core).toContain("nav: navStateRef.current")
-    expect(core).toContain("chrome: chromeDraftRef.current")
     expect(core).toContain("if (draft.nav) {")
-    expect(core).toContain("setInHeader(!!draft.nav.inHeader)")
+    expect(core).toContain("setInNavbar(!!draft.nav.inNavbar)")
     expect(core).toContain("setInFooter(!!draft.nav.inFooter)")
-    expect(core).toContain("if (draft.chrome) {")
-    expect(core).toContain("mergeRestoredChromeDraft(siteSettingsState, footerContract, draft.chrome)")
     expect(pageForm).toContain("<PageDraftRecoveryDialog")
   })
 
-  it("keeps site chrome inspector changes local until explicit page Save", () => {
+  it("does not expose unimplemented chrome editing through the page editor", () => {
     const pageForm = pageFormSource()
     const core = editorAuthoritySource()
-    const siteChromeDraft = siteChromeDraftSource()
 
-    expect(core).toContain("deriveChromeDirty(chromeDraft, chromeBaseline, footerContract)")
-    expect(siteChromeDraft).toContain("columns: comparableFooterColumns(draft.footer.columns, footerContract)")
-    expect(siteChromeDraft).toContain("columns: normalizeFooterColumns(draft.footer.columns, footerContract)")
-    expect(core).toContain("resolveFooterContract(manifest)")
-    expect(pageForm).toContain("<FooterCompositionEditor")
-    expect(pageForm).toContain("<SiteChromeDrillDown")
-    expect(pageForm).toContain("tenantId={tenantId}")
-    expect(pageForm).toContain("<FooterCompositionEditor")
-    expect(pageForm).toContain("<SidebarDrillDown")
-    expect(pageForm).not.toContain("SiteChromeQuickMenu")
-    expect(pageForm).not.toContain("const mobileChromeRows")
-    expect(core).toContain("chromeWillSave")
-    expect(core).toContain("settingsRecordId(siteSettingsState) != null && canEditSettingsResolved")
-    expect(core).toContain("siteDesign.chrome = chromePatchFromDraft")
-    expect(core).not.toContain('fetch(`/api/site-settings/${siteSettingsState.id}`')
-    expect(core).toContain("setChromeBaseline(chromeSnapshot)")
-    expect(core).not.toContain("const pageWasDirty =")
-    expect(core).toContain("const chromeSnapshot = chromeDraftRef.current")
-    expect(core).toContain("chromeBaselineRef.current")
-    expect(core).toContain("const current = chromeDraftRef.current")
-    expect(core).toContain("setChromeDraftState(resolved)")
+    expect(pageForm).not.toContain("SiteChrome")
+    expect(pageForm).not.toContain("FooterCompositionEditor")
+    expect(core).not.toContain("chromeDraft")
+    expect(core).not.toContain("siteDesign.chrome")
   })
 
-  it("clears selected footer chrome when renderer selection moves to a page element", () => {
+  it("keeps selection limited to page elements", () => {
     const source = pageEditorCoreLibSource()
-    const hook = pageEditorCoreHookSource()
     const selectElement = source.slice(source.indexOf("export const selectElementPath"))
 
-    expect(selectElement).toContain("chromeSelection: null")
-    expect(hook).toContain("setSelectedChrome(resolved.chromeSelection)")
-    expect(hook).not.toContain("if (resolved)")
+    expect(selectElement).toContain("selection: resolved")
+    expect(selectElement).not.toContain("chromeSelection")
   })
 
   it("does not recreate a recovery draft from the normal save reset cycle", () => {

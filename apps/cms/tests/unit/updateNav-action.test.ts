@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-// OBS-20 — updateNav persists a tenant's header + footer navigation.
+// OBS-20 — updateNav persists a tenant's navbar + footer navigation.
 // Authorization is delegated to Payload (SiteSettings.access.update =
 // canUpdateSettings + the multi-tenant plugin's update scoping) by calling
 // payload.update with `overrideAccess: false, user`. The action's own job is
@@ -31,12 +31,12 @@ beforeEach(() => {
 })
 
 const validNav = {
-  navHeader: [
+  primary: [
     { type: "page", page: 1, label: null },
     { type: "section", page: 1, anchor: "werkwijze", label: "Werkwijze" },
     { type: "custom", url: "https://x.com", label: "Ext", external: true },
   ],
-  navFooter: [{ type: "custom", url: "/privacy", label: "Privacy", external: false }],
+  footer: [{ type: "custom", url: "/privacy", label: "Privacy", external: false }],
 }
 
 describe("updateNav", () => {
@@ -52,8 +52,8 @@ describe("updateNav", () => {
     expect(args.id).toBe(10)
     expect(args.overrideAccess).toBe(false)
     expect(args.user).toEqual({ id: 1, role: "owner" })
-    expect(args.data.navHeader).toHaveLength(3)
-    expect(args.data.navFooter).toHaveLength(1)
+    expect(args.data.navigation.primary).toHaveLength(3)
+    expect(args.data.navigation.footer).toHaveLength(1)
   })
 
   it("resolves the settings row scoped to the caller (find runs with user, overrideAccess false)", async () => {
@@ -83,16 +83,16 @@ describe("updateNav", () => {
     expect(fakeUpdate).not.toHaveBeenCalled()
   })
 
-  it("rejects a malformed navHeader before auth runs", async () => {
+  it("rejects a malformed navbar navigation before auth runs", async () => {
     await expect(
-      updateNav(7, { navHeader: [{ type: "banana" }], navFooter: [] }),
-    ).rejects.toThrow(/Invalid header navigation/i)
+      updateNav(7, { primary: [{ type: "banana" }], footer: [] }),
+    ).rejects.toThrow(/Invalid navbar navigation/i)
     expect(fakeAuth).not.toHaveBeenCalled()
   })
 
   it("rejects a malformed navFooter", async () => {
     await expect(
-      updateNav(7, { navHeader: [], navFooter: "not-an-array" }),
+      updateNav(7, { primary: [], footer: "not-an-array" }),
     ).rejects.toThrow(/Invalid footer navigation/i)
     expect(fakeAuth).not.toHaveBeenCalled()
   })
@@ -100,7 +100,7 @@ describe("updateNav", () => {
   it("accepts empty nav lists (clearing the menus)", async () => {
     fakeAuth.mockResolvedValueOnce({ user: { id: 1, role: "super-admin" } })
     fakeFind.mockResolvedValueOnce({ docs: [{ id: 10 }], totalDocs: 1 })
-    await updateNav(7, { navHeader: [], navFooter: [] })
-    expect(fakeUpdate.mock.calls[0]![0].data).toEqual({ navHeader: [], navFooter: [] })
+    await updateNav(7, { primary: [], footer: [] })
+    expect(fakeUpdate.mock.calls[0]![0].data).toEqual({ navigation: { primary: [], footer: [] } })
   })
 })

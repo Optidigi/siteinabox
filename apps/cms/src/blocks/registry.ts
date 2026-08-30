@@ -1,52 +1,29 @@
 import { Hero } from "./Hero"
-import { FeatureList } from "./FeatureList"
-import { Testimonials } from "./Testimonials"
-import { FAQ } from "./FAQ"
-import { CTA } from "./CTA"
-import { RichText } from "./RichText"
-import { ContactSection } from "./ContactSection"
-import {
-  BentoGrid,
-  BlogCards,
-  ContentSection,
-  ContactDetails,
-  Gallery,
-  LogoCloud,
-  Newsletter,
-  Pricing,
-  Stats,
-  Team,
-  Timeline,
-} from "./MarketingCatalog"
+import { Services } from "./Services"
+import { About } from "./About"
+import { Process } from "./Process"
+import { Work } from "./Work"
+import { Reviews } from "./Reviews"
+import { Pricing } from "./Pricing"
+import { Faq } from "./Faq"
+import { Cta } from "./Cta"
+import { Contact } from "./Contact"
 import type { BlockWithMeta } from "./_summary"
-import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
 
 export const ALL_BLOCKS = [
   Hero,
-  FeatureList,
-  Testimonials,
-  FAQ,
-  CTA,
-  RichText,
-  ContactSection,
-  ContactDetails,
+  Services,
+  About,
+  Process,
+  Work,
+  Reviews,
   Pricing,
-  Stats,
-  LogoCloud,
-  Gallery,
-  Team,
-  Newsletter,
-  BentoGrid,
-  ContentSection,
-  Timeline,
-  BlogCards,
+  Faq,
+  Cta,
+  Contact,
 ] as const
 
-const activeSourceBackedBlockSlugs = new Set<string>(
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug),
-)
-
-export const BLOCKS = ALL_BLOCKS.filter((block) => activeSourceBackedBlockSlugs.has(block.slug)) as BlockWithMeta[]
+export const BLOCKS = ALL_BLOCKS as readonly BlockWithMeta[]
 
 export const blockBySlug = Object.fromEntries(ALL_BLOCKS.map((b) => [b.slug, b])) as Record<string, BlockWithMeta>
 

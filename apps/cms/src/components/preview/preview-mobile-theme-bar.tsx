@@ -12,29 +12,31 @@ import { MobileInlinePill } from "@/components/common/mobile-inline-pill"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
 import { ShapeControl } from "@/components/editor/theme/radius-control"
+import { BackgroundModeControl, BackgroundModeIcon } from "@/components/editor/theme/background-mode-control"
 import {
   PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
   PREVIEW_MOBILE_CHROME_INSET,
   previewMobileChromeToneClass,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
+import { mergeThemePatch, type ThemePatch } from "@/lib/theme/normalizeTheme"
 import { useSystemPrefersDark } from "@/lib/theme/use-system-prefers-dark"
 import { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT } from "@/lib/preview/preview-theme-events"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
-type Segment = "colors" | "fonts" | "shape"
+type Segment = "colors" | "fonts" | "shape" | "backgroundMode"
 
 const THEME_PILL_ITEMS: Array<{
   value: Segment
   icon: React.ComponentType<{ className?: string }>
-  labelKey: "colourPalette" | "fontPairings" | "cornerRadius"
+  labelKey: "colourPalette" | "fontPairings" | "cornerRadius" | "backgroundModeControls"
 }> = [
   { value: "colors", icon: Palette, labelKey: "colourPalette" },
   { value: "fonts", icon: Type, labelKey: "fontPairings" },
   { value: "shape", icon: SquareRoundCorner, labelKey: "cornerRadius" },
+  { value: "backgroundMode", icon: BackgroundModeIcon, labelKey: "backgroundModeControls" },
 ]
 
 export function PreviewMobileThemeBar({
@@ -53,6 +55,7 @@ export function PreviewMobileThemeBar({
     colors: null,
     fonts: null,
     shape: null,
+    backgroundMode: null,
   })
 
   React.useEffect(() => {
@@ -65,9 +68,9 @@ export function PreviewMobileThemeBar({
     return () => window.removeEventListener(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT, close)
   }, [])
 
-  function handleUpdate(partial: Partial<ThemeTokens>) {
+  function handleUpdate(partial: ThemePatch) {
     onThemeChange((current) =>
-      normalizePreviewThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens),
+      mergeThemePatch(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC, partial),
     )
   }
 
@@ -176,6 +179,12 @@ export function PreviewMobileThemeBar({
                 layout="pill"
                 sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
                 onChange={(next) => handleUpdate({ shape: next })}
+              />
+            )}
+            {openSegment === "backgroundMode" && (
+              <BackgroundModeControl
+                value={theme?.appearance?.backgroundMode}
+                onChange={(backgroundMode) => handleUpdate({ appearance: { backgroundMode } })}
               />
             )}
           </div>

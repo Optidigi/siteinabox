@@ -12,52 +12,39 @@ const spec = (field: string, kind: ElementSpec["kind"] = "text"): ElementSpec =>
 })
 
 describe("partitionBlockElementSpecs", () => {
-  it("puts design/anchor/metadata in advanced and content fields first", () => {
+  it("keeps variant and anchor in advanced and content fields first", () => {
     const { content, advanced } = partitionBlockElementSpecs([
-      spec("headline", "richtext"),
-      spec("designVariant"),
-      spec("cta", "cta"),
+      spec("heading"),
+      spec("variant"),
+      spec("primaryAction", "cta"),
       spec("anchor"),
-      spec("metadata"),
     ])
-    expect(content.map((s) => s.field)).toEqual(["headline", "cta"])
-    expect(advanced.map((s) => s.field)).toEqual(["designVariant", "anchor", "metadata"])
+    expect(content.map((value) => value.field)).toEqual(["heading", "primaryAction"])
+    expect(advanced.map((value) => value.field)).toEqual(["variant", "anchor"])
   })
 
-  it("keeps active optional arrays in content and inactive ones in advanced", () => {
-    const { content, advanced } = partitionBlockElementSpecs(
-      [spec("headline", "richtext"), spec("pills", "array"), spec("logos", "array")],
-      {
-        pills: { status: "optional" },
-        logos: { status: "inactive" },
-      },
-    )
-    expect(content.map((s) => s.field)).toEqual(["headline", "pills"])
-    expect(advanced.map((s) => s.field)).toEqual(["logos"])
-  })
-
-  it("omits inactive non-optional fields", () => {
-    const { content, advanced } = partitionBlockElementSpecs(
-      [spec("headline", "richtext"), spec("image", "image")],
-      { image: { status: "inactive" } },
-    )
-    expect(content.map((s) => s.field)).toEqual(["headline"])
+  it("keeps semantic arrays in content", () => {
+    const { content, advanced } = partitionBlockElementSpecs([
+      spec("heading"),
+      spec("items", "array"),
+    ])
+    expect(content.map((value) => value.field)).toEqual(["heading", "items"])
     expect(advanced).toEqual([])
   })
 })
 
 describe("resolveBlockLabel", () => {
   it("prefers manifest label over slug", () => {
-    expect(resolveBlockLabel("featureList", {
+    expect(resolveBlockLabel("services", {
       version: 1,
-      blocks: [{ slug: "featureList", label: "Diensten" }],
+      blocks: [{ slug: "services", label: "Diensten" }],
     } as never)).toBe("Diensten")
   })
 
   it("uses locale fallback then title-cases slug", () => {
-    expect(resolveBlockLabel("featureList", null, (slug) =>
-      slug === "featureList" ? "Services" : undefined,
+    expect(resolveBlockLabel("services", null, (slug) =>
+      slug === "services" ? "Services" : undefined,
     )).toBe("Services")
-    expect(resolveBlockLabel("featureList")).toBe("Feature List")
+    expect(resolveBlockLabel("services")).toBe("Services")
   })
 })

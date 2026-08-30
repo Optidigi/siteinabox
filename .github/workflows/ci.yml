@@ -42,12 +42,10 @@ jobs:
           pnpm workflow:actions:check
       - name: Shared package type checks
         run: pnpm packages:typecheck
-      - name: Provider contract and catalog tests
+      - name: Contract and renderer tests
         run: |
           pnpm --dir packages/contracts test
           pnpm --dir packages/site-renderer test
-      - name: Reject obsolete generated-site providers
-        run: pnpm run audit:provider-cutover
       - name: Legal release integrity
         run: |
           pnpm legal:check
@@ -178,9 +176,7 @@ jobs:
       - run: pnpm renderer:typecheck
       - run: pnpm renderer:test
       - run: pnpm renderer:build
-      - name: Install provider parity browser
+      - name: Install renderer browser
         run: pnpm --dir apps/renderer exec playwright install --with-deps chromium
       - name: Verify analytics lifecycle ownership
         run: pnpm --dir apps/renderer test:analytics-browser
-      - name: Hydrate and exercise provider catalog
-        run: pnpm --dir apps/renderer test:provider-browser

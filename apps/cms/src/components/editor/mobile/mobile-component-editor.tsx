@@ -173,7 +173,6 @@ const MobileFieldRenderer: React.FC<{
             onChange={setValue}
             manifest={manifest}
             placeholder={spec.label}
-            allowFontFamily={blockType === "richText"}
           />
         </div>
       </div>

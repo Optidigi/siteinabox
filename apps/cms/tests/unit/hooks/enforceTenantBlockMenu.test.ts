@@ -24,7 +24,6 @@ describe("enforceTenantBlockMenu", () => {
       blocks: [
         { blockType: "hero" },
         { blockType: "cta" },
-        { blockType: "richText" },
       ],
     }
     const result = await enforceTenantBlockMenu(hookArgs({ data, originalDoc: undefined }))
@@ -49,11 +48,11 @@ describe("enforceTenantBlockMenu", () => {
   it("allows blocks that are in the tenant's allowed menu", async () => {
     vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue({
       ...baseManifest,
-      blocks: [{ slug: "hero" }, { slug: "richText" }],
+      blocks: [{ slug: "hero" }],
     })
     const data = {
       tenant: 7,
-      blocks: [{ blockType: "hero" }, { blockType: "richText" }, { blockType: "hero" }],
+      blocks: [{ blockType: "hero" }, { blockType: "hero" }],
     }
     const result = await enforceTenantBlockMenu(hookArgs({ data, originalDoc: undefined }))
     expect(result).toBe(data)
@@ -62,7 +61,7 @@ describe("enforceTenantBlockMenu", () => {
   it("rejects blocks outside the tenant's allowed menu", async () => {
     vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue({
       ...baseManifest,
-      blocks: [{ slug: "hero" }, { slug: "richText" }],
+      blocks: [{ slug: "hero" }],
     })
     const data = {
       tenant: 7,

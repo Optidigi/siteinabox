@@ -1,16 +1,15 @@
 ---
-import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import {
   SitePageRenderer,
+  LegalDocumentPage,
   buildPageSeoMetadata,
   COLOR_MODE_BOOTSTRAP_SCRIPT,
   createRendererMediaResolver,
-  DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID,
-  getProviderSystemTemplateRenderer,
   themeMode,
   themePreference,
 } from "@siteinabox/site-renderer"
+import type { SiteSettings } from "@siteinabox/contracts"
 import "../styles/site.css"
 import { findPublishedPage, loadPublishedSnapshot, pagePath } from "../lib/snapshot"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
@@ -26,18 +25,17 @@ const resolved = snapshot && page
       snapshot,
       page,
       pathname: pagePath(page),
-    }
+  }
   : null
-const notFoundTemplateId = snapshot?.settings.systemTemplates?.notFound?.variant ?? DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID
-const SystemNotFoundTemplate = snapshot && !page
-  ? getProviderSystemTemplateRenderer("notFound", notFoundTemplateId)
+const privacyPath = pathname.replace(/\/+$/, "") || "/"
+const legalDocument = snapshot && privacyPath === "/privacy-en-cookieverklaring"
+  ? snapshot.settings.privacyDisclosure?.enabled
+    ? snapshot.settings.privacyDisclosure
+    : null
   : null
+const displayable = Boolean(resolved || legalDocument)
 
-if (snapshot && !page && !SystemNotFoundTemplate) {
-  throw new Error(`Unresolved provider system template "${notFoundTemplateId}" for notFound.`)
-}
-
-if (!resolved) {
+if (!displayable) {
   Astro.response.status = 404
 }
 
@@ -47,14 +45,40 @@ const seo = resolved
       settings: resolved.snapshot.settings,
       mediaResolver: createRendererMediaResolver(resolved.snapshot.tenantId),
     })
-  : null
-const mediaResolver = resolved ? createRendererMediaResolver(resolved.snapshot.tenantId) : undefined
+  : legalDocument
+    ? {
+        title: legalDocument.title?.trim() || "Privacy- en cookieverklaring",
+        description: `Lees hoe ${snapshot?.settings.siteName ?? "deze website"} persoonsgegevens en websitegegevens verwerkt.`,
+      }
+    : null
+const mediaResolver = snapshot ? createRendererMediaResolver(snapshot.tenantId) : undefined
 const analyticsConfig = resolved
   ? buildAnalyticsConfig({ snapshot: resolved.snapshot, page: resolved.page, pathname: resolved.pathname })
   : null
 const analyticsConfigContent = analyticsConfigJson(analyticsConfig)
+const escapeHtml = (value: string): string => value
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#39;")
+const systemPageHtml = (kind: "not-found" | "maintenance", settings: SiteSettings): string => {
+  const maintenance = kind === "maintenance"
+  const heading = maintenance
+    ? "We are making a few improvements"
+    : settings.systemTemplates?.notFound?.heading ?? "Page not found"
+  const body = maintenance
+    ? settings.maintenance?.message ?? "Please check back shortly."
+    : settings.systemTemplates?.notFound?.body ?? "The page you requested could not be found."
+  const action = !maintenance && settings.systemTemplates?.notFound?.primaryAction?.href
+    ? `<a href="${escapeHtml(settings.systemTemplates.notFound.primaryAction.href)}">${escapeHtml(settings.systemTemplates.notFound.primaryAction.label ?? "Back to the homepage")}</a>`
+    : ""
+  return `<main data-siab-system-page="${kind}" style="min-height:100vh;display:grid;place-items:center;padding:3rem 1.5rem;text-align:center"><div><h1>${escapeHtml(heading)}</h1><p>${escapeHtml(body)}</p>${action}</div></main>`
+}
 const rendererHtml = resolved
-  ? renderToStaticMarkup(
+  ? snapshot?.settings.maintenance?.enabled
+    ? systemPageHtml("maintenance", resolved.snapshot.settings)
+    : renderToStaticMarkup(
       SitePageRenderer({
         page: resolved.page,
         settings: resolved.snapshot.settings,
@@ -62,19 +86,19 @@ const rendererHtml = resolved
         tenantSlug: resolved.snapshot.tenantSlug,
         domain: resolved.snapshot.domain,
         mediaResolver,
+        consentAvailable: Boolean(analyticsConfig?.enabled),
+        imageLoading: import.meta.env.SIAB_RENDERER_FIXTURE_MODE === "1" ? "eager" : undefined,
       }),
     )
-  : SystemNotFoundTemplate && snapshot
+  : legalDocument
     ? renderToStaticMarkup(
-        createElement(SystemNotFoundTemplate, {
-          settings: snapshot.settings,
-          theme: snapshot.theme,
-          tenantSlug: snapshot.tenantSlug,
-          domain: snapshot.domain,
-          mediaResolver: createRendererMediaResolver(snapshot.tenantId),
-          pathname,
-        }),
-      )
+      LegalDocumentPage({
+        document: legalDocument,
+        theme: snapshot?.theme,
+      }),
+    )
+  : snapshot
+    ? systemPageHtml("not-found", snapshot.settings)
   : ""
 const mediaHref = (value: unknown): string | null => {
   if (!value || !mediaResolver) return null
@@ -85,8 +109,8 @@ const mediaHref = (value: unknown): string | null => {
   return null
 }
 const faviconHref =
-  resolved
-    ? mediaHref(resolved.snapshot.settings.branding?.favicon)
+  snapshot
+    ? mediaHref(snapshot.settings.branding?.favicon)
     : null
 const configuredThemeMode = themePreference(snapshot?.theme)
 const initialColorMode = themeMode(snapshot?.theme)
@@ -94,8 +118,8 @@ const initialColorMode = themeMode(snapshot?.theme)
 
 <!doctype html>
 {
-  resolved && seo ? (
-    <html lang={resolved.snapshot.settings.language} data-renderer-schema={resolved.snapshot.schemaVersion} data-siab-theme-mode={configuredThemeMode} data-siab-color-mode={initialColorMode} data-rt-mode={initialColorMode}>
+  displayable && seo && snapshot ? (
+    <html lang={snapshot.settings.language} data-renderer-schema={snapshot.schemaVersion} data-siab-theme-mode={configuredThemeMode} data-siab-color-mode={initialColorMode} data-rt-mode={initialColorMode}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -113,20 +137,20 @@ const initialColorMode = themeMode(snapshot?.theme)
         <title>{seo.title}</title>
         {seo.description && <meta name="description" content={seo.description} />}
         {seo.canonical && <link rel="canonical" href={seo.canonical} />}
-        <meta property="og:site_name" content={resolved.snapshot.settings.siteName} />
+        <meta property="og:site_name" content={snapshot.settings.siteName} />
         <meta property="og:type" content="website" />
         <meta property="og:title" content={seo.openGraph?.title ?? seo.title} />
         {seo.openGraph?.description && <meta property="og:description" content={seo.openGraph.description} />}
         {seo.openGraph?.url && <meta property="og:url" content={seo.openGraph.url} />}
-        {seo.openGraph?.images?.map((image) => (
+        {resolved && seo.openGraph?.images?.map((image) => (
           <>
             <meta property="og:image" content={image.url} />
             {image.alt && <meta property="og:image:alt" content={image.alt} />}
           </>
         ))}
-        <meta name="twitter:card" content={seo.openGraph?.images?.length ? "summary_large_image" : "summary"} />
+        <meta name="twitter:card" content={resolved && seo.openGraph?.images?.length ? "summary_large_image" : "summary"} />
       </head>
-      <body data-tenant-slug={resolved.snapshot.tenantSlug}>
+      <body data-tenant-slug={snapshot.tenantSlug}>
         {analyticsConfigContent && <script is:inline id="siab-analytics-config" type="application/json" set:html={analyticsConfigContent} />}
         <div set:html={rendererHtml} />
         <script>
@@ -134,8 +158,8 @@ const initialColorMode = themeMode(snapshot?.theme)
         </script>
       </body>
     </html>
-  ) : SystemNotFoundTemplate && snapshot ? (
-    <html lang={snapshot.settings.language} data-renderer-schema={snapshot.schemaVersion} data-siab-theme-mode={configuredThemeMode} data-siab-color-mode={initialColorMode} data-rt-mode={initialColorMode}>
+  ) : (
+    <html lang={snapshot?.settings.language ?? "en"} data-renderer-schema={snapshot?.schemaVersion} data-siab-theme-mode={configuredThemeMode} data-siab-color-mode={initialColorMode} data-rt-mode={initialColorMode}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -150,30 +174,9 @@ const initialColorMode = themeMode(snapshot?.theme)
             min-width: 320px;
           }
         </style>
-        <title>Page not found | {snapshot.settings.siteName}</title>
+        <title></title>
       </head>
-      <body data-tenant-slug={snapshot.tenantSlug}>
-        <div set:html={rendererHtml} />
-        <script>
-          import "../client/site-behavior"
-        </script>
-      </body>
-    </html>
-  ) : (
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="robots" content="noindex" />
-        <title>Page not found</title>
-      </head>
-      <body>
-        <main class="renderer-not-found">
-          <p>404</p>
-          <h1>Page not found</h1>
-          <a href="/">Return home</a>
-        </main>
-      </body>
+      <body data-tenant-slug={snapshot?.tenantSlug}></body>
     </html>
   )
 }

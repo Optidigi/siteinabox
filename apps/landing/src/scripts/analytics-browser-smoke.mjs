@@ -123,6 +123,9 @@ const publicOrigin = `http://landing.example.test:${port}`
 const ingestOrigin = `http://ingest.example.test:${port}/ingest`
 const testEnv = {
   ...process.env,
+  // Astro 7 backgrounds preview servers when it detects an agent. This smoke
+  // test owns the child process and must keep it in the foreground to clean it up.
+  ASTRO_PREVIEW_BACKGROUND: "0",
   NODE_ENV: "test",
   POSTHOG_PROJECT_TOKEN: "phc_landing_lifecycle_test",
   POSTHOG_PUBLIC_HOST: ingestOrigin,

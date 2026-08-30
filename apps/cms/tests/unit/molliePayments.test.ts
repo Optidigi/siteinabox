@@ -91,18 +91,6 @@ const registrant = {
   locale: "nl_NL",
 }
 
-const inlineText = (text: string) => ({
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: text }],
-})
-
-const blockText = (text: string) => ({
-  t: "root",
-  variant: "block",
-  children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
-})
-
 const enableProductionCommerceRelease = () => {
   vi.stubEnv("NODE_ENV", "production")
   vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
@@ -174,13 +162,11 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     status: "published",
     blocks: [{
       blockType: "hero",
-      designVariant: "shadcnui-blocks.hero-01",
+      variant: "hero-01",
       anchor: "top",
-      eyebrow: null,
-      headline: inlineText("Acme Studio"),
-      subheadline: blockText("A compact published page."),
-      pills: [],
-      cta: null,
+      heading: "Acme Studio",
+      body: "A compact published page.",
+      primaryAction: { label: "Contact", href: "#contact" },
       image: null,
     }],
     updatedAt: "2026-06-26T10:00:00.000Z",
@@ -2601,7 +2587,7 @@ describe("Mollie payment flow", () => {
     await expect(recoverMissingMolliePaymentReferences(fixture.payload, {
       providerReadsAllowed: () => true,
       listRecentMolliePayments: vi.fn(async () => []),
-    }, new Date("2026-08-15T10:10:00.000Z"))).resolves.toEqual({
+    }, new Date(Date.now() + 3 * 60_000))).resolves.toEqual({
       examined: 1,
       recoveredPaymentIds: [],
     })

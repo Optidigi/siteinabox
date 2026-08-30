@@ -34,20 +34,22 @@ test input, not a second schema.
 ## Generated block DOM contract
 
 Generated blocks are rendered only by `packages/site-renderer`. Public output,
-customer preview, and the CMS editor frame consume the same provider view and
-structured rich-text renderer. The CMS does not maintain an editable mirror of
-provider DOM; editing happens in the parent inspector. Block selection uses
-stable `data-block-index` attributes. Field deep-link in the editor frame adds
-editor-only `data-siab-field` markers via `editSlots` (never on public output).
+customer preview, and the CMS editor frame consume the same first-party block
+view and structured rich-text renderer. The CMS does not maintain an editable
+mirror of block DOM; editing happens in the parent inspector. Block selection
+uses stable `data-block-index` attributes. Field deep-link in the editor frame
+adds editor-only `data-siab-field` markers via `editSlots` (never on public
+output).
 
 Canonical references:
 
-- provider dispatch: `packages/site-renderer/src/providers/shadcnui-blocks/block-views.generated.tsx`;
+- block dispatch: `packages/site-renderer/src/blocks/index.tsx`;
 - client active-variant loading: `packages/site-renderer/src/ClientSitePageRenderer.tsx`;
-- provider rich text: `packages/site-renderer/src/rich-text`.
+- first-party rich text: `packages/site-renderer/src/rich-text`.
 
-Provider DOM/classes may change only through a pinned re-import. Editor-only
-selection attributes must not affect layout, public output, or tenant CSS.
+Block DOM/classes may change only through a reviewed first-party renderer
+change. Editor-only selection attributes must not affect layout, public output,
+or tenant CSS.
 
 ## § Theme tokens consumed by block renderers
 
@@ -89,7 +91,7 @@ paired light/dark values. CMS/generation do not store raw palettes or emit
 runtime CSS.
 
 Generated-site CSS wires Tailwind's native `dark:` variant to
-`[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use
+`[data-rt-mode="dark"]`. Retained source that includes `dark:` utilities may use
 that native path and should compute from Tailwind's default palette values.
 Monochrome retains exact upstream palette values (pure white / near-black
 canvas). Colored presets keep a soft brand **canvas wash** on
@@ -99,7 +101,7 @@ with content; elevated panels use a slightly higher-L / lower-C `--card`.
 Recessed panels (`--muted` / `--secondary`) sit below the wash by at least
 ~monochrome’s ΔL (`oklch(0.945 0.018 <hue>)` light) so `bg-muted` cards stay
 visible. Colored presets also scope neutral and decorative palette families to
-the tenant color; status palettes remain independent. Provider sources that do
+the tenant color; status palettes remain independent. Renderer-owned sources that do
 not include `dark:` utilities may be themed only through renderer-owned bridge
 rules for explicit semantic roles: ambient surfaces, ambient ink, accent
 affordances, borders, shape, and reviewed tokenized decoration.
@@ -113,12 +115,12 @@ resolve to these vars — **never hard-code colour / font / radius values**. If 
 renderer hard-codes a value, the editor theme toolbar cannot drive it and the
 user can't see the change.
 
-Do not add arbitrary block-level visual tokens, per-block class names, provider
+Do not add arbitrary block-level visual tokens, per-block class names, source
 token override fields, or one-off color/font/radius/spacing controls. Fonts,
 colors, shape, and mode are global
 theme-schema settings. Block schemas may choose approved design variants, but
 all visual tuning must resolve through global theme tokens and renderer-owned
-class or provider bridge rules.
+class or bridge rules.
 
 For Tailwind classes like `rounded-md`, KEEP them as fallback for the case where
 shape tokens are unavailable, but layer token-driven class rules on top

@@ -13,11 +13,11 @@ const pagesForUsage = (pages: unknown[]) => cast<MediaUsagePage[]>(pages)
 // ids and populated upload objects) and assert the resulting map.
 
 describe("buildMediaUsageMap", () => {
-  it("records hero block image references", () => {
+  it("records image-led hero block references", () => {
     const pages: unknown[] = [
       {
         id: 1, title: "Home", slug: "home",
-        blocks: [{ blockType: "hero", image: 10 }]
+        blocks: [{ blockType: "hero", variant: "hero-04", image: 10 }]
       }
     ]
     const map = buildMediaUsageMap(pagesForUsage(pages), null)
@@ -25,11 +25,22 @@ describe("buildMediaUsageMap", () => {
     expect(map.get(10)?.settings).toBe(false)
   })
 
+  it("records the optional lead hero background image", () => {
+    const pages: unknown[] = [
+      {
+        id: 11, title: "Lead", slug: "lead",
+        blocks: [{ blockType: "hero", image: { id: 15, filename: "lead.jpg" } }],
+      },
+    ]
+    const map = buildMediaUsageMap(pagesForUsage(pages), null)
+    expect(map.get(15)?.pages).toEqual([{ id: 11, title: "Lead", slug: "lead" }])
+  })
+
   it("normalizes populated upload objects (depth: 1) to their .id", () => {
     const pages: unknown[] = [
       {
         id: 2, title: "About", slug: "about",
-        blocks: [{ blockType: "hero", image: { id: 42, filename: "hero.png" } }]
+        blocks: [{ blockType: "hero", variant: "hero-04", image: { id: 42, filename: "hero.png" } }]
       }
     ]
     const map = buildMediaUsageMap(pagesForUsage(pages), null)
@@ -37,18 +48,18 @@ describe("buildMediaUsageMap", () => {
     expect(map.get(42)?.pages[0]?.id).toBe(2)
   })
 
-  it("walks testimonials.items[].avatar", () => {
+  it("walks work.projects[].media[].image", () => {
     const pages: unknown[] = [
       {
         id: 3, title: "Reviews", slug: "reviews",
         blocks: [
           {
-            blockType: "testimonials",
-            items: [
-              { quote: "good", author: "A", avatar: 100 },
-              { quote: "great", author: "B", avatar: { id: 101 } },
-              { quote: "no avatar", author: "C" }
-            ]
+            blockType: "work",
+            projects: [{
+              sourceId: "project-1",
+              title: "Project",
+              media: [{ image: 100 }, { image: { id: 101 } }],
+            }],
           }
         ]
       }
@@ -63,7 +74,7 @@ describe("buildMediaUsageMap", () => {
     const pages: unknown[] = [
       {
         id: 6, title: "Wat telt", slug: "wat-telt",
-        blocks: [{ blockType: "cta", backgroundImage: { id: 120, filename: "care.jpg" } }]
+        blocks: [{ blockType: "cta", image: { id: 120, filename: "care.jpg" } }]
       }
     ]
     const map = buildMediaUsageMap(pagesForUsage(pages), null)
@@ -84,9 +95,9 @@ describe("buildMediaUsageMap", () => {
         id: 5, title: "Brand", slug: "brand",
         seo: { ogImage: 99 },
         blocks: [
-          { blockType: "hero", image: 99 },
-          { blockType: "testimonials", items: [{ avatar: 99 }] },
-          { blockType: "cta", backgroundImage: 99 }
+          { blockType: "hero", variant: "hero-04", image: 99 },
+          { blockType: "about", portrait: 99 },
+          { blockType: "cta", image: 99 }
         ]
       }
     ]
@@ -96,8 +107,8 @@ describe("buildMediaUsageMap", () => {
 
   it("aggregates references across multiple pages for the same media id", () => {
     const pages: unknown[] = [
-      { id: 1, title: "P1", slug: "p1", blocks: [{ blockType: "hero", image: 50 }] },
-      { id: 2, title: "P2", slug: "p2", blocks: [{ blockType: "hero", image: 50 }] }
+      { id: 1, title: "P1", slug: "p1", blocks: [{ blockType: "hero", variant: "hero-04", image: 50 }] },
+      { id: 2, title: "P2", slug: "p2", blocks: [{ blockType: "hero", variant: "hero-04", image: 50 }] }
     ]
     const map = buildMediaUsageMap(pagesForUsage(pages), null)
     expect(map.get(50)?.pages).toHaveLength(2)
@@ -126,7 +137,7 @@ describe("buildMediaUsageMap", () => {
   it("handles unknown block types without throwing", () => {
     const pages: unknown[] = [
       { id: 1, title: "Mix", slug: "mix",
-        blocks: [{ blockType: "future-block", image: 1 }, { blockType: "hero", image: 2 }] }
+        blocks: [{ blockType: "future-block", image: 1 }, { blockType: "hero", variant: "hero-04", image: 2 }] }
     ]
     const map = buildMediaUsageMap(pagesForUsage(pages), null)
     expect(map.has(1)).toBe(false) // unknown type — not walked
@@ -137,9 +148,24 @@ describe("buildMediaUsageMap", () => {
     const pages: unknown[] = [
       { id: 1, title: "X", slug: "x",
         seo: { ogImage: null },
-        blocks: [{ blockType: "hero", image: undefined }] }
+        blocks: [{ blockType: "hero", variant: "hero-04", image: undefined }] }
     ]
     const map = buildMediaUsageMap(pagesForUsage(pages), cast({ branding: { logo: null } }))
     expect(map.size).toBe(0)
+  })
+
+  it("walks contact and about media slots", () => {
+    const pages: unknown[] = [{
+      id: 8,
+      title: "Contact",
+      slug: "contact",
+      blocks: [
+        { blockType: "about", portrait: { id: 301 } },
+        { blockType: "contact", image: 302 },
+      ],
+    }]
+    const map = buildMediaUsageMap(pagesForUsage(pages), null)
+    expect(map.get(301)?.pages[0]?.id).toBe(8)
+    expect(map.get(302)?.pages[0]?.id).toBe(8)
   })
 })

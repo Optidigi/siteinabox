@@ -4,16 +4,19 @@
 @import "@fontsource-variable/nunito/index.css";
 @import "./theme-presets.generated.css";
 
-[data-siab-cookie-consent="true"] {
-  bottom: max(1rem, env(safe-area-inset-bottom));
-}
-
 :root {
   color-scheme: light;
-  background: #f8fafc;
-  color: #111827;
+  background: oklch(0.985 0 0);
+  color: oklch(0.145 0 0);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
+}
+
+html[data-siab-color-mode="dark"],
+html[data-rt-mode="dark"] {
+  color-scheme: dark;
+  background: oklch(0.145 0 0);
+  color: oklch(0.985 0 0);
 }
 
 @theme {
@@ -25,7 +28,6 @@
   --color-rule: rgba(15, 23, 42, 0.14);
   --color-card: #ffffff;
   --color-secondary: #e2e8f0;
-
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
   --font-script: var(--font-sans);
@@ -34,9 +36,6 @@
   --font-text: var(--font-sans);
 }
 
-/* shadcn/Tailwind semantic utilities read the same tenant token variables that
-   the renderer writes. This is the complete token bridge: blocks keep literal
-   classes, themes only set variables, and content never changes either. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -59,13 +58,6 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-rating: var(--rating);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-overlay: var(--overlay);
-  --color-on-media: var(--on-media);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -78,10 +70,7 @@
   --radius-4xl: var(--siab-radius-4xl);
 }
 
-/* Tailwind emits theme aliases at :root. Re-declare them at the actual theme
-   boundary so tenant and reference tokens remain scoped and literal provider
-   classes resolve against the selected site theme. */
-:where(.rt-canvas, [data-provider-token-mode]) {
+:where(.rt-canvas) {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -98,28 +87,134 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-rating: var(--rating);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-overlay: var(--overlay);
-  --color-on-media: var(--on-media);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  font-family: var(--siab-font-body);
 }
 
-/* Controls are semantic shapes. Explicit provider `rounded-full` remains
-   structural everywhere else (avatars, dots and decorative circles). */
-:where(.rt-canvas) [data-provider-token-mode="theme"] [data-slot="button"],
-[data-provider-token-mode="theme"] [data-slot="button"] {
+:where(.rt-canvas) :where(h1, h2) {
+  font-family: var(--siab-font-display);
+}
+
+:where(.rt-canvas) :where(h3, h4, h5, h6) {
+  font-family: var(--siab-font-heading);
+}
+
+:where(.rt-canvas) [data-slot="button"] {
   border-radius: var(--siab-radius-control);
+}
+
+/* Hero CTAs share one comfortable control size across every hero design. Keep
+   this separate from admin/editor buttons, which have their own density rules. */
+.rt-canvas a.hero-action {
+  box-sizing: border-box;
+  max-width: 100%;
+  height: clamp(3.25rem, 5.5vw, 3.5rem);
+  min-height: clamp(3.25rem, 5.5vw, 3.5rem);
+  padding-inline: clamp(1.25rem, 2.5vw, 2rem);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  border-radius: var(--siab-radius-control);
+  white-space: nowrap;
+  transition-property: background-color, border-color, color;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+}
+
+.rt-canvas a.hero-action > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep the hero's primary action on the tenant theme bridge. The shared
+   button utility supplies the semantic class; the canvas scope supplies the
+   CMS-controlled values when this package is rendered outside the CMS app. */
+:where(.rt-canvas) a.hero-primary-action {
+  border: 1px solid var(--primary);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  :where(.rt-canvas) a.hero-primary-action:hover {
+    border-color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+    background-color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+    box-shadow: none;
+  }
+}
+
+:where(.rt-canvas) a.hero-primary-action:focus-visible {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+:where(.rt-canvas) a.hero-primary-action:active {
+  border-color: color-mix(in oklab, var(--primary) 68%, var(--primary-foreground));
+  background-color: color-mix(in oklab, var(--primary) 68%, var(--primary-foreground));
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+:where(.rt-canvas) a.hero-secondary-action {
+  border: 1px solid color-mix(in oklab, var(--foreground) 58%, transparent);
+  background-color: transparent;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  :where(.rt-canvas) a.hero-secondary-action:hover {
+    border-color: color-mix(in oklab, var(--foreground) 72%, transparent);
+    background-color: color-mix(in oklab, var(--foreground) 10%, transparent);
+    color: var(--foreground);
+    box-shadow: none;
+  }
+}
+
+:where(.rt-canvas) a.hero-secondary-action:focus-visible {
+  border-color: color-mix(in oklab, var(--foreground) 82%, transparent);
+  background-color: color-mix(in oklab, var(--foreground) 24%, transparent);
+  color: var(--foreground);
+  outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+:where(.rt-canvas) a.hero-secondary-action:active {
+  border-color: color-mix(in oklab, var(--foreground) 88%, transparent);
+  background-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+:where(.rt-canvas) .hero-on-media-actions a.hero-secondary-action {
+  border-color: color-mix(in oklab, var(--on-media) 58%, transparent);
+  background-color: transparent;
+  color: var(--on-media);
+}
+
+@media (hover: hover) {
+  :where(.rt-canvas) .hero-on-media-actions a.hero-secondary-action:hover {
+    border-color: color-mix(in oklab, var(--on-media) 72%, transparent);
+    background-color: color-mix(in oklab, var(--on-media) 10%, transparent);
+    color: var(--on-media);
+    box-shadow: none;
+  }
+}
+
+:where(.rt-canvas) .hero-on-media-actions a.hero-secondary-action:focus-visible {
+  border-color: color-mix(in oklab, var(--on-media) 82%, transparent);
+  color: var(--on-media);
+  outline-color: color-mix(in oklab, var(--on-media) 72%, transparent);
+  box-shadow: none;
 }
 
 * {
@@ -129,128 +224,3003 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--color-bg, #f8fafc);
-  color: var(--color-ink, #111827);
+  background: oklch(0.985 0 0);
+  color: oklch(0.145 0 0);
+}
+
+html[data-siab-color-mode="dark"] body,
+html[data-rt-mode="dark"] body {
+  background: oklch(0.145 0 0);
+  color: oklch(0.985 0 0);
 }
 
 @layer base {
-  a {
-    color: inherit;
-  }
-
-  img {
-    max-width: 100%;
-  }
-
-  :where([data-provider-token-mode]),
-  :where([data-provider-token-mode]) *,
-  :where([data-provider-token-mode])::before,
-  :where([data-provider-token-mode])::after {
+  a { color: inherit; }
+  img { max-width: 100%; }
+  :where(.rt-canvas),
+  :where(.rt-canvas) * {
     border-color: var(--border);
     outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
   }
 }
 
-:where([data-provider-token-mode="theme"]) {
-  font-family: var(--siab-font-body);
-}
-
-:where([data-provider-token-mode="theme"]) :where(h1, h2) {
-  font-family: var(--siab-font-display);
-}
-
-:where([data-provider-token-mode="theme"]) :where(h3, h4, h5, h6) {
-  font-family: var(--siab-font-heading);
-}
-
-/* Match Radix Nova's pinned dark-state cascade. Tailwind's project-local
-   custom variant ordering otherwise lets an arbitrary data-state utility win
-   after the primitive's dark:data-active rule. */
-:where([data-rt-mode="dark"]) :where([data-provider-token-mode]) [data-slot="tabs-trigger"][data-state="active"] {
-  border-color: var(--input);
-  background-color: color-mix(in oklab, var(--input) 30%, transparent);
-  color: var(--foreground);
-}
-
 .site-renderer {
   min-height: 100vh;
+  --siab-content-max: 80rem;
+  --siab-section-space: clamp(3.5rem, 5.5vw, 5rem);
+  --siab-section-space-emphasis: clamp(4rem, 6.5vw, 6rem);
   background: var(--color-bg, #f8fafc);
   color: var(--color-ink, #111827);
 }
 
+/* Padded heroes use a fluid mobile rhythm instead of making every short
+ * phone viewport carry the desktop spacing scale. Flush compositions (such
+ * as the split/angled hero) keep their own structural padding. */
+.site-hero-padded {
+  padding-block: var(--siab-section-space-emphasis);
+}
+
+/* Services 01 adapts the source's centered integration grid to semantic
+ * services: soft cells use owned icons with an overlapping icon tile. */
+.site-services-01 {
+  padding-block: var(--siab-section-space);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.site-services-01-heading {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.site-services-01-title {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--siab-font-display);
+  font-size: clamp(2.375rem, 4vw, 3.125rem);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.site-services-01-intro {
+  max-width: 32rem;
+  margin: 0.5rem auto 0;
+  color: color-mix(in oklab, var(--foreground) 76%, var(--background));
+  font-size: clamp(1.0625rem, 1.8vw, 1.125rem);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.site-services-01-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  column-gap: 2rem;
+  row-gap: 2.5rem;
+  max-width: 76rem;
+  margin: clamp(4.5rem, 7vw, 6rem) auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-services-01-item-shell {
+  flex: 0 0 100%;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+
+.site-services-01-item {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0 1.5rem 2rem;
+  border: 0;
+  border-radius: var(--siab-radius-2xl);
+  color: var(--card-foreground);
+  text-align: center;
+}
+
+.site-services-01-item {
+  background: color-mix(in oklab, var(--background) 96%, var(--foreground) 2%);
+  box-shadow: none;
+}
+
+.site-services-01-icon {
+  background: var(--background);
+}
+
+.site-services-01-icon {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.06),
+    inset 0 0 0 1px color-mix(in oklab, var(--secondary) 52%, var(--border) 48%);
+}
+
+.site-services-01-icon {
+  flex: 0 0 auto;
+  display: inline-grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  margin-top: -1.875rem;
+  border: 0;
+  border-radius: var(--siab-radius-lg);
+  color: var(--primary);
+  line-height: 0;
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-rt-mode="dark"] .site-services-01-item,
+html[data-siab-color-mode="dark"] :where(.rt-canvas, [data-siab-theme-scope]) .site-services-01-item {
+  background: color-mix(in oklab, var(--background) 94%, var(--foreground) 4%);
+  box-shadow: none;
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-rt-mode="dark"] .site-services-01-icon,
+html[data-siab-color-mode="dark"] :where(.rt-canvas, [data-siab-theme-scope]) .site-services-01-icon {
+  background: var(--background);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04),
+    inset 0 0 0 1px color-mix(in oklab, var(--secondary) 88%, var(--background) 12%);
+}
+
+.site-services-01-icon > svg {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="soft"] .site-services-01-icon {
+  border-radius: var(--siab-radius-xl);
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="rounded"] .site-services-01-icon {
+  border-radius: var(--siab-radius-full);
+}
+
+.site-services-01-item-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.site-services-01-item-title {
+  margin: 0;
+  color: var(--card-foreground);
+  font-family: var(--siab-font-heading);
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.5555556;
+  text-wrap: balance;
+}
+
+.site-services-01-item-body {
+  margin: 0.25rem 0 0;
+  color: color-mix(in oklab, var(--foreground) 74%, var(--background));
+  font-size: 1rem;
+  line-height: 1.5rem;
+  text-wrap: pretty;
+}
+
+.site-services-01-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid color-mix(in oklab, var(--foreground) 48%, transparent);
+  border-radius: var(--siab-radius-control);
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 180ms ease-out, background-color 180ms ease-out, color 180ms ease-out;
+}
+
+.site-services-01-action:hover {
+  border-color: color-mix(in oklab, var(--primary) 58%, var(--foreground));
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  color: var(--primary);
+}
+
+.site-services-01-action:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent);
+  outline-offset: 3px;
+}
+
+@media (min-width: 48rem) {
+  .site-services-01-grid {
+    max-width: 50rem;
+  }
+
+  .site-services-01-item-shell {
+    flex-basis: calc((100% - 2rem) / 2);
+  }
+
+  .site-services-01-icon {
+    width: 4rem;
+    height: 4rem;
+    margin-top: -2rem;
+    border-radius: var(--siab-radius-xl);
+  }
+
+  .site-services-01-icon > svg {
+    width: 1.875rem;
+    height: 1.875rem;
+  }
+
+  :where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="soft"] .site-services-01-icon {
+    border-radius: var(--siab-radius-2xl);
+  }
+
+  :where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="rounded"] .site-services-01-icon {
+    border-radius: var(--siab-radius-full);
+  }
+}
+
+@media (min-width: 64rem) {
+  .site-services-01-grid {
+    max-width: 76rem;
+    row-gap: 4rem;
+  }
+
+  .site-services-01-item-shell {
+    flex-basis: calc((100% - 4rem) / 3);
+  }
+}
+
+/* Services 02 adapts the source's centered integrations layout to owned
+ * service content: larger icon tiles, compact descriptions, and optional
+ * text links without turning each service into a separate card. */
+.site-services-02 {
+  padding-block: var(--siab-section-space);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.site-services-02-heading {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.site-services-02-title {
+  max-width: 48rem;
+  margin: 0 auto;
+  color: var(--foreground);
+  font-family: var(--siab-font-display);
+  font-size: clamp(2.375rem, 4vw, 3.125rem);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.site-services-02-intro {
+  max-width: 32rem;
+  margin: 0.5rem auto 0;
+  color: color-mix(in oklab, var(--foreground) 76%, var(--background));
+  font-size: clamp(1.0625rem, 1.8vw, 1.125rem);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.site-services-02-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  column-gap: 2rem;
+  row-gap: 2.5rem;
+  max-width: 76rem;
+  margin: clamp(3rem, 6vw, 4rem) auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-services-02-item {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 24rem;
+  margin: 0;
+  text-align: center;
+}
+
+.site-services-02-icon {
+  display: inline-grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--siab-radius-lg);
+  background: var(--background);
+  color: var(--primary);
+  line-height: 0;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.06),
+    inset 0 0 0 1px color-mix(in oklab, var(--secondary) 52%, var(--border) 48%);
+}
+
+.site-services-02-icon > svg {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+.site-services-02-item-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.site-services-02-item-text {
+  min-width: 0;
+  width: 100%;
+}
+
+.site-services-02-item-title {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--siab-font-heading);
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.5555556;
+  text-wrap: balance;
+}
+
+.site-services-02-item-body {
+  margin: 0.25rem 0 0;
+  color: color-mix(in oklab, var(--foreground) 74%, var(--background));
+  font-size: 1rem;
+  line-height: 1.5rem;
+  white-space: pre-line;
+  text-wrap: pretty;
+}
+
+.site-services-02-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--siab-radius-control);
+  background: transparent;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 180ms ease-out, text-decoration-color 180ms ease-out;
+}
+
+.site-services-02-action > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+}
+
+@media (hover: hover) {
+  .site-services-02-action:hover {
+    color: color-mix(in oklab, var(--primary) 76%, var(--foreground));
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+}
+
+.site-services-02-action:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent);
+  outline-offset: 3px;
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-rt-mode="dark"] .site-services-02-icon,
+html[data-siab-color-mode="dark"] :where(.rt-canvas, [data-siab-theme-scope]) .site-services-02-icon {
+  background: var(--background);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04),
+    inset 0 0 0 1px color-mix(in oklab, var(--secondary) 88%, var(--background) 12%);
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="soft"] .site-services-02-icon {
+  border-radius: var(--siab-radius-xl);
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="rounded"] .site-services-02-icon {
+  border-radius: var(--siab-radius-full);
+}
+
+@media (min-width: 40rem) {
+  .site-services-02-item {
+    flex-basis: calc((100% - 2rem) / 2);
+  }
+}
+
+@media (min-width: 48rem) {
+  .site-services-02-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: var(--siab-radius-xl);
+  }
+
+  .site-services-02-icon > svg {
+    width: 1.875rem;
+    height: 1.875rem;
+  }
+
+  :where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="soft"] .site-services-02-icon {
+    border-radius: var(--siab-radius-2xl);
+  }
+
+  :where(.rt-canvas, [data-siab-theme-scope])[data-theme-shape="rounded"] .site-services-02-icon {
+    border-radius: var(--siab-radius-full);
+  }
+}
+
+@media (min-width: 64rem) {
+  .site-services-02-item {
+    flex-basis: calc((100% - 4rem) / 3);
+  }
+
+  .site-services-02-grid {
+    row-gap: 4rem;
+  }
+}
+
+/* CTA 01 adapts the reference's focused dithering panel to the owned section
+ * system. The panel is content-led rather than viewport-locked, while its
+ * background is supplied by the same global effect token as the hero family. */
+.site-cta-01 {
+  padding-block: var(--siab-section-space-emphasis);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.site-cta-01-panel {
+  display: flex;
+  min-height: clamp(28rem, 65vw, 37.5rem);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 87%, transparent);
+  border-radius: var(--siab-radius-3xl);
+  background: color-mix(in oklab, var(--card) 52%, var(--background));
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 0.625rem 1.5rem rgb(0 0 0 / 0.05);
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-rt-mode="dark"] .site-cta-01-panel,
+html[data-siab-color-mode="dark"] :where(.rt-canvas, [data-siab-theme-scope]) .site-cta-01-panel {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.12),
+    0 0.625rem 1.5rem rgb(0 0 0 / 0.1);
+}
+
+/* Keep shader canvases and image treatments inside the panel's rounded paint
+ * boundary. The extra child containment matters for effect implementations
+ * that create their own positioned render surface. */
+.site-cta-01-panel > .site-cta-01-background {
+  overflow: hidden;
+  border-radius: inherit;
+  contain: paint;
+}
+
+.site-cta-01-copy {
+  max-width: 52rem;
+  padding: clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem);
+}
+
+.site-cta-01-title {
+  max-width: 14ch;
+  margin: 0;
+  font-size: clamp(2.375rem, 6.5vw, 4.75rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.site-cta-01-body {
+  max-width: 42rem;
+  margin: 1.5rem auto 0;
+  color: color-mix(in oklab, var(--foreground) 78%, var(--background));
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.site-cta-01-actions {
+  width: 100%;
+}
+
+.site-cta-01-actions a.hero-primary-action {
+  min-width: 0;
+}
+
+.site-cta-01-panel .hero-lead-media-bleed {
+  width: 100%;
+}
+
+.rt-canvas .site-cta-01-copy.hero-on-media-actions .site-cta-01-body {
+  color: color-mix(in oklab, var(--on-media) 86%, transparent);
+}
+
+.rt-canvas .site-cta-01-copy.hero-on-media-actions .hero-secondary-action {
+  border-color: color-mix(in oklab, var(--on-media) 58%, transparent);
+  color: var(--on-media);
+}
+
+@media (max-width: 39.99rem) {
+  .site-cta-01-title {
+    font-size: clamp(2.25rem, 11vw, 3.5rem);
+  }
+
+  .site-cta-01-body {
+    margin-top: 1.25rem;
+  }
+}
+
+/* CTA 02 recreates Tailwind UI's Simple centered composition: a content-led
+ * section with a 42rem heading measure, a narrower supporting paragraph, and
+ * a centered action row. It deliberately has no panel, border, or elevation;
+ * the normal theme background/effect bridge remains available behind it. */
+.site-cta-02 {
+  position: relative;
+  padding-block: var(--siab-section-space-emphasis);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.site-cta-02-inner {
+  position: relative;
+  z-index: 1;
+  padding-inline: 1.5rem;
+}
+
+.site-cta-02-copy {
+  max-width: 48rem;
+}
+
+.site-cta-02-title {
+  margin: 0;
+  font-size: clamp(2.375rem, 4vw, 3.125rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1111111;
+  text-wrap: balance;
+}
+
+.site-cta-02-body {
+  max-width: 40rem;
+  margin: 1.5rem auto 0;
+  color: color-mix(in oklab, var(--foreground) 76%, var(--background));
+  font-size: 1.125rem;
+  line-height: 2;
+  text-wrap: pretty;
+}
+
+.site-cta-02-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.site-cta-02-primary {
+  min-width: 0;
+}
+
+.site-cta-02-more-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  text-decoration: none;
+  transition: color 180ms ease-out;
+}
+
+.site-cta-02-more-link:hover {
+  color: var(--primary);
+}
+
+.site-cta-02-more-link:focus-visible {
+  border-radius: var(--siab-radius-control);
+  outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.site-cta-02-more-arrow {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.rt-canvas .site-cta-02-copy.hero-on-media-actions .site-cta-02-body {
+  color: color-mix(in oklab, var(--on-media) 86%, transparent);
+}
+
+.rt-canvas .site-cta-02-copy.hero-on-media-actions .site-cta-02-more-link {
+  color: var(--on-media);
+}
+
+.rt-canvas .site-cta-02-copy.hero-on-media-actions .site-cta-02-more-link:hover {
+  color: var(--primary-foreground);
+}
+
+@media (min-width: 40rem) {
+  .site-cta-02-inner {
+    padding-inline: 2rem;
+  }
+
+  .site-cta-02-title {
+    font-size: 3.125rem;
+    line-height: 1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .site-cta-02-title {
+    font-size: 3.5rem;
+  }
+}
+
+.site-renderer:has(> .rt-canvas) {
+  background-color: transparent;
+}
+
 .site-frame-root {
   overflow-x: clip;
+  /* The frame owns the navbar's row height. Overlay variants derive their
+   * outer footprint below, while menus continue to use the row height. */
+  --siab-navbar-row-height: 4.5rem;
 }
 
-/*
- * Multi-block pages: upstream demos pin min-h-screen for standalone full-bleed.
- * Stacked on a real page that forces a viewport per section. Keep the class
- * strings for structural fidelity; neutralize height here. Single-block pages
- * and system not-found templates (typically one root) keep full-viewport mins.
- *
- * First-viewport heroes are the exception: chrome header (in-flow h-16) + hero
- * should fill one viewport. Prefer --siab-preview-viewport-height when the CMS
- * editor/preview frame sets it (parent browser viewport) so live/preview/editor
- * stay aligned; fall back to 100dvh on public sites. Fixed/floating navbars
- * (no border-b) leave --siab-chrome-header-height at 0.
- */
-.rt-canvas {
-  --siab-chrome-header-height: 0px;
+/* Sticky navigation remains in document flow so normal sections retain their
+ * content clearance. A first hero's visual planes are the exception: they
+ * belong to the complete opening frame, including the navbar row above the
+ * section. Keep this extent in the frame so every visual layer can share the
+ * exact same value without moving copy or ordinary media. */
+.site-frame-root-navbar-sticky {
+  --siab-navbar-visual-height: calc(var(--siab-navbar-row-height) + 1px);
 }
 
-.rt-canvas:has(.site-frame-root > header nav.h-16.border-b) {
-  --siab-chrome-header-height: 4rem;
+.site-frame-root-navbar-sticky[data-siab-navbar-variant="navbar-03"] {
+  --siab-navbar-visual-height: calc(var(--siab-navbar-row-height) + 0.75rem + 2px);
+}
+
+/* Native fragment navigation must leave the sticky chrome clear of the
+ * anchored section's heading. The spacing belongs to the target, so links
+ * remain ordinary anchors and the same behavior works in preview and live
+ * rendering without a click handler or scroll script. */
+.site-frame-root-navbar-sticky > main > [data-siab-section-anchor]:not([data-siab-section-anchor=""]) {
+  scroll-margin-block-start: calc(var(--siab-navbar-visual-height) + 1rem);
+}
+
+/* Extend only the first hero's background plane under the in-flow navbar.
+ * This is a visual underlay, not layout compensation: the hero section,
+ * navbar footprint, and content spacing remain unchanged. */
+.site-frame-root-navbar-sticky > main > :first-child[data-siab-hero-design] {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.site-frame-root-navbar-sticky > main > :first-child[data-siab-hero-design] > [data-siab-background-mode] {
+  top: calc(-1 * var(--siab-navbar-visual-height));
+}
+
+/* Hero 02 keeps its background inside the stage because the service rail
+ * belongs on the page canvas. Let only that visual plane paint through the
+ * in-flow navbar's row; the stage content and rail retain their normal flow
+ * and spacing. The stage clips horizontally, but not vertically, so the
+ * underlay can meet the transparent resting navbar instead of exposing a
+ * canvas-coloured strip above the hero. */
+.site-frame-root-navbar-sticky > main > :first-child[data-siab-hero-design="service-panel"] .hero-service-panel-stage {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.site-frame-root-navbar-sticky > main > :first-child[data-siab-hero-design="service-panel"] .hero-service-background {
+  top: calc(-1 * var(--siab-navbar-visual-height));
+}
+
+/* Hero-03's split image is the only content media plane that intentionally
+ * shares this full opening-frame height. Keep other hero media untouched. */
+@media (min-width: 64rem) {
+  .site-frame-root-navbar-sticky > main > :first-child[data-siab-hero-design="angled"] .hero-angled-media-slot {
+    top: calc(-1 * var(--siab-navbar-visual-height));
+    bottom: 0;
+  }
+}
+
+/* Numbered first-party navbar family. The full-width frame owns placement;
+ * the inner content stays on the same 80rem grid as every page section. */
+.site-frame-root-navbar-overlay {
+  position: relative;
+  /* Base navbars occupy their row plus the one-pixel bottom rule. Variants
+   * with a floating offset override only the outer footprint below. */
+  --siab-navbar-overlay-height: calc(var(--siab-navbar-row-height) + 1px);
+  --siab-navbar-clearance-gap: 3rem;
+  --siab-navbar-clearance: calc(
+    var(--siab-navbar-overlay-height) + var(--siab-navbar-clearance-gap)
+  );
+}
+
+.site-frame-root-navbar-overlay[data-siab-navbar-variant="navbar-03"] {
+  /* Navbar 03 adds a 0.75rem floating offset and a one-pixel border on all
+   * four sides around the shared 4.5rem row. Its floating treatment also
+   * needs more visual separation from the first section's copy. */
+  --siab-navbar-overlay-height: calc(var(--siab-navbar-row-height) + 0.75rem + 2px);
+  --siab-navbar-clearance-gap: 3rem;
+}
+
+/* Overlay navigation is removed from flow. Reserve its space only inside a
+ * hero's copy layer; visual layers must still begin at the section edge. */
+.site-frame-root-navbar-overlay > main > :first-child [data-siab-navbar-overlay-content] {
+  padding-block-start: max(
+    var(--siab-navbar-overlay-content-padding-start, 0px),
+    var(--siab-navbar-clearance)
+  );
+}
+
+/* Padded heroes already contribute the lower rhythm around their copy. When
+ * the navbar overlays the first section, move only that top rhythm into the
+ * shared copy marker; backgrounds and the bottom rhythm remain anchored to
+ * the section edge. This keeps padded copy aligned with flush compositions. */
+.site-frame-root-navbar-overlay > main > :first-child.site-hero-padded {
+  padding-block-start: 0;
+}
+
+/* Hero 03 already has intentional copy padding. Expose those values to the
+ * shared overlay rule so navbar clearance can increase them when necessary
+ * without ever moving the split image or its background layers. */
+.hero-edge-copy {
+  --siab-navbar-overlay-content-padding-start: 5rem;
+  padding-block: clamp(4rem, 10vw, 5rem);
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 40rem) {
+  .hero-edge-copy {
+    --siab-navbar-overlay-content-padding-start: 6rem;
+    padding-block: clamp(4.5rem, 10vw, 6rem);
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .hero-edge-copy {
+    --siab-navbar-overlay-content-padding-start: 7rem;
+    padding-block: 7rem;
+  }
+}
+
+.site-navbar-frame {
+  position: relative;
+  width: 100%;
+  z-index: 60;
+  --siab-navbar-drawer-top: calc(var(--siab-navbar-row-height) + 1px);
+  /* Navbar elevation is renderer-owned chrome, rather than a theme token.
+   * Keep it neutral in both color modes: using --foreground here turns the
+   * light foreground in dark mode into a halo instead of a shadow. */
+  --siab-navbar-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 4px 12px rgb(0 0 0 / 0.05);
+  --siab-navbar-popover-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 8px 20px rgb(0 0 0 / 0.06);
+  --siab-navbar-drawer-shadow:
+    0 2px 4px rgb(0 0 0 / 0.08),
+    0 12px 24px rgb(0 0 0 / 0.06);
+}
+
+.site-navbar-frame-sticky {
+  position: sticky;
+  top: 0;
+}
+
+.site-navbar-frame-hero-overlay {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+.site-navbar {
+  position: relative;
+  width: 100%;
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--background) 94%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 74%, transparent);
+  -webkit-backdrop-filter: blur(1rem) saturate(1.05);
+  backdrop-filter: blur(1rem) saturate(1.05);
+}
+
+.site-navbar-frame-hero-overlay .site-navbar {
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+  border-bottom-color: color-mix(in oklab, var(--border) 52%, transparent);
+}
+
+.site-navbar-inner {
+  display: flex;
+  width: 100%;
+  max-width: 80rem;
+  min-width: 0;
+  min-height: var(--siab-navbar-row-height);
+  margin-inline: auto;
+  align-items: center;
+  padding-inline: clamp(1.25rem, 4vw, 2.5rem);
+  container-name: siab-navbar;
+  container-type: inline-size;
+}
+
+/* The inner element owns the query size; this child owns the layout. A
+ * container query cannot restyle its container itself, so keeping the grid on
+ * this child makes the center column effective at runtime. */
+.site-navbar-layout {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.site-navbar-brand {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: center;
+  color: var(--foreground);
+  font-family: var(--siab-font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-decoration: none;
+}
+
+.site-navbar-brand:focus-visible,
+.site-navbar-link:focus-visible,
+.site-navbar-group-trigger:focus-visible,
+.site-navbar-action:focus-visible,
+.site-navbar-theme-toggle:focus-visible,
+.site-navbar-mobile-trigger:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 68%, transparent);
+  outline-offset: 3px;
+}
+
+.site-navbar-logo {
+  display: block;
+  width: auto;
+  max-width: min(11rem, 42vw);
+  max-height: 2.25rem;
+  object-fit: contain;
+}
+
+.site-navbar-logo-full {
+  display: block;
+}
+
+.site-navbar-logo-mark,
+.site-navbar-logo-fallback {
+  width: 2.5rem;
+  max-width: 2.5rem;
+  height: 2.5rem;
+  max-height: 2.5rem;
+}
+
+.site-navbar-logo-mark {
+  display: none;
+}
+
+.site-navbar-brand-has-compact-logo .site-navbar-logo-full {
+  display: none;
+}
+
+.site-navbar-brand-has-compact-logo .site-navbar-logo-mark {
+  display: block;
+}
+
+.site-navbar-wordmark {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-navbar-links,
+.site-navbar-mobile-links {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-navbar-links > li,
+.site-navbar-mobile-links > li,
+.site-navbar-dropdown-list > li {
+  min-width: 0;
+  list-style: none;
+}
+
+.site-navbar-links > li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.site-navbar-desktop-slot {
+  display: none;
+  min-width: 0;
+}
+
+.site-navbar-link,
+.site-navbar-group-trigger {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: var(--siab-radius-control);
+  color: color-mix(in oklab, var(--foreground) 86%, var(--background));
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-decoration: none;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.site-navbar-link {
+  padding-inline: 0.75rem;
+}
+
+.site-navbar-link:hover,
+.site-navbar-link[aria-current="page"],
+.site-navbar-group-trigger:hover {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--accent) 46%, transparent);
+}
+
+.site-navbar-link[aria-current="page"] {
+  color: var(--primary);
+}
+
+.site-navbar-group {
+  position: relative;
+}
+
+.site-navbar-group-trigger,
+.site-navbar-mobile-trigger {
+  cursor: pointer;
+  list-style: none;
+}
+
+.site-navbar-group-trigger {
+  padding-inline: 0.75rem 0.65rem;
+}
+
+.site-navbar-group-trigger::-webkit-details-marker,
+.site-navbar-mobile-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.site-navbar-group-trigger::marker,
+.site-navbar-mobile-trigger::marker {
+  content: "";
+}
+
+.site-navbar-chevron {
+  transition: transform 160ms ease;
+}
+
+.site-navbar-group[open] > .site-navbar-group-trigger .site-navbar-chevron {
+  transform: rotate(180deg);
+}
+
+.site-navbar-group[open] > .site-navbar-group-trigger {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+/* Navbar-01 is the quiet text-led composition. Its inline navigation uses
+ * color alone for hover, current, and open-group feedback; dropdown rows keep
+ * their own menu-surface states below. */
+.site-navbar-inner-01 .site-navbar-link:not(.site-navbar-dropdown-link):is(:hover, [aria-current="page"]),
+.site-navbar-inner-01 .site-navbar-group > .site-navbar-group-trigger:is(:hover),
+.site-navbar-inner-01 .site-navbar-group[open] > .site-navbar-group-trigger,
+.site-navbar-inner-01 .site-navbar-group:has(.site-navbar-dropdown-link[aria-current="page"]) > .site-navbar-group-trigger {
+  color: var(--primary);
+  background: transparent;
+}
+
+.site-navbar-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 5;
+  display: grid;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(17rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+  border-radius: var(--siab-radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--siab-navbar-popover-shadow);
+}
+
+.site-navbar-dropdown::before {
+  position: absolute;
+  top: -0.5rem;
+  right: 0;
+  left: 0;
+  height: 0.5rem;
+  content: "";
+}
+
+.site-navbar-dropdown-list {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-navbar-dropdown-link {
+  justify-content: flex-start;
+  min-height: 3rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: var(--siab-radius-md);
+}
+
+.site-navbar-dropdown-link > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-navbar-desktop-links .site-navbar-dropdown-link {
+  color: var(--popover-foreground);
+}
+
+.site-navbar-dropdown-link:hover {
+  background: color-mix(in oklab, var(--accent) 26%, var(--popover));
+}
+
+.site-navbar-desktop-links .site-navbar-dropdown-link:hover {
+  color: var(--popover-foreground);
+}
+
+.site-navbar-dropdown-link:focus-visible {
+  background: color-mix(in oklab, var(--accent) 26%, var(--popover));
+  color: var(--popover-foreground);
+}
+
+.site-navbar-dropdown-link[aria-current="page"] {
+  background: color-mix(in oklab, var(--accent) 34%, var(--popover));
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+.site-navbar-desktop-links .site-navbar-dropdown-link[aria-current="page"] {
+  color: var(--foreground);
+}
+
+.site-navbar-desktop-links .site-navbar-group > .site-navbar-dropdown {
+  transform: translateX(-50%);
+}
+
+.site-navbar-desktop-links .site-navbar-group[open] > .site-navbar-dropdown {
+  animation: site-navbar-dropdown-enter 140ms ease-out both;
+  transform-origin: top left;
+}
+
+@keyframes site-navbar-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes site-navbar-dropdown-enter-edge {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* On a compact desktop track, keep a final disclosure inside the viewport.
+ * Wide desktop layouts keep the centered treatment above. */
+@container siab-navbar (min-width: 58rem) and (max-width: 70rem) {
+  .site-navbar-desktop-links .site-navbar-group-item:last-child .site-navbar-dropdown {
+    right: 0;
+    left: auto;
+    transform: none;
+  }
+
+  .site-navbar-desktop-links .site-navbar-group-item:last-child .site-navbar-group[open] > .site-navbar-dropdown {
+    animation-name: site-navbar-dropdown-enter-edge;
+    transform-origin: top right;
+  }
+}
+
+.site-navbar-dropdown-icon,
+.site-navbar-external-icon {
+  flex: 0 0 auto;
+}
+
+.site-navbar-dropdown-icon {
+  color: var(--primary);
+}
+
+.site-navbar-external-icon {
+  margin-left: auto;
+  color: var(--muted-foreground);
+}
+
+.site-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.site-navbar-action,
+.site-navbar-theme-toggle {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: var(--siab-radius-control);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-decoration: none;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  white-space: nowrap;
+}
+
+.site-navbar-action {
+  padding-inline: 1rem;
+  border: 1px solid transparent;
+}
+
+.site-navbar-action-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.site-navbar-action-primary:hover {
+  border-color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+  background: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+}
+
+.site-navbar-theme-toggle {
+  width: 2.75rem;
+  padding: 0;
+  border: 1px solid color-mix(in oklab, var(--foreground) 45%, transparent);
+  background: transparent;
+  color: var(--foreground);
+}
+
+.site-navbar-theme-toggle:hover {
+  background: color-mix(in oklab, var(--accent) 42%, transparent);
+}
+
+.site-navbar-theme-moon {
+  display: none;
+}
+
+.site-navbar-theme-toggle[data-theme-mode="dark"] .site-navbar-theme-sun {
+  display: none;
+}
+
+.site-navbar-theme-toggle[data-theme-mode="dark"] .site-navbar-theme-moon {
+  display: block;
+}
+
+.site-navbar-mobile-menu {
+  display: block;
+  position: static;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.site-navbar-mobile-trigger {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
+  border-radius: var(--siab-radius-control);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.site-navbar-mobile-trigger:hover {
+  background: color-mix(in oklab, var(--accent) 38%, transparent);
+}
+
+.site-navbar-mobile-close {
+  display: none;
+}
+
+.site-navbar-mobile-menu[open] .site-navbar-menu-icon {
+  display: none;
+}
+
+.site-navbar-mobile-menu[open] .site-navbar-mobile-close {
+  display: inline-flex;
+}
+
+.site-navbar-mobile-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 50;
+  display: grid;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 4vw, 2.5rem) 1.5rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 64%, transparent);
+  /* Open navigation is a separate reading surface. Keep it opaque over
+   * hero-overlay imagery/effects so links and actions do not compete with the
+   * first section underneath. */
+  background: var(--background);
+  box-shadow: var(--siab-navbar-popover-shadow);
+}
+
+/* An explicit rule is required because the author-level panel styles can
+ * otherwise outrank the browser's closed-details rule. It also keeps closed
+ * links out of focus and measurement geometry instead of parking them
+ * off-canvas. */
+.site-navbar-mobile-menu:not([open]) > .site-navbar-mobile-panel {
+  display: none;
+}
+
+.site-navbar-mobile-menu[open] > .site-navbar-mobile-panel {
+  display: grid;
+}
+
+.site-navbar-mobile-links {
+  display: grid;
+  min-width: 0;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.site-navbar-mobile-links .site-navbar-link,
+.site-navbar-mobile-links .site-navbar-group-trigger {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+  min-height: 3rem;
+  padding-inline: 0.75rem;
+}
+
+.site-navbar-mobile-links .site-navbar-link > span,
+.site-navbar-mobile-links .site-navbar-group-trigger > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-navbar-mobile-links .site-navbar-dropdown {
+  position: static;
+  left: auto;
+  right: auto;
+  min-width: 0;
+  margin: 0.25rem 0 0.5rem 0.75rem;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  transform: none;
+}
+
+/* The desktop dropdown is explicitly a grid, which can outrank the browser's
+ * closed-details rule. Mirror the top-level menu guard for nested mobile
+ * disclosures so closed child links stay out of layout and focus geometry. */
+.site-navbar-mobile-links details:not([open]) > .site-navbar-dropdown {
+  display: none;
+}
+
+.site-navbar-mobile-links details[open] > .site-navbar-dropdown {
+  display: grid;
+}
+
+.site-navbar-mobile-links .site-navbar-dropdown-link {
+  min-height: 2.75rem;
+}
+
+.site-navbar-mobile-menu-drawer .site-navbar-mobile-panel {
+  position: fixed;
+  inset: var(--siab-navbar-drawer-top) 0 auto;
+  z-index: 70;
+  max-height: calc(100dvh - var(--siab-navbar-drawer-top));
+  overflow-y: auto;
+  padding: 1rem clamp(1rem, 4vw, 2rem) 1.5rem;
+  background: color-mix(in oklab, var(--background) 98%, transparent);
+  box-shadow: var(--siab-navbar-drawer-shadow);
+}
+
+.site-navbar-mobile-menu-drawer .site-navbar-mobile-links,
+.site-navbar-mobile-menu-drawer .site-navbar-actions-mobile {
+  width: min(100%, 80rem);
+  margin-inline: auto;
+}
+
+.site-navbar-actions-mobile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.site-navbar-actions-mobile.site-navbar-actions-with-theme-toggle {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.site-navbar-actions-mobile .site-navbar-theme-toggle {
+  width: 100%;
+}
+
+.site-navbar-actions-mobile .site-navbar-action {
+  width: 100%;
+}
+
+.site-navbar-actions-mobile.site-navbar-actions-with-theme-toggle {
+  display: flex;
+  grid-template-columns: none;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.site-navbar-actions-mobile.site-navbar-actions-with-theme-toggle .site-navbar-theme-toggle {
+  width: 2.75rem;
+  flex: 0 0 2.75rem;
+}
+
+.site-navbar-actions-mobile.site-navbar-actions-with-theme-toggle .site-navbar-action {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.site-navbar-actions-mobile .site-navbar-action > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar {
+  position: relative;
+  background: var(--background);
+  border-bottom-color: color-mix(in oklab, var(--border) 64%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-layout {
+  gap: clamp(1rem, 2.4vw, 2rem);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links {
+  flex: 0 1 auto;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border: 1px solid color-mix(in oklab, var(--border) 76%, var(--card));
+  border-radius: var(--siab-radius-control);
+  background: color-mix(in oklab, var(--muted) 44%, var(--card));
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links .site-navbar-link,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links .site-navbar-group-trigger {
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+  border-radius: var(--siab-radius-control);
+  color: color-mix(in oklab, var(--muted-foreground) 82%, var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links .site-navbar-link:hover,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links .site-navbar-group-trigger:hover,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links .site-navbar-group[open] > .site-navbar-group-trigger {
+  background: color-mix(in oklab, var(--accent) 52%, var(--card));
+  color: var(--foreground);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-links .site-navbar-link[aria-current="page"] {
+  border: 1px solid color-mix(in oklab, var(--primary) 34%, var(--border));
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-action-primary {
+  min-height: 2.75rem;
+  gap: 0.625rem;
+  padding: 0.375rem 0.5rem 0.375rem 1.25rem;
+  border-color: var(--primary);
+  border-radius: var(--siab-radius-control);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-action-primary:hover {
+  border-color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+  background: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+  color: var(--primary-foreground);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-menu {
+  position: static;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-trigger {
+  border-color: transparent;
+  border-radius: var(--siab-radius-full);
+  background: transparent;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-trigger:hover {
+  background: color-mix(in oklab, var(--accent) 34%, var(--background));
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-panel {
+  z-index: 50;
+  padding: 1rem clamp(1.25rem, 4vw, 2.5rem) 1.5rem;
+  border-top-color: color-mix(in oklab, var(--border) 76%, var(--background));
+  background: var(--background);
+  box-shadow: var(--siab-navbar-popover-shadow);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-desktop-links .site-navbar-dropdown-link,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-desktop-links .site-navbar-dropdown-link:hover {
+  color: var(--popover-foreground);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-links .site-navbar-link,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-links .site-navbar-group-trigger {
+  min-height: 3rem;
+  padding-inline: 1rem;
+  border-radius: var(--siab-radius-md);
+  color: color-mix(in oklab, var(--muted-foreground) 82%, var(--foreground));
+  font-weight: 500;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-links .site-navbar-link:hover,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-links .site-navbar-group-trigger:hover,
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-links .site-navbar-link[aria-current="page"] {
+  background: color-mix(in oklab, var(--accent) 52%, var(--background));
+  color: var(--foreground);
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-actions-mobile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-actions-mobile .site-navbar-theme-toggle {
+  width: 2.75rem;
+  flex: 0 0 2.75rem;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-actions-mobile .site-navbar-action {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-actions-mobile .site-navbar-action-primary {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-close {
+  align-items: center;
+  justify-content: center;
+}
+
+.site-navbar-frame.site-navbar-variant-02 .site-navbar-mobile-menu-drawer .site-navbar-mobile-panel {
+  position: fixed;
+  inset: var(--siab-navbar-drawer-top) 0 auto;
+  width: auto;
+  max-height: calc(100dvh - var(--siab-navbar-drawer-top));
+  overflow-y: auto;
+}
+
+/* Sticky standard navbars rest quietly against the opening hero, then gain a
+ * tokenized surface and restrained lift once page content passes underneath.
+ * Keep the row geometry unchanged so anchors, focus, and hero clearance do
+ * not move when the state changes. Navbar 02 keeps its inner navigation pill;
+ * only the outer frame changes state. */
+.site-navbar-frame-sticky[data-navbar-variant="navbar-01"] .site-navbar,
+.site-navbar-frame-sticky[data-navbar-variant="navbar-02"] .site-navbar {
+  transition:
+    background-color 180ms ease,
+    border-bottom-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.site-navbar-frame-sticky[data-navbar-variant="navbar-01"][data-navbar-scroll-state="top"] .site-navbar,
+.site-navbar-frame-sticky[data-navbar-variant="navbar-02"][data-navbar-scroll-state="top"] .site-navbar {
+  background: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Hero-overlay placement is already the navbar's resting/top state. Keep its
+ * surface transparent as well so the placement setting cannot reintroduce a
+ * white band for Navbar 01 or 02. Its open menu remains an intentionally
+ * opaque reading surface. */
+.site-navbar-frame-hero-overlay[data-navbar-variant="navbar-01"] .site-navbar,
+.site-navbar-frame-hero-overlay[data-navbar-variant="navbar-02"] .site-navbar {
+  background: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* A transparent opening navbar shares the first hero's media plane. Use the
+ * same semantic media foreground as hero copy for exposed controls only. The
+ * state is limited to the transparent top/overlay placement; scrolled
+ * navbars, Navbar 02's opaque link pill, menus, dropdowns, and action buttons
+ * retain their own surface tokens. */
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-brand,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-brand,
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle,
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-mobile-trigger,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-mobile-trigger {
+  color: var(--on-media);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle {
+  border-color: color-mix(in oklab, var(--on-media) 58%, transparent);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle:hover,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle:hover {
+  background: color-mix(in oklab, var(--on-media) 14%, transparent);
+  color: var(--on-media);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link),
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link),
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group > .site-navbar-group-trigger,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group > .site-navbar-group-trigger {
+  background: transparent;
+  color: var(--on-media);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link) .site-navbar-external-icon,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link) .site-navbar-external-icon {
+  color: var(--on-media);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link):is(:hover, [aria-current="page"]),
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link):is(:hover, [aria-current="page"]),
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group > .site-navbar-group-trigger:is(:hover),
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group > .site-navbar-group-trigger:is(:hover),
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group[open] > .site-navbar-group-trigger,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group[open] > .site-navbar-group-trigger {
+  background: transparent;
+  color: var(--on-media);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-brand:focus-visible,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-brand:focus-visible,
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle:focus-visible,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-theme-toggle:focus-visible,
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-mobile-trigger:focus-visible,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-mobile-trigger:focus-visible,
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link):focus-visible,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-link:not(.site-navbar-dropdown-link):focus-visible,
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group > .site-navbar-group-trigger:focus-visible,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-desktop-links .site-navbar-group > .site-navbar-group-trigger:focus-visible {
+  outline-color: color-mix(in oklab, var(--on-media) 84%, transparent);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"][data-navbar-variant="navbar-01"] .site-navbar-mobile-trigger,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"][data-navbar-variant="navbar-01"] .site-navbar-mobile-trigger {
+  border-color: color-mix(in oklab, var(--on-media) 72%, transparent);
+  color: var(--on-media);
+}
+
+.site-navbar-frame-hero-overlay[data-navbar-over-media="true"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-mobile-trigger:hover,
+.site-navbar-frame-sticky[data-navbar-over-media="true"][data-navbar-scroll-state="top"]:is([data-navbar-variant="navbar-01"], [data-navbar-variant="navbar-02"]) .site-navbar-mobile-trigger:hover {
+  background: color-mix(in oklab, var(--on-media) 14%, transparent);
+  color: var(--on-media);
+}
+
+.site-navbar-frame-sticky[data-navbar-variant="navbar-01"][data-navbar-scroll-state="scrolled"] .site-navbar,
+.site-navbar-frame-sticky[data-navbar-variant="navbar-02"][data-navbar-scroll-state="scrolled"] .site-navbar {
+  background: var(--background);
+  border-bottom-color: color-mix(in oklab, var(--border) 68%, transparent);
+  box-shadow: var(--siab-navbar-shadow);
+}
+
+.site-navbar-frame.site-navbar-variant-03 .site-navbar {
+  width: min(calc(100% - 2rem), 80rem);
+  margin-inline: auto;
+  background: color-mix(in oklab, var(--card) var(--siab-navbar-glass-surface-alpha), transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: var(--siab-radius-2xl);
+  -webkit-backdrop-filter: blur(0.5rem) saturate(1.01);
+  backdrop-filter: blur(0.5rem) saturate(1.01);
+  box-shadow: var(--siab-navbar-shadow);
+}
+
+/* Navbar-03 uses color alone for top-level and dropdown hover/current states,
+ * including the open group trigger. */
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-link:not(.site-navbar-dropdown-link):is(:hover, [aria-current="page"]),
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-dropdown-link:is(:hover, [aria-current="page"]),
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-group > .site-navbar-group-trigger:is(:hover),
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-group[open] > .site-navbar-group-trigger,
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-group:has(.site-navbar-dropdown-link[aria-current="page"]) > .site-navbar-group-trigger {
+  color: var(--primary);
+  background: transparent;
+}
+
+.site-navbar-frame.site-navbar-variant-03 {
+  --siab-navbar-floating-gap: 0.75rem;
+  --siab-navbar-drawer-top: calc(var(--siab-navbar-row-height) + var(--siab-navbar-floating-gap) + 2px);
+  --siab-navbar-glass-surface-alpha: 40%;
+  padding-top: var(--siab-navbar-floating-gap);
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .site-navbar-frame.site-navbar-variant-03,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .site-navbar-frame.site-navbar-variant-03 {
+  --siab-navbar-glass-surface-alpha: 33%;
+}
+
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-inner {
+  padding-inline: clamp(1rem, 3vw, 2rem);
+}
+
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-mobile-panel {
+  left: -1px;
+  right: -1px;
+  width: auto;
+  max-width: none;
+  border-right: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-left: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: var(--siab-radius-2xl);
+  background: var(--background);
+  -webkit-backdrop-filter: blur(0.5rem) saturate(1.01);
+  backdrop-filter: blur(0.5rem) saturate(1.01);
+  box-shadow: var(--siab-navbar-shadow);
+  padding-inline: 1rem;
+}
+
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-mobile-links .site-navbar-dropdown {
+  margin-inline: 0.5rem;
+  padding: 0.375rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-mobile-links .site-navbar-dropdown-link {
+  color: color-mix(in oklab, var(--foreground) 88%, var(--background));
+}
+
+/* A backdrop-filtered floating navbar becomes the containing block for fixed
+ * descendants. Disable that filter only while its drawer is open so the
+ * configurable drawer can remain a true viewport-wide surface rather than a
+ * second narrow floating card. */
+.site-navbar-frame.site-navbar-variant-03 .site-navbar:has(.site-navbar-mobile-menu-drawer[open]) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.site-navbar-frame.site-navbar-variant-03 .site-navbar-mobile-menu-drawer > .site-navbar-mobile-panel {
+  inset: var(--siab-navbar-drawer-top) 0 auto;
+  width: auto;
+  max-width: none;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: var(--background);
+  box-shadow: var(--siab-navbar-drawer-shadow);
+}
+
+/* The floating surface follows the same inner content track as standard
+ * sections on larger screens. Keep the wider structural frame available to
+ * the hero's intentional image bleed; only the visible navbar card is inset. */
+@media (min-width: 64rem) {
+  .site-navbar-frame.site-navbar-variant-03 .site-navbar {
+    width: min(
+      calc(100% - 5rem),
+      calc(var(--siab-content-max) - 5rem)
+    );
+  }
+}
+
+/* The centered desktop composition needs room for the editable nav group and
+ * action cluster on opposite sides. Query the real inner track so a floating
+ * navbar can remain mobile until its narrower card actually has room. */
+@container siab-navbar (min-width: 58rem) {
+  .site-navbar-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+    column-gap: clamp(1rem, 1.6vw, 1.5rem);
+  }
+
+  .site-navbar-desktop-slot {
+    display: flex;
+    align-items: center;
+  }
+
+  .site-navbar-desktop-links {
+    grid-column: 2;
+    justify-self: center;
+  }
+
+  .site-navbar-actions-slot {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .site-navbar-mobile-menu {
+    display: none;
+  }
+
+  .site-navbar-brand-has-compact-logo .site-navbar-logo-full {
+    display: block;
+  }
+
+  .site-navbar-brand-has-compact-logo .site-navbar-logo-mark {
+    display: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  .site-navbar-inner {
+    padding-inline: 1rem;
+  }
+
+  .site-navbar-layout {
+    gap: 0.75rem;
+  }
+
+  .site-navbar-wordmark {
+    max-width: 12rem;
+  }
+
+  .site-navbar-actions-mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-navbar,
+  .site-navbar-link,
+  .site-navbar-group-trigger,
+  .site-navbar-action,
+  .site-navbar-theme-toggle,
+  .site-navbar-chevron,
+  .site-navbar-dropdown {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Hero body copy is secondary to the heading, but it must remain readable on
+   both light and dark theme surfaces. Use the semantic foreground pair on
+   normal backgrounds and switch to the dedicated on-media token over images.
+   Other muted text in cards and metadata keeps its intentionally quieter role. */
+.rt-canvas .hero-body-copy {
+  color: color-mix(in oklab, var(--foreground) 84%, var(--background));
+}
+
+.rt-canvas .hero-on-media-actions .hero-body-copy {
+  color: color-mix(in oklab, var(--on-media) 86%, transparent);
+}
+
+/* Mesh follows the active color mode: its light palette is a light neutral
+ * surface, so mesh copy uses the normal foreground token instead of the
+ * white-on-media treatment reserved for photographs. Do not add a card,
+ * scrim, or extra surface behind content that was not part of the composition. */
+.rt-canvas .hero-mesh-copy-safe {
+  color: var(--foreground);
+}
+
+.rt-canvas .hero-mesh-copy-safe :is(h1, h2, h3, h4, h5, h6, .hero-body-copy) {
+  color: var(--foreground);
+}
+
+.rt-canvas .hero-mesh-copy-safe .hero-body-copy {
+  color: color-mix(in oklab, var(--foreground) 84%, var(--background));
 }
 
 .rt-canvas[data-siab-composed-sections="true"] .min-h-screen {
   min-height: auto;
 }
 
-.rt-canvas[data-siab-composed-sections="true"]
-  [data-block-index="0"][data-provider-variant^="shadcnui-blocks.hero-"].min-h-screen {
-  min-height: calc(
-    var(--siab-preview-viewport-height, 100dvh) - var(--siab-chrome-header-height, 0px)
-  );
+.siab-hero-offset-plane {
+  --siab-hero-offset-surface: color-mix(in oklab, var(--primary) 62%, var(--card));
+  --siab-hero-offset-surface-opacity: 0.44;
+  background-color: transparent;
+  overflow: hidden;
 }
 
-/* Viewport demos without their own py-/pt-/pb- need ordinary section rhythm. */
-.rt-canvas[data-siab-composed-sections="true"] .min-h-screen:not([class*="py-"]):not([class*="pt-"]):not([class*="pb-"]) {
-  padding-block: 5rem;
+.siab-hero-offset-plane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--siab-hero-offset-surface);
+  opacity: var(--siab-hero-offset-surface-opacity);
 }
 
-/* hero-01/02: slight extra vertical breathing room (class strings stay upstream). */
-.rt-canvas[data-siab-composed-sections="true"]
-  [data-provider-variant="shadcnui-blocks.hero-01"].min-h-screen {
-  padding-block: 6rem;
+/* The dark card surface keeps a restrained chroma. The dark primary ramp is
+   brighter and more chromatic, so its offset plane uses a quieter mix than the
+   light-mode treatment while remaining visibly present. */
+.rt-canvas[data-rt-mode="dark"] .siab-hero-offset-plane,
+html[data-siab-color-mode="dark"] .rt-canvas .siab-hero-offset-plane {
+  --siab-hero-offset-surface: color-mix(in oklab, var(--primary) 58%, var(--card));
+  --siab-hero-offset-surface-opacity: 0.4;
 }
 
-.rt-canvas[data-siab-composed-sections="true"]
-  [data-provider-variant="shadcnui-blocks.hero-02"].min-h-screen {
-  padding-block: 3.5rem;
+/* HeroFramed intentionally uses `bg-card` in light mode. In dark mode that
+   would promote the whole section to the lighter card layer, unlike the
+   other heroes that sit on the page canvas. Keep the frame's contrast in the
+   image/offset plane and return the surrounding section to the shared canvas. */
+.rt-canvas[data-rt-mode="dark"] [data-siab-hero-design="framed"],
+html[data-siab-color-mode="dark"] .rt-canvas [data-siab-hero-design="framed"] {
+  background-color: var(--background);
+}
+
+.hero-service-option-label {
+  cursor: pointer;
+}
+
+.hero-service-media-switch {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.hero-service-media-layer {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.hero-service-media-layer:first-child {
+  opacity: 1;
+}
+
+@supports selector(:has(*)) {
+  .hero-service-composition:has(.hero-service-option-input:checked) .hero-service-media-layer {
+    opacity: 0;
+  }
+
+  .hero-service-composition:has(.hero-service-option:nth-child(1) > .hero-service-option-input:checked) .hero-service-media-layer[data-siab-hero-service-media-index="0"],
+  .hero-service-composition:has(.hero-service-option:nth-child(2) > .hero-service-option-input:checked) .hero-service-media-layer[data-siab-hero-service-media-index="1"],
+  .hero-service-composition:has(.hero-service-option:nth-child(3) > .hero-service-option-input:checked) .hero-service-media-layer[data-siab-hero-service-media-index="2"],
+  .hero-service-composition:has(.hero-service-option:nth-child(4) > .hero-service-option-input:checked) .hero-service-media-layer[data-siab-hero-service-media-index="3"] {
+    opacity: 1;
+  }
+}
+
+.hero-service-copy-heading-panel,
+.hero-service-copy-body-panel,
+.hero-service-copy-actions-panel {
+  display: none;
+}
+
+.hero-service-copy-heading-panel:first-child,
+.hero-service-copy-body-panel:first-child,
+.hero-service-copy-actions-panel:first-child {
+  display: block;
+}
+
+@supports selector(:has(*)) {
+  .hero-service-composition:has(.hero-service-option-input:checked) .hero-service-copy-heading-panel,
+  .hero-service-composition:has(.hero-service-option-input:checked) .hero-service-copy-body-panel,
+  .hero-service-composition:has(.hero-service-option-input:checked) .hero-service-copy-actions-panel {
+    display: none;
+  }
+
+  .hero-service-composition:has(.hero-service-option:nth-child(1) > .hero-service-option-input:checked) .hero-service-copy-heading-panel[data-siab-hero-service-copy-index="0"],
+  .hero-service-composition:has(.hero-service-option:nth-child(1) > .hero-service-option-input:checked) .hero-service-copy-body-panel[data-siab-hero-service-copy-index="0"],
+  .hero-service-composition:has(.hero-service-option:nth-child(1) > .hero-service-option-input:checked) .hero-service-copy-actions-panel[data-siab-hero-service-copy-index="0"],
+  .hero-service-composition:has(.hero-service-option:nth-child(2) > .hero-service-option-input:checked) .hero-service-copy-heading-panel[data-siab-hero-service-copy-index="1"],
+  .hero-service-composition:has(.hero-service-option:nth-child(2) > .hero-service-option-input:checked) .hero-service-copy-body-panel[data-siab-hero-service-copy-index="1"],
+  .hero-service-composition:has(.hero-service-option:nth-child(2) > .hero-service-option-input:checked) .hero-service-copy-actions-panel[data-siab-hero-service-copy-index="1"],
+  .hero-service-composition:has(.hero-service-option:nth-child(3) > .hero-service-option-input:checked) .hero-service-copy-heading-panel[data-siab-hero-service-copy-index="2"],
+  .hero-service-composition:has(.hero-service-option:nth-child(3) > .hero-service-option-input:checked) .hero-service-copy-body-panel[data-siab-hero-service-copy-index="2"],
+  .hero-service-composition:has(.hero-service-option:nth-child(3) > .hero-service-option-input:checked) .hero-service-copy-actions-panel[data-siab-hero-service-copy-index="2"],
+  .hero-service-composition:has(.hero-service-option:nth-child(4) > .hero-service-option-input:checked) .hero-service-copy-heading-panel[data-siab-hero-service-copy-index="3"],
+  .hero-service-composition:has(.hero-service-option:nth-child(4) > .hero-service-option-input:checked) .hero-service-copy-body-panel[data-siab-hero-service-copy-index="3"],
+  .hero-service-composition:has(.hero-service-option:nth-child(4) > .hero-service-option-input:checked) .hero-service-copy-actions-panel[data-siab-hero-service-copy-index="3"] {
+    display: block;
+  }
+}
+
+.hero-action-arrow {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  transform: none;
+  transition: none;
+}
+
+.hero-service-rail {
+  isolation: isolate;
+}
+
+/* The service panel is content-driven on phones. Its desktop minimums preserve
+ * the composed hero treatment, while a small, explicit overlap keeps the rail
+ * connected to the image without creating a large empty stage. */
+.hero-service-panel-stage {
+  min-height: auto;
+  padding-block: clamp(3rem, 9vw, 4rem);
+}
+
+.hero-service-panel-rail {
+  margin-top: -1.5rem;
+}
+
+/* Overlay navigation already contributes its clearance inside the copy. Do
+ * not add a second stage-level top pad in that composition. */
+.site-frame-root-navbar-overlay [data-siab-hero-design="service-panel"] .hero-service-panel-stage {
+  padding-block-start: 0;
+}
+
+@media (min-width: 40rem) {
+  .hero-service-panel-stage {
+    min-height: 36rem;
+    padding-block: 0 6rem;
+  }
+
+  .hero-service-panel-rail {
+    margin-top: -4rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .hero-service-panel-stage {
+    min-height: 42rem;
+    padding-block-end: 7rem;
+  }
+
+  .hero-service-panel-rail {
+    margin-top: -5rem;
+  }
+}
+
+.hero-service-rail > .hero-service-option + .hero-service-option {
+  border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+}
+
+@media (min-width: 64rem) {
+  .hero-service-rail > .hero-service-option + .hero-service-option {
+    border-top: 0;
+    border-left: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  }
+}
+
+.hero-service-option {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+
+.hero-service-option-surface {
+  background-color: transparent;
+  color: inherit;
+}
+
+.hero-service-option:hover,
+.hero-service-option:has(> .hero-service-option-input:focus-visible) {
+  background-color: color-mix(in oklab, var(--accent) 42%, var(--card));
+}
+
+[data-siab-hero-design="service-panel"] .hero-service-option:hover:not(:has(> .hero-service-option-input:checked)) {
+  background-color: color-mix(in oklab, var(--accent) 48%, var(--card));
+}
+
+.rt-canvas[data-rt-mode="dark"] [data-siab-hero-design="service-panel"] .hero-service-option:hover:not(:has(> .hero-service-option-input:checked)),
+html[data-siab-color-mode="dark"] .rt-canvas [data-siab-hero-design="service-panel"] .hero-service-option:hover:not(:has(> .hero-service-option-input:checked)) {
+  background-color: color-mix(in oklab, var(--accent) 28%, var(--card));
+}
+
+.hero-service-option:has(> .hero-service-option-input:focus-visible) > .hero-service-option-label > .hero-service-option-surface {
+  outline: 3px solid color-mix(in oklab, var(--ring) 72%, transparent);
+  outline-offset: -3px;
+}
+
+.hero-service-option:has(> .hero-service-option-input:checked) {
+  background-color: color-mix(in oklab, var(--primary) 82%, var(--foreground));
+  color: var(--primary-foreground);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary-foreground) 18%, transparent);
+}
+
+.hero-service-option:has(> .hero-service-option-input:checked) .hero-service-option-icon {
+  background-color: color-mix(in oklab, var(--primary-foreground) 16%, transparent);
+  color: var(--primary-foreground);
+}
+
+.hero-service-option:has(> .hero-service-option-input:checked) .hero-service-option-body {
+  color: var(--primary-foreground);
 }
 
 /*
- * Logo-cloud-01/02 density: taller marks + tighter gaps. Upstream source keeps
- * h-10 / gap-14 for fidelity; this is a deliberate composition override.
+ * The service compositions use an inverse neutral selected state so the active
+ * service reads as a deliberate control in both color modes. Keep the theme
+ * color out of the selected tile so its icon and surface stay cohesive.
  */
-.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-01"] :is(img, svg) {
-  height: 3.5rem;
+[data-siab-hero-design="service-panel"] .hero-service-option:has(> .hero-service-option-input:checked) {
+  background-color: var(--foreground);
+  color: var(--background);
+  box-shadow: none;
+}
+
+[data-siab-hero-design="service-panel"] .hero-service-option:has(> .hero-service-option-input:checked) .hero-service-option-icon {
+  background-color: color-mix(in oklab, var(--background) 16%, transparent);
+  color: var(--background);
+}
+
+[data-siab-hero-design="service-panel"] .hero-service-option:has(> .hero-service-option-input:checked) .hero-service-option-body {
+  color: var(--background);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-canvas a.hero-action,
+  .hero-service-option,
+  .hero-service-media-layer {
+    transition: none;
+  }
+}
+
+/* Lead media is a capped sharp plane over a cloned, blurred image backdrop.
+   The backdrop fills desktop gutters beyond the 1920px sharp-media limit so
+   wide screens still feel image-led without stretching the focal image. */
+.hero-lead-media-bleed {
+  width: min(100%, 120rem);
+}
+
+.hero-lead-media-backdrop-image {
+  filter: blur(0.75rem) saturate(0.94);
+  transform: scale(1.02);
+}
+
+.hero-lead-media-glass {
+  background-color: color-mix(in oklab, var(--background) 16%, transparent);
+  -webkit-backdrop-filter: blur(0.5rem) saturate(0.94);
+  backdrop-filter: blur(0.5rem) saturate(0.94);
+}
+
+.hero-lead-media-overlay {
+  background-color: var(--overlay);
+}
+
+/* Hero 01 background modes. The animation canvas is mounted by the shared
+ * renderer behavior in both public pages and CMS preview frames. Keep this
+ * layer transparent: capable devices show the animated canvas and fallback
+ * devices show its one-frame static canvas snapshot, with no second CSS dot
+ * pattern competing with either renderer. */
+.hero-lead-background-animation {
+  background: transparent;
+}
+
+.hero-lead-dither-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-lead-dither-canvas,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-lead-dither-canvas {
+  opacity: 0.18;
+  mix-blend-mode: screen;
+}
+
+.hero-lead-background-grid {
+  --siab-hero-grid-line: color-mix(in oklab, var(--primary) 26%, var(--foreground));
+  background-color: var(--background);
+}
+
+.hero-lead-grid-field {
+  background-image:
+    linear-gradient(to right, var(--siab-hero-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--siab-hero-grid-line) 1px, transparent 1px);
+  background-size: clamp(2.75rem, 4vw, 5rem) clamp(2.75rem, 4vw, 5rem);
+  opacity: 0.16;
+}
+
+/* Every grid-capable hero uses the same centered spotlight mask. The
+ * image-led variants keep their own opacity/blend settings, while this shared
+ * alpha fade keeps the grid readable in the middle and quiet at the edges. */
+.hero-lead-grid-field,
+.hero-angled-grid-field,
+.hero-framed-grid-field,
+.hero-pattern-split-grid-field {
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, rgb(0 0 0 / 0.76) 42%, transparent 90%);
+  mask-image: radial-gradient(ellipse at center, #000 0%, rgb(0 0 0 / 0.76) 42%, transparent 90%);
+}
+
+.hero-pattern-split-media {
+  height: min(17rem, 82vw);
+}
+
+@media (min-width: 40rem) {
+  .hero-pattern-split-media {
+    height: 24rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .hero-pattern-split-media {
+    height: 34rem;
+  }
+}
+
+.hero-lead-grid-veil {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    color-mix(in oklab, var(--background) 18%, transparent) 58%,
+    var(--background) 100%
+  );
+}
+
+/* Ambient mesh and WebGL surface. If WebGL cannot mount, the runtime removes
+ * the canvas and leaves the hero's normal background treatment visible. */
+.hero-lead-background-ambient {
+  background: var(--background);
+}
+
+.hero-angled-background-ambient,
+.hero-framed-background-ambient,
+.hero-pattern-split-background-ambient {
+  background: transparent;
+}
+
+.hero-ambient-field {
+  isolation: isolate;
+  position: absolute;
+  overflow: hidden;
+}
+
+.hero-ambient-mesh-canvas {
+  opacity: 0.73;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-ambient-mesh-canvas,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-ambient-mesh-canvas {
+  opacity: 0.65;
+}
+
+/* Source-parity mesh treatment. The reference uses two stacked Paper
+ * MeshGradient surfaces: a full-strength base field plus a translucent second
+ * field. Their runtime palettes follow the active light/dark color mode. */
+.hero-lead-background-mesh,
+.hero-angled-background-mesh,
+.hero-framed-background-mesh,
+.hero-pattern-split-background-mesh {
+  background: var(--background);
+}
+
+.hero-mesh-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.hero-mesh-layer-overlay {
+  background: transparent;
+  opacity: 0.4;
+}
+
+.hero-mesh-layer-base {
+  background: var(--background);
+  opacity: 1;
+}
+
+.hero-mesh-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-lead-background-animation {
+    animation: none;
+  }
+
+  .hero-lead-dither-canvas {
+    opacity: 0.18;
+  }
+}
+
+/* Hero 03 keeps its split image in every background mode. These layers are
+ * deliberately additive: the image, angled edges, and copy remain the same;
+ * the selected token only adds a quieter centered treatment over the whole
+ * composition. */
+.hero-angled-media-frame {
+  clip-path: none;
+}
+
+@media (min-width: 64rem) {
+  /*
+   * The original edge polygons are underlays. Clip the media plane to their
+   * complement so the same diagonal silhouette survives while effects can
+   * occupy the underlay without being covered by a foreground mask.
+   */
+  .hero-angled-media-frame {
+    clip-path: polygon(
+      clamp(2.6rem, 3.64vw, 3.12rem) 0,
+      calc(100% - clamp(5rem, 7vw, 6rem)) 0,
+      calc(100% - clamp(2.4rem, 3.36vw, 2.88rem)) 100%,
+      clamp(5rem, 7vw, 6rem) 100%
+    );
+  }
+}
+
+.hero-angled-background-animation,
+.hero-angled-background-grid,
+.hero-framed-background-animation,
+.hero-framed-background-grid {
+  background: transparent;
+}
+
+.hero-angled-background-animation .hero-lead-dither-canvas {
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, #000 28%, rgb(0 0 0 / 0.82) 50%, transparent 88%);
+  mask-image: radial-gradient(ellipse at center, #000 0%, #000 28%, rgb(0 0 0 / 0.82) 50%, transparent 88%);
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-angled-background-animation .hero-lead-dither-canvas,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-angled-background-animation .hero-lead-dither-canvas {
+  opacity: 0.18;
+}
+
+.hero-angled-grid-field {
+  --siab-hero-angled-grid-line: color-mix(in oklab, var(--primary) 18%, var(--foreground));
+  background-image:
+    linear-gradient(to right, var(--siab-hero-angled-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--siab-hero-angled-grid-line) 1px, transparent 1px);
+  background-size: clamp(2.75rem, 4vw, 5rem) clamp(2.75rem, 4vw, 5rem);
+  opacity: 0.11;
+  mix-blend-mode: soft-light;
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-angled-grid-field,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-angled-grid-field {
+  --siab-hero-angled-grid-line: color-mix(in oklab, var(--primary) 20%, var(--on-media));
+  opacity: 0.12;
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-angled-background-animation .hero-lead-dither-canvas {
+    opacity: 0.14;
+  }
+}
+
+/* Hero 04 uses the same additive bridge while keeping its framed image and
+ * offset plane intact. Its dither is quieter so the image card remains the
+ * visual anchor. */
+.hero-framed-background-animation .hero-lead-dither-canvas {
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, #000 30%, rgb(0 0 0 / 0.76) 54%, transparent 90%);
+  mask-image: radial-gradient(ellipse at center, #000 0%, #000 30%, rgb(0 0 0 / 0.76) 54%, transparent 90%);
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-framed-background-animation .hero-lead-dither-canvas,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-framed-background-animation .hero-lead-dither-canvas {
+  opacity: 0.18;
+}
+
+.hero-framed-grid-field {
+  --siab-hero-framed-grid-line: color-mix(in oklab, var(--primary) 16%, var(--foreground));
+  background-image:
+    linear-gradient(to right, var(--siab-hero-framed-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--siab-hero-framed-grid-line) 1px, transparent 1px);
+  background-size: clamp(2.75rem, 4vw, 5rem) clamp(2.75rem, 4vw, 5rem);
+  opacity: 0.1;
+  mix-blend-mode: soft-light;
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-framed-grid-field,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-framed-grid-field {
+  --siab-hero-framed-grid-line: color-mix(in oklab, var(--primary) 18%, var(--on-media));
+  opacity: 0.11;
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-framed-background-animation .hero-lead-dither-canvas {
+    opacity: 0.11;
+  }
+}
+
+/* Hero 05 keeps its supplied photo as the visual anchor. The bridge fills the
+ * split composition behind the copy and image without replacing either one. */
+.hero-pattern-split-background-animation,
+.hero-pattern-split-background-grid {
+  background: transparent;
+}
+
+.hero-pattern-split-background-animation .hero-lead-dither-canvas {
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, #000 26%, rgb(0 0 0 / 0.72) 52%, transparent 88%);
+  mask-image: radial-gradient(ellipse at center, #000 0%, #000 26%, rgb(0 0 0 / 0.72) 52%, transparent 88%);
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-pattern-split-background-animation .hero-lead-dither-canvas,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-pattern-split-background-animation .hero-lead-dither-canvas {
+  opacity: 0.18;
+}
+
+.hero-pattern-split-grid-field {
+  --siab-hero-pattern-split-grid-line: color-mix(in oklab, var(--primary) 14%, var(--foreground));
+  background-image:
+    linear-gradient(to right, var(--siab-hero-pattern-split-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--siab-hero-pattern-split-grid-line) 1px, transparent 1px);
+  background-size: clamp(2.75rem, 4vw, 5rem) clamp(2.75rem, 4vw, 5rem);
+  opacity: 0.09;
+  mix-blend-mode: soft-light;
+}
+
+:where(.rt-canvas)[data-rt-mode="dark"] .hero-pattern-split-grid-field,
+html[data-siab-color-mode="dark"] :where(.rt-canvas) .hero-pattern-split-grid-field {
+  --siab-hero-pattern-split-grid-line: color-mix(in oklab, var(--primary) 16%, var(--on-media));
+  opacity: 0.1;
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-pattern-split-background-animation .hero-lead-dither-canvas {
+    opacity: 0.1;
+  }
+}
+
+.hero-lead-value-points {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--foreground) 18%, transparent);
+  border-radius: var(--siab-radius-lg);
+  --hero-highlight-divider: color-mix(in oklab, var(--foreground) 16%, transparent);
+  color: var(--card-foreground);
+}
+
+:where(.rt-canvas, [data-siab-theme-scope]):not([data-rt-mode="dark"]) .hero-lead-value-points {
+  background-color: color-mix(in oklab, var(--card) 70%, transparent);
+  border-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+  --hero-highlight-divider: color-mix(in oklab, var(--foreground) 16%, transparent);
+}
+
+:where(.rt-canvas, [data-siab-theme-scope])[data-rt-mode="dark"] .hero-lead-value-points,
+html[data-siab-color-mode="dark"] :where(.rt-canvas, [data-siab-theme-scope]) .hero-lead-value-points {
+  background-color: color-mix(in oklab, var(--card) 74%, transparent);
+  border-color: color-mix(in oklab, var(--on-media) 22%, transparent);
+  --hero-highlight-divider: color-mix(in oklab, var(--on-media) 18%, transparent);
+}
+
+.hero-lead-value-points > ul > li {
+  position: relative;
+  border: 0;
+}
+
+.hero-lead-value-points > ul > li + li::before {
+  position: absolute;
+  content: "";
+  background-color: var(--hero-highlight-divider);
+}
+
+@media (max-width: 47.999rem) {
+  .hero-lead-value-points > ul > li + li::before {
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+  }
+}
+
+@media (min-width: 48rem) {
+  .hero-lead-value-points > ul > li + li::before {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+  }
+}
+
+.hero-lead-value-points .hero-value-point-icon {
+  color: var(--primary);
+}
+
+.hero-lead-value-points strong {
+  color: var(--card-foreground);
+}
+
+.hero-lead-value-points .hero-value-point-icon + span > span {
+  color: var(--muted-foreground);
+}
+
+/* Footer 01 follows the source's small footer pattern: a full-width surface
+ * with one shared content track, brand/navigation/copyright aligned in a row
+ * on larger screens, and a compact stacked link grid on small screens. */
+.site-footer {
+  width: 100%;
+  padding-block: 3rem;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.site-footer-01-inner {
+  width: 100%;
+  max-width: var(--siab-content-max, 80rem);
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.site-footer-01-layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 0;
+}
+
+.site-footer-01-brand,
+.site-footer-01-navigation,
+.site-footer-01-copyright {
+  min-width: 0;
+}
+
+.site-footer-01-brand {
+  align-self: center;
+  text-align: center;
+}
+
+.site-footer-01-brand-link {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  color: var(--foreground);
+  font-family: var(--siab-font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-decoration: none;
+}
+
+.site-footer-01-brand-link:focus-visible,
+.site-footer-01-link:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 68%, transparent);
+  outline-offset: 3px;
+}
+
+.site-footer-01-logo {
+  display: block;
   width: auto;
+  max-width: min(11rem, 48vw);
+  max-height: 2.25rem;
+  object-fit: contain;
 }
 
-.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-01"] .gap-14 {
-  gap: 2.5rem;
+.site-footer-01-wordmark {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] :is(img, svg) {
-  height: 3.5rem;
-  width: auto;
+.site-footer-01-tagline {
+  max-width: 22rem;
+  margin: 0.5rem auto 0;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
-.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] .gap-x-14 {
-  column-gap: 2.5rem;
+.site-footer-01-navigation {
+  width: 100%;
+  margin-top: 2rem;
 }
 
-.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] .gap-y-12 {
-  row-gap: 2rem;
+.site-footer-01-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: center;
+  justify-items: center;
+  gap: 0.75rem 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-01-link {
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  color: color-mix(in oklab, var(--foreground) 72%, var(--background));
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.site-footer-01-link:hover {
+  color: var(--primary);
+}
+
+.site-footer-01-copyright {
+  width: 100%;
+  margin-top: 3rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Keep the source's two-column mobile composition, but avoid six rigid
+ * max-content tracks while a footer can still be constrained by a tablet
+ * viewport or contain longer Dutch/legal labels. */
+@media (min-width: 40rem) {
+  .site-footer-01-links {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 48rem) {
+  .site-footer-01-navigation {
+    /* The stacked layout is centered, so retain a full-width grid track. An
+     * auto-width wrapper shrink-wraps the three columns and removes the
+     * visible inter-column gap at tablet widths. */
+    width: 100%;
+  }
+
+  .site-footer-01-link {
+    width: auto;
+  }
+}
+
+@media (min-width: 64rem) {
+  .site-footer-01-inner {
+    padding-inline: 2rem;
+  }
+
+  .site-footer-01-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+  .site-footer-01-layout {
+    flex-direction: row;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .site-footer-01-brand,
+  .site-footer-01-copyright {
+    flex: 0 0 10rem;
+    width: auto;
+  }
+
+  .site-footer-01-brand {
+    align-self: center;
+    text-align: left;
+  }
+
+  .site-footer-01-navigation {
+    flex: 1 1 auto;
+    width: auto;
+    margin-top: 0;
+  }
+
+  .site-footer-01-copyright {
+    margin-top: 0;
+    text-align: right;
+  }
+
+  .site-footer-01-tagline {
+    margin-inline: 0;
+  }
+}
+
+/* Consent 01 follows the full-width preferences rail from the source
+ * reference, but uses the site's existing semantic tokens. The frame stays
+ * outside page flow so it cannot move or resize page sections. */
+.site-consent-frame {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 70;
+  width: 100%;
+  pointer-events: none;
+}
+
+.site-consent-banner {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+  padding: 1rem 0 max(1rem, env(safe-area-inset-bottom));
+  border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
+  background: color-mix(in oklab, var(--background) 98%, var(--foreground) 2%);
+  color: var(--foreground);
+  box-shadow: 0 -1px 2px color-mix(in oklab, var(--foreground) 8%, transparent);
+  pointer-events: auto;
+}
+
+.site-consent-01-inner {
+  display: grid;
+  width: 100%;
+  max-width: var(--siab-content-max, 80rem);
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.site-consent-01-brand,
+.site-consent-01-content,
+.site-consent-01-actions {
+  min-width: 0;
+}
+
+.site-consent-01-brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--foreground);
+  font-family: var(--siab-font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.site-consent-01-logo {
+  display: block;
+  width: 10rem;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.site-consent-01-wordmark {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-consent-01-title {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--siab-font-heading);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+}
+
+.site-consent-01-message {
+  margin: 0.5rem 0 0;
+  color: color-mix(in oklab, var(--foreground) 78%, var(--background));
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.site-consent-01-message a {
+  color: var(--foreground);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--foreground) 44%, transparent);
+  text-underline-offset: 0.16em;
+}
+
+.site-consent-01-message a:hover {
+  text-decoration-color: currentColor;
+}
+
+.site-consent-01-preferences {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.site-consent-switch {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: color-mix(in oklab, var(--foreground) 78%, var(--background));
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+}
+
+.site-consent-switch-label {
+  min-width: 0;
+  order: 1;
+}
+
+.site-consent-switch-control {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  order: 2;
+  width: 2.75rem;
+  height: 1.5rem;
+  cursor: pointer;
+}
+
+.site-consent-switch-control:has(input:disabled) {
+  cursor: default;
+}
+
+.site-consent-switch-control input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.site-consent-switch-track {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border: 0;
+  border-radius: var(--siab-radius-full);
+  background: color-mix(in oklab, var(--foreground) 20%, var(--background));
+  transition: background-color 200ms ease-in-out;
+}
+
+.site-consent-switch-thumb {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 0.125rem;
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  transform: translateY(-50%);
+  border-radius: var(--siab-radius-full);
+  background: var(--background);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 18%, transparent);
+  transition: transform 200ms ease-in-out;
+}
+
+html[data-siab-color-mode="dark"] .site-consent-switch-thumb,
+html[data-rt-mode="dark"] .site-consent-switch-thumb {
+  background: var(--foreground);
+}
+
+.site-consent-switch-control input:checked + .site-consent-switch-track {
+  background: var(--primary);
+}
+
+.site-consent-switch-control input:checked + .site-consent-switch-track .site-consent-switch-thumb {
+  transform: translate(1.25rem, -50%);
+}
+
+.site-consent-switch-control input:disabled + .site-consent-switch-track {
+  opacity: 0.5;
+}
+
+.site-consent-switch-control input:focus-visible + .site-consent-switch-track {
+  outline: 3px solid color-mix(in oklab, var(--ring) 68%, transparent);
+  outline-offset: 3px;
+}
+
+.site-consent-01-actions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.site-consent-button {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--siab-radius-control);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+}
+
+.site-consent-button-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.site-consent-button-primary:hover {
+  border-color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+  background: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+}
+
+.site-consent-button-secondary {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.site-consent-button-secondary:hover {
+  border-color: color-mix(in oklab, var(--border) 72%, var(--foreground));
+  background: color-mix(in oklab, var(--foreground) 7%, var(--background));
+}
+
+.site-consent-button-selection {
+  border-color: var(--primary);
+  background: transparent;
+  color: var(--primary);
+}
+
+.site-consent-button-selection:hover {
+  border-color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+  background: color-mix(in oklab, var(--primary) 7%, transparent);
+  color: color-mix(in oklab, var(--primary) 78%, var(--primary-foreground));
+}
+
+.site-consent-button:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 68%, transparent);
+  outline-offset: 3px;
+}
+
+.site-consent-banner[hidden] {
+  display: none !important;
+}
+
+@media (min-width: 40rem) {
+  .site-consent-banner {
+    padding: 1.5rem 0 max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .site-consent-01-inner {
+    padding-inline: 2rem;
+  }
+
+  .site-consent-01-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 1.25rem;
+    row-gap: 0;
+  }
+}
+
+@media (min-width: 48rem) {
+  .site-consent-01-logo {
+    width: 12rem;
+  }
+
+  .site-consent-01-preferences {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .site-consent-switch {
+    flex: 1 1 0;
+    justify-content: flex-start;
+  }
+
+  .site-consent-switch-label {
+    order: 2;
+    margin-inline-start: 0.75rem;
+  }
+
+  .site-consent-switch-control {
+    order: 1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .site-consent-01-inner {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-inline: 2.5rem;
+  }
+
+  .site-consent-01-brand {
+    grid-column: 1;
+  }
+
+  .site-consent-01-content,
+  .site-consent-01-actions {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (min-width: 80rem) {
+  .site-consent-01-inner {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    column-gap: 1.5rem;
+  }
+
+  .site-consent-01-content {
+    grid-column: 2 / span 3;
+  }
+
+  .site-consent-01-actions {
+    grid-column: 5;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0.5rem;
+    column-gap: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

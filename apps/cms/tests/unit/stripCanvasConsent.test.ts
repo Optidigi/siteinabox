@@ -2,25 +2,36 @@ import { describe, expect, it } from "vitest"
 import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 
 describe("stripCanvasConsent", () => {
-  it("disables consent and hides banner when consent was enabled", () => {
+  it("disables analytics capture and hides the public consent presentation", () => {
     const next = stripCanvasConsent({
       siteName: "Site",
       analyticsConsent: { enabled: true, version: 1 },
-      chrome: {
-        header: { variant: "shadcnui-blocks.navbar-01" },
-        banner: { variant: "shadcnui-blocks.banner-03", visible: true, message: "Cookies" },
-      },
+      chrome: { navbar: {}, announcement: { visible: true, message: "Sale" } },
+      consent: { visible: true, message: "Cookies" },
     })
     expect(next.analyticsConsent).toEqual({ enabled: false, version: 1 })
-    expect(next.chrome?.banner).toMatchObject({ visible: false, message: "Cookies" })
-    expect(next.chrome?.header).toEqual({ variant: "shadcnui-blocks.navbar-01" })
+    expect(next.consent).toMatchObject({ visible: false, message: "Cookies" })
+    expect(next.chrome?.navbar).toEqual({})
+    expect(next.chrome?.announcement).toMatchObject({ visible: true, message: "Sale" })
   })
 
   it("leaves announcement banners alone when consent is off", () => {
     const settings = {
       analyticsConsent: { enabled: false },
-      chrome: { banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Sale" } },
+      chrome: { announcement: { visible: true, message: "Sale" } },
     }
     expect(stripCanvasConsent(settings)).toBe(settings)
+  })
+
+  it("can preserve the consent rail for customer preview while disabling analytics", () => {
+    const settings = {
+      analyticsConsent: { enabled: true },
+      consent: { visible: true, message: "Cookies" },
+    }
+
+    expect(stripCanvasConsent(settings, { hidePresentation: false })).toEqual({
+      analyticsConsent: { enabled: false },
+      consent: { visible: true, message: "Cookies" },
+    })
   })
 })

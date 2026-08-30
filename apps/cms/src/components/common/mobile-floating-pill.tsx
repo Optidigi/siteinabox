@@ -36,6 +36,8 @@ export interface MobileFloatingPillProps {
   sizeClassName?: string
   /** Uses the foreground colour as a high-contrast border. */
   contrastBorder?: boolean
+  /** Override the breakpoint at which the mobile control is hidden. */
+  visibilityClassName?: string
 }
 
 /**
@@ -45,7 +47,7 @@ export interface MobileFloatingPillProps {
  * light pill + dark icon in dark mode — pops against any tenant canvas.
  *
  * Position drives top/right/bottom/left + safe-area inset.
- * 48px tap target (h-12 w-12). Always md:hidden + fixed z-50.
+ * 48px tap target (h-12 w-12). Hidden at the configured breakpoint + fixed z-50.
  */
 export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   position,
@@ -64,6 +66,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   surface = "inverted",
   sizeClassName = "size-12",
   contrastBorder = false,
+  visibilityClassName = "md:hidden",
 }) => {
   const isLoading = variant === "loading"
   const tone = badgeTone ?? (variant === "destructive" ? "destructive" : "warning")
@@ -106,7 +109,8 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   const useLink = Boolean(href && isInteractive)
   const sharedClassName = cn(
     cspPosition.className,
-    "md:hidden fixed inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
+    visibilityClassName,
+    "fixed inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
     sizeClassName,
     // Keep full opacity when merely disabled (e.g. clean save pill). Only the
     // visibility flag fades/slides the control away.

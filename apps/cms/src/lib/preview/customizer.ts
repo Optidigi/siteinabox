@@ -44,6 +44,7 @@ export type PreviewCustomizerData = {
   manifest: RtManifest
   theme: ThemeTokens | null
   rendererTheme: ThemeTokenSpec | null
+  consentAvailable: boolean
   approval: PreviewApprovalState | null
   payment: PreviewPaymentState | null
 }
@@ -110,9 +111,14 @@ export async function getPreviewCustomizerDataForGrant(input: {
   const theme = normalizePreviewThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
   const parsedManifest = manifestSchema.safeParse(tenant.siteManifest)
   const manifest = parsedManifest.success ? parsedManifest.data : DEFAULT_MANIFEST
-  const settings = ensureCanvasWireSettings(stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
+  const projectedSettings = settingsToJson(settingsDoc, navPages, analyticsContext, {
     settingsContract: resolveSettingsContract(manifest),
-  }) as SiteSettings))
+  }) as SiteSettings
+  const consentPresentation = asRecord(projectedSettings.consent)
+  const consentAvailable = Boolean(
+    consentPresentation?.visible !== false,
+  )
+  const settings = ensureCanvasWireSettings(stripCanvasConsent(projectedSettings, { hidePresentation: false }))
 
   return {
     access: { type: "grant", clientSlug },
@@ -128,6 +134,7 @@ export async function getPreviewCustomizerDataForGrant(input: {
     manifest,
     theme,
     rendererTheme: normalizeThemeForSave(theme),
+    consentAvailable,
     approval: (run.clientApproval as PreviewApprovalState | null | undefined) ?? null,
     payment: (run.payment as PreviewPaymentState | null | undefined) ?? null,
   }

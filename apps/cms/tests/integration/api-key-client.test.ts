@@ -24,18 +24,16 @@ describe("API-key client flow", () => {
     expect(tenant.id).toBeTruthy()
 
     // Page seed (must include tenant explicitly because super-admin writes aren't auto-scoped).
-    // Hero.headline is `type: "json"` + `editor: "richTextInline"` (rt-v2 Phase 1), so the
-    // fixture must be a valid inline-variant RtRoot — a plain string fails
-    // `validateRichTextOnSave` with "Invalid input". Minimal valid shape is a root with
-    // a single text child carrying the headline copy.
     const page = await payload.create({
       collection: "pages", user: apiKeyClient,
       data: {
         tenant: tenant.id, title: "Home", slug: "home", status: "published",
         blocks: [{
           blockType: "hero",
-          designVariant: "shadcnui-blocks.hero-01",
-          headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Welcome", marks: [] }] },
+          variant: "hero-01",
+          heading: "Welcome",
+          body: "A clear next step.",
+          primaryAction: { label: "Contact", href: "#contact" },
         }]
       }
     })

@@ -1,195 +1,85 @@
-import type { RtBlockRoot, RtInlineRoot } from "../rich-text"
 import type { MediaRef } from "../site"
-import type {
-  GeneratedPageSpec,
-  GeneratedSiteSettings,
-  PublishedSiteSnapshot,
-  SiteBlockManifestItem,
-  SiteGenerationSpec,
-  ThemeTokenSpec,
-} from "../generation"
+import type { GeneratedPageSpec, GeneratedSiteSettings, PublishedSiteSnapshot, SiteGenerationSpec, ThemeTokenSpec } from "../generation"
 
-const GENERATED_AT = "2026-06-25T00:00:00.000Z"
-
-const inlineText = (text: string): RtInlineRoot => ({
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: text }],
-})
-
-const inlineParts = (parts: Array<{ text: string; marks?: Array<"bold" | "italic" | "underline"> }>): RtInlineRoot => ({
-  t: "root",
-  variant: "inline",
-  children: parts.map((part) => ({ t: "text", v: part.text, ...(part.marks ? { marks: part.marks } : {}) })),
-})
-
-const blockText = (text: string): RtBlockRoot => ({
-  t: "root",
-  variant: "block",
-  children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
-})
-
-const paragraphs = (items: string[]): RtBlockRoot => ({
-  t: "root",
-  variant: "block",
-  children: items.map((text) => ({ t: "paragraph", children: [{ t: "text", v: text }] })),
-})
-
-const blockRichText = (parts: Array<{ heading?: string; text?: string }>): RtBlockRoot => ({
-  t: "root",
-  variant: "block",
-  children: parts.flatMap((part) => {
-    const nodes: RtBlockRoot["children"] = []
-    if (part.heading) {
-      nodes.push({ t: "heading", level: 2, children: [{ t: "text", v: part.heading }] })
-    }
-    if (part.text) {
-      nodes.push({ t: "paragraph", children: [{ t: "text", v: part.text }] })
-    }
-    return nodes
-  }),
-})
-
-const manifestEntries = (tenantId: string, settings: GeneratedSiteSettings, pages: GeneratedPageSpec[]) => ({
-  tenantId,
-  version: 1,
-  updatedAt: GENERATED_AT,
-  entries: [
-    { type: "settings" as const, key: "site-settings", updatedAt: settings.updatedAt ?? GENERATED_AT },
-    ...pages.map((page) => ({
-      type: "page" as const,
-      key: page.slug,
-      updatedAt: page.updatedAt ?? GENERATED_AT,
-    })),
-  ],
-})
-
-const mediaManifestKey = (media: MediaRef): string | null => {
-  if (!media || typeof media === "number") return media == null ? null : String(media)
-  if (typeof media === "string") return media
-  return media.filename ?? media.url ?? (media.id == null ? null : String(media.id))
-}
-
-const toSnapshot = (
-  spec: SiteGenerationSpec,
-  tenantId: string,
-  overrides?: {
-    pages?: GeneratedPageSpec[]
-    blocks?: SiteBlockManifestItem[]
-    assets?: MediaRef[]
-  },
-): PublishedSiteSnapshot => {
-  const pages = overrides?.pages ?? spec.pages
-  const assets = overrides?.assets ?? spec.assets
-  const baseManifest = manifestEntries(tenantId, spec.settings, pages)
-
-  return {
-    schemaVersion: 1,
-    tenantId,
-    tenantSlug: spec.tenant.slug,
-    domain: spec.tenant.domain,
-    siteUrl: spec.settings.siteUrl,
-    manifest: {
-      ...baseManifest,
-      entries: [
-        ...baseManifest.entries,
-        ...(assets ?? []).flatMap((asset) => {
-          const key = mediaManifestKey(asset)
-          return key ? [{ type: "media" as const, key, updatedAt: GENERATED_AT }] : []
-        }),
-      ],
-    },
-    settings: spec.settings,
-    pages: pages.map((page) => ({
-      ...page,
-      status: page.status ?? "published",
-      updatedAt: page.updatedAt ?? GENERATED_AT,
-    })),
-    theme: spec.theme,
-    blocks: overrides?.blocks ?? spec.blocks,
-    media: assets,
-    publishedAt: GENERATED_AT,
-  }
-}
+const GENERATED_AT = "2026-08-13T00:00:00.000Z"
 
 export const amicareTheme: ThemeTokenSpec = {
   version: 3,
-  appearance: { mode: "light" },
+  appearance: { mode: "light", backgroundMode: "image" },
   colors: { schemeId: "terracotta-warm" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "soft" },
 }
 
-const canonicalBlocks: SiteBlockManifestItem[] = [
-  { slug: "hero", label: "Hero", defaultAnchor: "top" },
-  { slug: "featureList", label: "Services", defaultAnchor: "diensten" },
-  { slug: "cta", label: "CTA", defaultAnchor: "contact" },
-  { slug: "contactDetails", label: "Contact", defaultAnchor: "contact" },
-  { slug: "faq", label: "Veelgestelde vragen" },
-  { slug: "testimonials", label: "Ervaringen" },
-]
+const amicareToys = {
+  id: "amicare-toys",
+  url: "/media/toys.jpg",
+  filename: "toys.jpg",
+  alt: "Speelgoed in een rustige ruimte",
+  width: 1600,
+  height: 1067,
+} as const
 
-const rendererParityBlocks: SiteBlockManifestItem[] = [
-  ...canonicalBlocks,
-]
+const amicareBedroom = {
+  id: "amicare-bedroom",
+  url: "/media/bedroom.jpg",
+  filename: "bedroom.jpg",
+  alt: "Rustige kinderkamer",
+  width: 1600,
+  height: 1067,
+} as const
+
+const amicareLogo = {
+  id: "amicare-logo-svg",
+  url: "/amicare-logo.svg",
+  filename: "amicare-logo.svg",
+  alt: "Amicare-Zorg logo",
+  width: 470,
+  height: 144,
+} as const
+
+const amicareFavicon = {
+  id: "amicare-favicon-svg",
+  url: "/favicon.svg",
+  filename: "favicon.svg",
+  alt: "Amicare-Zorg favicon",
+  width: 168,
+  height: 168,
+} as const
 
 const amicareSettings: GeneratedSiteSettings = {
   siteName: "Amicare-Zorg",
   siteUrl: "https://ami-care.nl",
-  description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
+  description: "Jeugdzorg met hart en toewijding.",
   language: "nl",
   contactEmail: "info@ami-care.nl",
   branding: {
     primaryColor: "#a04e32",
-    favicon: { id: "amicare-favicon-svg", url: "/favicon.svg", filename: "favicon.svg", alt: "Amicare-Zorg favicon" },
+    logo: amicareLogo,
+    favicon: amicareFavicon,
   },
   chrome: {
-    header: {
-      variant: "shadcnui-blocks.navbar-03",
-      behavior: "sticky",
+    navbar: {
+      variant: "navbar-01",
+      placement: "sticky",
       activeMode: "anchor",
       mobileMenu: "dropdown",
+      showThemeToggle: true,
       cta: { label: "Contact", href: "#contact" },
     },
     footer: {
-      variant: "shadcnui-blocks.footer-07",
+      variant: "footer-01",
       tagline: "Jeugdzorg met hart en toewijding.",
-      copyright: "© Amicare-Zorg",
-      columns: [
-        { id: "brand", items: [{ type: "brand", label: "Amicare-Zorg", text: "Jeugdzorg met hart en toewijding." }] },
-        { id: "business", items: [{ type: "business", label: "Bedrijfsgegevens" }] },
-        { id: "contact", items: [{ type: "contact", label: "Contact", links: [{ label: "info@ami-care.nl", href: "mailto:info@ami-care.nl" }] }] },
-        { id: "nav", items: [{ type: "navigation", label: "Navigatie" }] },
-      ],
-    },
-    banner: {
-      variant: "shadcnui-blocks.banner-03",
-      visible: true,
-      title: "Cookies",
-      message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
-      dismissible: false,
+      copyright: "© 2026 Amicare-Zorg",
     },
   },
-  contact: { phone: null, address: null, social: [] },
-  nap: {
-    legalName: "AMICARE ZORG",
-    kvkNumber: "99968347",
-    establishmentNumber: "000065004922",
-    country: "NL",
+  analytics: {
+    enabled: true,
+    provider: "posthog",
+    dashboardVisible: true,
+    consentMode: "required",
+    conversionGoals: { acceptedForms: true, contactClicks: [] },
   },
-  navHeader: [
-    { label: "Werkwijze", href: "#werkwijze" },
-    { label: "Over", href: "#over" },
-    { label: "Wat telt", href: "#wat-telt" },
-    { label: "Contact", href: "#contact" },
-  ],
-  navFooter: [
-    { label: "Werkwijze", href: "#werkwijze" },
-    { label: "Over", href: "#over" },
-    { label: "Wat telt", href: "#wat-telt" },
-    { label: "Contact", href: "#contact" },
-  ],
-  analytics: { provider: "posthog", captureSections: true, captureActions: true, captureForms: true },
   analyticsConsent: {
     enabled: true,
     provider: "posthog",
@@ -199,139 +89,175 @@ const amicareSettings: GeneratedSiteSettings = {
     captureActions: true,
     captureForms: true,
   },
-  seoJsonLd: {
-    organization: {
-      enabled: true,
-      type: "Organization",
-      name: "Amicare-Zorg",
-      url: "https://ami-care.nl",
-      logo: { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg" },
-    },
-    localBusiness: {
-      enabled: true,
-      type: "ProfessionalService",
-      name: "Amicare-Zorg",
-      description: "Jeugdzorg met hart en toewijding.",
-      email: "info@ami-care.nl",
-      serviceArea: ["Nederland"],
-    },
+  contact: { phone: null, address: null, social: [] },
+  nap: {
+    legalName: "AMICARE ZORG",
+    kvkNumber: "99968347",
+    establishmentNumber: "000065004922",
+    country: "NL",
+  },
+  serviceArea: [{ name: "Nederland" }],
+  navigation: {
+    primary: [
+      { label: "Werkwijze", href: "#werkwijze" },
+      { label: "Over Amicare", href: "#over" },
+      { label: "Wat telt", href: "#wat-telt" },
+      { label: "Contact", href: "#contact" },
+    ],
+    footer: [
+      { label: "Werkwijze", href: "#werkwijze" },
+      { label: "Over Amicare", href: "#over" },
+      { label: "Wat telt", href: "#wat-telt" },
+      { label: "Contact", href: "#contact" },
+    ],
   },
   updatedAt: GENERATED_AT,
 }
 
-const amicarePages: GeneratedPageSpec[] = [
-  {
-    id: "amicare-index",
-    slug: "index",
-    title: "Home",
-    status: "published",
-    updatedAt: GENERATED_AT,
-    seo: {
-      title: "Amicare-Zorg",
-      description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
-      ogImage: "/og-default.png",
+const amicareHome: GeneratedPageSpec = {
+  id: "amicare-home",
+  slug: "index",
+  title: "Amicare-Zorg",
+  status: "published",
+  updatedAt: GENERATED_AT,
+  blocks: [
+    {
+      blockType: "hero",
+      variant: "hero-05",
+      heading: "Jeugdzorg met hart en toewijding",
+      body: "Al jarenlang werk ik met toewijding in de jeugdzorg. Dit is het vak dat ik ken — waar mijn hart ligt, en waar ik mij dagelijks voor inzet.",
+      primaryAction: { label: "Neem contact op", href: "mailto:info@ami-care.nl" },
+      secondaryAction: { label: "Bekijk mijn werkwijze", href: "#werkwijze" },
+      image: amicareToys,
     },
-    blocks: [
-      {
-        blockType: "hero",
-        designVariant: "shadcnui-blocks.hero-02",
-        anchor: "top",
-        eyebrow: inlineText("Voor jongeren en gezinnen"),
-        headline: inlineParts([
-          { text: "Jeugdzorg met " },
-          { text: "hart", marks: ["italic"] },
-          { text: " en toewijding." },
-        ]),
-        subheadline: blockText("Al jarenlang werk ik met toewijding in de jeugdzorg. Dit is het vak dat ik ken — waar mijn hart ligt, en waar ik mij dagelijks voor inzet."),
-        cta: { label: "Contact", href: "#contact" },
-        image: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
-      },
-      {
-        blockType: "featureList",
-        designVariant: "shadcnui-blocks.features-01",
-        anchor: "werkwijze",
-        title: inlineParts([{ text: "Wat voor mij " }, { text: "centraal staat", marks: ["italic"] }, { text: "." }]),
-        intro: blockText("Drie dingen"),
-        features: [
-          { title: inlineText("Aandacht"), description: blockText("Echt luisteren naar wat een jongere of een gezin op dat moment nodig heeft. Zonder aannames vooraf."), icon: "ear" },
-          { title: inlineText("Betrokkenheid"), description: blockText("Naast mensen staan, niet erboven. Werken vanuit gelijkwaardigheid en vertrouwen."), icon: "heart-handshake" },
-          { title: inlineText("Continuïteit"), description: blockText("Aanwezig blijven, ook als trajecten lang of ingewikkeld worden. De relatie als basis."), icon: "clock" },
-        ],
-      },
-      {
-        blockType: "cta",
-        designVariant: "shadcnui-blocks.cta-03",
-        anchor: "over",
-        headline: inlineParts([
-          { text: "Het vak waar mijn " },
-          { text: "hart ligt", marks: ["italic"] },
-          { text: "." },
-        ]),
-        description: paragraphs([
-          "Tegelijk blijf ik mijzelf graag ontwikkelen, en sta ik open voor nieuwe uitdagingen en opdrachten binnen het werkveld.",
-          "Naast mijn werk ben ik moeder, en geniet ik van het drukke, gezellige gezinsleven. De combinatie van werk en gezin maakt mijn dagen dynamisch — en waardevol.",
-        ]),
-        primary: { label: "Neem contact op", href: "#contact" },
-        backgroundImage: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
-      },
-      {
-        blockType: "cta",
-        designVariant: "shadcnui-blocks.cta-02",
-        anchor: "wat-telt",
-        headline: inlineText("Vertrouwen ontstaat in de tijd, niet in één gesprek."),
-        description: blockText("Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen."),
-        backgroundImage: {
-          id: "amicare-bedroom",
-          url: "/media/bedroom.jpg",
-          filename: "bedroom.jpg",
-          alt: "Slaapkamer met zacht ochtendlicht",
-          width: 1600,
-          height: 1067,
+    {
+      blockType: "services",
+      variant: "services-01",
+      anchor: "werkwijze",
+      heading: "Wat voor mij centraal staat.",
+      intro: "Drie dingen",
+      items: [
+        {
+          title: "Aandacht",
+          body: "Echt luisteren naar wat een jongere of een gezin op dat moment nodig heeft. Zonder aannames vooraf.",
+          icon: "message",
         },
-      },
-      {
-        blockType: "contactDetails",
-        designVariant: "shadcnui-blocks.contact-01",
-        anchor: "contact",
-        title: inlineText("Wilt u meer informatie of in contact komen?"),
-        items: [
-          { title: "E-mail", description: "Neem rechtstreeks contact op.", value: "info@ami-care.nl", href: "mailto:info@ami-care.nl", icon: "mail" },
-          { title: "Werkgebied", description: "Jeugdzorg voor jongeren en gezinnen.", value: "Nederland", icon: "map-pin" },
-          { title: "Bedrijfsgegevens", description: "KVK 99968347", value: "Vestigingsnummer 000065004922", icon: "building-2" },
-        ],
-      },
-    ],
+        {
+          title: "Betrokkenheid",
+          body: "Naast mensen staan, niet erboven. Werken vanuit gelijkwaardigheid en vertrouwen.",
+          icon: "heart",
+        },
+        {
+          title: "Continuïteit",
+          body: "Aanwezig blijven, ook als trajecten lang of ingewikkeld worden. De relatie als basis.",
+          icon: "clock",
+        },
+      ],
+    },
+    {
+      blockType: "cta",
+      variant: "cta-02",
+      anchor: "over",
+      heading: "Het vak waar mijn hart ligt.",
+      body: "Tegelijk blijf ik mijzelf graag ontwikkelen, en sta ik open voor nieuwe uitdagingen en opdrachten binnen het werkveld. Naast mijn werk ben ik moeder, en geniet ik van het drukke, gezellige gezinsleven. De combinatie van werk en gezin maakt mijn dagen dynamisch — en waardevol.",
+      primaryAction: { label: "Neem contact op", href: "mailto:info@ami-care.nl" },
+    },
+    {
+      blockType: "cta",
+      variant: "cta-01",
+      anchor: "wat-telt",
+      heading: "Vertrouwen ontstaat in de tijd, niet in één gesprek.",
+      body: "Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen.",
+      primaryAction: { label: "Neem contact op", href: "mailto:info@ami-care.nl" },
+      image: amicareBedroom,
+    },
+    {
+      blockType: "services",
+      variant: "services-02",
+      anchor: "contact",
+      heading: "Wilt u meer informatie of in contact komen?",
+      items: [
+        {
+          title: "E-mail",
+          body: "Neem rechtstreeks contact op.",
+          icon: "message",
+          action: { label: "info@ami-care.nl", href: "mailto:info@ami-care.nl" },
+        },
+        {
+          title: "Werkgebied",
+          body: "Jeugdzorg voor jongeren en gezinnen.\nNederland",
+          icon: "globe",
+        },
+        {
+          title: "Bedrijfsgegevens",
+          body: "KVK 99968347\nVestigingsnummer 000065004922",
+          icon: "building",
+        },
+      ],
+    },
+  ],
+  seo: {
+    title: "Amicare-Zorg | Jeugdzorg met hart en toewijding",
+    description: "Persoonlijke jeugdzorg voor jongeren en gezinnen, met aandacht, betrokkenheid en continuïteit.",
+    ogImage: amicareToys,
   },
-]
+}
 
 export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   schemaVersion: 1,
   intake: {
     businessName: "Amicare-Zorg",
-    tenantSlug: "amicare",
+    tenantSlug: "ami-care",
     primaryDomain: "ami-care.nl",
     siteUrl: "https://ami-care.nl",
     language: "nl",
     industry: "Jeugdzorg",
     serviceArea: ["Nederland"],
-    goals: ["Shared provider rendering", "CMS and public renderer parity"],
-    requestedPages: [{ slug: "index", title: "Home", purpose: "Homepage" }],
+    goals: ["contact"],
+    requestedPages: [{ slug: "index", title: "Home", purpose: "Introduce the service" }],
   },
-  tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "ami-care.nl", status: "active" },
+  tenant: { name: "Amicare-Zorg", slug: "ami-care", domain: "ami-care.nl", status: "active" },
   theme: amicareTheme,
   settings: amicareSettings,
-  pages: amicarePages,
-  blocks: canonicalBlocks,
-  assets: [
-    { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
-    { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
-    { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg social image" },
-    { id: "amicare-favicon-svg", url: "/favicon.svg", filename: "favicon.svg", alt: "Amicare-Zorg favicon" },
-    { id: "amicare-favicon", url: "/favicon.ico", filename: "favicon.ico", alt: "Amicare-Zorg favicon" },
-    { id: "amicare-apple-touch-icon", url: "/apple-touch-icon.png", filename: "apple-touch-icon.png", alt: "Amicare-Zorg app icon" },
-  ],
+  pages: [amicareHome],
+  assets: [amicareToys, amicareBedroom, amicareLogo, amicareFavicon],
   generatedAt: GENERATED_AT,
-  generator: { name: "siteinabox-structured-site", version: "1" },
+  generator: { name: "sitegen-owned-blocks", version: "1" },
+}
+
+function mediaManifestKey(media: MediaRef): string | null {
+  if (!media) return null
+  if (typeof media === "string" || typeof media === "number") return String(media)
+  return media.filename ?? media.url ?? (media.id === undefined ? null : String(media.id))
+}
+
+function toSnapshot(spec: SiteGenerationSpec, tenantId: string): PublishedSiteSnapshot {
+  const media = (spec.assets ?? []).filter((asset): asset is Exclude<MediaRef, null> => Boolean(asset))
+  return {
+    schemaVersion: 1,
+    tenantId,
+    tenantSlug: spec.tenant.slug,
+    domain: spec.tenant.domain,
+    siteUrl: spec.settings.siteUrl,
+    manifest: {
+      tenantId,
+      version: 1,
+      updatedAt: GENERATED_AT,
+      entries: [
+        { type: "settings", key: "site-settings", updatedAt: GENERATED_AT },
+        ...spec.pages.map((page) => ({ type: "page" as const, key: page.slug, updatedAt: page.updatedAt ?? GENERATED_AT })),
+        ...media.flatMap((asset) => {
+          const key = mediaManifestKey(asset)
+          return key ? [{ type: "media" as const, key, updatedAt: GENERATED_AT }] : []
+        }),
+      ],
+    },
+    settings: spec.settings,
+    pages: spec.pages.map((page) => ({ ...page, status: "published" as const, updatedAt: page.updatedAt ?? GENERATED_AT })),
+    theme: spec.theme,
+    media,
+    publishedAt: GENERATED_AT,
+  }
 }
 
 export const amicarePublishedSiteSnapshot = toSnapshot(amicareSiteGenerationSpec, "tenant-amicare")

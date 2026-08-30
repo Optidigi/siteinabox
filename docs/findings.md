@@ -20,9 +20,15 @@ constraints here even after the related issue is closed.
 ## SIAB-001 - Generated-site visual fidelity is not accepted
 
 - **Classification:** Risk; **confidence:** high for the recorded acceptance gap.
-- **Scope:** Shared renderer and provider variants.
+- **Scope:** Shared renderer and first-party section variants.
 - **Evidence:** A 2026-07-17 smoke review recorded an unacceptable `/overzicht`
   hero despite automated parity passing; current output remains unknown.
+- **Readiness audit (2026-08-30):** The canonical Amicare fixture was exercised
+  through the CMS preview at 375px, 768px, and 1440px in both light and dark
+  mode. It rendered one `h1`, five section headings, the expected five blocks,
+  complete local imagery, correct anchor targets, and no horizontal overflow,
+  page errors, or failed requests. This validates the Amicare review fixture;
+  it does not close the separate `/overzicht` production-fidelity question.
 - **Next:** Reproduce the exact snapshot, variant, viewport, and color mode; fix
   only a demonstrated shared-renderer cause.
 

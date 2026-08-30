@@ -11,14 +11,11 @@
     "typecheck": "astro check",
     "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/smoke/cookie-consent-contract.test.mjs src/smoke/host-routing.test.mjs && tsx --test src/lib/edge-check.test.ts src/lib/media.test.ts src/lib/origin-protection.test.ts src/lib/runtime-secret.test.ts src/lib/forms.test.ts",
     "smoke:packaged-image": "node src/smoke/packaged-image-smoke.mjs",
-    "test:analytics-browser": "node src/smoke/analytics-lifecycle-browser.mjs",
-    "test:amicare-browser": "node src/smoke/amicare-site-browser.mjs",
-    "test:provider-browser": "node src/smoke/provider-catalog-browser.mjs"
+    "test:analytics-browser": "node src/smoke/analytics-lifecycle-browser.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.0",
     "@astrojs/react": "^6.0.2",
-    "@number-flow/react": "^0.6.2",
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/legal-content": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",

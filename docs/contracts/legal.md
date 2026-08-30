@@ -131,19 +131,25 @@ mail logs, and operational alerts for operator action.
 
 ## Tenant Website Legal Content
 
-Platform terms and platform privacy documents are not tenant documents. During
-generation, validated tenant identity, contact methods, form mode, retention,
-and processor facts materialize a normal draft `pages` record using the shared
-hero and rich-text block contracts. Its footer link is stored in normal chrome
-data, and the customer can review and edit the page before approval. The public
-renderer has no special privacy route or legal-page presentation path. SIAB
-does not generate customer terms as part of the standard service.
+Platform terms and platform privacy documents are not tenant documents. Tenant
+privacy and cookie disclosure is an explicit, settings-owned document under
+`SiteSettings.privacyDisclosure`; enabling it publishes the stable
+`/privacy-en-cookieverklaring` route. Template mode materializes a structured
+`RtRoot` from the tenant's factual controller, contact, form, technology, and
+processor fields. Custom mode stores an edited structured `RtRoot`. It is never
+a page block, never generated HTML, and never an opaque text payload.
 
-Generated-site analytics activate only when the configured consent component is
-approved and registered through the shared chrome catalog. Consent storage and
-analytics gating are runtime responsibilities, but their visible controls must
-come from the same approved chrome component used by CMS preview and the public
-renderer. The renderer must never fall back to route-authored consent UI.
+The document route uses the same theme token bridge and shared rich-text
+renderer as the rest of the site, but it is deliberately outside the page block
+catalog. Its legal link remains ordinary settings/navigation data so a future
+numbered footer design can render it when that chrome family is implemented.
+
+Consent copy, navbar, footer, announcement, not-found, and maintenance data are
+currently reserved settings data. No numbered first-party chrome/system design
+is active yet, so the public renderer does not paint those surfaces as site
+components. Consent storage and analytics gating therefore remain runtime
+policy responsibilities; no route-authored or legacy cookie-banner fallback is
+allowed.
 
 The lightweight approval registry in `@siteinabox/legal-content/consent-approval`
 binds public analytics activation to the reviewed platform privacy release and

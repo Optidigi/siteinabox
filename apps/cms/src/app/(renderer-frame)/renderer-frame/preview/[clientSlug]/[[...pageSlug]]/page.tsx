@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { RendererFrameRuntime } from "@/components/renderer-frame/RendererFrameRuntime"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { getPreviewCustomizerDataForGrant } from "@/lib/preview/customizer"
+import { getPreviewFixtureData, isPreviewFixtureRoute } from "@/lib/preview/previewFixture"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 
@@ -19,8 +20,26 @@ function requestedPageSlug(parts: string[] | undefined): string | null {
 }
 
 export default async function RendererPreviewFramePage({ params }: { params: Promise<RouteParams> }) {
-  if (!(await isPreviewHost())) notFound()
   const { clientSlug, pageSlug } = await params
+
+  if (isPreviewFixtureRoute(clientSlug)) {
+    const fixtureData = getPreviewFixtureData(requestedPageSlug(pageSlug), clientSlug)
+    if (!fixtureData) notFound()
+    return (
+      <RendererFrameRuntime
+        page={fixtureData.currentPage}
+        settings={fixtureData.settings}
+        theme={fixtureData.rendererTheme}
+        consentAvailable={fixtureData.consentAvailable}
+        tenantId={fixtureData.tenant.id}
+        tenantSlug={fixtureData.tenant.slug}
+        domain={fixtureData.tenant.domain}
+      />
+    )
+  }
+
+  if (!(await isPreviewHost())) notFound()
+
   const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
   if (!normalizedClientSlug) notFound()
 
@@ -43,6 +62,7 @@ export default async function RendererPreviewFramePage({ params }: { params: Pro
       page={data.currentPage}
       settings={data.settings}
       theme={data.rendererTheme}
+      consentAvailable={data.consentAvailable}
       tenantId={data.tenant.id}
       tenantSlug={data.tenant.slug}
       domain={data.tenant.domain}

@@ -96,6 +96,39 @@ import * as migration_20260730_102220_durable_pre_commerce_routing_adoption from
 import * as migration_20260803_090830_checkout_progress_drafts from './20260803_090830_checkout_progress_drafts';
 import * as migration_20260803_091129_checkout_progress_profile_draft from './20260803_091129_checkout_progress_profile_draft';
 import * as migration_20260804_131545_optional_domain_query from './20260804_131545_optional_domain_query';
+import * as migration_20260813_193845_sitegen_owned_blocks from './20260813_193845_sitegen_owned_blocks';
+import * as migration_20260813_195131_sitegen_owned_chrome_default from './20260813_195131_sitegen_owned_chrome_default';
+import * as migration_20260814_110856_20260814_131000_remove_sitegen_variants from './20260814_110856_20260814_131000_remove_sitegen_variants';
+import * as migration_20260814_170117_sitegen_hero_block_set from './20260814_170117_sitegen_hero_block_set';
+import * as migration_20260814_183217_remove_sitegen_hero_eyebrows from './20260814_183217_remove_sitegen_hero_eyebrows';
+import * as migration_20260814_195113_sitegen_hero_designs from './20260814_195113_sitegen_hero_designs';
+import * as migration_20260815_001044_migrate_baseline_hero_image_rows from './20260815_001044_migrate_baseline_hero_image_rows';
+import * as migration_20260815_001045_sitegen_remove_baseline_hero_image from './20260815_001045_sitegen_remove_baseline_hero_image';
+import * as migration_20260815_095535_sitegen_hero_expansion from './20260815_095535_sitegen_hero_expansion';
+import * as migration_20260815_122007_remove_redundant_hero_designs from './20260815_122007_remove_redundant_hero_designs';
+import * as migration_20260815_160005_sitegen_hero_highlights from './20260815_160005_sitegen_hero_highlights';
+import * as migration_20260815_181808_phase29_service_highlight_media from './20260815_181808_phase29_service_highlight_media';
+import * as migration_20260816_020000_replace_hero_color_image_with_abstract_angles_03 from './20260816_020000_replace_hero_color_image_with_abstract_angles_03';
+import * as migration_20260818_120000_remove_retired_hero_designs from './20260818_120000_remove_retired_hero_designs';
+import * as migration_20260819_094909_20260819_120000_remove_hero_abstract_angles_03 from './20260819_094909_20260819_120000_remove_hero_abstract_angles_03';
+import * as migration_20260819_170500_remove_selected_hero_designs from './20260819_170500_remove_selected_hero_designs';
+import * as migration_20260819_180000_remove_hero_cover_actions_add_lead_image from './20260819_180000_remove_hero_cover_actions_add_lead_image';
+import * as migration_20260820_115510_service_panel_selected_copy from './20260820_115510_service_panel_selected_copy';
+import * as migration_20260820_130000_hero_pattern_split_image from './20260820_130000_hero_pattern_split_image';
+import * as migration_20260825_160000_sitegen_canonical_hero_and_chrome from './20260825_160000_sitegen_canonical_hero_and_chrome';
+import * as migration_20260825_173000_editable_not_found_content from './20260825_173000_editable_not_found_content';
+import * as migration_20260825_180000_remove_unimplemented_chrome_and_rich_text from './20260825_180000_remove_unimplemented_chrome_and_rich_text';
+import * as migration_20260826_090000_sitegen_navbar_family from './20260826_090000_sitegen_navbar_family';
+import * as migration_20260826_100000_remove_navbar_secondary_action from './20260826_100000_remove_navbar_secondary_action';
+import * as migration_20260827_090000_services_first_variant from './20260827_090000_services_first_variant';
+import * as migration_20260827_100000_cta_first_variant from './20260827_100000_cta_first_variant';
+import * as migration_20260827_110000_services_second_variant from './20260827_110000_services_second_variant';
+import * as migration_20260828_090000_footer_first_variant from './20260828_090000_footer_first_variant';
+import * as migration_20260828_100000_cta_second_variant from './20260828_100000_cta_second_variant';
+import * as migration_20260828_110000_rename_theme_background_mode from './20260828_110000_rename_theme_background_mode';
+import * as migration_20260829_130000_add_sitegen_block_background_modes from './20260829_130000_add_sitegen_block_background_modes';
+import * as migration_20260829_150000_sitegen_consent_01 from './20260829_150000_sitegen_consent_01';
+import * as migration_20260829_170000_add_consent_categories from './20260829_170000_add_consent_categories';
 
 export const migrations = [
   {
@@ -586,6 +619,171 @@ export const migrations = [
   {
     up: migration_20260804_131545_optional_domain_query.up,
     down: migration_20260804_131545_optional_domain_query.down,
-    name: '20260804_131545_optional_domain_query'
+    name: '20260804_131545_optional_domain_query',
+  },
+  {
+    up: migration_20260813_193845_sitegen_owned_blocks.up,
+    down: migration_20260813_193845_sitegen_owned_blocks.down,
+    name: '20260813_193845_sitegen_owned_blocks',
+  },
+  {
+    up: migration_20260813_195131_sitegen_owned_chrome_default.up,
+    down: migration_20260813_195131_sitegen_owned_chrome_default.down,
+    name: '20260813_195131_sitegen_owned_chrome_default',
+  },
+  {
+    up: migration_20260814_110856_20260814_131000_remove_sitegen_variants.up,
+    down: migration_20260814_110856_20260814_131000_remove_sitegen_variants.down,
+    name: '20260814_110856_20260814_131000_remove_sitegen_variants',
+  },
+  {
+    up: migration_20260814_170117_sitegen_hero_block_set.up,
+    down: migration_20260814_170117_sitegen_hero_block_set.down,
+    name: '20260814_170117_sitegen_hero_block_set',
+  },
+  {
+    up: migration_20260814_183217_remove_sitegen_hero_eyebrows.up,
+    down: migration_20260814_183217_remove_sitegen_hero_eyebrows.down,
+    name: '20260814_183217_remove_sitegen_hero_eyebrows',
+  },
+  {
+    up: migration_20260814_195113_sitegen_hero_designs.up,
+    down: migration_20260814_195113_sitegen_hero_designs.down,
+    name: '20260814_195113_sitegen_hero_designs',
+  },
+  {
+    up: migration_20260815_001044_migrate_baseline_hero_image_rows.up,
+    down: migration_20260815_001044_migrate_baseline_hero_image_rows.down,
+    name: '20260815_001044_migrate_baseline_hero_image_rows',
+  },
+  {
+    up: migration_20260815_001045_sitegen_remove_baseline_hero_image.up,
+    down: migration_20260815_001045_sitegen_remove_baseline_hero_image.down,
+    name: '20260815_001045_sitegen_remove_baseline_hero_image',
+  },
+  {
+    up: migration_20260815_095535_sitegen_hero_expansion.up,
+    down: migration_20260815_095535_sitegen_hero_expansion.down,
+    name: '20260815_095535_sitegen_hero_expansion',
+  },
+  {
+    up: migration_20260815_122007_remove_redundant_hero_designs.up,
+    down: migration_20260815_122007_remove_redundant_hero_designs.down,
+    name: '20260815_122007_remove_redundant_hero_designs',
+  },
+  {
+    up: migration_20260815_160005_sitegen_hero_highlights.up,
+    down: migration_20260815_160005_sitegen_hero_highlights.down,
+    name: '20260815_160005_sitegen_hero_highlights',
+  },
+  {
+    up: migration_20260815_181808_phase29_service_highlight_media.up,
+    down: migration_20260815_181808_phase29_service_highlight_media.down,
+    name: '20260815_181808_phase29_service_highlight_media',
+  },
+  {
+    up: migration_20260816_020000_replace_hero_color_image_with_abstract_angles_03.up,
+    down: migration_20260816_020000_replace_hero_color_image_with_abstract_angles_03.down,
+    name: '20260816_020000_replace_hero_color_image_with_abstract_angles_03',
+  },
+  {
+    up: migration_20260818_120000_remove_retired_hero_designs.up,
+    down: migration_20260818_120000_remove_retired_hero_designs.down,
+    name: '20260818_120000_remove_retired_hero_designs',
+  },
+  {
+    up: migration_20260819_094909_20260819_120000_remove_hero_abstract_angles_03.up,
+    down: migration_20260819_094909_20260819_120000_remove_hero_abstract_angles_03.down,
+    name: '20260819_094909_20260819_120000_remove_hero_abstract_angles_03',
+  },
+  {
+    up: migration_20260819_170500_remove_selected_hero_designs.up,
+    down: migration_20260819_170500_remove_selected_hero_designs.down,
+    name: '20260819_170500_remove_selected_hero_designs',
+  },
+  {
+    up: migration_20260819_180000_remove_hero_cover_actions_add_lead_image.up,
+    down: migration_20260819_180000_remove_hero_cover_actions_add_lead_image.down,
+    name: '20260819_180000_remove_hero_cover_actions_add_lead_image',
+  },
+  {
+    up: migration_20260820_115510_service_panel_selected_copy.up,
+    down: migration_20260820_115510_service_panel_selected_copy.down,
+    name: '20260820_115510_service_panel_selected_copy'
+  },
+  {
+    up: migration_20260820_130000_hero_pattern_split_image.up,
+    down: migration_20260820_130000_hero_pattern_split_image.down,
+    name: '20260820_130000_hero_pattern_split_image'
+  },
+  {
+    up: migration_20260825_160000_sitegen_canonical_hero_and_chrome.up,
+    down: migration_20260825_160000_sitegen_canonical_hero_and_chrome.down,
+    name: '20260825_160000_sitegen_canonical_hero_and_chrome',
+  },
+  {
+    up: migration_20260825_173000_editable_not_found_content.up,
+    down: migration_20260825_173000_editable_not_found_content.down,
+    name: '20260825_173000_editable_not_found_content',
+  },
+  {
+    up: migration_20260825_180000_remove_unimplemented_chrome_and_rich_text.up,
+    down: migration_20260825_180000_remove_unimplemented_chrome_and_rich_text.down,
+    name: '20260825_180000_remove_unimplemented_chrome_and_rich_text',
+  },
+  {
+    up: migration_20260826_090000_sitegen_navbar_family.up,
+    down: migration_20260826_090000_sitegen_navbar_family.down,
+    name: '20260826_090000_sitegen_navbar_family',
+  },
+  {
+    up: migration_20260826_100000_remove_navbar_secondary_action.up,
+    down: migration_20260826_100000_remove_navbar_secondary_action.down,
+    name: '20260826_100000_remove_navbar_secondary_action',
+  },
+  {
+    up: migration_20260827_090000_services_first_variant.up,
+    down: migration_20260827_090000_services_first_variant.down,
+    name: '20260827_090000_services_first_variant',
+  },
+  {
+    up: migration_20260827_100000_cta_first_variant.up,
+    down: migration_20260827_100000_cta_first_variant.down,
+    name: '20260827_100000_cta_first_variant',
+  },
+  {
+    up: migration_20260827_110000_services_second_variant.up,
+    down: migration_20260827_110000_services_second_variant.down,
+    name: '20260827_110000_services_second_variant',
+  },
+  {
+    up: migration_20260828_090000_footer_first_variant.up,
+    down: migration_20260828_090000_footer_first_variant.down,
+    name: '20260828_090000_footer_first_variant',
+  },
+  {
+    up: migration_20260828_100000_cta_second_variant.up,
+    down: migration_20260828_100000_cta_second_variant.down,
+    name: '20260828_100000_cta_second_variant',
+  },
+  {
+    up: migration_20260828_110000_rename_theme_background_mode.up,
+    down: migration_20260828_110000_rename_theme_background_mode.down,
+    name: '20260828_110000_rename_theme_background_mode',
+  },
+  {
+    up: migration_20260829_130000_add_sitegen_block_background_modes.up,
+    down: migration_20260829_130000_add_sitegen_block_background_modes.down,
+    name: '20260829_130000_add_sitegen_block_background_modes',
+  },
+  {
+    up: migration_20260829_150000_sitegen_consent_01.up,
+    down: migration_20260829_150000_sitegen_consent_01.down,
+    name: '20260829_150000_sitegen_consent_01',
+  },
+  {
+    up: migration_20260829_170000_add_consent_categories.up,
+    down: migration_20260829_170000_add_consent_categories.down,
+    name: '20260829_170000_add_consent_categories',
   },
 ];

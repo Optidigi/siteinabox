@@ -12,7 +12,7 @@ The manifest list was generated on 2026-08-12 with:
 ```text
 node --input-type=module -e 'import { readFile } from "node:fs/promises"; for (const p of ["packages/contracts/package.json", "packages/legal-content/package.json", "packages/site-renderer/package.json", "packages/ui/package.json"]) { const m = JSON.parse(await readFile(p, "utf8")); console.log(p, Object.keys(m.exports ?? {})); }'
 git grep -nE '@siteinabox/(contracts|legal-content|site-renderer|ui)/' -- apps packages docs scripts
-git grep -nE 'source-templates|iframe-editor|fixtures/tenants' -- .
+git grep -nE 'iframe-editor|fixtures/tenants' -- .
 ```
 
 Dynamic imports, generated scripts, package consumers outside this checkout,
@@ -30,14 +30,14 @@ Package: `packages/contracts/package.json`
 | `generation` | CMS seed/generation scripts, snapshots, and renderer. | retain public | Manifest-public; active workspace consumer. | High: persisted/published snapshots. |
 | `iframe-editor` | CMS editor-frame pages and runtime. | retain public | Manifest-public; active workspace consumer. | High: editor DOM/geometry contract. |
 | `legal` | CMS legal records and legal package consumers. | retain public | Manifest-public; governed legal consumer. | High: legal history and consent. |
-| `block-catalog` | CMS block registry/site settings and renderer catalog. | retain public | Manifest-public; active product catalog. | High: published snapshots and planned F17 replacement. |
+| (no block-catalog subpath) | First-party block contracts are exported from the package root; the CMS Sitegen catalog is application-owned. | intentional | No separate catalog export. | High: persisted contracts and published snapshots. |
 | `commerce` | CMS checkout, commerce records, and contract tests. | retain public | Manifest-public; active commerce consumer. | High: payment and rollback behavior. |
 | `deploy-targets` | Workspace consumer confirmed; external consumer unknown. | unknown/defer | Public by manifest; external use unknown. | High until deployment and rollback consumers are checked. |
 | `renderer-routing` | CMS renderer-domain alias script and renderer routing. | retain public | Manifest-public; active workspace consumer. | High: tenant/domain routing. |
 | `tld-capabilities` | CMS checkout/domain actions and contract tests. | retain public | Manifest-public; active domain capability contract. | High: provider and IDN behavior. |
 | `domain-migration` | CMS checkout, collections, migration domain logic, and tests. | retain public | Manifest-public; active migration consumer. | High: provider, tenancy, commerce, rollback. |
 | `fixtures/tenants` | CMS renderer-staging seed script and contract fixtures. | make workspace-internal | Public by manifest; no external consumer evidence. | High until published snapshot and support history are checked. |
-| `site` | CMS site settings and published snapshot contracts. | retain public | Manifest-public; active workspace consumer. | High: persisted site contract. |
+| `site` | CMS site settings, first-party block contracts, and published snapshot contracts. | retain public | Manifest-public; active workspace consumer. | High: persisted site contract. |
 
 `fixtures/tenants` is not removable: the seed script is a non-test build/ops
 consumer. Making it workspace-internal is a future compatibility decision that
@@ -65,15 +65,16 @@ Package: `packages/site-renderer/package.json`
 | `seo` | Renderer SEO contract and consumers. | retain public | Manifest-public; active rendering surface. | Medium/high: published output. |
 | `theme` | Renderer theme types and resolution. | retain public | Manifest-public; active rendering surface. | High: persisted theme contract. |
 | `theme/resolve` | Theme resolver consumers and tests. | retain public | Manifest-public; active rendering surface. | High: preview/live parity. |
-| `blocks/variants` | Current block variant catalog/runtime consumers. | retain public | Manifest-public; active catalog. | High: F17 planned replacement and snapshots. |
-| `source-templates` | Source-template registry/build-time boundary. | unknown/defer | Manifest-public; external and generated use unknown. | High: generated inputs and compatibility. |
+| (no blocks/variants subpath) | First-party block components are consumed through the package root/page renderer. | intentional | No separate variant catalog export. | High: persisted contracts and preview/public parity. |
 | `styles.css` | Static site and renderer style consumers. | retain public | Manifest-public; active asset. | High: deployment and visual parity. |
 
-`source-templates` must not be removed based on the absence of an application
-import. The registry is a build-time consumer, and external package users may
-import the subpath directly. A future internalization PR must first inventory
-generated inputs, published source snapshots, documentation, and supported
-external consumers.
+The renderer package intentionally has no dedicated public chrome or
+system-template subpath. Active settings-owned chrome is consumed through the
+package root and currently includes `navbar-01` through `navbar-03`,
+`footer-01`, and `consent-01`; these are not page-block types or provider
+exports. Announcement remains reserved settings data. Maintenance and
+not-found use dedicated inline system output with editable copy rather than
+numbered variants.
 
 ## UI package
 
@@ -88,9 +89,8 @@ Package: `packages/ui/package.json`
 | `lib/csp-nonce` | CMS layouts and compatibility re-exports. | retain public | Security-relevant public subpath. | High: CSP behavior. |
 | `lib/csp-style` | CMS style nonce/runtime consumers. | retain public | Security-relevant public subpath. | High: CSP behavior. |
 | `lib/utils` | CMS and renderer source imports. | retain public | Manifest-public; active workspace consumer. | Medium/high: shared utility boundary. |
-| `providers/shadcnui-blocks/radix-nova` | Renderer variants and upstream-adapted sources. | retain public | Manifest-public; active renderer consumer. | High: generated/authored variant bindings. |
-| `providers/shadcnui-blocks/radix-nova/tailwind.css` | Provider styling/build inputs. | retain public | Manifest-public; build-time asset consumer. | High: visual parity and F17 replacement. |
-| `styles/shadcn.css` | CMS compatibility import and shared styling. | retain public | Manifest-public; active compatibility consumer. | Medium/high: styling and build behavior. |
+| (no provider export) | First-party block components live inside the renderer package and are not exposed as a provider API. | intentional | No provider subpath. | High: preview/public parity. |
+| `styles/shadcn.css` | Low-level provider-independent token/base stylesheet used by the CMS compatibility import. | retain public | Manifest-public; active primitive consumer. | Medium/high: styling and build behavior. |
 
 The wildcard families are intentionally treated as public sets. A member-level
 removal needs the same consumer, generated-input, published-output, and public
@@ -112,8 +112,8 @@ support checks as a named subpath.
 
 ## Next proof actions
 
-1. Resolve `deploy-targets`, `fixtures/tenants`, and `source-templates` owner
-   and external-consumer questions.
+1. Resolve `deploy-targets` and `fixtures/tenants` owner and external-consumer
+   questions.
 2. Compare package exports with generated build inputs and published snapshot
    manifests.
 3. Keep F17 deferred until the catalog and blocks are replaced; do not spend a
@@ -135,15 +135,14 @@ workspace references:
   CMS staging seed code, and CMS compatibility tests.
 - `@siteinabox/contracts/deploy-targets` is used by the renderer snapshot
   loader.
-- `@siteinabox/site-renderer/source-templates` is used by the CMS provider
-  compatibility test and remains a build-time/generated boundary.
+- The removed `@siteinabox/site-renderer/source-templates` subpath has no
+  remaining workspace consumer after the clean-shell reset.
 
 Commands used:
 
 ```text
 gh search code '"@siteinabox/contracts/fixtures/tenants"' --limit 100 --json repository,path
 gh search code '"@siteinabox/contracts/deploy-targets"' --limit 100 --json repository,path
-gh search code '"@siteinabox/site-renderer/source-templates"' --limit 100 --json repository,path
 npm view @siteinabox/contracts name version dist-tags.private --json
 npm view @siteinabox/site-renderer name version dist-tags.private --json
 npm view @siteinabox/legal-content name version dist-tags.private --json

@@ -189,7 +189,7 @@ export default async function TenantAnalyticsPage({
           lowSampleNotice: t("lowSampleNotice"),
           variantRanking: t("variantRanking"),
           variantRankingDescription: t("variantRankingDescription"),
-          providerVariant: t("providerVariant"),
+          variant: t("variant"),
           rank: t("rank"),
           score: t("score"),
           evidence: t("evidence"),

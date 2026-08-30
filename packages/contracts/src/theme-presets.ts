@@ -19,9 +19,19 @@ export const SHAPE_SCHEME_IDS = [
   "sharp",
 ] as const
 
+export const BACKGROUND_MODE_IDS = [
+  "image",
+  "animation",
+  "grid",
+  "ambient",
+  "mesh",
+  "none",
+] as const
+
 export type ColorSchemeId = (typeof COLOR_SCHEME_IDS)[number]
 export type FontSchemeId = (typeof FONT_SCHEME_IDS)[number]
 export type ShapeSchemeId = (typeof SHAPE_SCHEME_IDS)[number]
+export type BackgroundMode = (typeof BACKGROUND_MODE_IDS)[number]
 
 export type ThemePresetOption<TId extends string> = {
   id: TId
@@ -51,7 +61,7 @@ export const SHAPE_SCHEME_PRESETS = [
 
 export const DEFAULT_THEME_TOKEN_SPEC = {
   version: 3,
-  appearance: { mode: "light" },
+  appearance: { mode: "light", backgroundMode: "animation" },
   colors: { schemeId: "monochrome" },
   fonts: { schemeId: "clear-modern" },
   shape: { schemeId: "soft" },

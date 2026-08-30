@@ -57,26 +57,50 @@ export function buildMediaUsageMap(
           record(map, id, (e) => {
             if (!e.pages.some((p) => p.id === ref.id)) e.pages.push(ref)
           })
-          break
-        }
-        case "testimonials": {
-          const items = (block as { items?: Array<Record<string, unknown>> }).items ?? []
-          for (const item of items) {
-            const id = normalizeId((item as { avatar?: unknown }).avatar)
-            record(map, id, (e) => {
+          const highlights = (block as { serviceHighlights?: Array<{ image?: unknown }> }).serviceHighlights ?? []
+          for (const highlight of highlights) {
+            const highlightId = normalizeId(highlight.image)
+            record(map, highlightId, (e) => {
               if (!e.pages.some((p) => p.id === ref.id)) e.pages.push(ref)
             })
           }
           break
         }
-        case "cta": {
-          const id = normalizeId((block as { backgroundImage?: unknown }).backgroundImage)
+        case "about": {
+          const id = normalizeId((block as { portrait?: unknown }).portrait)
           record(map, id, (e) => {
             if (!e.pages.some((p) => p.id === ref.id)) e.pages.push(ref)
           })
           break
         }
-        // Other block types (FeatureList, FAQ, RichText, ContactSection)
+        case "work": {
+          const projects = (block as { projects?: Array<Record<string, unknown>> }).projects ?? []
+          for (const project of projects) {
+            const media = (project as { media?: Array<Record<string, unknown>> }).media ?? []
+            for (const item of media) {
+              const id = normalizeId((item as { image?: unknown }).image)
+              record(map, id, (e) => {
+                if (!e.pages.some((p) => p.id === ref.id)) e.pages.push(ref)
+              })
+            }
+          }
+          break
+        }
+        case "cta": {
+          const id = normalizeId((block as { image?: unknown }).image)
+          record(map, id, (e) => {
+            if (!e.pages.some((p) => p.id === ref.id)) e.pages.push(ref)
+          })
+          break
+        }
+        case "contact": {
+          const id = normalizeId((block as { image?: unknown }).image)
+          record(map, id, (e) => {
+            if (!e.pages.some((p) => p.id === ref.id)) e.pages.push(ref)
+          })
+          break
+        }
+        // Services, process, reviews, pricing, FAQ and rich text
         // currently carry no upload fields. Add cases here as they grow.
         default:
           break

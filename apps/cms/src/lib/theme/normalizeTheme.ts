@@ -1,8 +1,10 @@
 import {
   COLOR_SCHEME_IDS,
+  BACKGROUND_MODE_IDS,
   DEFAULT_THEME_TOKEN_SPEC,
   FONT_SCHEME_IDS,
   SHAPE_SCHEME_IDS,
+  type BackgroundMode,
   type ColorSchemeId,
   type FontSchemeId,
   type ShapeSchemeId,
@@ -19,6 +21,11 @@ const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback
 const normalizeMode = (theme: Record<string, unknown>): ThemeMode => {
   const appearance = isRecord(theme.appearance) ? theme.appearance : null
   return oneOf(appearance?.mode ?? theme.mode, ["light", "dark", "system"] as const, DEFAULT_THEME_TOKEN_SPEC.appearance.mode)
+}
+
+const normalizeBackgroundMode = (theme: Record<string, unknown>): BackgroundMode => {
+  const appearance = isRecord(theme.appearance) ? theme.appearance : null
+  return oneOf(appearance?.backgroundMode, BACKGROUND_MODE_IDS, DEFAULT_THEME_TOKEN_SPEC.appearance.backgroundMode)
 }
 
 const normalizeColorScheme = (theme: Record<string, unknown>): ColorSchemeId => {
@@ -54,7 +61,7 @@ export const normalizeThemeForSave = (theme: unknown): ThemeTokens | null => {
   if (!isRecord(theme)) return null
   return {
     version: 3,
-    appearance: { mode: normalizeMode(theme) },
+    appearance: { mode: normalizeMode(theme), backgroundMode: normalizeBackgroundMode(theme) },
     colors: { schemeId: normalizeColorScheme(theme) },
     fonts: { schemeId: normalizeFontScheme(theme) },
     shape: { schemeId: normalizeShapeScheme(theme) },
@@ -62,3 +69,22 @@ export const normalizeThemeForSave = (theme: unknown): ThemeTokens | null => {
 }
 
 export const normalizePreviewThemeForSave = normalizeThemeForSave
+
+export type ThemePatch = Omit<Partial<ThemeTokens>, "appearance"> & {
+  appearance?: Partial<ThemeTokens["appearance"]>
+}
+
+export function mergeThemePatch(
+  current: ThemeTokens | null | undefined,
+  patch: ThemePatch,
+): ThemeTokens | null {
+  const base = current ?? DEFAULT_THEME_TOKEN_SPEC
+  return normalizeThemeForSave({
+    ...base,
+    ...patch,
+    appearance: {
+      ...base.appearance,
+      ...(patch.appearance ?? {}),
+    },
+  })
+}

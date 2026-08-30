@@ -1,30 +1,30 @@
-import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
+import { SITEGEN_FOOTERS, SITEGEN_NAVBARS, SITEGEN_SECTIONS } from "@/lib/sitegen/catalog"
 
-export const SITE_GENERATION_PROMPT_VERSION = "site-generation-v2"
+export const SITE_GENERATION_PROMPT_VERSION = "sitegen-owned-v1"
 
 export const SITE_GENERATION_SYSTEM_PROMPT = [
-  "You generate Site in a Box CMS draft data.",
-  "Return structured data only. Do not return Markdown, source code, CSS, Astro, React, scripts, or file paths.",
-  "The output must be a SiteGenerationSpec with schemaVersion 1.",
-  "Use only supported blockType values from the supplied block list.",
-  "Use block.designVariant only when it exactly matches an approved design variant for that block type.",
-  "Do not author legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
-  "Use reusable catalog blocks as structured page blocks; header, footer, and banner choices belong only in settings.chrome.",
-  "Use settings.chrome variants only when they exactly match an approved chrome variant for that chrome area.",
-  "Chrome data must match the selected variant capability manifest: navbar-03 alone accepts flyout groups; navbar-05 accepts search and secondaryAction but requires navHeader to be empty; footer-03 and footer-04 alone accept newsletter settings. Do not truncate or invent navigation to fit a variant.",
-  "Use only approved akash3444/shadcn-ui-blocks variants listed in approvedDesignVariants; identifiers are namespaced as shadcnui-blocks.<upstream-name>.",
-  "Theme output must be ThemeTokenSpec V3 preset IDs only: colors monochrome/blue-professional/red-confident/emerald-calm/amber-warm/terracotta-warm; fonts clear-modern/classic-editorial/friendly-organic; shape rounded/soft/sharp; mode light/dark/system.",
-  "Map explicit visual or intake style hints to the nearest approved theme preset. If unclear, use monochrome, clear-modern, soft, and light mode.",
-  "Do not use inactive provider blocks, chrome variants, source names, classes, content fixtures, or variants for self-serve generated sites.",
-  "Do not use tenant-renderer blocks, variants, chrome variants, classes, content fixtures, domains, source names, or variants for new generated sites.",
-  "Do not return raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, file paths, block tokens, style objects, or inline styles.",
-  "Use CMS media ids when known. Otherwise use null or structured generated-asset placeholders without requiring remote URL ingestion.",
-  "Do not invent unsupported block slugs, block fields, executable code, or per-tenant folders.",
-  "Keep tenant.slug equal to intake.tenantSlug and tenant.domain equal to intake.primaryDomain.",
-  "Use page slug index for the root/home page; do not use home as the root slug.",
-  "Create concise, editable CMS copy in the requested language.",
+  "You prepare concise, editable Site in a Box content from normalized business intake.",
+  "Return structured data only. Never return React, TSX, CSS, HTML, component trees, layout definitions, or arbitrary fields.",
+  "Choose only explicit block types present in the compact eligible catalog supplied by the application.",
+  "Return exactly one navbar object from the supplied eligibleNavbars catalog; use only its numbered variant ID and one of its two placement values.",
+  "Return exactly one footer object from the supplied eligibleFooters catalog; use only its numbered variant ID. Footer is settings-owned chrome, not a page section.",
+  "Use the homepage slug index, put exactly one hero first, do not duplicate singleton sections, and normally put contact last.",
+  "Use only supplied media IDs and authoritative project, review, and pricing source IDs.",
+  "For hero and CTA, backgroundMode is optional: omit it to inherit the site theme background; choose image only with a supplied mediaId and never invent a media ID.",
+  "Never invent reviews, prices, projects, credentials, certifications, clients, statistics, service areas, or booking URLs.",
+  "Contact methods, service area, opening hours, forms and booking actions are application-owned facts; use only the values or references supplied in the request.",
+  "For hero-01, you may include two, three or four supplied, truthful highlights that explain why a customer should choose this business; omit highlights when fewer than two defensible points are available. It may optionally select one supplied image for its bounded, darkened background treatment. Never invent guarantees, certifications, customer counts, response times, ratings or outcomes.",
+  "For hero-02, include two to four concrete serviceHighlights from the supplied service intake and select a distinct supplied mediaId for each when the eligible catalog provides severalImages. Give every service a distinct heroHeading and heroBody for the central hero copy; include service-specific actions only when they are supported by the supplied business goal. Never invent proof, statistics, clients, or credentials.",
+  "For services-01, include only the supplied services, use two to six concise equal-weight feature cells with a title, description, and optional action, and keep each item specific to the business. Do not invent services, credentials, guarantees, prices, or results. The application owns the presentation icons when none are supplied.",
+  "For services-02, include only the supplied services, use two to six concise service items with a title, description, and optional text action in a centered icon-led grid without individual cards. Do not invent services, credentials, guarantees, prices, or results. The application owns the presentation icons when none are supplied.",
+  "Keep copy specific to the profession and useful to a prospective customer.",
 ].join("\n")
 
-export const SUPPORTED_SITE_GENERATION_BLOCKS = [
-  ...new Set(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug)),
-]
+export const SUPPORTED_SITE_GENERATION_BLOCKS = SITEGEN_SECTIONS
+  .flatMap((section) => section.variants.map((variant) => `${section.blockType}:${variant.id}`))
+
+export const SUPPORTED_SITE_GENERATION_NAVBARS = SITEGEN_NAVBARS
+  .map((navbar) => `navbar:${navbar.id}`)
+
+export const SUPPORTED_SITE_GENERATION_FOOTERS = SITEGEN_FOOTERS
+  .map((footer) => `footer:${footer.id}`)

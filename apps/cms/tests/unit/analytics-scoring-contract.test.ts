@@ -55,7 +55,7 @@ describe("analytics scoring", () => {
         description: "Care site",
         language: "nl",
         branding: { logo: 1, favicon: 2 },
-        navHeader: [{ type: "page" }],
+        navigation: { primary: [{ type: "page" }], footer: [] },
         contact: { phone: "+31" },
       }),
       pages: [

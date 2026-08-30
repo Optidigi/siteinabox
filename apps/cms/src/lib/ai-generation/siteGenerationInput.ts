@@ -1,93 +1,73 @@
 import type { GenerationInput, NormalizedIntake } from "@siteinabox/contracts/generation"
-import {
-  SHADCNUI_BLOCK_VARIANTS,
-  SHADCNUI_CHROME_VARIANTS,
-} from "@siteinabox/contracts"
 import { buildGenerationInput } from "@/lib/intake/normalizeIntake"
+import { eligibleSitegenSections, type SitegenEligibilityInput } from "@/lib/sitegen/eligibility"
+import { SITEGEN_FOOTERS, SITEGEN_NAVBARS, SITEGEN_SECTIONS } from "@/lib/sitegen/catalog"
+import { sitegenMediaInventory } from "@/lib/sitegen/mediaEligibility"
 import { SUPPORTED_SITE_GENERATION_BLOCKS } from "./prompts/siteGenerationPrompt"
 
 export type SiteGenerationModelInput = {
-  promptContract: "site-generation-spec"
+  promptContract: "sitegen-owned-sections"
   schemaVersion: 1
   intake: NormalizedIntake
   generationInput: GenerationInput
+  eligibleSections: ReturnType<typeof eligibleSitegenSections>
+  eligibleNavbars: typeof SITEGEN_NAVBARS
+  eligibleFooters: typeof SITEGEN_FOOTERS
   supportedBlocks: string[]
-  approvedDesignVariants: Array<{
-    blockType: string
-    designVariant: string
-    legacyDesignVariant?: string
-    sourceName: string
-    variantId: string
-    providerVariantId?: string
-    slots?: Record<string, {
-      kind: string
-      status: string
-      exposed: boolean
-      repeated: boolean
-      minItems?: number
-      maxItems?: number
-    }>
-  }>
-  approvedChromeVariants: Array<{
-    area: string
-    variant: string
-    sourceName: string
-    variantId: string
-  }>
   requirements: string[]
+}
+
+const hasExplicitBookingAction = (intake: NormalizedIntake): boolean => {
+  const raw = intake.raw && typeof intake.raw === "object" ? intake.raw : null
+  const contact = raw?.contact && typeof raw.contact === "object" && !Array.isArray(raw.contact) ? raw.contact as Record<string, unknown> : null
+  return [raw?.bookingAction, contact?.bookingAction, raw?.bookingUrl, contact?.bookingUrl].some((value) => {
+    if (typeof value === "string") return value.trim().length > 0
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false
+    const href = (value as Record<string, unknown>).href
+    return typeof href === "string" && href.trim().length > 0
+  })
+}
+
+export const sitegenEligibilityFromIntake = (intake: NormalizedIntake): SitegenEligibilityInput => {
+  const mediaById = sitegenMediaInventory(intake.brandSignals?.assets ?? [])
+  const media = Object.values(mediaById)
+
+  return {
+    mediaById,
+    hasImage: media.length > 0,
+    serviceImageCount: media.length,
+    hasWideImage: media.some((asset) => asset.isWide),
+    hasPortrait: media.some((asset) => asset.isPortrait),
+    serviceAreaCount: intake.serviceArea.length,
+    hasBooking: hasExplicitBookingAction(intake),
+    hasForm: Boolean(intake.intakeBrief?.contactPreferences.formType && intake.intakeBrief.contactPreferences.formType !== "none"),
+    serviceCount: (intake.intakeBrief?.services ?? intake.goals).length,
+    contactMethodCount: [
+      intake.contact?.email,
+      intake.contact?.phone,
+      intake.intakeBrief?.contactPreferences.whatsappNumber,
+      intake.intakeBrief?.contactPreferences.publicAddress,
+    ].filter((value): value is string => Boolean(value?.trim())).length,
+  }
 }
 
 export const buildSiteGenerationModelInput = (
   intake: NormalizedIntake,
   generationInput: GenerationInput = buildGenerationInput(intake),
 ): SiteGenerationModelInput => ({
-  promptContract: "site-generation-spec",
+  promptContract: "sitegen-owned-sections",
   schemaVersion: 1,
   intake,
   generationInput,
-  supportedBlocks: SUPPORTED_SITE_GENERATION_BLOCKS,
-  approvedDesignVariants: SHADCNUI_BLOCK_VARIANTS.map((variant) => ({
-      blockType: variant.blockType,
-      designVariant: variant.id,
-      sourceName: "akash3444/shadcn-ui-blocks",
-      variantId: variant.id,
-      providerVariantId: variant.id,
-      slots: Object.fromEntries(
-        Object.entries(variant.activeSlots)
-          .map(([name, slot]) => [
-            name,
-            {
-              kind: slot.kind,
-              status: slot.status,
-              exposed: true,
-              repeated: slot.repeated,
-              ...("minItems" in slot && slot.minItems != null ? { minItems: slot.minItems } : {}),
-              ...("maxItems" in slot && slot.maxItems != null ? { maxItems: slot.maxItems } : {}),
-            },
-          ]),
-      ),
-    })),
-  approvedChromeVariants: SHADCNUI_CHROME_VARIANTS.map((variant) => ({
-    area: variant.area,
-    variant: variant.id,
-    sourceName: "akash3444/shadcn-ui-blocks",
-    variantId: variant.id,
-  })),
+  eligibleSections: eligibleSitegenSections(sitegenEligibilityFromIntake(intake)),
+  eligibleNavbars: SITEGEN_NAVBARS,
+  eligibleFooters: SITEGEN_FOOTERS,
+  supportedBlocks: [...SUPPORTED_SITE_GENERATION_BLOCKS],
   requirements: [
-    "Return exactly one JSON object matching SiteGenerationSpec.",
-    "Use only supportedBlocks as page blockType values and blocks[].slug values.",
-    "Set every generated block's designVariant to an approvedDesignVariants designVariant entry for that exact blockType; legacyDesignVariant is accepted only for existing stored data.",
-    "Fill only exposed slots from the selected approvedDesignVariants slot manifest; do not include inactive slots.",
-    "Do not set legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
-    "Set settings.chrome.header.variant, settings.chrome.footer.variant, and settings.chrome.banner.variant only to null or to approvedChromeVariants values for the matching area.",
-    "Set theme only to approved ThemeTokenSpec V3 preset IDs: colors monochrome/blue-professional/red-confident/emerald-calm/amber-warm/terracotta-warm; fonts clear-modern/classic-editorial/friendly-organic; shape rounded/soft/sharp; mode light/dark/system.",
-    "Map intake visual preferences to the nearest approved theme preset and use defaults when the intake is unclear.",
-    "Never use tenant-exclusive tenant renderer variants, chrome variants, classes, content fixtures, domains, or variants for self-serve generated sites.",
-    "Do not emit raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, file paths, block tokens, style objects, or inline styles.",
-    "Use CMS media ids when known. Otherwise use null or structured generated-asset placeholders without requiring remote URL ingestion.",
-    "Use page slug index for the root/home page and link it as /.",
-    "Include at least one page and at least one block on every page.",
-    "Use draft-safe contact and SEO metadata based on the normalized intake.",
-    "Set generator.name, generator.version, and generator.model.",
+    "Return one JSON object with pages and shallow semantic sections.",
+    "Use only eligible block types, media IDs, and evidence IDs.",
+    "Do not generate authoritative review, pricing, or project facts; select their source IDs.",
+    "Keep rich text out of the AI response; the application normalizes any longer copy deterministically.",
+    `The complete application catalog contains ${SUPPORTED_SITE_GENERATION_BLOCKS.length} explicit section design choices across ${SITEGEN_SECTIONS.length} enabled section families, ${SITEGEN_NAVBARS.length} navbar designs and ${SITEGEN_FOOTERS.length} footer design; this request contains only eligible choices.`,
   ],
 })

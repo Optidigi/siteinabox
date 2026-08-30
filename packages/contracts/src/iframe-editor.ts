@@ -11,7 +11,6 @@ export const IFRAME_EDITOR_MESSAGE_TYPES = [
   "renderer.height",
   "render.snapshot",
   "selection.changed",
-  "chrome.select",
   "navigation.requested",
   "error",
 ] as const
@@ -69,17 +68,13 @@ export type RenderSnapshotMessage = IframeEditorMessageBase<"render.snapshot"> &
   /**
    * When true, the editor frame should scroll the selected node into view.
    * Host sets this for inspector/sidebar selection only — never when echoing a
-   * canvas click (`selection.changed` / `chrome.select`).
+   * canvas click (`selection.changed`).
    */
   revealSelection?: boolean
 }
 
 export type SelectionChangedMessage = IframeEditorMessageBase<"selection.changed"> & {
   selection: IframeEditorSelection | null
-}
-
-export type ChromeSelectMessage = IframeEditorMessageBase<"chrome.select"> & {
-  selection: IframeEditorSelection
 }
 
 export type NavigationRequestedMessage = IframeEditorMessageBase<"navigation.requested"> & {
@@ -98,7 +93,6 @@ export type IframeEditorMessage =
   | RendererHeightMessage
   | RenderSnapshotMessage
   | SelectionChangedMessage
-  | ChromeSelectMessage
   | NavigationRequestedMessage
   | IframeEditorErrorMessage
 
@@ -169,12 +163,6 @@ export const SelectionChangedMessageSchema = strictObject({
   selection: selectionSchema.nullable(),
 })
 
-export const ChromeSelectMessageSchema = strictObject({
-  ...baseMessageShape,
-  type: z.literal("chrome.select"),
-  selection: selectionSchema,
-})
-
 export const NavigationRequestedMessageSchema = strictObject({
   ...baseMessageShape,
   type: z.literal("navigation.requested"),
@@ -197,7 +185,6 @@ export const IframeEditorMessageSchema: z.ZodType<IframeEditorMessage> = z.discr
   RendererHeightMessageSchema,
   RenderSnapshotMessageSchema,
   SelectionChangedMessageSchema,
-  ChromeSelectMessageSchema,
   NavigationRequestedMessageSchema,
   IframeEditorErrorMessageSchema,
 ])

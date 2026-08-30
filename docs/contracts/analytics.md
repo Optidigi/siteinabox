@@ -96,6 +96,17 @@ window.SIABAnalytics?.grantConsent()
 window.SIABAnalytics?.revokeConsent()
 ```
 
+The public consent chrome uses the same runtime through
+`applyConsent({ preferences, analytics, marketing })` and reads its current
+state with `getConsent()`. The shared contract accepts all three optional
+categories, and versioned receipts persist all three choices. Only the
+`analytics` flag currently gates the PostHog lifecycle; `preferences` and
+`marketing` are deliberately exposed as dormant, typed permissions until a
+reviewed first-party integration consumes them. Choosing either dormant flag
+does not load a script, send an event, or create a cookie by itself. This keeps
+the server-rendered controls synchronized with one consent receipt without
+introducing a second analytics lifecycle.
+
 Acceptance calls `opt_in_capturing({ captureEventName: false })`, switches the
 same SDK instance to normal PostHog persistence, and enables consented native
 interaction/lifecycle plus SIAB semantic events. Refusal keeps the minimized
@@ -140,7 +151,7 @@ tenant name, slug, domain, and site kind. Common projected properties include
 environment, tenant/site identity, domain, page identity/path, theme, build,
 and manifest version.
 
-Section events may add stable section identity/type/position, provider variant,
+Section events may add stable section identity/type/position, section variant,
 block preset, and a sanitized content signature. Interaction events may add a
 stable action key/role/label, sanitized target type/domain/path, component
 timing, journey position, referrer category, device category, or scroll depth.
@@ -244,9 +255,9 @@ The server query layer:
 - uses enriched `$autocapture` for CTA/component interactions; and
 - uses native `$pageleave` properties for PostHog-compatible scroll depth.
 
-### Provider-variant comparison
+### Section-variant comparison
 
-The super-admin aggregate behavior view compares provider variants only with
+The super-admin aggregate behavior view compares section variants only with
 other variants of the same `section_type`. Tenant users and super-admin
 tenant-detail views keep instance-level analytics and do not receive the
 cross-tenant ranking.
@@ -273,7 +284,7 @@ type clear the evidence floor. A lone eligible variant may receive a score and
 evidence label, but it is never presented as the winner of a nonexistent
 comparison.
 
-Only conversions that already carry trustworthy `provider_variant` metadata
+Only conversions that already carry trustworthy `variant` metadata
 are attributed to a variant. Accepted-form server outcomes remain site-level
 until the server can independently resolve their originating section; the
 ranking must not infer that attribution from untrusted browser fields. The

@@ -56,24 +56,24 @@ const countEntryDiff = (a: NavEntry[], b: NavEntry[]): number => {
 
 export function NavigationManager({
   tenantId,
-  initialNavHeader,
+  initialNavPrimary,
   initialNavFooter,
   pages,
-  initialZone = "header",
+  initialZone = "navbar",
 }: {
   tenantId: number | string
-  initialNavHeader: NavEntry[]
+  initialNavPrimary: NavEntry[]
   initialNavFooter: NavEntry[]
   pages: NavPageOption[]
   initialZone?: NavZone
 }) {
   const t = useTranslations("navigation")
   const tCommon = useTranslations("common")
-  const [header, setHeader] = React.useState<Keyed[]>(() => initialNavHeader.map(keyed))
+  const [navbar, setNavbar] = React.useState<Keyed[]>(() => initialNavPrimary.map(keyed))
   const [footer, setFooter] = React.useState<Keyed[]>(() => initialNavFooter.map(keyed))
   // Saved baseline — dirtiness is derived by comparing live state against it,
   // and it advances on a successful save (so the Save button settles).
-  const [savedHeader, setSavedHeader] = React.useState<NavEntry[]>(initialNavHeader)
+  const [savedNavbar, setSavedNavbar] = React.useState<NavEntry[]>(initialNavPrimary)
   const [savedFooter, setSavedFooter] = React.useState<NavEntry[]>(initialNavFooter)
   const [zone, setZone] = React.useState<NavZone>(initialZone)
   const [saving, setSaving] = React.useState(false)
@@ -90,7 +90,7 @@ export function NavigationManager({
   // Per-menu dirtiness — drives the Save button's amber border + count badge,
   // exactly like PublishControls counts unsaved field changes in the editor.
   const dirtyCount =
-    countEntryDiff(entriesOf(header), savedHeader) +
+    countEntryDiff(entriesOf(navbar), savedNavbar) +
     countEntryDiff(entriesOf(footer), savedFooter)
   const isDirty = dirtyCount > 0
 
@@ -105,8 +105,8 @@ export function NavigationManager({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const list = zone === "header" ? header : footer
-  const setList = zone === "header" ? setHeader : setFooter
+  const list = zone === "navbar" ? navbar : footer
+  const setList = zone === "navbar" ? setNavbar : setFooter
 
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
@@ -136,10 +136,10 @@ export function NavigationManager({
     setSaving(true)
     setSaveFailed(false)
     try {
-      const h = entriesOf(header)
+      const h = entriesOf(navbar)
       const f = entriesOf(footer)
-      await updateNav(tenantId, { navHeader: h, navFooter: f })
-      setSavedHeader(h)
+      await updateNav(tenantId, { primary: h, footer: f })
+      setSavedNavbar(h)
       setSavedFooter(f)
       setShowSaved(true)
     } catch {
@@ -171,7 +171,7 @@ export function NavigationManager({
             onValueChange={(next) => next && setZone(next)}
             allowDeselect={false}
             items={[
-              { value: "header", label: `${t("header")} (${header.length})`, icon: PanelTop, ariaLabel: t("headerAria") },
+              { value: "navbar", label: `${t("header")} (${navbar.length})`, icon: PanelTop, ariaLabel: t("headerAria") },
               { value: "footer", label: `${t("footer")} (${footer.length})`, icon: PanelBottom, ariaLabel: t("footerAria") },
             ]}
           />
@@ -197,7 +197,7 @@ export function NavigationManager({
       {list.length === 0 ? (
         <EmptyState
           icon={<ListTree className="size-10 text-muted-foreground" aria-hidden />}
-          title={t("none", { zone: zone === "header" ? t("header").toLowerCase() : t("footer").toLowerCase() })}
+          title={t("none", { zone: zone === "navbar" ? t("header").toLowerCase() : t("footer").toLowerCase() })}
           description={t("noneDescription")}
         />
       ) : (
@@ -271,7 +271,7 @@ export function NavigationManager({
                   untitledSection: t("untitledSection"),
                   untitledLink: t("untitledLink"),
                 }).label,
-                zone: zone === "header" ? t("header").toLowerCase() : t("footer").toLowerCase(),
+                zone: zone === "navbar" ? t("header").toLowerCase() : t("footer").toLowerCase(),
               })}
             </>
           ) : (

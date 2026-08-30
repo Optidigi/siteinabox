@@ -72,6 +72,7 @@
         "SIAB_MAIL_SEND_TIMEOUT_MS",
         "SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS",
         "SIAB_OPERATIONAL_HASH_KEY",
+        "SIAB_PREVIEW_FIXTURE_MODE",
         "SIAB_RENDERER_API_TOKEN",
         "SIAB_SITE_BUILD_ID",
         "SITE_GENERATION_OPENAI_MODEL",
@@ -115,16 +116,13 @@
     "renderer": {
       "names": [
         "DATA_DIR",
-        "DEV",
         "IMAGE_TAG",
         "NODE_ENV",
         "SIAB_CMS_URL",
-        "SIAB_PROVIDER_VARIANT",
         "SIAB_RENDERER_API_TOKEN",
         "SIAB_RENDERER_API_TOKEN_FILE",
         "SIAB_RENDERER_DEV_ALLOWED_HOSTS",
         "SIAB_RENDERER_FIXTURE_MODE",
-        "SIAB_VISUAL_ARTIFACT_DIR",
         "SIAB_VITE_CACHE_DIR",
         "SITE_URL"
       ],

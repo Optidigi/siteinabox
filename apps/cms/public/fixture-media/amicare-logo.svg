@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 20 470 144" role="img" aria-labelledby="title desc">
+  <title id="title">Amicare-Zorg</title>
+  <desc id="desc">Amicare-Zorg logo with an open care loop and a central leaf.</desc>
+  <g transform="translate(8 8)">
+    <path
+      d="M126.4 60.4c-8-19.1-26.8-32.1-48.8-32.1-29.2 0-52.9 23.7-52.9 52.9 0 8.4 2 16.4 5.5 23.4"
+      fill="none"
+      stroke="#a04e32"
+      stroke-linecap="round"
+      stroke-width="15"
+    />
+    <path
+      d="M41.7 115.8c9.6 16.7 27.4 27.9 48.1 27.9 29.2 0 52.9-23.7 52.9-52.9 0-8.3-1.9-16.2-5.4-23.2"
+      fill="none"
+      stroke="#d98162"
+      stroke-linecap="round"
+      stroke-width="15"
+    />
+    <path
+      d="M84 49c16.6 5.1 26 15.9 26 29.8 0 17.2-14 28.4-26 36.1-12-7.7-26-18.9-26-36.1C58 64.9 67.4 54.1 84 49Z"
+      fill="#a04e32"
+    />
+    <path d="M84 63v38" fill="none" stroke="#fff4ec" stroke-linecap="round" stroke-width="5" />
+  </g>
+  <text
+    x="208"
+    y="101"
+    fill="#a04e32"
+    font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif"
+    font-size="72"
+    font-weight="700"
+    letter-spacing="-2.5"
+  >amicare</text>
+  <path d="M211 122h112" fill="none" stroke="#d98162" stroke-linecap="round" stroke-width="3" />
+  <text
+    x="211"
+    y="148"
+    fill="#a04e32"
+    font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif"
+    font-size="15"
+    font-weight="700"
+    letter-spacing="4.2"
+  >ZORG</text>
+</svg>

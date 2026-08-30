@@ -7,6 +7,8 @@ const settings = {
   language: "nl",
   privacyDisclosure: {
     enabled: true,
+    mode: "template",
+    body: null,
     version: "2026-07-10.1",
     effectiveAt: "2026-07-10T00:00:00.000Z",
     controller: {

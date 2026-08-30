@@ -98,7 +98,7 @@ describe("renderer snapshot loader environment gates", () => {
     await expect(listPublishedPaths("renderer.example.test")).resolves.toEqual(["/", "/services", "/about"])
   })
 
-  it("accepts canonical provider tenant snapshots from CMS responses", async () => {
+  it("accepts canonical owned tenant snapshots from CMS responses", async () => {
     process.env = {
       ...ORIGINAL_ENV,
       NODE_ENV: "production",
@@ -115,7 +115,7 @@ describe("renderer snapshot loader environment gates", () => {
     const { loadPublishedSnapshot } = await importSnapshotLib()
 
     await expect(loadPublishedSnapshot("ami-care.nl")).resolves.toMatchObject({
-      tenantSlug: "amicare",
+      tenantSlug: "ami-care",
       domain: "ami-care.nl",
     })
   })

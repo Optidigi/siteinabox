@@ -229,34 +229,25 @@ describe("legal document synchronization", () => {
     expect(payload.update).not.toHaveBeenCalled()
   })
 
-  it("overlays renewed consent policy without mutating the active snapshot", () => {
-    const snapshot: MockDoc = { settings: { siteName: "Demo", analyticsConsent: { consentVersion: "old" }, chrome: { banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Cookies" } } } }
+  it("overlays renewed consent policy while preserving the settings-owned consent presentation", () => {
+    const snapshot: MockDoc = { settings: { siteName: "Demo", analyticsConsent: { consentVersion: "old" }, consent: { visible: true, message: "Cookies" } } }
     const consent = { enabled: true, provider: "posthog", consentVersion: "legal:platform-privacy:nl:2026-08-01.1" }
 
     const served = asMockDoc(applyTenantAnalyticsConsentPolicy(snapshot, { analyticsConsent: consent }))
 
     expect(asMockDoc(served.settings).analyticsConsent).toEqual(consent)
-    expect(asMockDoc(asMockDoc(served.settings).chrome).banner).toMatchObject({
-      variant: "shadcnui-blocks.banner-03",
-      title: "Cookies",
-      message: "Cookies",
-    })
+    expect(asMockDoc(served.settings).consent).toMatchObject({ visible: true, message: "Cookies" })
     expect((snapshot.settings as MockDoc).analyticsConsent).toMatchObject({ consentVersion: "old" })
-    expect((((snapshot.settings as MockDoc).chrome as MockDoc).banner as MockDoc).variant).toBe("shadcnui-blocks.banner-01")
+    expect((snapshot.settings as MockDoc).consent).toMatchObject({ visible: true, message: "Cookies" })
   })
 
-  it("materializes the approved consent banner when consent is enabled without chrome content", () => {
+  it("does not invent a consent presentation when settings have none", () => {
     const snapshot: MockDoc = { settings: { siteName: "Demo" } }
     const consent = { enabled: true, provider: "posthog", consentVersion: "v2" }
 
     const served = asMockDoc(applyTenantAnalyticsConsentPolicy(snapshot, { analyticsConsent: consent }))
 
-    expect(asMockDoc(asMockDoc(served.settings).chrome).banner).toMatchObject({
-      variant: "shadcnui-blocks.banner-03",
-      visible: true,
-      dismissible: false,
-    })
-    expect(asMockDoc(asMockDoc(asMockDoc(served.settings).chrome).banner).message).toMatch(/cookies en vergelijkbare technologieën/)
+    expect(asMockDoc(served.settings).consent).toBeUndefined()
     expect(snapshot).toEqual({ settings: { siteName: "Demo" } })
   })
 })

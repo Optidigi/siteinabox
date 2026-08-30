@@ -8,29 +8,29 @@ describe("navigation zone handoff", () => {
     const page = read("src/app/(frontend)/(admin)/sites/[slug]/navigation/page.tsx")
 
     expect(page).toContain("searchParams?: Promise<{ zone?: string | string[] }>")
-    expect(page).toContain('const initialZone: NavZone = zoneParam === "footer" ? "footer" : "header"')
+    expect(page).toContain('const initialZone: NavZone = zoneParam === "footer" ? "footer" : "navbar"')
     expect(page).toContain("initialZone={initialZone}")
   })
 
   it("uses the provided initial zone as the first selected navigation tab", () => {
     const manager = read("src/components/navigation/NavigationManager.tsx")
 
-    expect(manager).toContain('initialZone = "header"')
+    expect(manager).toContain('initialZone = "navbar"')
     expect(manager).toContain("initialZone?: NavZone")
     expect(manager).toContain("const [zone, setZone] = React.useState<NavZone>(initialZone)")
   })
 
-  it("keeps visible Dutch navigation zone labels literal as Header and Footer", () => {
+  it("keeps visible Dutch navigation zone labels literal as Navbar and Footer", () => {
     const nl = JSON.parse(read("src/locales/nl.json")) as {
       navigation: { header: string; footer: string }
-      editor: { includeHeaderNavigation: string; includeFooterNavigation: string }
+      editor: { includeNavbarNavigation: string; includeFooterNavigation: string }
     }
 
-    expect(nl.navigation.header).toBe("Header")
+    expect(nl.navigation.header).toBe("Navbar")
     expect(nl.navigation.footer).toBe("Footer")
-    expect(nl.editor.includeHeaderNavigation).toContain("Header")
+    expect(nl.editor.includeNavbarNavigation).toContain("Navbar")
     expect(nl.editor.includeFooterNavigation).toContain("Footer")
-    expect(nl.editor.includeHeaderNavigation).not.toContain("bovenmenu")
+    expect(nl.editor.includeNavbarNavigation).not.toContain("bovenmenu")
     expect(nl.editor.includeFooterNavigation).not.toContain("voetmenu")
   })
 })

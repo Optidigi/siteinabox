@@ -45,8 +45,17 @@ test("theme canvas exposes configured and server-resolved modes", () => {
   const dark = renderToStaticMarkup(React.createElement(ThemeCanvas, {
     theme: { version: 3, appearance: { mode: "dark" } },
   }))
+  const grid = renderToStaticMarkup(React.createElement(ThemeCanvas, {
+    theme: { version: 3, appearance: { mode: "light", backgroundMode: "grid" } },
+  }))
+  const ambient = renderToStaticMarkup(React.createElement(ThemeCanvas, {
+    theme: { version: 3, appearance: { mode: "light", backgroundMode: "ambient" } },
+  }))
   assert.match(system, /data-rt-mode="light"/)
   assert.match(system, /data-siab-theme-mode="system"/)
+  assert.match(system, /data-theme-background-mode="animation"/)
   assert.match(dark, /data-rt-mode="dark"/)
   assert.match(dark, /data-siab-theme-mode="dark"/)
+  assert.match(grid, /data-theme-background-mode="grid"/)
+  assert.match(ambient, /data-theme-background-mode="ambient"/)
 })

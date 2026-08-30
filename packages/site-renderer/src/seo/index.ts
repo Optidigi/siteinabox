@@ -1,6 +1,6 @@
 import type { MediaRef, Page, SiteSettings } from "@siteinabox/contracts"
+import { isHeroBlockType } from "@siteinabox/contracts"
 import { defaultMediaResolver, type MediaResolver } from "../media"
-import { extractRichText } from "../rich-text"
 
 export type SeoMetadata = {
   title: string
@@ -32,8 +32,7 @@ function mediaUrl(media: MediaRef, resolver?: MediaResolver): { url: string; alt
 
 export function pageDescriptionFromBlocks(page: Page): string | undefined {
   for (const block of page.blocks) {
-    if (block.blockType === "hero" && block.subheadline) return extractRichText(block.subheadline)
-    if (block.blockType === "richText") return extractRichText(block.body)
+    if (isHeroBlockType(block.blockType) && "body" in block && typeof block.body === "string" && block.body) return block.body
   }
   return undefined
 }

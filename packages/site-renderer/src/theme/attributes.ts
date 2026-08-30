@@ -8,6 +8,7 @@ export function normalizeThemeAttributes(theme: ThemeTokenSpec | null | undefine
     color: value.colors?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.colors.schemeId,
     font: value.fonts?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId,
     shape: value.shape?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId,
+    backgroundMode: value.appearance?.backgroundMode ?? DEFAULT_THEME_TOKEN_SPEC.appearance.backgroundMode,
     preference,
   }
 }
@@ -22,6 +23,7 @@ export function themeAttributeProps(theme: ThemeTokenSpec | null | undefined, sy
     "data-theme-color": value.color,
     "data-theme-font": value.font,
     "data-theme-shape": value.shape,
+    "data-theme-background-mode": value.backgroundMode,
     "data-siab-theme-mode": value.preference,
     "data-rt-mode": resolveColorMode(value.preference, null, systemDark),
   } as const
@@ -39,6 +41,7 @@ export function applyThemeAttributes(document: Document, theme: ThemeTokenSpec |
       root.dataset.themeColor = value.color
       root.dataset.themeFont = value.font
       root.dataset.themeShape = value.shape
+      root.dataset.themeBackgroundMode = value.backgroundMode
       root.dataset.siabThemeMode = value.preference
       root.dataset.rtMode = attributes["data-rt-mode"]
     }

@@ -751,7 +751,7 @@ original public `Host` to port `4321`; the CMS resolver treats
 snapshot. There is no inferred `www` mapping or canonical-domain redirect.
 
 The production renderer owns generated-site tenant domains. `ami-care.nl` is
-served from the same canonical provider-block snapshot contract as every other
+served from the same canonical first-party block snapshot contract as every other
 tenant. Its historical route is authorized by the system-owned,
 migration-backed `preCommerceRoutingAdoption` record—not a static hostname
 allowlist and not fabricated commerce history. Any future managed-domain row

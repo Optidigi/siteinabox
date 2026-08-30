@@ -1,9 +1,14 @@
-import type { GeneratedPageSpec, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import type { RtBlock, RtInline, RtRoot } from "@siteinabox/contracts/rich-text"
 import type { TenantPrivacyDisclosure } from "@siteinabox/contracts/site"
 
-export const TENANT_PRIVACY_PAGE_SLUG = "privacy-en-cookieverklaring"
-export const TENANT_PRIVACY_TEMPLATE_VERSION = "tenant-privacy-shadcnui-blocks-2026-07-18.1"
+/**
+ * Legal documents are settings-owned documents, not page blocks. The slug is
+ * still stable so the public renderer can expose the enabled document at a
+ * predictable URL.
+ */
+export const TENANT_PRIVACY_DOCUMENT_SLUG = "privacy-en-cookieverklaring"
+export const TENANT_PRIVACY_TEMPLATE_VERSION = "tenant-privacy-owned-2026-08-13.1"
 
 const text = (value: string, marks?: Array<"bold">): RtInline => ({
   t: "text",
@@ -21,52 +26,17 @@ const list = (items: string[]): RtBlock => ({
   })),
 })
 const blockRoot = (children: RtBlock[]): RtRoot => ({ t: "root", variant: "block", children })
-const inlineRoot = (value: string): RtRoot => ({ t: "root", variant: "inline", children: [text(value)] })
 
 const clean = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
-const derivedDisclosure = (spec: SiteGenerationSpec): TenantPrivacyDisclosure | null => {
-  if (spec.settings.privacyDisclosure?.enabled === false) return null
-  if (spec.settings.privacyDisclosure) return spec.settings.privacyDisclosure
-
-  const email = clean(spec.settings.contactEmail) ?? clean(spec.intake.contact?.email)
-  if (!email) return null
-  const facts = spec.intake.companyFacts
-  const formType = spec.intake.intakeBrief?.contactPreferences.formType
-
-  return {
-    enabled: true,
-    version: TENANT_PRIVACY_TEMPLATE_VERSION,
-    effectiveAt: spec.generatedAt ?? "2026-07-10T00:00:00.000Z",
-    controller: {
-      legalName: clean(spec.settings.nap?.legalName) ?? spec.tenant.name,
-      tradeName: spec.settings.siteName,
-      email,
-      privacyEmail: email,
-      kvkNumber: clean(spec.settings.nap?.kvkNumber) ?? clean(facts?.kvkNumber),
-      address: clean(spec.settings.contact?.address) ?? clean(facts?.address),
-    },
-    contactMethods: {
-      email: true,
-      phone: Boolean(clean(spec.settings.contact?.phone) ?? clean(spec.intake.contact?.phone)),
-      whatsapp: Boolean(spec.intake.intakeBrief?.contactPreferences.whatsappNumber),
-      forms: formType && formType !== "none"
-        ? { enabled: true, mode: "cms", retention: { kind: "days", days: 90 } }
-        : { enabled: false, mode: "direct" },
-    },
-    marketingTechnologies: [],
-    additionalProcessors: [],
-  }
-}
-
+/**
+ * Kept as an explicit no-op for callers that still run the legal normalization
+ * stage. Enabling a legal document is a deliberate settings decision; contact
+ * data alone must never publish one as a side effect of site generation.
+ */
 export function withDerivedTenantPrivacyDisclosure(spec: SiteGenerationSpec): SiteGenerationSpec {
-  if (!spec.settings || typeof spec.settings !== "object") return spec
-  if (spec.settings.privacyDisclosure) return spec
-  const disclosure = derivedDisclosure(spec)
-  return disclosure
-    ? { ...spec, settings: { ...spec.settings, privacyDisclosure: disclosure } }
-    : spec
+  return spec
 }
 
 const disclosureBody = (disclosure: TenantPrivacyDisclosure): RtRoot => {
@@ -106,7 +76,7 @@ const disclosureBody = (disclosure: TenantPrivacyDisclosure): RtRoot => {
       ? [paragraph(text(`Formulierinzendingen worden normaal maximaal ${forms.retention.days} dagen bewaard, tenzij eerdere verwijdering of langere wettelijke bewaring nodig is.`))]
       : []),
     heading("3. Cookies en analytics"),
-    paragraph(text("Noodzakelijke technieken kunnen worden gebruikt voor beveiliging, formulierafhandeling en de werking van de website. Site in a Box kan privacyvriendelijke bezoek- en prestatiestatistieken zonder analyticscookies of lokale tracking-ID opslaan. Alleen met uw toestemming worden aanvullende interacties, sessie-informatie en conversies gemeten. U kunt die keuze via de cookiebanner maken of intrekken. Marketingtechnieken worden niet door de standaard Site in a Box-runtime geactiveerd.")),
+    paragraph(text("Noodzakelijke technieken kunnen worden gebruikt voor beveiliging, formulierafhandeling en de werking van de website. Site in a Box kan privacyvriendelijke bezoek- en prestatiestatistieken zonder analyticscookies of lokale tracking-ID opslaan. Aanvullende interacties, sessie-informatie en conversies worden alleen verwerkt wanneer de gekozen instellingen dat toestaan. Marketingtechnieken worden niet door de standaard Site in a Box-runtime geactiveerd.")),
     heading("4. Technische dienstverlening"),
     paragraph(text("Site in a Box levert de technische websiteomgeving. Optidigi, handelend onder de naam Site in a Box, verwerkt daarbij voor zover van toepassing persoonsgegevens in opdracht van de ondernemer als verwerker.")),
     ...(processors.length
@@ -125,78 +95,40 @@ const disclosureBody = (disclosure: TenantPrivacyDisclosure): RtRoot => {
   ])
 }
 
-const privacyPage = (disclosure: TenantPrivacyDisclosure, siteName: string): GeneratedPageSpec => ({
-  slug: TENANT_PRIVACY_PAGE_SLUG,
-  title: "Privacy- en cookieverklaring",
-  status: "draft",
-  seo: {
-    title: `Privacy- en cookieverklaring | ${siteName}`,
-    description: `Lees hoe ${siteName} persoonsgegevens en websitegegevens verwerkt.`,
-  },
-  blocks: [
-    {
-      blockType: "hero",
-      designVariant: "shadcnui-blocks.hero-01",
-      metadata: { source: "system", systemRole: "tenant-privacy", templateVersion: TENANT_PRIVACY_TEMPLATE_VERSION },
-      eyebrow: inlineRoot("Privacy en cookies"),
-      headline: inlineRoot("Privacy- en cookieverklaring"),
-      subheadline: blockRoot([paragraph(text(`Informatie over de verwerking van persoonsgegevens via ${siteName}.`))]),
-    },
-    {
-      blockType: "contentSection",
-      designVariant: "shadcnui-blocks.legal-content-01",
-      metadata: { source: "system", systemRole: "tenant-privacy", templateVersion: TENANT_PRIVACY_TEMPLATE_VERSION },
-      body: disclosureBody(disclosure),
-    },
-  ],
+export const materializeTenantPrivacyDisclosureValue = (disclosure: TenantPrivacyDisclosure): TenantPrivacyDisclosure => ({
+  ...disclosure,
+  enabled: true,
+  mode: disclosure.mode === "custom" ? "custom" : "template",
+  title: clean(disclosure.title) ?? "Privacy- en cookieverklaring",
+  body: disclosure.mode === "custom" && disclosure.body ? disclosure.body : disclosureBody(disclosure),
 })
 
-export function materializeTenantPrivacyPage<T extends SiteGenerationSpec>(spec: T): T {
-  if (!spec.settings || typeof spec.settings !== "object" || !Array.isArray(spec.pages)) return spec
-  const disclosure = spec.settings.privacyDisclosure
-  if (!disclosure || disclosure.enabled === false) return spec
-  const existing = spec.pages.find((page) =>
-    page.slug === TENANT_PRIVACY_PAGE_SLUG || page.slug === "privacy",
-  )
-  const slug = existing?.slug ?? TENANT_PRIVACY_PAGE_SLUG
+/**
+ * Materializes the enabled settings document without adding a page or a page
+ * block. The public route consumes `settings.privacyDisclosure` directly.
+ */
+export function materializeTenantPrivacyDisclosure<T extends SiteGenerationSpec>(spec: T): T {
+  const disclosure = spec.settings?.privacyDisclosure
+  if (!disclosure || disclosure.enabled !== true) return spec
+
+  const nextDisclosure = materializeTenantPrivacyDisclosureValue(disclosure)
   const legalLinks = spec.settings.chrome?.footer?.legalLinks ?? []
-  const hasLink = legalLinks.some((link) => link.href === `/${slug}`)
-  const pages = existing ? spec.pages : [...spec.pages, privacyPage(disclosure, spec.settings.siteName)]
-  const blocks = [...(spec.blocks ?? [])]
-  for (const entry of [
-    { slug: "hero" as const, label: "Hero" },
-    { slug: "contentSection" as const, label: "Legal content" },
-  ]) {
-    if (!blocks.some((block) => block.slug === entry.slug)) blocks.push(entry)
-  }
+  const hasLink = legalLinks.some((link) => link.href === `/${TENANT_PRIVACY_DOCUMENT_SLUG}`)
 
   return {
     ...spec,
     settings: {
       ...spec.settings,
-      privacyDisclosure: disclosure,
+      privacyDisclosure: nextDisclosure,
       chrome: {
         ...(spec.settings.chrome ?? {}),
         footer: {
           ...(spec.settings.chrome?.footer ?? {}),
           legalLinks: hasLink
             ? legalLinks
-            : [...legalLinks, { label: "Privacy en cookies", href: `/${slug}` }],
+            : [...legalLinks, { label: "Privacy en cookies", href: `/${TENANT_PRIVACY_DOCUMENT_SLUG}` }],
         },
       },
     },
-    pages,
-    blocks,
   } as T
-}
-
-export function isMaterializedTenantPrivacyBlock(pageSlug: string, block: Record<string, unknown>): boolean {
-  if (pageSlug !== TENANT_PRIVACY_PAGE_SLUG) return false
-  const metadata = block.metadata
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false
-  if ((metadata as Record<string, unknown>).source !== "system" || (metadata as Record<string, unknown>).systemRole !== "tenant-privacy") return false
-  return (
-    (block.blockType === "hero" && block.designVariant === "shadcnui-blocks.hero-01") ||
-    (block.blockType === "contentSection" && block.designVariant === "shadcnui-blocks.legal-content-01")
-  )
 }

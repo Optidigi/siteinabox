@@ -27,12 +27,17 @@ async function stopChild(child) {
   }
 }
 
-test("routes production hosts through canonical provider snapshots and keeps 404s analytics-free", async (t) => {
+test("routes production hosts through canonical snapshots and keeps 404s analytics-free", async (t) => {
   const cms = await startStubCms()
   await assertStubCmsSnapshots(cms)
   const dataDir = await mkdtemp(join(tmpdir(), "siab-renderer-media-"))
   await mkdir(join(dataDir, "tenants", "tenant-ami-care", "media"), { recursive: true })
   await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "bedroom.jpg"), "stub media")
+  await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "toys.jpg"), "stub media")
+  await writeFile(
+    join(dataDir, "tenants", "tenant-ami-care", "media", "amicare-logo.svg"),
+    "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M0 0h1v1H0z\"/></svg>",
+  )
   await writeFile(
     join(dataDir, "tenants", "tenant-ami-care", "media", "favicon.svg"),
     "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",
@@ -43,6 +48,9 @@ test("routes production hosts through canonical provider snapshots and keeps 404
     cwd: process.cwd(),
     env: {
       ...process.env,
+      // Astro 7 backgrounds dev servers when it detects an agent. The smoke
+      // test owns this child and must keep it in the foreground to clean it up.
+      ASTRO_DEV_BACKGROUND: "0",
       NODE_ENV: "test",
       SIAB_CMS_URL: cms.url,
       SIAB_RENDERER_API_TOKEN: TEST_RENDERER_API_TOKEN,

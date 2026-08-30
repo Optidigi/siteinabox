@@ -1,3 +1,9 @@
+import type {
+  ConsentSelection,
+  ConsentSelectionInput,
+  ConsentSnapshot,
+} from "@siteinabox/contracts"
+
 type AnalyticsConfig = {
   enabled?: boolean
   provider?: "posthog"
@@ -51,6 +57,9 @@ type PostHogClient = {
 
 type RuntimeState = {
   consentGranted: boolean
+  consentPreferencesGranted: boolean
+  consentMarketingGranted: boolean
+  consentDecided: boolean
   initialized: boolean
   posthogStarted: boolean
   posthog: PostHogClient | null
@@ -86,6 +95,8 @@ type AutocaptureActionSnapshot = {
 declare global {
   interface Window {
     SIABAnalytics?: {
+      getConsent: () => ConsentSnapshot
+      applyConsent: (selection: ConsentSelectionInput) => void
       grantConsent: () => void
       revokeConsent: () => void
     }
@@ -94,6 +105,9 @@ declare global {
 
 const state: RuntimeState = {
   consentGranted: false,
+  consentPreferencesGranted: false,
+  consentMarketingGranted: false,
+  consentDecided: false,
   initialized: false,
   posthogStarted: false,
   posthog: null,
@@ -561,12 +575,12 @@ const safeReferrerPath = () => {
   }
 }
 
-const persistConsentReceipt = (accepted: boolean) => {
+const persistConsentReceipt = (selection: ConsentSelection) => {
   const config = state.config
   const storageKey = config?.consentStorageKey || legacyCookieConsentStorageKey
   const receipt = {
     version: config?.consentVersion || "1",
-    categories: { necessary: true, analytics: accepted },
+    categories: { necessary: true, ...selection },
   }
   try {
     window.localStorage.setItem(storageKey, JSON.stringify(receipt))
@@ -580,8 +594,7 @@ const sectionProperties = (section: Element) => ({
   section_type: section.getAttribute("data-siab-section-type") || "unknown",
   section_position: Number(section.getAttribute("data-siab-section-position") || 0),
   section_anchor: section.getAttribute("data-siab-section-anchor") || null,
-  provider_variant: section.getAttribute("data-siab-provider-variant") || null,
-  block_preset_id: section.getAttribute("data-siab-block-preset-id") || null,
+  variant: null,
   content_signature: section.getAttribute("data-siab-content-signature") || null,
 })
 
@@ -966,42 +979,79 @@ const initializeAfterConsent = () => {
 
 state.config = readConfig()
 
+const activateAnalyticsConsent = () => {
+  if (state.consentGranted) return
+  state.consentGranted = true
+  consentEpoch += 1
+  if (state.posthog) {
+    installPostHogConsentGate(state.posthog)
+    activateConsentedPostHog(state.posthog)
+  }
+  else setupPostHogAutocapture()
+}
+
+const deactivateAnalyticsConsent = () => {
+  const wasGranted = state.consentGranted
+  state.consentGranted = false
+  consentEpoch += 1
+  posthogStartupToken += 1
+  teardownConsentedResources()
+  if (!state.posthog) state.posthogStarted = false
+  if (wasGranted && state.posthog) {
+    // PostHog has no public API to abort an in-flight request. The gate above
+    // prevents consented payloads from entering or re-entering its transport
+    // after revoke; a request already accepted by the network cannot be recalled.
+    installPostHogConsentGate(state.posthog)
+    state.posthog.opt_out_capturing?.()
+    state.posthog.clear_opt_in_out_capturing?.()
+  }
+  try {
+    window.localStorage.removeItem("siab_analytics_distinct_id")
+    window.sessionStorage.removeItem("siab_analytics_session_id")
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+  if (!state.posthog) setupPostHogAutocapture()
+}
+
+const normalizeConsentSelection = (selection: ConsentSelectionInput): ConsentSelection => ({
+  preferences: selection.preferences === true,
+  analytics: selection.analytics === true,
+  marketing: selection.marketing === true,
+})
+
+const applyConsentSelection = (selection: ConsentSelection) => {
+  state.consentDecided = true
+  state.consentPreferencesGranted = selection.preferences
+  state.consentMarketingGranted = selection.marketing
+  if (selection.analytics) activateAnalyticsConsent()
+  else deactivateAnalyticsConsent()
+  persistConsentReceipt({ ...selection, analytics: state.consentGranted })
+}
+
+const grantConsent = () => {
+  applyConsentSelection({ preferences: false, analytics: true, marketing: false })
+}
+
+const revokeConsent = () => {
+  applyConsentSelection({ preferences: false, analytics: false, marketing: false })
+}
+
 window.SIABAnalytics = {
-  grantConsent() {
-    if (state.consentGranted) return
-    state.consentGranted = true
-    consentEpoch += 1
-    persistConsentReceipt(true)
-    if (state.posthog) {
-      installPostHogConsentGate(state.posthog)
-      activateConsentedPostHog(state.posthog)
+  getConsent() {
+    return {
+      necessary: true,
+      preferences: state.consentPreferencesGranted,
+      analytics: state.consentGranted,
+      marketing: state.consentMarketingGranted,
+      decided: state.consentDecided,
     }
-    else setupPostHogAutocapture()
   },
-  revokeConsent() {
-    const wasGranted = state.consentGranted
-    state.consentGranted = false
-    consentEpoch += 1
-    posthogStartupToken += 1
-    teardownConsentedResources()
-    if (!state.posthog) state.posthogStarted = false
-    if (wasGranted && state.posthog) {
-      // PostHog has no public API to abort an in-flight request. The gate above
-      // prevents consented payloads from entering or re-entering its transport
-      // after revoke; a request already accepted by the network cannot be recalled.
-      installPostHogConsentGate(state.posthog)
-      state.posthog.opt_out_capturing?.()
-      state.posthog.clear_opt_in_out_capturing?.()
-    }
-    persistConsentReceipt(false)
-    try {
-      window.localStorage.removeItem("siab_analytics_distinct_id")
-      window.sessionStorage.removeItem("siab_analytics_session_id")
-    } catch {
-      // Storage can be unavailable in privacy-restricted browser contexts.
-    }
-    if (!state.posthog) setupPostHogAutocapture()
+  applyConsent(selection) {
+    applyConsentSelection(normalizeConsentSelection(selection))
   },
+  grantConsent,
+  revokeConsent,
 }
 
 const storedConsent = (() => {
@@ -1014,18 +1064,31 @@ const storedConsent = (() => {
     )
     if (!stored) return null
     if (stored === "accepted" || stored === "declined") {
-      return state.config?.consentVersion ? null : stored
+      return state.config?.consentVersion
+        ? null
+        : { preferences: false, analytics: stored === "accepted", marketing: false }
     }
     const receipt = JSON.parse(stored) as {
       version?: unknown
-      categories?: { analytics?: unknown }
+      categories?: {
+        preferences?: unknown
+        analytics?: unknown
+        marketing?: unknown
+      }
     }
     if (String(receipt.version ?? "") !== String(state.config?.consentVersion ?? "1")) return null
-    return receipt.categories?.analytics === true ? "accepted" : "declined"
+    return {
+      preferences: receipt.categories?.preferences === true,
+      analytics: receipt.categories?.analytics === true,
+      marketing: receipt.categories?.marketing === true,
+    }
   } catch {
     return null
   }
 })()
 
-state.consentGranted = storedConsent === "accepted"
+state.consentPreferencesGranted = storedConsent?.preferences === true
+state.consentGranted = storedConsent?.analytics === true
+state.consentMarketingGranted = storedConsent?.marketing === true
+state.consentDecided = storedConsent !== null
 setupPostHogAutocapture()

@@ -11,7 +11,8 @@ executable configuration remain authoritative for exact behavior.
   publishing authority.
 - `apps/renderer` resolves tenants by request host and renders their active
   published snapshots.
-- `packages/contracts` owns shared data shapes and the block catalog contract.
+- `packages/contracts` owns shared data shapes and the first-party semantic
+  block contracts.
 - `packages/ui` owns shared primitives, tokens, and application-neutral UI.
 - `packages/site-renderer` owns rendering shared by CMS preview/editor surfaces
   and the public renderer.
@@ -37,17 +38,19 @@ trees, GitHub workflows, application images, or arbitrary executable AI output.
 ## Rendering
 
 Contracts under `packages/contracts` define the accepted site and block shapes.
-The reviewed block catalog and generated artifacts define approved variants and
-provider provenance. Prose does not maintain a copied variant count.
+Each Sitegen section owns a semantic Zod contract; the approved hero family
+also owns numbered design variants. The Sitegen catalog in
+`apps/cms/src/lib/sitegen` describes section purpose and deterministic input
+eligibility; it does not own React components or Payload field definitions.
 
 CMS preview and public output share `packages/site-renderer`. CMS may add editor
 chrome around that output but must not add another block renderer or mutate an
 iframe's DOM/geometry to simulate parity. Missing or unknown variants fail
 closed.
 
-Ami Care uses the same validated provider-block, chrome, theme, media, preview,
-and published-snapshot path as every generated tenant. Tenant identity affects
-content and routing only; it never selects a source-code renderer.
+Ami Care uses the same validated first-party block, theme, media, preview, and
+published-snapshot path as every generated tenant. Tenant identity
+affects content and routing only; it never selects a source-code renderer.
 
 Public renderer routing is TLD-neutral but not open-ended. A canonical domain
 is eligible only when its managed-domain record has active entitlement plus
@@ -72,41 +75,43 @@ HTTPS, and when `X-Forwarded-Host` is present it must match. Health checks insid
 the private container network are the only unauthenticated exception.
 Unknown or invalid hosts fail with a tenant-neutral 404.
 
-### Typed public block variants
+### First-party Sitegen semantic blocks
 
-All public shadcnui-blocks block variants are direct-bound. The canonical
-catalog and generated inventory own the current count; this prose does not
-maintain a copied count. Each renders through an owned typed component under
-`packages/site-renderer/src/providers/shadcnui-blocks/variants/<name>/`
-with a typed `view.tsx` mapper. Shared helpers live in
-`packages/site-renderer/src/providers/shadcnui-blocks/typed/` (rich-text
-preview fixtures, element paths, and edit-slot renderers). The compile-time
-registry in `typed/registry.ts` ties each variant ID to its canonical block
-type, direct bindings, and view module. Catalog integrity asserts that public
-block `view.tsx` files do not use `LiteralProviderVariantView` or `Provider*`
-binding runtime. Generated dispatch in `block-views.generated.tsx` imports
-those typed views; it is not a literal `Provider*` fallback path.
+The ten Sitegen section families are `hero`, `services`, `about`, `process`,
+`work`, `reviews`, `pricing`, `faq`, `cta`, and `contact`. Each family owns a
+small semantic contract under `packages/contracts/src/blocks/`. The current
+hero set is one semantic `hero` block family with five explicit code-owned
+design IDs—`hero-01` through `hero-05`—so each reviewed design has a clear
+asset requirement, Payload option, Sitegen catalog entry, and local renderer
+case. Retired designs are not active in the contract, catalog, Payload
+registry, or renderer.
+The approved design variants currently cover `hero-01` through `hero-05`,
+`services-01` through `services-02`, and `cta-01` through `cta-02`. The other
+seven families remain semantic-only and render an explicit pending marker until
+their own designs are approved. `RenderBlock` uses an exhaustive block-type
+switch.
+There is no provider abstraction, runtime block registry, component-tree
+payload, or generated component source.
 
-Chrome variants, system templates, and runtime support files may still use
-literal helpers (for example `runtime/literal-view.tsx` and
-`literal-previews.generated.tsx`). Do not describe chrome as fully typed
-unless source and tests prove it.
+CMS preview/editor and public pages call the same `packages/site-renderer`
+components. CMS may add edit slots and selection attributes around that output,
+but it does not maintain a second block renderer or iframe geometry protocol.
+Static sections remain server-rendered; only the smallest interactive boundary
+(such as FAQ disclosure or an existing contact form) may use client behavior.
 
-Re-import and scaffold workflows live under `scripts/shadcnui-blocks/`:
-
-- `node scripts/import-shadcnui-blocks.mjs` acquires the pinned upstream
-  commit, applies generic literal normalization, runs legacy binding compilation
-  only for non-`bindings.direct` variants (currently none public), and
-  refreshes `inventory.json`.
-- Direct-bound variants keep owned sources on re-import; the importer skips
-  `compileBlockBindings` for every `bindings.direct` entry.
-- `node scripts/import-shadcnui-blocks.mjs --scaffold=<upstream-name>
-  --upstream-literal=@path/to/literal.tsx` creates a typed adaptation scaffold
-  (normalized `upstream-literal.tsx`, stub component, view mapper, fixture stub).
-  It refuses to overwrite direct-bound variants unless `--force` is passed.
-- Variant-specific literal surgery is centralized in
-  `scripts/shadcnui-blocks/variant-special-cases.mjs`; generic normalization
-  in `adapt-literal.mjs` must remain variant-agnostic.
+The generated-site shell is a separate settings-owned concern, not a
+`Page.blocks` choice. Active numbered chrome currently includes
+`navbar-01` through `navbar-03`, `footer-01`, and `consent-01`; all use the
+shared renderer and their own local switches. Navbar and footer choices are
+settings/catalog concerns, while consent is a policy-controlled runtime
+surface rather than a Sitegen page-section choice. Announcement remains
+settings-owned data until a numbered announcement design exists. Maintenance
+and not-found use dedicated inline system output with editable settings copy,
+not numbered variants. The enabled legal disclosure is also settings-owned:
+its structured `RtRoot` body is rendered at its stable document route and is
+never represented as a page block. CMS/admin controls and governed
+legal/analytics infrastructure stay outside the customer page-section
+catalog.
 
 ## Operational ownership
 

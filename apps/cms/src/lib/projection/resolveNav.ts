@@ -4,7 +4,7 @@ import { isSafeHref } from "@/lib/security/safeHref"
 // site renderer consumes. The discriminated union (page | section | custom)
 // is internal to the CMS; `site.json` only ever sees `{ label, href, external }`.
 
-/** A navigation entry as stored on `SiteSettings.navHeader` / `navFooter`. */
+/** A navigation entry as stored on `SiteSettings.navigation.primary` / `footer`. */
 export type NavEntry = {
   type: "page" | "section" | "custom" | "group"
   /** Relationship value — bare id (depth 0) or populated object (depth 1+). */

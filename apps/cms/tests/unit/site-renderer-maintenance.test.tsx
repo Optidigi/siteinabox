@@ -1,45 +1,43 @@
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
-import { SitePageRenderer, v1FixturePage, v1FixtureSettings } from "@siteinabox/site-renderer"
-import type { SiteSettings } from "@siteinabox/contracts"
+import { LegalDocumentPage, SitePageRenderer, v1FixturePage, v1FixtureSettings } from "@siteinabox/site-renderer"
+import type { SiteSettings, TenantPrivacyDisclosure } from "@siteinabox/contracts"
 
-const renderGenericSite = (settings: SiteSettings) =>
-  renderToStaticMarkup(
-    <SitePageRenderer
-      page={{ ...v1FixturePage, blocks: [] }}
-      settings={settings}
-    />,
-  )
+const legalDocument: TenantPrivacyDisclosure = {
+  enabled: true,
+  mode: "custom",
+  title: "Privacy- en cookieverklaring",
+  body: { t: "root", variant: "block", children: [{ t: "paragraph", children: [{ t: "text", v: "Eigen document." }] }] },
+  version: "test-1",
+  effectiveAt: "2026-08-25T00:00:00.000Z",
+  controller: { legalName: "Voorbeeld B.V.", email: "privacy@example.test" },
+}
 
-describe("generic site renderer maintenance banner", () => {
-  it("renders the configured maintenance message without replacing the chrome banner", () => {
-    const html = renderGenericSite({
-      ...v1FixtureSettings,
-      maintenance: {
-        enabled: true,
-        message: "We are updating this site tonight.",
-        variant: "shadcnui-blocks.banner-02",
-      },
-    })
-
-    expect(html).toContain('data-provider-variant="shadcnui-blocks.banner-01"')
-    expect(html).toContain("Reusable chrome variants are available for generated sites.")
-    expect(html).toContain('data-provider-variant="shadcnui-blocks.banner-02"')
-    expect(html).toContain("We are updating this site tonight.")
-    expect(html.indexOf('data-provider-variant="shadcnui-blocks.banner-01"')).toBeLessThan(html.indexOf('data-provider-variant="shadcnui-blocks.navbar-'))
+describe("first-party site renderer shell", () => {
+  it("renders the configured navbar and first-party footer", () => {
+    const html = renderToStaticMarkup(
+      <SitePageRenderer page={{ ...v1FixturePage, blocks: [] }} settings={v1FixtureSettings} />,
+    )
+    expect(html).toContain("data-siab-site-renderer")
+    expect(html).toContain("data-siab-navbar-frame")
+    expect(html).toContain('data-siab-footer="true"')
+    expect(html).toContain('data-footer-variant="footer-01"')
+    expect(html).toContain("Footer navigation")
+    expect(html).not.toContain("data-siab-cookie-consent")
+    expect(html).not.toContain("data-system-template")
   })
 
-  it("omits maintenance chrome when maintenance is disabled", () => {
-    const html = renderGenericSite({
+  it("renders the settings-owned legal document separately from page blocks", () => {
+    const settings: SiteSettings = {
       ...v1FixtureSettings,
-      maintenance: {
-        enabled: false,
-        message: "Hidden maintenance message.",
-      },
-    })
-
-    expect(html).not.toContain("data-siab-site-maintenance-banner")
-    expect(html).not.toContain("Hidden maintenance message.")
-    expect(html).toContain('data-provider-variant="shadcnui-blocks.banner-01"')
+      privacyDisclosure: legalDocument,
+    }
+    const html = renderToStaticMarkup(
+      <LegalDocumentPage document={settings.privacyDisclosure!} />,
+    )
+    expect(html).toContain("data-siab-legal-document")
+    expect(html).toContain("Privacy- en cookieverklaring")
+    expect(html).toContain("Eigen document.")
+    expect(html).not.toContain('data-block-type="richText"')
   })
 })

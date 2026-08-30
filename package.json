@@ -8,7 +8,6 @@
     "node": ">=26.0.0 <27.0.0"
   },
   "scripts": {
-    "audit:provider-cutover": "node scripts/check-generated-site-provider-cutover.mjs",
     "check:ci": "node scripts/run-verification.mjs ci",
     "check:fast": "node scripts/run-verification.mjs fast",
     "check:toolchain": "node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
@@ -36,8 +35,6 @@
     "renderer:deploy-contract": "node scripts/check-renderer-deploy-contract.mjs",
     "renderer:test": "pnpm --dir apps/renderer test",
     "renderer:typecheck": "pnpm --dir apps/renderer typecheck",
-    "provider:visual-parity": "pnpm renderer:build && pnpm --dir packages/site-renderer visual:provider-parity",
-    "provider:structural:fingerprint": "node scripts/shadcnui-blocks/structural-fingerprint.mjs",
     "site-renderer:typecheck": "pnpm --dir packages/site-renderer typecheck",
     "site:build": "pnpm landing:build",
     "site:test": "pnpm landing:test",

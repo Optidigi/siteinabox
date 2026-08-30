@@ -104,16 +104,6 @@ await build({
   outfile: path.join(outDir, "retry-legal-notification.bundled.mjs"),
 })
 
-// One-off repopulation tool (rt-v2 post-migration recovery). See script
-// header for invocation. Bundled here so it ships in the Docker image's
-// /app/dist-runtime/ and can be invoked via `docker exec siteinabox-cms node
-// /app/dist-runtime/repopulate-richtext-from-snapshot.bundled.mjs ...`.
-await build({
-  ...sharedBuildOpts,
-  entryPoints: [path.join(repoRoot, "scripts/repopulate-richtext-from-snapshot-entry.ts")],
-  outfile: path.join(outDir, "repopulate-richtext-from-snapshot.bundled.mjs"),
-})
-
 // Operator-run renderer staging bootstrap. This ships in the CMS runtime image
 // so production seeding uses the same reviewed image artifact as the app,
 // without depending on TS source files, pnpm, or dev dependencies in the

@@ -10,7 +10,7 @@ export type VariantRankingConfidence = "insufficient" | "directional" | "establi
 
 export type VariantRankingInput = {
   sectionType: string
-  providerVariant: string
+  variant: string
   views: number
   exposedVisitors: number
   engagements: number
@@ -55,10 +55,10 @@ const confidenceFor = (row: VariantRankingInput): VariantRankingConfidence => {
   return "directional"
 }
 
-export const rankProviderVariants = (input: VariantRankingInput[]): VariantRankingMetric[] => {
+export const rankVariants = (input: VariantRankingInput[]): VariantRankingMetric[] => {
   const bySectionType = new Map<string, VariantRankingInput[]>()
   for (const row of input) {
-    if (!row.sectionType.trim() || !row.providerVariant.trim() || row.exposedVisitors <= 0) continue
+    if (!row.sectionType.trim() || !row.variant.trim() || row.exposedVisitors <= 0) continue
     const peers = bySectionType.get(row.sectionType) ?? []
     peers.push(row)
     bySectionType.set(row.sectionType, peers)
@@ -103,13 +103,13 @@ export const rankProviderVariants = (input: VariantRankingInput[]): VariantRanki
 
     const eligible = metrics
       .filter((row) => row.score != null)
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.exposedVisitors - a.exposedVisitors || a.providerVariant.localeCompare(b.providerVariant))
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.exposedVisitors - a.exposedVisitors || a.variant.localeCompare(b.variant))
     if (eligible.length >= 2) eligible.forEach((row, index) => { row.rank = index + 1 })
 
     ranked.push(...metrics.sort((a, b) =>
       (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER)
       || b.exposedVisitors - a.exposedVisitors
-      || a.providerVariant.localeCompare(b.providerVariant),
+      || a.variant.localeCompare(b.variant),
     ))
   }
 

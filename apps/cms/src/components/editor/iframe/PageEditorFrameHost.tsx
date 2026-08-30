@@ -13,10 +13,15 @@ import {
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
+import { PreviewFrameLoading } from "@/components/preview/PreviewFrameLoading"
 
 export type PageEditorFrameLayout = "desktop" | "mobile"
 
 const PAGE_SNAPSHOT_DEBOUNCE_MS = 80
+const FRAME_LOADING_FADE_MS = 220
+const FRAME_LOADING_FILL_START_DELAY_MS = 120
+const FRAME_LOADING_FILL_MS = 320
+const FRAME_LOADING_POST_FILL_HOLD_MS = 180
 
 function selectionIdentity(selection: IframeEditorSelection | null | undefined): string {
   if (!selection) return ""
@@ -35,7 +40,6 @@ export function PageEditorFrameHost({
   selection,
   revealSelection = true,
   onSelectionChanged,
-  onChromeSelect,
 }: {
   pageId: string | number
   page: Page
@@ -48,25 +52,25 @@ export function PageEditorFrameHost({
   selection?: IframeEditorSelection | null
   revealSelection?: boolean
   onSelectionChanged?: (selection: IframeEditorSelection | null) => void
-  onChromeSelect?: (zone: "header" | "footer") => void
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const revisionRef = React.useRef(0)
   const [ready, setReady] = React.useState(false)
+  const [loadingProgress, setLoadingProgress] = React.useState(0)
+  const [loadingOverlayVisible, setLoadingOverlayVisible] = React.useState(true)
+  const [loadingOverlayMounted, setLoadingOverlayMounted] = React.useState(true)
   const [failed, setFailed] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
   const [retryKey, setRetryKey] = React.useState(0)
   const [frameHeight, setFrameHeight] = React.useState<number | null>(null)
   const readyRef = React.useRef(false)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
-  const onChromeSelectRef = React.useRef(onChromeSelect)
   /** Next selection flush came from the canvas — do not ask the frame to scroll. */
   const selectionFromCanvasRef = React.useRef(false)
   const lastPostedSelectionKeyRef = React.useRef("")
   onSelectionChangedRef.current = onSelectionChanged
-  onChromeSelectRef.current = onChromeSelect
   const isDesktopLayout = layout === "desktop"
 
   const src = React.useMemo(() => {
@@ -91,6 +95,9 @@ export function PageEditorFrameHost({
   React.useEffect(() => {
     readyRef.current = false
     setReady(false)
+    setLoadingProgress(0)
+    setLoadingOverlayVisible(true)
+    setLoadingOverlayMounted(true)
     setFailed(false)
     setFrameError(null)
     setFrameHeight(null)
@@ -109,6 +116,21 @@ export function PageEditorFrameHost({
   }, [ready, retryKey, src, t])
 
   React.useEffect(() => {
+    if (!ready) return
+    let fadeTimeout: number | undefined
+    const fillStartTimeout = window.setTimeout(() => setLoadingProgress(100), FRAME_LOADING_FILL_START_DELAY_MS)
+    const fadeStartTimeout = window.setTimeout(() => {
+      setLoadingOverlayVisible(false)
+      fadeTimeout = window.setTimeout(() => setLoadingOverlayMounted(false), FRAME_LOADING_FADE_MS)
+    }, FRAME_LOADING_FILL_START_DELAY_MS + FRAME_LOADING_FILL_MS + FRAME_LOADING_POST_FILL_HOLD_MS)
+    return () => {
+      window.clearTimeout(fillStartTimeout)
+      window.clearTimeout(fadeStartTimeout)
+      if (fadeTimeout != null) window.clearTimeout(fadeTimeout)
+    }
+  }, [ready, retryKey, src])
+
+  React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
       if (event.source !== frameRef.current?.contentWindow) return
@@ -122,6 +144,7 @@ export function PageEditorFrameHost({
         if (!readyRef.current) {
           revisionRef.current = 0
           readyRef.current = true
+          setLoadingProgress(72)
           setReady(true)
         }
         setFailed(false)
@@ -135,12 +158,6 @@ export function PageEditorFrameHost({
       if (message.type === "selection.changed") {
         selectionFromCanvasRef.current = true
         onSelectionChangedRef.current?.(message.selection)
-        return
-      }
-      if (message.type === "chrome.select") {
-        selectionFromCanvasRef.current = true
-        const zone = message.selection?.fieldPath?.[1]
-        if (zone === "header" || zone === "footer") onChromeSelectRef.current?.(zone)
         return
       }
       if (message.type === "error") {
@@ -245,35 +262,36 @@ export function PageEditorFrameHost({
         scrolling={isDesktopLayout ? "no" : undefined}
         style={isDesktopLayout && frameHeight != null ? { height: frameHeight } : undefined}
         className={cn(
-          "block w-full border-0 bg-transparent transition-opacity duration-150",
+          "block w-full border-0 bg-transparent transition-opacity duration-200 ease-out",
           isDesktopLayout ? "min-h-0" : "h-full min-h-0",
           ready ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}
+        onLoad={() => {
+          if (!readyRef.current) setLoadingProgress(72)
+        }}
         onError={() => {
           setFailed(true)
           setFrameError(t("editorFrameLoadFailedDescription"))
         }}
       />
-      {!ready && (
+      {(!ready || loadingOverlayMounted) && (
         <div
           className={cn(
-            "bg-background p-4",
-            isDesktopLayout ? "relative" : "absolute inset-0",
+            "bg-background p-4 transition-opacity duration-200 ease-out",
+            loadingOverlayVisible ? "opacity-100" : "pointer-events-none opacity-0",
+            isDesktopLayout && !ready ? "relative" : "absolute inset-0",
           )}
+          aria-hidden={ready && !failed ? true : undefined}
           aria-live="polite"
         >
           {!failed ? (
-            <div className="space-y-4 animate-pulse" aria-label={t("editorFrameLoading")}>
-              <div className="h-16 rounded-lg bg-muted" />
-              <div className="h-72 rounded-lg bg-muted" />
-              <div className="grid grid-cols-3 gap-4">
-                <div className="h-40 rounded-lg bg-muted" />
-                <div className="h-40 rounded-lg bg-muted" />
-                <div className="h-40 rounded-lg bg-muted" />
-              </div>
-            </div>
+            <PreviewFrameLoading
+              label={t("editorFrameLoading")}
+              progress={loadingProgress}
+              className={isDesktopLayout ? "min-h-[24rem]" : "h-full min-h-[32rem]"}
+            />
           ) : (
             <div className={cn("flex text-center", isDesktopLayout ? "min-h-[24rem] items-center justify-center" : "h-full items-center justify-center")}>
               <div className="max-w-sm rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">

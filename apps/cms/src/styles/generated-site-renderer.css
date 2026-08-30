@@ -1,5 +1,4 @@
 @import "tailwindcss" source(none);
-@import "@siteinabox/ui/providers/shadcnui-blocks/radix-nova/tailwind.css";
 @import "@siteinabox/site-renderer/styles.css";
 
 @plugin "@tailwindcss/forms";
@@ -7,7 +6,7 @@
 @custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *, [data-siab-color-mode="dark"], [data-siab-color-mode="dark"] *));
 
 @source "../../../../packages/site-renderer/src";
-@source "../../../../packages/ui/src/providers/shadcnui-blocks";
+@source "../../../../packages/ui/src/components";
 
 [data-siab-editor-frame-runtime] {
   position: relative;
@@ -22,19 +21,8 @@
 
 [data-siab-editor-frame-runtime] [data-block-index],
 [data-siab-editor-frame-runtime] [data-siab-field],
-[data-siab-editor-frame-runtime] :is(
-  [data-site-chrome="header"],
-  [data-siab-site-header],
-  .site-header,
-  header.site-chrome,
-  [data-amicare-nav],
-  [data-site-chrome="footer"],
-  [data-siab-site-footer],
-  .site-footer,
-  footer.site-chrome,
-  [data-site-chrome="banner"],
-  [data-siab-cookie-consent="true"]
-) {
+[data-siab-editor-frame-runtime] [data-siab-navbar],
+[data-siab-editor-frame-runtime] [data-siab-footer] {
   cursor: pointer;
   transition: outline-color 120ms ease, outline-offset 120ms ease;
 }
@@ -44,13 +32,13 @@
  * outline is not clipped by the painted node's own overflow:hidden.
  */
 [data-siab-editor-hover="block"],
-[data-siab-editor-hover="chrome"],
-[data-siab-editor-hover="field"] {
+[data-siab-editor-hover="field"],
+[data-siab-editor-hover="chrome"] {
   outline: 2px solid var(--siab-ed-ink-soft);
   outline-offset: 2px;
 }
 
-/* Block / chrome selected */
+/* Block selected */
 [data-siab-editor-selected="true"] {
   outline: 2px solid var(--siab-ed-ink);
   outline-offset: 2px;
@@ -92,14 +80,6 @@
 
 :is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .h-screen {
   height: var(--siab-preview-viewport-height);
-}
-
-[data-siab-cookie-consent="true"] {
-  bottom: max(1rem, env(safe-area-inset-bottom));
-}
-
-[data-siab-preview-viewport="true"]:not([data-siab-editor-frame-runtime]) [data-siab-cookie-consent="true"] {
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 5.5rem);
 }
 
 :is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .h-\[calc\(100svh-4rem\)\] {

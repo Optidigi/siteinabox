@@ -35,11 +35,6 @@
       "types": "./src/lib/utils.ts",
       "default": "./src/lib/utils.ts"
     },
-    "./providers/shadcnui-blocks/radix-nova": {
-      "types": "./src/providers/shadcnui-blocks/radix-nova/index.ts",
-      "default": "./src/providers/shadcnui-blocks/radix-nova/index.ts"
-    },
-    "./providers/shadcnui-blocks/radix-nova/tailwind.css": "./src/providers/shadcnui-blocks/radix-nova/tailwind.css",
     "./styles/shadcn.css": "./src/styles/shadcn.css"
   },
   "dependencies": {
@@ -48,7 +43,6 @@
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^1.31.0",
-    "motion": "^13.1.0",
     "radix-ui": "1.6.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",

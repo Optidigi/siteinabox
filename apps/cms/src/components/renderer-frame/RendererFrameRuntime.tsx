@@ -14,6 +14,12 @@ import {
   ClientSitePageRenderer,
   applyThemeAttributes,
   createRendererMediaResolver,
+  createPreviewConsentRuntime,
+  initializeHeroAmbientEffectsWhenPresent,
+  initializeHeroDitherEffects,
+  initializeHeroMeshEffectsWhenPresent,
+  initializeNavbarBehavior,
+  initializeConsentBehavior,
   prepareClientSiteRenderer,
   type PreparedClientSiteRenderer,
 } from "@siteinabox/site-renderer"
@@ -33,6 +39,7 @@ export function RendererFrameRuntime({
   page,
   settings,
   theme,
+  consentAvailable = false,
   tenantId,
   tenantSlug,
   domain,
@@ -41,6 +48,7 @@ export function RendererFrameRuntime({
   page: Page
   settings: SiteSettings
   theme: ThemeTokenSpec | null
+  consentAvailable?: boolean
   tenantId: string | number
   tenantSlug?: string | null
   domain?: string | null
@@ -52,8 +60,12 @@ export function RendererFrameRuntime({
   const cspNonce = useCspNonce()
   const revisionRef = React.useRef(0)
   const themeCleanupRef = React.useRef<(() => void) | null>(null)
+  const previewConsentRuntime = React.useMemo(
+    () => mode === "preview" ? createPreviewConsentRuntime() : null,
+    [mode],
+  )
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
-  const variantKey = framePage.blocks.map((block) => `${block.blockType}:${block.designVariant ?? ""}`).join("|")
+  const blockKey = framePage.blocks.map((block) => block.blockType).join("|")
   const [prepared, setPrepared] = React.useState<{ key: string; renderer: PreparedClientSiteRenderer } | null>(null)
   const [prepareError, setPrepareError] = React.useState<string | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
@@ -76,10 +88,42 @@ export function RendererFrameRuntime({
   }, [patchTheme, theme])
 
   React.useLayoutEffect(() => {
-    if (!prepared || prepared.key !== variantKey) return
+    if (!prepared || prepared.key !== blockKey) return
     themeCleanupRef.current?.()
     themeCleanupRef.current = applyThemeAttributes(document, frameTheme)
-  }, [frameTheme, prepared, variantKey])
+  }, [blockKey, frameTheme, prepared])
+
+  React.useEffect(() => {
+    if (!prepared || prepared.key !== blockKey) return
+    const navbarCleanup = initializeNavbarBehavior(document, { colorModeAuthority: "theme" })
+    const consentCleanup = initializeConsentBehavior(document, previewConsentRuntime ?? undefined)
+    const ditherCleanup = initializeHeroDitherEffects(document)
+    let ambientCleanup: (() => void) | null = null
+    let meshCleanup: (() => void) | null = null
+    let cancelled = false
+    void initializeHeroAmbientEffectsWhenPresent(document).then((cleanup) => {
+      if (cancelled) {
+        cleanup?.()
+        return
+      }
+      ambientCleanup = cleanup
+    })
+    void initializeHeroMeshEffectsWhenPresent(document).then((cleanup) => {
+      if (cancelled) {
+        cleanup?.()
+        return
+      }
+      meshCleanup = cleanup
+    })
+    return () => {
+      cancelled = true
+      navbarCleanup()
+      consentCleanup()
+      ditherCleanup()
+      ambientCleanup?.()
+      meshCleanup?.()
+    }
+  }, [blockKey, consentAvailable, frameSettings, frameTheme, prepared, previewConsentRuntime])
 
   React.useLayoutEffect(() => {
     if (mode !== "preview") return
@@ -99,18 +143,18 @@ export function RendererFrameRuntime({
   }, [mode])
 
   React.useEffect(() => {
-    if (prepared?.key === variantKey) return
+    if (prepared?.key === blockKey) return
     let cancelled = false
     setPrepareError(null)
     void prepareClientSiteRenderer({ page: framePage, settings: frameSettings, tenantSlug, domain })
       .then((renderer) => {
-        if (!cancelled) setPrepared({ key: variantKey, renderer })
+        if (!cancelled) setPrepared({ key: blockKey, renderer })
       })
       .catch((error: unknown) => {
         if (!cancelled) setPrepareError(error instanceof Error ? error.message : "Renderer preparation failed.")
       })
     return () => { cancelled = true }
-  }, [domain, framePage, frameSettings, prepared?.key, tenantSlug, variantKey])
+  }, [blockKey, domain, framePage, frameSettings, prepared?.key, tenantSlug])
 
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -162,7 +206,7 @@ export function RendererFrameRuntime({
 
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [mode, patchTheme])
+  }, [mode, patchTheme, previewConsentRuntime])
 
   React.useEffect(() => {
     if (!prepareError) return
@@ -177,7 +221,7 @@ export function RendererFrameRuntime({
   }, [prepareError])
 
   React.useEffect(() => {
-    if (!prepared || prepared.key !== variantKey) return
+    if (!prepared || prepared.key !== blockKey) return
     let cancelled = false
     void (async () => {
       await waitForWindowLoad()
@@ -195,7 +239,7 @@ export function RendererFrameRuntime({
       } satisfies IframeEditorMessage, window.location.origin)
     })()
     return () => { cancelled = true }
-  }, [page.id, page.slug, prepared, variantKey])
+  }, [blockKey, page.id, page.slug, prepared])
 
   React.useEffect(() => {
     if (mode !== "preview") return
@@ -229,7 +273,7 @@ export function RendererFrameRuntime({
         className={previewViewportRule.className}
         data-siab-preview-viewport={mode === "preview" ? "true" : undefined}
       >
-        {prepared?.key === variantKey ? (
+        {prepared?.key === blockKey ? (
           <ClientSitePageRenderer
             prepared={prepared.renderer}
             page={framePage}
@@ -238,6 +282,8 @@ export function RendererFrameRuntime({
             tenantSlug={tenantSlug}
             domain={domain}
             mediaResolver={mediaResolver}
+            consentAvailable={mode === "preview" ? consentAvailable : undefined}
+            imageLoading="eager"
             nonce={cspNonce}
             includeBehaviorScripts={false}
             formAction="#"

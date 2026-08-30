@@ -5,6 +5,7 @@ import { asRecord } from "@/lib/record"
 import { isSafeHref } from "@/lib/security/safeHref"
 import { isPopulatedMediaShape, mediaToJson } from "@/lib/projection/media"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
+import { isHeroBlockType } from "@siteinabox/contracts"
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 type Json = { [key: string]: JsonValue }
@@ -68,19 +69,85 @@ const pruneUnsafeLinkGroup = (group: LinkGroup | null | undefined) => {
   return rest
 }
 
+const sourceIdValues = (value: JsonValue): JsonValue => {
+  if (!Array.isArray(value)) return value
+  return value
+    .map((entry) => {
+      const row = asRecord(entry)
+      return typeof row?.sourceId === "string" ? row.sourceId : entry
+    })
+    .filter((entry): entry is JsonValue => typeof entry === "string" && entry.trim().length > 0)
+}
+
+const mediaValues = (value: JsonValue): JsonValue => {
+  if (!Array.isArray(value)) return value
+  return value.map((entry) => {
+    const row = asRecord(entry)
+    return projectField(row?.image ?? entry)
+  })
+}
+
+const featureValues = (value: JsonValue): JsonValue => {
+  if (!Array.isArray(value)) return value
+  return value.map((entry) => {
+    const row = asRecord(entry)
+    return projectField(row?.value ?? entry)
+  })
+}
+
 const sanitizeBlockHrefs = (block: Json): Json => {
-  if (block.blockType === "hero") {
-    const cta = pruneUnsafeLinkGroup(asRecord(block.cta) as LinkGroup | null | undefined)
-    return { ...block, ...(cta ? { cta } : {}) } as Json
-  }
-  if (block.blockType === "cta") {
-    const primary = pruneUnsafeLinkGroup(asRecord(block.primary) as LinkGroup | null | undefined)
-    const secondary = pruneUnsafeLinkGroup(asRecord(block.secondary) as LinkGroup | null | undefined)
+  if (typeof block.blockType === "string" && isHeroBlockType(block.blockType)) {
+    const primaryAction = pruneUnsafeLinkGroup(asRecord(block.primaryAction) as LinkGroup | null | undefined)
+    const secondaryAction = pruneUnsafeLinkGroup(asRecord(block.secondaryAction) as LinkGroup | null | undefined)
     return {
       ...block,
-      ...(primary ? { primary } : {}),
-      ...(secondary ? { secondary } : {}),
+      ...(primaryAction ? { primaryAction } : {}),
+      ...(secondaryAction ? { secondaryAction } : {}),
     } as Json
+  }
+  if (block.blockType === "cta") {
+    const primaryAction = pruneUnsafeLinkGroup(asRecord(block.primaryAction) as LinkGroup | null | undefined)
+    const secondaryAction = pruneUnsafeLinkGroup(asRecord(block.secondaryAction) as LinkGroup | null | undefined)
+    return {
+      ...block,
+      ...(primaryAction ? { primaryAction } : {}),
+      ...(secondaryAction ? { secondaryAction } : {}),
+    } as Json
+  }
+  if (block.blockType === "contact" && Array.isArray(block.serviceArea)) {
+    return {
+      ...block,
+      serviceArea: block.serviceArea
+        .map((entry) => {
+          const row = asRecord(entry)
+          return typeof row?.value === "string" ? row.value : entry
+        })
+        .filter((entry): entry is JsonValue => typeof entry === "string" && entry.trim().length > 0),
+    }
+  }
+  if (block.blockType === "work" && Array.isArray(block.projects)) {
+    return {
+      ...block,
+      projects: block.projects.map((project) => {
+        const record = asRecord(project)
+        return record
+          ? { ...record, ...(record.media ? { media: mediaValues(record.media as JsonValue) } : {}) }
+          : project
+      }),
+    } as Json
+  }
+  if (block.blockType === "reviews" || block.blockType === "pricing") {
+    const sourceKey = block.blockType === "reviews" ? "reviewSourceIds" : "pricingSourceIds"
+    const next = { ...block, [sourceKey]: sourceIdValues(block[sourceKey] as JsonValue) } as Json
+    if (block.blockType === "pricing" && Array.isArray(next.offers)) {
+      next.offers = next.offers.map((offer) => {
+        const record = asRecord(offer)
+        return record
+          ? { ...record, ...(record.features ? { features: featureValues(record.features as JsonValue) } : {}) }
+          : offer
+      })
+    }
+    return next
   }
   return block
 }
@@ -112,16 +179,10 @@ const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
     sectionType,
     sectionPosition: index,
     sectionAnchor: anchor,
-    providerVariant: typeof block.designVariant === "string" && block.designVariant.trim()
-      ? block.designVariant.trim()
-      : typeof stored.providerVariant === "string"
-        ? stored.providerVariant
-        : null,
-    blockPresetId: typeof block.blockPresetId === "string"
-      ? block.blockPresetId
-      : typeof stored.blockPresetId === "string"
-        ? stored.blockPresetId
-        : null,
+    // Visual variants are intentionally absent while the first approved
+    // first-party variant is being designed. Keep legacy stored values out of
+    // the public wire/analytics shape instead of reviving them implicitly.
+    variant: null,
     contentSignature: contentSignature(block),
   }
 }

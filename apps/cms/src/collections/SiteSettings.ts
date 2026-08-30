@@ -1,19 +1,13 @@
 import type { FieldAdminConditionContext, FieldValidateContext } from "@/lib/payloadFieldContext"
-import type { CollectionBeforeValidateHook, CollectionConfig, Option, PayloadRequest } from "payload"
+import type { CollectionBeforeValidateHook, CollectionConfig, PayloadRequest } from "payload"
 import { ValidationError } from "payload"
-import { SITE_CHROME_CATALOG, validateSiteChromeCapabilities } from "@siteinabox/contracts/block-catalog"
-import type { SiteSettings as SiteSettingsContract } from "@siteinabox/contracts/site"
-import {
-  normalizePublicDomainHost,
-  SHADCNUI_SYSTEM_TEMPLATES,
-} from "@siteinabox/contracts"
-import type { SiteSetting } from "@/payload-types"
+import { CONSENT_VARIANTS, DEFAULT_CONSENT_VARIANT, normalizePublicDomainHost } from "@siteinabox/contracts"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
-import { relationshipId } from "@/lib/relationshipId"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
+import { richBlockField } from "@/lib/richText/payloadFields"
 
 // HH:MM 24h matcher. Accepts 00:00–23:59.
 const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -39,137 +33,37 @@ const validatePrimaryColor = (val: unknown, { req }: { req?: PayloadRequest }) =
 }
 
 const nonEmpty = (val: unknown) => typeof val === "string" && val.trim() !== ""
+const isRecord = (val: unknown): val is Record<string, unknown> =>
+  val !== null && typeof val === "object" && !Array.isArray(val)
+const validEmail = (val: unknown) =>
+  typeof val === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
 
-const chromeVariantOptionsFor = (area: "header" | "footer" | "banner") =>
-  SITE_CHROME_CATALOG
-    .filter((entry) => entry.area === area)
-    .map((entry) => ({ label: entry.label, value: entry.variant }))
-
-const headerChromeVariantOptions = chromeVariantOptionsFor("header")
-const footerChromeVariantOptions = chromeVariantOptionsFor("footer")
-const bannerChromeVariantOptions = chromeVariantOptionsFor("banner")
-const notFoundTemplateOptions = SHADCNUI_SYSTEM_TEMPLATES.map((entry) => ({ label: entry.title, value: entry.id }))
-
-const tenantExclusiveChromeVariants = SITE_CHROME_CATALOG
-  .filter((entry) => entry.scope.kind === "tenant-exclusive")
-  .map((entry) => ({
-    area: entry.area,
-    variant: entry.variant,
-    tenantSlugs: entry.scope.kind === "tenant-exclusive" ? entry.scope.tenantSlugs : [],
-  }))
-
-const collectTenantSlugs = (value: unknown, slugs = new Set<string>()): Set<string> => {
-  if (typeof value === "string" && value.trim() !== "") {
-    slugs.add(value)
-    return slugs
+export const enforceSiteSettingsCapabilities: CollectionBeforeValidateHook = ({ collection, data, req }) => {
+  const record = data as Record<string, unknown> | undefined
+  const maintenance = isRecord(record?.maintenance) ? record.maintenance : null
+  const disclosure = isRecord(record?.privacyDisclosure) ? record.privacyDisclosure : null
+  const controller = isRecord(disclosure?.controller) ? disclosure.controller : null
+  const errors: Array<{ path: string; message: string }> = []
+  if (maintenance?.enabled && !nonEmpty(maintenance.message)) {
+    errors.push({ path: "maintenance.message", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires a message.", "Ingeschakelde onderhoudsmodus vereist een bericht.") })
   }
-  if (!value || typeof value !== "object") return slugs
-  if (Array.isArray(value)) {
-    for (const item of value) collectTenantSlugs(item, slugs)
-    return slugs
+  if (disclosure?.enabled === true) {
+    if (!nonEmpty(disclosure.version)) {
+      errors.push({ path: "privacyDisclosure.version", message: adminValidationText(req.i18n?.language, "An enabled privacy document requires a version.", "Een ingeschakelde privacyverklaring vereist een versie.") })
+    }
+    if (!nonEmpty(disclosure.effectiveAt) || Number.isNaN(Date.parse(String(disclosure.effectiveAt)))) {
+      errors.push({ path: "privacyDisclosure.effectiveAt", message: adminValidationText(req.i18n?.language, "Use a valid effective date.", "Gebruik een geldige ingangsdatum.") })
+    }
+    if (!nonEmpty(controller?.legalName)) {
+      errors.push({ path: "privacyDisclosure.controller.legalName", message: adminValidationText(req.i18n?.language, "The responsible legal name is required.", "De juridische naam van de verantwoordelijke is verplicht.") })
+    }
+    if (!validEmail(controller?.email)) {
+      errors.push({ path: "privacyDisclosure.controller.email", message: adminValidationText(req.i18n?.language, "Use a valid responsible-business email.", "Gebruik een geldig e-mailadres van de verantwoordelijke.") })
+    }
+    if (disclosure.mode === "custom" && !isRecord(disclosure.body)) {
+      errors.push({ path: "privacyDisclosure.body", message: adminValidationText(req.i18n?.language, "Custom mode requires structured document content.", "De aangepaste modus vereist gestructureerde documentinhoud.") })
+    }
   }
-
-  const record = value as Record<string, unknown>
-  const slug = record.slug
-  if (typeof slug === "string" && slug.trim() !== "") slugs.add(slug)
-  collectTenantSlugs(record.tenant, slugs)
-  collectTenantSlugs(record.value, slugs)
-  return slugs
-}
-
-const chromeOptionValue = (option: Option): string =>
-  typeof option === "string" ? option : String((option as { value: string }).value)
-
-export const filterChromeVariantOptions = (
-  area: "header" | "footer",
-  options: Option[],
-  data: unknown,
-  req?: PayloadRequest,
-): Option[] => {
-  const tenantSlugs = collectTenantSlugs(data && typeof data === "object" ? (data as Record<string, unknown>).tenant : null)
-  collectTenantSlugs(req?.user?.tenants, tenantSlugs)
-  // Payload can invoke select `filterOptions` during internal create/update
-  // validation without the root tenant document in `data`. Option filtering is
-  // only an admin UX affordance; canonical enforcement lives in
-  // `enforceTenantExclusiveChromeVariants` below. Without concrete tenant
-  // context, keep the static options intact so system-internal imports
-  // are not rejected before the tenant-aware hook runs.
-  if (tenantSlugs.size === 0) return options
-
-  return options.filter((option) => {
-    const exclusive = tenantExclusiveChromeVariants.find((entry) =>
-      entry.area === area && entry.variant === chromeOptionValue(option))
-    if (!exclusive) return true
-    return exclusive.tenantSlugs.some((tenantSlug) => tenantSlugs.has(tenantSlug))
-  })
-}
-
-const findTenantSlug = async (
-  req: Parameters<CollectionBeforeValidateHook>[0]["req"],
-  tenant: unknown,
-): Promise<string | null> => {
-  const tenantId = relationshipId(tenant as Parameters<typeof relationshipId>[0])
-  if (tenantId == null) return null
-  const doc = await req.payload.findByID({
-    collection: "tenants",
-    id: tenantId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  return typeof (doc)?.slug === "string" ? (doc).slug : null
-}
-
-export const enforceTenantExclusiveChromeVariants: CollectionBeforeValidateHook = async ({
-  collection,
-  data,
-  originalDoc,
-  req,
-}) => {
-  if (!data?.chrome) return data
-
-  const tenant = data.tenant ?? originalDoc?.tenant
-  const tenantSlug = await findTenantSlug(req, tenant)
-  const errors = tenantExclusiveChromeVariants.flatMap((entry) => {
-    const areaSettings = (data.chrome as Record<string, unknown> | undefined)?.[entry.area]
-    const variant = areaSettings && typeof areaSettings === "object" && !Array.isArray(areaSettings)
-      ? (areaSettings as Record<string, unknown>).variant
-      : undefined
-    if (variant !== entry.variant) return []
-    if (tenantSlug && entry.tenantSlugs.includes(tenantSlug)) return []
-    return [{
-      path: `chrome.${entry.area}.variant`,
-      message: adminValidationText(req.i18n?.language, `${entry.variant} is available only to these tenants: ${entry.tenantSlugs.join(", ")}.`, `${entry.variant} is alleen beschikbaar voor deze klantomgevingen: ${entry.tenantSlugs.join(", ")}.`),
-    }]
-  })
-
-  if (errors.length > 0) {
-    throw new ValidationError({
-      collection: collection?.slug ?? "site-settings",
-      errors,
-    })
-  }
-
-  return data
-}
-
-export const enforceChromeCapabilities: CollectionBeforeValidateHook = ({ collection, data, originalDoc, req }) => {
-  const merged: SiteSetting = {
-    ...(originalDoc ?? {}),
-    ...(data ?? {}),
-    chrome: {
-      ...(originalDoc?.chrome ?? {}),
-      ...(data?.chrome ?? {}),
-      header: { ...(originalDoc?.chrome?.header ?? {}), ...(data?.chrome?.header ?? {}) },
-      footer: { ...(originalDoc?.chrome?.footer ?? {}), ...(data?.chrome?.footer ?? {}) },
-    },
-  }
-  const errors = validateSiteChromeCapabilities(merged as SiteSettingsContract).map((issue) => ({
-    path: issue.path,
-    message: adminValidationText(req.i18n?.language, issue.message, issue.message),
-  }))
-  const maintenance = merged.maintenance
-  if (maintenance?.enabled && !nonEmpty(maintenance.variant)) errors.push({ path: "maintenance.variant", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires an approved banner variant.", "Ingeschakelde onderhoudsmodus vereist een goedgekeurde bannervariant.") })
-  if (maintenance?.enabled && !nonEmpty(maintenance.message)) errors.push({ path: "maintenance.message", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires a message.", "Ingeschakelde onderhoudsmodus vereist een bericht.") })
   if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors })
   return data
 }
@@ -235,7 +129,7 @@ const linkRefFields = () => [
 //   section → links to a `#anchor` (a block's anchor id) within `page`,
 //             or the current page when `page` is unset (onepager case)
 //   custom  → an arbitrary URL
-// navHeader and navFooter both use this exact shape. Defined as a factory so
+// navigation.primary and navigation.footer both use this exact shape. Defined as a factory so
 // each array field gets its own field-config objects (Payload mutates field
 // configs during init — a shared reference would cross-wire the two arrays).
 const navEntryFields = () => [
@@ -251,7 +145,7 @@ const navEntryFields = () => [
       { label: adminText("Flyout group", "Uitklapgroep"), value: "group" },
     ],
     admin: {
-      description: adminText("Page, section or custom create a link. Flyout group contains its own links and is supported by compatible navbar variants.", "Pagina, sectie of aangepast maakt een link. Een uitklapgroep bevat eigen links en werkt met compatibele navigatievarianten."),
+      description: adminText("Page, section or custom creates a link. Flyout groups are supported by the numbered navbar designs.", "Pagina, sectie of eigen link. Uitklapgroepen worden ondersteund door de genummerde navbarontwerpen."),
     },
   },
   {
@@ -333,7 +227,7 @@ const navEntryFields = () => [
     maxRows: 6,
     admin: {
       condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "group",
-      description: adminText("Flyout links. The selected navbar capability determines whether groups are allowed.", "Links in het uitklapmenu. De gekozen navigatievariant bepaalt of groepen zijn toegestaan."),
+      description: adminText("Flyout links shown in the desktop dropdown and mobile disclosure.", "Links in het uitklapmenu voor desktop en mobiele uitklapweergave."),
     },
     fields: [
       { name: "label", type: "text" as const, required: true, maxLength: 32 },
@@ -381,47 +275,44 @@ export const SiteSettings: CollectionConfig = {
         admin: { description: adminText("Hex (e.g. #2563eb).", "Hex (bijv. #2563eb).") } }
     ]},
     { name: "chrome", type: "group",
-      admin: { description: adminText("Header/footer chrome and cookie banner copy. Cookie title/message are edited in tenant Settings; header/footer non-navigation content can also be edited from the page editor.", "Kop-/voettekst-chrome en cookie-bannertekst. Cookie-titel/-bericht worden in tenantinstellingen bewerkt; niet-navigatie-inhoud van kop- en voettekst kan ook via de pagina-editor.") },
+      admin: { description: adminText("First-party navbar, footer and announcement settings. Other chrome families will be added separately.", "First-party instellingen voor navbar, footer en aankondigingen. Andere chromefamilies worden afzonderlijk toegevoegd.") },
       fields: [
-        { name: "header", type: "group", fields: [
-          { name: "variant", type: "select", options: headerChromeVariantOptions,
-            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("header", options, data, req),
-            admin: { description: adminText("Approved renderer variant for the header.", "Goedgekeurde renderervariant voor de koptekst.") } },
+        { name: "navbar", type: "group", fields: [
           { name: "logo", type: "upload", relationTo: "media",
-            admin: { description: adminText("Optional header-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de koptekst. Valt terug op het merklogo.") } },
-          { name: "behavior", type: "select", options: [
-            { label: adminText("Static", "Statisch"), value: "static" },
-            { label: adminText("Sticky", "Vastgezet"), value: "sticky" },
-          ]},
-          { name: "activeMode", type: "select", options: [
+            admin: { description: adminText("Optional navbar-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de navbar. Valt terug op het merklogo.") } },
+          { name: "variant", type: "select", required: true, defaultValue: "navbar-01", options: [
+            { label: "Navbar 01 — theme toggle", value: "navbar-01" },
+            { label: "Navbar 02 — responsive mobile menu", value: "navbar-02" },
+            { label: "Navbar 03 — contained floating", value: "navbar-03" },
+          ], admin: { description: adminText("Choose the numbered first-party navbar design.", "Kies het genummerde first-party navbarontwerp.") } },
+          { name: "placement", type: "select", required: true, defaultValue: "sticky", options: [
+            { label: adminText("Sticky while scrolling", "Vastgezet tijdens scrollen"), value: "sticky" },
+            { label: adminText("Overlay on first hero", "Over de eerste hero"), value: "hero-overlay" },
+          ], admin: { description: adminText("Sticky remains pinned during scrolling. Hero overlay is attached to the first hero and scrolls away with it.", "Sticky blijft zichtbaar tijdens het scrollen. Hero-overlay is gekoppeld aan de eerste hero en scrollt ermee weg.") } },
+          { name: "showThemeToggle", type: "checkbox", defaultValue: false,
+            admin: { description: adminText("Show a light/dark mode toggle in the navbar.", "Toon een licht/donker-schakelaar in de navbar.") } },
+          { name: "activeMode", type: "select", defaultValue: "path", options: [
             { label: adminText("Path", "Pad"), value: "path" },
             { label: adminText("Anchor", "Anker"), value: "anchor" },
             { label: adminText("None", "Geen"), value: "none" },
           ]},
-          { name: "mobileMenu", type: "select", options: [
+          { name: "mobileMenu", type: "select", defaultValue: "dropdown", options: [
             { label: adminText("Dropdown", "Uitklapmenu"), value: "dropdown" },
             { label: adminText("Drawer", "Schuifpaneel"), value: "drawer" },
           ]},
           { name: "cta", type: "group", fields: linkRefFields() },
-          { name: "secondaryAction", type: "group", fields: linkRefFields(),
-            admin: { description: adminText("Secondary account/action link for navbar variants that expose one.", "Secundaire account-/actielink voor navigatievarianten die deze tonen.") } },
-          { name: "search", type: "group", fields: [
-            { name: "enabled", type: "checkbox", defaultValue: false },
-            { name: "action", type: "text", defaultValue: "/search", validate: validateSafeHref },
-            { name: "placeholder", type: "text", maxLength: 48, defaultValue: "Search" },
-          ]},
         ]},
         { name: "footer", type: "group", fields: [
-          { name: "variant", type: "select", options: footerChromeVariantOptions,
-            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("footer", options, data, req),
-            admin: { description: adminText("Approved renderer variant for the footer.", "Goedgekeurde renderervariant voor de voettekst.") } },
+          { name: "variant", type: "select", required: true, defaultValue: "footer-01", options: [
+            { label: "Footer 01 — small navigation", value: "footer-01" },
+          ], admin: { description: adminText("Choose the numbered first-party footer design.", "Kies het genummerde first-party footerontwerp.") } },
           { name: "logo", type: "upload", relationTo: "media",
             admin: { description: adminText("Optional footer-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de voettekst. Valt terug op het merklogo.") } },
           { name: "tagline", type: "textarea" },
           { name: "copyright", type: "text" },
           { name: "legalLinks", type: "array", fields: linkRefFields() },
           { name: "columns", type: "json",
-            admin: { description: adminText("Manifest-driven footer column composition edited from the page editor.", "Door het manifest bepaalde kolomindeling van de voettekst, bewerkt vanuit de pagina-editor.") } }
+            admin: { description: adminText("Reserved structured footer composition for a future numbered footer design.", "Gereserveerde gestructureerde footerindeling voor een toekomstige genummerde footer.") } }
           ,{ name: "newsletter", type: "group", fields: [
             { name: "title", type: "text", maxLength: 64 },
             { name: "placeholder", type: "text", maxLength: 64 },
@@ -430,30 +321,74 @@ export const SiteSettings: CollectionConfig = {
             { name: "method", type: "select", options: ["GET", "POST"] },
           ]}
         ]},
-        { name: "banner", type: "group", fields: [
-          { name: "variant", type: "select", options: bannerChromeVariantOptions,
-            admin: { description: adminText("Approved renderer variant. Live cookie consent forces banner-03 when analytics consent is enabled.", "Goedgekeurde renderervariant. Live cookie-toestemming forceert banner-03 wanneer analytics-toestemming is ingeschakeld.") } },
+        { name: "announcement", type: "group", fields: [
           { name: "visible", type: "checkbox", defaultValue: false },
           { name: "title", type: "text",
-            admin: { description: adminText("Cookie/announcement banner title. Edited in tenant Settings.", "Titel van cookie-/aankondigingsbanner. Bewerkt in tenantinstellingen.") } },
+            admin: { description: adminText("Announcement title.", "Titel van de aankondiging.") } },
           { name: "message", type: "textarea",
-            admin: { description: adminText("Cookie/announcement banner message. Edited in tenant Settings.", "Bericht van cookie-/aankondigingsbanner. Bewerkt in tenantinstellingen.") } },
+            admin: { description: adminText("Announcement message.", "Bericht van de aankondiging.") } },
           { name: "link", type: "group", fields: linkRefFields() },
           { name: "dismissible", type: "checkbox", defaultValue: true },
         ]},
       ]},
+    { name: "consent", type: "group",
+      admin: { description: adminText("Public cookie consent presentation. It is shown only when approved optional analytics is configured.", "Openbare cookietoestemming. Deze wordt alleen getoond wanneer goedgekeurde optionele analytics is geconfigureerd.") },
+      fields: [
+        { name: "variant", type: "select", required: true, defaultValue: DEFAULT_CONSENT_VARIANT, options: CONSENT_VARIANTS.map((value) => ({ label: "Consent 01 — full-width preferences", value })) },
+        { name: "visible", type: "checkbox", defaultValue: true },
+        { name: "title", type: "text", maxLength: 80 },
+        { name: "message", type: "textarea", maxLength: 320 },
+        { name: "acceptLabel", type: "text", maxLength: 32,
+          admin: { description: adminText("Allow all optional categories.", "Alle optionele categorieën toestaan.") } },
+        { name: "allowSelectionLabel", type: "text", maxLength: 32,
+          admin: { description: adminText("Save the selected optional categories.", "De gekozen optionele categorieën opslaan.") } },
+        { name: "rejectLabel", type: "text", maxLength: 32,
+          admin: { description: adminText("Reject all optional categories.", "Alle optionele categorieën weigeren.") } },
+        { name: "necessaryLabel", type: "text", maxLength: 32 },
+        { name: "preferencesLabel", type: "text", maxLength: 32 },
+        { name: "statisticsLabel", type: "text", maxLength: 32 },
+        { name: "marketingLabel", type: "text", maxLength: 32 },
+        { name: "privacyLink", type: "group", fields: linkRefFields() },
+      ]},
     { name: "systemTemplates", type: "group", fields: [
       { name: "notFound", type: "group", fields: [
-        { name: "variant", type: "select", options: notFoundTemplateOptions, defaultValue: "shadcnui-blocks.not-found-01", required: true,
-          admin: { description: adminText("Approved 404 page template.", "Goedgekeurde 404-paginasjabloon.") } },
+        { name: "heading", type: "text", maxLength: 120,
+          admin: { description: adminText("Optional 404 heading.", "Optionele 404-kop.") } },
+        { name: "body", type: "textarea", maxLength: 320,
+          admin: { description: adminText("Optional 404 explanation.", "Optionele 404-uitleg.") } },
+        { name: "primaryAction", type: "group", fields: linkRefFields(),
+          admin: { description: adminText("Optional recovery link.", "Optionele herstel-link.") } },
       ]},
     ]},
     { name: "maintenance", type: "group", fields: [
       { name: "enabled", type: "checkbox", defaultValue: false },
-      { name: "message", type: "textarea" },
-      { name: "variant", type: "select", options: bannerChromeVariantOptions,
-        admin: { description: adminText("Approved banner used when maintenance mode is enabled.", "Goedgekeurde banner die wordt gebruikt wanneer de onderhoudsmodus actief is.") } }
+      { name: "message", type: "textarea" }
     ]},
+    { name: "privacyDisclosure", type: "group",
+      admin: { description: adminText("Optional privacy and cookie document. Enable it to publish the owned template or edit the document below.", "Optioneel privacy- en cookiedocument. Schakel het in om het eigen sjabloon te publiceren of het document hieronder te bewerken.") },
+      fields: [
+        { name: "enabled", type: "checkbox", defaultValue: false },
+        { name: "mode", type: "select", options: [
+          { label: adminText("Owned template", "Eigen sjabloon"), value: "template" },
+          { label: adminText("Custom document", "Eigen document"), value: "custom" },
+        ], defaultValue: "template" },
+        { name: "title", type: "text", maxLength: 160, defaultValue: "Privacy- en cookieverklaring" },
+        richBlockField("body", "Structured document body. Used when mode is custom; template mode regenerates it from the factual fields below."),
+        { name: "version", type: "text", defaultValue: "tenant-privacy-owned-2026-08-13.1" },
+        { name: "effectiveAt", type: "text", defaultValue: "2026-07-10T00:00:00.000Z" },
+        { name: "controller", type: "group", fields: [
+          { name: "legalName", type: "text" },
+          { name: "tradeName", type: "text" },
+          { name: "email", type: "email" },
+          { name: "privacyEmail", type: "email" },
+          { name: "kvkNumber", type: "text" },
+          { name: "address", type: "textarea" },
+        ]},
+        { name: "contactMethods", type: "json" },
+        { name: "marketingTechnologies", type: "json" },
+        { name: "additionalProcessors", type: "json" },
+      ],
+    },
     { name: "contact", type: "group", fields: [
       { name: "phone", type: "text" },
       { name: "address", type: "textarea" },
@@ -502,17 +437,20 @@ export const SiteSettings: CollectionConfig = {
       fields: [
         { name: "name", type: "text", required: true }
       ]},
-    { name: "navHeader", type: "array", fields: navEntryFields(),
-      admin: { description: adminText("Header navigation. Entries render in order; drag to reorder.", "Kopnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } },
-    { name: "navFooter", type: "array", fields: navEntryFields(),
-      admin: { description: adminText("Footer navigation. Entries render in order; drag to reorder.", "Voettekstnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } }
+    { name: "navigation", type: "group",
+      admin: { description: adminText("Editable primary navbar and footer navigation.", "Bewerkbare primaire navbar- en footernavigatie.") },
+      fields: [
+        { name: "primary", type: "array", fields: navEntryFields(),
+          admin: { description: adminText("Primary navbar navigation. Entries render in order; drag to reorder.", "Primaire navbarnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } },
+        { name: "footer", type: "array", fields: navEntryFields(),
+          admin: { description: adminText("Footer navigation. Entries render in order; drag to reorder.", "Footernavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } },
+      ] }
   ],
   hooks: {
     beforeValidate: [
       validateTenantExists,
       normalizeSiteSettingsAliases,
-      enforceTenantExclusiveChromeVariants,
-      enforceChromeCapabilities,
+      enforceSiteSettingsCapabilities,
     ],
     afterChange: [projectSettingsToDisk]
   }

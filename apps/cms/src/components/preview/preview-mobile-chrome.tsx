@@ -15,14 +15,12 @@ import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 function PreviewMobileNavPills({
-  theme,
   canCompleteOrder,
   paymentSatisfied,
   checkoutHref,
   reviewHref,
   customerNavigationBlocked,
 }: {
-  theme: ThemeTokens | null
   canCompleteOrder: boolean
   paymentSatisfied: boolean
   checkoutHref: string
@@ -45,6 +43,7 @@ function PreviewMobileNavPills({
         disabled={customerNavigationBlocked}
         dataAttrs={{ "data-mobile-preview-review": "" }}
         contrastBorder
+        visibilityClassName="lg:hidden"
       />
 
       {canCompleteOrder ? (
@@ -59,6 +58,7 @@ function PreviewMobileNavPills({
           disabled={customerNavigationBlocked}
           dataAttrs={{ "data-mobile-preview-launch": "" }}
           contrastBorder
+          visibilityClassName="lg:hidden"
         />
       ) : paymentSatisfied ? (
         <MobileFloatingPill
@@ -73,6 +73,7 @@ function PreviewMobileNavPills({
           contrastBorder
         />
       ) : null}
+
     </>
   )
 }
@@ -98,7 +99,6 @@ export function PreviewMobileChrome({
   return (
     <div className={cn("md:hidden", previewMobileChromeWrapperClass(theme, systemPrefersDark))}>
       <PreviewMobileNavPills
-        theme={theme}
         canCompleteOrder={canCompleteOrder}
         paymentSatisfied={paymentSatisfied}
         checkoutHref={checkoutHref}

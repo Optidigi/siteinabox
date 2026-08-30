@@ -26,6 +26,23 @@ async function waitFor(predicate, message) {
   assert.fail(message)
 }
 
+async function buildRenderer() {
+  const build = spawn("pnpm", ["exec", "astro", "build"], {
+    cwd: new URL("../..", import.meta.url),
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      SIAB_RENDERER_FIXTURE_MODE: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+  let output = ""
+  build.stdout.on("data", (chunk) => { output += chunk })
+  build.stderr.on("data", (chunk) => { output += chunk })
+  const [code, signal] = await once(build, "exit")
+  assert.equal(code, 0, `renderer preview build failed (${signal ?? "exit"})\n${output}`)
+}
+
 function decodedEvents(request) {
   if (request.method() !== "POST") return []
   const url = new URL(request.url())
@@ -58,9 +75,18 @@ const port = await getOpenPort()
 const rendererOrigin = `http://127.0.0.1:${port}`
 const publicOrigin = `http://renderer.example.test:${port}`
 const ingestOrigin = `http://ingest.example.test:${port}/ingest`
-const child = spawn("pnpm", ["exec", "astro", "dev", "--host", "127.0.0.1", "--port", String(port)], {
+await buildRenderer()
+const child = spawn("pnpm", ["exec", "astro", "preview", "--host", "127.0.0.1", "--port", String(port)], {
   cwd: new URL("../..", import.meta.url),
-  env: { ...process.env, NODE_ENV: "test", SIAB_RENDERER_FIXTURE_MODE: "1" },
+  env: {
+    ...process.env,
+    // Astro 7 backgrounds preview servers when it detects an agent. This
+    // smoke test owns this child and must keep it in the foreground to clean
+    // it up.
+    ASTRO_PREVIEW_BACKGROUND: "0",
+    NODE_ENV: "test",
+    SIAB_RENDERER_FIXTURE_MODE: "1",
+  },
   stdio: ["ignore", "pipe", "pipe"],
 })
 let output = ""
@@ -151,11 +177,28 @@ try {
       }
     }, { key: "siab_lifecycle_test_consent" })
 
+    // Playwright exposes navigator.webdriver. The current PostHog SDK drops
+    // likely-bot events by default; hide the automation marker in this local
+    // browser fixture so the smoke exercises the renderer lifecycle itself.
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "webdriver", {
+        configurable: true,
+        get: () => false,
+      })
+    })
+
     await page.goto(`${publicOrigin}/?email=private%40example.test&utm_campaign=secret`, { waitUntil: "networkidle", timeout: 60_000 })
     await page.waitForFunction(
-      () => typeof window.SIABAnalytics?.grantConsent === "function",
+      () => typeof window.SIABAnalytics?.grantConsent === "function"
+        && typeof window.SIABAnalytics?.getConsent === "function"
+        && typeof window.SIABAnalytics?.applyConsent === "function",
       undefined,
       { timeout: 60_000 },
+    )
+    assert.deepEqual(
+      await page.evaluate(() => window.SIABAnalytics.getConsent()),
+      { necessary: true, preferences: false, analytics: false, marketing: false, decided: false },
+      "fresh runtime starts undecided without optional analytics",
     )
     await waitFor(
       () => events.some((event) => event.event === "$pageview" && event.transport === "posthog-js"),
@@ -180,13 +223,18 @@ try {
       "cookieless baseline creates no PostHog persistence",
     )
 
-    await page.evaluate(() => window.SIABAnalytics.grantConsent())
+    await page.evaluate(() => window.SIABAnalytics.applyConsent({ preferences: true, analytics: true, marketing: true }))
     await waitFor(() => events.some((event) => event.event === "site_journey_step"), "semantic analytics did not activate")
     assert.equal(events.filter((event) => event.event === "$pageview").length, 1, "consent transition does not duplicate the current pageview")
     assert.deepEqual(
       await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
-      { version: "test", categories: { necessary: true, analytics: true } },
+      { version: "test", categories: { necessary: true, preferences: true, analytics: true, marketing: true } },
       "runtime consent transition persists the accepted receipt",
+    )
+    assert.deepEqual(
+      await page.evaluate(() => window.SIABAnalytics.getConsent()),
+      { necessary: true, preferences: true, analytics: true, marketing: true, decided: true },
+      "accepted runtime state is exposed to the consent chrome",
     )
 
     const journeyBeforeRevoke = events.filter((event) => event.event === "site_journey_step").length
@@ -197,15 +245,23 @@ try {
       action?.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
     })
     await waitFor(() => failedConsentedRequests > 0, "consented request fixture did not fail")
-    await page.evaluate(() => window.SIABAnalytics.revokeConsent())
+    // Let the request that was already handed to the browser settle before
+    // the revocation marker starts counting post-revoke retry attempts.
+    await page.waitForTimeout(250)
+    await page.evaluate(() => window.SIABAnalytics.applyConsent({ analytics: false }))
     revoked = true
     assert.deepEqual(
       await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
-      { version: "test", categories: { necessary: true, analytics: false } },
+      { version: "test", categories: { necessary: true, preferences: false, analytics: false, marketing: false } },
       "runtime revoke persists the declined receipt",
     )
+    assert.deepEqual(
+      await page.evaluate(() => window.SIABAnalytics.getConsent()),
+      { necessary: true, preferences: false, analytics: false, marketing: false, decided: true },
+      "declined runtime state is exposed to the consent chrome",
+    )
     await page.evaluate(() => {
-      const action = document.querySelector("a,button")
+      const action = document.querySelector("button:not([data-consent-action])")
       action?.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
       window.dispatchEvent(new Event("scroll"))
     })
@@ -224,14 +280,14 @@ try {
     failConsentedRequests = false
     revoked = false
 
-    await page.evaluate(() => window.SIABAnalytics.grantConsent())
+    await page.evaluate(() => window.SIABAnalytics.applyConsent({ preferences: true, analytics: true, marketing: true }))
     await waitFor(
       () => events.filter((event) => event.event === "site_journey_step").length > journeyBeforeRevoke,
       "re-consent did not rebuild the renderer analytics lifecycle",
     )
     assert.deepEqual(
       await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
-      { version: "test", categories: { necessary: true, analytics: true } },
+      { version: "test", categories: { necessary: true, preferences: true, analytics: true, marketing: true } },
       "runtime re-consent persists the accepted receipt",
     )
 

@@ -53,8 +53,7 @@ const body: PageEditorSaveRequest = {
       shape: { schemeId: "rounded" },
       appearance: { mode: "light" },
     },
-    navigation: { inHeader: true, inFooter: false },
-    chrome: { header: { visible: true } },
+    navigation: { inNavbar: true, inFooter: false },
   },
 }
 
@@ -85,7 +84,7 @@ describe("page editor transactional save route", () => {
         ? { ...args.data, id: 24, tenant: { id: 7 }, slug: "index", updatedAt: "2026-07-19T10:05:00.000Z" }
         : { id: args.id, ...args.data },
     )
-    mocks.payload.find.mockResolvedValue({ docs: [{ id: 5, tenant: 7, navHeader: [], navFooter: [] }] })
+    mocks.payload.find.mockResolvedValue({ docs: [{ id: 5, tenant: 7, navigation: { primary: [], footer: [] } }] })
     mocks.publish.mockResolvedValue({ activated: true, snapshot: { id: 134, version: 113, status: "active" } })
   })
 
@@ -196,9 +195,9 @@ describe("page editor transactional save route", () => {
     )
   })
 
-  it("rolls back the transaction when a meaningful unsupported CTA field is rejected", async () => {
+  it("rolls back the transaction when canonical page validation is rejected", async () => {
     mocks.payload.update.mockRejectedValueOnce(
-      new Error('Provider variant "shadcnui-blocks.cta-03" does not expose slot "secondary".'),
+      new Error("Canonical CTA validation rejected the submitted page."),
     )
 
     const response = await POST(
@@ -211,8 +210,8 @@ describe("page editor transactional save route", () => {
             blocks: [
               {
                 blockType: "cta",
-                designVariant: "shadcnui-blocks.cta-03",
-                secondary: { label: "Unsupported", href: "/unsupported" },
+                heading: "Next step",
+                primaryAction: { label: "Contact", href: "/contact" },
               },
             ],
           },

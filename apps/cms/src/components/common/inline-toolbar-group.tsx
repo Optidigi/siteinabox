@@ -31,12 +31,14 @@ export function InlineToolbarOption({
   active = false,
   onClick,
   ariaLabel,
+  title,
   className,
   children,
 }: {
   active?: boolean
   onClick: () => void
   ariaLabel: string
+  title?: string
   className?: string
   children: React.ReactNode
 }) {
@@ -48,6 +50,7 @@ export function InlineToolbarOption({
       onClick={onClick}
       aria-pressed={active}
       aria-label={ariaLabel}
+      title={title}
       className={cn(
         "size-8 shrink-0 rounded-md",
         active

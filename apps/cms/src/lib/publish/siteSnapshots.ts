@@ -3,7 +3,7 @@ import crypto from "node:crypto"
 import type { Payload, PayloadRequest, Where } from "payload"
 import {
   normalizePublicDomainHost,
-  validateProviderBlockInstance,
+  BlockSchema,
   type Page as ContractPage,
   type RendererActiveDomainRouting,
   type SiteSettings,
@@ -17,7 +17,6 @@ import {
   formatContractValidationIssues,
   schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
-import { resolveBlockVariant } from "@siteinabox/site-renderer/blocks/variants"
 import type {
   Page,
   ManagedDomain,
@@ -113,35 +112,11 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
   const settings = (snapshot as Record<string, unknown>).settings
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return snapshot
   const settingsRecord = settings as Record<string, unknown>
-  const chrome = settingsRecord.chrome && typeof settingsRecord.chrome === "object" && !Array.isArray(settingsRecord.chrome)
-    ? settingsRecord.chrome as Record<string, unknown>
-    : undefined
-  const banner = chrome?.banner && typeof chrome.banner === "object" && !Array.isArray(chrome.banner)
-    ? chrome.banner as Record<string, unknown>
-    : undefined
-  const consentEnabled = (consent as Record<string, unknown>).enabled === true
-  const storedTitle = typeof banner?.title === "string" ? banner.title.trim() : ""
-  const storedMessage = typeof banner?.message === "string" ? banner.message.trim() : ""
-  const consentBanner = consentEnabled
-    ? {
-        ...(banner ?? {}),
-        visible: true,
-        title: storedTitle || "Cookies",
-        message: storedMessage
-          || "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
-        dismissible: false,
-        variant: "shadcnui-blocks.banner-03",
-      }
-    : banner
   return {
     ...snapshot as Record<string, unknown>,
     settings: {
       ...settingsRecord,
       analyticsConsent: consent,
-      chrome: chrome || consentBanner ? {
-        ...(chrome ?? {}),
-        banner: consentBanner,
-      } : settingsRecord.chrome,
     },
   }
 }
@@ -350,20 +325,17 @@ function buildManifest(
 
 export function validatePublishedPageBlockVariants(
   pages: Array<{ blocks: ContractPage["blocks"] }>,
-  tenantSlug: string,
+  _tenantSlug: string,
 ) {
   const errors: string[] = []
   pages.forEach((page, pageIndex) => {
     page.blocks.forEach((block, blockIndex) => {
-      const resolved = resolveBlockVariant(block, { tenantSlug })
-      if (resolved.variant && !resolved.variant.startsWith("shadcnui-blocks.")) return
-      for (const issue of validateProviderBlockInstance(block)) {
-        errors.push(`pages.${pageIndex}.blocks.${blockIndex}.${issue.path.join(".")}: ${issue.message}`)
-      }
+      const parsed = BlockSchema.safeParse(block)
+      if (!parsed.success) errors.push(...parsed.error.issues.map((issue) => `pages.${pageIndex}.blocks.${blockIndex}.${issue.path.join(".")}: ${issue.message}`))
     })
   })
   if (errors.length > 0) {
-    throw new Error(`Published snapshot failed provider block validation: ${errors.join("; ")}`)
+    throw new Error(`Published snapshot failed block validation: ${errors.join("; ")}`)
   }
 }
 

@@ -6,7 +6,6 @@ import {
   buildPageDraftKey,
   countPageEditorDirtyLeaves,
   createPageEditorSchema,
-  deriveChromeDirty,
   deriveNavDirty,
   deriveThemeDirty,
   editorAppendBlock,
@@ -15,28 +14,15 @@ import {
   editorRemoveBlock,
   editorReorderBlocks,
   isPageDraftStaleAgainstServer,
-  mergeRestoredChromeDraft,
   pageEditorDefaultValues,
   pageEditorHasRecoverableDraftWork,
-  selectChromeZone,
   selectElementPath,
 } from "@/lib/editor/pageEditorCore"
 import type { PageEditorDraft } from "@/lib/editor/pageDraftStore"
-import type { SiteChromeDraft } from "@/lib/siteChromeDraft"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
 const hero = (id: string): EditorBlock =>
   ({ id, blockType: "hero", headline: { t: "root", variant: "block", children: [] } }) as EditorBlock
-
-const emptyChromeDraft = (): SiteChromeDraft => ({
-  header: { logo: null },
-  footer: {
-    logo: null,
-    tagline: null,
-    copyright: null,
-    columns: [],
-  },
-})
 
 describe("buildPageDraftKey", () => {
   it("encodes tenant, page id, and base href", () => {
@@ -46,7 +32,6 @@ describe("buildPageDraftKey", () => {
     expect(buildPageDraftKey("t-1", undefined, "/pages")).toBe("page:t-1:new:%2Fpages")
   })
 })
-
 describe("isPageDraftStaleAgainstServer", () => {
   const draft = (savedAt: number): PageEditorDraft => ({
     version: 1,
@@ -68,7 +53,6 @@ describe("isPageDraftStaleAgainstServer", () => {
     expect(isPageDraftStaleAgainstServer(draft(1), null)).toBe(false)
   })
 })
-
 describe("dirty derivation", () => {
   const themeA = { palette: "a" } as unknown as ThemeTokens
   const themeB = { palette: "b" } as unknown as ThemeTokens
@@ -90,7 +74,6 @@ describe("dirty derivation", () => {
       formDirty: false,
       themeDirty: false,
       navDirty: false,
-      chromeDirty: false,
       dirtyFields: {},
     }
     expect(aggregatePageEditorDirty(base)).toBe(false)
@@ -104,42 +87,23 @@ describe("dirty derivation", () => {
       formDirty: true,
       themeDirty: true,
       navDirty: true,
-      chromeDirty: false,
       dirtyFields: { title: true },
     })
     expect(count).toBe(3)
   })
 
-  it("detects chrome dirty via comparable projection", () => {
-    const a = emptyChromeDraft()
-    const b = { ...emptyChromeDraft(), footer: { ...emptyChromeDraft().footer, tagline: "Hi" } }
-    expect(deriveChromeDirty(a, a, null)).toBe(false)
-    expect(deriveChromeDirty(a, b, null)).toBe(true)
-  })
-
   it("reports recoverable draft work across surfaces", () => {
-    expect(pageEditorHasRecoverableDraftWork(false, false, false, false)).toBe(false)
-    expect(pageEditorHasRecoverableDraftWork(false, true, false, false)).toBe(true)
+    expect(pageEditorHasRecoverableDraftWork(false, false, false)).toBe(false)
+    expect(pageEditorHasRecoverableDraftWork(false, true, false)).toBe(true)
   })
 })
 
 describe("selection helpers", () => {
   const path: ElementPath = { blockIndex: 0, field: "headline" }
 
-  it("clears chrome when selecting an element path", () => {
-    expect(selectElementPath(false, null, path)).toEqual({
-      selection: path,
-      chromeSelection: null,
-    })
+  it("selects an element path", () => {
+    expect(selectElementPath(false, null, path)).toEqual({ selection: path })
     expect(selectElementPath(true, null, path)).toBeNull()
-  })
-
-  it("clears element path when selecting chrome", () => {
-    expect(selectChromeZone(false, { zone: "header" })).toEqual({
-      selection: null,
-      chromeSelection: { zone: "header" },
-    })
-    expect(selectChromeZone(true, { zone: "footer" })).toBeNull()
   })
 })
 
@@ -166,7 +130,7 @@ describe("block command wiring", () => {
   })
 
   it("inserts and appends with selection on new block", () => {
-    const inserted = editorInsertBlockAt(blocks, 1, { blockType: "stats" })
+    const inserted = editorInsertBlockAt(blocks, 1, { blockType: "services" })
     expect(inserted.blocks).toHaveLength(4)
     expect(inserted.selection).toEqual({ blockIndex: 1, field: "" })
 
@@ -209,21 +173,5 @@ describe("pageEditorDefaultValues", () => {
 
     expect(values.seo?.ogImage).toBe(42)
     expect(createPageEditorSchema(t).safeParse(values).success).toBe(true)
-  })
-})
-
-describe("mergeRestoredChromeDraft", () => {
-  it("merges partial chrome draft onto settings baseline", () => {
-    const settings = {
-      chrome: {
-        header: { variant: "default", logo: null },
-        footer: { variant: "simple", logo: null, tagline: "Old", copyright: null, columns: [] },
-      },
-    }
-    const merged = mergeRestoredChromeDraft(settings, null, {
-      footer: { tagline: "Restored" },
-    })
-    expect(merged.footer.tagline).toBe("Restored")
-    expect(merged.header.variant).toBe("default")
   })
 })

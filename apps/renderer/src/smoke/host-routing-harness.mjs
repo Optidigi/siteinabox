@@ -113,43 +113,31 @@ function publishedSnapshotForHost(host, { tenantId, tenantSlug, siteName }) {
       ...retargeted.settings,
       siteUrl: productionOrigin,
       siteName,
-      chrome: {
-        ...retargeted.settings.chrome,
-        footer: {
-          ...retargeted.settings.chrome?.footer,
-          legalLinks: [{ label: "Privacy en cookies", href: "/privacy-en-cookieverklaring" }],
+      privacyDisclosure: {
+        enabled: true,
+        mode: "custom",
+        title: "Privacy- en cookieverklaring",
+        version: "smoke-privacy-1",
+        effectiveAt: "2026-07-10T00:00:00.000Z",
+        controller: { legalName: "AMICARE ZORG", email: "privacy@amicare.nl" },
+        body: {
+          t: "root",
+          variant: "block",
+          children: [
+            { t: "heading", level: 2, children: [{ t: "text", v: "Privacy- en cookieverklaring" }] },
+            { t: "paragraph", children: [{ t: "text", v: "AMICARE ZORG is verantwoordelijk voor deze website." }] },
+            { t: "paragraph", children: [{ t: "text", v: "Optidigi, handelend onder de naam Site in a Box, levert de technische omgeving." }] },
+          ],
         },
       },
-      analytics: {
-        ...retargeted.settings.analytics,
-        provider: "posthog",
-        token: `phc_${tenantSlug.replaceAll("-", "_")}_smoke`,
-        posthogHost: "https://eu.posthog.com",
-      },
+        analytics: {
+          ...retargeted.settings.analytics,
+          provider: "posthog",
+          token: `phc_${tenantSlug.replaceAll("-", "_")}_smoke`,
+          posthogHost: "https://eu.posthog.com",
+        },
     },
-    pages: [
-      ...retargeted.pages,
-      {
-        id: "amicare-privacy",
-        slug: "privacy-en-cookieverklaring",
-        title: "Privacy- en cookieverklaring",
-        status: "published",
-        updatedAt: "2026-07-10T00:00:00.000Z",
-        blocks: [{
-          blockType: "contentSection",
-          designVariant: "shadcnui-blocks.legal-content-01",
-          body: {
-            t: "root",
-            variant: "block",
-            children: [
-              { t: "heading", level: 2, children: [{ t: "text", v: "Privacy- en cookieverklaring" }] },
-              { t: "paragraph", children: [{ t: "text", v: "AMICARE ZORG is verantwoordelijk voor deze website." }] },
-              { t: "paragraph", children: [{ t: "text", v: "Optidigi, handelend onder de naam Site in a Box, levert de technische omgeving." }] },
-            ],
-          },
-        }],
-      },
-    ],
+    pages: [...retargeted.pages],
   }
 }
 
@@ -284,9 +272,13 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareHtml = await amicareHome.text()
   await assertStatus(amicareHome, 200, "ami-care.nl homepage status", amicareHtml, failureContext)
   assert.doesNotMatch(amicareHtml, /data-tenant-renderer=/)
-  assert.match(amicareHtml, /data-provider-variant="shadcnui-blocks\.hero-02"/)
-  assert.match(amicareHtml, /data-provider-variant="shadcnui-blocks\.features-01"/)
-  assert.match(amicareHtml, /data-provider-variant="shadcnui-blocks\.contact-01"/)
+  assert.equal(
+    amicareHtml.match(/data-siab-block-state="variant-pending"/g)?.length ?? 0,
+    0,
+  )
+  for (const blockType of ["hero", "services", "cta"]) {
+    assert.match(amicareHtml, new RegExp(`data-block-type="${blockType}"`))
+  }
   assert.match(amicareHtml, /data-siab-theme-mode="light"/)
   assert.match(amicareHtml, /data-siab-color-mode="light"/)
   assert.match(amicareHtml, /localStorage\.getItem\("siab-color-mode"\)/)
@@ -295,16 +287,25 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /data-theme-color="terracotta-warm"/)
   assert.match(amicareHtml, /data-theme-font="classic-editorial"/)
   assert.match(amicareHtml, /data-theme-shape="soft"/)
+  assert.match(amicareHtml, /data-theme-background-mode="image"/)
   assert.doesNotMatch(amicareHtml, /--site-style-preset:/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
-  assert.match(amicareHtml, /data-siab-cookie-consent="true"/)
-  assert.match(amicareHtml, /"consentVersion":"2026-07-07\.1"/)
+  assert.doesNotMatch(amicareHtml, /data-provider|shadcnui-blocks/)
+  assert.match(amicareHtml, /data-siab-navbar-frame="true"/)
+  assert.match(amicareHtml, /data-navbar-variant="navbar-01"/)
+  assert.match(amicareHtml, /data-siab-footer="true"/)
+  assert.match(amicareHtml, /data-footer-variant="footer-01"/)
+  assert.match(amicareHtml, /data-siab-consent-frame="true"/)
+  assert.match(amicareHtml, /data-siab-consent-action="all"/)
+  assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/amicare-logo\.svg/)
   assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)
-  assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/bedroom\.jpg/)
-  assert.match(amicareHtml, /Jeugdzorg/)
-  assert.match(amicareHtml, /Aandacht/)
-  assert.match(amicareHtml, /Vertrouwen/)
-  assert.match(amicareHtml, /href="\/privacy-en-cookieverklaring"/)
+  for (const forbiddenPattern of [
+    /data-siab-section-variant=/,
+    /data-system-template/,
+    /privacy-en-cookieverklaring/,
+  ]) {
+    assert.equal(forbiddenPattern.test(amicareHtml), false, `clean homepage contains ${forbiddenPattern}`)
+  }
 
   const amicareWww = await fetchWithHost(baseUrl, "www.ami-care.nl", "/")
   const amicareWwwHtml = await amicareWww.text()
@@ -357,7 +358,8 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicarePrivacy = await fetchWithHost(baseUrl, "ami-care.nl", "/privacy-en-cookieverklaring")
   const amicarePrivacyHtml = await amicarePrivacy.text()
   await assertStatus(amicarePrivacy, 200, "ami-care.nl privacy status", amicarePrivacyHtml, failureContext)
-  assert.match(amicarePrivacyHtml, /data-provider-variant="shadcnui-blocks\.legal-content-01"/)
+  assert.match(amicarePrivacyHtml, /data-siab-legal-document/)
+  assert.doesNotMatch(amicarePrivacyHtml, /data-block-type="richText"/)
   assert.match(amicarePrivacyHtml, /AMICARE ZORG/)
   assert.match(amicarePrivacyHtml, /Optidigi, handelend onder de naam Site in a Box/)
 
@@ -369,6 +371,17 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.equal(amicareMedia.headers.get("content-type"), "image/jpeg")
   assert.equal(amicareMedia.headers.get("x-content-type-options"), "nosniff")
   assert.equal(await amicareMedia.text(), "stub media")
+
+  const amicareToys = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/toys.jpg")
+  assert.equal(amicareToys.status, 200)
+  assert.equal(amicareToys.headers.get("content-type"), "image/jpeg")
+  assert.equal(amicareToys.headers.get("x-content-type-options"), "nosniff")
+  assert.equal(await amicareToys.text(), "stub media")
+
+  const amicareLogo = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/amicare-logo.svg")
+  assert.equal(amicareLogo.status, 200)
+  assert.equal(amicareLogo.headers.get("content-type"), "image/svg+xml")
+  assert.equal(amicareLogo.headers.get("x-content-type-options"), "nosniff")
 
   const amicareSvg = await fetchWithHost(
     baseUrl,
@@ -420,8 +433,8 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const unknownHostNotFound = await fetchWithHost(baseUrl, "unknown.example", "/")
   const unknownHostHtml = await unknownHostNotFound.text()
   await assertStatus(unknownHostNotFound, 404, "unknown.example/ status", unknownHostHtml, failureContext)
-  assert.match(unknownHostHtml, /Page not found/)
-  assert.doesNotMatch(unknownHostHtml, /data-system-template="shadcnui-blocks\.not-found-/)
+  assert.doesNotMatch(unknownHostHtml, /Deze pagina bestaat niet|Page not found/)
+  assert.doesNotMatch(unknownHostHtml, /data-system-template=/)
   assertNoAnalyticsLeakage(unknownHostHtml)
 
   const tenantNotFoundChecks = [
@@ -434,14 +447,12 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
     const response = await fetchWithHost(baseUrl, host, pathname)
     const html = await response.text()
     await assertStatus(response, 404, `${host}${pathname} status`, html, failureContext)
-    assert.match(html, /Page not found/)
-    assert.match(html, /data-system-template="shadcnui-blocks\.not-found-01"/)
-    assert.match(html, /data-system-template-kind="not-found"/)
+    assert.doesNotMatch(html, /Deze pagina bestaat niet|Page not found/)
+    assert.doesNotMatch(html, /data-system-template=|renderer-not-found/)
     assert.match(html, /data-siab-theme-mode="light"/)
     assert.match(html, /localStorage\.getItem\("siab-color-mode"\)/)
-    assert.match(html, /data-siab-theme-overrides/)
-    assert.match(html, /data-provider-token-mode="theme"/)
-    assert.doesNotMatch(html, /data-system-template="shadcnui-blocks\.not-found-01"[^>]*style=/)
+    assert.doesNotMatch(html, /data-siab-theme-overrides/)
+    assert.doesNotMatch(html, /data-provider|shadcnui-blocks/)
     assertNoAnalyticsLeakage(html)
   }
 
@@ -451,7 +462,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
     const response = await fetchWithHost(baseUrl, host, pathname)
     const html = await response.text()
     await assertStatusIn(response, [400, 404], `${host}${pathname} status`, html, failureContext)
-    if (response.status === 404) assert.match(html, /Page not found/)
+    if (response.status === 404) assert.doesNotMatch(html, /Deze pagina bestaat niet|Page not found/)
     if (response.status === 400) assert.doesNotMatch(html, /Page not found/)
     assertNoAnalyticsLeakage(html)
   }

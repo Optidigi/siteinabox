@@ -2,57 +2,42 @@ import { z } from "zod"
 import {
   COLOR_SCHEME_IDS,
   FONT_SCHEME_IDS,
+  BACKGROUND_MODE_IDS,
   SHAPE_SCHEME_IDS,
 } from "./theme-presets"
-
-import {
-  SITE_BLOCK_CATALOG,
-  SITE_CHROME_CATALOG,
-  SITE_GENERATION_BLOCK_CATALOG,
-  SITE_SELF_SERVE_CHROME_VARIANTS,
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
-  validateSiteChromeCapabilities,
-  type SiteBlockCatalogVariant,
-} from "./block-catalog"
-import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "./site"
-import { SHADCNUI_SYSTEM_TEMPLATES, type ShadcnUiSystemTemplateId } from "./generated/shadcnui-blocks"
-import { validateProviderBlockCore } from "./provider-validation"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "./intake-legal"
-import type {
-  AnalyticsBlockMetadata,
-  BentoGridBlock,
-  Block,
-  BlogCardsBlock,
-  ContactSectionBlock,
-  ContactDetailsBlock,
-  ContentSectionBlock,
-  TimelineBlock,
-  CTABlock,
-  FAQBlock,
-  FeatureListBlock,
-  FormProviderConfig,
-  FooterCompositionColumn,
-  GalleryBlock,
-  HeroBlock,
-  LinkRef,
-  LogoCloudBlock,
-  MediaRef,
-  NavLink,
-  NewsletterBlock,
-  Page,
-  PricingBlock,
-  RichTextBlock,
-  SiteBannerChromeVariant,
-  SiteFooterChromeVariant,
-  SiteHeaderChromeVariant,
-  SiteSettings,
-  SiteChromeVariant,
-  SiteBlockSlug,
-  SiteGenerationBlockSlug,
-  StatsBlock,
-  TeamBlock,
-  TestimonialsBlock,
+import {
+  DEFAULT_NAVBAR_PLACEMENT,
+  DEFAULT_NAVBAR_VARIANT,
+  CONSENT_VARIANTS,
+  DEFAULT_CONSENT_VARIANT,
+  DEFAULT_FOOTER_VARIANT,
+  FOOTER_VARIANTS,
+  NAVBAR_PLACEMENTS,
+  NAVBAR_VARIANTS,
+  SITE_BLOCK_SLUGS,
+  type SiteBlockSlug,
+  type SiteSettings,
+  type Page,
+  type Block,
+  type LinkRef,
+  type MediaRef,
+  type NavLink,
+  type FooterCompositionColumn,
 } from "./site"
+import {
+  AboutBlockSchema,
+  BlockSchema as OwnedBlockSchema,
+  ContactBlockSchema,
+  CtaBlockSchema,
+  FaqBlockSchema,
+  HeroBlockSchema,
+  ProcessBlockSchema,
+  PricingBlockSchema,
+  ReviewsBlockSchema,
+  ServicesBlockSchema,
+  WorkBlockSchema,
+} from "./blocks"
 import type {
   CmsApplyResult,
   GeneratedBlockSpec,
@@ -96,32 +81,6 @@ const DOMAIN_REGEX =
 const SLUG_REGEX = /^[a-z0-9-]+$/
 const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|(oklch|color|rgb[a]?|hsl[a]?)\(.*\)|[a-zA-Z]+)$/
-const uniqueChromeVariantsFor = <T extends SiteChromeVariant>(area: "header" | "footer" | "banner") =>
-  SITE_SELF_SERVE_CHROME_VARIANTS
-    .filter((variant) => variant.area === area)
-    .map((variant) => variant.variant)
-    .filter((variant, index, variants) => variants.indexOf(variant) === index) as T[]
-const SITE_SELF_SERVE_HEADER_CHROME_VARIANT_SET = new Set<SiteHeaderChromeVariant>(
-  uniqueChromeVariantsFor<SiteHeaderChromeVariant>("header"),
-)
-const SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET = new Set<SiteFooterChromeVariant>(
-  uniqueChromeVariantsFor<SiteFooterChromeVariant>("footer"),
-)
-const SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET = new Set<SiteBannerChromeVariant>(
-  uniqueChromeVariantsFor<SiteBannerChromeVariant>("banner"),
-)
-const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET = new Set<string>(
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
-)
-const isSelfServeBlockCatalogVariant = (variant: SiteBlockCatalogVariant) =>
-  variant.scope.kind === "global" &&
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET.has(variant.provenance.sourceName)
-
-const blockVariantIdentifiers = (variant: SiteBlockCatalogVariant): string[] =>
-  [variant.variant, variant.providerVariantId].filter((value): value is string =>
-    typeof value === "string" && value.length > 0,
-  )
-
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
 const jsonRecordSchema = z.record(z.string(), z.unknown())
@@ -155,46 +114,6 @@ const hostnameSchema = z
   })
 const slugSchema = z.string().regex(SLUG_REGEX)
 const cssColorSchema = z.string().regex(HEX_OR_CSS_FUNCTION_COLOR_REGEX)
-
-export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
-  SITE_BLOCK_SLUGS.map((slug) => [
-    slug,
-    new Set(
-      SITE_BLOCK_CATALOG
-        .filter((entry) => entry.slug === slug)
-        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .flatMap(blockVariantIdentifiers)
-        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
-    ),
-  ]),
-) as unknown as Record<SiteBlockSlug, ReadonlySet<string>>
-
-export const SITE_DESIGN_VARIANTS_BY_BLOCK_SLUG = SITE_VARIANTS_BY_BLOCK_SLUG
-
-export const SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
-  SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
-    slug,
-    new Set(
-      SITE_GENERATION_BLOCK_CATALOG
-        .filter((entry) => entry.slug === slug)
-        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .filter(isSelfServeBlockCatalogVariant)
-        .flatMap(blockVariantIdentifiers)
-        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
-    ),
-  ]),
-) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
-
-export const SITE_GENERIC_DESIGN_VARIANTS_BY_BLOCK_SLUG = SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG
-
-export const isSupportedBlockVariant = (
-  blockType: string,
-  variant: string | null | undefined,
-): boolean => {
-  if (!variant) return false
-  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
-  return SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(variant) ?? false
-}
 
 export const RtTextSchema: z.ZodType<RtText> = strictObject({
   t: z.literal("text"),
@@ -304,7 +223,7 @@ export const RtInlineRootSchema: z.ZodType<RtInlineRoot> = z.lazy(() =>
 )
 
 export const RtRootSchema: z.ZodType<RtRoot> = z.union([RtBlockRootSchema, RtInlineRootSchema])
-const RtFieldSchema = RtRootSchema.nullable()
+export const RtFieldSchema = RtRootSchema.nullable()
 
 export const MediaRefSchema: z.ZodType<MediaRef> = z.union([
   z.string(),
@@ -321,18 +240,6 @@ export const MediaRefSchema: z.ZodType<MediaRef> = z.union([
   }),
   z.null(),
 ])
-
-export const AnalyticsBlockMetadataSchema: z.ZodType<AnalyticsBlockMetadata> = strictObject({
-  sectionId: nullableString,
-  sectionType: nullableString,
-  sectionPosition: z.number().nullable().optional(),
-  sectionAnchor: nullableString,
-  providerVariant: nullableString,
-  blockPresetId: nullableString,
-  contentSignature: nullableString,
-})
-
-const BlockInstanceMetadataSchema = jsonRecordSchema.nullable().optional()
 
 export const LinkRefSchema: z.ZodType<LinkRef> = strictObject({
   label: nullableString,
@@ -355,453 +262,27 @@ export const NavLinkSchema: z.ZodType<NavLink> = z.lazy(() => strictObject({
   if (hasChildren && value.external) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["external"], message: "Navigation groups cannot be external links." })
 }))
 
-export const FormProviderConfigSchema: z.ZodType<FormProviderConfig> = strictObject({
-  provider: z.enum(["siab", "web3forms", "custom", "mailto"]).nullable().optional(),
-  action: nullableString,
-  method: z.enum(["GET", "POST"]).nullable().optional(),
-  hiddenFields: z.array(strictObject({
-    name: z.string().min(1),
-    value: nullableString,
-  })).nullable().optional(),
-  honeypotField: nullableString,
-  fallbackHref: nullableString,
-  successMessage: nullableString,
-  errorMessage: nullableString,
-  requiresConsent: z.boolean().nullable().optional(),
-  analyticsEnabled: z.boolean().nullable().optional(),
-})
 
-const generatedBlockSourceSchema = z.enum(["ai", "cms", "import", "operator"]).optional()
-
-const baseBlockShape = {
-  id: z.string().optional(),
-  source: generatedBlockSourceSchema,
-  designVariant: nullableString,
-  metadata: BlockInstanceMetadataSchema,
-  analytics: AnalyticsBlockMetadataSchema.nullable().optional(),
-  anchor: nullableString,
-}
-
-export const HeroBlockSchema: z.ZodType<HeroBlock> = strictObject({
-  blockType: z.literal("hero"),
-  ...baseBlockShape,
-  eyebrow: RtFieldSchema.optional(),
-  headline: RtRootSchema,
-  subheadline: RtFieldSchema.optional(),
-  pills: z.array(strictObject({ label: z.string().min(1), id: nullableString })).optional(),
-  links: z.array(LinkRefSchema).nullable().optional(),
-  cta: LinkRefSchema.nullable().optional(),
-  secondary: LinkRefSchema.nullable().optional(),
-  image: MediaRefSchema.optional(),
-  stats: z.array(strictObject({
-    value: z.string().min(1),
-    label: z.string().min(1),
-  })).nullable().optional(),
-  trustLabel: nullableString,
-  logos: z.array(strictObject({ name: z.string().min(1), image: MediaRefSchema.optional(), href: nullableString })).nullable().optional(),
-})
-
-export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject({
-  blockType: z.literal("featureList"),
-  ...baseBlockShape,
-  eyebrow: RtFieldSchema.optional(),
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  image: MediaRefSchema.optional(),
-  features: z
-    .array(strictObject({
-      title: RtRootSchema,
-      description: RtFieldSchema.optional(),
-      icon: nullableString,
-      image: MediaRefSchema.optional(),
-      cta: LinkRefSchema.nullable().optional(),
-      metricValue: nullableString,
-      metricLabel: nullableString,
-    }))
-    .min(1),
-})
-
-export const TestimonialsBlockSchema: z.ZodType<TestimonialsBlock> = strictObject({
-  blockType: z.literal("testimonials"),
-  ...baseBlockShape,
-  title: nullableString,
-  intro: nullableString,
-  logo: MediaRefSchema.optional(),
-  items: z
-    .array(strictObject({
-      quote: z.string().min(1),
-      author: z.string().min(1),
-      role: nullableString,
-      avatar: MediaRefSchema.optional(),
-    }))
-    .min(1),
-})
-
-export const FAQBlockSchema: z.ZodType<FAQBlock> = strictObject({
-  blockType: z.literal("faq"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  items: z
-    .array(strictObject({
-      question: RtRootSchema,
-      answer: RtRootSchema,
-    }))
-    .min(1),
-})
-
-export const CTABlockSchema: z.ZodType<CTABlock> = strictObject({
-  blockType: z.literal("cta"),
-  ...baseBlockShape,
-  eyebrow: RtFieldSchema.optional(),
-  headline: RtRootSchema,
-  description: RtFieldSchema.optional(),
-  primary: LinkRefSchema.nullable().optional(),
-  secondary: LinkRefSchema.nullable().optional(),
-  backgroundImage: MediaRefSchema.optional(),
-})
-
-export const RichTextBlockSchema: z.ZodType<RichTextBlock> = strictObject({
-  blockType: z.literal("richText"),
-  ...baseBlockShape,
-  body: RtRootSchema,
-})
-
-export const ContactSectionBlockSchema: z.ZodType<ContactSectionBlock> = strictObject({
-  blockType: z.literal("contactSection"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  description: RtFieldSchema.optional(),
-  formName: z.string().min(1),
-  submitLabel: nullableString,
-  fields: z
-    .array(strictObject({
-      name: z.string().min(1),
-      label: z.string().min(1),
-      type: z.enum(["text", "email", "tel", "textarea", "select", "checkbox"]),
-      required: z.boolean().optional(),
-      placeholder: nullableString,
-      maxLength: z.number().int().positive().nullable().optional(),
-      options: z.array(strictObject({
-        label: z.string().min(1),
-        value: z.string().min(1),
-      })).nullable().optional(),
-    }))
-    .min(1),
-  provider: FormProviderConfigSchema.nullable().optional(),
-})
-
-export const ContactDetailsBlockSchema: z.ZodType<ContactDetailsBlock> = strictObject({
-  blockType: z.literal("contactDetails"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  description: RtFieldSchema.optional(),
-  items: z.array(strictObject({
-    title: z.string().min(1),
-    description: nullableString,
-    value: z.string().min(1),
-    href: nullableString,
-    icon: nullableString,
-  })).min(1),
-})
-
-export const NewsletterBlockSchema: z.ZodType<NewsletterBlock> = strictObject({
-  blockType: z.literal("newsletter"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  description: RtFieldSchema.optional(),
-  emailLabel: nullableString,
-  emailPlaceholder: nullableString,
-  submitLabel: nullableString,
-  consentLabel: nullableString,
-  benefits: z.array(strictObject({
-    title: RtRootSchema,
-    description: RtFieldSchema.optional(),
-    icon: nullableString,
-  })).nullable().optional(),
-  provider: FormProviderConfigSchema.nullable().optional(),
-})
-
-export const PricingBlockSchema: z.ZodType<PricingBlock> = strictObject({
-  blockType: z.literal("pricing"),
-  ...baseBlockShape,
-  eyebrow: RtFieldSchema.optional(),
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  plans: z
-    .array(strictObject({
-      title: RtRootSchema,
-      description: RtFieldSchema.optional(),
-      price: nullableString,
-      period: nullableString,
-      features: z.array(strictObject({
-        label: RtRootSchema,
-        included: z.boolean().nullable().optional(),
-      })).nullable().optional(),
-      cta: LinkRefSchema.nullable().optional(),
-      badge: nullableString,
-      highlighted: z.boolean().nullable().optional(),
-    }))
-    .min(1),
-})
-
-export const StatsBlockSchema: z.ZodType<StatsBlock> = strictObject({
-  blockType: z.literal("stats"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  items: z
-    .array(strictObject({
-      value: z.string().min(1),
-      label: z.string().min(1),
-      description: RtFieldSchema.optional(),
-    }))
-    .min(1),
-})
-
-export const LogoCloudBlockSchema: z.ZodType<LogoCloudBlock> = strictObject({
-  blockType: z.literal("logoCloud"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  logos: z
-    .array(strictObject({
-      name: z.string().min(1),
-      description: nullableString,
-      image: MediaRefSchema.optional(),
-      href: nullableString,
-    }))
-    .min(1),
-  cta: LinkRefSchema.nullable().optional(),
-})
-
-export const GalleryBlockSchema: z.ZodType<GalleryBlock> = strictObject({
-  blockType: z.literal("gallery"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  images: z
-    .array(strictObject({
-      image: MediaRefSchema.optional(),
-      caption: RtFieldSchema.optional(),
-      link: LinkRefSchema.nullable().optional(),
-    }))
-    .min(1),
-  cta: LinkRefSchema.nullable().optional(),
-})
-
-export const BentoGridBlockSchema: z.ZodType<BentoGridBlock> = strictObject({
-  blockType: z.literal("bentoGrid"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  items: z.array(strictObject({
-    title: RtRootSchema,
-    description: RtFieldSchema.optional(),
-    image: MediaRefSchema.optional(),
-  })).min(1),
-})
-
-export const ContentSectionBlockSchema: z.ZodType<ContentSectionBlock> = strictObject({
-  blockType: z.literal("contentSection"),
-  ...baseBlockShape,
-  eyebrow: RtFieldSchema.optional(),
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  body: RtRootSchema,
-  features: z.array(strictObject({
-    title: RtRootSchema,
-    description: RtFieldSchema.optional(),
-    icon: nullableString,
-  })).nullable().optional(),
-  bridge: RtFieldSchema.optional(),
-  secondaryTitle: RtFieldSchema.optional(),
-  secondaryBody: RtFieldSchema.optional(),
-  image: MediaRefSchema.optional(),
-  cta: LinkRefSchema.nullable().optional(),
-})
-
-export const TimelineBlockSchema: z.ZodType<TimelineBlock> = strictObject({
-  blockType: z.literal("timeline"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  items: z.array(strictObject({
-    title: z.string().min(1),
-    description: nullableString,
-    label: nullableString,
-    date: nullableString,
-    tags: z.array(strictObject({ value: z.string().min(1) })).nullable().optional(),
-  })).min(1),
-})
-
-export const TeamBlockSchema: z.ZodType<TeamBlock> = strictObject({
-  blockType: z.literal("team"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  members: z
-    .array(strictObject({
-      name: z.string().min(1),
-      role: nullableString,
-      bio: RtFieldSchema.optional(),
-      image: MediaRefSchema.optional(),
-      links: z.array(LinkRefSchema).nullable().optional(),
-    }))
-    .min(1),
-})
-
-export const BlogCardsBlockSchema: z.ZodType<BlogCardsBlock> = strictObject({
-  blockType: z.literal("blogCards"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  posts: z
-    .array(strictObject({
-      title: RtRootSchema,
-      excerpt: RtFieldSchema.optional(),
-      image: MediaRefSchema.optional(),
-      href: nullableString,
-      date: nullableString,
-      author: nullableString,
-      authorRole: nullableString,
-      cta: LinkRefSchema.nullable().optional(),
-    }))
-    .min(1),
-  cta: LinkRefSchema.nullable().optional(),
-  secondary: LinkRefSchema.nullable().optional(),
-})
-
-const BlockSchemaBase = z.union([
+export {
+  AboutBlockSchema,
+  ContactBlockSchema,
+  CtaBlockSchema,
+  FaqBlockSchema,
   HeroBlockSchema,
-  FeatureListBlockSchema,
-  TestimonialsBlockSchema,
-  FAQBlockSchema,
-  CTABlockSchema,
-  RichTextBlockSchema,
-  ContactSectionBlockSchema,
-  ContactDetailsBlockSchema,
-  NewsletterBlockSchema,
+  ProcessBlockSchema,
   PricingBlockSchema,
-  StatsBlockSchema,
-  LogoCloudBlockSchema,
-  GalleryBlockSchema,
-  BentoGridBlockSchema,
-  ContentSectionBlockSchema,
-  TimelineBlockSchema,
-  TeamBlockSchema,
-  BlogCardsBlockSchema,
-])
-
-const GeneratedBlockSchemaBase = z.union([
-  HeroBlockSchema,
-  FeatureListBlockSchema,
-  TestimonialsBlockSchema,
-  FAQBlockSchema,
-  CTABlockSchema,
-  ContactSectionBlockSchema,
-  ContactDetailsBlockSchema,
-  PricingBlockSchema,
-  StatsBlockSchema,
-  LogoCloudBlockSchema,
-  GalleryBlockSchema,
-  ContentSectionBlockSchema,
-  TimelineBlockSchema,
-  TeamBlockSchema,
-  BlogCardsBlockSchema,
-])
-
-const refineBlockVariant = (
-  block: {
-    blockType: string
-    designVariant?: string | null
-  },
-  ctx: z.RefinementCtx,
-) => {
-  const designVariant = typeof block.designVariant === "string" && block.designVariant.length > 0
-    ? block.designVariant
-    : undefined
-  if (!designVariant) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["designVariant"],
-      message: `Block type "${block.blockType}" requires an approved explicit provider variant`,
-    })
-    return
-  }
-  refineProviderContentSlots(block, ctx)
+  ReviewsBlockSchema,
+  ServicesBlockSchema,
+  WorkBlockSchema,
 }
 
-function refineProviderContentSlots(
-  block: {
-    blockType: string
-    designVariant?: string | null
-  },
-  ctx: z.RefinementCtx,
-) {
-  const core = validateProviderBlockCore(block, { includeSystemBlockVariants: true })
-  for (const entry of core.issues) {
-    if (entry.code === "missing_provider_variant") continue
-    if (entry.code === "unresolved_provider_variant") {
-      ctx.addIssue({ code: "custom", path: entry.path, message: `Unsupported design variant "${entry.variantId}" for block type "${block.blockType}"` })
-    } else if (entry.code === "missing_required_slot") {
-      ctx.addIssue({ code: "custom", path: entry.path, message: `Provider variant "${entry.variantId}" requires slot "${entry.field}"` })
-    } else if (entry.code === "inactive_slot_value") {
-      ctx.addIssue({ code: "custom", path: entry.path, message: `Provider variant "${entry.variantId}" does not expose slot "${entry.field}"` })
-    } else {
-      ctx.addIssue({ code: "custom", path: entry.path, message: `Provider variant "${entry.variantId}" requires an image for every logo` })
-    }
-  }
-}
-
-const refineGeneratedBlock = (
-  block: {
-    blockType: string
-    designVariant?: string | null
-  },
-  ctx: z.RefinementCtx,
-) => {
-  addForbiddenGeneratedPayloadIssues(block, ctx, [])
-  refineBlockVariant(block, ctx)
-}
-
-export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
-  refineBlockVariant(block, ctx)
-})
-
-export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
-  GeneratedBlockSchemaBase.superRefine((block, ctx) => {
-    refineGeneratedBlock(block, ctx)
-  })
-
-function addForbiddenGeneratedPayloadIssues(
-  value: unknown,
-  ctx: z.RefinementCtx,
-  path: Array<string | number>,
-): void {
-  if (!value || typeof value !== "object") return
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => addForbiddenGeneratedPayloadIssues(item, ctx, [...path, index]))
-    return
-  }
-
-  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-    const entryPath = [...path, key]
-    if (FORBIDDEN_GENERATED_PAYLOAD_KEY_SET.has(key)) {
-      ctx.addIssue({
-        code: "custom",
-        path: entryPath,
-        message: `Generated structured data must not include ${key}`,
-      })
-    }
-    addForbiddenGeneratedPayloadIssues(entry, ctx, entryPath)
-  }
-}
-
+export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> = OwnedBlockSchema
+const BlockSchema = OwnedBlockSchema
 const ThemeTokenSpecV3Schema = strictObject({
   version: z.literal(3),
   appearance: strictObject({
     mode: z.enum(["light", "dark", "system"]),
+    backgroundMode: z.enum(BACKGROUND_MODE_IDS).optional(),
   }),
   colors: strictObject({
     schemeId: z.enum(COLOR_SCHEME_IDS),
@@ -829,18 +310,46 @@ const FooterCompositionColumnSchema: z.ZodType<FooterCompositionColumn> = strict
   items: z.array(FooterCompositionItemSchema).nullable().optional(),
 })
 
-const chromeVariantSchema = <T extends string>(variants: ReadonlySet<T>) =>
-  z.string().refine((value): value is T => variants.has(value as T), {
-    message: "Unsupported chrome variant",
-  })
+export const TenantPrivacyDisclosureSchema: z.ZodType<NonNullable<SiteSettings["privacyDisclosure"]>> = strictObject({
+  enabled: z.boolean().nullable().optional(),
+  mode: z.enum(["template", "custom"]).nullable().optional(),
+  title: nullableString,
+  body: RtFieldSchema.optional(),
+  version: z.string().min(1),
+  effectiveAt: z.iso.datetime(),
+  controller: strictObject({
+    legalName: z.string().min(1),
+    tradeName: nullableString,
+    email: z.email(),
+    privacyEmail: z.email().nullable().optional(),
+    kvkNumber: nullableString,
+    address: nullableString,
+  }),
+  contactMethods: strictObject({
+    email: z.boolean().nullable().optional(),
+    phone: z.boolean().nullable().optional(),
+    whatsapp: z.boolean().nullable().optional(),
+    forms: strictObject({
+      enabled: z.boolean(),
+      mode: z.enum(["direct", "forwarded", "cms"]),
+      retention: z.discriminatedUnion("kind", [
+        strictObject({ kind: z.literal("days"), days: z.number().int().positive().max(3650) }),
+        strictObject({ kind: z.literal("active_agreement") }),
+      ]).nullable().optional(),
+    }).nullable().optional(),
+  }).nullable().optional(),
+  marketingTechnologies: z.array(strictObject({
+    name: z.string().min(1),
+    purpose: z.string().min(1),
+  })).nullable().optional(),
+  additionalProcessors: z.array(strictObject({
+    name: z.string().min(1),
+    purpose: z.string().min(1),
+    location: nullableString,
+  })).nullable().optional(),
+})
 
-const createSiteSettingsSchema = (
-  chromeVariants: {
-    header: ReadonlySet<SiteHeaderChromeVariant>
-    footer: ReadonlySet<SiteFooterChromeVariant>
-    banner: ReadonlySet<SiteBannerChromeVariant>
-  },
-): z.ZodType<SiteSettings> => strictObject({
+const createSiteSettingsSchema = (): z.ZodType<SiteSettings> => strictObject({
     siteName: z.string().min(1),
     siteUrl: z.string().url(),
     description: nullableString,
@@ -853,22 +362,17 @@ const createSiteSettingsSchema = (
       primaryColor: nullableString,
     }).nullable().optional(),
     chrome: strictObject({
-      header: strictObject({
-        variant: chromeVariantSchema(chromeVariants.header).nullable().optional(),
+      navbar: strictObject({
+        variant: z.enum(NAVBAR_VARIANTS).default(DEFAULT_NAVBAR_VARIANT),
+        placement: z.enum(NAVBAR_PLACEMENTS).default(DEFAULT_NAVBAR_PLACEMENT),
         logo: MediaRefSchema.optional(),
-        behavior: z.enum(["static", "sticky"]).nullable().optional(),
         activeMode: z.enum(["path", "anchor", "none"]).nullable().optional(),
         mobileMenu: z.enum(["dropdown", "drawer"]).nullable().optional(),
+        showThemeToggle: z.boolean().nullable().optional(),
         cta: LinkRefSchema.nullable().optional(),
-        secondaryAction: LinkRefSchema.nullable().optional(),
-        search: strictObject({
-          enabled: z.boolean().nullable().optional(),
-          action: nullableString,
-          placeholder: nullableString,
-        }).nullable().optional(),
       }).nullable().optional(),
       footer: strictObject({
-        variant: chromeVariantSchema(chromeVariants.footer).nullable().optional(),
+        variant: z.enum(FOOTER_VARIANTS).default(DEFAULT_FOOTER_VARIANT),
         logo: MediaRefSchema.optional(),
         tagline: nullableString,
         copyright: nullableString,
@@ -882,24 +386,40 @@ const createSiteSettingsSchema = (
           method: z.enum(["GET", "POST"]).nullable().optional(),
         }).nullable().optional(),
       }).nullable().optional(),
-      banner: strictObject({
-        variant: chromeVariantSchema(chromeVariants.banner).nullable().optional(),
+      announcement: strictObject({
         visible: z.boolean().nullable().optional(),
         title: nullableString,
-        message: z.string().min(1),
+        message: nullableString,
         link: LinkRefSchema.nullable().optional(),
         dismissible: z.boolean().nullable().optional(),
       }).nullable().optional(),
     }).nullable().optional(),
+    consent: strictObject({
+      variant: z.enum(CONSENT_VARIANTS).default(DEFAULT_CONSENT_VARIANT),
+      visible: z.boolean().nullable().optional(),
+      title: nullableString,
+      message: nullableString,
+      acceptLabel: nullableString,
+      allowSelectionLabel: nullableString,
+      rejectLabel: nullableString,
+      necessaryLabel: nullableString,
+      preferencesLabel: nullableString,
+      statisticsLabel: nullableString,
+      marketingLabel: nullableString,
+      // Retained for older published snapshots; current consent uses direct category switches.
+      manageLabel: nullableString,
+      privacyLink: LinkRefSchema.nullable().optional(),
+    }).nullable().optional(),
     systemTemplates: strictObject({
       notFound: strictObject({
-        variant: z.custom<ShadcnUiSystemTemplateId>((value) => typeof value === "string" && SHADCNUI_SYSTEM_TEMPLATES.some((template) => template.id === value), "Unknown provider not-found template").nullable().optional(),
+        heading: nullableString,
+        body: nullableString,
+        primaryAction: LinkRefSchema.nullable().optional(),
       }).nullable().optional(),
     }).nullable().optional(),
     maintenance: strictObject({
       enabled: z.boolean().nullable().optional(),
       message: nullableString,
-      variant: chromeVariantSchema(chromeVariants.banner).nullable().optional(),
     }).nullable().optional(),
     contact: strictObject({
       phone: nullableString,
@@ -923,8 +443,10 @@ const createSiteSettingsSchema = (
       closed: z.boolean().optional(),
     })).optional(),
     serviceArea: z.array(strictObject({ name: z.string().min(1) })).optional(),
-    navHeader: z.array(z.lazy(() => NavLinkSchema)).optional(),
-    navFooter: z.array(z.lazy(() => NavLinkSchema)).optional(),
+    navigation: strictObject({
+      primary: z.array(z.lazy(() => NavLinkSchema)).optional(),
+      footer: z.array(z.lazy(() => NavLinkSchema)).optional(),
+    }).nullable().optional(),
     analytics: jsonRecordSchema.nullable().optional(),
     analyticsConsent: strictObject({
       enabled: z.boolean().nullable().optional(),
@@ -935,41 +457,7 @@ const createSiteSettingsSchema = (
       captureActions: z.boolean().nullable().optional(),
       captureForms: z.boolean().nullable().optional(),
     }).nullable().optional(),
-    privacyDisclosure: strictObject({
-      enabled: z.boolean().nullable().optional(),
-      version: z.string().min(1),
-      effectiveAt: z.iso.datetime(),
-      controller: strictObject({
-        legalName: z.string().min(1),
-        tradeName: nullableString,
-        email: z.email(),
-        privacyEmail: z.email().nullable().optional(),
-        kvkNumber: nullableString,
-        address: nullableString,
-      }),
-      contactMethods: strictObject({
-        email: z.boolean().nullable().optional(),
-        phone: z.boolean().nullable().optional(),
-        whatsapp: z.boolean().nullable().optional(),
-        forms: strictObject({
-          enabled: z.boolean(),
-          mode: z.enum(["direct", "forwarded", "cms"]),
-          retention: z.discriminatedUnion("kind", [
-            strictObject({ kind: z.literal("days"), days: z.number().int().positive().max(3650) }),
-            strictObject({ kind: z.literal("active_agreement") }),
-          ]).nullable().optional(),
-        }).nullable().optional(),
-      }).nullable().optional(),
-      marketingTechnologies: z.array(strictObject({
-        name: z.string().min(1),
-        purpose: z.string().min(1),
-      })).nullable().optional(),
-      additionalProcessors: z.array(strictObject({
-        name: z.string().min(1),
-        purpose: z.string().min(1),
-        location: nullableString,
-      })).nullable().optional(),
-    }).nullable().optional(),
+    privacyDisclosure: TenantPrivacyDisclosureSchema.nullable().optional(),
     seoJsonLd: strictObject({
       organization: strictObject({
         enabled: z.boolean().nullable().optional(),
@@ -993,11 +481,11 @@ const createSiteSettingsSchema = (
     updatedAt: z.string().optional(),
   }).superRefine((settings, ctx) => {
   for (const key of FORBIDDEN_GENERATED_PAYLOAD_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(settings.chrome?.header ?? {}, key)) {
+    if (Object.prototype.hasOwnProperty.call(settings.chrome?.navbar ?? {}, key)) {
       ctx.addIssue({
         code: "custom",
-        path: ["chrome", "header", key],
-        message: `Generated chrome header must not include ${key}`,
+        path: ["chrome", "navbar", key],
+        message: `Generated chrome navbar must not include ${key}`,
       })
     }
     if (Object.prototype.hasOwnProperty.call(settings.chrome?.footer ?? {}, key)) {
@@ -1007,24 +495,17 @@ const createSiteSettingsSchema = (
         message: `Generated chrome footer must not include ${key}`,
       })
     }
-    if (Object.prototype.hasOwnProperty.call(settings.chrome?.banner ?? {}, key)) {
+    if (Object.prototype.hasOwnProperty.call(settings.chrome?.announcement ?? {}, key)) {
       ctx.addIssue({
         code: "custom",
-        path: ["chrome", "banner", key],
-        message: `Generated chrome banner must not include ${key}`,
+        path: ["chrome", "announcement", key],
+        message: `Generated chrome announcement must not include ${key}`,
       })
     }
   }
-  for (const issue of validateSiteChromeCapabilities(settings)) {
-    ctx.addIssue({ code: "custom", path: issue.path.split("."), message: issue.message })
-  }
 })
 
-export const SiteSettingsSchema: z.ZodType<SiteSettings> = createSiteSettingsSchema({
-  header: SITE_SELF_SERVE_HEADER_CHROME_VARIANT_SET,
-  footer: SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET,
-  banner: SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET,
-})
+export const SiteSettingsSchema: z.ZodType<SiteSettings> = createSiteSettingsSchema()
 export const GeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> = SiteSettingsSchema
 
 const PageSchemaBase = strictObject({
@@ -1316,7 +797,7 @@ export const SiteBlockEditorFieldSchema: z.ZodType<SiteBlockEditorField> = z.laz
 )
 
 export const SiteBlockManifestItemSchema: z.ZodType<SiteBlockManifestItem> = strictObject({
-  slug: z.enum(SITE_GENERATION_BLOCK_SLUGS),
+  slug: z.enum(SITE_BLOCK_SLUGS),
   label: z.string().optional(),
   defaultAnchor: z.string().optional(),
   fields: z.array(SiteBlockEditorFieldSchema).optional(),

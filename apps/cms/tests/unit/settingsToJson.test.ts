@@ -44,6 +44,33 @@ const fullSettingsContract: SettingsContract = {
 }
 
 describe("settingsToJson", () => {
+  it("materializes an enabled template legal document without creating a page block", () => {
+    const json = settingsToJson({
+      id: "legal",
+      tenant: "tenant",
+      siteName: "Voorbeeldbedrijf",
+      siteUrl: "https://voorbeeldbedrijf.nl",
+      privacyDisclosure: {
+        enabled: true,
+        mode: "template",
+        version: "test-1",
+        effectiveAt: "2026-08-25T00:00:00.000Z",
+        controller: {
+          legalName: "Voorbeeldbedrijf B.V.",
+          email: "privacy@voorbeeldbedrijf.nl",
+        },
+      },
+    }, [], {})
+
+    expect(json.privacyDisclosure).toMatchObject({
+      enabled: true,
+      mode: "template",
+      title: "Privacy- en cookieverklaring",
+    })
+    expect(json.privacyDisclosure?.body).toMatchObject({ t: "root", variant: "block" })
+    expect(JSON.stringify(json.privacyDisclosure?.body)).toContain("Wie is verantwoordelijk?")
+  })
+
   it("projects the versioned analytics consent contract for renderer enforcement", () => {
     const analyticsConsent = {
       enabled: true,
@@ -56,7 +83,38 @@ describe("settingsToJson", () => {
     expect(settingsToJson({}, [], { analyticsConsent }, { analytics: false }).analyticsConsent).toBeUndefined()
   })
 
-  it("flattens settings with branding/contact + resolves navHeader/navFooter", () => {
+  it("projects the settings-owned consent presentation without changing analytics policy", () => {
+    const json = settingsToJson({
+      siteName: "Voorbeeldbedrijf",
+      siteUrl: "https://voorbeeldbedrijf.nl",
+      consent: {
+        variant: "consent-01",
+        visible: true,
+        title: "Cookies op deze website",
+        message: "Noodzakelijke cookies zijn altijd actief.",
+        allowSelectionLabel: "Keuze opslaan",
+        preferencesLabel: "Voorkeuren",
+        statisticsLabel: "Statistieken",
+        marketingLabel: "Marketing",
+        privacyLink: { label: "Privacybeleid", href: "/privacy" },
+      },
+    }, [], {}, { settingsContract: fullSettingsContract })
+
+    expect(json.consent).toMatchObject({
+      variant: "consent-01",
+      visible: true,
+      title: "Cookies op deze website",
+      message: "Noodzakelijke cookies zijn altijd actief.",
+      allowSelectionLabel: "Keuze opslaan",
+      preferencesLabel: "Voorkeuren",
+      statisticsLabel: "Statistieken",
+      marketingLabel: "Marketing",
+      privacyLink: { label: "Privacybeleid", href: "/privacy", external: false },
+    })
+    expect(json.analyticsConsent).toBeUndefined()
+  })
+
+  it("flattens settings with branding/contact + resolves primary/footer navigation", () => {
     const doc: MockDoc = {
       id: "s1", tenant: "t1", siteName: "Client A", siteUrl: "https://clienta.nl",
       contactEmail: "hi@clienta.nl",
@@ -66,16 +124,15 @@ describe("settingsToJson", () => {
         primaryColor: "#2563eb",
       },
       chrome: {
-        header: {
-          variant: "shadcnui-blocks.navbar-01",
+        navbar: {
           logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
-          behavior: "sticky",
+          variant: "navbar-02",
+          placement: "sticky",
           activeMode: "path",
           mobileMenu: "drawer",
           cta: { label: "Start", href: "/intake" },
         },
         footer: {
-          variant: "shadcnui-blocks.footer-01",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
@@ -85,8 +142,7 @@ describe("settingsToJson", () => {
             { id: "col-2", items: [{ id: "links", type: "links", label: "Links", links: [{ label: "Privacy", href: "/privacy" }] }] },
           ],
         },
-        banner: {
-          variant: "shadcnui-blocks.banner-01",
+        announcement: {
           visible: true,
           title: "Update",
           message: "Now booking",
@@ -94,14 +150,23 @@ describe("settingsToJson", () => {
           dismissible: true,
         },
       },
+      systemTemplates: {
+        notFound: {
+          heading: "Deze pagina is verhuisd",
+          body: "Ga terug naar de homepage of neem contact op.",
+          primaryAction: { label: "Naar home", href: "/" },
+        },
+      },
       maintenance: { enabled: true, message: "Short maintenance window." },
       contact: { phone: "+31 20 555 1234", address: "Street 1", social: [{ platform: "instagram", url: "https://ig" }] },
-      navHeader: [
+      navigation: {
+        primary: [
         { type: "page", page: 1, label: null },
         { type: "section", anchor: "werkwijze", label: "Werkwijze" },
         { type: "custom", url: "https://x.com", label: "Ext", external: true },
-      ],
-      navFooter: [{ type: "custom", url: "/privacy", label: "Privacy", external: false }],
+        ],
+        footer: [{ type: "custom", url: "/privacy", label: "Privacy", external: false }],
+      },
     }
     const json = settingsToJson(
       doc,
@@ -115,16 +180,15 @@ describe("settingsToJson", () => {
       contactEmail: "hi@clienta.nl",
       branding: { primaryColor: "#2563eb" },
       chrome: {
-        header: {
-          variant: "shadcnui-blocks.navbar-01",
+        navbar: {
           logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
-          behavior: "sticky",
+          variant: "navbar-02",
+          placement: "sticky",
           activeMode: "path",
           mobileMenu: "drawer",
           cta: { label: "Start", href: "/intake" },
         },
         footer: {
-          variant: "shadcnui-blocks.footer-01",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
@@ -134,8 +198,7 @@ describe("settingsToJson", () => {
             { id: "col-2", items: [{ id: "links", type: "links", label: "Links", text: null, links: [{ label: "Privacy", href: "/privacy" }] }] },
           ],
         },
-        banner: {
-          variant: "shadcnui-blocks.banner-01",
+        announcement: {
           visible: true,
           title: "Update",
           message: "Now booking",
@@ -143,14 +206,23 @@ describe("settingsToJson", () => {
           dismissible: true,
         },
       },
+      systemTemplates: {
+        notFound: {
+          heading: "Deze pagina is verhuisd",
+          body: "Ga terug naar de homepage of neem contact op.",
+          primaryAction: { label: "Naar home", href: "/" },
+        },
+      },
       maintenance: { enabled: true, message: "Short maintenance window." },
       contact: { phone: "+31 20 555 1234", address: "Street 1" },
-      navHeader: [
+      navigation: {
+        primary: [
         { label: "Home", href: "/", external: false },
         { label: "Werkwijze", href: "#werkwijze", external: false },
         { label: "Ext", href: "https://x.com", external: true },
-      ],
-      navFooter: [{ label: "Privacy", href: "/privacy", external: false }],
+        ],
+        footer: [{ label: "Privacy", href: "/privacy", external: false }],
+      },
     })
     expect(json.branding!.logo).toMatchObject({ url: "/uploads/logo.png", filename: "logo.png" })
     expect(json.branding!.favicon).toMatchObject({ url: "/uploads/favicon.png", filename: "favicon.png" })
@@ -176,8 +248,7 @@ describe("settingsToJson", () => {
     expect(json.siteName).toBe("Bare")
     expect(json.description).toBe("Projected by default")
     expect(json.maintenance).toEqual({ enabled: true, message: "Visible by default" })
-    expect(json.navHeader).toEqual([])
-    expect(json.navFooter).toEqual([])
+    expect(json.navigation).toEqual({ primary: [], footer: [] })
     expect(json.contactEmail).toBeUndefined()
     expect(json.contact).toBeUndefined()
     expect(json.nap).toBeUndefined()
@@ -253,8 +324,8 @@ describe("settingsToJson", () => {
       siteName: "Banner Site",
       siteUrl: "https://banner.test",
       chrome: {
-        header: { variant: "shadcnui-blocks.navbar-01" },
-        footer: { variant: "shadcnui-blocks.footer-01" },
+        navbar: {},
+        footer: {},
       },
     }
 
@@ -262,25 +333,25 @@ describe("settingsToJson", () => {
       ...base,
       chrome: {
         ...base.chrome,
-        banner: { variant: "shadcnui-blocks.banner-01", visible: false, title: "Draft", message: "Not live" },
+        announcement: { visible: false, title: "Draft", message: "Not live" },
       },
-    }).chrome?.banner).toBeUndefined()
+    }).chrome?.announcement).toBeUndefined()
 
     expect(settingsToJson({
       ...base,
       chrome: {
         ...base.chrome,
-        banner: { variant: "shadcnui-blocks.banner-01", visible: true, title: "", message: "", link: { label: "Bad", href: "javascript:alert(1)" } },
+        announcement: { visible: true, title: "", message: "", link: { label: "Bad", href: "javascript:alert(1)" } },
       },
-    }).chrome?.banner).toBeUndefined()
+    }).chrome?.announcement).toBeUndefined()
 
     expect(settingsToJson({
       ...base,
       chrome: {
         ...base.chrome,
-        banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Published notice" },
+        announcement: { visible: true, message: "Published notice" },
       },
-    }).chrome?.banner).toMatchObject({ variant: "shadcnui-blocks.banner-01", visible: true, message: "Published notice" })
+    }).chrome?.announcement).toMatchObject({ visible: true, message: "Published notice" })
   })
 
   it("projects public renderer analytics metadata from publish context", () => {

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   const siteDesignRequested = hasPageEditorSiteDesign(siteDesign)
   if (
     siteDesign != null &&
-    (siteDesign.navigation != null || siteDesign.chrome != null) &&
+    siteDesign.navigation != null &&
     !userCanEditSiteDesign(user)
   ) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 })
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     let savedTheme = siteDesign?.theme
     if (siteDesignRequested && siteDesign) {
       if (siteDesign.theme != null) stage = "theme"
-      if (siteDesign.navigation != null || siteDesign.chrome != null) stage = "site-settings"
+      if (siteDesign.navigation != null) stage = "site-settings"
       const siteDesignResult = await persistSiteDesign(payload, {
         tenantId,
         siteDesign,

@@ -23,6 +23,9 @@ export default defineConfig({
       : 'pnpm build && pnpm preview --host 127.0.0.1 --port 4399',
     env: {
       ...process.env,
+      // Astro 7 backgrounds preview servers when it detects an agent. Playwright
+      // needs the preview process to remain in the foreground.
+      ASTRO_PREVIEW_BACKGROUND: '0',
       PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
     },
     url: 'http://127.0.0.1:4399',

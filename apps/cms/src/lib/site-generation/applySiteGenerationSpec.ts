@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { copyFile, mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import path from "node:path"
+import { join } from "node:path"
+import type { Payload, Where } from "payload"
+import {
+  BlockSchema,
+  SITE_BLOCK_SLUGS,
+  type Page as ContractPage,
+} from "@siteinabox/contracts"
 import type {
   CmsApplyResult,
   GeneratedPageSpec,
@@ -10,29 +16,14 @@ import type {
   ThemeTokenSpec,
   ValidationIssue,
 } from "@siteinabox/contracts/generation"
-import {
-  contractValidationReport,
-  isSupportedBlockVariant,
-  SiteGenerationSpecSchema,
-} from "@siteinabox/contracts/generation"
-import { validateProviderBlockInstance } from "@siteinabox/contracts"
-import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
-import {
-  SITE_CHROME_CATALOG,
-  SITE_BLOCK_CATALOG_BY_SLUG,
-  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
-} from "@siteinabox/contracts/block-catalog"
-import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
-import type { MediaRef } from "@siteinabox/contracts/site"
-import type { Payload, Where } from "payload"
+import { contractValidationReport, SiteGenerationSpecSchema } from "@siteinabox/contracts/generation"
 import type { Media, Page, SiteSetting, Tenant } from "@/payload-types"
 import { asRecord } from "@/lib/record"
-import { assertSafeMediaFilename } from "@/lib/mediaFilename"
+import { isHeroBlockType } from "@siteinabox/contracts"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
 import { DEFAULT_CLIENT_SETTINGS_CONTRACT } from "@/lib/settingsContract"
 import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
-import { materializeTenantPrivacyPage } from "@/lib/legal/tenantPrivacyPage"
+import { materializeTenantPrivacyDisclosure } from "@/lib/legal/tenantPrivacyPage"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 import { approvedPublicAnalyticsConsent } from "@/lib/analytics/config"
@@ -48,6 +39,7 @@ export type CmsGenerationApplyResult = CmsApplyResult & {
     settings?: ApplyOperation
     pages?: Array<{ id: string | number; slug: string; operation: ApplyOperation }>
     retainedPages?: RetainedPage[]
+    retiredPages?: RetainedPage[]
   }
 }
 
@@ -62,32 +54,15 @@ type NavEntry = {
   children?: Array<{ label: string; href?: string | null; external?: boolean; description?: string | null; icon?: string | null }>
 }
 
-type ExistingPage = {
-  id: string | number
-  slug: string
-  title?: string
-  status?: string
-}
+type ExistingPage = { id: string | number; slug: string; title?: string; status?: string }
+type GeneratedNavEntries = NonNullable<GeneratedSiteSettings["navigation"]>["primary"]
 
-const DRAFT_IMPORT_CONTEXT = {
-  skipProjection: true,
-  source: "site-generation-import",
-} as const
-
+const DRAFT_IMPORT_CONTEXT = { skipProjection: true, source: "site-generation-import" } as const
+const PAGE_REPLACEMENT_CONTEXT = { source: "site-generation-replacement" } as const
 const TENANT_SLUG_REGEX = /^[a-z0-9-]+$/
-const DOMAIN_REGEX =
-  /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
-const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
-const SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS = new Set<string>(
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug),
-)
-const SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK = new Map<string, Set<string>>()
-
-for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
-  const variants = SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(variant.slug) ?? new Set<string>()
-  variants.add(variant.variant)
-  SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.set(variant.slug, variants)
-}
+const DOMAIN_REGEX = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
+const SITEGEN_TYPES = new Set<string>(SITE_BLOCK_SLUGS)
+const REPEATABLE_SECTION_TYPES = new Set(["services", "cta"])
 
 export type SiteGenerationValidationOptions = {
   variantScope?: "tenant-aware" | "self-serve"
@@ -100,379 +75,140 @@ export type SiteGenerationValidationResult =
 
 export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
   mediaMode?: "skip-generated-placeholders" | "upload-generated-media"
+  mediaAssets?: readonly SiteGenerationMediaAsset[]
+  /** Move unspecified published pages to draft during an explicit replacement cutover. */
+  retireUnspecifiedPages?: boolean
+}
+
+/** A local, operator-supplied asset that can be uploaded during a seed/import. */
+export type SiteGenerationMediaAsset = {
+  key: string
+  filename: string
+  alt?: string | null
+  filePath: string
 }
 
 const sortValue = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(sortValue)
   if (!value || typeof value !== "object") return value
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, entry]) => [key, sortValue(entry)]),
-  )
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => [key, sortValue(entry)]))
 }
 
 export const siteGenerationSpecHash = (spec: unknown): string =>
   createHash("sha256").update(JSON.stringify(sortValue(spec))).digest("hex")
 
-const issue = (
-  code: string,
-  message: string,
-  path?: Array<string | number>,
-  severity: ValidationIssue["severity"] = "error",
-): ValidationIssue => ({
+const issue = (code: string, message: string, path?: Array<string | number>, severity: ValidationIssue["severity"] = "error"): ValidationIssue => ({
   severity,
   code,
   message,
   ...(path ? { path } : {}),
 })
 
-const variantAllowedForTenant = (
-  scope: { kind: "global" } | { kind: "tenant-exclusive"; tenantSlugs: readonly string[] },
-  tenantSlug: string | null,
-  validationScope: SiteGenerationValidationOptions["variantScope"],
-): boolean => {
-  if (scope.kind === "global") return true
-  if (validationScope === "self-serve") return false
-  return tenantSlug ? scope.tenantSlugs.includes(tenantSlug) : false
-}
-
-const blockVariantScopeIssue = (
-  blockType: string,
-  value: string,
-  tenantSlug: string | null,
-  validationScope: SiteGenerationValidationOptions["variantScope"],
-): string | null => {
-  if (!(SITE_BLOCK_SLUGS as readonly string[]).includes(blockType)) return null
-  const catalog = validationScope === "self-serve"
-    ? SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
-    : SITE_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_BLOCK_CATALOG_BY_SLUG]
-  const variant = catalog?.variants.find(
-    (entry) => entry.variant === value || ("providerVariantId" in entry && entry.providerVariantId === value),
-  )
-  if (!variant || variantAllowedForTenant(variant.scope, tenantSlug, validationScope)) return null
-  return `Generated block designVariant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
-}
-
 const clonePlain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
-const canonicalizeGeneratedBlock = (
-  block: Record<string, unknown>,
-): Record<string, unknown> => {
-  const next = canonicalizeCtaFields(block)
-  const designVariant = typeof next.designVariant === "string" && next.designVariant.trim()
-    ? next.designVariant.trim()
-    : null
-
-  if (designVariant) {
-    next.designVariant = designVariant
-  } else {
-    if (Object.prototype.hasOwnProperty.call(next, "designVariant")) {
-      next.designVariant = null
-    }
-  }
-
-  return next
-}
-
-export const canonicalizeSiteGenerationSpecForCms = (
-  spec: CmsSiteGenerationSpec,
-): CmsSiteGenerationSpec => {
-  const next = clonePlain(spec) as CmsSiteGenerationSpec
-  if (Array.isArray(next.pages)) {
-    next.pages = next.pages.map((page) => ({
-      ...page,
-      blocks: Array.isArray(page.blocks)
-        ? page.blocks.map((block) =>
-            canonicalizeGeneratedBlock(block as Record<string, unknown>) as typeof block,
-          )
-        : page.blocks,
-    }))
-  }
-  return next
-}
-
-const chromeVariantScopeIssue = (
-  area: "header" | "footer" | "banner",
-  value: unknown,
-  tenantSlug: string | null,
-  validationScope: SiteGenerationValidationOptions["variantScope"],
-): string | null => {
-  if (typeof value !== "string" || !value) return null
-  const variant = SITE_CHROME_CATALOG.find((entry) => entry.area === area && entry.variant === value)
-  if (!variant || variantAllowedForTenant(variant.scope, tenantSlug, validationScope)) return null
-  return `Generated ${area} chrome variant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
-}
+/** Canonical specs already carry semantic blocks; this hook is intentionally a no-op clone. */
+export const canonicalizeSiteGenerationSpecForCms = (spec: CmsSiteGenerationSpec): CmsSiteGenerationSpec => clonePlain(spec)
 
 export const validateSiteGenerationSpecForCms = (
   spec: CmsSiteGenerationSpec,
-  options: SiteGenerationValidationOptions = {},
+  _options: SiteGenerationValidationOptions = {},
 ): SiteGenerationValidationResult => {
-  const issues: ValidationIssue[] = []
-  const validationScope = options.variantScope ?? "tenant-aware"
-  const supportedBlockSlugs = SUPPORTED_BLOCK_SLUGS
-  const supportsBlockVariant = isSupportedBlockVariant
   const candidate = spec as unknown
-
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-    return {
-      valid: false,
-      issues: [issue("invalid_spec_shape", "SiteGenerationSpec must be an object.")],
-    }
+    return { valid: false, issues: [issue("invalid_spec_shape", "SiteGenerationSpec must be an object.")] }
   }
 
-  const originalValue = candidate as Partial<SiteGenerationSpec> & Record<string, unknown>
-  const canonicalValue = canonicalizeSiteGenerationSpecForCms(
-    originalValue as SiteGenerationSpec,
-  ) as Partial<SiteGenerationSpec> & Record<string, unknown>
-  const value = canonicalValue
-  const parsedContract = SiteGenerationSpecSchema.safeParse(value)
-  if (!parsedContract.success) {
-    issues.push(...contractValidationReport(parsedContract.error).issues)
-  }
+  const parsed = SiteGenerationSpecSchema.safeParse(candidate)
+  const issues: ValidationIssue[] = parsed.success
+    ? []
+    : contractValidationReport(parsed.error).issues
+  const value = candidate as Partial<SiteGenerationSpec> & Record<string, unknown>
+  const tenant = value.tenant
+  const intake = value.intake
+  const pages = Array.isArray(value.pages) ? value.pages : []
 
-  const tenant = value.tenant as SiteGenerationSpec["tenant"] | undefined
-  const intake = value.intake as SiteGenerationSpec["intake"] | undefined
-  const settings = value.settings as SiteGenerationSpec["settings"] | undefined
-  const pages = canonicalValue.pages as SiteGenerationSpec["pages"] | undefined
-  const blocks = value.blocks as SiteGenerationSpec["blocks"] | undefined
-  const pagesArray = Array.isArray(pages) ? pages : undefined
-  const blocksArray = Array.isArray(blocks) ? blocks : undefined
-  const tenantSlug = typeof tenant?.slug === "string" && tenant.slug ? tenant.slug : null
+  if (value.schemaVersion !== 1) issues.push(issue("unsupported_schema_version", "Only SiteGenerationSpec schemaVersion 1 is supported.", ["schemaVersion"]))
+  if (!tenant || typeof tenant !== "object" || Array.isArray(tenant)) issues.push(issue("missing_tenant", "SiteGenerationSpec.tenant is required.", ["tenant"]))
+  if (!intake || typeof intake !== "object" || Array.isArray(intake)) issues.push(issue("missing_intake", "SiteGenerationSpec.intake is required.", ["intake"]))
+  if (pages.length === 0) issues.push(issue("missing_pages", "SiteGenerationSpec.pages must contain at least one page.", ["pages"]))
 
-  if (value.schemaVersion !== 1) {
-    issues.push(issue("unsupported_schema_version", "Only SiteGenerationSpec schemaVersion 1 is supported.", ["schemaVersion"]))
-  }
-
-  if (!tenant || typeof tenant !== "object") {
-    issues.push(issue("missing_tenant", "SiteGenerationSpec.tenant is required.", ["tenant"]))
-  }
-
-  if (!intake || typeof intake !== "object") {
-    issues.push(issue("missing_intake", "SiteGenerationSpec.intake is required.", ["intake"]))
-  }
-
-  if (!settings || typeof settings !== "object") {
-    issues.push(issue("missing_settings", "SiteGenerationSpec.settings is required.", ["settings"]))
-  }
-
-  if (!Array.isArray(pages) || pages.length === 0) {
-    issues.push(issue("missing_pages", "SiteGenerationSpec.pages must contain at least one page.", ["pages"]))
-  }
-
-  if (tenant && typeof tenant.slug !== "string") {
-    issues.push(issue("missing_tenant_slug", "Tenant slug is required.", ["tenant", "slug"]))
-  } else if (tenant && !TENANT_SLUG_REGEX.test(tenant.slug)) {
-    issues.push(issue("invalid_tenant_slug", "Tenant slug must contain only lowercase letters, digits, and hyphens.", ["tenant", "slug"]))
-  }
-
-  const domain = typeof tenant?.domain === "string" ? tenant.domain.trim().toLowerCase() : ""
-  if (!domain) {
-    issues.push(issue("missing_tenant_domain", "Tenant domain is required.", ["tenant", "domain"]))
-  } else if (domain.length > 253 || !DOMAIN_REGEX.test(domain) || !/[a-z]/.test(domain.split(".").pop() ?? "")) {
-    issues.push(issue("invalid_tenant_domain", "Tenant domain must be a lowercase hostname with an alphabetic TLD.", ["tenant", "domain"]))
-  }
-
-  if (intake?.tenantSlug && tenant?.slug && intake.tenantSlug !== tenant.slug) {
-    issues.push(issue("tenant_slug_mismatch", "intake.tenantSlug must match tenant.slug.", ["intake", "tenantSlug"]))
-  }
-
-  if (intake?.primaryDomain && domain && intake.primaryDomain.toLowerCase() !== domain) {
-    issues.push(issue("tenant_domain_mismatch", "intake.primaryDomain must match tenant.domain.", ["intake", "primaryDomain"]))
-  }
+  const tenantRecord = tenant && typeof tenant === "object" && !Array.isArray(tenant) ? tenant as Record<string, unknown> : null
+  const intakeRecord = intake && typeof intake === "object" && !Array.isArray(intake) ? intake as Record<string, unknown> : null
+  const tenantSlug = typeof tenantRecord?.slug === "string" ? tenantRecord.slug : ""
+  const tenantDomain = typeof tenantRecord?.domain === "string" ? tenantRecord.domain.toLowerCase() : ""
+  if (!TENANT_SLUG_REGEX.test(tenantSlug)) issues.push(issue("invalid_tenant_slug", "Tenant slug must contain only lowercase letters, digits, and hyphens.", ["tenant", "slug"]))
+  if (!tenantDomain || !DOMAIN_REGEX.test(tenantDomain)) issues.push(issue("invalid_tenant_domain", "Tenant domain must be a lowercase hostname with an alphabetic TLD.", ["tenant", "domain"]))
+  if (typeof intakeRecord?.tenantSlug === "string" && intakeRecord.tenantSlug !== tenantSlug) issues.push(issue("tenant_slug_mismatch", "intake.tenantSlug must match tenant.slug.", ["intake", "tenantSlug"]))
+  if (typeof intakeRecord?.primaryDomain === "string" && intakeRecord.primaryDomain.toLowerCase() !== tenantDomain) issues.push(issue("tenant_domain_mismatch", "intake.primaryDomain must match tenant.domain.", ["intake", "primaryDomain"]))
 
   const pageSlugs = new Set<string>()
-  pagesArray?.forEach((page, index) => {
-    if (!page || typeof page !== "object") {
-      issues.push(issue("invalid_page_shape", "Page entries must be objects.", ["pages", index]))
+  pages.forEach((page, pageIndex) => {
+    if (!page || typeof page !== "object" || Array.isArray(page)) {
+      issues.push(issue("invalid_page_shape", "Page entries must be objects.", ["pages", pageIndex]))
       return
     }
-    if (typeof page.slug !== "string" || !TENANT_SLUG_REGEX.test(page.slug)) {
-      issues.push(issue("invalid_page_slug", "Page slug must contain only lowercase letters, digits, and hyphens.", ["pages", index, "slug"]))
-    }
-    if (typeof page.slug === "string" && pageSlugs.has(page.slug)) {
-      issues.push(issue("duplicate_page_slug", `Duplicate page slug "${page.slug}" in generation spec.`, ["pages", index, "slug"]))
-    }
-    if (typeof page.slug === "string") pageSlugs.add(page.slug)
-    if (!Array.isArray(page.blocks) || page.blocks.length === 0) {
-      issues.push(issue("missing_page_blocks", "Generated pages must contain at least one block.", ["pages", index, "blocks"]))
-      return
-    }
-    page.blocks.forEach((block, blockIndex) => {
-      if (!block || typeof block !== "object" || Array.isArray(block)) {
-        issues.push(issue("invalid_block_shape", "Generated blocks must be objects.", ["pages", index, "blocks", blockIndex]))
+    const pageRecord = page as Record<string, unknown>
+    const slug = typeof pageRecord.slug === "string" ? pageRecord.slug : ""
+    if (!TENANT_SLUG_REGEX.test(slug)) issues.push(issue("invalid_page_slug", "Page slug must contain only lowercase letters, digits, and hyphens.", ["pages", pageIndex, "slug"]))
+    if (pageSlugs.has(slug)) issues.push(issue("duplicate_page_slug", `Duplicate page slug "${slug}" in generation spec.`, ["pages", pageIndex, "slug"]))
+    pageSlugs.add(slug)
+    const blocks = Array.isArray(pageRecord.blocks) ? pageRecord.blocks : []
+    if (blocks.length === 0) issues.push(issue("missing_page_blocks", "Generated pages must contain at least one block.", ["pages", pageIndex, "blocks"]))
+    const seen = new Set<string>()
+    const seenAnchors = new Set<string>()
+    blocks.forEach((block, blockIndex) => {
+      const parsedBlock = BlockSchema.safeParse(block)
+      if (!parsedBlock.success) {
+        issues.push(...parsedBlock.error.issues.map((entry) => issue("invalid_block", entry.message, ["pages", pageIndex, "blocks", blockIndex, ...entry.path.filter((part): part is string | number => typeof part === "string" || typeof part === "number")])))
         return
       }
-      const blockType = (block as Record<string, unknown>).blockType
-      if (typeof blockType !== "string" || !supportedBlockSlugs.has(blockType)) {
-        issues.push(issue(
-          "unsupported_block_type",
-          `Generated block type "${String(blockType)}" is not supported.`,
-          ["pages", index, "blocks", blockIndex, "blockType"],
-        ))
-        return
+      const blockType = parsedBlock.data.blockType
+      if (!SITEGEN_TYPES.has(blockType)) issues.push(issue("unsupported_block_type", `Generated block type "${blockType}" is not a Sitegen section.`, ["pages", pageIndex, "blocks", blockIndex, "blockType"]))
+      const anchor = typeof parsedBlock.data.anchor === "string" ? parsedBlock.data.anchor : ""
+      if (seen.has(blockType) && !REPEATABLE_SECTION_TYPES.has(blockType)) {
+        issues.push(issue("duplicate_singleton_section", `Section "${blockType}" may occur only once per page.`, ["pages", pageIndex, "blocks", blockIndex, "blockType"]))
       }
-      const rawBlock = block as Record<string, unknown>
-      const rawMetadata = rawBlock.metadata && typeof rawBlock.metadata === "object" && !Array.isArray(rawBlock.metadata)
-        ? rawBlock.metadata as Record<string, unknown>
-        : null
-      const approvedSystemBlock = options.allowSystemPages === true
-        && blockType === "contentSection"
-        && rawBlock.designVariant === "shadcnui-blocks.legal-content-01"
-        && rawMetadata?.systemRole === "tenant-privacy"
-      if (validationScope === "self-serve" && !approvedSystemBlock && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
-        issues.push(issue(
-          "unsupported_self_serve_block_type",
-          `Generated block type "${blockType}" does not have an approved self-serve source-backed design variant.`,
-          ["pages", index, "blocks", blockIndex, "blockType"],
-        ))
+      if (seen.has(blockType) && REPEATABLE_SECTION_TYPES.has(blockType) && !anchor) {
+        issues.push(issue("repeatable_section_requires_anchor", `Repeated "${blockType}" sections need a unique anchor.`, ["pages", pageIndex, "blocks", blockIndex, "anchor"]))
       }
-      const originalBlock = Array.isArray((originalValue.pages as SiteGenerationSpec["pages"] | undefined)?.[index]?.blocks)
-        ? ((originalValue.pages as SiteGenerationSpec["pages"])[index]!.blocks[blockIndex] as Record<string, unknown> | undefined)
-        : undefined
-      const designVariant = typeof originalBlock?.designVariant === "string" ? originalBlock.designVariant.trim() : ""
-      if (validationScope === "self-serve" && !designVariant) {
-        issues.push(issue(
-          "missing_approved_design_variant",
-          `Generated block type "${blockType}" must include an approved source-backed designVariant.`,
-          ["pages", index, "blocks", blockIndex, "designVariant"],
-        ))
-      }
-      if (Object.prototype.hasOwnProperty.call(block as Record<string, unknown>, "tokens")) {
-        issues.push(issue(
-          "generated_block_visual_tokens",
-          "Generated blocks must not include block-level tokens.",
-          ["pages", index, "blocks", blockIndex, "tokens"],
-        ))
-      }
-      if (Object.prototype.hasOwnProperty.call(block as Record<string, unknown>, "style")) {
-        issues.push(issue(
-          "generated_block_visual_style",
-          "Generated blocks must not include block-level style data.",
-          ["pages", index, "blocks", blockIndex, "style"],
-        ))
-      }
-      const variant = (block as Record<string, unknown>).designVariant
-      if (typeof variant === "string" && variant && !approvedSystemBlock && !supportsBlockVariant(blockType, variant)) {
-        issues.push(issue(
-          "unsupported_block_variant",
-          `Generated block designVariant "${variant}" is not approved for block type "${blockType}".`,
-          ["pages", index, "blocks", blockIndex, "designVariant"],
-        ))
-      }
-      if (typeof variant === "string" && variant) {
-        const message = blockVariantScopeIssue(blockType, variant, tenantSlug, validationScope)
-        if (message) {
-          issues.push(issue(
-            "tenant_exclusive_block_variant",
-            message,
-            ["pages", index, "blocks", blockIndex, "designVariant"],
-          ))
-        }
-      }
-      if (typeof variant === "string" && variant.startsWith("shadcnui-blocks.")) {
-        for (const providerIssue of validateProviderBlockInstance(block)) {
-          issues.push(issue(
-            providerIssue.code,
-            providerIssue.message,
-            ["pages", index, "blocks", blockIndex, ...providerIssue.path],
-          ))
-        }
-      }
+      if (anchor && seenAnchors.has(anchor)) issues.push(issue("duplicate_section_anchor", `Section anchor "${anchor}" must be unique within a page.`, ["pages", pageIndex, "blocks", blockIndex, "anchor"]))
+      seen.add(blockType)
+      if (anchor) seenAnchors.add(anchor)
+      if (slug === "index" && blockIndex === 0 && !isHeroBlockType(blockType)) issues.push(issue("hero_not_first", "The homepage hero must be the first block.", ["pages", pageIndex, "blocks", blockIndex]))
+      if (slug === "index" && isHeroBlockType(blockType) && blocks.filter((entry) => isHeroBlockType(String(asRecord(entry)?.blockType ?? ""))).length !== 1) issues.push(issue("hero_not_singleton", "The homepage must contain exactly one hero.", ["pages", pageIndex, "blocks"]))
+      if (blockType === "contact" && blockIndex !== blocks.length - 1) issues.push(issue("contact_not_last", "Contact should be the final page section.", ["pages", pageIndex, "blocks", blockIndex]))
     })
   })
-  if (pagesArray && !pagesArray.some((page) => page?.slug === "index")) {
-    issues.push(issue("missing_root_page", "Generated specs must include an index page for the root route.", ["pages"]))
-  }
-  const disclosure = asRecord(
-    settings && typeof settings === "object" && !Array.isArray(settings)
-      ? (settings as Record<string, unknown>).privacyDisclosure
-      : null,
-  )
+  if (!pageSlugs.has("index")) issues.push(issue("missing_root_page", "Generated specs must include an index page.", ["pages"]))
+
+  const manifest = Array.isArray(value.blocks) ? value.blocks : []
+  manifest.forEach((entry, index) => {
+    const slug = asRecord(entry)?.slug
+    if (typeof slug !== "string" || !SITE_BLOCK_SLUGS.includes(slug as (typeof SITE_BLOCK_SLUGS)[number])) issues.push(issue("unsupported_manifest_block_slug", `Generated manifest block slug "${String(slug)}" is not an owned block.`, ["blocks", index, "slug"]))
+  })
+
+  const settings = asRecord(value.settings)
+  const disclosure = asRecord(settings?.privacyDisclosure)
   if (Array.isArray(disclosure?.marketingTechnologies) && disclosure.marketingTechnologies.length > 0) {
-    issues.push(issue(
-      "unsupported_optional_tracking_without_consent_ui",
-      "Marketing technologies cannot be activated until an approved consent chrome component is registered.",
-      ["settings", "privacyDisclosure", "marketingTechnologies"],
-    ))
+    issues.push(issue("unsupported_optional_tracking_without_consent_ui", "Optional marketing technologies are not enabled by generated sites.", ["settings", "privacyDisclosure", "marketingTechnologies"]))
   }
 
-  const chrome = settings && typeof settings === "object" && !Array.isArray(settings)
-    ? (settings as Record<string, unknown>).chrome
-    : null
-  if (chrome && typeof chrome === "object" && !Array.isArray(chrome)) {
-    for (const area of ["header", "footer", "banner"] as const) {
-      const areaSettings = (chrome as Record<string, unknown>)[area]
-      const variant = areaSettings && typeof areaSettings === "object" && !Array.isArray(areaSettings)
-        ? (areaSettings as Record<string, unknown>).variant
-        : null
-      const message = chromeVariantScopeIssue(area, variant, tenantSlug, validationScope)
-      if (message) {
-        issues.push(issue("tenant_exclusive_chrome_variant", message, ["settings", "chrome", area, "variant"]))
-      }
-    }
-  }
-
-  blocksArray?.forEach((block, index) => {
-    if (!block || typeof block !== "object") {
-      issues.push(issue("invalid_manifest_block_shape", "Manifest block entries must be objects.", ["blocks", index]))
-      return
-    }
-    if (!supportedBlockSlugs.has(block.slug)) {
-      issues.push(issue("unsupported_manifest_block_slug", `Generated manifest block slug "${String(block.slug)}" is not supported.`, ["blocks", index, "slug"]))
-    }
-    const approvedSystemManifestBlock = options.allowSystemPages === true
-      && block.slug === "contentSection"
-      && pagesArray?.some((page) => page?.blocks?.some((pageBlock) =>
-        pageBlock.blockType === "contentSection"
-        && pageBlock.designVariant === "shadcnui-blocks.legal-content-01"
-        && pageBlock.metadata?.systemRole === "tenant-privacy",
-      ))
-    if (validationScope === "self-serve" && !approvedSystemManifestBlock && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
-      issues.push(issue(
-        "unsupported_self_serve_manifest_block_slug",
-        `Generated manifest block slug "${String(block.slug)}" does not have an approved self-serve source-backed design variant.`,
-        ["blocks", index, "slug"],
-      ))
-    }
-  })
-
-  if (issues.some((entry) => entry.severity === "error") || !parsedContract.success) {
-    return { valid: false, issues }
-  }
-  return { valid: true, issues, data: parsedContract.data }
-}
-
-const findOne = async <T>(
-  payload: Payload,
-  collection: "tenants" | "pages" | "site-settings" | "media",
-  where: Where,
-): Promise<T | undefined> => {
-  const found = await payload.find({
-    collection,
-    where,
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-  return found.docs[0] as T | undefined
+  if (issues.some((entry) => entry.severity === "error") || !parsed.success) return { valid: false, issues }
+  return { valid: true, issues, data: parsed.data }
 }
 
 const relationshipId = (value: unknown): string | number | undefined => {
-  if (value == null) return undefined
   if (typeof value === "string" || typeof value === "number") return value
-  if (typeof value === "object" && "id" in value) {
+  if (value && typeof value === "object" && !Array.isArray(value) && "id" in value) {
     const id = (value as { id?: unknown }).id
-    if (typeof id === "string" || typeof id === "number") return id
+    return typeof id === "string" || typeof id === "number" ? id : undefined
   }
   return undefined
 }
 
 const themeToCmsTokens = (theme: ThemeTokenSpec): ThemeTokens | null => {
   const parsed = themeSchema.safeParse(theme)
-  if (!parsed.success) {
-    throw new Error(`Invalid CMS theme tokens: ${parsed.error.issues.map((entry: { message: string }) => entry.message).join("; ")}`)
-  }
+  if (!parsed.success) throw new Error(`Invalid CMS theme tokens: ${parsed.error.issues.map((entry) => entry.message).join("; ")}`)
   return normalizeThemeForSave(parsed.data)
 }
 
@@ -485,33 +221,26 @@ const DEFAULT_GENERATION_MANIFEST: RtManifest = {
   typeStyles: [],
 }
 
-const scanRichTextCapabilities = (value: unknown, result = {
-  blockquote: false,
-  bulletList: false,
-  orderedList: false,
-  divider: false,
-  themedNodeIds: new Set<string>(),
-}) => {
+const scanRichTextCapabilities = (value: unknown, result = { blockquote: false, bulletList: false, orderedList: false, divider: false, themedNodeIds: new Set<string>() }) => {
   if (!value || typeof value !== "object") return result
   if (Array.isArray(value)) {
     for (const item of value) scanRichTextCapabilities(item, result)
     return result
   }
-
   const record = value as Record<string, unknown>
   if (record.t === "blockquote") result.blockquote = true
   if (record.t === "list" && record.ordered === false) result.bulletList = true
   if (record.t === "list" && record.ordered === true) result.orderedList = true
   if (record.t === "divider") result.divider = true
   if (record.t === "themed" && typeof record.id === "string") result.themedNodeIds.add(record.id)
-
   for (const entry of Object.values(record)) scanRichTextCapabilities(entry, result)
   return result
 }
 
-const manifestCapabilitiesForSpec = (spec: SiteGenerationSpec): Pick<RtManifest, "blockTypes" | "themedNodes"> => {
+const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): RtManifest & Record<string, unknown> => {
   const capabilities = scanRichTextCapabilities(spec.pages)
-  return {
+  const manifest = {
+    ...DEFAULT_GENERATION_MANIFEST,
     blockTypes: {
       ...DEFAULT_GENERATION_MANIFEST.blockTypes,
       ...(capabilities.blockquote ? { blockquote: true } : {}),
@@ -519,396 +248,139 @@ const manifestCapabilitiesForSpec = (spec: SiteGenerationSpec): Pick<RtManifest,
       ...(capabilities.orderedList ? { orderedList: true } : {}),
       ...(capabilities.divider ? { divider: true } : {}),
     },
-    ...(capabilities.themedNodeIds.size > 0
-      ? {
-          themedNodes: Array.from(capabilities.themedNodeIds).sort().map((id) => ({
-            id,
-            label: id === "eyebrow" ? "Eyebrow" : id,
-            fields: [{ name: "text", type: "text", required: true }],
-          })),
-        }
-      : {}),
-  }
-}
-
-const specIncludesContactSection = (spec: SiteGenerationSpec) =>
-  (spec.pages ?? []).some((page) =>
-    (page.blocks ?? []).some((block) => block.blockType === "contactSection"),
-  )
-
-/** Keep the slim client defaults, then enable contact fields contact-02 needs. */
-const settingsContractForContactSection = (): NonNullable<RtManifest["settings"]> => ({
-  general: {
-    ...DEFAULT_CLIENT_SETTINGS_CONTRACT.general,
-    contactEmail: true,
-  },
-  identity: DEFAULT_CLIENT_SETTINGS_CONTRACT.identity,
-  details: {
-    ...DEFAULT_CLIENT_SETTINGS_CONTRACT.details,
-    contact: { phone: true, address: true, social: true },
-  },
-  operations: DEFAULT_CLIENT_SETTINGS_CONTRACT.operations,
-})
-
-const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): RtManifest & Record<string, unknown> => {
-  const capabilities = manifestCapabilitiesForSpec(spec)
-  const analyticsConsent = approvedPublicAnalyticsConsent()
-  const settings = specIncludesContactSection(spec) ? settingsContractForContactSection() : undefined
-  const manifest = {
-    ...DEFAULT_GENERATION_MANIFEST,
-    ...capabilities,
-    blocks: spec.blocks?.map((block) => ({
-      slug: block.slug,
-      ...(block.label ? { label: block.label } : {}),
-      ...(block.defaultAnchor ? { defaultAnchor: block.defaultAnchor } : {}),
-      ...(block.fields ? { fields: block.fields } : {}),
-    })),
-    generation: {
-      source: "site-generation-spec",
-      hash: idempotencyKey,
-      generatedAt: spec.generatedAt ?? null,
-      generator: spec.generator ?? null,
+    blocks: spec.blocks?.map((block) => ({ slug: block.slug, ...(block.label ? { label: block.label } : {}) })) ?? SITE_BLOCK_SLUGS.map((slug) => ({ slug, label: slug })),
+    generation: { source: "site-generation-spec", hash: idempotencyKey, generatedAt: spec.generatedAt ?? null, generator: spec.generator ?? null },
+    settings: {
+      ...DEFAULT_CLIENT_SETTINGS_CONTRACT,
+      general: { ...DEFAULT_CLIENT_SETTINGS_CONTRACT.general, contactEmail: true },
     },
-    ...(settings ? { settings } : {}),
-    ...(analyticsConsent ? { analyticsConsent } : {}),
+    analyticsConsent: approvedPublicAnalyticsConsent() ?? undefined,
+    ...(capabilities.themedNodeIds.size > 0 ? { themedNodes: Array.from(capabilities.themedNodeIds).sort().map((id) => ({ id, label: id, fields: [{ name: "text", type: "text", required: true }] })) } : {}),
   }
-
   const parsed = manifestSchema.safeParse(manifest)
-  if (!parsed.success) {
-    throw new Error(`Generated siteManifest is invalid: ${parsed.error.issues.map((entry) => entry.message).join("; ")}`)
-  }
-  return manifest
+  if (!parsed.success) throw new Error(`Generated siteManifest is invalid: ${parsed.error.issues.map((entry) => entry.message).join("; ")}`)
+  return manifest as RtManifest & Record<string, unknown>
 }
 
-const isPayloadMediaId = (value: unknown): value is string | number =>
-  typeof value === "number" || (typeof value === "string" && /^\d+$/.test(value))
-
-type GeneratedMediaObject = Exclude<MediaRef, string | number | null>
 type MediaIdMap = Map<string, string | number>
-const MEDIA_REF_OBJECT_KEYS = new Set(["id", "url", "filename", "alt", "width", "height"])
 
-const mediaFilename = (value: unknown): string | undefined => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
-  if (Object.keys(value as Record<string, unknown>).some((key) => !MEDIA_REF_OBJECT_KEYS.has(key))) return undefined
-  const filename = (value as { filename?: unknown }).filename
-  if (typeof filename === "string" && filename.length > 0) return assertSafeMediaFilename(filename)
-
-  const url = (value as { url?: unknown }).url
-  if (typeof url !== "string" || url.length === 0) return undefined
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return undefined
+const normalizeMediaRef = (value: unknown, mediaIds?: MediaIdMap): unknown => {
+  const lookupKeys = [
+    ...(typeof value === "string" ? [value] : []),
+    ...(value && typeof value === "object" && !Array.isArray(value) && "filename" in value && typeof (value as { filename?: unknown }).filename === "string"
+      ? [(value as { filename: string }).filename]
+      : []),
+  ]
+  for (const key of lookupKeys) {
+    const mapped = mediaIds?.get(key)
+    if (mapped !== undefined) return mapped
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return undefined
-
-  const pathBasename = path.basename(parsed.pathname)
-  const extension = path.extname(pathBasename) || ".jpg"
-  const base = pathBasename && pathBasename !== "/" && pathBasename !== "."
-    ? pathBasename.slice(0, pathBasename.length - path.extname(pathBasename).length)
-    : "generated-media"
-  const safeBase = base.replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") || "generated-media"
-  const urlHash = createHash("sha256").update(url).digest("hex").slice(0, 12)
-  return assertSafeMediaFilename(`${urlHash}-${safeBase}${extension}`)
-}
-
-const collectGeneratedMediaRefs = (
-  value: unknown,
-  refs = new Map<string, GeneratedMediaObject>(),
-): Map<string, GeneratedMediaObject> => {
-  if (!value || typeof value !== "object") return refs
-  if (Array.isArray(value)) {
-    for (const item of value) collectGeneratedMediaRefs(item, refs)
-    return refs
+  const direct = relationshipId(value)
+  if (direct !== undefined) {
+    const mapped = mediaIds?.get(String(direct))
+    return mapped ?? direct
   }
-
-  const filename = mediaFilename(value)
-  if (filename && !refs.has(filename)) refs.set(filename, value as GeneratedMediaObject)
-
-  for (const entry of Object.values(value as Record<string, unknown>)) {
-    collectGeneratedMediaRefs(entry, refs)
-  }
-  return refs
-}
-
-const mimeTypeForFilename = (filename: string): string | undefined => {
-  const extension = filename.split(".").pop()?.toLowerCase()
-  if (!extension) return undefined
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg"
-  if (extension === "png") return "image/png"
-  if (extension === "webp") return "image/webp"
-  if (extension === "gif") return "image/gif"
-  if (extension === "svg") return "image/svg+xml"
   return undefined
 }
 
-const absoluteMediaUrl = (ref: GeneratedMediaObject): string | undefined => {
-  if (typeof ref.url !== "string" || ref.url.length === 0) return undefined
-  if (!/^https?:\/\//i.test(ref.url)) return undefined
-  return ref.url
-}
-
-const withDownloadedMediaFile = async <T>(
-  ref: GeneratedMediaObject,
-  filename: string,
-  action: (filePath: string) => Promise<T>,
-): Promise<T> => {
-  const url = absoluteMediaUrl(ref)
-  if (!url) {
-    throw new Error(`Generated media ref "${filename}" must include an absolute URL before CMS import can upload it.`)
-  }
-
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to download generated media "${filename}" from ${url}: ${response.status} ${response.statusText}`)
-  }
-
-  const tempDir = await mkdtemp(path.join(tmpdir(), "siab-generated-media-"))
-  const filePath = path.join(tempDir, filename)
-  try {
-    const data = Buffer.from(await response.arrayBuffer())
-    await writeFile(filePath, data)
-    return await action(filePath)
-  } finally {
-    await rm(tempDir, { recursive: true, force: true })
-  }
-}
-
-const upsertGeneratedMediaRefs = async (
-  payload: Payload,
-  tenantId: string | number,
-  spec: SiteGenerationSpec,
-  options: Pick<SiteGenerationApplyOptions, "mediaMode"> = {},
-): Promise<MediaIdMap> => {
-  if (options.mediaMode === "skip-generated-placeholders") return new Map()
-
-  const refs = collectGeneratedMediaRefs({
-    assets: spec.assets,
-    settings: spec.settings,
-    pages: spec.pages,
-  })
-  const ids: MediaIdMap = new Map()
-
-  for (const [filename, ref] of refs) {
-    const mimeType = mimeTypeForFilename(filename)
-    const data: Partial<Media> = {
-      tenant: Number(tenantId),
-      filename,
-      ...(typeof ref.alt === "string" ? { alt: ref.alt } : {}),
-      ...(typeof ref.width === "number" ? { width: ref.width } : {}),
-      ...(typeof ref.height === "number" ? { height: ref.height } : {}),
-      ...(mimeType ? { mimeType } : {}),
-    }
-    const existing = await findOne<Media>(payload, "media", {
-      and: [{ tenant: { equals: tenantId } }, { filename: { equals: filename } }],
-    })
-    if (existing) {
-      await payload.update({
-        collection: "media",
-        id: existing.id,
-        data,
-        depth: 0,
-        overrideAccess: true,
-        context: DRAFT_IMPORT_CONTEXT,
-      })
-      ids.set(filename, existing.id)
-    } else {
-      const createArgs = {
-        collection: "media",
-        data,
-        depth: 0,
-        overrideAccess: true,
-        context: DRAFT_IMPORT_CONTEXT,
-      } as const
-      const created = await withDownloadedMediaFile(ref, filename, (filePath) =>
-        payload.create({
-          ...createArgs,
-          filePath,
-          overwriteExistingFiles: true,
-        }),
-      )
-      ids.set(filename, (created).id)
-    }
-  }
-
-  return ids
-}
-
-const normalizeMediaRef = (value: unknown, mediaIds?: MediaIdMap): unknown => {
-  if (value && typeof value === "object" && "id" in value) {
-    const id = relationshipId(value)
-    if (isPayloadMediaId(id)) return id
-  }
-  const filename = mediaFilename(value)
-  if (filename && mediaIds?.has(filename)) return mediaIds.get(filename)
-  return isPayloadMediaId(value) ? value : undefined
-}
-
-const omitNullishCmsValues = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(omitNullishCmsValues)
+const omitNullish = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(omitNullish)
   if (!value || typeof value !== "object") return value
-
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .flatMap(([key, entry]) => entry == null ? [] : [[key, omitNullishCmsValues(entry)]]),
-  )
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).flatMap(([key, entry]) => entry == null ? [] : [[key, omitNullish(entry)]]))
 }
 
-const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): Record<string, unknown> => {
-  const { id: _id, source: _source, ...rest } = block
-  const normalized: Record<string, unknown> = { ...rest }
-  for (const key of ["image", "avatar", "logo", "backgroundImage", "foregroundImage", "before", "after"]) {
-    if (key in normalized) normalized[key] = normalizeMediaRef(normalized[key], mediaIds)
-  }
-  if (Array.isArray(normalized.items)) {
-    normalized.items = normalized.items.map((item) =>
-      item && typeof item === "object"
-        ? {
-            ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
-            avatar: normalizeMediaRef((item as Record<string, unknown>).avatar, mediaIds),
-          }
-        : item,
-    )
-  }
-  if (Array.isArray(normalized.logos)) {
-    normalized.logos = normalized.logos.map((item) =>
-      item && typeof item === "object"
-        ? {
-            ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
-          }
-        : item,
-    )
-  }
-  if (Array.isArray(normalized.images)) {
-    normalized.images = normalized.images.map((item) =>
-      item && typeof item === "object"
-        ? {
-            ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
-          }
-        : item,
-    )
-  }
-  if (Array.isArray(normalized.members)) {
-    normalized.members = normalized.members.map((item) =>
-      item && typeof item === "object"
-        ? {
-            ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
-          }
-        : item,
-    )
-  }
-  if (Array.isArray(normalized.posts)) {
-    normalized.posts = normalized.posts.map((item) =>
-      item && typeof item === "object"
-        ? {
-            ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
-          }
-        : item,
-    )
-  }
-  if (Array.isArray(normalized.features)) {
-    normalized.features = normalized.features.map((item) =>
-      item && typeof item === "object"
-        ? {
-            ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
-          }
-        : item,
-    )
-  }
-  if (Array.isArray(normalized.pairs)) {
-    normalized.pairs = normalized.pairs.map((pair) =>
-      pair && typeof pair === "object"
-        ? {
-            ...(pair as Record<string, unknown>),
-            before: normalizeMediaRef((pair as Record<string, unknown>).before, mediaIds),
-            after: normalizeMediaRef((pair as Record<string, unknown>).after, mediaIds),
-          }
-      : pair,
-    )
-  }
-  return omitNullishCmsValues(normalized) as Record<string, unknown>
+const MEDIA_KEYS = new Set(["image", "portrait", "logo", "favicon", "ogImage"])
+const normalizeMediaFields = (value: unknown, mediaIds?: MediaIdMap, key?: string): unknown => {
+  if (Array.isArray(value)) return value.map((entry) => normalizeMediaFields(entry, mediaIds, key))
+  if (!value || typeof value !== "object") return value
+  if (key && MEDIA_KEYS.has(key)) return normalizeMediaRef(value, mediaIds)
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([entryKey, entry]) => [entryKey, normalizeMediaFields(entry, mediaIds, entryKey)]))
 }
 
-const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap): Partial<Page> => omitNullishCmsValues({
+const sourceIdRows = (value: unknown): unknown =>
+  Array.isArray(value) ? value.map((sourceId) => ({ sourceId })) : value
+
+const normalizeWorkMediaRows = (projects: unknown, mediaIds?: MediaIdMap): unknown => {
+  if (!Array.isArray(projects)) return projects
+  return projects.map((project) => {
+    if (!project || typeof project !== "object" || Array.isArray(project)) return project
+    const record = project as Record<string, unknown>
+    const media = Array.isArray(record.media)
+      ? record.media
+        .map((value) => ({ image: normalizeMediaRef(value, mediaIds) }))
+        .filter((value): value is { image: string | number } => value.image !== undefined)
+      : record.media
+    return { ...record, media }
+  })
+}
+
+const normalizeContactForm = (form: unknown): unknown => {
+  if (!form || typeof form !== "object" || Array.isArray(form)) return form
+  const record = form as Record<string, unknown>
+  const fields = Array.isArray(record.fields)
+    ? record.fields.map((field) => {
+      if (!field || typeof field !== "object" || Array.isArray(field)) return field
+      return { ...(field as Record<string, unknown>) }
+    })
+    : record.fields
+  return { ...record, fields }
+}
+
+const normalizeBlock = (block: GeneratedPageSpec["blocks"][number], mediaIds?: MediaIdMap): Record<string, unknown> => {
+  const { id: _id, ...rest } = block
+  const normalized = normalizeMediaFields(rest, mediaIds) as Record<string, unknown>
+  if (normalized.blockType === "reviews") normalized.reviewSourceIds = sourceIdRows(normalized.reviewSourceIds)
+  if (normalized.blockType === "pricing") {
+    normalized.pricingSourceIds = sourceIdRows(normalized.pricingSourceIds)
+    if (Array.isArray(normalized.offers)) {
+      normalized.offers = normalized.offers.map((offer) => {
+        if (!offer || typeof offer !== "object" || Array.isArray(offer)) return offer
+        const record = offer as Record<string, unknown>
+        return {
+          ...record,
+          features: Array.isArray(record.features)
+            ? record.features.map((value) => ({ value }))
+            : record.features,
+        }
+      })
+    }
+  }
+  if (normalized.blockType === "work") normalized.projects = normalizeWorkMediaRows(normalized.projects, mediaIds)
+  if (normalized.blockType === "contact") normalized.form = normalizeContactForm(normalized.form)
+  if (normalized.blockType === "contact" && Array.isArray(normalized.serviceArea)) {
+    normalized.serviceArea = normalized.serviceArea.map((value) => ({ value }))
+  }
+  return omitNullish(normalized) as Record<string, unknown>
+}
+
+const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap): Partial<Page> => omitNullish({
   tenant: Number(tenantId),
   title: page.title,
   slug: page.slug,
   status: "draft",
-  blocks: page.blocks.map((block) => normalizeBlock(block as Record<string, unknown>, mediaIds)),
-  seo: page.seo
-    ? {
-        ...page.seo,
-        ogImage: normalizeMediaRef(page.seo.ogImage, mediaIds),
-      }
-    : undefined,
+  blocks: page.blocks.map((block) => normalizeBlock(block, mediaIds)),
+  seo: page.seo ? { ...page.seo, ogImage: normalizeMediaRef(page.seo.ogImage, mediaIds) } : undefined,
 }) as Partial<Page>
 
 const hrefToNavEntry = (href: string, label: string | null | undefined, external: boolean | undefined, pageBySlug: Map<string, ExistingPage>): NavEntry => {
-  const sectionMatch = href.match(/^\/?([a-z0-9-]+)?#([A-Za-z0-9_-]+)$/)
-  if (sectionMatch) {
-    const slug = sectionMatch[1] || "index"
-    const anchor = sectionMatch[2]
-    const page = pageBySlug.get(slug)
-    return {
-      type: "section",
-      ...(page ? { page: page.id } : {}),
-      anchor,
-      label: label ?? anchor,
-    }
+  const section = href.match(/^\/?([a-z0-9-]+)?#([A-Za-z0-9_-]+)$/)
+  if (section) {
+    const page = pageBySlug.get(section[1] || "index")
+    return { type: "section", ...(page ? { page: page.id } : {}), anchor: section[2], label: label ?? section[2] }
   }
-
-  const pageSlug = href.replace(/^\//, "").replace(/\/$/, "") || "index"
-  const page = pageBySlug.get(pageSlug)
-  if (page) {
-    return {
-      type: "page",
-      page: page.id,
-      ...(label ? { label } : {}),
-    }
-  }
-
-  return {
-    type: "custom",
-    url: href,
-    label: label ?? href,
-    external: Boolean(external),
-  }
+  const page = pageBySlug.get(href.replace(/^\//, "").replace(/\/$/, "") || "index")
+  if (page) return { type: "page", page: page.id, ...(label ? { label } : {}) }
+  return { type: "custom", url: href, label: label ?? href, external: Boolean(external) }
 }
 
-const normalizeNav = (
-  entries: GeneratedSiteSettings["navHeader"] | GeneratedSiteSettings["navFooter"],
-  pageBySlug: Map<string, ExistingPage>,
-): NavEntry[] | undefined => {
+const normalizeNav = (entries: GeneratedNavEntries, pageBySlug: Map<string, ExistingPage>): NavEntry[] | undefined => {
   if (!entries) return undefined
   return entries.map((entry) => entry.children?.length
-    ? {
-        type: "group",
-        label: entry.label,
-        description: entry.description,
-        children: entry.children.map((child) => ({
-          label: child.label,
-          href: child.href,
-          external: child.external,
-          description: child.description,
-          icon: child.icon,
-        })),
-      }
+    ? { type: "group", label: entry.label, description: entry.description, children: entry.children.map((child) => ({ label: child.label, href: child.href, external: child.external, description: child.description, icon: child.icon })) }
     : hrefToNavEntry(entry.href ?? "", entry.label, entry.external, pageBySlug))
 }
 
-const normalizeSettingsData = (
-  tenantId: string | number,
-  settings: GeneratedSiteSettings,
-  pageBySlug: Map<string, ExistingPage>,
-  mediaIds?: MediaIdMap,
-) => omitNullishCmsValues({
+const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap): Partial<SiteSetting> => omitNullish({
   tenant: Number(tenantId),
   siteName: settings.siteName,
   siteUrl: settings.siteUrl,
@@ -916,214 +388,203 @@ const normalizeSettingsData = (
   language: settings.language || "nl",
   aliases: settings.aliases,
   contactEmail: settings.contactEmail,
-  branding: settings.branding
-    ? {
-        ...settings.branding,
-        logo: normalizeMediaRef(settings.branding.logo, mediaIds),
-        favicon: normalizeMediaRef(settings.branding.favicon, mediaIds),
-      }
-    : undefined,
-  chrome: settings.chrome
-    ? {
-        ...settings.chrome,
-        header: settings.chrome.header
-          ? {
-              ...settings.chrome.header,
-              logo: normalizeMediaRef(settings.chrome.header.logo, mediaIds),
-            }
-          : undefined,
-        footer: settings.chrome.footer
-          ? {
-              ...settings.chrome.footer,
-              logo: normalizeMediaRef(settings.chrome.footer.logo, mediaIds),
-            }
-          : undefined,
-      }
-    : undefined,
+  branding: settings.branding ? normalizeMediaFields(settings.branding, mediaIds) : undefined,
+  chrome: settings.chrome ? normalizeMediaFields(settings.chrome, mediaIds) : undefined,
+  consent: settings.consent,
   systemTemplates: settings.systemTemplates,
   maintenance: settings.maintenance,
+  privacyDisclosure: settings.privacyDisclosure,
   contact: settings.contact,
   nap: settings.nap,
   hours: settings.hours,
   serviceArea: settings.serviceArea,
-  navHeader: normalizeNav(settings.navHeader, pageBySlug),
-  navFooter: normalizeNav(settings.navFooter, pageBySlug),
+  navigation: settings.navigation ? {
+    primary: normalizeNav(settings.navigation.primary, pageBySlug),
+    footer: normalizeNav(settings.navigation.footer, pageBySlug),
+  } : undefined,
 }) as Partial<SiteSetting>
 
-const upsertTenant = async (
-  payload: Payload,
-  spec: SiteGenerationSpec,
-  siteManifest: Record<string, unknown>,
-  theme: ThemeTokens | null,
-) => {
+const findOne = async <T>(payload: Payload, collection: "tenants" | "pages" | "site-settings" | "media", where: Where): Promise<T | undefined> => {
+  const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true })
+  return found.docs[0] as T | undefined
+}
+
+type PreparedMediaAsset = SiteGenerationMediaAsset
+type PreparedMediaAssets = {
+  assets: PreparedMediaAsset[]
+  cleanup: () => Promise<void>
+}
+
+const MEDIA_FILENAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+
+const prepareMediaAssets = async (assets: readonly SiteGenerationMediaAsset[] | undefined): Promise<PreparedMediaAssets | undefined> => {
+  if (!assets || assets.length === 0) return undefined
+
+  const keys = new Set<string>()
+  const filenames = new Set<string>()
+  for (const asset of assets) {
+    if (!asset.key.trim() || keys.has(asset.key)) throw new Error(`Duplicate or empty Sitegen media asset key "${asset.key}".`)
+    if (!MEDIA_FILENAME_REGEX.test(asset.filename) || filenames.has(asset.filename)) throw new Error(`Invalid or duplicate Sitegen media filename "${asset.filename}".`)
+    if (!asset.filePath.trim()) throw new Error(`Sitegen media asset "${asset.key}" is missing a local file path.`)
+    keys.add(asset.key)
+    filenames.add(asset.filename)
+    const source = await stat(asset.filePath)
+    if (!source.isFile()) throw new Error(`Sitegen media asset "${asset.key}" is not a file: ${asset.filePath}`)
+  }
+
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "siab-sitegen-media-"))
+  try {
+    const prepared = []
+    for (const asset of assets) {
+      const filePath = join(temporaryDirectory, asset.filename)
+      await copyFile(asset.filePath, filePath)
+      prepared.push({ ...asset, filePath })
+    }
+    return {
+      assets: prepared,
+      cleanup: () => rm(temporaryDirectory, { recursive: true, force: true }),
+    }
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true })
+    throw error
+  }
+}
+
+const upsertMediaAssets = async (payload: Payload, tenantId: string | number, assets: readonly PreparedMediaAsset[]): Promise<MediaIdMap> => {
+  const mediaIds: MediaIdMap = new Map()
+  for (const asset of assets) {
+    const existing = await findOne<Media>(payload, "media", {
+      and: [{ tenant: { equals: tenantId } }, { filename: { equals: asset.filename } }],
+    })
+    const data = {
+      tenant: Number(tenantId),
+      filename: asset.filename,
+      ...(asset.alt !== undefined ? { alt: asset.alt } : {}),
+    }
+    const document = existing
+      ? await payload.update({
+        collection: "media",
+        id: existing.id,
+        data: data as unknown as Partial<Media>,
+        filePath: asset.filePath,
+        overwriteExistingFiles: true,
+        depth: 0,
+        overrideAccess: true,
+        context: DRAFT_IMPORT_CONTEXT,
+      })
+      : await payload.create({
+        collection: "media",
+        data: data as unknown as Media,
+        filePath: asset.filePath,
+        overwriteExistingFiles: true,
+        depth: 0,
+        overrideAccess: true,
+        context: DRAFT_IMPORT_CONTEXT,
+      })
+    const id = (document as Media).id
+    mediaIds.set(asset.key, id)
+    mediaIds.set(asset.filename, id)
+  }
+  return mediaIds
+}
+
+const upsertTenant = async (payload: Payload, spec: SiteGenerationSpec, siteManifest: Record<string, unknown>, theme: ThemeTokens | null) => {
   const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } })
   const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } })
-
-  if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) {
-    throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
-  }
+  if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
   const existing = bySlug ?? byDomain
-  const data = {
-    name: spec.tenant.name,
-    slug: spec.tenant.slug,
-    domain: spec.tenant.domain,
-    status: existing?.status ?? "provisioning",
-    emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain),
-    siteManifest,
-    theme,
-  }
-  if (existing) {
-    const updated = await payload.update({
-      collection: "tenants",
-      id: existing.id,
-      data,
-      depth: 0,
-      overrideAccess: true,
-      context: DRAFT_IMPORT_CONTEXT,
-    })
-    return { doc: updated, operation: "updated" as const }
-  }
-  const created = await payload.create({
-    collection: "tenants",
-    data,
-    depth: 0,
-    overrideAccess: true,
-    context: DRAFT_IMPORT_CONTEXT,
-  })
-  return { doc: created, operation: "created" as const }
+  const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: existing?.status ?? "provisioning", emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
+  if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+  return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
 }
 
 const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap) => {
   const results: Array<{ doc: ExistingPage; operation: ApplyOperation }> = []
-
   for (const page of pages) {
     const data = normalizePageData(tenantId, page, mediaIds)
-    const existing = await findOne<Page>(payload, "pages", {
-      and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }],
-    })
+    const existing = await findOne<Page>(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] })
     if (existing) {
-      const updated = await payload.update({
-        collection: "pages",
-        id: existing.id,
-        data,
-        depth: 0,
-        overrideAccess: true,
-        context: DRAFT_IMPORT_CONTEXT,
-      })
-      results.push({ doc: updated, operation: "updated" })
+      const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      results.push({ doc: updated as ExistingPage, operation: "updated" })
     } else {
-      const created = await payload.create({
-        collection: "pages",
-        data: data as Page,
-        depth: 0,
-        overrideAccess: true,
-        context: DRAFT_IMPORT_CONTEXT,
-      })
-      results.push({ doc: created, operation: "created" })
+      const created = await payload.create({ collection: "pages", data: data as unknown as Page, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      results.push({ doc: created as ExistingPage, operation: "created" })
     }
   }
-
   return results
 }
 
-const upsertSettings = async (
-  payload: Payload,
-  tenantId: string | number,
-  settings: GeneratedSiteSettings,
-  pageBySlug: Map<string, ExistingPage>,
-  mediaIds?: MediaIdMap,
-) => {
+const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap) => {
   const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
   const existing = await findOne<SiteSetting>(payload, "site-settings", { tenant: { equals: tenantId } })
-  if (existing) {
-    const updated = await payload.update({
-      collection: "site-settings",
-      id: existing.id,
-      data,
-      depth: 0,
-      overrideAccess: true,
-      context: DRAFT_IMPORT_CONTEXT,
-    })
-    return { doc: updated, operation: "updated" as const }
-  }
-    const created = await payload.create({
-      collection: "site-settings",
-      data: data as SiteSetting,
-    depth: 0,
-    overrideAccess: true,
-    context: DRAFT_IMPORT_CONTEXT,
-  })
-  return { doc: created, operation: "created" as const }
+  if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+  return { doc: await payload.create({ collection: "site-settings", data: data as unknown as SiteSetting, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
 }
 
-const retainedPagesForTenant = async (
+const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>): Promise<RetainedPage[]> => {
+  const result = await payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true })
+  return (result.docs as ExistingPage[]).filter((page) => !appliedSlugs.has(page.slug)).map((page) => ({ id: page.id, slug: page.slug, ...(page.status ? { status: page.status } : {}) }))
+}
+
+export const retireUnspecifiedPagesForTenant = async (
   payload: Payload,
   tenantId: string | number,
   appliedSlugs: Set<string>,
-): Promise<RetainedPage[]> => {
-  const result = await payload.find({
+): Promise<{ retainedPages: RetainedPage[]; retiredPages: RetainedPage[] }> => {
+  const retainedPages = await retainedPagesForTenant(payload, tenantId, appliedSlugs)
+  const retiredPages = retainedPages.filter((page) => page.status === "published")
+  await Promise.all(retiredPages.map((page) => payload.update({
     collection: "pages",
-    where: { tenant: { equals: tenantId } },
-    limit: 1000,
+    id: page.id,
+    data: { status: "draft" },
     depth: 0,
     overrideAccess: true,
-  })
-
-  return (result.docs as ExistingPage[])
-    .filter((page) => !appliedSlugs.has(page.slug))
-    .map((page) => ({
-      id: page.id,
-      slug: page.slug,
-      ...(page.status ? { status: page.status } : {}),
-    }))
+    context: PAGE_REPLACEMENT_CONTEXT,
+  })))
+  return { retainedPages, retiredPages }
 }
 
-export async function applySiteGenerationSpec(
-  payload: Payload,
-  spec: CmsSiteGenerationSpec,
-  options: SiteGenerationApplyOptions = {},
-): Promise<CmsGenerationApplyResult> {
+export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGenerationSpec, options: SiteGenerationApplyOptions = {}): Promise<CmsGenerationApplyResult> {
   const sourceValidation = validateSiteGenerationSpecForCms(spec, options)
-  if (!sourceValidation.valid) {
-    return { ok: false, validation: sourceValidation }
-  }
-  const canonicalSpec = materializeTenantPrivacyPage(canonicalizeSiteGenerationSpecForCms(spec))
-  const transformedValidation = validateSiteGenerationSpecForCms(canonicalSpec, { ...options, allowSystemPages: true })
-  if (!transformedValidation.valid) {
-    return { ok: false, validation: transformedValidation }
-  }
+  if (!sourceValidation.valid) return { ok: false, validation: sourceValidation }
+  const canonicalSpec = materializeTenantPrivacyDisclosure(canonicalizeSiteGenerationSpecForCms(sourceValidation.data))
+  const transformedValidation = validateSiteGenerationSpecForCms(canonicalSpec, options)
+  if (!transformedValidation.valid) return { ok: false, validation: transformedValidation }
   const { data: parsedSpec, ...validation } = transformedValidation
-
   const idempotencyKey = siteGenerationSpecHash(parsedSpec)
   const theme = themeToCmsTokens(parsedSpec.theme)
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
-  const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
-  const tenantId = tenant.doc.id as string | number
-  const mediaIds = await upsertGeneratedMediaRefs(payload, tenantId, parsedSpec, {
-    mediaMode: options.mediaMode ?? (options.variantScope === "self-serve" ? "skip-generated-placeholders" : "upload-generated-media"),
-  })
-  const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)
-  const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
-  const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds)
-  const retainedPages = await retainedPagesForTenant(
-    payload,
-    tenantId,
-    new Set(parsedSpec.pages.map((page) => page.slug)),
-  )
-
-  return {
-    ok: true,
-    tenantId,
-    tenantSlug: tenant.doc.slug,
-    pageIds: pages.map(({ doc }) => doc.id),
-    settingsId: settings.doc.id,
-    validation,
-    idempotencyKey,
-    operations: {
-      tenant: tenant.operation,
-      settings: settings.operation,
-      pages: pages.map(({ doc, operation }) => ({ id: doc.id, slug: doc.slug, operation })),
-      retainedPages,
-    },
+  const preparedMedia = await prepareMediaAssets(options.mediaAssets)
+  try {
+    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
+    const tenantId = tenant.doc.id as string | number
+    const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets) : new Map<string, string | number>()
+    const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)
+    const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
+    const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds)
+    const pageState = options.retireUnspecifiedPages
+      ? await retireUnspecifiedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug)))
+      : {
+        retainedPages: await retainedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug))),
+        retiredPages: [],
+      }
+    return {
+      ok: true,
+      tenantId,
+      tenantSlug: tenant.doc.slug,
+      pageIds: pages.map(({ doc }) => doc.id),
+      settingsId: settings.doc.id,
+      validation,
+      idempotencyKey,
+      operations: {
+        tenant: tenant.operation,
+        settings: settings.operation,
+        pages: pages.map(({ doc, operation }) => ({ id: doc.id, slug: doc.slug, operation })),
+        retainedPages: pageState.retainedPages,
+        retiredPages: pageState.retiredPages,
+      },
+    }
+  } finally {
+    await preparedMedia?.cleanup()
   }
 }

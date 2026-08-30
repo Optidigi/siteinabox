@@ -15,11 +15,12 @@ describe("analytics projection", () => {
           {
             id: "row-1",
             blockType: "hero",
-            designVariant: "shadcnui-blocks.hero-01",
             anchor: "top",
-            headline: "Welkom",
+            heading: "Welkom",
+            body: "Een duidelijke eerste stap.",
+            primaryAction: { label: "Contact", href: "/contact" },
           },
-          { id: "row-2", blockType: "cta", headline: "Contact", primary: { label: "Bel", href: "tel:+31612345678" } },
+          { id: "row-2", blockType: "cta", heading: "Contact", primaryAction: { label: "Bel", href: "tel:+31612345678" } },
         ],
       }),
       {
@@ -47,7 +48,7 @@ describe("analytics projection", () => {
       sectionType: "hero",
       sectionPosition: 0,
       sectionAnchor: "top",
-      providerVariant: "shadcnui-blocks.hero-01",
+      variant: null,
     })
     expect(jsonBlockAt(json, 0).analytics).toMatchObject({
       contentSignature: expect.stringMatching(/^[a-f0-9]{24}$/),

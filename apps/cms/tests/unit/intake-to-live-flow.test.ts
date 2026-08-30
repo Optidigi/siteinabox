@@ -546,28 +546,9 @@ describe("intake-to-live mocked flow", () => {
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)
-    expect(store.pages).toHaveLength(6)
-    expect(store.media.map((entry) => entry.filename).sort()).toEqual([
-      "smoke-analytics-desk.jpg",
-      "smoke-cta-mobile.png",
-      "smoke-logo-aws.svg",
-      "smoke-logo-docker.svg",
-      "smoke-logo-github.svg",
-      "smoke-logo-nextjs.svg",
-      "smoke-logo-nodejs.svg",
-      "smoke-logo-react.svg",
-      "smoke-logo-slack.svg",
-      "smoke-logo-vercel.svg",
-      "smoke-office-interior.jpg",
-      "smoke-portrait-a.jpg",
-      "smoke-portrait-b.jpg",
-      "smoke-portrait-c.jpg",
-      "smoke-portrait-d.jpg",
-      "smoke-portrait-professional.jpg",
-      "smoke-team-collaboration.jpg",
-      "smoke-workshop-session.jpg",
-    ])
-    expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(true)
+    expect(store.pages).toHaveLength(3)
+    expect(store.media).toHaveLength(0)
+    expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(false)
 
     const pages = store.pages
     const tenants = store.tenants

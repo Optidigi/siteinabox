@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -19,17 +19,17 @@ import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
 import { usePageEditorCore } from "@/components/editor/usePageEditorCore"
 import { parsePayloadError } from "@/lib/api"
-import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X } from "lucide-react"
+import { ChevronLeft, Trash2, ExternalLink, Copy } from "lucide-react"
 import Link from "next/link"
 import type { Page, SiteSetting } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
-import { SHADCNUI_CHROME_VARIANTS, SITE_CHROME_CATALOG } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { PageEditorFrameHost } from "@/components/editor/iframe/PageEditorFrameHost"
 import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
-import { ensureCanvasWirePage } from "@/lib/projection/ensureCanvasWire"
+import { ensureCanvasWirePage, ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
+import { settingsToJsonWithoutAnalytics } from "@/lib/projection/settingsToJsonCore"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { BlockPresetsProvider } from "@/components/editor/BlockPresetsContext"
@@ -52,486 +52,11 @@ import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { useTranslations } from "next-intl"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
 import type { NavPage } from "@/lib/projection/resolveNav"
-import { SiteChromeRow, siteChromeZoneLabel, type SiteChromeSelection, type SiteChromeZone } from "@/components/editor/sidebar/SiteChromeRow"
-import { MediaPicker } from "@/components/media/MediaPicker"
-import {
-  createFooterItem,
-  defaultFooterItemLabel,
-  ensureFooterColumnItems,
-  normalizeFooterColumns,
-  setFooterColumnCount,
-  type FooterCompositionColumn,
-  type FooterCompositionContract,
-  type FooterItemType,
-} from "@/lib/footerComposition"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
-import type { SiteChromeDraft } from "@/lib/siteChromeDraft"
 
 export { useRtManifest }
 
-type DraftRecord = Record<string, unknown>
-
-type ChromeVariantEntry = (typeof SHADCNUI_CHROME_VARIANTS)[number]
-
-const asDraftRecord = (value: unknown): DraftRecord =>
-  value != null && typeof value === "object" && !Array.isArray(value) ? value as DraftRecord : {}
-
-const draftFieldString = (group: unknown, field: string): string => {
-  const value = asDraftRecord(group)[field]
-  return typeof value === "string" ? value : ""
-}
-
-const draftFieldBool = (group: unknown, field: string): boolean =>
-  asDraftRecord(group)[field] === true
-
-const mergeDraftGroup = (group: unknown, patch: DraftRecord): DraftRecord => ({
-  ...asDraftRecord(group),
-  ...patch,
-})
-
-const chromeVariantById = (id: string): ChromeVariantEntry | undefined =>
-  SHADCNUI_CHROME_VARIANTS.find((entry) => entry.id === id)
-
-type ChromeRange = { min: number; max: number }
-
-type ChromeEditorCapabilities = {
-  mobileMenu?: readonly string[]
-  secondaryAction?: boolean
-  search?: boolean
-  newsletter?: boolean
-  navigation?: string
-  primaryItems?: ChromeRange
-  columns?: ChromeRange
-  linksPerColumn?: ChromeRange
-}
-
-const chromeVariantCapabilities = (id: string): ChromeEditorCapabilities | undefined => {
-  const entry = chromeVariantById(id)
-  if (!entry || !("capabilities" in entry)) return undefined
-  return entry.capabilities as ChromeEditorCapabilities
-}
-
-function FooterCompositionEditor({
-  draft,
-  setDraft,
-  contract,
-  canEditSettings,
-}: {
-  draft: SiteChromeDraft
-  setDraft: Dispatch<SetStateAction<SiteChromeDraft>>
-  contract: FooterCompositionContract
-  canEditSettings?: boolean
-}) {
-  const t = useTranslations("editor")
-  const columns = ensureFooterColumnItems(
-    setFooterColumnCount(draft.footer.columns, draft.footer.columns.length || contract.defaultColumnCount, contract),
-    contract,
-  )
-  const itemLabel = (type: FooterItemType) =>
-    contract.items.find((item) => item.type === type)?.label ?? defaultFooterItemLabel(type)
-  const setColumns = (nextColumns: FooterCompositionColumn[]) => {
-    if (!canEditSettings) return
-    setDraft((current) => ({
-      ...current,
-      footer: { ...current.footer, columns: ensureFooterColumnItems(normalizeFooterColumns(nextColumns, contract), contract) },
-    }))
-  }
-  const updateItem = (
-    columnIndex: number,
-    itemIndex: number,
-    patch: Partial<FooterCompositionColumn["items"][number]>,
-  ) => {
-    setColumns(columns.map((column, cIndex) => cIndex !== columnIndex
-      ? column
-      : {
-          ...column,
-          items: column.items.map((item, iIndex) => iIndex === itemIndex ? { ...item, ...patch } : item),
-        }))
-  }
-  const setColumnType = (columnIndex: number, itemIndex: number, type: FooterItemType) => {
-    setColumns(columns.map((column, cIndex) => cIndex !== columnIndex
-      ? column
-      : { ...column, items: column.items.map((item, iIndex) => iIndex === itemIndex ? { ...createFooterItem(type), id: item.id ?? undefined } : item) }))
-  }
-
-  return (
-    <section className="space-y-3 rounded-md border border-border bg-card p-4">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{t("footerLayout")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("footerLayoutDescription")}</p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="site-chrome-footer-columns">{t("footerColumns")}</Label>
-        <Select
-          value={String(columns.length)}
-          disabled={!canEditSettings}
-          onValueChange={(value) => setColumns(setFooterColumnCount(columns, Number(value), contract))}
-        >
-          <SelectTrigger id="site-chrome-footer-columns" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {contract.columnCounts.map((count) => (
-              <SelectItem key={count} value={String(count)}>
-                {t("footerColumnCount", { count })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-3">
-        {columns.map((column, columnIndex) => (
-          <div key={column.id ?? columnIndex} className="space-y-3 rounded-md border border-border bg-background p-3">
-            <h3 className="text-sm font-medium text-foreground">{t("footerColumn", { index: columnIndex + 1 })}</h3>
-            {column.items.map((item, itemIndex) => <div className="space-y-3 rounded-md border border-border bg-card p-3" key={item.id ?? itemIndex}>
-              <div className="flex items-center gap-2">
-              <Select
-                value={item.type}
-                disabled={!canEditSettings}
-                onValueChange={(type) => setColumnType(columnIndex, itemIndex, type as FooterItemType)}
-              >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contract.items.map((item) => (
-                      <SelectItem key={item.type} value={item.type}>{item.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" variant="ghost" size="icon" disabled={!canEditSettings || column.items.length === 1} aria-label={t("removeFooterItem")} onClick={() => setColumns(columns.map((candidate, index) => index === columnIndex ? { ...candidate, items: candidate.items.filter((_, removeIndex) => removeIndex !== itemIndex) } : candidate))}><X className="size-4" /></Button>
-              </div>
-            {(item.type === "text" || item.type === "links") && (
-            <div className="space-y-3">
-                      <div className="space-y-2">
-                        <Label>{t("footerItemLabel")}</Label>
-                        <Input
-                          value={item.label ?? ""}
-                          placeholder={itemLabel(item.type)}
-                          disabled={!canEditSettings}
-                          onChange={(event) => updateItem(columnIndex, itemIndex, { label: event.target.value || null })}
-                        />
-                      </div>
-
-                    {item.type === "text" && (
-                      <div className="space-y-2">
-                        <Label>{t("footerItemText")}</Label>
-                        <Textarea
-                          value={item.text ?? ""}
-                          disabled={!canEditSettings}
-                          onChange={(event) => updateItem(columnIndex, itemIndex, { text: event.target.value || null })}
-                        />
-                      </div>
-                    )}
-
-                    {item.type === "links" && (
-                      <div className="space-y-2">
-                        <Label>{t("footerLinks")}</Label>
-                        <div className="space-y-2">
-                          {(item.links?.length ? item.links : [{ label: "", href: "", external: false }]).map((link, linkIndex) => (
-                            <div key={linkIndex} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-2">
-                              <Input
-                                value={link.label}
-                                placeholder={t("footerLinkLabel")}
-                                disabled={!canEditSettings}
-                                onChange={(event) => {
-                                  const links = [...(item.links ?? [])]
-                                  links[linkIndex] = { ...(links[linkIndex] ?? { label: "", href: "" }), label: event.target.value }
-                                  updateItem(columnIndex, itemIndex, { links })
-                                }}
-                              />
-                              <Switch aria-label={t("externalLink")} checked={!!link.external} disabled={!canEditSettings} onCheckedChange={(external) => { const links = [...(item.links ?? [])]; links[linkIndex] = { ...(links[linkIndex] ?? { label: "", href: "" }), external }; updateItem(columnIndex, itemIndex, { links }) }} />
-                              <Input
-                                value={link.href}
-                                placeholder="/"
-                                disabled={!canEditSettings}
-                                onChange={(event) => {
-                                  const links = [...(item.links ?? [])]
-                                  links[linkIndex] = { ...(links[linkIndex] ?? { label: "", href: "" }), href: event.target.value }
-                                  updateItem(columnIndex, itemIndex, { links })
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                disabled={!canEditSettings}
-                                aria-label={t("removeFooterLink")}
-                                onClick={() => {
-                                  const links = (item.links ?? []).filter((_, index) => index !== linkIndex)
-                                  updateItem(columnIndex, itemIndex, { links })
-                                }}
-                              >
-                                <X className="size-4" aria-hidden />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        {canEditSettings && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5"
-                            disabled={(item.links?.length ?? 0) >= 8}
-                            onClick={() => updateItem(columnIndex, itemIndex, {
-                              links: [...(item.links ?? []), { label: "Link", href: "/", external: false }],
-                            })}
-                          >
-                            <Plus className="size-3.5" aria-hidden />
-                            {t("addFooterLink")}
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-            )}
-            </div>)}
-            <Button type="button" variant="outline" size="sm" disabled={!canEditSettings || column.items.length >= 4} onClick={() => setColumns(columns.map((candidate, index) => index === columnIndex ? { ...candidate, items: [...candidate.items, createFooterItem(contract.items[0]!.type)] } : candidate))}><Plus className="size-3.5" />{t("addFooterItem")}</Button>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function SiteChromeInspectorFields({
-  zone,
-  draft,
-  setDraft,
-  tenantId,
-  canEditSettings,
-  navigationHref,
-  onNavigate,
-  footerContract,
-}: {
-  zone: SiteChromeZone
-  draft: SiteChromeDraft
-  setDraft: Dispatch<SetStateAction<SiteChromeDraft>>
-  tenantId: number | string
-  canEditSettings?: boolean
-  navigationHref?: string | null
-  onNavigate?: (href: string) => void
-  footerContract?: FooterCompositionContract | null
-}) {
-  const t = useTranslations("editor")
-  const tCommon = useTranslations("common")
-
-  const logo = zone === "header" ? draft.header.logo : draft.footer.logo
-  const variant = String(zone === "header" ? draft.header.variant ?? "" : draft.footer.variant ?? "")
-  const capability = chromeVariantCapabilities(variant)
-  const variantOptions = SITE_CHROME_CATALOG.filter((entry) => entry.area === zone && (entry.scope.kind === "global" || entry.variant === variant))
-  const setLogo = (logoValue: unknown) => {
-    if (!canEditSettings) return
-    setDraft((current) => zone === "header"
-      ? { ...current, header: { ...current.header, logo: logoValue } }
-      : { ...current, footer: { ...current.footer, logo: logoValue } })
-  }
-  const setVariant = (value: string) => {
-    const nextCapability = chromeVariantCapabilities(value)
-    setDraft((current) => zone === "header"
-      ? {
-          ...current,
-          header: {
-            ...current.header,
-            variant: value,
-            mobileMenu: nextCapability?.mobileMenu?.includes(String(current.header.mobileMenu ?? ""))
-              ? current.header.mobileMenu
-              : null,
-            secondaryAction: nextCapability?.secondaryAction ? current.header.secondaryAction : undefined,
-            search: nextCapability?.search ? current.header.search : undefined,
-          },
-        }
-      : {
-          ...current,
-          footer: {
-            ...current.footer,
-            variant: value,
-            newsletter: nextCapability?.newsletter ? current.footer.newsletter : undefined,
-          },
-        })
-  }
-
-  return (
-    <div className="space-y-4">
-      <section className="space-y-2 rounded-md border border-border bg-card p-4">
-        <Label htmlFor={`site-chrome-${zone}-variant`}>{t("layoutVariant")}</Label>
-        <Select value={variant} disabled={!canEditSettings} onValueChange={setVariant}>
-          <SelectTrigger id={`site-chrome-${zone}-variant`}><SelectValue /></SelectTrigger>
-          <SelectContent>{variantOptions.map((option) => <SelectItem key={option.variant} value={option.variant}>{option.label}</SelectItem>)}</SelectContent>
-        </Select>
-        {capability ? <p className="text-xs text-muted-foreground">{zone === "header" ? `${capability.navigation ?? ""} navigation · ${capability.primaryItems?.min ?? 0}-${capability.primaryItems?.max ?? 0} primary items` : `${capability.columns?.min ?? 0}-${capability.columns?.max ?? 0} columns · 0-${capability.linksPerColumn?.max ?? 0} links per section`}</p> : null}
-      </section>
-      <section className="space-y-3 rounded-md border border-border bg-card p-4">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{t("brand")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("logoOverrideDescription")}</p>
-        </div>
-        <div className="space-y-2">
-          <Label>{t("customLogo")}</Label>
-          {canEditSettings ? (
-            <MediaPicker value={logo} onChange={setLogo} relationTo="media" tenantId={tenantId} />
-          ) : (
-            <p className="text-sm text-muted-foreground">{t("siteChromeReadOnly")}</p>
-          )}
-        </div>
-      </section>
-
-      {zone === "footer" && (
-        <>
-          {footerContract && (
-            <FooterCompositionEditor
-              draft={draft}
-              setDraft={setDraft}
-              contract={footerContract}
-              canEditSettings={canEditSettings}
-            />
-          )}
-          <section className="space-y-3 rounded-md border border-border bg-card p-4">
-            <h2 className="text-base font-semibold text-foreground">{t("footerContent")}</h2>
-            <div className="space-y-2">
-              <Label htmlFor="site-chrome-footer-text">{t("footerText")}</Label>
-              <Textarea
-                id="site-chrome-footer-text"
-                value={draft.footer.tagline ?? ""}
-                disabled={!canEditSettings}
-                onChange={(event) => {
-                  const value = event.target.value
-                  setDraft((current) => ({
-                    ...current,
-                    footer: { ...current.footer, tagline: value || null },
-                  }))
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="site-chrome-footer-copyright">{t("copyright")}</Label>
-              <Input
-                id="site-chrome-footer-copyright"
-                value={draft.footer.copyright ?? ""}
-                disabled={!canEditSettings}
-                onChange={(event) => {
-                  const value = event.target.value
-                  setDraft((current) => ({
-                    ...current,
-                    footer: { ...current.footer, copyright: value || null },
-                  }))
-                }}
-              />
-            </div>
-          </section>
-          {capability?.newsletter && <section className="space-y-3 rounded-md border border-border bg-card p-4">
-            <h2 className="text-base font-semibold text-foreground">{t("newsletter")}</h2>
-            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "title")} placeholder={t("newsletterTitle")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { title: event.target.value || null }) } }))} />
-            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "placeholder")} placeholder={t("newsletterPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { placeholder: event.target.value || null }) } }))} />
-            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "submitLabel")} placeholder={t("newsletterSubmit")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { submitLabel: event.target.value || null }) } }))} />
-            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "action")} placeholder="/newsletter" onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { action: event.target.value || null, method: draftFieldString(current.footer.newsletter, "method") || "POST" }) } }))} />
-          </section>}
-        </>
-      )}
-
-      {zone === "header" && <section className="space-y-3 rounded-md border border-border bg-card p-4">
-        <h2 className="text-base font-semibold text-foreground">{t("headerActions")}</h2>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div className="space-y-1"><Label>{t("headerBehavior")}</Label><Select disabled={!canEditSettings} value={String(draft.header.behavior ?? "sticky")} onValueChange={(behavior) => setDraft((current) => ({ ...current, header: { ...current.header, behavior } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sticky">{t("sticky")}</SelectItem><SelectItem value="static">{t("static")}</SelectItem></SelectContent></Select></div>
-          <div className="space-y-1"><Label>{t("activeLinkMode")}</Label><Select disabled={!canEditSettings} value={String(draft.header.activeMode ?? "path")} onValueChange={(activeMode) => setDraft((current) => ({ ...current, header: { ...current.header, activeMode } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="path">{t("activePath")}</SelectItem><SelectItem value="anchor">{t("activeAnchor")}</SelectItem><SelectItem value="none">{t("activeNone")}</SelectItem></SelectContent></Select></div>
-          {capability?.mobileMenu?.length ? <div className="space-y-1"><Label>{t("mobileMenu")}</Label><Select disabled={!canEditSettings} value={String(draft.header.mobileMenu ?? capability.mobileMenu[0])} onValueChange={(mobileMenu) => setDraft((current) => ({ ...current, header: { ...current.header, mobileMenu } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{capability.mobileMenu.map((mode: string) => <SelectItem key={mode} value={mode}>{mode === "drawer" ? t("mobileDrawer") : t("mobileDropdown")}</SelectItem>)}</SelectContent></Select></div> : null}
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={draftFieldString(draft.header.cta, "label")} placeholder={t("primaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: mergeDraftGroup(current.header.cta, { label: event.target.value || null }) } }))} /><Input disabled={!canEditSettings} value={draftFieldString(draft.header.cta, "href")} placeholder="/contact" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: mergeDraftGroup(current.header.cta, { href: event.target.value || null }) } }))} /></div>
-        <div className="flex items-center justify-between"><Label htmlFor="header-cta-external">{t("externalLink")}</Label><Switch id="header-cta-external" disabled={!canEditSettings} checked={draftFieldBool(draft.header.cta, "external")} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, cta: mergeDraftGroup(current.header.cta, { external }) } }))} /></div>
-        {capability?.secondaryAction && <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={draftFieldString(draft.header.secondaryAction, "label")} placeholder={t("secondaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: mergeDraftGroup(current.header.secondaryAction, { label: event.target.value || null }) } }))} /><Input disabled={!canEditSettings} value={draftFieldString(draft.header.secondaryAction, "href")} placeholder="/login" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: mergeDraftGroup(current.header.secondaryAction, { href: event.target.value || null }) } }))} /></div>}
-        {capability?.secondaryAction && <div className="flex items-center justify-between"><Label htmlFor="header-secondary-external">{t("externalLink")}</Label><Switch id="header-secondary-external" disabled={!canEditSettings} checked={draftFieldBool(draft.header.secondaryAction, "external")} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: mergeDraftGroup(current.header.secondaryAction, { external }) } }))} /></div>}
-        {capability?.search && <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="header-search-enabled">{t("siteSearch")}</Label><Switch id="header-search-enabled" disabled={!canEditSettings} checked={draftFieldBool(draft.header.search, "enabled")} onCheckedChange={(enabled) => setDraft((current) => ({ ...current, header: { ...current.header, search: mergeDraftGroup(current.header.search, { enabled }) } }))} /></div><div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} value={draftFieldString(draft.header.search, "action")} placeholder="/search" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: mergeDraftGroup(current.header.search, { action: event.target.value || null }) } }))} /><Input disabled={!canEditSettings} maxLength={48} value={draftFieldString(draft.header.search, "placeholder")} placeholder={t("searchPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: mergeDraftGroup(current.header.search, { placeholder: event.target.value || null }) } }))} /></div></div>}
-      </section>}
-
-      <section className="rounded-md border border-border bg-card p-4">
-        <h2 className="text-base font-semibold text-foreground">{t("navigation")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("siteChromeManagedElsewhere")}</p>
-        {navigationHref && (
-          <Button type="button" variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => onNavigate?.(navigationHref)}>
-            <Navigation className="size-3.5" aria-hidden />
-            {t("manageNavigation")}
-          </Button>
-        )}
-      </section>
-
-      {canEditSettings && (
-        <p className="text-xs text-muted-foreground">{tCommon("save")}: {t("siteChromeSaveHint")}</p>
-      )}
-    </div>
-  )
-}
-
-function SiteChromeDrillDown({
-  selection,
-  draft,
-  setDraft,
-  tenantId,
-  canEditSettings,
-  navigationHref,
-  onNavigate,
-  footerContract,
-  onBack,
-}: {
-  selection: SiteChromeSelection
-  draft: SiteChromeDraft
-  setDraft: Dispatch<SetStateAction<SiteChromeDraft>>
-  tenantId: number | string
-  canEditSettings?: boolean
-  navigationHref?: string | null
-  onNavigate?: (href: string) => void
-  footerContract?: FooterCompositionContract | null
-  onBack: () => void
-}) {
-  const t = useTranslations("editor")
-  const zone = selection.zone
-  const label = siteChromeZoneLabel(zone, t)
-  const Icon = zone === "header" ? PanelTop : PanelBottom
-  const header = (
-    <>
-      <header className="flex items-center border-b border-border px-3 py-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={onBack}
-          className="h-8 gap-1"
-          aria-label={t("backToBlockList")}
-        >
-          <ChevronLeft className="size-4" aria-hidden />
-          {t("back")}
-        </Button>
-      </header>
-      <header className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-        <span className="text-xs font-medium">{label}</span>
-      </header>
-    </>
-  )
-  const body = (
-    <SiteChromeInspectorFields
-      zone={zone}
-      draft={draft}
-      setDraft={setDraft}
-      tenantId={tenantId}
-      canEditSettings={canEditSettings}
-      navigationHref={navigationHref}
-      onNavigate={onNavigate}
-      footerContract={footerContract}
-    />
-  )
-
-  return (
-    <SidebarPageSettingsLayout
-      header={header}
-      body={body}
-      footer={null}
-    />
-  )
-}
-
-export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: SiteSetting | null; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inNavbarNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: SiteSetting | null; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inNavbarNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -550,11 +75,8 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     baseHref,
     manifest,
     theme,
-    siteSettings,
-    rendererNavPages,
     canManageNav,
-    canEditSettings,
-    inHeaderNav,
+    inNavbarNav,
     inFooterNav,
     readOnly,
     t,
@@ -581,20 +103,13 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     selected,
     revealInspectorSelection,
     revealFrameSelection,
-    selectedChrome,
     selectElement,
     selectInspectorElement,
-    selectChrome,
-    clearChromeSelection,
     mobileFocusedSectionIndex,
     setMobileFocusedSectionIndex,
     themeState,
     setThemeState,
-    chromeDraft,
-    setChromeDraft,
-    rendererSettingsState,
-    footerContract,
-    inHeader,
+    inNavbar,
     inFooter,
     toggleNav,
     isDirty,
@@ -619,12 +134,10 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     onSubmit,
     onInvalid,
     handleFrameSelectionChanged,
-    handleFrameChromeSelect,
     frameSelection,
     frameMobileMode,
     canEditPage,
     canManageNavResolved,
-    canEditSettingsResolved,
   } = core
 
   const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar()
@@ -636,11 +149,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const pageEditorSaveStatusBarPosition = useCspStyleRule(
     "page-editor-save-status-bar-position",
     `left:calc(${saveStatusBarOffset} + 1.5rem);right:1.5rem;bottom:calc(env(safe-area-inset-bottom, 0px) + 4.75rem);`,
-  )
-
-  const navigateFromChrome = useCallback(
-    (href: string) => guard.guardedNavigate(() => router.push(href)),
-    [guard, router],
   )
 
   // Cmd+S / Ctrl+S global save shortcut. Skip when focus is inside an
@@ -751,12 +259,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         </p>
         <div className="mt-3 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="nav-header-toggle">{t("includeHeaderNavigation")}</Label>
+            <Label htmlFor="nav-navbar-toggle">{t("includeNavbarNavigation")}</Label>
             <Switch
-              id="nav-header-toggle"
-              checked={inHeader}
+              id="nav-navbar-toggle"
+              checked={inNavbar}
               disabled={pending}
-              onCheckedChange={(c) => toggleNav("header", c)}
+              onCheckedChange={(c) => toggleNav("navbar", c)}
             />
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -780,48 +288,20 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       {seoCard}
     </>
   )
-  const navigationHref = canManageNavResolved ? baseHref.replace(/\/pages$/, "/navigation") : null
-  const navigationHrefFor = useCallback(
-    (zone: SiteChromeZone) => {
-      if (!navigationHref) return null
-      const separator = navigationHref.includes("?") ? "&" : "?"
-      return `${navigationHref}${separator}zone=${zone}`
-    },
-    [navigationHref],
-  )
-
   const renderSidebarList = useCallback(
     (ctx: SidebarListSlotContext) => (
       <SidebarListLayout
         header={ctx.header}
         body={
           <>
-            {siteSettingsState && (
-              <SiteChromeRow
-                zone="header"
-                navigationHref={navigationHrefFor("header")}
-                onNavigate={navigateFromChrome}
-                selected={selectedChrome?.zone === "header"}
-                onSelect={selectChrome}
-              />
-            )}
             {ctx.blocks.length === 0 ? ctx.emptyState : ctx.blockRows}
-            {siteSettingsState && (
-              <SiteChromeRow
-                zone="footer"
-                navigationHref={navigationHrefFor("footer")}
-                onNavigate={navigateFromChrome}
-                selected={selectedChrome?.zone === "footer"}
-                onSelect={selectChrome}
-              />
-            )}
             {ctx.addBlockButton}
             {ctx.blockTypePicker}
           </>
         }
       />
     ),
-    [navigationHrefFor, selectedChrome, selectChrome, siteSettingsState],
+    [],
   )
 
   const renderSidebarBlockForm = useCallback(
@@ -890,13 +370,15 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         blocks: watchedBlocks,
         seo: watchedSeo,
         updatedAt: initial?.updatedAt,
-      } as Page,
+      } as unknown as Page,
       iframeAnalyticsContext,
       { preserveBlockIds: true },
     ) as ContractPage),
     [initial?.id, initial?.updatedAt, pageTitle, watchedSlug, watchedBlocks, watchedSeo, iframeAnalyticsContext],
   )
-  const frameSettings = rendererSettingsState as ContractSiteSettings | null
+  const frameSettings = siteSettingsState
+    ? ensureCanvasWireSettings(settingsToJsonWithoutAnalytics(siteSettingsState, rendererNavPages)) as ContractSiteSettings
+    : null
   const frameTheme = useMemo(() => normalizeThemeForSave(themeState), [themeState])
   const frameEditorLayout = isDesktop === false ? "mobile" : "desktop"
   const canRenderEditorFrame = frameSettings != null
@@ -929,7 +411,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       revealSelection={revealFrameSelection}
       mobileMode={frameMobileMode}
       onSelectionChanged={handleFrameSelectionChanged}
-      onChromeSelect={handleFrameChromeSelect}
     />
   ) : (
     <p className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -1032,26 +513,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                     className="sticky top-[calc(6.5rem+0.5rem)] h-[calc(100dvh-6.5rem)] max-h-[calc(100dvh-6.5rem)] w-[360px] shrink-0 self-start overflow-hidden rounded-lg border border-border bg-card"
                   >
                     <EditorErrorBoundary>
-                      {selectedChrome ? (
-                        <SiteChromeDrillDown
-                          selection={selectedChrome}
-                          draft={chromeDraft}
-                          setDraft={setChromeDraft}
-                          tenantId={tenantId}
-                          canEditSettings={canEditSettingsResolved}
-                          navigationHref={navigationHrefFor(selectedChrome.zone)}
-                          onNavigate={navigateFromChrome}
-                          footerContract={footerContract}
-                          onBack={() => clearChromeSelection()}
-                        />
-                      ) : (
-                        <SidebarDrillDown
+                      <SidebarDrillDown
                           blocks={watchedBlocks}
                           selectedBlockIndex={selected?.blockIndex ?? null}
                           selectedPath={selected}
                           revealSelectedPath={revealInspectorSelection}
                           onSelectBlock={(i) => {
-                            clearChromeSelection()
                             selectElement(i != null ? { blockIndex: i, field: "" } : null)
                           }}
                           onSelectPath={selectInspectorElement}
@@ -1067,7 +534,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                           renderBlockForm={renderSidebarBlockForm}
                           renderPageSettings={renderSidebarPageSettings}
                         />
-                      )}
                     </EditorErrorBoundary>
                   </aside>
                 )}

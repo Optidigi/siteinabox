@@ -6,18 +6,6 @@ import { getTestPayload, resetTestData } from "./_helpers"
 import { createArgs, relationId, asDocRecord } from "../_helpers/payloadApi"
 let payload: Payload
 
-const inlineRoot = (text: string) => ({
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: text }],
-})
-
-const blockRoot = (text: string) => ({
-  t: "root",
-  variant: "block",
-  children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
-})
-
 const smokeTheme = {
   version: 3,
   appearance: { mode: "light" },
@@ -35,7 +23,7 @@ beforeEach(async () => {
 }, 30000)
 
 describe("CMS integration smoke", () => {
-  it("persists a renderer-ready tenant, V2 theme, settings, and source-backed page", async () => {
+  it("persists a renderer-ready tenant, V2 theme, settings, and owned-block page", async () => {
     const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`
     const domain = `smoke-studio-${suffix}.test`
     const tenant = await payload.create(createArgs("tenants", {
@@ -54,36 +42,26 @@ describe("CMS integration smoke", () => {
         blocks: [
           {
             blockType: "hero",
-            designVariant: "shadcnui-blocks.hero-01",
-            eyebrow: inlineRoot("Smoke ready"),
-            headline: inlineRoot("Renderer-backed CMS smoke"),
-            subheadline: blockRoot("A published page can carry source-backed content without layout fields."),
-            cta: { label: "Start", href: "/intake" },
-            secondary: { label: "Contact", href: "#contact" },
+            variant: "hero-01",
+            heading: "Renderer-backed CMS smoke",
+            body: "A published page can carry semantic content without layout fields.",
+            primaryAction: { label: "Start", href: "/intake" },
+            secondaryAction: { label: "Contact", href: "#contact" },
           },
           {
-            blockType: "contactSection",
-            designVariant: "shadcnui-blocks.contact-02",
+            blockType: "contact",
             anchor: "contact",
-            title: inlineRoot("Contact"),
-            description: blockRoot("The form contract remains structured CMS data."),
-            formName: "Smoke contact",
-            submitLabel: "Send",
-            fields: [
+            heading: "Contact",
+            body: "The form contract remains structured CMS data.",
+            contactMethods: [{ kind: "email", label: "Email", value: "hello@smoke.test", href: "mailto:hello@smoke.test" }],
+            form: { formName: "Smoke contact", submitLabel: "Send", fields: [
               { name: "first-name", label: "First name", type: "text", required: true },
               { name: "last-name", label: "Last name", type: "text", required: true },
               { name: "company", label: "Company", type: "text" },
               { name: "email", label: "Email", type: "email", required: true },
               { name: "phone-number", label: "Phone number", type: "tel" },
               { name: "message", label: "Message", type: "textarea", required: true },
-            ],
-            provider: {
-              provider: "siab",
-              action: "/api/forms",
-              method: "POST",
-              requiresConsent: true,
-              analyticsEnabled: true,
-            },
+            ] },
           },
         ],
     }, { overrideAccess: true }))
@@ -95,20 +73,21 @@ describe("CMS integration smoke", () => {
         description: "Smoke coverage for renderer-ready tenant settings.",
         language: "nl",
         chrome: {
-          header: {
-            variant: "shadcnui-blocks.navbar-01",
-            behavior: "static",
+          navbar: {
+            variant: "navbar-01",
+            placement: "hero-overlay",
             activeMode: "path",
             mobileMenu: "dropdown",
             cta: { label: "Contact", href: "#contact" },
           },
           footer: {
-            variant: "shadcnui-blocks.footer-01",
             tagline: "Structured content, renderer-owned layout.",
           },
         },
-        navHeader: [{ type: "page", page: page.id, label: "Home" }],
-        navFooter: [{ type: "custom", url: "/privacy", label: "Privacy" }],
+        navigation: {
+          primary: [{ type: "page", page: page.id, label: "Home" }],
+          footer: [{ type: "custom", url: "/privacy", label: "Privacy" }],
+        },
     }, { overrideAccess: true }))
 
     const storedTenant = await payload.findByID({
@@ -141,8 +120,8 @@ describe("CMS integration smoke", () => {
       status: "published",
     })
     expect(asDocRecord(storedPages.docs[0]!).blocks).toEqual(expect.arrayContaining([
-      expect.objectContaining({ designVariant: "shadcnui-blocks.hero-01" }),
-      expect.objectContaining({ designVariant: "shadcnui-blocks.contact-02" }),
+      expect.objectContaining({ blockType: "hero" }),
+      expect.objectContaining({ blockType: "contact" }),
     ]))
 
     expect(storedSettings.docs).toHaveLength(1)
@@ -151,6 +130,6 @@ describe("CMS integration smoke", () => {
       siteName: "Smoke Studio",
       siteUrl: `https://${domain}`,
     })
-    expect(asDocRecord(storedSettings.docs[0]!).navHeader).toHaveLength(1)
+    expect(asDocRecord(storedSettings.docs[0]!)).toMatchObject({ navigation: { primary: expect.arrayContaining([expect.objectContaining({ label: "Home" })]) } })
   })
 })

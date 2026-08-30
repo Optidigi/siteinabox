@@ -18,7 +18,6 @@ and workflow YAML remain the executable authorities.
   structure.
 
 Hosted workflow YAML remains responsible for setup and service lifecycle. The
-matrix is the command inventory, not permission to make provider writes or use
-production credentials. The pinned pnpm used by the external visual-parity
-checkout remains an intentional compatibility exception and is not part of the
-repository toolchain check.
+matrix is the command inventory, not permission to make external provider
+writes or use production credentials. External review checkouts are outside the
+repository toolchain and are not part of this matrix.

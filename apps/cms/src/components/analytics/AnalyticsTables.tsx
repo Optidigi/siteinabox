@@ -108,7 +108,7 @@ type TableLabels = {
   share?: string
   variantRanking?: string
   variantRankingDescription?: string
-  providerVariant?: string
+  variant?: string
   rank?: string
   score?: string
   evidence?: string
@@ -495,7 +495,7 @@ export function VariantRankingTable({ rows, labels }: { rows: VariantRankingMetr
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{labels.variantRanking ?? "Provider variant ranking"}</CardTitle>
+        <CardTitle className="text-base">{labels.variantRanking ?? "Section variant ranking"}</CardTitle>
         <CardDescription>
           {labels.variantRankingDescription ?? "Compares variants only within the same section type using unique exposed visitors and smoothed outcome rates."}
         </CardDescription>
@@ -506,7 +506,7 @@ export function VariantRankingTable({ rows, labels }: { rows: VariantRankingMetr
             <TableRow>
               <TableHead>{labels.rank ?? "Rank"}</TableHead>
               <TableHead>{labels.section}</TableHead>
-              <TableHead>{labels.providerVariant ?? "Variant"}</TableHead>
+              <TableHead>{labels.variant ?? "Variant"}</TableHead>
               <TableHead>{labels.score ?? "Score"}</TableHead>
               <TableHead>{labels.evidence ?? "Evidence"}</TableHead>
               <TableHead>{labels.exposedVisitors ?? labels.visitors}</TableHead>
@@ -521,10 +521,10 @@ export function VariantRankingTable({ rows, labels }: { rows: VariantRankingMetr
             {rows.length === 0 ? (
               <TableRow><TableCell colSpan={11} className="h-20 text-center text-muted-foreground">{labels.noData}</TableCell></TableRow>
             ) : rows.map((row) => (
-              <TableRow key={`${row.sectionType}:${row.providerVariant}`}>
+              <TableRow key={`${row.sectionType}:${row.variant}`}>
                 <TableCell>{row.rank ?? labels.emptyValue}</TableCell>
                 <TableCell className="font-medium">{row.sectionType}</TableCell>
-                <TableCell className="max-w-72 truncate font-mono text-xs" title={row.providerVariant}>{row.providerVariant}</TableCell>
+                <TableCell className="max-w-72 truncate font-mono text-xs" title={row.variant}>{row.variant}</TableCell>
                 <TableCell>{row.score == null ? labels.emptyValue : `${row.score}/100`}</TableCell>
                 <TableCell>
                   <Badge variant={row.confidence === "established" ? "default" : row.confidence === "directional" ? "secondary" : "outline"}>

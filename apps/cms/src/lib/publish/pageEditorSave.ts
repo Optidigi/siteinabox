@@ -166,7 +166,7 @@ export async function persistSiteDesign(
     savedTheme = siteDesign.theme
   }
 
-  if (siteDesign.navigation != null || siteDesign.chrome != null) {
+  if (siteDesign.navigation != null) {
     const found = await payload.find({
       collection: "site-settings",
       where: { tenant: { equals: tenantId } },
@@ -180,12 +180,13 @@ export async function persistSiteDesign(
     if (!settings) throw new Error("Site settings are unavailable for this tenant")
 
     const data: Record<string, unknown> = {}
-    if (siteDesign.chrome != null) data.chrome = siteDesign.chrome
     if (siteDesign.navigation != null) {
-      const headerRows = (settings.navHeader ?? []) as NavRow[]
-      const footerRows = (settings.navFooter ?? []) as NavRow[]
-      data.navHeader = navRowsWithPage(headerRows, savedPageId, siteDesign.navigation.inHeader)
-      data.navFooter = navRowsWithPage(footerRows, savedPageId, siteDesign.navigation.inFooter)
+      const primaryRows = (settings.navigation?.primary ?? []) as NavRow[]
+      const footerRows = (settings.navigation?.footer ?? []) as NavRow[]
+      data.navigation = {
+        primary: navRowsWithPage(primaryRows, savedPageId, siteDesign.navigation.inNavbar),
+        footer: navRowsWithPage(footerRows, savedPageId, siteDesign.navigation.inFooter),
+      }
     }
 
     await payload.update({

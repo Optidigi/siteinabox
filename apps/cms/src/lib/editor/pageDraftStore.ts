@@ -6,10 +6,9 @@ export type PageEditorDraft = {
   formValues: unknown
   theme: unknown
   nav?: {
-    inHeader: boolean
+    inNavbar: boolean
     inFooter: boolean
   }
-  chrome?: unknown
 }
 
 const DB_NAME = "siab-editor-drafts"

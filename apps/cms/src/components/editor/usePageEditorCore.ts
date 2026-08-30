@@ -12,7 +12,6 @@ import {
 import { useForm, type FieldErrors, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
-import type { SiteSettings } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -25,7 +24,6 @@ import {
   buildPageDraftKey,
   countPageEditorDirtyLeaves,
   createPageEditorSchema,
-  deriveChromeDirty,
   deriveNavDirty,
   deriveThemeDirty,
   editorAppendBlock,
@@ -34,12 +32,10 @@ import {
   editorRemoveBlock,
   editorReorderBlocks,
   isPageDraftStaleAgainstServer,
-  mergeRestoredChromeDraft,
   normalizeWatchedBlocks,
   pageEditorDefaultValues,
   pageEditorHasRecoverableDraftWork,
   seedThemeState,
-  selectChromeZone,
   selectElementPath,
   type PageEditorFormValues,
 } from "@/lib/editor/pageEditorCore"
@@ -52,39 +48,17 @@ import {
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import type { ElementPath } from "@/components/editor/elementPath"
-import type { SiteChromeSelection } from "@/components/editor/sidebar/SiteChromeRow"
 import { countLeafErrors } from "@/lib/countLeafErrors"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
 import type { SaveStatus } from "@/components/save-ui/save-status-bar"
-import { resolveFooterContract } from "@/lib/footerComposition"
-import { resolveSettingsContract } from "@/lib/settingsContract"
-import {
-  chromeComparable,
-  chromeDraftFromSettings,
-  chromePatchFromDraft,
-  mergeChromeSettings,
-  rendererSettingsFromChromeDraft,
-  type SiteChromeDraft,
-} from "@/lib/siteChromeDraft"
-import { ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
-import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
-import type { NavPage } from "@/lib/projection/resolveNav"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
 import type { Page } from "@/payload-types"
-import type { SiteSetting } from "@/payload-types"
-import type { FooterCompositionContract } from "@/lib/footerComposition"
 import type { PageEditorSaveRequest } from "@/lib/publish/pageEditorSaveContract"
 
 const pageEditorThemeCache = new Map<string, ThemeTokens | null>()
-
-const settingsRecordId = (settings: unknown): string | number | null => {
-  if (settings == null || typeof settings !== "object" || Array.isArray(settings)) return null
-  const id = (settings as Record<string, unknown>).id
-  return typeof id === "string" || typeof id === "number" ? id : null
-}
 
 export function useIsDesktopEditor(): boolean | null {
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
@@ -109,11 +83,8 @@ export type UsePageEditorCoreOptions = {
   baseHref: string
   manifest: RtManifest
   theme?: ThemeTokens | null
-  siteSettings?: SiteSetting | null
-  rendererNavPages?: NavPage[]
   canManageNav?: boolean
-  canEditSettings?: boolean
-  inHeaderNav?: boolean
+  inNavbarNav?: boolean
   inFooterNav?: boolean
   readOnly?: boolean
   t: (key: string) => string
@@ -135,26 +106,17 @@ export type PageEditorCoreApi = {
   selected: ElementPath | null
   revealInspectorSelection: boolean
   revealFrameSelection: boolean
-  selectedChrome: SiteChromeSelection | null
   selectElement: Dispatch<SetStateAction<ElementPath | null>>
   selectInspectorElement: (selection: ElementPath) => void
-  selectChrome: (selection: SiteChromeSelection) => void
-  clearChromeSelection: () => void
   mobileFocusedSectionIndex: number | null
   setMobileFocusedSectionIndex: Dispatch<SetStateAction<number | null>>
   themeState: ThemeTokens | null
   setThemeState: Dispatch<SetStateAction<ThemeTokens | null>>
   themeDirty: boolean
-  chromeDraft: SiteChromeDraft
-  setChromeDraft: Dispatch<SetStateAction<SiteChromeDraft>>
-  chromeDirty: boolean
-  chromeSettingsState: ReturnType<typeof mergeChromeSettings> | null
-  rendererSettingsState: SiteSettings | null
-  footerContract: FooterCompositionContract | null
-  inHeader: boolean
+  inNavbar: boolean
   inFooter: boolean
   navDirty: boolean
-  toggleNav: (zone: "header" | "footer", next: boolean) => void
+  toggleNav: (zone: "navbar" | "footer", next: boolean) => void
   isDirty: boolean
   dirtyCount: number
   errorCount: number
@@ -186,7 +148,6 @@ export type PageEditorCoreApi = {
   onSubmit: (values: PageEditorFormValues) => Promise<void>
   onInvalid: (errors: FieldErrors<PageEditorFormValues>) => void
   handleFrameSelectionChanged: (selection: IframeEditorSelection | null) => void
-  handleFrameChromeSelect: (zone: "header" | "footer") => void
   frameSelection: IframeEditorSelection | null
   frameMobileMode:
     | {
@@ -198,11 +159,9 @@ export type PageEditorCoreApi = {
     | undefined
   cancelScheduledDraftWrite: () => void
   setThemeBaseline: Dispatch<SetStateAction<ThemeTokens | null>>
-  setSavedNav: (snapshot: { inHeader: boolean; inFooter: boolean }) => void
-  setChromeBaseline: Dispatch<SetStateAction<SiteChromeDraft>>
+  setSavedNav: (snapshot: { inNavbar: boolean; inFooter: boolean }) => void
   canEditPage: boolean
   canManageNavResolved: boolean
-  canEditSettingsResolved: boolean
   pageDraftKey: string
 }
 
@@ -213,11 +172,8 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     baseHref,
     manifest,
     theme,
-    siteSettings,
-    rendererNavPages = [],
     canManageNav,
-    canEditSettings,
-    inHeaderNav,
+    inNavbarNav,
     inFooterNav,
     readOnly = false,
     t,
@@ -231,7 +187,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const schema = useMemo(() => createPageEditorSchema(t), [t])
   const canEditPage = !readOnly
   const canManageNavResolved = canEditPage && !!canManageNav
-  const canEditSettingsResolved = canEditPage && !!canEditSettings
 
   const [pending, setPending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -241,11 +196,11 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const draftCandidateRef = useRef<PageEditorDraft | null>(null)
   const draftWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [inHeader, setInHeader] = useState(!!inHeaderNav)
+  const [inNavbar, setInNavbar] = useState(!!inNavbarNav)
   const [inFooter, setInFooter] = useState(!!inFooterNav)
-  const [savedInHeader, setSavedInHeader] = useState(!!inHeaderNav)
+  const [savedInNavbar, setSavedInNavbar] = useState(!!inNavbarNav)
   const [savedInFooter, setSavedInFooter] = useState(!!inFooterNav)
-  const navDirty = deriveNavDirty(inHeader, inFooter, savedInHeader, savedInFooter, !!initial)
+  const navDirty = deriveNavDirty(inNavbar, inFooter, savedInNavbar, savedInFooter, !!initial)
 
   const tenantStyleCacheKey = String(tenantId)
   const cachedTheme = pageEditorThemeCache.get(tenantStyleCacheKey)
@@ -269,51 +224,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const [revealInspectorSelection, setRevealInspectorSelection] = useState(false)
   const [revealFrameSelection, setRevealFrameSelection] = useState(false)
   const [mobileFocusedSectionIndex, setMobileFocusedSectionIndex] = useState<number | null>(null)
-  const [selectedChrome, setSelectedChrome] = useState<SiteChromeSelection | null>(null)
-  const siteSettingsState = siteSettings ?? null
-  const footerContract = useMemo(() => resolveFooterContract(manifest), [manifest])
-  const settingsContract = useMemo(() => resolveSettingsContract(manifest), [manifest])
-  const [chromeDraft, setChromeDraftState] = useState<SiteChromeDraft>(() =>
-    chromeDraftFromSettings(siteSettingsState, footerContract),
-  )
-  const [chromeBaseline, setChromeBaselineState] = useState<SiteChromeDraft>(() =>
-    chromeDraftFromSettings(siteSettingsState, footerContract),
-  )
-  const chromeDraftRef = useRef<SiteChromeDraft>(chromeDraft)
-  const chromeBaselineRef = useRef<SiteChromeDraft>(chromeBaseline)
-  const setChromeDraft = useCallback<Dispatch<SetStateAction<SiteChromeDraft>>>((next) => {
-    const current = chromeDraftRef.current
-    const resolved = typeof next === "function" ? next(current) : next
-    chromeDraftRef.current = resolved
-    setChromeDraftState(resolved)
-  }, [])
-  const setChromeBaseline = useCallback<Dispatch<SetStateAction<SiteChromeDraft>>>((next) => {
-    const current = chromeBaselineRef.current
-    const resolved = typeof next === "function" ? next(current) : next
-    chromeBaselineRef.current = resolved
-    setChromeBaselineState(resolved)
-  }, [])
-  const chromeDirty = useMemo(
-    () => deriveChromeDirty(chromeDraft, chromeBaseline, footerContract),
-    [chromeDraft, chromeBaseline, footerContract],
-  )
-  const chromeSettingsState = useMemo(
-    () => (siteSettingsState ? mergeChromeSettings(siteSettingsState, chromeDraft) : null),
-    [siteSettingsState, chromeDraft],
-  )
-  const rendererSettingsState = useMemo(
-    () => {
-      const projected = rendererSettingsFromChromeDraft(siteSettingsState, chromeDraft, {
-        publishedPages: rendererNavPages,
-        settingsContract,
-      })
-      if (!projected) return null
-      // Canvas snapshots validate against SiteSettingsSchema; fill wire-required
-      // fields the UI contract may omit (e.g. language) before strip + post.
-      return ensureCanvasWireSettings(stripCanvasConsent(projected) as SiteSettings)
-    },
-    [chromeDraft, rendererNavPages, settingsContract, siteSettingsState],
-  )
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {
     setRevealInspectorSelection(true)
@@ -321,7 +231,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     setSelected((current) => {
       const resolved = selectElementPath(readOnly, current, next)
       if (!resolved) return current
-      setSelectedChrome(resolved.chromeSelection)
       return resolved.selection
     })
   }, [readOnly])
@@ -330,21 +239,8 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     if (readOnly) return
     setRevealInspectorSelection(false)
     setRevealFrameSelection(false)
-    setSelectedChrome(null)
     setSelected(selection)
   }, [readOnly])
-
-  const selectChrome = useCallback((selection: SiteChromeSelection) => {
-    const resolved = selectChromeZone(readOnly, selection)
-    if (!resolved) return
-    setRevealFrameSelection(true)
-    setSelected(resolved.selection)
-    setSelectedChrome(resolved.chromeSelection)
-  }, [readOnly])
-
-  const clearChromeSelection = useCallback(() => {
-    setSelectedChrome(null)
-  }, [])
 
   const isDesktop = useIsDesktopEditor()
 
@@ -362,8 +258,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const themeStateRef = useRef<ThemeTokens | null>(themeState)
   const themeDirtyRef = useRef(themeDirty)
   const navDirtyRef = useRef(navDirty)
-  const chromeDirtyRef = useRef(chromeDirty)
-  const navStateRef = useRef({ inHeader, inFooter })
+  const navStateRef = useRef({ inNavbar, inFooter })
 
   useEffect(() => {
     baselineUpdatedAtRef.current = baselineUpdatedAt
@@ -378,17 +273,8 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     navDirtyRef.current = navDirty
   }, [navDirty])
   useEffect(() => {
-    chromeDraftRef.current = chromeDraft
-  }, [chromeDraft])
-  useEffect(() => {
-    chromeBaselineRef.current = chromeBaseline
-  }, [chromeBaseline])
-  useEffect(() => {
-    chromeDirtyRef.current = chromeDirty
-  }, [chromeDirty])
-  useEffect(() => {
-    navStateRef.current = { inHeader, inFooter }
-  }, [inHeader, inFooter])
+    navStateRef.current = { inNavbar, inFooter }
+  }, [inNavbar, inFooter])
   useEffect(() => {
     draftCandidateRef.current = draftCandidate
   }, [draftCandidate])
@@ -432,8 +318,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
           force ||
           form.formState.isDirty ||
           themeDirtyRef.current ||
-          navDirtyRef.current ||
-          chromeDirtyRef.current
+          navDirtyRef.current
         if (!hasWork) {
           void deletePageEditorDraft(pageDraftKey)
           return
@@ -446,7 +331,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
           formValues: form.getValues(),
           theme: themeStateRef.current,
           nav: navStateRef.current,
-          chrome: chromeDraftRef.current,
         })
       }, 350)
     },
@@ -476,14 +360,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       setShowSaved(false)
       scheduleDraftWrite(true)
     }
-  }, [navDirty, inHeader, inFooter, scheduleDraftWrite])
-
-  useEffect(() => {
-    if (chromeDirty) {
-      setShowSaved(false)
-      scheduleDraftWrite(true)
-    }
-  }, [chromeDirty, chromeDraft, scheduleDraftWrite])
+  }, [navDirty, inNavbar, inFooter, scheduleDraftWrite])
 
   useEffect(() => {
     if (!draftChecked || draftCandidate) return
@@ -492,12 +369,11 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
         form.formState.isDirty,
         themeDirty,
         navDirty,
-        chromeDirty,
       )
     ) {
       void deletePageEditorDraft(pageDraftKey)
     }
-  }, [draftChecked, draftCandidate, form.formState.isDirty, themeDirty, navDirty, chromeDirty, pageDraftKey])
+  }, [draftChecked, draftCandidate, form.formState.isDirty, themeDirty, navDirty, pageDraftKey])
 
   const restorePageDraft = useCallback(() => {
     const draft = draftCandidate
@@ -513,21 +389,16 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     form.reset(parsed.data, { keepDefaultValues: true })
     setThemeState((draft.theme ?? null) as ThemeTokens | null)
     if (draft.nav) {
-      setInHeader(!!draft.nav.inHeader)
+      setInNavbar(!!draft.nav.inNavbar)
       setInFooter(!!draft.nav.inFooter)
-    }
-    if (draft.chrome) {
-      setChromeDraft(mergeRestoredChromeDraft(siteSettingsState, footerContract, draft.chrome))
     }
     onDraftRestored()
   }, [
     draftCandidate,
     form,
-    footerContract,
     onDraftRestoreFailed,
     onDraftRestored,
     pageDraftKey,
-    siteSettingsState,
   ])
 
   const discardPageDraft = useCallback(() => {
@@ -537,16 +408,16 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   }, [onDraftDiscarded, pageDraftKey])
 
   const toggleNav = useCallback(
-    (zone: "header" | "footer", next: boolean) => {
+    (zone: "navbar" | "footer", next: boolean) => {
       if (!canEditPage || !initial) return
-      const setLocal = zone === "header" ? setInHeader : setInFooter
+      const setLocal = zone === "navbar" ? setInNavbar : setInFooter
       setLocal(next)
     },
     [canEditPage, initial],
   )
 
-  const setSavedNav = useCallback((snapshot: { inHeader: boolean; inFooter: boolean }) => {
-    setSavedInHeader(snapshot.inHeader)
+  const setSavedNav = useCallback((snapshot: { inNavbar: boolean; inFooter: boolean }) => {
+    setSavedInNavbar(snapshot.inNavbar)
     setSavedInFooter(snapshot.inFooter)
   }, [])
 
@@ -556,10 +427,9 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       formDirty: form.formState.isDirty,
       themeDirty,
       navDirty,
-      chromeDirty,
       dirtyFields: form.formState.dirtyFields,
     }),
-    [readOnly, form.formState.isDirty, form.formState.dirtyFields, themeDirty, navDirty, chromeDirty],
+    [readOnly, form.formState.isDirty, form.formState.dirtyFields, themeDirty, navDirty],
   )
   const isDirty = aggregatePageEditorDirty(dirtyInputs)
   const errorCount = countLeafErrors(form.formState.errors)
@@ -578,14 +448,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     const themeSnapshot = themeState
     const normalizedThemeSnapshot = normalizeThemeForSave(themeSnapshot)
     const navWasDirty = navDirty
-    const navSnapshot = { inHeader, inFooter }
-    const chromeSnapshot = chromeDraftRef.current
-    const chromeWasDirty =
-      chromeDirtyRef.current ||
-      JSON.stringify(chromeComparable(chromeSnapshot, footerContract)) !==
-        JSON.stringify(chromeComparable(chromeBaselineRef.current, footerContract))
-    const chromeWillSave =
-      chromeWasDirty && settingsRecordId(siteSettingsState) != null && canEditSettingsResolved
+    const navSnapshot = { inNavbar, inFooter }
     const normalizedBlocks = normalizePageBlockUploadIds(savedValues.blocks)
     const pageData = {
       ...savedValues,
@@ -601,9 +464,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     const siteDesign: NonNullable<PageEditorSaveRequest["siteDesign"]> = {}
     if (themeWasDirty && normalizedThemeSnapshot) siteDesign.theme = normalizedThemeSnapshot
     if (navWasDirty) siteDesign.navigation = navSnapshot
-    if (chromeWillSave) {
-      siteDesign.chrome = chromePatchFromDraft(chromeSnapshot, footerContract) as Record<string, unknown>
-    }
     const saveBody: PageEditorSaveRequest = {
       tenantId,
       publish: true,
@@ -643,7 +503,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       if (navWasDirty) {
         setSavedNav(navSnapshot)
       }
-      if (chromeWillSave) setChromeBaseline(chromeSnapshot)
     } catch (err) {
       setPending(false)
       const msg = err instanceof Error
@@ -805,14 +664,8 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
 
   const framePageId = initial?.id ?? "new"
   const frameSelection = useMemo((): IframeEditorSelection | null => {
-    if (selectedChrome) {
-      return {
-        pageId: String(framePageId),
-        fieldPath: ["chrome", selectedChrome.zone] as const,
-      }
-    }
     return elementPathToIframeSelection(selected, watchedBlocks, framePageId)
-  }, [framePageId, selected, selectedChrome, watchedBlocks])
+  }, [framePageId, selected, watchedBlocks])
   const frameMobileMode = useMemo(() => {
     // Unresolved breakpoint (null) and desktop must not prepare a focused mobile iframe.
     if (isDesktop !== false || mobileFocusedSectionIndex == null) return undefined
@@ -835,25 +688,14 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       setRevealInspectorSelection(false)
       setRevealFrameSelection(false)
       if (!selection) {
-        setSelectedChrome(null)
         setSelected(null)
         return
       }
       const path = iframeSelectionToElementPath(selection, watchedBlocks)
       if (!path) return
-      setSelectedChrome(null)
       setSelected(path)
     },
     [readOnly, watchedBlocks],
-  )
-
-  const handleFrameChromeSelect = useCallback(
-    (zone: "header" | "footer") => {
-      setRevealInspectorSelection(false)
-      selectChrome({ zone })
-      setRevealFrameSelection(false)
-    },
-    [selectChrome],
   )
 
   return {
@@ -863,23 +705,14 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     selected,
     revealInspectorSelection,
     revealFrameSelection,
-    selectedChrome,
     selectElement,
     selectInspectorElement,
-    selectChrome,
-    clearChromeSelection,
     mobileFocusedSectionIndex,
     setMobileFocusedSectionIndex,
     themeState,
     setThemeState,
     themeDirty,
-    chromeDraft,
-    setChromeDraft,
-    chromeDirty,
-    chromeSettingsState,
-    rendererSettingsState,
-    footerContract,
-    inHeader,
+    inNavbar,
     inFooter,
     navDirty,
     toggleNav,
@@ -908,16 +741,13 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     onSubmit,
     onInvalid,
     handleFrameSelectionChanged,
-    handleFrameChromeSelect,
     frameSelection,
     frameMobileMode,
     cancelScheduledDraftWrite,
     setThemeBaseline,
     setSavedNav,
-    setChromeBaseline,
     canEditPage,
     canManageNavResolved,
-    canEditSettingsResolved,
     pageDraftKey,
   }
 }

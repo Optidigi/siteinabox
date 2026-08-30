@@ -1,29 +1,11 @@
 import type {
-  ContactSectionBlock,
-  ContactDetailsBlock,
-  CTABlock,
-  BentoGridBlock,
-  BlogCardsBlock,
-  ContentSectionBlock,
-  TimelineBlock,
-  FAQBlock,
-  FeatureListBlock,
-  GalleryBlock,
-  HeroBlock,
-  LogoCloudBlock,
+  Block,
   MediaRef,
-  NewsletterBlock,
   Page,
-  PricingBlock,
-  RichTextBlock,
   SiteBlockSlug,
-  SiteGenerationBlockSlug,
   SiteSettings,
-  StatsBlock,
-  TeamBlock,
-  TestimonialsBlock,
 } from "./site"
-import type { ColorSchemeId, FontSchemeId, ShapeSchemeId } from "./theme-presets"
+import type { BackgroundMode, ColorSchemeId, FontSchemeId, ShapeSchemeId } from "./theme-presets"
 
 export type IntakeSubmission = {
   submittedAt?: string
@@ -290,7 +272,7 @@ export type ColorRamp = {
   950?: string
 }
 
-export type ProviderColorSchemeMode = {
+export type ColorSchemeMode = {
   neutral: ColorRamp
   accent: ColorRamp
   /** Optional companion ramp for dual-tone decorative surfaces (e.g. hero blobs). */
@@ -302,12 +284,12 @@ export type ProviderColorSchemeMode = {
   onAccent: string
 }
 
-export type ProviderColorScheme = {
+export type ColorScheme = {
   id: string
   label: string
   source: ThemeSchemeSource
-  light: ProviderColorSchemeMode
-  dark: ProviderColorSchemeMode
+  light: ColorSchemeMode
+  dark: ColorSchemeMode
 }
 
 export type FontScheme = {
@@ -342,6 +324,8 @@ export type ThemeTokenSpecV3 = {
   version: 3
   appearance: {
     mode: ThemeMode
+    /** Defaults to animation for themes created before the site background mode existed. */
+    backgroundMode?: BackgroundMode
   }
   colors: {
     schemeId: ColorSchemeId
@@ -379,38 +363,8 @@ export type GeneratedBlockMetadata = {
   source?: "ai" | "cms" | "import" | "operator" | string
 }
 
-export type GeneratedHeroBlockSpec = HeroBlock & GeneratedBlockMetadata
-export type GeneratedFeatureListBlockSpec = FeatureListBlock & GeneratedBlockMetadata
-export type GeneratedTestimonialsBlockSpec = TestimonialsBlock & GeneratedBlockMetadata
-export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
-export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
-export type GeneratedContactSectionBlockSpec = ContactSectionBlock & GeneratedBlockMetadata
-export type GeneratedContactDetailsBlockSpec = ContactDetailsBlock & GeneratedBlockMetadata
-export type GeneratedPricingBlockSpec = PricingBlock & GeneratedBlockMetadata
-export type GeneratedStatsBlockSpec = StatsBlock & GeneratedBlockMetadata
-export type GeneratedLogoCloudBlockSpec = LogoCloudBlock & GeneratedBlockMetadata
-export type GeneratedGalleryBlockSpec = GalleryBlock & GeneratedBlockMetadata
-export type GeneratedContentSectionBlockSpec = ContentSectionBlock & GeneratedBlockMetadata
-export type GeneratedTimelineBlockSpec = TimelineBlock & GeneratedBlockMetadata
-export type GeneratedTeamBlockSpec = TeamBlock & GeneratedBlockMetadata
-export type GeneratedBlogCardsBlockSpec = BlogCardsBlock & GeneratedBlockMetadata
-
-export type GeneratedBlockSpec =
-  | GeneratedHeroBlockSpec
-  | GeneratedFeatureListBlockSpec
-  | GeneratedTestimonialsBlockSpec
-  | GeneratedFAQBlockSpec
-  | GeneratedCTABlockSpec
-  | GeneratedContactSectionBlockSpec
-  | GeneratedContactDetailsBlockSpec
-  | GeneratedPricingBlockSpec
-  | GeneratedStatsBlockSpec
-  | GeneratedLogoCloudBlockSpec
-  | GeneratedGalleryBlockSpec
-  | GeneratedContentSectionBlockSpec
-  | GeneratedTimelineBlockSpec
-  | GeneratedTeamBlockSpec
-  | GeneratedBlogCardsBlockSpec
+/** Sitegen output is normalized into the canonical semantic block union. */
+export type GeneratedBlockSpec = Block
 
 export type GeneratedPageSpec = Omit<Page, "blocks" | "updatedAt"> & {
   blocks: GeneratedBlockSpec[]

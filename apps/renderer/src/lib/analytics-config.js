@@ -26,6 +26,7 @@ function firstString(...values) {
 export function buildAnalyticsConfig({ snapshot, page, pathname }) {
   const analytics = snapshot?.settings?.analytics
   if (!isRecord(analytics)) return null
+  if (analytics.enabled === false) return null
 
   const consent = isRecord(snapshot?.settings?.analyticsConsent) ? snapshot.settings.analyticsConsent : null
   if (!matchesApprovedPublicAnalyticsConsent(consent)) return null

@@ -26,7 +26,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   if (!settings) notFound()
   if (!sameRelationshipId(page.tenant, ctx.tenant.id)) notFound()
   const canManageNav = user.role === "owner" || user.role === "super-admin"
-  const { inHeader, inFooter } = pageNavMembership(settings, Number(page.id))
+  const { inNavbar, inFooter } = pageNavMembership(settings, Number(page.id))
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open" })
   return (
     <div className="flex flex-col gap-4">
@@ -46,7 +46,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
         rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav={canManageNav}
         canEditSettings={canManageNav}
-        inHeaderNav={inHeader}
+        inNavbarNav={inNavbar}
         inFooterNav={inFooter}
         readOnly={readOnly}
       />

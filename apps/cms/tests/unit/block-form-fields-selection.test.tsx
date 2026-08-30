@@ -24,19 +24,16 @@ const manifest = {
   blockTypes: { paragraph: true },
   blocks: [{
     slug: "hero",
-    fields: [{ name: "headline", label: "Headline", kind: "text" }],
+    fields: [{ name: "heading", label: "Heading", kind: "text" }],
   }],
 } satisfies RtManifest
 
 const block = {
   id: "hero-1",
   blockType: "hero",
-  designVariant: "shadcnui-blocks.hero-01",
-  headline: {
-    t: "root",
-    variant: "inline",
-    children: [{ t: "text", v: "Hello" }],
-  },
+  heading: "Hello",
+  body: "A concise introduction.",
+  primaryAction: { label: "Contact", href: "#contact" },
 } as const
 
 function Inspector({
@@ -60,7 +57,7 @@ function Inspector({
           block={block}
           blockIndex={blockIndex}
           manifest={manifest}
-          highlightPath={{ blockIndex, field: "headline" }}
+          highlightPath={{ blockIndex, field: "heading" }}
           revealHighlight={revealHighlight}
           onSelectPath={onSelectPath}
         />
@@ -132,7 +129,7 @@ describe("BlockFormFields canvas selection highlighting", () => {
 
     expect(onSelectPath).toHaveBeenCalledWith({
       blockIndex: 1,
-      field: "headline",
+      field: "heading",
     })
     expect(scrolled).toEqual([])
     expect(scrollOptions).toEqual([])

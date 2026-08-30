@@ -36,6 +36,6 @@ test("static site and renderer phases remain application-specific", () => {
 test("the checked-in inventory is fully classifiable", async () => {
   const inventory = JSON.parse(await readFile(new URL("../docs/environment-inventory.json", import.meta.url), "utf8"))
   const classifications = classifyInventory(inventory)
-  assert.equal(classifications.length, 100)
+  assert.equal(classifications.length, 98)
   assert.ok(classifications.every(({ exposure, phase, requiredness }) => exposure && phase && requiredness))
 })

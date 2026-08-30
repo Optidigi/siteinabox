@@ -154,7 +154,7 @@ export const scoreSiteQuality = ({
     {
       key: "logo",
       label: "Logo",
-      passed: hasUpload(settings?.branding?.logo) || hasUpload(settings?.chrome?.header?.logo),
+      passed: hasUpload(settings?.branding?.logo) || hasUpload(settings?.chrome?.navbar?.logo),
       weight: 5,
       hint: "Upload a brand or header logo.",
     },
@@ -189,7 +189,7 @@ export const scoreSiteQuality = ({
     {
       key: "navigation",
       label: "Header or footer navigation",
-      passed: (settings?.navHeader?.length ?? 0) > 0 || (settings?.navFooter?.length ?? 0) > 0,
+      passed: (settings?.navigation?.primary?.length ?? 0) > 0 || (settings?.navigation?.footer?.length ?? 0) > 0,
       weight: 7,
       hint: "Add header or footer navigation links.",
     },

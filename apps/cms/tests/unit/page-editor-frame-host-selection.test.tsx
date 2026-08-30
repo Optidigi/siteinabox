@@ -26,14 +26,18 @@ const page: WirePage = {
     {
       id: "a",
       blockType: "hero",
-      designVariant: "shadcnui-blocks.hero-01",
-      headline: { t: "root", variant: "inline", children: [{ t: "text", v: "A" }] },
+      variant: "hero-01",
+      heading: "A",
+      body: "Body",
+      primaryAction: { label: "Contact", href: "#contact" },
     },
     {
       id: "b",
       blockType: "hero",
-      designVariant: "shadcnui-blocks.hero-01",
-      headline: { t: "root", variant: "inline", children: [{ t: "text", v: "B" }] },
+      variant: "hero-01",
+      heading: "B",
+      body: "Body",
+      primaryAction: { label: "Contact", href: "#contact" },
     },
   ],
 }
@@ -63,7 +67,7 @@ function Harness() {
         setRevealSelection(false)
         setSelected({
           ...selection(1, "b"),
-          fieldPath: ["blocks", "1", "headline"],
+          fieldPath: ["blocks", "1", "heading"],
         })
       }}>Select B field without reveal</button>
       <output data-testid="selected-block">{selected?.blockId ?? ""}</output>
@@ -134,7 +138,7 @@ describe("PageEditorFrameHost selection origin", () => {
           && "type" in message
           && message.type === "render.snapshot"
           && "selection" in message
-          && (message.selection as IframeEditorSelection | null)?.fieldPath?.[2] === "headline",
+          && (message.selection as IframeEditorSelection | null)?.fieldPath?.[2] === "heading",
         )
       expect(fieldSnapshot).toBeTruthy()
       expect(fieldSnapshot).not.toHaveProperty("revealSelection")

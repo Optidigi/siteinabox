@@ -1,6 +1,7 @@
 import {
   GenerationInputSchema,
   NormalizedIntakeSchema,
+  SiteGenerationSpecSchema,
   type PublicIntakeSubmission,
   type SiteGenerationSpec,
   type ValidationReport,
@@ -23,8 +24,11 @@ import {
   type SiteGenerationProviderRequest,
 } from "@/lib/ai-generation/providers"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
-import { materializeTenantPrivacyPage, withDerivedTenantPrivacyDisclosure } from "@/lib/legal/tenantPrivacyPage"
+import { materializeTenantPrivacyDisclosure, withDerivedTenantPrivacyDisclosure } from "@/lib/legal/tenantPrivacyPage"
 import type { MockGenerationFixture } from "./mockGeneration"
+import { sitegenNormalizationContextFromIntake, sitegenOutputToGenerationSpec } from "@/lib/sitegen/normalize"
+import { validateSitegenOutput } from "@/lib/sitegen/validate"
+import { sitegenEligibilityFromIntake } from "@/lib/ai-generation/siteGenerationInput"
 
 type WorkflowStatus = (typeof generationWorkflowStatuses)[number]
 
@@ -99,6 +103,21 @@ const generateWithRetry = async (
     }
   }
   throw lastError
+}
+
+const canonicalSpecFromProviderResult = (
+  result: Awaited<ReturnType<typeof generateWithRetry>>["result"],
+  normalized: SiteGenerationProviderRequest["normalized"],
+): SiteGenerationSpec => {
+  if (result.spec) return result.spec
+  const parsedSpec = SiteGenerationSpecSchema.safeParse(result.parsedOutput)
+  if (parsedSpec.success) return parsedSpec.data
+
+  const output = validateSitegenOutput(result.parsedOutput, sitegenEligibilityFromIntake(normalized))
+  if (!output.success) {
+    throw new Error(`Structured Sitegen output failed semantic validation: ${output.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ")}`)
+  }
+  return sitegenOutputToGenerationSpec(output.data, normalized, sitegenNormalizationContextFromIntake(normalized), { model: result.model })
 }
 
 const updateIntake = async (
@@ -225,13 +244,9 @@ const processStoredIntakeGeneration = async (
 
     const generated = await generateWithRetry(input.provider, input.providerRequest, input.maxGenerationAttempts)
     const providerResult = generated.result
-    const providerSpec = providerResult.spec ?? providerResult.parsedOutput
-    if (!providerSpec || typeof providerSpec !== "object" || Array.isArray(providerSpec)) {
-      throw new Error("Generation provider returned no SiteGenerationSpec object")
-    }
-    const sourceSpec = withDerivedTenantPrivacyDisclosure(providerSpec as SiteGenerationSpec)
+    const sourceSpec = withDerivedTenantPrivacyDisclosure(canonicalSpecFromProviderResult(providerResult, input.normalized))
     const sourceValidation = validateSiteGenerationSpecForCms(sourceSpec, { variantScope: "self-serve" })
-    const spec = sourceValidation.valid ? materializeTenantPrivacyPage(sourceSpec) : sourceSpec
+    const spec = sourceValidation.valid ? materializeTenantPrivacyDisclosure(sourceSpec) : sourceSpec
     const specHash = siteGenerationSpecHash(spec)
     run = await setRunStatus(payload, run, "generated", {
       provider: providerResult.provider,
@@ -267,7 +282,7 @@ const processStoredIntakeGeneration = async (
     run = await setRunStatus(payload, run, "applying", { validation })
     intake = await setIntakeStatus(payload, intake, "applying")
     const mediaMode = providerResult.provider === "mock" ? "upload-generated-media" : "skip-generated-placeholders"
-    const applyResult = await applySiteGenerationSpec(payload, sourceSpec, {
+    const applyResult = await applySiteGenerationSpec(payload, spec, {
       variantScope: "self-serve",
       mediaMode,
     })

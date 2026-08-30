@@ -43,7 +43,7 @@ describe("itemWireId / ensureItemId", () => {
 })
 
 describe("ensureBlockItemIds", () => {
-  it("assigns ids to faq items and pricing plan features", () => {
+  it("assigns ids to FAQ items and pricing offer features", () => {
     const block: Record<string, unknown> = {
       blockType: "faq",
       items: [{ question: { t: "root", variant: "block", children: [] }, answer: { t: "root", variant: "block", children: [] } }],
@@ -54,22 +54,22 @@ describe("ensureBlockItemIds", () => {
 
     const pricing: Record<string, unknown> = {
       blockType: "pricing",
-      plans: [{
+      offers: [{
         title: { t: "root", variant: "block", children: [] },
         features: [{ label: { t: "root", variant: "block", children: [] } }],
       }],
     }
     ensureBlockItemIds(pricing)
-    const plans = pricing.plans as Array<Record<string, unknown>>
-    expect(typeof plans[0]!.id).toBe("string")
-    const features = plans[0]!.features as Array<Record<string, unknown>>
+    const offers = pricing.offers as Array<Record<string, unknown>>
+    expect(typeof offers[0]!.id).toBe("string")
+    const features = offers[0]!.features as Array<Record<string, unknown>>
     expect(typeof features[0]!.id).toBe("string")
   })
 })
 
 describe("ensureEditorBlocks", () => {
   it("ensures block and nested item ids without mutating originals", () => {
-    const source = [{ blockType: "stats", items: [{ value: "1", label: "One" }] }] as EditorBlock[]
+    const source = [{ blockType: "services", items: [{ title: "One", body: "A service" }] }] as EditorBlock[]
     const result = ensureEditorBlocks(source)
     expect((result[0] as Record<string, unknown>).id).toBeTruthy()
     const items = (result[0] as Record<string, unknown>).items as Array<Record<string, unknown>>
@@ -82,19 +82,20 @@ describe("cloneEditorBlock", () => {
   it("deep-clones content and mints fresh block and item ids", () => {
     const source: EditorBlock = {
       id: "block-a",
-      blockType: "featureList",
-      features: [{
+      blockType: "services",
+      items: [{
         id: "feature-a",
-        title: { t: "root", variant: "block", children: [{ t: "paragraph", children: [] }] },
+        title: "Service",
+        body: "Description",
       }],
     } as EditorBlock
 
     const cloned = cloneEditorBlock(source)
     expect(cloned).not.toBe(source)
     expect(asMockDoc(cloned).id).not.toBe("block-a")
-    const features = asMockDoc(cloned).features as Array<Record<string, unknown>>
-    expect(features[0]!.id).not.toBe("feature-a")
-    expect(cloneEditorValue(asMockDoc(source)).features).not.toBe(asMockDoc(source).features)
+    const items = asMockDoc(cloned).items as Array<Record<string, unknown>>
+    expect(items[0]!.id).not.toBe("feature-a")
+    expect(cloneEditorValue(asMockDoc(source)).items).not.toBe(asMockDoc(source).items)
   })
 })
 

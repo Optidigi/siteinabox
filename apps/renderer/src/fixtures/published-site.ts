@@ -1,24 +1,28 @@
-import type { GeneratedPageSpec, PublishedSiteSnapshot, ThemeTokenSpec } from "@siteinabox/contracts/generation"
+import type { GeneratedPageSpec, PublishedSiteSnapshot } from "@siteinabox/contracts/generation"
+import { v1FixturePage, v1FixtureTheme } from "@siteinabox/site-renderer"
 
-const inlineText = (text: string) => ({
-  t: "root" as const,
-  variant: "inline" as const,
-  children: [{ t: "text" as const, v: text }],
+const fixtureTheme = v1FixtureTheme
+
+const reviewBlocks = v1FixturePage.blocks.map((block) => {
+  const anchor = block.blockType
+
+  if (block.blockType === "hero") {
+    return { ...block, anchor }
+  }
+
+  if (block.blockType === "work") {
+    return {
+      ...block,
+      projects: block.projects.map((project, index) => ({
+        ...project,
+        media: [`/fixture-media/${index === 0 ? "project-kitchen" : "project-office"}.webp`],
+      })),
+      anchor,
+    }
+  }
+
+  return { ...block, anchor }
 })
-
-const blockText = (text: string) => ({
-  t: "root" as const,
-  variant: "block" as const,
-  children: [{ t: "paragraph" as const, children: [{ t: "text" as const, v: text }] }],
-})
-
-const fixtureTheme: ThemeTokenSpec = {
-  version: 3,
-  appearance: { mode: "light" },
-  colors: { schemeId: "emerald-calm" },
-  fonts: { schemeId: "classic-editorial" },
-  shape: { schemeId: "soft" },
-}
 
 const pages: GeneratedPageSpec[] = [
   {
@@ -27,50 +31,8 @@ const pages: GeneratedPageSpec[] = [
     title: "Home",
     status: "published",
     updatedAt: "2026-06-01T00:00:00.000Z",
-    seo: {
-      title: "Fixture Studio | Data-rendered Sites",
-      description: "A fixture site rendered by the shared Site in a Box renderer.",
-    },
-    blocks: [
-      {
-        blockType: "hero",
-        designVariant: "shadcnui-blocks.hero-01",
-        eyebrow: inlineText("Renderer MVP"),
-        headline: inlineText("A published snapshot rendered at the edge"),
-        subheadline: blockText("This page is contract data, resolved by pathname, and rendered through the shared SIAB site renderer."),
-        cta: { label: "View services", href: "/services" },
-      },
-      {
-        blockType: "featureList",
-        designVariant: "shadcnui-blocks.features-01",
-        title: inlineText("Runtime shape"),
-        intro: blockText("The renderer stays generic while snapshot data supplies the content, theme, navigation, and metadata."),
-        features: [
-          {
-            title: inlineText("Path resolver"),
-            description: blockText("The request pathname resolves to a published page slug."),
-            icon: "route",
-          },
-          {
-            title: inlineText("Shared rendering"),
-            description: blockText("Blocks are rendered by packages/site-renderer, not app-local tenant components."),
-            icon: "layers",
-          },
-          {
-            title: inlineText("Snapshot-ready"),
-            description: blockText("The fixture loader is isolated so real published snapshots can replace it later."),
-            icon: "database",
-          },
-        ],
-      },
-      {
-        blockType: "cta",
-        designVariant: "shadcnui-blocks.cta-01",
-        headline: inlineText("Fixture data today, published snapshots next"),
-        description: blockText("Host resolution and latest-published snapshot loading are intentionally mocked for this phase."),
-        primary: { label: "Read about this MVP", href: "/about" },
-      },
-    ],
+    seo: { title: "Fixture Studio", description: "A fixture site rendered by the shared Site in a Box renderer." },
+    blocks: reviewBlocks,
   },
   {
     id: "services",
@@ -78,38 +40,12 @@ const pages: GeneratedPageSpec[] = [
     title: "Services",
     status: "published",
     updatedAt: "2026-06-01T00:00:00.000Z",
-    seo: {
-      title: "Renderer Fixture Services",
-      description: "Multiple fixture pages prove path resolution through the shared renderer.",
-    },
+    seo: { title: "Renderer Fixture Services", description: "A second fixture page." },
     blocks: [
-      {
-        blockType: "hero",
-        designVariant: "shadcnui-blocks.hero-02",
-        headline: inlineText("Services from contract data"),
-        subheadline: blockText("This second page proves the renderer can build and serve multiple published paths from one snapshot."),
-        cta: { label: "Back home", href: "/" },
-      },
-      {
-        blockType: "timeline",
-        designVariant: "shadcnui-blocks.timeline-01",
-        items: [{ title: "Published snapshot", description: "The services page uses the same fixture snapshot, theme tokens, and shared renderer.", label: "Runtime" }],
-      },
-      {
-        blockType: "faq",
-        designVariant: "shadcnui-blocks.faq-01",
-        title: inlineText("Runtime questions"),
-        items: [
-          {
-            question: inlineText("Does this app know about a specific tenant?"),
-            answer: blockText("No. Tenant lookup is mocked and all content comes from a generic published snapshot fixture."),
-          },
-          {
-            question: inlineText("Does this mutate CMS data?"),
-            answer: blockText("No. The renderer is read-only and does not implement intake, AI, payment, or CMS writes."),
-          },
-        ],
-      },
+      { blockType: "hero", variant: "hero-01", heading: "Services from contract data", body: "This page proves multiple published paths use one renderer.", primaryAction: { label: "Back home", href: "/" }, anchor: "hero" },
+      { blockType: "process", heading: "Published snapshot", intro: "The services page uses the same fixture snapshot.", steps: [{ title: "Resolve", body: "Resolve pathname to page." }, { title: "Render", body: "Render the canonical block union." }], anchor: "process" },
+      { blockType: "faq", heading: "Runtime questions", intro: null, items: [{ question: "Does the app know a tenant?", answer: "Tenant lookup is mocked and content comes from a snapshot." }, { question: "Does this mutate CMS data?", answer: "No. The renderer is read-only." }], anchor: "faq" },
+      { blockType: "contact", heading: "Contact", body: null, contactMethods: [{ kind: "email", label: "Email", value: "hello@renderer.example.test", href: "mailto:hello@renderer.example.test" }], serviceArea: [], openingHours: null, bookingAction: null, form: null, image: null, anchor: "contact" },
     ],
   },
   {
@@ -118,28 +54,11 @@ const pages: GeneratedPageSpec[] = [
     title: "About",
     status: "published",
     updatedAt: "2026-06-01T00:00:00.000Z",
-    seo: {
-      description: "A small fixture about page rendered from a published snapshot.",
-    },
+    seo: { description: "A small fixture about page." },
     blocks: [
-      {
-        blockType: "hero",
-        designVariant: "shadcnui-blocks.hero-04",
-        headline: inlineText("About this renderer"),
-        subheadline: blockText("The MVP keeps app code generic and lets shared contracts define the published site shape."),
-      },
-      {
-        blockType: "testimonials",
-        designVariant: "shadcnui-blocks.testimonials-01",
-        title: "Fixture signal",
-        items: [
-          {
-            quote: "The page output comes from structured snapshot data.",
-            author: "SIAB Renderer",
-            role: "MVP fixture",
-          },
-        ],
-      },
+      { blockType: "hero", variant: "hero-01", heading: "About this renderer", body: "Shared contracts define the published site shape.", primaryAction: { label: "Back home", href: "/" }, anchor: "hero" },
+      { blockType: "reviews", heading: "Fixture signal", intro: null, reviewSourceIds: ["fixture-review"], items: [{ sourceId: "fixture-review", quote: "The page output comes from structured snapshot data.", name: "SIAB Renderer", context: "Fixture" }], anchor: "reviews" },
+      { blockType: "contact", heading: "Contact", body: null, contactMethods: [{ kind: "email", label: "Email", value: "hello@renderer.example.test", href: "mailto:hello@renderer.example.test" }], serviceArea: [], openingHours: null, bookingAction: null, form: null, image: null, anchor: "contact" },
     ],
   },
 ]
@@ -157,48 +76,8 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
     description: "A fixture site rendered by the SIAB public runtime.",
     language: "en",
     contactEmail: "hello@renderer.example.test",
-    branding: {
-      primaryColor: "#0f766e",
-    },
-    chrome: {
-      header: { variant: "shadcnui-blocks.navbar-01", behavior: "sticky", activeMode: "path", mobileMenu: "drawer" },
-      footer: { variant: "shadcnui-blocks.footer-01", tagline: "Published from structured SIAB data." },
-      banner: {
-        variant: "shadcnui-blocks.banner-03",
-        visible: true,
-        title: "Privacy",
-        message: "We measure privacy-friendly visits without analytics cookies. With consent, we also measure interactions to improve this website.",
-        link: { label: "Privacy policy", href: "/privacy" },
-      },
-    },
-    navHeader: [
-      { label: "Home", href: "/" },
-      { label: "Services", href: "/services" },
-      { label: "About", href: "/about" },
-    ],
-    navFooter: [
-      { label: "Home", href: "/" },
-      { label: "Services", href: "/services" },
-      { label: "About", href: "/about" },
-    ],
-    analytics: {
-      provider: "posthog",
-      token: "phc_fixture_public",
-      posthogHost: "https://eu.posthog.com",
-      posthogUiHost: "https://eu.posthog.com",
-      captureSections: true,
-      captureActions: true,
-      captureForms: false,
-    },
-    analyticsConsent: {
-      enabled: true,
-      provider: "posthog",
-      consentStorageKey: "siab_cookie_consent_v1",
-      consentVersion: "2026-07-07.1",
-      captureSections: true,
-      captureActions: true,
-      captureForms: false,
-    },
+    branding: { primaryColor: "#0f766e" },
+    analyticsConsent: { enabled: true, provider: "posthog", consentStorageKey: "siab_cookie_consent_v1", consentVersion: "2026-08-13.1", captureSections: true, captureActions: true, captureForms: false },
     updatedAt: "2026-06-01T00:00:00.000Z",
   },
   pages,
@@ -206,14 +85,7 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
     tenantId: "fixture-tenant",
     version: 1,
     updatedAt: "2026-06-01T00:00:00.000Z",
-    entries: [
-      { type: "settings", key: "site-settings", updatedAt: "2026-06-01T00:00:00.000Z" },
-      ...pages.map((page) => ({
-        type: "page" as const,
-        key: page.slug,
-        updatedAt: page.updatedAt!,
-      })),
-    ],
+    entries: [{ type: "settings", key: "site-settings", updatedAt: "2026-06-01T00:00:00.000Z" }, ...pages.map((page) => ({ type: "page" as const, key: page.slug, updatedAt: page.updatedAt! }))],
   },
   publishedAt: "2026-06-01T00:00:00.000Z",
 }

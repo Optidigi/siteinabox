@@ -28,13 +28,13 @@
       "types": "./src/legal.ts",
       "default": "./src/legal.ts"
     },
-    "./block-catalog": {
-      "types": "./src/block-catalog.ts",
-      "default": "./src/block-catalog.ts"
-    },
     "./commerce": {
       "types": "./src/commerce.ts",
       "default": "./src/commerce.ts"
+    },
+    "./consent": {
+      "types": "./src/consent.ts",
+      "default": "./src/consent.ts"
     },
     "./deploy-targets": {
       "types": "./src/deploy-targets.ts",

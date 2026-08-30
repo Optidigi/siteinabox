@@ -22,7 +22,7 @@ const idOf = (ref: unknown): number | null => {
   return typeof ref === "number" ? ref : Number(ref)
 }
 
-type NavRow = NonNullable<SiteSetting["navHeader"]>[number]
+type NavRow = NonNullable<NonNullable<SiteSetting["navigation"]>["primary"]>[number]
 
 // Normalise a stored nav row (Payload may populate `page` to an object at
 // the query's depth) into the flat shape the client component consumes.
@@ -55,7 +55,7 @@ export default async function NavigationPage({
   const t = await getAdminTranslations(user, "navigation")
   const sp = (await searchParams) ?? {}
   const zoneParam = Array.isArray(sp.zone) ? sp.zone[0] : sp.zone
-  const initialZone: NavZone = zoneParam === "footer" ? "footer" : "header"
+  const initialZone: NavZone = zoneParam === "footer" ? "footer" : "navbar"
 
   const settings = await getOrCreateSiteSettings(tenant.id)
   const pages = await listPages(tenant.id)
@@ -74,8 +74,8 @@ export default async function NavigationPage({
       : [],
   }))
 
-  const navHeader = (settings?.navHeader ?? []).map(normaliseEntry)
-  const navFooter = (settings?.navFooter ?? []).map(normaliseEntry)
+  const navPrimary = (settings?.navigation?.primary ?? []).map(normaliseEntry)
+  const navFooter = (settings?.navigation?.footer ?? []).map(normaliseEntry)
 
   return (
     <div className="flex flex-col gap-4">
@@ -85,7 +85,7 @@ export default async function NavigationPage({
       />
       <NavigationManager
         tenantId={tenant.id}
-        initialNavHeader={navHeader}
+        initialNavPrimary={navPrimary}
         initialNavFooter={navFooter}
         pages={pageOptions}
         initialZone={initialZone}

@@ -2,7 +2,7 @@
 @import "@fontsource-variable/caveat/index.css";
 @import "@fontsource-variable/inter/index.css";
 @source "../../../../packages/site-renderer/src";
-@source "../../../../packages/ui/src/providers/shadcnui-blocks";
+@source "../../../../packages/ui/src/components";
 
 /* SIAB-owned app/editor CSS. Do not point components.json at this file. */
 
@@ -11,6 +11,81 @@
  * UI uses the Inter/system-ui stack from the token. The border-color
  * and bg/color resets are handled by the shadcn @layer base block. */
 body { font-family: var(--font-sans); }
+
+/* The customer command bar is fixed outside the preview canvas. Keep its
+   entrance here rather than relying on an arbitrary utility transform: the
+   below-viewport state must remain a real transform so the toolbar slides up
+   instead of only changing opacity. */
+.siab-preview-command-bar {
+  transform: translate3d(0, calc(100% + 1.5rem), 0);
+  opacity: 0;
+  transition:
+    opacity 420ms ease-out 120ms,
+    transform 680ms cubic-bezier(0.22, 1, 0.36, 1) 120ms,
+    bottom 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.siab-preview-command-bar[data-preview-visible="true"] {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+
+/* Desktop preview toolbar can be collapsed without unmounting the always-
+   available handle. Keep the panel in layout so the handle stays anchored at
+   the same bottom edge while the controls move out of the viewport. */
+.siab-preview-command-bar__panel {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+  transition:
+    opacity 320ms ease-out,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.siab-preview-command-bar[data-preview-expanded="false"] .siab-preview-command-bar__panel {
+  transform: translate3d(0, calc(100% + 4rem), 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.siab-preview-command-bar[data-preview-expanded="false"] {
+  bottom: 0;
+}
+
+.siab-preview-command-bar__toggle {
+  transition:
+    border-radius 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-top-width 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 320ms ease-out,
+    color 320ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siab-preview-command-bar,
+  .siab-preview-command-bar__panel,
+  .siab-preview-command-bar__toggle {
+    transition: none;
+  }
+}
+
+/* Branded iframe boot state. The preview is a real website canvas, so a
+   neutral branded presence communicates that it is loading without inventing
+   a temporary page structure that could be mistaken for the site itself. The
+   muted logo stays in place while the real loading phases reveal its colour
+   from left to right. */
+.siab-preview-frame-loading__logo-base {
+  opacity: 0.2;
+  filter: saturate(0.2);
+}
+
+.siab-preview-frame-loading__logo-fill {
+  transition: width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siab-preview-frame-loading__logo-fill {
+    transition: none;
+  }
+}
 
 /* iOS auto-zooms inputs with computed font-size below 16px on focus.
    shadcn Input already has text-base on mobile via its own classes,
@@ -189,5 +264,3 @@ body { font-family: var(--font-sans); }
   border-radius: var(--radius);
   background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
 }
-
-

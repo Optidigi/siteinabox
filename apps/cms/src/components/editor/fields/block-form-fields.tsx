@@ -25,14 +25,13 @@ import {
   useBlockFieldController,
 } from "@/components/editor/fields/fieldController"
 import { elementPathFromInspectorElement } from "@/lib/editor/elementPathBridge"
-import { isPersistedEditorBlock, type EditorBlock } from "@/lib/editor/editorBlock"
+import type { EditorBlock } from "@/lib/editor/editorBlock"
 import { asCtaValue, asIconValue, asRtRootValue, updateCtaHref, updateCtaLabel } from "@/lib/editor/blockFieldValues"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { inspectorThemeDeclarations } from "@/lib/theme/inspectorFonts"
 import { useTranslations } from "next-intl"
-import { getProviderBlockVariant, SITE_BLOCK_CATALOG_BY_SLUG } from "@siteinabox/contracts"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 export interface BlockFormFieldsProps {
@@ -48,18 +47,13 @@ export interface BlockFormFieldsProps {
   onSelectPath?: (path: ElementPath) => void
 }
 
-const ADVANCED_LABEL_KEYS = new Set(["designVariant", "anchor", "metadata", "trustLabel"])
-
-const resolveProviderVariant = (block: EditorBlock) => {
-  if (!isPersistedEditorBlock(block)) return null
-  return getProviderBlockVariant(block)
-}
+const ADVANCED_LABEL_KEYS = new Set(["variant", "anchor"])
 
 function useLocalizedSpecLabel() {
   const t = useTranslations("editor")
   return React.useCallback((spec: ElementSpec): string => {
     if (!ADVANCED_LABEL_KEYS.has(spec.field)) return spec.label
-    const key = spec.field as "designVariant" | "anchor" | "metadata" | "trustLabel"
+    const key = spec.field as "variant" | "anchor"
     return t.has(key) ? t(key) : spec.label
   }, [t])
 }
@@ -76,17 +70,8 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({
   const t = useTranslations("editor")
   const localizeLabel = useLocalizedSpecLabel()
   const blockType = block.blockType
-  const providerVariant = resolveProviderVariant(block)
   const allSpecs = getBlockElementSpecs(blockType, manifest)
-  const { content, advanced } = partitionBlockElementSpecs(
-    allSpecs,
-    providerVariant
-      ? {
-          ...Object.fromEntries(Object.entries(providerVariant.activeSlots).map(([field, slot]) => [field, { status: slot.status }])),
-          ...Object.fromEntries(providerVariant.forbiddenFields.map((field) => [field, { status: "inactive" }])),
-        }
-      : undefined,
-  )
+  const { content, advanced } = partitionBlockElementSpecs(allSpecs)
   const inspectorFonts = useCspStyleRule(
     "block-form-inspector-fonts",
     inspectorThemeDeclarations(theme),
@@ -199,31 +184,6 @@ const FieldRenderer: React.FC<{
   const tCommon = useTranslations("common")
   const { value, setValue } = useBlockFieldController({ blockIndex, field: spec.field })
 
-  if (spec.field === "designVariant") {
-    const catalog = SITE_BLOCK_CATALOG_BY_SLUG[block.blockType as keyof typeof SITE_BLOCK_CATALOG_BY_SLUG]
-    const variants = catalog?.variants ?? []
-    const current = typeof value === "string" ? value : value == null ? "" : String(value)
-    if (variants.length > 0) {
-      return (
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">{spec.label}</Label>
-          <Select value={current || undefined} onValueChange={setValue}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={spec.label} />
-            </SelectTrigger>
-            <SelectContent data-siab-editor-ui>
-              {variants.map((variant) => (
-                <SelectItem key={variant.variant} value={variant.variant}>
-                  {variant.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )
-    }
-  }
-
   if (spec.kind === "richtext") {
     return (
       <div className="space-y-1">
@@ -236,7 +196,6 @@ const FieldRenderer: React.FC<{
             onChange={setValue}
             manifest={manifest}
             placeholder={spec.label}
-            allowFontFamily={block.blockType === "richText"}
             theme={theme}
           />
         </div>

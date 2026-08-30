@@ -1,57 +1,64 @@
 # Editor / preview / public renderer parity
 
-All surfaces use `packages/site-renderer` and validated explicit
-`shadcnui-blocks.*` variants. Public pages use the static server entrypoint;
-preview and editor use the generated active-variant client entrypoint. They
-differ only in module loading, not markup, adapters, chrome, theme, or media.
+All page surfaces use `packages/site-renderer` and the validated first-party
+Sitegen block contracts. Public pages use the static server entrypoint; CMS
+preview and editor use the same component implementation with edit slots and
+selection attributes. They differ only in those explicitly scoped editor
+adapters, not in block markup, media resolution, theme tokens, or content
+ordering.
 
-## Owned literal fidelity
+## First-party block contract
 
-Owned typed variants under
-`packages/site-renderer/src/providers/shadcnui-blocks/variants/` must keep
-upstream **layout, structure, and structural classes** identical to the pinned
-`akash3444/shadcn-ui-blocks` commit recorded in `inventory.json`.
+The ten Sitegen families are `hero`, `services`, `about`, `process`, `work`,
+`reviews`, `pricing`, `faq`, `cta`, and `contact`. Their semantic contracts
+are code-owned. The current five hero designs belong to one `hero` family and
+use local numbered variants—`hero-01`, `hero-02`, `hero-03`, `hero-04`, and
+`hero-05`. Approved services and CTA designs are `services-01` through
+`services-02` and `cta-01` through `cta-02`; the remaining seven families are
+currently pending until their own designs are reviewed. Future section families and chrome families follow the same
+family-plus-numbered-design convention (for example `services-01` and
+`navbar-01`).
+The CMS owns the explicit Payload block configuration and Sitegen catalog; the
+shared renderer owns the exhaustive block switch and pending state.
 
-Allowed deltas only:
+Unknown block types and retired visual variant fields fail validation before
+rendering. Renderers do not silently select a default for malformed persisted
+data. While the reset is active, no variant default is assigned; a future
+approved family may add its own explicit local default.
 
-- theme tokens (`border-border`, semantic color/typography utilities,
-  `--provider-accent-*` and related CSS variables)
-- CMS / editSlots / rich-text field renderers and media wiring
-- shared UI primitives (`Button`, `Badge`, etc.) substituted for equivalent
-  upstream components without changing surrounding layout classes
-- page-composition CSS in `packages/site-renderer/src/styles.css` that keeps
-  upstream class strings but remaps stacked `min-h-screen` on multi-block
-  pages (`data-siab-composed-sections`), restores the first hero to
-  `calc(var(--siab-preview-viewport-height, 100dvh) − in-flow header)` so
-  live/preview/editor share one height contract, slight hero-01/02 padding
-  bumps, and logo-cloud-01/02 mark density. CTA-03/04 keep the upstream
-  docked phone frame (`mt-auto` + fixed aspect) and use `object-cover` so
-  both illustrations and user photos fill the frame without composition CSS
+## Shared rendering boundary
 
-Decorative palette remaps and the structural-class normalization rules live in
-`structural-classes.mjs`. Release gate:
-`structural-fidelity.test.mjs` (including the Provider Smoke variant set).
+`packages/site-renderer/src/blocks/index.tsx` is the single public block
+dispatch. `SitePageRenderer` and `ClientSitePageRenderer` share the same page
+implementation. The CMS editor adds `editSlots` and `data-siab-field` markers;
+these do not change public layout or tenant CSS.
 
-## Release gates
+The generated-site shell is owned by settings rather than by `Page.blocks`.
+The active numbered shell designs are `navbar-01` through `navbar-03`,
+`footer-01`, and `consent-01`; navbar/footer are settings/catalog choices and
+consent is a policy-controlled runtime surface rather than a Sitegen page
+section. Announcement remains reserved settings data. Maintenance and not-found
+use dedicated inline system output with editable copy, not numbered variants.
+The enabled legal disclosure is a settings-owned structured document route, not
+a page block. CMS/admin controls and governed legal/analytics infrastructure
+remain outside the customer-site page-block catalog.
 
-- 148 public variants and eight not-found templates preserve upstream structural
-  layout classes (committed fingerprints in
-  `structural-fingerprints.json`, checked by `structural-fidelity.test.mjs`);
-- the 542-item included/excluded partition and source hashes pass catalog
-  integrity;
-- semantic token coverage and typed adapter contracts pass unit tests;
-- preview/editor load only variants present on the page;
-- frames stay behind a skeleton until modules, load, fonts, commit, and two
-  paint frames are ready;
-- editor selection never replaces provider DOM;
-- keyboard, focus, form, carousel/menu hydration, overflow, and WCAG checks
-  pass in browser smoke tests;
-- all 156 variants respond to approved color, font, shape, and mode presets;
-- navigation-embedding heroes suppress duplicate header chrome;
-- absent optional chrome renders nothing and invalid variants fail closed.
+## Release evidence
 
-Run `pnpm --dir packages/site-renderer test` for structural fidelity, catalog
-integrity, token coverage, and unit evidence. Browser smoke lives under
-`apps/renderer` (`test:provider-browser`). Optional manual pixel comparison:
-`pnpm --dir packages/site-renderer visual:provider-parity` (not a required CI
-gate).
+- `packages/contracts` tests cover one valid example for every semantic block
+  family plus rejected retired variant values.
+- `apps/cms/tests/unit/sitegenCatalog.test.ts` checks the enabled hero,
+  services, and CTA variants, deterministic media eligibility, and closed
+  requirement tags.
+- `packages/site-renderer/src/blocks/all-blocks.test.mjs` server-renders all
+  five heroes, both services designs, and both CTA designs through the explicit
+  switch, keeps the other families pending, and checks the image-alt
+  fallback/editor-slot path.
+- `packages/site-renderer/src/rich-text.test.mjs` covers the structured rich
+  text DOM contract.
+- CMS integration smoke and migration tests exercise the published projection
+  and disposable PostgreSQL schema.
+
+Visual review should use the existing renderer/browser infrastructure where
+available. No external block library, copied source, or external-template
+fingerprint is part of the release contract.

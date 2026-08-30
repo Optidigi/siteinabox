@@ -64,12 +64,11 @@ current migration-named test set includes:
 | `apps/cms/tests/integration/phase11-migration-rollback.test.ts` | Retain for the rollback window. |
 | `apps/cms/tests/integration/pre-commerce-routing-adoption-migration.test.ts` | Retain while old routing/data states can be encountered. |
 | `apps/cms/tests/unit/amicare-privacy-page-migration.test.ts` | Retain while the published tenant snapshot and legal page history matter. |
-| `apps/cms/tests/unit/amicare-provider-rebuild-migration.test.ts` | Retain while the tenant rebuild compatibility path exists. |
 | `apps/cms/tests/unit/migrationCheckoutSecret.test.ts` | Retain for secret lifecycle, expiry, and access safety. |
 | `apps/cms/tests/unit/migrationDecisions.test.ts` | Retain for migration decision semantics. |
 | `apps/cms/tests/unit/migrationOperatorRecovery.test.ts` | Retain for incident recovery and concurrency behavior. |
 | `apps/cms/tests/unit/migrationSourceAuthorizationsCollection.test.ts` | Retain for encrypted authorization access boundaries. |
-| `apps/cms/tests/unit/shadcnui-blocks-migration.test.ts` | Defer with the renderer/catalog replacement; do not remove independently. |
+| `apps/cms/tests/integration/smoke.test.ts` | Retain for the full Payload migration chain, clean-schema boot, and published projection smoke path. |
 | `apps/cms/tests/unit/ui-regression-bugs.test.ts` | Replace source-string assertions incrementally with behavior tests; do not delete the regression cases. |
 
 ## Visual evidence classification
@@ -85,10 +84,12 @@ it to make that boundary explicit or add a real screenshot baseline comparison
 in a focused browser-test change. Do not weaken the viewport, locale, theme, or
 intentional-difference assertions.
 
-The renderer screenshot tests under
-`packages/site-renderer/src/visual-parity/screenshot-capture.test.mjs` test
-capture failure and retry behavior. They are operational screenshot-pipeline
-tests, not pixel-parity tests, and should retain that narrower classification.
+`packages/site-renderer/src/blocks/all-blocks.test.mjs` server-renders every
+first-party Sitegen family through the explicit switch, with the approved hero,
+services, and CTA designs rendered and not-yet-designed families remaining in
+their explicit pending state. It is a semantic renderer coverage test, not a
+pixel-parity test; responsive and accessibility review remains a separate
+browser/manual concern.
 
 ## Catalog and count assertions
 
@@ -98,9 +99,8 @@ as one category:
 | Evidence | Meaning | Disposition |
 | --- | --- | --- |
 | `packages/contracts/src/tld-capabilities.test.ts:31` | Every catalog entry has a unique TLD key. | Retain as a semantic uniqueness invariant; the reviewed catalog fingerprint is additionally guarded by `tld-capabilities-snapshot.test.ts`. |
-| `packages/site-renderer/src/providers/shadcnui-blocks/block-views.test.mjs:15` | Current authored block view inventory has the expected size. | Defer with F17 and the planned catalog replacement. |
-| `packages/site-renderer/src/providers/shadcnui-blocks/catalog-integrity.test.mjs:25-33,68-70` | Runtime, audit, and generated catalog inventories agree. | Retain until the replacement catalog has equivalent parity checks. |
-| `packages/site-renderer/src/providers/shadcnui-blocks/token-coverage.test.mjs:43-44` | Current token coverage spans the audited variant inventory. | Defer with F17; do not remove as cosmetic cleanup. |
+| `packages/site-renderer/src/blocks/all-blocks.test.mjs` | Every first-party family reaches the explicit renderer; approved hero, services, and CTA designs render and queued families fail visibly as pending. | Retain as the semantic coverage gate; extend each family when its designs are approved. |
+| `apps/cms/tests/unit/sitegenCatalog.test.ts` | Sitegen catalog contains the semantic families and only approved local designs. | Retain as the catalog-integrity gate; add exact local variant coverage per approved family. |
 
 The F07 fingerprint protects the current contracts catalog from unreviewed
 drift. It does not authorize deletion of historical TLD data or renderer
@@ -116,8 +116,8 @@ catalog entries.
    records before changing the test boundary.
 4. Relabel checkout screenshot evidence or add real pixel comparison; do not
    claim visual regression coverage from screenshot capture alone.
-5. Revisit raw renderer counts only with the F17 replacement catalog and its
-   published-snapshot and rollback evidence.
+5. Revisit variant coverage only with the first-party contract, catalog,
+   renderer, published-snapshot, and rollback evidence.
 
 ## Review rule
 

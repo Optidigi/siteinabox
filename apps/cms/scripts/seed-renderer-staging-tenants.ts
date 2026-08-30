@@ -1,14 +1,17 @@
 import { createHash } from "node:crypto"
 import Module from "node:module"
-import { pathToFileURL } from "node:url"
+import path from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import type { CollectionSlug, DataFromCollectionSlug, Payload, Where } from "payload"
 import type { IntakeSubmission, PublishedSiteSnapshot as PayloadPublishedSiteSnapshot, SiteGenerationRun } from "@/payload-types"
 import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
+import { publicAnalyticsConsentApproval } from "@siteinabox/legal-content/consent-approval"
 import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import { SiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
+import type { SiteGenerationMediaAsset } from "@/lib/site-generation/applySiteGenerationSpec"
 
 type TenantKey = "amicare"
 export type RendererSeedProfile = "staging" | "production"
@@ -23,6 +26,7 @@ export type CliOptions = {
   promotePages: boolean
   publish: boolean
   activate: boolean
+  replaceExistingPages: boolean
 }
 
 export type RendererSeedFixture = {
@@ -33,9 +37,7 @@ export type RendererSeedFixture = {
   slug: string
   domain: string
   siteUrl: string
-  sourceMediaBaseUrl: string
-  importMediaBaseUrl?: string
-  mediaBaseNote: string
+  mediaAssets: readonly SiteGenerationMediaAsset[]
   sourceSpec: SiteGenerationSpec
   publishedSnapshot: PublishedSiteSnapshot
 }
@@ -52,6 +54,33 @@ type ApplySuccessResult = Extract<ApplySiteGenerationSpecResult, { ok: boolean }
 }
 
 const GENERATED_AT = "2026-06-26T00:00:00.000Z"
+const CMS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const AMICARE_MEDIA_ASSETS: readonly SiteGenerationMediaAsset[] = [
+  {
+    key: "amicare-toys",
+    filename: "toys.jpg",
+    alt: "Speelgoed in een rustige ruimte",
+    filePath: path.join(CMS_ROOT, "public/fixture-media/amicare-toys.jpg"),
+  },
+  {
+    key: "amicare-bedroom",
+    filename: "bedroom.jpg",
+    alt: "Rustige kinderkamer",
+    filePath: path.join(CMS_ROOT, "public/fixture-media/amicare-bedroom.jpg"),
+  },
+  {
+    key: "amicare-logo-svg",
+    filename: "amicare-logo.svg",
+    alt: "Amicare-Zorg logo",
+    filePath: path.join(CMS_ROOT, "public/fixture-media/amicare-logo.svg"),
+  },
+  {
+    key: "amicare-favicon-svg",
+    filename: "favicon.svg",
+    alt: "Amicare-Zorg favicon",
+    filePath: path.join(CMS_ROOT, "public/fixture-media/amicare-favicon.svg"),
+  },
+]
 
 const fixture = (
   input: Omit<RendererSeedFixture, "siteUrl" | "sourceSpec" | "publishedSnapshot"> & {
@@ -73,8 +102,7 @@ export const RENDERER_SEED_FIXTURES: Record<RendererSeedProfile, Record<TenantKe
       label: "Amicare renderer staging",
       slug: "amicare-renderer",
       domain: "amicare.optidigi.nl",
-      sourceMediaBaseUrl: "https://ami-care.nl",
-      mediaBaseNote: "Loads legacy Amicare media from ami-care.nl while the staging renderer host stays on optidigi.nl.",
+      mediaAssets: AMICARE_MEDIA_ASSETS,
       sourceSpec: amicareSiteGenerationSpec,
       publishedSnapshot: amicarePublishedSiteSnapshot,
     }),
@@ -87,8 +115,7 @@ export const RENDERER_SEED_FIXTURES: Record<RendererSeedProfile, Record<TenantKe
       label: "Amicare renderer production live cutover",
       slug: "ami-care",
       domain: "ami-care.nl",
-      sourceMediaBaseUrl: "https://ami-care.nl",
-      mediaBaseNote: "Uses the current Amicare legacy media origin because no separate durable media host exists yet; validate media after routing before final cutover.",
+      mediaAssets: AMICARE_MEDIA_ASSETS,
       sourceSpec: amicareSiteGenerationSpec,
       publishedSnapshot: amicarePublishedSiteSnapshot,
     }),
@@ -102,6 +129,7 @@ type SiteGenerationHelpers = {
   applySiteGenerationSpec: ApplySiteGenerationSpecFn
   siteGenerationSpecHash: SiteGenerationSpecHashFn
   validateSiteGenerationSpecForCms: typeof import("@/lib/site-generation/applySiteGenerationSpec")["validateSiteGenerationSpecForCms"]
+  retireUnspecifiedPagesForTenant: typeof import("@/lib/site-generation/applySiteGenerationSpec")["retireUnspecifiedPagesForTenant"]
 }
 
 type ExecuteHelpers = SiteGenerationHelpers & {
@@ -132,6 +160,7 @@ const loadSiteGenerationHelpers = async (): Promise<SiteGenerationHelpers> => {
     applySiteGenerationSpec: siteGeneration.applySiteGenerationSpec,
     siteGenerationSpecHash: siteGeneration.siteGenerationSpecHash,
     validateSiteGenerationSpecForCms: siteGeneration.validateSiteGenerationSpecForCms,
+    retireUnspecifiedPagesForTenant: siteGeneration.retireUnspecifiedPagesForTenant,
   }
 }
 
@@ -170,6 +199,12 @@ Options:
   --promote-pages    Promote approved run pages to published.
   --publish          Publish an immutable renderer snapshot.
   --activate         Publish and activate with manualActivation=true. Requires --publish.
+  --replace-existing-pages
+                     After activation, move unspecified published pages to draft.
+
+Production activation additionally requires --approve --promote-pages and
+--replace-existing-pages so the new CMS page is editable/live and the old
+published pages are retired only after the replacement snapshot is active.
 `
 
 export const parseArgs = (argv: string[]): CliOptions => {
@@ -183,6 +218,7 @@ export const parseArgs = (argv: string[]): CliOptions => {
     promotePages: false,
     publish: false,
     activate: false,
+    replaceExistingPages: false,
   }
 
   for (const arg of argv) {
@@ -199,6 +235,7 @@ export const parseArgs = (argv: string[]): CliOptions => {
     else if (arg === "--promote-pages") options.promotePages = true
     else if (arg === "--publish") options.publish = true
     else if (arg === "--activate") options.activate = true
+    else if (arg === "--replace-existing-pages") options.replaceExistingPages = true
     else if (arg.startsWith("--profile=")) {
       const profile = arg.slice("--profile=".length)
       if (profile !== "staging" && profile !== "production") {
@@ -220,6 +257,18 @@ export const parseArgs = (argv: string[]): CliOptions => {
   if (options.activate && !options.publish) {
     throw new Error("--activate requires --publish so activation uses the newly published snapshot.")
   }
+  if (options.promotePages && !options.approve) {
+    throw new Error("--promote-pages requires --approve so only an approved generation run can become editable live content.")
+  }
+  if (options.profile === "production" && options.activate && !options.promotePages) {
+    throw new Error("Production Amicare activation requires --approve --promote-pages so the imported CMS page remains editable live content.")
+  }
+  if (options.replaceExistingPages && !options.activate) {
+    throw new Error("--replace-existing-pages requires --activate so the new snapshot is live before old pages are retired.")
+  }
+  if (options.profile === "production" && options.activate && !options.replaceExistingPages) {
+    throw new Error("Production Amicare activation requires --replace-existing-pages so unspecified legacy pages are moved to draft.")
+  }
   if (!options.execute) {
     const mutatingFlags = [
       options.approve && "--approve",
@@ -228,6 +277,7 @@ export const parseArgs = (argv: string[]): CliOptions => {
       options.promotePages && "--promote-pages",
       options.publish && "--publish",
       options.activate && "--activate",
+      options.replaceExistingPages && "--replace-existing-pages",
     ].filter(Boolean)
     if (mutatingFlags.length > 0) {
       throw new Error(`${mutatingFlags.join(", ")} require --execute.`)
@@ -246,24 +296,6 @@ const stableStringify = (value: unknown): string => {
 
 const stableHash = (value: unknown): string =>
   createHash("sha256").update(stableStringify(value)).digest("hex")
-
-function absolutizeRootRelativeUrl(value: string, baseUrl: string): string {
-  if (!value.startsWith("/") || value.startsWith("//")) return value
-  return new URL(value, baseUrl).toString()
-}
-
-function absolutizeGeneratedMediaUrls(value: unknown, baseUrl: string): unknown {
-  if (Array.isArray(value)) return value.map((item) => absolutizeGeneratedMediaUrls(item, baseUrl))
-  if (!value || typeof value !== "object") return value
-
-  const record = value
-  return Object.fromEntries(
-    Object.entries(record).map(([key, entry]) => {
-      if (key === "url" && typeof entry === "string") return [key, absolutizeRootRelativeUrl(entry, baseUrl)]
-      return [key, absolutizeGeneratedMediaUrls(entry, baseUrl)]
-    }),
-  )
-}
 
 const nextPublishedSnapshotVersion = async (
   payload: Payload,
@@ -294,14 +326,9 @@ const requireSuccessfulApplyResult = (
   return result as ApplySuccessResult
 }
 
-const importMediaBaseUrl = (fixture: RendererSeedFixture) => fixture.importMediaBaseUrl ?? fixture.sourceMediaBaseUrl
-
-export const cloneForRendererSeedProfile = (
-  fixture: RendererSeedFixture,
-  options: { mediaBaseUrl?: string } = {},
-): SiteGenerationSpec => {
+export const cloneForRendererSeedProfile = (fixture: RendererSeedFixture): SiteGenerationSpec => {
   const source = structuredClone(fixture.sourceSpec)
-  const spec = {
+  const spec: SiteGenerationSpec = {
     ...source,
     intake: {
       ...source.intake,
@@ -331,7 +358,7 @@ export const cloneForRendererSeedProfile = (
       version: fixture.profile === "production" ? "live-cutover-v1" : "phase-4",
     },
   }
-  return absolutizeGeneratedMediaUrls(spec, options.mediaBaseUrl ?? fixture.sourceMediaBaseUrl) as SiteGenerationSpec
+  return spec
 }
 
 export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" | "tenants">): RendererSeedFixture[] =>
@@ -422,8 +449,6 @@ const upsertIntakeSubmission = async (
       fixture: fixture.key,
       domain: fixture.domain,
       slug: fixture.slug,
-      mediaBaseUrl: fixture.sourceMediaBaseUrl,
-      importMediaBaseUrl: importMediaBaseUrl(fixture),
     },
     normalized: spec.intake,
     normalizedHash,
@@ -478,9 +503,7 @@ const upsertGenerationRun = async (
       domain: fixture.domain,
       slug: fixture.slug,
       siteUrl: fixture.siteUrl,
-      mediaBaseUrl: fixture.sourceMediaBaseUrl,
-      importMediaBaseUrl: importMediaBaseUrl(fixture),
-      mediaBaseNote: fixture.mediaBaseNote,
+      mediaAssets: fixture.mediaAssets.map(({ key, filename }) => ({ key, filename })),
     },
     generationOutputHash: specHash,
     rawOutput: null,
@@ -589,7 +612,6 @@ export const buildRetargetOptionsForRendererSeedFixture = (
   tenantSlug: fixture.slug,
   domain: fixture.domain,
   siteUrl: fixture.siteUrl,
-  mediaBaseUrl: fixture.sourceMediaBaseUrl,
   aliases: [],
   manifestVersion: version,
   publishedAt: now,
@@ -629,15 +651,19 @@ const publicPostHogAnalyticsConfig = (
   }
 }
 
-const analyticsConsentSettings = () => ({
-  enabled: true,
-  provider: "posthog" as const,
-  consentStorageKey: "siab_cookie_consent_v1",
-  consentVersion: "2026-06",
-  captureSections: true,
-  captureActions: true,
-  captureForms: true,
-})
+const analyticsConsentSettings = () => {
+  const consentVersion = publicAnalyticsConsentApproval.consentVersion
+  if (!consentVersion) throw new Error("The shared public analytics consent approval has no version.")
+  return {
+    enabled: true,
+    provider: "posthog" as const,
+    consentStorageKey: "siab_cookie_consent_v1",
+    consentVersion,
+    captureSections: true,
+    captureActions: true,
+    captureForms: true,
+  }
+}
 
 const pagePathForSlug = (slug: string | null | undefined) =>
   !slug || slug === "home" || slug === "index" ? "/" : `/${slug}`
@@ -748,11 +774,7 @@ const runFixture = async (
   console.log(`  slug: ${fixture.slug}`)
   console.log(`  domain: ${fixture.domain}`)
   console.log(`  siteUrl: ${spec.settings.siteUrl}`)
-  console.log(`  mediaBaseUrl: ${fixture.sourceMediaBaseUrl}`)
-  if (importMediaBaseUrl(fixture) !== fixture.sourceMediaBaseUrl) {
-    console.log(`  importMediaBaseUrl: ${importMediaBaseUrl(fixture)}`)
-  }
-  console.log(`  mediaNote: ${fixture.mediaBaseNote}`)
+  console.log(`  local media assets: ${fixture.mediaAssets.map((asset) => asset.filename).join(", ")}`)
   console.log(`  pages: ${spec.pages.map((page) => page.slug).join(", ")}`)
   console.log(`  specHash: ${specHash}`)
   console.log(`  actions: import draft CMS data, upsert intake, upsert generation run`)
@@ -762,17 +784,16 @@ const runFixture = async (
   if (options.promotePages) console.log("           promote run pages")
   if (options.publish) console.log("           publish retargeted migrated parity snapshot fixture")
   if (options.activate) console.log("           activate published snapshot with manualActivation=true")
+  if (options.replaceExistingPages) console.log("           after activation, move unspecified published pages to draft (reversible)")
 
   if (!options.execute) return
   const executeHelpers = helpers as ExecuteHelpers
 
   const now = new Date().toISOString()
   const intake = await upsertIntakeSubmission(payload, fixture, parsedSpec, now)
-  const importSpec = importMediaBaseUrl(fixture) === fixture.sourceMediaBaseUrl
-    ? parsedSpec
-    : cloneForRendererSeedProfile(fixture, { mediaBaseUrl: importMediaBaseUrl(fixture) })
-  const importParsedSpec = parseRendererSeedSpecForCms(fixture, importSpec, helpers, "import spec")
-  const applyResult = await helpers.applySiteGenerationSpec(payload, importParsedSpec)
+  const applyResult = await helpers.applySiteGenerationSpec(payload, parsedSpec, {
+    mediaAssets: fixture.mediaAssets,
+  })
   const successfulApplyResult = requireSuccessfulApplyResult(applyResult, fixture)
   const run = await upsertGenerationRun(payload, fixture, intake.doc.id, parsedSpec, successfulApplyResult, specHash, now)
   await linkIntake(payload, intake.doc.id, run.doc.id, successfulApplyResult.tenantId)
@@ -805,6 +826,15 @@ const runFixture = async (
     )
     const snapshotId = result.snapshot?.id
     console.log(`  snapshot: ${snapshotId ?? "(unknown)"}${result.activated ? " activated" : " drafted"}`)
+    if (options.replaceExistingPages) {
+      if (!result.activated) throw new Error("Replacement requested but the new snapshot was not activated.")
+      const pageState = await executeHelpers.retireUnspecifiedPagesForTenant(
+        payload,
+        successfulApplyResult.tenantId,
+        new Set(parsedSpec.pages.map((page) => page.slug)),
+      )
+      console.log(`  replacement cutover: ${pageState.retiredPages.length} published page(s) moved to draft`)
+    }
   }
 
   console.log(`  result: intake ${intake.operation} id=${intake.doc.id}; run ${run.operation} id=${run.doc.id}; tenant id=${successfulApplyResult.tenantId}`)

@@ -337,7 +337,7 @@ describe("published snapshot activation gate", () => {
 
     expect(result.snapshot.theme).toEqual({
       version: 3,
-      appearance: { mode: "light" },
+      appearance: { mode: "light", backgroundMode: "animation" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "clear-modern" },
       shape: { schemeId: "rounded" },

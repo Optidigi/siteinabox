@@ -98,10 +98,11 @@ describe("projectSettingsToDisk", () => {
           logo: 11,
         },
         chrome: {
-          header: {
+          navbar: {
             logo: 12,
           },
           footer: {
+            variant: "footer-01",
             logo: 13,
             tagline: "Fresh footer text",
             copyright: "Fresh copyright",
@@ -127,8 +128,9 @@ describe("projectSettingsToDisk", () => {
     const projected = JSON.parse(writeCall![1])
     expect(projected.branding.logo).toMatchObject({ filename: "brand.png", url: "/media/brand.png" })
     expect(projected.contactEmail).toBe("hello@ami-care.nl")
-    expect(projected.chrome.header.logo).toMatchObject({ filename: "header.png", url: "/media/header.png" })
+    expect(projected.chrome.navbar.logo).toMatchObject({ filename: "header.png", url: "/media/header.png" })
     expect(projected.chrome.footer.logo).toMatchObject({ filename: "footer.png", url: "/media/footer.png" })
+    expect(projected.chrome.footer.variant).toBe("footer-01")
     expect(projected.chrome.footer.tagline).toBe("Fresh footer text")
     expect(projected.chrome.footer.copyright).toBe("Fresh copyright")
     expect(projected.chrome.footer.columns).toEqual([

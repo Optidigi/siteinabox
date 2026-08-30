@@ -10,6 +10,7 @@ import {
   type PreviewApprovalState,
   type PreviewPaymentState,
 } from "@/lib/preview/customizer"
+import { isPreviewFixtureRoute } from "@/lib/preview/previewFixture"
 import { loadPreviewGrantContext } from "@/lib/preview/previewAccess"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -26,6 +27,8 @@ const previewSessionEmail = async (loginRequiredMessage: string): Promise<string
 
 
 export async function setPreviewTheme(access: PreviewCustomizerAccess, theme: ThemeTokens) {
+  if (isPreviewFixtureRoute(access.clientSlug)) return theme
+
   const t = await getTranslations("preview")
   return persistPreviewThemeForGrant({
     clientSlug: access.clientSlug,

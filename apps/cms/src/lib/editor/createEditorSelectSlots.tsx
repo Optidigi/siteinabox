@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { BlockEditSlots, RendererElementPath } from "@siteinabox/site-renderer"
-import { RichTextRenderer, defaultMediaResolver } from "@siteinabox/site-renderer"
+import { SiteArrowRight, SiteArrowUpRight, defaultMediaResolver } from "@siteinabox/site-renderer"
 
 const fieldSelectAttributes = (path: RendererElementPath) => ({
   "data-siab-field": path.field,
@@ -17,21 +17,6 @@ const fieldSelectAttributes = (path: RendererElementPath) => ({
  */
 export function createEditorSelectSlots(): BlockEditSlots {
   return {
-    renderRichText: (props) => {
-      const Tag = (props.as ?? (props.variant === "block" ? "div" : "span")) as "div" | "span"
-      // Prefer a real box over `contents` so click hit-testing + closest() stay reliable.
-      const className = props.className === "contents" ? undefined : props.className
-      return (
-        <Tag className={className} {...fieldSelectAttributes(props.elementPath)}>
-          {props.value ? (
-            <RichTextRenderer
-              value={props.value}
-              blockMode={props.blockMode ?? (props.variant === "inline" ? "inline" : "normal")}
-            />
-          ) : null}
-        </Tag>
-      )
-    },
     renderCta: (props) => {
       const href = props.value?.href?.trim() ?? ""
       const label = props.value?.label?.trim() ?? ""
@@ -47,7 +32,10 @@ export function createEditorSelectSlots(): BlockEditSlots {
           onClick={(event) => event.preventDefault()}
           {...fieldSelectAttributes(props.elementPath)}
         >
-          {label}
+          <span>{label}</span>
+          {props.showArrow ? (props.value?.external
+            ? <SiteArrowUpRight className="hero-action-arrow" size={16} />
+            : <SiteArrowRight className="hero-action-arrow" size={16} />) : null}
         </a>
       )
     },

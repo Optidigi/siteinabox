@@ -5,7 +5,7 @@ import { z } from "zod"
 import type { SiteSetting } from "@/payload-types"
 import config from "@/payload.config"
 
-// OBS-20 — persist a tenant's header + footer navigation.
+// OBS-20 — persist a tenant's navbar + footer navigation.
 //
 // Unlike setTenantTheme (which works around a too-strict `Tenants` gate),
 // `SiteSettings.access.update` is already `canUpdateSettings` (owner +
@@ -41,11 +41,11 @@ export type NavEntryInput = z.infer<typeof navEntrySchema>
 
 export const updateNav = async (
   tenantId: number | string,
-  nav: { navHeader: unknown; navFooter: unknown },
+  nav: { primary: unknown; footer: unknown },
 ): Promise<void> => {
-  const header = navListSchema.safeParse(nav.navHeader)
-  const footer = navListSchema.safeParse(nav.navFooter)
-  if (!header.success) throw new Error(`Invalid header navigation: ${header.error.message}`)
+  const navbar = navListSchema.safeParse(nav.primary)
+  const footer = navListSchema.safeParse(nav.footer)
+  if (!navbar.success) throw new Error(`Invalid navbar navigation: ${navbar.error.message}`)
   if (!footer.success) throw new Error(`Invalid footer navigation: ${footer.error.message}`)
 
   const payload = await getPayload({ config })
@@ -69,7 +69,7 @@ export const updateNav = async (
   await payload.update({
     collection: "site-settings",
     id: settings.id,
-    data: { navHeader: header.data, navFooter: footer.data } as Partial<SiteSetting>,
+    data: { navigation: { primary: navbar.data, footer: footer.data } } as Partial<SiteSetting>,
     user,
     overrideAccess: false,
   })

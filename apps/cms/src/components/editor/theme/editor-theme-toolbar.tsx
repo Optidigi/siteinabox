@@ -12,15 +12,16 @@ import { Dices, Palette, RotateCcw, SquareRoundCorner, Type } from "lucide-react
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { ShapeControl } from "@/components/editor/theme/radius-control"
+import { BackgroundModeControl, BackgroundModeIcon } from "@/components/editor/theme/background-mode-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { mergeThemePatch, normalizeThemeForSave, type ThemePatch } from "@/lib/theme/normalizeTheme"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ColorPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
 import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
-type Segment = "colors" | "fonts" | "shape"
+type Segment = "colors" | "fonts" | "shape" | "backgroundMode"
 type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
 
 const MOBILE_RANDOM_MODES: AppearanceMode[] = ["light", "dark"]
@@ -51,8 +52,8 @@ export function EditorThemeToolbar({
   // fields. The previous debounced setTenantTheme inside the theme toolbar was a
   // behaviour outlier (silent autosave to a different document); routing
   // through the explicit Save button is what users expect.
-  function handleUpdate(partial: Partial<ThemeTokens>) {
-    onThemeChange((current) => normalizeThemeForSave({ ...(current ?? theme ?? {}), ...partial } as ThemeTokens))
+  function handleUpdate(partial: ThemePatch) {
+    onThemeChange((current) => mergeThemePatch(current ?? theme, partial))
   }
 
   function handleShuffle() {
@@ -61,16 +62,13 @@ export function EditorThemeToolbar({
     const shape = pickRandom(radiusLevels ?? [])
     const mode = pickRandom(MOBILE_RANDOM_MODES) ?? "light"
 
-    onThemeChange((current) =>
-      normalizeThemeForSave({
-        ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC),
-        version: 3,
-        appearance: { mode },
-        ...(palette ? { colors: { schemeId: palette.id } } : {}),
-        ...(font ? { fonts: { schemeId: font.id } } : {}),
-        ...(shape ? { shape: { schemeId: shape.id } } : {}),
-      } as ThemeTokens),
-    )
+    onThemeChange((current) => mergeThemePatch(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC, {
+      version: 3,
+      appearance: { mode },
+      ...(palette ? { colors: { schemeId: palette.id } } : {}),
+      ...(font ? { fonts: { schemeId: font.id } } : {}),
+      ...(shape ? { shape: { schemeId: shape.id } } : {}),
+    }))
   }
 
   function handleDefault() {
@@ -91,6 +89,7 @@ export function EditorThemeToolbar({
     colors: null,
     fonts: null,
     shape: null,
+    backgroundMode: null,
   })
 
   return (
@@ -102,6 +101,12 @@ export function EditorThemeToolbar({
             aria-label={t("themeControls")}
             className="inline-flex items-center gap-1"
           >
+            <BackgroundModeControl
+              value={theme?.appearance?.backgroundMode}
+              layout="pill"
+              sizeClassName="size-8"
+              onChange={(backgroundMode) => handleUpdate({ appearance: { backgroundMode } })}
+            />
             <Button
               type="button"
               size="sm"
@@ -140,6 +145,7 @@ export function EditorThemeToolbar({
                     ["colors", t("colours"), t("colourPalette"), Palette],
                     ["fonts", t("fonts"), t("fontPairings"), Type],
                     ["shape", t("shape"), t("cornerRadius"), SquareRoundCorner],
+                    ["backgroundMode", t("backgroundMode"), t("backgroundModeControls"), BackgroundModeIcon],
                   ] as const).map(([segment, label, ariaLabel, Icon]) => (
                     <Button
                       key={segment}
@@ -196,6 +202,12 @@ export function EditorThemeToolbar({
                 shapeId={theme?.shape?.schemeId}
                 radiusLevels={radiusLevels}
                 onChange={(next) => handleUpdate({ shape: next })}
+              />
+            )}
+            {openSegment === "backgroundMode" && (
+              <BackgroundModeControl
+                value={theme?.appearance?.backgroundMode}
+                onChange={(backgroundMode) => handleUpdate({ appearance: { backgroundMode } })}
               />
             )}
           </PopoverContent>

@@ -5,7 +5,7 @@ export type BlockAnchorResolveContext = {
 }
 
 function ctaIsContact(block: Extract<Block, { blockType: "cta" }>) {
-  const href = block.primary?.href?.trim()
+  const href = block.primaryAction.href.trim()
   return Boolean(href?.startsWith("mailto:") || href?.startsWith("tel:"))
 }
 
@@ -16,10 +16,8 @@ export function resolveBlockAnchor(block: Block, context: BlockAnchorResolveCont
   switch (block.blockType) {
     case "hero":
       return undefined
-    case "featureList":
+    case "services":
       return context.surface === "canvas" ? "features" : undefined
-    case "richText":
-      return undefined
     case "cta":
       if (ctaIsContact(block)) return "contact"
       return context.surface === "canvas" ? "cta" : undefined

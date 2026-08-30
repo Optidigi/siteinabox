@@ -1,10 +1,10 @@
 import * as React from "react"
-import { getProviderBlockVariant } from "@siteinabox/contracts"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { SiteBanner, SiteFooter, SiteHeader, SiteMaintenanceBanner } from "./chrome"
-import type { MediaResolver } from "./media"
 import { ThemeCanvas } from "./theme"
 import type { SitePageRendererProps } from "./SitePageRenderer"
+import { NavbarRenderer } from "./chrome/Navbar"
+import { FooterRenderer } from "./chrome/Footer"
+import { ConsentRenderer } from "./chrome/Consent"
 
 export function SitePageShell({
   page,
@@ -14,41 +14,38 @@ export function SitePageShell({
   className,
   canvasClassName,
   canvasAttributes,
-  header,
-  banner,
-  footer,
+  consentAvailable,
   children,
 }: Pick<
   SitePageRendererProps,
-  "page" | "settings" | "theme" | "mediaResolver" | "className" | "canvasClassName" | "canvasAttributes" | "header" | "banner" | "footer"
-> & { children: React.ReactNode }) {
-  const firstVariant = page.blocks[0] ? getProviderBlockVariant(page.blocks[0]) : null
-  const embedsNavigation = firstVariant?.composition.suppressesChromeAreas.some((area) => area === "header") ?? false
-  const headerChrome = embedsNavigation
-    ? null
-    : header === undefined
-      ? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-      : header
-
+  "page" | "settings" | "theme" | "mediaResolver" | "className" | "canvasClassName" | "canvasAttributes" | "consentAvailable"
+> & {
+  children: React.ReactNode
+}) {
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
       <ThemeCanvas
         theme={theme}
         {...canvasAttributes}
-        className={cn("rt-canvas w-full", canvasClassName)}
+        className={cn("rt-canvas w-full bg-background text-foreground", canvasClassName)}
         data-page-slug={page.slug}
         data-siab-composed-sections={page.blocks.length > 1 ? "true" : undefined}
       >
-        <div className="site-frame-root">
-          {banner === undefined
-            ? <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-            : banner}
-          {headerChrome}
-          <SiteMaintenanceBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
+        <div className={cn(
+          "site-frame-root",
+          settings.chrome?.navbar?.placement === "hero-overlay" && "site-frame-root-navbar-overlay",
+          settings.chrome?.navbar?.placement === "sticky" && "site-frame-root-navbar-sticky",
+        )} data-siab-navbar-variant={settings.chrome?.navbar?.variant}>
+          <NavbarRenderer page={page} settings={settings} theme={theme} mediaResolver={mediaResolver} />
+          <main>
           {children}
-          {footer === undefined
-            ? <SiteFooter settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-            : footer}
+          </main>
+          <FooterRenderer settings={settings} mediaResolver={mediaResolver} />
+          <ConsentRenderer
+            settings={settings}
+            mediaResolver={mediaResolver}
+            consentAvailable={consentAvailable}
+          />
         </div>
       </ThemeCanvas>
     </div>

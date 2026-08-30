@@ -11,7 +11,6 @@ coverage/
 test-results/
 playwright-report/
 .playwright-mcp/
-.visual-parity-artifacts/
 /.retroui-astro-test/
 
 # Local generated/runtime data

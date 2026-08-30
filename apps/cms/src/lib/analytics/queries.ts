@@ -3,7 +3,7 @@ import type { Where } from "payload"
 import { getPostHogAnalyticsConfig } from "./config"
 import { queryPostHog } from "./posthogClient"
 import { WEB_VITAL_NAMES, combineSiteScore, getSiteQualityScore, webVitalRating, webVitalScore } from "./scoring"
-import { rankProviderVariants, type VariantRankingMetric } from "./variantRanking"
+import { rankVariants, type VariantRankingMetric } from "./variantRanking"
 
 export type { VariantRankingMetric } from "./variantRanking"
 
@@ -47,7 +47,7 @@ export type TopCtaMetric = {
 export type SectionPerformanceMetric = {
   sectionId: string | null
   sectionType: string | null
-  providerVariant: string | null
+  variant: string | null
   pagePath: string | null
   views: number
   engagements: number
@@ -452,7 +452,7 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
     SELECT
       properties.section_id AS section_id,
       properties.section_type AS section_type,
-      properties.provider_variant AS provider_variant,
+      properties.variant AS variant,
       properties.page_path AS page_path,
       countIf(event = 'site_section_viewed') AS views,
       countIf(event = 'site_section_engaged') AS engagements,
@@ -460,7 +460,7 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
     FROM events
     WHERE ${analyticsWhere(_scope)}
       AND (event IN ('site_section_viewed', 'site_section_engaged') OR ${ctaClickCondition})
-    GROUP BY section_id, section_type, provider_variant, page_path
+    GROUP BY section_id, section_type, variant, page_path
     ORDER BY views DESC
     LIMIT 10
   `, "siab_section_performance")
@@ -468,7 +468,7 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
   return (response?.results ?? []).map((row) => ({
     sectionId: stringAt(row, 0),
     sectionType: stringAt(row, 1),
-    providerVariant: stringAt(row, 2),
+    variant: stringAt(row, 2),
     pagePath: stringAt(row, 3),
     views: numberAt(row, 4),
     engagements: numberAt(row, 5),
@@ -476,12 +476,12 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
   }))
 }
 
-export const getProviderVariantRanking = async (_scope: AnalyticsQueryScope): Promise<VariantRankingMetric[]> => {
+export const getVariantRanking = async (_scope: AnalyticsQueryScope): Promise<VariantRankingMetric[]> => {
   if (!getPostHogAnalyticsConfig().queryEnabled) return []
   const response = await queryPostHog<HogQLResponse>(`
     SELECT
       properties.section_type AS section_type,
-      properties.provider_variant AS provider_variant,
+      properties.variant AS variant,
       countIf(event = 'site_section_viewed') AS views,
       uniqIf(person_id, event = 'site_section_viewed') AS exposed_visitors,
       countIf(event = 'site_section_engaged') AS engagements,
@@ -503,22 +503,22 @@ export const getProviderVariantRanking = async (_scope: AnalyticsQueryScope): Pr
     WHERE ${analyticsWhere(_scope)}
       AND coalesce(properties.site_kind, 'tenant') = 'tenant'
       AND properties.tenant_id IS NOT NULL
-      AND properties.provider_variant IS NOT NULL
-      AND properties.provider_variant != ''
+      AND properties.variant IS NOT NULL
+      AND properties.variant != ''
       AND properties.section_type IS NOT NULL
       AND properties.section_type != ''
       AND (
         event IN ('site_section_viewed', 'site_section_engaged', 'site_conversion_completed')
         OR ${componentInteractionCondition}
       )
-    GROUP BY section_type, provider_variant
+    GROUP BY section_type, variant
     ORDER BY exposed_visitors DESC
     LIMIT 200
-  `, "siab_provider_variant_ranking")
+  `, "siab_variant_ranking")
 
-  return rankProviderVariants((response?.results ?? []).map((row) => ({
+  return rankVariants((response?.results ?? []).map((row) => ({
     sectionType: stringAt(row, 0) ?? "unknown",
-    providerVariant: stringAt(row, 1) ?? "unknown",
+    variant: stringAt(row, 1) ?? "unknown",
     views: numberAt(row, 2),
     exposedVisitors: numberAt(row, 3),
     engagements: numberAt(row, 4),

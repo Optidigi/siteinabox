@@ -1,5 +1,5 @@
 // OBS-20 — shared types for the navigation manager UI. The stored shape
-// mirrors a SiteSettings.navHeader / navFooter row, flattened (page
+// mirrors a SiteSettings.navigation.primary / footer row, flattened (page
 // relationship normalised to a bare id) for the client components.
 
 export type NavEntryType = "page" | "section" | "custom" | "group"
@@ -37,7 +37,7 @@ export type NavPageOption = {
   anchors: string[]
 }
 
-export type NavZone = "header" | "footer"
+export type NavZone = "navbar" | "footer"
 
 export const emptyEntry = (type: NavEntryType): NavEntry => ({
   type,

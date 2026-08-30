@@ -28,14 +28,13 @@ export default defineConfig({
   vite: {
     cacheDir: process.env.SIAB_VITE_CACHE_DIR,
     // Shared workspace packages declare React as a peer. Always resolve that
-    // peer from this application so SSR and hydrated provider dependencies
-    // cannot load a second React instance from another workspace consumer.
+    // peer from this application so SSR and hydrated dependencies cannot load
+    // a second React instance from another workspace consumer.
     resolve: { dedupe: ['react', 'react-dom'] },
-    // The provider parity client reaches these dependencies through linked
-    // workspaces and the shared site behavior entry. Pre-bundle them before
-    // the first browser request so Vite cannot invalidate an in-flight catalog
-    // check when it discovers the analytics or animated-number imports.
-    optimizeDeps: { include: ['@number-flow/react', 'posthog-js'] },
+    // The SSR entry validates snapshots through the linked contracts package.
+    // Pre-bundle that first-party graph before a browser smoke request so Vite
+    // cannot discover zod after serving the page and invalidate the lifecycle.
+    optimizeDeps: { include: ['@siteinabox/contracts', 'posthog-js'] },
     plugins: [tailwindcss()],
   },
   build: {

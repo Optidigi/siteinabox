@@ -7,7 +7,7 @@ vi.mock("@/lib/legal/tenantPrivacyPage", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/legal/tenantPrivacyPage")>()
   return {
     ...actual,
-    materializeTenantPrivacyPage: (spec: SiteGenerationSpec): SiteGenerationSpec => ({
+    materializeTenantPrivacyDisclosure: (spec: SiteGenerationSpec): SiteGenerationSpec => ({
       ...spec,
       tenant: { ...spec.tenant, slug: "Invalid Transformed Slug" },
     }),

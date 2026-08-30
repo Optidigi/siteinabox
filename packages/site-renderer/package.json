@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "theme:generate": "tsx scripts/generate-theme-css.mjs",
-    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/rich-text.test.mjs src/providers/shadcnui-blocks/*.test.mjs src/visual-parity/*.test.mjs",
-    "typecheck": "tsc --noEmit",
-    "visual:provider-parity": "tsx src/visual-parity/shadcnui-blocks-visual-parity.mjs"
+    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/rich-text.test.mjs src/anchors.test.mjs src/blocks/all-blocks.test.mjs src/chrome/navbar.test.mjs src/chrome/footer.test.mjs src/chrome/consent.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "exports": {
     ".": {
@@ -25,37 +24,42 @@
       "import": "./src/theme/index.tsx",
       "default": "./src/theme/index.tsx"
     },
+    "./theme/color-mode": {
+      "types": "./src/theme/color-mode.ts",
+      "import": "./src/theme/color-mode.ts",
+      "default": "./src/theme/color-mode.ts"
+    },
     "./theme/resolve": {
       "types": "./src/theme/resolve.ts",
       "import": "./src/theme/resolve.ts",
       "default": "./src/theme/resolve.ts"
     },
-    "./blocks/variants": {
-      "types": "./src/blocks/variants.ts",
-      "import": "./src/blocks/variants.ts",
-      "default": "./src/blocks/variants.ts"
+    "./hero-dither-effect": {
+      "types": "./src/blocks/hero/hero-dither-effect.ts",
+      "import": "./src/blocks/hero/hero-dither-effect.ts",
+      "default": "./src/blocks/hero/hero-dither-effect.ts"
     },
-    "./source-templates": {
-      "types": "./src/source-templates/index.ts",
-      "import": "./src/source-templates/index.ts",
-      "default": "./src/source-templates/index.ts"
+    "./hero-ambient-effect": {
+      "types": "./src/blocks/hero/hero-ambient-effect.ts",
+      "import": "./src/blocks/hero/hero-ambient-effect.ts",
+      "default": "./src/blocks/hero/hero-ambient-effect.ts"
+    },
+    "./hero-mesh-effect": {
+      "types": "./src/blocks/hero/hero-mesh-effect.ts",
+      "import": "./src/blocks/hero/hero-mesh-effect.ts",
+      "default": "./src/blocks/hero/hero-mesh-effect.ts"
     },
     "./styles.css": "./src/styles.css"
   },
   "dependencies": {
+    "@paper-design/shaders": "0.0.52",
     "@fontsource-variable/caveat": "^5.3.0",
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/nunito": "5.3.0",
-    "@number-flow/react": "^0.6.2",
-    "@paper-design/shaders-react": "^0.0.80",
-    "@radix-ui/react-visually-hidden": "^1.2.11",
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/ui": "workspace:*",
-    "lucide-react": "^1.31.0",
-    "motion": "^13.1.0",
-    "radix-ui": "1.6.7",
-    "recharts": "3.10.1"
+    "lucide-react": "^1.31.0"
   },
   "peerDependencies": {
     "react": "19.2.8",

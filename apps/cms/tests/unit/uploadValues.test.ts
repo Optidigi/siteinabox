@@ -33,15 +33,14 @@ describe("normalizePageBlockUploadIds", () => {
       {
         id: "cta-row",
         blockType: "cta",
-        backgroundImage: { id: "media-cta", alt: "CTA image" },
-        primary: { label: "Call", href: "/contact" },
+        image: { id: "media-cta", alt: "CTA image" },
+        primaryAction: { label: "Call", href: "/contact" },
       },
       {
-        id: "testimonials-row",
-        blockType: "testimonials",
-        items: [
-          { id: "item-a", quote: "A", avatar: { id: 3, alt: "Avatar" } },
-          { id: "item-b", quote: "B", avatar: null },
+        id: "work-row",
+        blockType: "work",
+        projects: [
+          { id: "project-a", sourceId: "project-a", title: "A", media: [{ id: "media-work", image: { id: 3, alt: "Project" } }] },
         ],
       },
     ]
@@ -57,15 +56,14 @@ describe("normalizePageBlockUploadIds", () => {
       {
         id: "cta-row",
         blockType: "cta",
-        backgroundImage: "media-cta",
-        primary: { label: "Call", href: "/contact" },
+        image: "media-cta",
+        primaryAction: { label: "Call", href: "/contact" },
       },
       {
-        id: "testimonials-row",
-        blockType: "testimonials",
-        items: [
-          { id: "item-a", quote: "A", avatar: 3 },
-          { id: "item-b", quote: "B", avatar: null },
+        id: "work-row",
+        blockType: "work",
+        projects: [
+          { id: "project-a", sourceId: "project-a", title: "A", media: [{ id: "media-work", image: 3 }] },
         ],
       },
     ])
@@ -85,21 +83,21 @@ describe("normalizePageBlockUploadIds", () => {
       {
         id: "cta-row",
         blockType: "cta",
-        primary: { label: "Contact", href: "#" },
-        secondary: { label: "Valid", href: "#contact" },
+        primaryAction: { label: "Contact", href: "#" },
+        secondaryAction: { label: "Valid", href: "#contact" },
       },
     ])).toEqual([
       {
         id: "cta-row",
         blockType: "cta",
-        primary: { label: "Contact", href: null },
-        secondary: { label: "Valid", href: "#contact" },
+        primaryAction: { label: "Contact", href: null },
+        secondaryAction: { label: "Valid", href: "#contact" },
       },
     ])
   })
 
   it("returns non-array values unchanged", () => {
-    const value = { blockType: "cta", backgroundImage: { id: 1 } }
+    const value = { blockType: "cta", image: { id: 1 } }
 
     expect(normalizePageBlockUploadIds(value)).toBe(value)
   })

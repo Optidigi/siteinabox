@@ -75,6 +75,22 @@ test("omits analytics config when snapshot settings have no analytics block", ()
   assert.equal(analyticsConfigJson(config), null)
 })
 
+test("omits analytics config when PostHog is explicitly disabled", () => {
+  const config = buildAnalyticsConfig({
+    snapshot: {
+      ...baseSnapshot,
+      settings: {
+        ...baseSnapshot.settings,
+        analytics: { ...baseSnapshot.settings.analytics, enabled: false },
+      },
+    },
+    page,
+    pathname: "/",
+  })
+
+  assert.equal(config, null)
+})
+
 test("ignores private-looking token aliases when a public token exists", () => {
   const config = buildAnalyticsConfig({
     snapshot: {

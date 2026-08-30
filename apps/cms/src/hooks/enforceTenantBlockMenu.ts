@@ -7,10 +7,9 @@ import { ALL_BLOCKS } from "@/blocks/registry"
  * blocks[] menu, fall back to every canonical block schema accepted by the
  * Payload collection so existing pages remain editable.
  *
- * Lives in Pages.hooks.beforeValidate alongside validateRichTextOnSave
- * because both validate content shape before Payload runs its own
- * schema validation. data.blocks is not a role-scoped field-stripped
- * value, so beforeValidate sees the full array regardless of caller role.
+ * Lives in Pages.hooks.beforeValidate because data.blocks is not a role-scoped
+ * field-stripped value, so beforeValidate sees the full array regardless of
+ * caller role.
  *
  * IMPORTANT: loadTenantManifest is loaded via dynamic import inside the
  * hook body, NOT a top-level static import. loadManifest statically
@@ -19,7 +18,7 @@ import { ALL_BLOCKS } from "@/blocks/registry"
  * Under esbuild's `__esm` bundling (dist-runtime/migrate-on-boot.bundled.mjs),
  * the inner `await init_payload_config()` returns the outer's still-pending
  * init Promise, deadlocking container boot with Node's "unsettled top-level
- * await" warning. Mirrors the deferred-import pattern in validateRichTextOnSave.ts.
+ * await" warning.
  */
 const extractTenantId = (raw: unknown): string | number | null => {
   if (raw == null) return null

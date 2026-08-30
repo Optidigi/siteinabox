@@ -18,6 +18,7 @@ import type { User } from "@/payload-types"
 import { EmailPreferencesSection, type TenantNotificationMemberView } from "@/components/email/EmailPreferencesSection"
 import { BillingAgreementSection } from "@/components/billing/BillingAgreementSection"
 import { DomainTransferOutSection } from "@/components/domains/DomainTransferOutSection"
+import { loadTenantManifest } from "@/lib/richText/loadManifest"
 
 export default async function TenantSettingsPage({
   searchParams,
@@ -73,6 +74,7 @@ export default async function TenantSettingsPage({
   ])
 
   const payload = await payloadPromise
+  const manifest = isOwner ? await loadTenantManifest(ctx.tenant.id) : null
   const members: TenantNotificationMemberView[] = await Promise.all(tenantMembers.docs
     .filter((member: User) => member.role === "owner" || member.role === "editor" || member.role === "viewer")
     .map(async (member) => {
@@ -146,6 +148,7 @@ export default async function TenantSettingsPage({
           initial={settings}
           canEdit
           settingsContract={resolveSettingsContract(ctx.tenant.siteManifest)}
+          manifest={manifest!}
         />
       )}
       {isOwner && <LegalAgreementsSection requirements={legalRequirements} acceptanceHistory={acceptanceHistory} locale={resolveLocale(user.language)} result={query.legal} />}

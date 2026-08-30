@@ -12,7 +12,7 @@ import {
   getGeoCities,
   getGeoCountries,
   getJourneySteps,
-  getProviderVariantRanking,
+  getVariantRanking,
   getSectionPerformance,
   getSiteAnalyticsOverview,
   getScrollDepth,
@@ -120,7 +120,7 @@ describe("analytics queries", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it("queries section performance by provider variant", async () => {
+  it("queries section performance by owned variant", async () => {
     process.env.POSTHOG_PROJECT_ID = "123"
     process.env.POSTHOG_PERSONAL_API_KEY = "phx_test"
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -129,7 +129,7 @@ describe("analytics queries", () => {
         results: [[
           "top",
           "hero",
-          "shadcnui-blocks.hero-01",
+          null,
           "/",
           14,
           9,
@@ -141,7 +141,7 @@ describe("analytics queries", () => {
     await expect(getSectionPerformance({ tenantId: 7 })).resolves.toEqual([{
       sectionId: "top",
       sectionType: "hero",
-      providerVariant: "shadcnui-blocks.hero-01",
+      variant: null,
       pagePath: "/",
       views: 14,
       engagements: 9,
@@ -150,11 +150,11 @@ describe("analytics queries", () => {
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
     expect(body.name).toBe("siab_section_performance")
-    expect(body.query.query).toContain("properties.provider_variant AS provider_variant")
-    expect(body.query.query).toContain("GROUP BY section_id, section_type, provider_variant, page_path")
+    expect(body.query.query).toContain("properties.variant AS variant")
+    expect(body.query.query).toContain("GROUP BY section_id, section_type, variant, page_path")
   })
 
-  it("queries and ranks cross-tenant provider variants using unique visitor outcomes", async () => {
+  it("queries and ranks cross-tenant variants using unique visitor outcomes", async () => {
     process.env.POSTHOG_PROJECT_ID = "123"
     process.env.POSTHOG_PERSONAL_API_KEY = "phx_test"
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -162,7 +162,7 @@ describe("analytics queries", () => {
       json: async () => ({
         results: [[
           "hero",
-          "shadcnui-blocks.hero-01",
+          "hero-variant",
           80,
           40,
           24,
@@ -177,10 +177,10 @@ describe("analytics queries", () => {
       }),
     } as Response)
 
-    await expect(getProviderVariantRanking({ days: 30 })).resolves.toEqual([
+    await expect(getVariantRanking({ days: 30 })).resolves.toEqual([
       expect.objectContaining({
         sectionType: "hero",
-        providerVariant: "shadcnui-blocks.hero-01",
+        variant: "hero-variant",
         exposedVisitors: 40,
         engagementRate: 0.5,
         interactionRate: 0.25,
@@ -191,7 +191,7 @@ describe("analytics queries", () => {
     ])
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
-    expect(body.name).toBe("siab_provider_variant_ranking")
+    expect(body.name).toBe("siab_variant_ranking")
     expect(body.query.query).toContain("uniqIf(person_id, event = 'site_section_viewed')")
     expect(body.query.query).toContain("coalesce(properties.site_kind, 'tenant') = 'tenant'")
     expect(body.query.query).not.toContain("properties.tenant_id =")

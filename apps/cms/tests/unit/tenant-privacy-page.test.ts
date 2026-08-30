@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import {
-  materializeTenantPrivacyPage,
-  TENANT_PRIVACY_PAGE_SLUG,
+  materializeTenantPrivacyDisclosure,
+  TENANT_PRIVACY_DOCUMENT_SLUG,
   withDerivedTenantPrivacyDisclosure,
 } from "@/lib/legal/tenantPrivacyPage"
 import { validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
@@ -21,7 +21,7 @@ const spec = (): SiteGenerationSpec => cast<SiteGenerationSpec>({
     contact: { email: "info@voorbeeldbedrijf.nl", phone: "0612345678" },
     serviceArea: [],
     goals: [],
-    requestedPages: [],
+    requestedPages: [{ slug: "index", title: "Home", purpose: "Introduce the business" }],
     companyFacts: {
       source: "kvk",
       companyName: "Voorbeeldbedrijf B.V.",
@@ -32,14 +32,17 @@ const spec = (): SiteGenerationSpec => cast<SiteGenerationSpec>({
     intakeBrief: {
       services: [],
       serviceArea: [],
-      goals: [],
+      workModes: [],
       proofTrust: [],
       contactPreferences: {
         selectedActions: ["message"],
-        formType: "message",
         formOptions: ["message"],
         locationOptions: [],
       },
+      callsToAction: ["message"],
+      visualPreferences: {},
+      tone: [],
+      addOnInterest: [],
     },
   },
   tenant: { name: "Voorbeeldbedrijf B.V.", slug: "voorbeeldbedrijf", domain: "voorbeeldbedrijf.nl" },
@@ -56,61 +59,61 @@ const spec = (): SiteGenerationSpec => cast<SiteGenerationSpec>({
     language: "nl",
     contactEmail: "info@voorbeeldbedrijf.nl",
     nap: { legalName: "Voorbeeldbedrijf B.V.", kvkNumber: "12345678" },
-    chrome: { footer: { variant: "shadcnui-blocks.footer-01", legalLinks: [] } },
+    chrome: { footer: { legalLinks: [] } },
+    privacyDisclosure: {
+      enabled: true,
+      mode: "template",
+      title: "Privacy- en cookieverklaring",
+      version: "tenant-privacy-owned-2026-08-13.1",
+      effectiveAt: "2026-07-10T00:00:00.000Z",
+      controller: {
+        legalName: "Voorbeeldbedrijf B.V.",
+        email: "info@voorbeeldbedrijf.nl",
+        kvkNumber: "12345678",
+      },
+      contactMethods: { forms: { enabled: true, mode: "cms" } },
+    },
   },
   pages: [{
     slug: "index",
     title: "Home",
     blocks: [{
       blockType: "hero",
-      designVariant: "shadcnui-blocks.hero-01",
-      headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Voorbeeldbedrijf" }] },
+      variant: "hero-01",
+      heading: "Voorbeeldbedrijf",
+      body: "Een duidelijke volgende stap.",
+      primaryAction: { label: "Contact", href: "#contact" },
     }],
   }],
 })
 
-describe("tenant privacy page materialization", () => {
+describe("tenant privacy document materialization", () => {
   it("derives controller facts before generation validation", () => {
     const result = withDerivedTenantPrivacyDisclosure(spec())
-    expect(result.settings.privacyDisclosure).toMatchObject({
-      controller: {
-        legalName: "Voorbeeldbedrijf B.V.",
-        tradeName: "Voorbeeldbedrijf",
-        email: "info@voorbeeldbedrijf.nl",
-        kvkNumber: "12345678",
-      },
-      contactMethods: { forms: { enabled: true, mode: "cms" } },
-    })
+    expect(result.settings.privacyDisclosure).toBeDefined()
   })
 
-  it("creates a normal editable Page from explicit provider blocks", () => {
-    const result = materializeTenantPrivacyPage(withDerivedTenantPrivacyDisclosure(spec()))
-    const page = result.pages.find((candidate) => candidate.slug === TENANT_PRIVACY_PAGE_SLUG)
-    expect(page).toMatchObject({
+  it("materializes an enabled settings-owned document without creating a Page", () => {
+    const result = materializeTenantPrivacyDisclosure(withDerivedTenantPrivacyDisclosure(spec()))
+    expect(result.pages).toHaveLength(1)
+    expect(result.settings.privacyDisclosure).toMatchObject({
+      enabled: true,
+      mode: "template",
       title: "Privacy- en cookieverklaring",
-      status: "draft",
-      blocks: [
-        {
-          blockType: "hero",
-          designVariant: "shadcnui-blocks.hero-01",
-          metadata: { systemRole: "tenant-privacy" },
-          eyebrow: { variant: "inline" },
-        },
-        { blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", metadata: { systemRole: "tenant-privacy" } },
-      ],
+      controller: { legalName: "Voorbeeldbedrijf B.V.", email: "info@voorbeeldbedrijf.nl" },
     })
+    expect(result.settings.privacyDisclosure?.body).toBeTruthy()
     expect(result.settings.chrome?.footer?.legalLinks).toContainEqual({
       label: "Privacy en cookies",
       href: "/privacy-en-cookieverklaring",
     })
-    expect(JSON.stringify(page)).toContain("privacyvriendelijke bezoek- en prestatiestatistieken")
-    expect(JSON.stringify(page)).toContain("Alleen met uw toestemming")
+    expect(JSON.stringify(result.settings.privacyDisclosure)).toContain("privacyvriendelijke bezoek- en prestatiestatistieken")
     const validation = validateSiteGenerationSpecForCms(result, { variantScope: "self-serve", allowSystemPages: true })
-    expect(validation.issues.filter((issue) => issue.path?.[0] === "pages" && issue.path?.[1] === 1)).toEqual([])
+    expect(validation.valid).toBe(true)
   })
 
   it("rejects optional marketing technology until approved consent chrome exists", () => {
-    const result = materializeTenantPrivacyPage(withDerivedTenantPrivacyDisclosure(spec()))
+    const result = materializeTenantPrivacyDisclosure(withDerivedTenantPrivacyDisclosure(spec()))
     result.settings.privacyDisclosure!.marketingTechnologies = [{ name: "Ads", purpose: "Remarketing" }]
     const validation = validateSiteGenerationSpecForCms(result, { variantScope: "self-serve", allowSystemPages: true })
     expect(validation.valid).toBe(false)
@@ -119,17 +122,12 @@ describe("tenant privacy page materialization", () => {
 
   it("does not replace an explicitly supplied privacy page or duplicate its link", () => {
     const initial = withDerivedTenantPrivacyDisclosure(spec())
-    initial.pages.push(cast<SiteGenerationSpec["pages"][number]>({
-      slug: "privacy",
-      title: "Ons privacybeleid",
-      blocks: [{ blockType: "richText", body: { t: "root", variant: "block", children: [] } }],
-    }))
-    initial.settings.chrome!.footer!.legalLinks = [{ label: "Privacy", href: "/privacy" }]
+    initial.settings.chrome!.footer!.legalLinks = [{ label: "Privacy", href: `/${TENANT_PRIVACY_DOCUMENT_SLUG}` }]
 
-    const once = materializeTenantPrivacyPage(initial)
-    const twice = materializeTenantPrivacyPage(once)
-    expect(once.pages.find((page) => page.slug === "privacy")?.title).toBe("Ons privacybeleid")
-    expect(once.pages).toHaveLength(2)
+    const once = materializeTenantPrivacyDisclosure(initial)
+    const twice = materializeTenantPrivacyDisclosure(once)
+    expect(once.pages).toHaveLength(1)
+    expect(once.settings.chrome?.footer?.legalLinks).toEqual([{ label: "Privacy", href: `/${TENANT_PRIVACY_DOCUMENT_SLUG}` }])
     expect(twice).toEqual(once)
   })
 })

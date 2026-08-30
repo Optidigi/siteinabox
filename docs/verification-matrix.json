@@ -22,7 +22,6 @@
       "workflow-path-matrix",
       "contracts-test",
       "site-renderer-test",
-      "provider-cutover",
       "legal-check",
       "legal-test",
       "cms-generate-types",
@@ -46,8 +45,7 @@
       "renderer-typecheck",
       "renderer-test",
       "renderer-build",
-      "renderer-analytics-browser",
-      "renderer-provider-browser"
+      "renderer-analytics-browser"
     ]
   },
   "checks": [
@@ -61,7 +59,6 @@
     { "id": "workflow-path-matrix", "command": "pnpm workflow:check", "run": ["pnpm", "workflow:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
     { "id": "contracts-test", "command": "pnpm --dir packages/contracts test", "run": ["pnpm", "--dir", "packages/contracts", "test"], "owner": "packages/contracts", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
     { "id": "site-renderer-test", "command": "pnpm --dir packages/site-renderer test", "run": ["pnpm", "--dir", "packages/site-renderer", "test"], "owner": "packages/site-renderer", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "provider-cutover", "command": "pnpm run audit:provider-cutover", "run": ["pnpm", "run", "audit:provider-cutover"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
     { "id": "legal-check", "command": "pnpm legal:check", "run": ["pnpm", "legal:check"], "owner": "packages/legal-content", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
     { "id": "legal-test", "command": "pnpm --dir packages/legal-content test", "run": ["pnpm", "--dir", "packages/legal-content", "test"], "owner": "packages/legal-content", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
     { "id": "cms-generate-types", "command": "pnpm --dir apps/cms payload generate:types", "run": ["pnpm", "--dir", "apps/cms", "payload", "generate:types"], "owner": "apps/cms", "ciJob": "cms-quality", "env": { "PAYLOAD_SECRET": "ci-placeholder", "DATABASE_URI": "postgres://placeholder@placeholder/placeholder" }, "prerequisites": ["pnpm install --frozen-lockfile", "Payload placeholder environment"], "risk": "medium" },
@@ -85,7 +82,6 @@
     { "id": "renderer-typecheck", "command": "pnpm renderer:typecheck", "run": ["pnpm", "renderer:typecheck"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
     { "id": "renderer-test", "command": "pnpm renderer:test", "run": ["pnpm", "renderer:test"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
     { "id": "renderer-build", "command": "pnpm renderer:build", "run": ["pnpm", "renderer:build"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
-    { "id": "renderer-analytics-browser", "command": "pnpm --dir apps/renderer test:analytics-browser", "run": ["pnpm", "--dir", "apps/renderer", "test:analytics-browser"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "high" },
-    { "id": "renderer-provider-browser", "command": "pnpm --dir apps/renderer test:provider-browser", "run": ["pnpm", "--dir", "apps/renderer", "test:provider-browser"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "high" }
+    { "id": "renderer-analytics-browser", "command": "pnpm --dir apps/renderer test:analytics-browser", "run": ["pnpm", "--dir", "apps/renderer", "test:analytics-browser"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "high" }
   ]
 }

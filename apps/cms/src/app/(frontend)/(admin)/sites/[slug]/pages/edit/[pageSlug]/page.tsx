@@ -37,7 +37,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
   if (!page) notFound()
   if (!settings) notFound()
   if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
-  const { inHeader, inFooter } = pageNavMembership(settings, Number(page.id))
+  const { inNavbar, inFooter } = pageNavMembership(settings, Number(page.id))
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open", managedTenant: tenant })
   return (
     <div className="flex flex-col gap-4">
@@ -60,7 +60,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav
         canEditSettings
-        inHeaderNav={inHeader}
+        inNavbarNav={inNavbar}
         inFooterNav={inFooter}
       />
     </div>

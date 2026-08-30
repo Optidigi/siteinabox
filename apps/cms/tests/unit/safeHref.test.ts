@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { CTA } from "@/blocks/CTA"
+import { Cta } from "@/blocks/Cta"
 import { Hero } from "@/blocks/Hero"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { isSafeHref, validateSafeHref } from "@/lib/security/safeHref"
@@ -23,8 +23,9 @@ const siteSettingsField = (name: string) =>
   cast<MockDoc[]>(SiteSettings.fields).find((field) => field.name === name) as MockDoc & { fields: MockDoc[] }
 
 const navUrlField = () => {
-  const navHeader = siteSettingsField("navHeader")
-  return navHeader.fields.find((field) => field.name === "url") as MockDoc
+  const navigation = siteSettingsField("navigation")
+  const primary = navigation.fields.find((field) => field.name === "primary") as MockDoc & { fields: MockDoc[] }
+  return primary.fields.find((field) => field.name === "url") as MockDoc
 }
 
 const socialUrlField = () => {
@@ -53,10 +54,10 @@ describe("safe CMS href validation", () => {
   })
 
   it("is wired into Hero and CTA href fields", () => {
-    expect(validate(groupField(Hero, "cta", "href"))("javascript:alert(1)")).not.toBe(true)
-    expect(validate(groupField(Hero, "cta", "href"))("/contact")).toBe(true)
-    expect(validate(groupField(CTA, "primary", "href"))("data:text/html,<p>x</p>")).not.toBe(true)
-    expect(validate(groupField(CTA, "secondary", "href"))("mailto:hi@example.test")).toBe(true)
+    expect(validate(groupField(Hero, "primaryAction", "href"))("javascript:alert(1)")).not.toBe(true)
+    expect(validate(groupField(Hero, "primaryAction", "href"))("/contact")).toBe(true)
+    expect(validate(groupField(Cta, "primaryAction", "href"))("data:text/html,<p>x</p>")).not.toBe(true)
+    expect(validate(groupField(Cta, "secondaryAction", "href"))("mailto:hi@example.test")).toBe(true)
   })
 
   it("is wired into custom navigation and social URL fields", () => {
@@ -82,14 +83,14 @@ describe("safe CMS href validation", () => {
       slug: "home",
       updatedAt: "2026-06-03T00:00:00.000Z",
       blocks: [
-        { blockType: "hero", cta: { label: "Bad", href: "javascript:alert(1)" } },
-        { blockType: "cta", primary: { label: "Bad", href: "data:text/html,<p>x</p>" }, secondary: { label: "Good", href: " /contact " } },
+        { blockType: "hero", primaryAction: { label: "Bad", href: "javascript:alert(1)" } },
+        { blockType: "cta", primaryAction: { label: "Bad", href: "data:text/html,<p>x</p>" }, secondaryAction: { label: "Good", href: " /contact " } },
       ],
     }))
 
-    expect(jsonBlockAt(json, 0).cta).toEqual({ label: "Bad" })
-    expect(jsonBlockAt(json, 1).primary).toEqual({ label: "Bad" })
-    expect(jsonBlockAt(json, 1).secondary).toEqual({ label: "Good", href: "/contact" })
+    expect(jsonBlockAt(json, 0).primaryAction).toEqual({ label: "Bad" })
+    expect(jsonBlockAt(json, 1).primaryAction).toEqual({ label: "Bad" })
+    expect(jsonBlockAt(json, 1).secondaryAction).toEqual({ label: "Good", href: "/contact" })
   })
 
   it("defensively omits unsafe social URLs from settings projection", () => {

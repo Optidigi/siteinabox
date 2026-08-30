@@ -2,32 +2,11 @@
 import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
-import type { RtRoot } from "@siteinabox/contracts"
 import { createEditorSelectSlots } from "@/lib/editor/createEditorSelectSlots"
 
-const rt: RtRoot = {
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: "Hello field" }],
-}
-
 describe("createEditorSelectSlots", () => {
-  it("emits data-siab-field on rich text, cta, and image slots", () => {
+  it("emits data-siab-field on cta and image slots", () => {
     const slots = createEditorSelectSlots()
-
-    const rich = renderToStaticMarkup(
-      <>
-        {slots.renderRichText?.({
-          name: "hero.headline",
-          value: rt,
-          variant: "inline",
-          as: "span",
-          elementPath: { blockIndex: 0, field: "headline" },
-        })}
-      </>,
-    )
-    expect(rich).toContain('data-siab-field="headline"')
-    expect(rich).toContain("Hello field")
 
     const cta = renderToStaticMarkup(
       <>
@@ -62,17 +41,17 @@ describe("createEditorSelectSlots", () => {
     const icon = renderToStaticMarkup(
       <>
         {slots.renderIcon?.({
-          name: "featureList.features.icon",
+          name: "services.items.title",
           value: "heart",
           icon: Icon as never,
           className: "size-5",
-          elementPath: { blockIndex: 0, field: "features", itemIndex: 1, subField: "icon" },
+          elementPath: { blockIndex: 0, field: "items", itemIndex: 1, subField: "title" },
         })}
       </>,
     )
-    expect(icon).toContain('data-siab-field="features"')
+    expect(icon).toContain('data-siab-field="items"')
     expect(icon).toContain('data-siab-item-index="1"')
-    expect(icon).toContain('data-siab-sub-field="icon"')
+    expect(icon).toContain('data-siab-sub-field="title"')
     expect(icon).toContain("size-5")
   })
 })

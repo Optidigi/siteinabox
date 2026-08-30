@@ -22,7 +22,6 @@ const ALLOWED_CSS_FILES = new Set([
   "src/styles/shadcn.css",
   "src/styles/site-renderer-preview.css",
   "src/styles/siab.css",
-  "packages/ui/src/providers/shadcnui-blocks/radix-nova/tailwind.css",
   "packages/ui/src/styles/shadcn.css",
 ])
 

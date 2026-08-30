@@ -1,8 +1,8 @@
 import type {
   ColorRamp,
   FontScheme,
-  ProviderColorScheme,
-  ProviderColorSchemeMode,
+  ColorScheme,
+  ColorSchemeMode,
   ShapeScheme,
   ThemeTokenSpec,
 } from "@siteinabox/contracts"
@@ -166,33 +166,33 @@ const semanticColors = (accent: ColorRamp, dark: boolean): SemanticColors => ({
   onMedia: "#ffffff",
 })
 
-// Colored canvas wash (page `--background`): perceptible brand tint without
- // competing with content. Monochrome stays pure white/near-black.
- // Light ≈ soft pastel paper; dark ≈ slightly lifted chroma on the same L.
-const TINTED_SURFACE_LIGHT = (hue: number) => `oklch(0.980 0.025 ${hue})`
-const TINTED_SURFACE_DARK = (hue: number) => `oklch(0.150 0.030 ${hue})`
+// Keep the page canvas strictly neutral in both modes. The selected brand
+// remains available through primary, borders, icons, and intentional effects;
+// it should not tint the base body surface.
+const NEUTRAL_SURFACE_LIGHT = "oklch(0.985 0 0)"
+const NEUTRAL_SURFACE_DARK = "oklch(0.145 0 0)"
 
 const tintedMode = (
   accent: ColorRamp,
   accentSecondary: ColorRamp,
   hue: number,
   dark: boolean,
-): ProviderColorSchemeMode => dark
+): ColorSchemeMode => dark
   ? {
       neutral: grayDark,
       accent,
       accentSecondary,
-      surface: TINTED_SURFACE_DARK(hue),
+      surface: NEUTRAL_SURFACE_DARK,
       ink: "oklch(0.985 0.002 260)",
       muted: "oklch(0.708 0.012 260)",
-      rule: `oklch(0.985 0.01 ${hue} / 12%)`,
+      rule: "oklch(0.985 0.002 260 / 12%)",
       onAccent: "#ffffff",
     }
   : {
       neutral: gray,
       accent,
       accentSecondary,
-      surface: TINTED_SURFACE_LIGHT(hue),
+      surface: NEUTRAL_SURFACE_LIGHT,
       ink: "oklch(0.145 0.004 260)",
       muted: "oklch(0.48 0.012 260)",
       rule: `oklch(0.89 0.012 ${hue})`,
@@ -262,7 +262,7 @@ export const colorSchemes = {
     light: tintedMode(terracotta, slate, 35, false),
     dark: tintedMode(terracotta, slate, 35, true),
   },
-} as const satisfies Record<string, ProviderColorScheme>
+} as const satisfies Record<string, ColorScheme>
 
 export const fontSchemes = {
   "clear-modern": {
@@ -295,8 +295,8 @@ export type ResolvedTheme = {
   version: 3
   mode: "light" | "dark" | "system"
   systemFallbackMode: "light" | "dark"
-  light: ProviderColorSchemeMode
-  dark: ProviderColorSchemeMode
+  light: ColorSchemeMode
+  dark: ColorSchemeMode
   fonts: FontScheme
   shape: ShapeScheme
   semantic: { light: SemanticColors; dark: SemanticColors }

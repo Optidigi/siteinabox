@@ -66,8 +66,7 @@ export type AnalyticsSectionProperties = {
   section_type: string
   section_position: number
   section_anchor: string | null
-  provider_variant: string | null
-  block_preset_id: string | null
+  variant: string | null
   content_signature: string | null
 }
 

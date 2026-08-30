@@ -15,24 +15,26 @@ import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { MobileBackPill } from "@/components/common/mobile-back-pill"
 import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
+import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/save-ui/unsaved-changes-dialog"
 import { parsePayloadError } from "@/lib/api"
 import { countLeafDirty } from "@/lib/countLeafDirty"
 import { countLeafErrors } from "@/lib/countLeafErrors"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { ArrowLeft, Download, Image, Settings as SettingsIcon, ShieldCheck } from "lucide-react"
+import { ArrowLeft, Download, FileText, Image, Settings as SettingsIcon, ShieldCheck } from "lucide-react"
 import { normalizeUploadId } from "@/lib/uploadValues"
 import { DEFAULT_CLIENT_SETTINGS_CONTRACT, type SettingsContract } from "@/lib/settingsContract"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
 import type { SiteSetting } from "@/payload-types"
 import { MediaRefSchema } from "@siteinabox/contracts"
+import type { RtManifest } from "@/lib/richText/manifest"
 
 // OBS-81 — Settings is client-facing and intentionally slim by default:
-// General, Brand, and Operations (including cookie banner copy). Legal details,
-// opening hours, and header/footer-specific content stay out of this surface
-// until there is a clearer SIAB-wide contract for them.
+// General, Brand, Operations, and the explicit settings-owned legal document.
+// Navbar, footer, announcement, consent, and system-template presentation stay
+// reserved until their numbered first-party designs exist.
 //
 // FN-2026-0067 — Navigation tab removed; nav management is moving to a
 // dedicated /sites/<slug>/nav route (header + footer scopes, page-driven
@@ -62,30 +64,55 @@ const createSettingsSchema = (t: (key: string, values?: Record<string, string | 
       z.null()
     ]).optional()
   }).passthrough().optional(),
-  chrome: z.object({
-    footer: z.object({
-      tagline: z.string().nullish(),
-      copyright: z.string().nullish(),
-    }).passthrough().optional(),
-    banner: z.object({
-      title: z.string().nullish(),
-      message: z.string().nullish(),
-    }).passthrough().optional(),
-  }).passthrough().optional(),
   maintenance: z.object({
     enabled: z.boolean().optional(),
     message: z.string().nullish(),
   }).passthrough().optional(),
+  privacyDisclosure: z.object({
+    enabled: z.boolean().optional(),
+    mode: z.enum(["template", "custom"]).nullish(),
+    title: z.string().nullish(),
+    body: z.unknown().nullish(),
+    version: z.string().nullish(),
+    effectiveAt: z.string().nullish(),
+    controller: z.object({
+      legalName: z.string().nullish(),
+      tradeName: z.string().nullish(),
+      email: z.union([
+        z.string().email(t("validation.emailInvalid")),
+        z.literal(""),
+        z.null(),
+      ]).optional(),
+      privacyEmail: z.union([
+        z.string().email(t("validation.emailInvalid")),
+        z.literal(""),
+        z.null(),
+      ]).optional(),
+      kvkNumber: z.string().nullish(),
+      address: z.string().nullish(),
+    }).passthrough().optional(),
+    contactMethods: z.object({
+      email: z.boolean().optional(),
+      phone: z.boolean().optional(),
+      whatsapp: z.boolean().optional(),
+      forms: z.object({
+        enabled: z.boolean().optional(),
+        mode: z.enum(["direct", "forwarded", "cms"]).nullish(),
+      }).passthrough().optional(),
+    }).passthrough().optional(),
+  }).passthrough().optional(),
 }).passthrough()
 
 type Values = z.infer<ReturnType<typeof createSettingsSchema>>
-type SectionKey = "general" | "brand" | "operations"
+type SectionKey = "general" | "brand" | "operations" | "legal"
 type SettingsFormField = {
   name?: string
   type: string
   label: string
   relationTo?: string
-  admin?: { description?: string }
+  required?: boolean
+  options?: Array<{ value: string; label: string }>
+  admin?: { description?: string; editor?: string }
   fields?: SettingsFormField[]
 }
 type SettingsFormInitial = (Values | SiteSetting) & { id: number | string }
@@ -94,19 +121,34 @@ export function SettingsForm({
   initial,
   canEdit,
   settingsContract = DEFAULT_CLIENT_SETTINGS_CONTRACT,
+  manifest,
 }: {
   initial: SettingsFormInitial
   canEdit: boolean
   settingsContract?: SettingsContract
+  manifest: RtManifest
 }) {
   const router = useRouter()
   const t = useTranslations("settings")
   const tCommon = useTranslations("common")
   const status = useStatusFeedback()
   const settingsSchema = createSettingsSchema(t)
+  const initialValues = {
+    ...initial,
+    privacyDisclosure: {
+      ...initial.privacyDisclosure,
+      enabled: initial.privacyDisclosure?.enabled ?? false,
+      mode: initial.privacyDisclosure?.mode ?? "template",
+      title: initial.privacyDisclosure?.title ?? "Privacy- en cookieverklaring",
+      body: initial.privacyDisclosure?.body ?? undefined,
+      version: initial.privacyDisclosure?.version ?? "tenant-privacy-owned-2026-08-13.1",
+      effectiveAt: initial.privacyDisclosure?.effectiveAt ?? "2026-07-10T00:00:00.000Z",
+      controller: initial.privacyDisclosure?.controller ?? {},
+    },
+  } as Values
   const form = useForm<Values>({
     resolver: zodResolver(settingsSchema) as Resolver<Values>,
-    defaultValues: initial as Values,
+    defaultValues: initialValues,
   })
   const [pending, setPending] = useState(false)
   const [section, setSection] = useState<SectionKey>("general")
@@ -212,23 +254,6 @@ export function SettingsForm({
   ].filter(Boolean) as SettingsFormField[]
 
   const operationsFields = [
-    {
-      type: "group",
-      name: "chrome",
-      label: t("cookies"),
-      admin: { description: t("cookiesDescription") },
-      fields: [
-        {
-          type: "group",
-          name: "banner",
-          label: t("cookies"),
-          fields: [
-            { name: "title", type: "text", label: t("cookieTitle") },
-            { name: "message", type: "textarea", label: t("cookieMessage") },
-          ],
-        },
-      ],
-    },
     settingsContract.operations.maintenance
       ? { type: "group", name: "maintenance", label: t("maintenance"), fields: [
           { name: "enabled", type: "checkbox", label: t("maintenanceEnabled") },
@@ -237,10 +262,57 @@ export function SettingsForm({
       : null,
   ].filter(Boolean) as SettingsFormField[]
 
+  const legalFields = [
+    {
+      type: "group",
+      name: "privacyDisclosure",
+      label: t("privacyDisclosure"),
+      admin: { description: t("privacyDisclosureDescription") },
+      fields: [
+        { name: "enabled", type: "checkbox", label: t("privacyDisclosureEnabled") },
+        {
+          name: "mode",
+          type: "select",
+          label: t("privacyDisclosureMode"),
+          options: [
+            { value: "template", label: t("privacyDisclosureTemplate") },
+            { value: "custom", label: t("privacyDisclosureCustom") },
+          ],
+        },
+        { name: "title", type: "text", label: t("privacyDisclosureTitle") },
+        {
+          name: "body",
+          type: "json",
+          label: t("privacyDisclosureBody"),
+          admin: {
+            editor: "richTextBlock",
+            description: t("privacyDisclosureBodyDescription"),
+          },
+        },
+        { name: "version", type: "text", label: t("privacyDisclosureVersion") },
+        { name: "effectiveAt", type: "text", label: t("privacyDisclosureEffectiveAt") },
+        {
+          type: "group",
+          name: "controller",
+          label: t("privacyDisclosureController"),
+          fields: [
+            { name: "legalName", type: "text", label: t("privacyDisclosureLegalName") },
+            { name: "tradeName", type: "text", label: t("privacyDisclosureTradeName") },
+            { name: "email", type: "email", label: t("privacyDisclosureEmail") },
+            { name: "privacyEmail", type: "email", label: t("privacyDisclosurePrivacyEmail") },
+            { name: "kvkNumber", type: "text", label: t("privacyDisclosureKvkNumber") },
+            { name: "address", type: "textarea", label: t("privacyDisclosureAddress") },
+          ],
+        },
+      ],
+    },
+  ] as SettingsFormField[]
+
   const sections = [
     { key: "general" as const, label: t("general"), Icon: SettingsIcon, fields: generalFields },
     { key: "brand" as const, label: t("brand"), Icon: Image, fields: brandFields },
     { key: "operations" as const, label: t("operations"), Icon: ShieldCheck, fields: operationsFields },
+    { key: "legal" as const, label: t("legalDocuments"), Icon: FileText, fields: legalFields },
   ].filter((candidate) => candidate.key !== "brand" || brandFields.length > 0)
 
   const goBack = () => router.back()
@@ -267,7 +339,8 @@ export function SettingsForm({
   })
 
   return (
-    <FormProvider {...form}>
+    <RtManifestProvider manifest={manifest}>
+      <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="flex max-w-3xl flex-col gap-4">
         {/* Toolbar row — section switch (left) + Save (right). Mirrors the
             navigation page shell: a SegmentedPill inside the shared
@@ -354,6 +427,7 @@ export function SettingsForm({
           )}
         </>
       )}
-    </FormProvider>
+      </FormProvider>
+    </RtManifestProvider>
   )
 }

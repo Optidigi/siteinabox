@@ -1,6 +1,7 @@
 import type * as React from "react"
 import type { LucideIcon } from "lucide-react"
-import type { Block, MediaRef, RtRoot, SiteSettings } from "@siteinabox/contracts"
+import type { Block, MediaRef, SiteSettings } from "@siteinabox/contracts"
+import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import type { MediaResolver } from "../media"
 
 export type RendererElementPath = {
@@ -16,23 +17,13 @@ export type RendererDataAttributes = {
 
 export type RendererSectionAttributes = React.ComponentPropsWithoutRef<"section"> & RendererDataAttributes
 
-export type RendererRichTextSlotProps = {
-  name: string
-  value: RtRoot | null | undefined
-  variant: "block" | "inline"
-  as?: keyof React.JSX.IntrinsicElements
-  className?: string
-  placeholder?: string
-  elementPath: RendererElementPath
-  allowFontFamily?: boolean
-  blockMode?: "normal" | "inline" | "text"
-}
-
 export type RendererCtaSlotProps = {
   name: string
-  value?: { label?: string | null; href?: string | null } | null
+  value?: { label?: string | null; href?: string | null; external?: boolean } | null
   className?: string
   style?: React.CSSProperties
+  /** Decorative directional affordance required to keep editor/public CTA parity. */
+  showArrow?: boolean
   emptyLabel?: string
   actionAttributes?: Record<string, string>
   elementPath: RendererElementPath
@@ -56,7 +47,7 @@ export type RendererImageSlotProps = {
 export type RendererIconSlotProps = {
   name: string
   value?: string | null
-  /** Pre-resolved Lucide icon (preferred when variants use catalog fallbacks). */
+  /** Pre-resolved Lucide icon supplied by the editor integration. */
   icon?: LucideIcon | null
   className?: string
   triggerClassName?: string
@@ -75,7 +66,6 @@ export type RendererTextSlotProps = {
 }
 
 export type BlockEditSlots = {
-  renderRichText?: (props: RendererRichTextSlotProps) => React.ReactNode
   renderCta?: (props: RendererCtaSlotProps) => React.ReactNode
   renderImage?: (props: RendererImageSlotProps) => React.ReactNode
   renderIcon?: (props: RendererIconSlotProps) => React.ReactNode
@@ -85,15 +75,16 @@ export type BlockEditSlots = {
 export type BlockRenderOptions = {
   index: number
   mediaResolver?: MediaResolver
+  /** Preview/editor-only override for comparison surfaces that intentionally show many heroes at once. */
+  imageLoading?: "eager" | "lazy"
   formAction?: string
   editSlots?: BlockEditSlots
   sectionAttributes?: RendererSectionAttributes
   siteSettings?: SiteSettings
+  theme?: ThemeTokenSpec | null
 }
 
 export type BlockRendererComponent<TBlock extends Block = Block> = (props: {
   block: TBlock
   options: BlockRenderOptions
 }) => React.ReactNode
-
-export type BlockRegistry = Partial<Record<Block["blockType"], BlockRendererComponent>>

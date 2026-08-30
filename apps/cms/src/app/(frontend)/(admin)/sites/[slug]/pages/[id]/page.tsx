@@ -45,7 +45,7 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
   // OBS-21 — nav membership for the page-editor toggles. This route is
   // super-admin-only (requireRole above), so nav management is always allowed.
-  const { inHeader, inFooter } = pageNavMembership(settings, Number(page.id))
+  const { inNavbar, inFooter } = pageNavMembership(settings, Number(page.id))
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open", managedTenant: tenant })
   return (
     <div className="flex flex-col gap-4">
@@ -74,7 +74,7 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
         rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav
         canEditSettings
-        inHeaderNav={inHeader}
+        inNavbarNav={inNavbar}
         inFooterNav={inFooter}
       />
     </div>

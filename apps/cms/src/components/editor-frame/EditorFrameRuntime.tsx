@@ -16,6 +16,10 @@ import {
   ClientSitePageRenderer,
   applyThemeAttributes,
   createRendererMediaResolver,
+  initializeHeroAmbientEffectsWhenPresent,
+  initializeHeroDitherEffects,
+  initializeHeroMeshEffectsWhenPresent,
+  initializeNavbarBehavior,
   prepareClientSiteRenderer,
   type PreparedClientSiteRenderer,
 } from "@siteinabox/site-renderer"
@@ -23,10 +27,6 @@ import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { createEditorSelectSlots } from "@/lib/editor/createEditorSelectSlots"
 import { elementPathFromFieldElement, elementPathToIframeSelection } from "@/lib/editor/elementPathBridge"
-
-const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav], header[data-provider-variant]'
-const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome, footer[data-provider-variant]'
-const CHROME_HOVER_SELECTOR = `${HEADER_CHROME_SELECTOR}, ${FOOTER_CHROME_SELECTOR}`
 
 function selectionKey(selection: IframeEditorSelection | null): string {
   if (!selection) return ""
@@ -73,7 +73,7 @@ export function EditorFrameRuntime({
   const themeCleanupRef = React.useRef<(() => void) | null>(null)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
   const selectSlots = React.useMemo(() => createEditorSelectSlots(), [])
-  const variantKey = framePage.blocks.map((block) => `${block.blockType}:${block.designVariant ?? ""}`).join("|")
+  const blockKey = framePage.blocks.map((block) => block.blockType).join("|")
   const [prepared, setPrepared] = React.useState<{ key: string; renderer: PreparedClientSiteRenderer } | null>(null)
   const lastPaintedRef = React.useRef<{
     key: string
@@ -82,7 +82,6 @@ export function EditorFrameRuntime({
     settings: SiteSettings
     theme: ThemeTokenSpec | null
     blockIndexOffset: number
-    showChrome: boolean
   } | null>(null)
   const appliedSelectionKeyRef = React.useRef<string>("")
   const revealSelectionRef = React.useRef(false)
@@ -135,10 +134,40 @@ export function EditorFrameRuntime({
 
   // Re-apply after the canvas mounts (prepare can finish after the first theme patch).
   React.useLayoutEffect(() => {
-    if (!prepared || prepared.key !== variantKey) return
+    if (!prepared || prepared.key !== blockKey) return
     themeCleanupRef.current?.()
     themeCleanupRef.current = applyThemeAttributes(document, frameTheme)
-  }, [frameTheme, prepared, variantKey])
+  }, [blockKey, frameTheme, prepared])
+
+  React.useEffect(() => {
+    if (!prepared || prepared.key !== blockKey) return
+    const navbarCleanup = initializeNavbarBehavior(document, { colorModeAuthority: "theme" })
+    const ditherCleanup = initializeHeroDitherEffects(document)
+    let ambientCleanup: (() => void) | null = null
+    let meshCleanup: (() => void) | null = null
+    let cancelled = false
+    void initializeHeroAmbientEffectsWhenPresent(document).then((cleanup) => {
+      if (cancelled) {
+        cleanup?.()
+        return
+      }
+      ambientCleanup = cleanup
+    })
+    void initializeHeroMeshEffectsWhenPresent(document).then((cleanup) => {
+      if (cancelled) {
+        cleanup?.()
+        return
+      }
+      meshCleanup = cleanup
+    })
+    return () => {
+      cancelled = true
+      navbarCleanup()
+      ditherCleanup()
+      ambientCleanup?.()
+      meshCleanup?.()
+    }
+  }, [blockKey, frameSettings, frameTheme, prepared])
 
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -223,11 +252,11 @@ export function EditorFrameRuntime({
   }, [patchTheme])
 
   React.useEffect(() => {
-    if (prepared?.key === variantKey) return
+    if (prepared?.key === blockKey) return
     let cancelled = false
     void prepareClientSiteRenderer({ page: framePage, settings: frameSettings, tenantSlug, domain })
       .then((renderer) => {
-        if (!cancelled) setPrepared({ key: variantKey, renderer })
+        if (!cancelled) setPrepared({ key: blockKey, renderer })
       })
       .catch((error: unknown) => {
         if (cancelled) return
@@ -241,10 +270,10 @@ export function EditorFrameRuntime({
         })
       })
     return () => { cancelled = true }
-  }, [domain, emit, framePage, frameSettings, prepared?.key, tenantSlug, variantKey])
+  }, [blockKey, domain, emit, framePage, frameSettings, prepared?.key, tenantSlug])
 
   React.useEffect(() => {
-    if (!prepared || prepared.key !== variantKey) return
+    if (!prepared || prepared.key !== blockKey) return
     let cancelled = false
     let readyInterval: number | undefined
 
@@ -279,7 +308,7 @@ export function EditorFrameRuntime({
       cancelled = true
       if (readyInterval != null) window.clearInterval(readyInterval)
     }
-  }, [emit, page.id, page.slug, prepared, variantKey])
+  }, [blockKey, emit, page.id, page.slug, prepared])
 
   React.useEffect(() => {
     const clearHover = () => {
@@ -288,11 +317,11 @@ export function EditorFrameRuntime({
         hoverNodeRef.current = null
       }
     }
-    const setHover = (node: HTMLElement | null, kind: "field" | "block" | "chrome") => {
+    const setHover = (node: HTMLElement | null, kind: "field" | "block") => {
       if (hoverNodeRef.current === node) return
       clearHover()
       if (!node) return
-      // Do not paint hover over the active selection — solid selected chrome wins.
+      // Do not paint hover over the active selection.
       if (
         node.hasAttribute("data-siab-editor-selected")
         || node.hasAttribute("data-siab-editor-field-selected")
@@ -319,11 +348,6 @@ export function EditorFrameRuntime({
         setHover(blockNode, "block")
         return
       }
-      const chromeNode = target.closest<HTMLElement>(CHROME_HOVER_SELECTOR)
-      if (chromeNode) {
-        setHover(chromeNode, "chrome")
-        return
-      }
       clearHover()
     }
     const onPointerLeave = () => clearHover()
@@ -342,26 +366,9 @@ export function EditorFrameRuntime({
       const target = event.target instanceof Element ? event.target : null
       if (!target) return
 
-      // Edit-mode iframe: links/forms are inert; clicks delegate selection or chrome
-      // to the parent. Preview runtime (renderer-frame) instead emits navigation.requested.
+      // Edit-mode iframe: links/forms are inert; clicks delegate block selection
+      // to the parent. Preview runtime (renderer-frame) emits navigation.requested.
       if (target.closest("a[href], button, form")) event.preventDefault()
-
-      const headerNode = target.closest<HTMLElement>(HEADER_CHROME_SELECTOR)
-      const footerNode = target.closest<HTMLElement>(FOOTER_CHROME_SELECTOR)
-      if (headerNode || footerNode) {
-        const zone: "header" | "footer" = headerNode ? "header" : "footer"
-        const selection = { pageId, fieldPath: ["chrome", zone] as const }
-        revealSelectionRef.current = false
-        setActiveSelection(selection)
-        emit({
-          protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-          schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-          type: "chrome.select",
-          messageId: `chrome-select-${pageId}-${zone}`,
-          selection,
-        })
-        return
-      }
 
       const blockNode = target.closest<HTMLElement>("[data-block-index]")
       const rawBlockIndex = blockNode?.dataset.blockIndex
@@ -411,20 +418,6 @@ export function EditorFrameRuntime({
     })
     if (!activeSelection) return
     const fieldPath = activeSelection.fieldPath
-    if (fieldPath?.[0] === "chrome") {
-      const zone = fieldPath[1]
-      const selector = zone === "header"
-        ? HEADER_CHROME_SELECTOR
-        : zone === "footer"
-          ? FOOTER_CHROME_SELECTOR
-          : null
-      const chromeNode = selector ? document.querySelector<HTMLElement>(selector) : null
-      if (chromeNode) {
-        chromeNode.setAttribute("data-siab-editor-selected", "true")
-        if (shouldScroll) chromeNode.scrollIntoView({ behavior: "smooth", block: "center" })
-      }
-      return
-    }
     if (fieldPath?.[0] !== "blocks") return
     const blockIndex = fieldPath[1]
     const blockNode = blockIndex == null
@@ -478,11 +471,10 @@ export function EditorFrameRuntime({
     ? { ...framePage, blocks: [focusedBlock] }
     : framePage
   const blockIndexOffset = focusedBlock ? (resolvedFocusedIndex ?? 0) : 0
-  const showChrome = mobileMode.showChrome !== false
-  const readyForVariant = Boolean(prepared && prepared.key === variantKey)
+  const readyForBlockShape = Boolean(prepared && prepared.key === blockKey)
 
   React.useLayoutEffect(() => {
-    if (!parentScroll || !readyForVariant) return
+    if (!parentScroll || !readyForBlockShape) return
     const root = document.querySelector<HTMLElement>(".site-frame-root")
     if (!root) return
 
@@ -523,9 +515,9 @@ export function EditorFrameRuntime({
       observer.disconnect()
       if (rafId != null) window.cancelAnimationFrame(rafId)
     }
-  }, [emit, framePage, frameSettings, parentScroll, readyForVariant, variantKey])
+  }, [emit, framePage, frameSettings, parentScroll, readyForBlockShape, blockKey])
 
-  if (readyForVariant && prepared) {
+  if (readyForBlockShape && prepared) {
     lastPaintedRef.current = {
       key: prepared.key,
       renderer: prepared.renderer,
@@ -533,18 +525,16 @@ export function EditorFrameRuntime({
       settings: frameSettings,
       theme: frameTheme,
       blockIndexOffset,
-      showChrome,
     }
   }
 
-  const paint = readyForVariant && prepared
+  const paint = readyForBlockShape && prepared
     ? {
         renderer: prepared.renderer,
         page: visiblePage,
         settings: frameSettings,
         theme: frameTheme,
         blockIndexOffset,
-        showChrome,
       }
     : lastPaintedRef.current
       ? {
@@ -553,7 +543,6 @@ export function EditorFrameRuntime({
           settings: lastPaintedRef.current.settings,
           theme: lastPaintedRef.current.theme,
           blockIndexOffset: lastPaintedRef.current.blockIndexOffset,
-          showChrome: lastPaintedRef.current.showChrome,
         }
       : null
 
@@ -567,7 +556,7 @@ export function EditorFrameRuntime({
         data-siab-editor-frame-runtime
         data-siab-preview-viewport="true"
         data-siab-editor-parent-scroll={parentScroll ? "true" : undefined}
-        data-siab-editor-preparing={readyForVariant ? undefined : "true"}
+        data-siab-editor-preparing={readyForBlockShape ? undefined : "true"}
       >
         <ClientSitePageRenderer
           prepared={paint.renderer}
@@ -577,16 +566,14 @@ export function EditorFrameRuntime({
           tenantSlug={tenantSlug}
           domain={domain}
           mediaResolver={mediaResolver}
+          imageLoading="eager"
           editSlots={selectSlots}
           blockIndexOffset={paint.blockIndexOffset}
           nonce={cspNonce}
           includeBehaviorScripts={false}
           formAction="#"
-          banner={null}
-          header={paint.showChrome ? undefined : null}
-          footer={paint.showChrome ? undefined : null}
         />
-        {!readyForVariant ? (
+        {!readyForBlockShape ? (
           <div
             className="pointer-events-none absolute inset-0 bg-background/40"
             aria-hidden

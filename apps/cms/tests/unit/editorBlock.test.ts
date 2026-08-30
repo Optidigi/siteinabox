@@ -3,15 +3,14 @@ import { BlockSchema } from "@siteinabox/contracts"
 import { EditorBlockSchema, isPersistedEditorBlock } from "@/lib/editor/editorBlock"
 
 describe("EditorBlockSchema", () => {
-  it("accepts a contract-complete logoCloud block", () => {
+  it("accepts a contract-complete hero block", () => {
     const block = {
-      id: "logo-1",
-      blockType: "logoCloud",
-      designVariant: "shadcnui-blocks.logo-cloud-01",
-      logos: [{
-        name: "Example",
-        image: { url: "/api/media/file/example.svg", alt: "Example" },
-      }],
+      id: "hero-1",
+      blockType: "hero",
+      variant: "hero-01",
+      heading: "Example",
+      body: "A concise introduction.",
+      primaryAction: { label: "Contact", href: "/contact" },
     }
     const persisted = BlockSchema.safeParse(block)
     expect(persisted.success, persisted.success ? "" : JSON.stringify(persisted.error.issues)).toBe(true)

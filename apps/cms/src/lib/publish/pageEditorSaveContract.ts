@@ -20,7 +20,7 @@ const pageSectionSchema = z.object({
 })
 
 const navigationMembershipSchema = z.object({
-  inHeader: z.boolean(),
+  inNavbar: z.boolean(),
   inFooter: z.boolean(),
 })
 
@@ -28,7 +28,6 @@ const siteDesignSectionSchema = z
   .object({
     theme: themeSchema.optional(),
     navigation: navigationMembershipSchema.optional(),
-    chrome: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
 
@@ -74,8 +73,7 @@ export const hasPageEditorSiteDesign = (
   siteDesign: PageEditorSiteDesignSection | undefined,
 ): boolean =>
   siteDesign?.theme != null ||
-  siteDesign?.navigation != null ||
-  siteDesign?.chrome != null
+  siteDesign?.navigation != null
 
 export const parsePageEditorSaveRequest = (
   body: unknown,

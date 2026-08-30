@@ -1,56 +1,15 @@
-import type { RtRoot } from "./rich-text"
-import type { ShadcnUiSystemTemplateId } from "./generated/shadcnui-blocks"
+import { SITEGEN_BLOCK_TYPES } from "./blocks"
+import type { Block as CanonicalBlock } from "./blocks"
+import type { CanonicalMediaRef } from "./blocks/common"
 
-export const SITE_BLOCK_SLUGS = [
-  "hero",
-  "featureList",
-  "testimonials",
-  "faq",
-  "cta",
-  "richText",
-  "contactSection",
-  "contactDetails",
-  "pricing",
-  "stats",
-  "logoCloud",
-  "gallery",
-  "team",
-  "newsletter",
-  "bentoGrid",
-  "contentSection",
-  "timeline",
-  "blogCards",
-] as const
+export { SITEGEN_BLOCK_TYPES }
+export type { SitegenBlockType } from "./blocks"
 
+export const SITE_BLOCK_SLUGS = [...SITEGEN_BLOCK_TYPES] as const
 export type SiteBlockSlug = (typeof SITE_BLOCK_SLUGS)[number]
 
-export const SITE_DEFERRED_MARKETING_BLOCK_SLUGS = [
-] as const
-
-export type SiteDeferredMarketingBlockSlug = (typeof SITE_DEFERRED_MARKETING_BLOCK_SLUGS)[number]
-export const SITE_GENERATION_BLOCK_SLUGS = [
-  "hero",
-  "featureList",
-  "testimonials",
-  "faq",
-  "cta",
-  "contactSection",
-  "contactDetails",
-  "pricing",
-  "stats",
-  "logoCloud",
-  "gallery",
-  "contentSection",
-  "timeline",
-  "team",
-  "blogCards",
-] as const
-
-export type SiteGenerationBlockSlug = (typeof SITE_GENERATION_BLOCK_SLUGS)[number]
-
 export type MediaRef =
-  | number
-  | string
+  | CanonicalMediaRef
   | {
       id?: number | string
       url?: string | null
@@ -60,43 +19,12 @@ export type MediaRef =
       height?: number | null
     }
   | null
-
-export type RtField = RtRoot | null
-
-export type AnalyticsBlockMetadata = {
-  sectionId?: string | null
-  sectionType?: string | null
-  sectionPosition?: number | null
-  sectionAnchor?: string | null
-  providerVariant?: string | null
-  blockPresetId?: string | null
-  contentSignature?: string | null
+export type RtField = import("./rich-text").RtRoot | null
+export type LinkRef = {
+  label?: string | null
+  href?: string | null
+  external?: boolean | null
 }
-
-export type BlockInstanceMetadata = Record<string, unknown>
-
-export type BlockInstanceBase = {
-  designVariant?: string | null
-  metadata?: BlockInstanceMetadata | null
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
-}
-
-export type LinkRef = { label?: string | null; href?: string | null; external?: boolean | null }
-
-export type FormProviderConfig = {
-  provider?: "siab" | "web3forms" | "custom" | "mailto" | null
-  action?: string | null
-  method?: "GET" | "POST" | null
-  hiddenFields?: Array<{ name: string; value?: string | null }> | null
-  honeypotField?: string | null
-  fallbackHref?: string | null
-  successMessage?: string | null
-  errorMessage?: string | null
-  requiresConsent?: boolean | null
-  analyticsEnabled?: boolean | null
-}
-
 export type FooterCompositionLink = LinkRef
 export type FooterCompositionItem = {
   id?: string | null
@@ -110,270 +38,27 @@ export type FooterCompositionColumn = {
   items?: FooterCompositionItem[] | null
 }
 
-export type HeroBlock = BlockInstanceBase & {
-  blockType: "hero"
-  eyebrow?: RtRoot | null
-  headline: RtRoot
-  subheadline?: RtRoot | null
-  pills?: Array<{ label: string; id?: string | null }>
-  links?: LinkRef[] | null
-  cta?: LinkRef | null
-  secondary?: LinkRef | null
-  image?: MediaRef
-  stats?: Array<{
-    value: string
-    label: string
-  }> | null
-  trustLabel?: string | null
-  logos?: Array<{ name: string; image?: MediaRef; href?: string | null }> | null
-}
+export type {
+  AboutBlock,
+  ContactBlock,
+  CtaBlock,
+  CtaVariant,
+  FaqBlock,
+  AnyHeroBlock,
+  HeroBlock,
+  HeroBlockType,
+  HeroServiceHighlight,
+  HeroVariant,
+  ProcessBlock,
+  PricingBlock,
+  ReviewsBlock,
+  ServiceIconName,
+  ServicesBlock,
+  ServicesVariant,
+  WorkBlock,
+} from "./blocks"
 
-export type FeatureListBlock = BlockInstanceBase & {
-  blockType: "featureList"
-  eyebrow?: RtRoot | null
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  image?: MediaRef
-  features: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    icon?: string | null
-    image?: MediaRef
-    cta?: LinkRef | null
-    metricValue?: string | null
-    metricLabel?: string | null
-  }>
-}
-
-export type TestimonialsBlock = BlockInstanceBase & {
-  blockType: "testimonials"
-  title?: string | null
-  intro?: string | null
-  logo?: MediaRef
-  items: Array<{
-    quote: string
-    author: string
-    role?: string | null
-    avatar?: MediaRef
-  }>
-}
-
-export type FAQBlock = BlockInstanceBase & {
-  blockType: "faq"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  items: Array<{ question: RtRoot; answer: RtRoot }>
-}
-
-export type CTABlock = BlockInstanceBase & {
-  blockType: "cta"
-  eyebrow?: RtRoot | null
-  headline: RtRoot
-  description?: RtRoot | null
-  primary?: LinkRef | null
-  secondary?: LinkRef | null
-  backgroundImage?: MediaRef
-}
-
-export type RichTextBlock = BlockInstanceBase & {
-  blockType: "richText"
-  body: RtRoot
-}
-
-export type ContactSectionBlock = BlockInstanceBase & {
-  blockType: "contactSection"
-  title?: RtRoot | null
-  description?: RtRoot | null
-  formName: string
-  submitLabel?: string | null
-  fields: Array<{
-    name: string
-    label: string
-    type: "text" | "email" | "tel" | "textarea" | "select" | "checkbox"
-    required?: boolean
-    placeholder?: string | null
-    maxLength?: number | null
-    options?: Array<{ label: string; value: string }> | null
-  }>
-  provider?: FormProviderConfig | null
-}
-
-export type ContactDetailsBlock = BlockInstanceBase & {
-  blockType: "contactDetails"
-  title?: RtRoot | null
-  description?: RtRoot | null
-  items: Array<{
-    title: string
-    description?: string | null
-    value: string
-    href?: string | null
-    icon?: string | null
-  }>
-}
-
-export type NewsletterBlock = BlockInstanceBase & {
-  blockType: "newsletter"
-  title?: RtRoot | null
-  description?: RtRoot | null
-  emailLabel?: string | null
-  emailPlaceholder?: string | null
-  submitLabel?: string | null
-  consentLabel?: string | null
-  benefits?: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    icon?: string | null
-  }> | null
-  provider?: FormProviderConfig | null
-}
-
-export type PricingBlock = BlockInstanceBase & {
-  blockType: "pricing"
-  eyebrow?: RtRoot | null
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  plans: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    price?: string | null
-    period?: string | null
-    features?: Array<{ label: RtRoot; included?: boolean | null }> | null
-    cta?: LinkRef | null
-    badge?: string | null
-    highlighted?: boolean | null
-  }>
-}
-
-export type StatsBlock = BlockInstanceBase & {
-  blockType: "stats"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  items: Array<{
-    value: string
-    label: string
-    description?: RtRoot | null
-  }>
-}
-
-export type LogoCloudBlock = BlockInstanceBase & {
-  blockType: "logoCloud"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  logos: Array<{
-    name: string
-    description?: string | null
-    image?: MediaRef
-    href?: string | null
-  }>
-  cta?: LinkRef | null
-}
-
-export type GalleryBlock = BlockInstanceBase & {
-  blockType: "gallery"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  images: Array<{
-    image?: MediaRef
-    caption?: RtRoot | null
-    link?: LinkRef | null
-  }>
-  cta?: LinkRef | null
-}
-
-export type BentoGridBlock = BlockInstanceBase & {
-  blockType: "bentoGrid"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  items: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    image?: MediaRef
-    icon?: string | null
-    cta?: LinkRef | null
-  }>
-}
-
-export type ContentSectionBlock = BlockInstanceBase & {
-  blockType: "contentSection"
-  eyebrow?: RtRoot | null
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  body: RtRoot
-  features?: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    icon?: string | null
-  }> | null
-  bridge?: RtRoot | null
-  secondaryTitle?: RtRoot | null
-  secondaryBody?: RtRoot | null
-  image?: MediaRef
-  cta?: LinkRef | null
-}
-
-export type TimelineBlock = BlockInstanceBase & {
-  blockType: "timeline"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  items: Array<{
-    title: string
-    description?: string | null
-    label?: string | null
-    date?: string | null
-    tags?: Array<{ value: string }> | null
-  }>
-}
-
-export type TeamBlock = BlockInstanceBase & {
-  blockType: "team"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  members: Array<{
-    name: string
-    role?: string | null
-    bio?: RtRoot | null
-    image?: MediaRef
-    links?: LinkRef[] | null
-  }>
-}
-
-export type BlogCardsBlock = BlockInstanceBase & {
-  blockType: "blogCards"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  posts: Array<{
-    title: RtRoot
-    excerpt?: RtRoot | null
-    image?: MediaRef
-    href?: string | null
-    date?: string | null
-    author?: string | null
-    authorRole?: string | null
-    cta?: LinkRef | null
-  }>
-  cta?: LinkRef | null
-  secondary?: LinkRef | null
-}
-
-export type Block =
-  | HeroBlock
-  | FeatureListBlock
-  | TestimonialsBlock
-  | FAQBlock
-  | CTABlock
-  | RichTextBlock
-  | ContactSectionBlock
-  | ContactDetailsBlock
-  | NewsletterBlock
-  | PricingBlock
-  | StatsBlock
-  | LogoCloudBlock
-  | GalleryBlock
-  | BentoGridBlock
-  | ContentSectionBlock
-  | TimelineBlock
-  | TeamBlock
-  | BlogCardsBlock
+export type Block = CanonicalBlock
 
 export type Page = {
   id?: string
@@ -381,7 +66,7 @@ export type Page = {
   title: string
   status?: "draft" | "published"
   analytics?: Record<string, unknown> | null
-  blocks: Block[]
+  blocks: CanonicalBlock[]
   seo?: {
     title?: string | null
     description?: string | null
@@ -410,6 +95,23 @@ export type OpeningHours = {
 
 export type SocialLink = { platform: string; url: string }
 export type NavigationIcon = "backpack" | "cake-slice" | "coffee" | "grape" | "hotel" | "ice-cream" | "map-pin" | "package" | "pizza" | "plane" | "sandwich" | "smile"
+
+export const NAVBAR_VARIANTS = ["navbar-01", "navbar-02", "navbar-03"] as const
+export type NavbarVariant = (typeof NAVBAR_VARIANTS)[number]
+export const DEFAULT_NAVBAR_VARIANT = "navbar-01" satisfies NavbarVariant
+
+export const FOOTER_VARIANTS = ["footer-01"] as const
+export type FooterVariant = (typeof FOOTER_VARIANTS)[number]
+export const DEFAULT_FOOTER_VARIANT = "footer-01" satisfies FooterVariant
+
+export const CONSENT_VARIANTS = ["consent-01"] as const
+export type ConsentVariant = (typeof CONSENT_VARIANTS)[number]
+export const DEFAULT_CONSENT_VARIANT = "consent-01" satisfies ConsentVariant
+
+export const NAVBAR_PLACEMENTS = ["sticky", "hero-overlay"] as const
+export type NavbarPlacement = (typeof NAVBAR_PLACEMENTS)[number]
+export const DEFAULT_NAVBAR_PLACEMENT = "sticky" satisfies NavbarPlacement
+
 export type NavLink = {
   label: string
   href?: string | null
@@ -418,22 +120,56 @@ export type NavLink = {
   icon?: NavigationIcon | null
   children?: NavLink[] | null
 }
+export type SiteNavbar = {
+  variant: NavbarVariant
+  placement: NavbarPlacement
+  logo?: MediaRef
+  activeMode?: "path" | "anchor" | "none" | null
+  mobileMenu?: "dropdown" | "drawer" | null
+  showThemeToggle?: boolean | null
+  cta?: LinkRef | null
+}
+export type SiteFooter = {
+  variant: FooterVariant
+  logo?: MediaRef
+  tagline?: string | null
+  copyright?: string | null
+  legalLinks?: LinkRef[] | null
+  columns?: FooterCompositionColumn[] | null
+  newsletter?: {
+    title?: string | null
+    placeholder?: string | null
+    submitLabel?: string | null
+    action?: string | null
+    method?: "GET" | "POST" | null
+  } | null
+}
 export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
 
-export type SiteHeaderChromeVariant =
-  `shadcnui-blocks.navbar-${"01" | "02" | "03" | "04" | "05"}`
-export type SiteFooterChromeVariant = `shadcnui-blocks.footer-${"01" | "02" | "03" | "04" | "05" | "06" | "07"}`
-export type SiteBannerChromeVariant = `shadcnui-blocks.banner-${"01" | "02" | "03" | "04"}`
-export type SiteChromeVariant = SiteHeaderChromeVariant | SiteFooterChromeVariant | SiteBannerChromeVariant
-
-export type SiteChromeBanner = {
-  variant?: SiteBannerChromeVariant | null
+export type SiteAnnouncement = {
   visible?: boolean | null
   title?: string | null
-  message: string
+  message?: string | null
   link?: LinkRef | null
   dismissible?: boolean | null
+}
+
+export type SiteConsent = {
+  variant: ConsentVariant
+  visible?: boolean | null
+  title?: string | null
+  message?: string | null
+  acceptLabel?: string | null
+  allowSelectionLabel?: string | null
+  rejectLabel?: string | null
+  necessaryLabel?: string | null
+  preferencesLabel?: string | null
+  statisticsLabel?: string | null
+  marketingLabel?: string | null
+  /** Retained so older published snapshots remain readable; the current UI uses direct category switches. */
+  manageLabel?: string | null
+  privacyLink?: LinkRef | null
 }
 
 export type JsonLdSettings = {
@@ -469,6 +205,9 @@ export type AnalyticsConsentSettings = {
 
 export type TenantPrivacyDisclosure = {
   enabled?: boolean | null
+  mode?: "template" | "custom" | null
+  title?: string | null
+  body?: RtField
   version: string
   effectiveAt: string
   controller: {
@@ -516,45 +255,22 @@ export type SiteSettings = {
     primaryColor?: string | null
   } | null
   chrome?: {
-    header?: {
-      variant?: SiteHeaderChromeVariant | null
-      logo?: MediaRef
-      behavior?: "static" | "sticky" | null
-      activeMode?: "path" | "anchor" | "none" | null
-      mobileMenu?: "dropdown" | "drawer" | null
-      cta?: LinkRef | null
-      secondaryAction?: LinkRef | null
-      search?: {
-        enabled?: boolean | null
-        action?: string | null
-        placeholder?: string | null
-      } | null
-    } | null
-    footer?: {
-      variant?: SiteFooterChromeVariant | null
-      logo?: MediaRef
-      tagline?: string | null
-      copyright?: string | null
-      legalLinks?: LinkRef[] | null
-      columns?: FooterCompositionColumn[] | null
-      newsletter?: {
-        title?: string | null
-        placeholder?: string | null
-        submitLabel?: string | null
-        action?: string | null
-        method?: "GET" | "POST" | null
-      } | null
-    } | null
-    banner?: SiteChromeBanner | null
+    navbar?: SiteNavbar | null
+    footer?: SiteFooter | null
+    announcement?: SiteAnnouncement | null
   } | null
   systemTemplates?: {
-    notFound?: { variant?: ShadcnUiSystemTemplateId | null } | null
+    notFound?: {
+      heading?: string | null
+      body?: string | null
+      primaryAction?: LinkRef | null
+    } | null
   } | null
   maintenance?: {
     enabled?: boolean | null
     message?: string | null
-    variant?: SiteBannerChromeVariant | null
   } | null
+  consent?: SiteConsent | null
   contact?: {
     phone?: string | null
     address?: string | null
@@ -563,8 +279,10 @@ export type SiteSettings = {
   nap?: NAP | null
   hours?: OpeningHours[]
   serviceArea?: ServiceAreaEntry[]
-  navHeader?: NavLink[]
-  navFooter?: NavLink[]
+  navigation?: {
+    primary?: NavLink[]
+    footer?: NavLink[]
+  } | null
   analytics?: Record<string, unknown> | null
   analyticsConsent?: AnalyticsConsentSettings | null
   privacyDisclosure?: TenantPrivacyDisclosure | null

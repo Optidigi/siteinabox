@@ -7,30 +7,24 @@
 
 /** Top-level block array fields that receive editor wire ids. */
 export const BLOCK_TOP_LEVEL_ARRAYS: Readonly<Record<string, readonly string[]>> = {
-  hero: ["pills", "logos", "stats", "links"],
-  featureList: ["features"],
-  testimonials: ["items"],
+  hero: ["highlights", "serviceHighlights"],
+  services: ["items"],
+  about: ["highlights"],
+  process: ["steps"],
+  work: ["projects"],
+  reviews: ["reviewSourceIds", "items"],
+  pricing: ["pricingSourceIds", "offers"],
   faq: ["items"],
-  contactSection: ["fields"],
-  contactDetails: ["items"],
-  newsletter: ["benefits"],
-  pricing: ["plans"],
-  stats: ["items"],
-  logoCloud: ["logos"],
-  gallery: ["images"],
-  bentoGrid: ["items"],
-  contentSection: ["features"],
-  timeline: ["items"],
-  team: ["members"],
-  blogCards: ["posts"],
+  cta: [],
+  contact: ["contactMethods", "serviceArea"],
 }
 
 /** Nested array fields inside parent array rows (parent → child field names). */
 export const NESTED_ARRAY_FIELDS: Readonly<
   Record<string, Readonly<Record<string, readonly string[]>>>
 > = {
-  pricing: { plans: ["features"] },
-  timeline: { items: ["tags"] },
+  work: { projects: ["media"] },
+  pricing: { offers: ["features"] },
 }
 
 /**
@@ -38,8 +32,10 @@ export const NESTED_ARRAY_FIELDS: Readonly<
  * Document each entry when adding.
  */
 export const PROJECTION_ONLY_ARRAY_ROW_KEYS = [
-  /** ContactSection.provider.hiddenFields — provider config, not editor-drilled */
-  "hiddenFields",
+  /** Contact form field rows are nested under the form group. */
+  "fields",
+  /** Contact select options are nested under a form field row. */
+  "options",
   /** SiteSettings.contact.social — embedded on pages only during projection */
   "social",
 ] as const

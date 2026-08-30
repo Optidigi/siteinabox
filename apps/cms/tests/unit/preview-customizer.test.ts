@@ -144,7 +144,7 @@ describe("grant preview customizer service", () => {
     const { persistPreviewThemeForGrant } = await import("@/lib/preview/customizer")
     const theme = {
       version: 3,
-      appearance: { mode: "dark" },
+      appearance: { mode: "dark", backgroundMode: "image" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },

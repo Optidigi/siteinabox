@@ -19,14 +19,11 @@ const samplePage = {
   status: "published",
   blocks: [{
     id: "block_1",
-    blockType: "contentSection",
-    designVariant: "shadcnui-blocks.legal-content-01",
-    title: { t: "root", variant: "inline", children: [{ t: "text", v: "About" }] },
-    body: {
-      t: "root",
-      variant: "block",
-      children: [{ t: "paragraph", children: [{ t: "text", v: "Hello" }] }],
-    },
+    blockType: "hero",
+    variant: "hero-01",
+    heading: "About",
+    body: "Hello",
+    primaryAction: { label: "Contact", href: "/contact" },
   }],
   updatedAt: "2026-07-02T00:00:00.000Z",
 }
@@ -36,8 +33,9 @@ const sampleSettings = {
   siteUrl: "https://example.invalid",
   language: "en",
   chrome: {
-    header: { variant: "shadcnui-blocks.navbar-01" },
-    footer: { variant: "shadcnui-blocks.footer-01" },
+    navbar: {},
+    footer: {},
+    announcement: { visible: false },
   },
 }
 
@@ -73,11 +71,6 @@ const validSamplesByType = {
     type: "selection.changed",
     selection: { pageId: "home", blockId: "block_1" },
   },
-  "chrome.select": {
-    ...baseMessage,
-    type: "chrome.select",
-    selection: { pageId: "home", fieldPath: ["chrome", "header"] },
-  },
   "navigation.requested": {
     ...baseMessage,
     type: "navigation.requested",
@@ -100,14 +93,6 @@ describe("iframe renderer protocol", () => {
     }
   })
 
-  it("accepts chrome.select for banner zone", () => {
-    expect(IframeEditorMessageSchema.safeParse({
-      ...baseMessage,
-      type: "chrome.select",
-      selection: { pageId: "home", fieldPath: ["chrome", "banner"] },
-    }).success).toBe(true)
-  })
-
   it("rejects removed mutation and canvas messages", () => {
     for (const type of [
       "block.patch",
@@ -119,6 +104,7 @@ describe("iframe renderer protocol", () => {
       "theme.patch",
       "selection.set",
       "editor.mobileMode.set",
+      "consent.preview",
     ]) {
       expect(IframeEditorMessageSchema.safeParse({ ...baseMessage, type }).success, type).toBe(false)
     }

@@ -71,9 +71,9 @@ const settingsDocForProjection = async (payload: Payload, settingsDoc: SiteSetti
   }
   const chrome = {
     ...(settingsDoc.chrome ?? {}),
-    header: {
-      ...(settingsDoc.chrome?.header ?? {}),
-      logo: await mergePopulatedMedia(payload, settingsDoc.chrome?.header?.logo, branding.logo),
+    navbar: {
+      ...(settingsDoc.chrome?.navbar ?? {}),
+      logo: await mergePopulatedMedia(payload, settingsDoc.chrome?.navbar?.logo, branding.logo),
     },
     footer: {
       ...(settingsDoc.chrome?.footer ?? {}),

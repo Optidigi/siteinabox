@@ -19,6 +19,7 @@ describe("renderer seed profiles", () => {
       execute: false,
       profile: "staging",
       tenants: ["amicare"],
+      replaceExistingPages: false,
     })
 
     expect(parseArgs(["--profile=production", "--tenant=amicare", "--execute"])).toMatchObject({
@@ -26,6 +27,27 @@ describe("renderer seed profiles", () => {
       profile: "production",
       tenants: ["amicare"],
     })
+    expect(parseArgs(["--execute", "--publish", "--activate", "--replace-existing-pages"])).toMatchObject({
+      replaceExistingPages: true,
+    })
+    expect(parseArgs([
+      "--execute",
+      "--profile=production",
+      "--approve",
+      "--promote-pages",
+      "--publish",
+      "--activate",
+      "--replace-existing-pages",
+    ])).toMatchObject({
+      profile: "production",
+      approve: true,
+      promotePages: true,
+      replaceExistingPages: true,
+    })
+    expect(() => parseArgs(["--execute", "--promote-pages"])).toThrow(/requires --approve/)
+    expect(() => parseArgs(["--execute", "--profile=production", "--publish", "--activate", "--replace-existing-pages"])).toThrow(/requires --approve --promote-pages/)
+    expect(() => parseArgs(["--execute", "--profile=production", "--approve", "--promote-pages", "--publish", "--activate"])).toThrow(/requires --replace-existing-pages/)
+    expect(() => parseArgs(["--execute", "--replace-existing-pages"])).toThrow(/requires --activate/)
     expect(() => parseArgs(["--tenant=customer"])).toThrow(/Unsupported --tenant/)
   })
 
@@ -40,8 +62,13 @@ describe("renderer seed profiles", () => {
       slug: "amicare-renderer",
       domain: "amicare.optidigi.nl",
       siteUrl: "https://amicare.optidigi.nl",
-      sourceMediaBaseUrl: "https://ami-care.nl",
+      mediaAssets: expect.arrayContaining([
+        expect.objectContaining({ key: "amicare-toys", filename: "toys.jpg" }),
+        expect.objectContaining({ key: "amicare-bedroom", filename: "bedroom.jpg" }),
+        expect.objectContaining({ key: "amicare-logo-svg", filename: "amicare-logo.svg" }),
+      ]),
     })
+    expect(JSON.stringify(amicare)).not.toContain("https://ami-care.nl/media")
   })
 
   it("retargets production specs to the official Amicare CMS tenant and domain", () => {
@@ -68,7 +95,7 @@ describe("renderer seed profiles", () => {
     }
   })
 
-  it("builds production retarget options with the Amicare official domain and live media base", () => {
+  it("builds production retarget options with the Amicare official domain and relative media references", () => {
     const amicareOptions = buildRetargetOptionsForRendererSeedFixture(
       RENDERER_SEED_FIXTURES.production.amicare,
       41,
@@ -80,7 +107,6 @@ describe("renderer seed profiles", () => {
       tenantSlug: "ami-care",
       domain: "ami-care.nl",
       siteUrl: "https://ami-care.nl",
-      mediaBaseUrl: "https://ami-care.nl",
     })
 
     const amicareSnapshot = retargetPublishedSiteSnapshot(amicarePublishedSiteSnapshot, amicareOptions)
@@ -88,8 +114,8 @@ describe("renderer seed profiles", () => {
     expect(amicareSnapshot.tenantSlug).toBe("ami-care")
     expect(amicareSnapshot.domain).toBe("ami-care.nl")
     expect(amicareSnapshot.siteUrl).toBe("https://ami-care.nl")
-    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/toys.jpg")
-    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/bedroom.jpg")
+    expect(JSON.stringify(amicareSnapshot.pages)).toContain("/media/bedroom.jpg")
+    expect(JSON.stringify(amicareSnapshot.pages)).not.toContain("https://ami-care.nl/media/bedroom.jpg")
   })
 
   it("injects public PostHog analytics into the Amicare production snapshot from seed environment", () => {

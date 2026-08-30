@@ -1,310 +1,95 @@
-import type { Page, SiteSettings } from "@siteinabox/contracts"
+import type { Page, ServicesBlock, SiteSettings } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
-
-const inlineText = (text: string) => ({
-  t: "root" as const,
-  variant: "inline" as const,
-  children: [{ t: "text" as const, v: text }],
-})
-
-const blockText = (text: string) => ({
-  t: "root" as const,
-  variant: "block" as const,
-  children: [{ t: "paragraph" as const, children: [{ t: "text" as const, v: text }] }],
-})
 
 export const v1FixtureTheme: ThemeTokenSpec = {
   version: 3,
-  appearance: { mode: "light" },
-  colors: { schemeId: "emerald-calm" },
-  fonts: { schemeId: "classic-editorial" },
+  appearance: { mode: "light", backgroundMode: "animation" },
+  colors: { schemeId: "blue-professional" },
+  fonts: { schemeId: "clear-modern" },
   shape: { schemeId: "soft" },
 }
 
 export const v1FixtureSettings: SiteSettings = {
-  siteName: "Example Site",
-  siteUrl: "https://example.test",
-  language: "en",
-  description: "Example renderer fixture",
-  branding: {
-    logo: { url: "/media/example-logo.svg", alt: "Example Site" },
-  },
+  siteName: "Atelier Noord",
+  siteUrl: "https://atelier-noord.example",
+  description: "Een rustige, praktische service voor woningen en kleine bedrijven.",
+  language: "nl",
+  contactEmail: "hallo@atelier-noord.example",
+  contact: { phone: "+31 6 12345678", address: "Utrecht en omgeving", social: [] },
+  serviceArea: [{ name: "Utrecht" }, { name: "De Bilt" }],
+  updatedAt: "2026-08-13T00:00:00.000Z",
   chrome: {
-    header: {
-      variant: "shadcnui-blocks.navbar-01",
-      behavior: "sticky",
-      activeMode: "path",
+    navbar: {
+      variant: "navbar-01",
+      placement: "hero-overlay",
+      activeMode: "anchor",
       mobileMenu: "dropdown",
-      cta: { label: "Contact", href: "#contact" },
+      showThemeToggle: true,
+      cta: { label: "Neem contact op", href: "#contact" },
     },
     footer: {
-      variant: "shadcnui-blocks.footer-01",
-      tagline: "Typed fixture data for the shared renderer.",
-      copyright: "Copyright 2026 Example Site",
-      legalLinks: [{ label: "Privacy", href: "/privacy" }],
-      columns: [
-        {
-          id: "contact",
-          items: [
-            {
-              id: "contact-links",
-              type: "contact",
-              label: "Contact",
-              links: [
-                { label: "Email", href: "mailto:hello@example.test" },
-                { label: "Call", href: "tel:+31000000000" },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-    banner: {
-      variant: "shadcnui-blocks.banner-01",
-      title: "New",
-      message: "Reusable chrome variants are available for generated sites.",
-      link: { label: "View catalog", href: "#catalog" },
-      dismissible: true,
-      visible: true,
+      variant: "footer-01",
+      copyright: "© Atelier Noord",
     },
   },
-  navHeader: [
-    { label: "Home", href: "/" },
-    { label: "Services", href: "/services" },
+  navigation: {
+    primary: [
+      { label: "Diensten", href: "#services" },
+      { label: "Over mij", href: "#about" },
+      { label: "Werkwijze", href: "#process" },
+      {
+        label: "Meer",
+        description: "Bekijk werk, ervaringen en veelgestelde vragen.",
+        children: [
+          { label: "Recent werk", href: "#work", icon: "package" },
+          { label: "Ervaringen", href: "#reviews", icon: "smile" },
+          { label: "Veelgestelde vragen", href: "#faq", icon: "map-pin" },
+        ],
+      },
+    ],
+    footer: [
+      { label: "Diensten", href: "#services" },
+      { label: "Over mij", href: "#about" },
+      { label: "Werkwijze", href: "#process" },
+      { label: "Recent werk", href: "#work" },
+      { label: "Ervaringen", href: "#reviews" },
+      { label: "Contact", href: "#contact" },
+    ],
+  },
+}
+
+const service: ServicesBlock = {
+  blockType: "services",
+  variant: "services-01",
+  heading: "Waarmee ik help",
+  intro: "Duidelijke afspraken voor klussen die aandacht verdienen.",
+  items: [
+    { title: "Onderhoud", body: "Regelmatig onderhoud dat problemen voorkomt.", icon: "wrench" },
+    { title: "Kleine reparaties", body: "Snel opgelost, met uitleg over wat er is gedaan.", icon: "check-circle" },
+    { title: "Oplevering", body: "Een woning of werkruimte netjes achterlaten.", icon: "house" },
   ],
-  navFooter: [{ label: "Contact", href: "#contact" }],
 }
 
 export const v1FixturePage: Page = {
-  slug: "index",
-  title: "Home",
+  id: "atelier-noord-home",
+  slug: "home",
+  title: "Atelier Noord",
   status: "published",
-  updatedAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-08-13T00:00:00.000Z",
   blocks: [
-    {
-      blockType: "hero",
-      eyebrow: inlineText("Just released v1.0.0"),
-      headline: inlineText("A data-driven site"),
-      subheadline: blockText("Rendered by the shared SIAB renderer."),
-      cta: { label: "Contact", href: "#contact" },
-      secondary: { label: "Watch Demo", href: "#demo" },
-    },
-    {
-      blockType: "featureList",
-      title: inlineText("Features"),
-      features: [
-        { title: inlineText("Shared"), description: blockText("One renderer for CMS and public runtime."), icon: "layers", image: { url: "/media/feature-shared.jpg", alt: "Shared renderer preview" } },
-        { title: inlineText("Typed"), description: blockText("Driven by contract data."), icon: "check-circle", image: { url: "/media/feature-typed.jpg", alt: "Typed content preview" } },
-      ],
-    },
-    {
-      blockType: "pricing",
-      title: inlineText("Choose the right plan"),
-      intro: blockText("Structured pricing plans rendered without generated source code."),
-      plans: [
-        {
-          title: inlineText("Starter"),
-          description: blockText("For a focused one-page presence."),
-          price: "EUR 499",
-          period: "once",
-          features: [
-            { label: inlineText("One published page"), included: true },
-            { label: inlineText("Basic SEO setup"), included: true },
-          ],
-          cta: { label: "Start intake", href: "/intake" },
-        },
-        {
-          title: inlineText("Growth"),
-          description: blockText("For a multi-page marketing site."),
-          price: "EUR 999",
-          period: "once",
-          features: [
-            { label: inlineText("Five published pages"), included: true },
-            { label: inlineText("Content migration"), included: true },
-            { label: inlineText("Priority support"), included: true },
-          ],
-          cta: { label: "Choose growth", href: "/intake" },
-          badge: "Popular",
-          highlighted: true,
-        },
-      ],
-    },
-    {
-      blockType: "stats",
-      title: inlineText("Renderer metrics"),
-      items: [
-        { value: "8", label: "New block families", description: blockText("Promoted from structured contracts.") },
-        { value: "0", label: "Raw code fields", description: blockText("All content remains structured.") },
-        { value: "1", label: "Shared renderer", description: blockText("Used by CMS preview and public runtime.") },
-      ],
-    },
-    {
-      blockType: "logoCloud",
-      title: inlineText("Trusted integrations"),
-      logos: [
-        { name: "Payload", image: { url: "/media/logo-payload.svg", alt: "Payload" }, href: "https://payloadcms.com" },
-        { name: "Astro", image: { url: "/media/logo-astro.svg", alt: "Astro" } },
-        { name: "Postgres", image: { url: "/media/logo-postgres.svg", alt: "Postgres" } },
-        { name: "Cloudflare", image: { url: "/media/logo-cloudflare.svg", alt: "Cloudflare" } },
-      ],
-    },
-    {
-      blockType: "gallery",
-      title: inlineText("Gallery"),
-      images: [
-        { image: { url: "/media/gallery-1.jpg", alt: "Gallery item one" }, caption: blockText("Structured media item.") },
-        { image: { url: "/media/gallery-2.jpg", alt: "Gallery item two" } },
-        { image: { url: "/media/gallery-3.jpg", alt: "Gallery item three" } },
-        { image: { url: "/media/gallery-4.jpg", alt: "Gallery item four" } },
-      ],
-      cta: { label: "View work", href: "/work" },
-    },
-    {
-      blockType: "team",
-      title: inlineText("Meet the team"),
-      intro: blockText("People data maps into the provider-native team layout."),
-      members: [
-        { name: "Alex Example", role: "Founder", image: { url: "/media/team-1.jpg", alt: "Alex Example" } },
-        { name: "Sam Example", role: "Designer", bio: blockText("Builds clear generated-site systems."), image: { url: "/media/team-2.jpg", alt: "Sam Example" } },
-      ],
-    },
-    {
-      blockType: "newsletter",
-      title: inlineText("Get product updates"),
-      description: blockText("Occasional notes about renderer improvements and new structured sections."),
-      emailLabel: "Email address",
-      emailPlaceholder: "you@example.test",
-      submitLabel: "Subscribe",
-      consentLabel: "I agree to receive occasional product updates.",
-      benefits: [
-        { title: inlineText("Release notes"), description: blockText("New renderer capabilities as they ship."), icon: "sparkles" },
-        { title: inlineText("Implementation guides"), description: blockText("Short notes for editors and operators."), icon: "book-open" },
-      ],
-      provider: {
-        provider: "siab",
-        action: "/api/forms/newsletter",
-        method: "POST",
-        requiresConsent: true,
-        analyticsEnabled: true,
-      },
-    },
-    {
-      blockType: "bentoGrid",
-      title: inlineText("Operational building blocks"),
-      intro: blockText("Bento data stays ordered and structured; the renderer owns the grid treatment."),
-      items: [
-        {
-          title: inlineText("Typed slots"),
-          description: blockText("Generation fills content fields while layout stays renderer-owned."),
-          icon: "layout-grid",
-        },
-        {
-          title: inlineText("Reusable media"),
-          description: blockText("Images use the same media references as hero, feature, and gallery blocks."),
-          image: { url: "/media/bento-media.jpg", alt: "Media preview" },
-        },
-        {
-          title: inlineText("Clear actions"),
-          description: blockText("Optional links remain structured CMS data."),
-          cta: { label: "View docs", href: "/docs" },
-        },
-      ],
-    },
-    {
-      blockType: "contentSection",
-      eyebrow: inlineText("Deep dive"),
-      title: inlineText("Media policies stay shared"),
-      intro: blockText("Screenshot sections use the same media reference contract as the rest of the renderer."),
-      body: blockText("Content sections reuse the existing media reference model and leave cropping, framing, and responsive behavior to the renderer or provider source."),
-      features: [
-        { title: inlineText("Typed media"), description: blockText("Images remain CMS media references."), icon: "image" },
-        { title: inlineText("Fixed layout"), description: blockText("Provider source owns sticky positioning."), icon: "lock" },
-        { title: inlineText("Snapshot safe"), description: blockText("Publishing validates the filled slots."), icon: "check" },
-      ],
-      secondaryTitle: inlineText("Provider framing stays static"),
-      secondaryBody: blockText("Generated data cannot change spacing, breakpoints, sticky behavior, or utility classes."),
-      image: { url: "/media/content-section.jpg", alt: "Content section preview" },
-      cta: { label: "Read more", href: "/blog/media-policy" },
-    },
-    {
-      blockType: "blogCards",
-      title: inlineText("From the blog"),
-      intro: blockText("Article cards can point at CMS or static routes."),
-      posts: [
-        {
-          title: inlineText("Building with blocks"),
-          excerpt: blockText("How structured data feeds the renderer."),
-          href: "/blog/building-with-blocks",
-          date: "2026-01-01",
-          author: "SIAB",
-        },
-        {
-          title: inlineText("Renderer variants"),
-          excerpt: blockText("Provider-native styling without code generation."),
-          href: "/blog/renderer-variants",
-          date: "2026-01-02",
-          author: "SIAB",
-        },
-      ],
-    },
-    {
-      blockType: "testimonials",
-      title: "What clients say",
-      items: [{ quote: "Simple and consistent.", author: "Jane Example" }],
-    },
-    {
-      blockType: "faq",
-      title: inlineText("Questions"),
-      items: [{ question: inlineText("Is this generic?"), answer: blockText("Yes. No tenant-specific source is used.") }],
-    },
-    {
-      blockType: "cta",
-      headline: inlineText("Ready to start?"),
-      description: blockText("Send a message and we will respond."),
-      primary: { label: "Email", href: "mailto:hello@example.test" },
-    },
-    {
-      blockType: "richText",
-      body: blockText("This is a rich text section."),
-    },
-    {
-      blockType: "contactSection",
-      anchor: "contact",
-      title: inlineText("Get updates"),
-      description: blockText("Product news and renderer updates, delivered occasionally."),
-      formName: "newsletter",
-      submitLabel: "Notify me",
-      fields: [
-        { name: "email", label: "Email", type: "email", required: true },
-      ],
-    },
-    {
-      blockType: "contactSection",
-      title: inlineText("Sign up to our newsletter"),
-      formName: "site-newsletter",
-      submitLabel: "Subscribe",
-      fields: [
-        { name: "email", label: "Email", type: "email", required: true },
-      ],
-    },
-    {
-      blockType: "contactDetails",
-      title: inlineText("Contact us"),
-      description: blockText("Choose the contact method that suits you."),
-      items: [
-        { title: "Email", description: "We reply within one business day.", value: "hello@example.test", href: "mailto:hello@example.test", icon: "mail" },
-        { title: "Phone", description: "Available during office hours.", value: "+31 20 000 0000", href: "tel:+31200000000", icon: "phone" },
-        { title: "Office", value: "Example Street 1, Amsterdam", icon: "map-pin" },
-      ],
-    },
-    {
-      blockType: "timeline",
-      title: inlineText("Our journey"),
-      intro: blockText("A short history of the company."),
-      items: [
-        { title: "Founded", description: "The company started.", label: "Company", date: "2024", tags: [{ value: "Launch" }] },
-        { title: "Expanded", description: "The team grew.", label: "Growth", date: "2025", tags: [{ value: "Team" }, { value: "Product" }] },
-      ],
-    },
+    { blockType: "hero", variant: "hero-01", heading: "Een verzorgd huis zonder gedoe", body: "Praktische hulp voor onderhoud, kleine reparaties en een nette oplevering.", primaryAction: { label: "Plan een kennismaking", href: "#contact" }, secondaryAction: { label: "Bekijk diensten", href: "#services" }, image: { url: "/fixture-media/project-kitchen.webp", alt: "Lichte keuken met verzorgde afwerking", width: 1448, height: 1086 }, highlights: [{ title: "Heldere afspraken", body: "Je weet vooraf wat er gebeurt en wanneer." }, { title: "Netjes gewerkt", body: "We laten de ruimte verzorgd en bruikbaar achter." }, { title: "Eén aanspreekpunt", body: "Je schakelt direct met degene die het werk uitvoert." }] },
+    { blockType: "hero", variant: "hero-02", heading: "Van vraag naar een concrete aanpak", body: "Een paar duidelijke routes om snel te zien waarmee ik kan helpen.", primaryAction: { label: "Plan een kennismaking", href: "#contact" }, image: { url: "/fixture-media/location.webp", alt: "Rustige woonstraat met verzorgde woningen", width: 1672, height: 941 }, serviceHighlights: [{ title: "Voor woningen", body: "Praktische hulp voor onderhoud en kleine verbeteringen.", heroHeading: "Van vraag naar een concrete aanpak", heroBody: "Een paar duidelijke routes om snel te zien waarmee ik kan helpen.", primaryAction: { label: "Plan een kennismaking", href: "#contact" }, image: { url: "/fixture-media/location.webp", alt: "Rustige woonstraat met verzorgde woningen", width: 1672, height: 941 } }, { title: "Voor werkplekken", body: "Een nette, bruikbare ruimte voor dagelijks werk.", heroHeading: "Een werkplek die prettig blijft werken", heroBody: "Van kleine aanpassing tot zorgvuldig onderhoud: kies de aanpak die bij de ruimte past.", primaryAction: { label: "Bespreek je werkplek", href: "#contact" }, image: { url: "/fixture-media/workspace.webp", alt: "Rustige werkplek met materialen en gereedschap", width: 1402, height: 1122 } }, { title: "Voor kleine bedrijven", body: "Duidelijke afspraken en een verzorgd resultaat.", heroHeading: "Praktische hulp voor je bedrijf", heroBody: "Duidelijke afspraken en een resultaat waar je iedere dag op kunt bouwen.", primaryAction: { label: "Plan een kennismaking", href: "#contact" }, image: { url: "/fixture-media/project-office.webp", alt: "Lichte kantoorruimte met glazen wanden en werkplekken", width: 1402, height: 1122 } }, { title: "Onderhoud en herstel", body: "Gerichte hulp voor wat aandacht nodig heeft.", heroHeading: "Geef een ruimte weer de aandacht die ze nodig heeft", heroBody: "Gericht herstel en nette afwerking voor onderdelen die dagelijks verschil maken.", primaryAction: { label: "Bespreek je klus", href: "#contact" }, image: { url: "/fixture-media/project-kitchen.webp", alt: "Lichte keuken met verzorgde afwerking", width: 1448, height: 1086 } }] },
+    { blockType: "hero", variant: "hero-03", heading: "Ruimte die weer prettig werkt", body: "Praktische verbetering met oog voor de details die je dagelijks merkt.", primaryAction: { label: "Plan een kennismaking", href: "#contact" }, image: { url: "/fixture-media/project-office.webp", alt: "Lichte kantoorruimte met glazen wanden en werkplekken", width: 1402, height: 1122 } },
+    { blockType: "hero", variant: "hero-04", heading: "Zorgvuldig werk, duidelijk uitgelegd", body: "Een realistisch beeld van de kwaliteit en aandacht die je kunt verwachten.", primaryAction: { label: "Bekijk de mogelijkheden", href: "#services" }, image: { url: "/fixture-media/project-kitchen.webp", alt: "Lichte woonkamer met houten vloer en grote ramen", width: 1448, height: 1086 } },
+    { blockType: "hero", variant: "hero-05", heading: "Een duidelijk plan voor jouw volgende stap", body: "Een heldere eerste stap met een realistisch beeld van het werk.", primaryAction: { label: "Bespreek je vraag", href: "#contact" }, secondaryAction: { label: "Bekijk diensten", href: "#services" }, image: { url: "/fixture-media/project-kitchen.webp", alt: "Lichte keuken met verzorgde afwerking", width: 1448, height: 1086 } },
+    service,
+    { blockType: "about", heading: "Persoonlijk en praktisch", body: "Je hebt één aanspreekpunt en weet vooraf waar je aan toe bent.", highlights: [{ title: "Heldere afspraken", text: "Een concreet voorstel voordat we starten." }, { title: "Zorgvuldig werk", text: "Aandacht voor details en een nette werkplek." }] },
+    { blockType: "process", heading: "Zo werkt het", steps: [{ title: "Kennismaken", body: "We bespreken de vraag en de gewenste planning." }, { title: "Voorstel", body: "Je ontvangt een duidelijk voorstel met de volgende stap." }, { title: "Uitvoeren", body: "We voeren het werk zorgvuldig uit en ronden samen af." }] },
+    { blockType: "work", heading: "Recent werk", projects: [{ sourceId: "project-kitchen", title: "Keuken opgefrist", summary: "Kleine herstelwerkzaamheden en een nette afwerking.", media: ["/fixture-media/project-kitchen.webp"] }, { sourceId: "project-office", title: "Kantoorruimte", summary: "Onderhoud en montage voor een kleine werkplek.", media: ["/fixture-media/project-office.webp"] }] },
+    { blockType: "reviews", heading: "Ervaringen", reviewSourceIds: ["review-1", "review-2"], items: [{ sourceId: "review-1", quote: "Afspraken waren duidelijk en het werk is netjes gedaan.", name: "Sanne", context: "Utrecht" }, { sourceId: "review-2", quote: "Fijn contact en snel geholpen met een lastige klus.", name: "Mark", context: "De Bilt" }] },
+    { blockType: "pricing", heading: "Veelgekozen opties", pricingSourceIds: ["price-1", "price-2"], offers: [{ sourceId: "price-1", title: "Kennismaking", description: "Bespreek je vraag en ontvang advies.", price: "€ 0", features: ["30 minuten", "Duidelijk vervolgadvies"] }, { sourceId: "price-2", title: "Werk op locatie", description: "Voor kleine onderhouds- en herstelklussen.", price: "Op aanvraag", features: ["Afspraak op locatie", "Voorstel vooraf"] }] },
+    { blockType: "faq", heading: "Veelgestelde vragen", items: [{ question: "Werk je in mijn omgeving?", answer: "Ik werk in Utrecht en omliggende plaatsen. Stuur je postcode mee, dan laat ik weten of ik kan helpen." }, { question: "Kan ik eerst overleggen?", answer: "Ja, een korte kennismaking is de beste manier om de vraag en planning helder te krijgen." }] },
+    { blockType: "cta", variant: "cta-01", heading: "Een klus op de planning?", body: "Vertel kort wat er moet gebeuren. Je krijgt snel een duidelijke reactie.", primaryAction: { label: "Neem contact op", href: "#contact" }, image: { url: "/fixture-media/project-office.webp", alt: "Lichte kantoorruimte met glazen wanden en werkplekken", width: 1402, height: 1122 } },
+    { blockType: "contact", heading: "Neem contact op", body: "Beschrijf de klus en geef aan wanneer je beschikbaar bent.", contactMethods: [{ kind: "email", label: "E-mail", value: "hallo@atelier-noord.example", href: "mailto:hallo@atelier-noord.example" }, { kind: "phone", label: "Telefoon", value: "+31 6 12345678", href: "tel:+31612345678" }], form: { formName: "contact", submitLabel: "Verstuur bericht", fields: [{ name: "name", label: "Naam", type: "text", required: true }, { name: "email", label: "E-mail", type: "email", required: true }, { name: "message", label: "Waar kan ik mee helpen?", type: "textarea", required: true }] } },
   ],
 }

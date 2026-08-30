@@ -1,6 +1,8 @@
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { BlockRenderer, type BlockEditSlots, type BlockRegistry } from "./blocks"
+import { BlockRenderer, type BlockEditSlots } from "./blocks"
+import { resolveBlockAnchor } from "./blocks/anchors"
+import { sectionAnalyticsAttrs } from "./analytics"
 import type { MediaResolver } from "./media"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { SitePageShell } from "./SitePageShell"
@@ -14,8 +16,8 @@ export type SitePageRendererProps = {
   page: Page
   settings: SiteSettings
   theme?: ThemeTokenSpec | null
-  registry?: BlockRegistry
   mediaResolver?: MediaResolver
+  imageLoading?: "eager" | "lazy"
   formAction?: string
   /** Editor-only field markers / inline edit hooks. Never set for public renderer output. */
   editSlots?: BlockEditSlots
@@ -30,10 +32,9 @@ export type SitePageRendererProps = {
   nonce?: string
   tenantSlug?: string | null
   domain?: string | null
+  /** Public runtime sets this only when an approved analytics config exists. */
+  consentAvailable?: boolean
   includeBehaviorScripts?: boolean
-  header?: React.ReactNode
-  banner?: React.ReactNode
-  footer?: React.ReactNode
   renderBlocks?: SiteRenderBlocks
 }
 
@@ -41,8 +42,8 @@ export function SitePageRenderer({
   page,
   settings,
   theme,
-  registry,
   mediaResolver,
+  imageLoading,
   formAction,
   editSlots,
   blockIndexOffset = 0,
@@ -52,23 +53,41 @@ export function SitePageRenderer({
   nonce,
   tenantSlug,
   domain,
+  consentAvailable,
   includeBehaviorScripts = true,
-  header,
-  banner,
-  footer,
   renderBlocks,
 }: SitePageRendererProps) {
-  const defaultRenderBlocks = page.blocks.map((block, index) => (
-    <BlockRenderer
-      key={`${block.blockType}-${index}`}
-      block={block}
-      index={blockIndexOffset + index}
-      registry={registry}
-      options={{ mediaResolver, formAction, editSlots, siteSettings: settings }}
-    />
-  ))
+  const defaultRenderBlocks = page.blocks.map((block, index) => {
+    const sectionAnchor = resolveBlockAnchor(block)
+
+    return (
+      <BlockRenderer
+        key={`${block.blockType}-${"variant" in block ? block.variant : index}`}
+        block={block}
+        options={{
+          index: blockIndexOffset + index,
+          mediaResolver,
+          imageLoading,
+          formAction,
+          editSlots,
+          siteSettings: settings,
+          theme,
+          sectionAttributes: {
+            id: sectionAnchor,
+            "data-block-index": blockIndexOffset + index,
+            "data-block-type": block.blockType,
+            ...sectionAnalyticsAttrs({
+              sectionType: block.blockType,
+              sectionPosition: blockIndexOffset + index,
+              sectionAnchor: sectionAnchor ?? null,
+            }, block.blockType, blockIndexOffset + index),
+          },
+        }}
+      />
+    )
+  })
   return (
-    <SitePageShell {...{ page, settings, theme, mediaResolver, className, canvasClassName, canvasAttributes, header, banner, footer }}>
+    <SitePageShell {...{ page, settings, theme, mediaResolver, className, canvasClassName, canvasAttributes, consentAvailable }}>
       {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
     </SitePageShell>
   )

@@ -110,12 +110,11 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
         )}/>
       )
     case "textarea":
-    case "richText":
       return (
         <FormField control={control} name={fieldName} render={({ field: f }) => (
           <FormItem>
             <FormLabel>{field.label ?? field.name}{field.required && "*"}</FormLabel>
-            <FormControl><Textarea rows={field.type === "richText" ? 8 : 4} {...f} value={f.value ?? ""} /></FormControl>
+            <FormControl><Textarea rows={4} {...f} value={f.value ?? ""} /></FormControl>
             <FormMessage />
           </FormItem>
         )}/>

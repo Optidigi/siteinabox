@@ -10,142 +10,96 @@ test("committed theme CSS exactly matches the canonical preset generator", async
   assert.equal(await readFile(generatedUrl, "utf8"), generateStaticThemeCss())
 })
 
-test("theme CSS covers every approved preset and contains no retired provider presets", () => {
+test("theme CSS covers every owned preset and contains no retired provider selectors", () => {
   const css = generateStaticThemeCss()
   for (const id of COLOR_SCHEME_IDS) assert.match(css, new RegExp(`data-theme-color="${id}"`))
   for (const id of FONT_SCHEME_IDS) assert.match(css, new RegExp(`data-theme-font="${id}"`))
   for (const id of SHAPE_SCHEME_IDS) assert.match(css, new RegExp(`data-theme-shape="${id}"`))
-  assert.deepEqual(SHAPE_SCHEME_IDS, ["rounded", "soft", "sharp"])
-  assert.match(css, /data-theme-shape="soft"[^}]*--radius:0\.625rem[^}]*--radius-md:0\.5rem[^}]*--radius-2xl:1\.125rem/)
-  assert.doesNotMatch(css, /shadcn-neutral|shadcn-geist|shadcn-default|color-mix/)
+  assert.doesNotMatch(css, /shadcnui-blocks|data-provider|--provider-/i)
 })
 
-test("monochrome is the exact upstream light and dark semantic token reference", () => {
+test("theme CSS keeps the shared surface and responsive composition contract", async () => {
   const css = generateStaticThemeCss()
-  assert.match(css, /data-theme-color="monochrome"[^}]*--background:oklch\(1 0 0\)[^}]*--primary:oklch\(0\.205 0 0\)[^}]*--provider-surface:var\(--background\)/)
-  assert.match(css, /data-theme-color="monochrome"\]\[data-rt-mode="dark"\][^}]*--background:oklch\(0\.145 0 0\)[^}]*--card:oklch\(0\.205 0 0\)[^}]*--provider-surface:var\(--background\)/)
-})
-
-test("colored themes use a perceptible canvas wash with elevated cards", () => {
-  const css = generateStaticThemeCss()
-  for (const id of COLOR_SCHEME_IDS.filter((id) => id !== "monochrome")) {
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--background:oklch\\(0\\.980 0\\.025`))
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--card:oklch\\(0\\.994 0\\.012`))
-    assert.match(css, new RegExp(`data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^}]*--background:oklch\\(0\\.150 0\\.030`))
-    assert.match(css, new RegExp(`data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^}]*--card:oklch\\(0\\.210 0\\.022`))
-  }
-})
-
-test("colored themes keep recessed muted panels below the canvas wash", () => {
-  const css = generateStaticThemeCss()
-  for (const id of COLOR_SCHEME_IDS.filter((id) => id !== "monochrome")) {
-    // Light wash L 0.980 → muted/secondary L 0.945 (ΔL 0.035 ≥ monochrome’s ~0.03).
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--muted:oklch\\(0\\.945 0\\.018`))
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--secondary:oklch\\(0\\.945 0\\.018`))
-  }
-  // Monochrome keeps the exact upstream muted reference (L 0.97 on white).
-  assert.match(css, /data-theme-color="monochrome"[^}]*--muted:oklch\(0\.97 0 0\)/)
-})
-
-test("composition CSS neutralizes stacked min-h-screen and densifies logo clouds", async () => {
+  assert.match(css, /data-theme-color="monochrome"[^}]*--siab-surface:var\(--background\)/)
+  assert.match(css, /data-theme-color="blue-professional"[^}]*--background:oklch\(0\.985 0 0\)/)
+  assert.match(css, /data-theme-color="blue-professional"\]\[data-rt-mode="dark"[^}]*--background:oklch\(0\.145 0 0\)/)
+  assert.match(css, /data-theme-color="blue-professional"\]\[data-rt-mode="dark"[^}]*--card:color-mix\(in oklab, oklch\(0\.205 0 0\) 99%, #6366f1 1%\)/)
+  assert.match(css, /data-theme-color="blue-professional"\]\[data-rt-mode="dark"[^}]*--secondary:color-mix\(in oklab, oklch\(0\.269 0 0\) 99%, #6366f1 1%\)/)
   const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8")
+  const serviceStyles = styles.slice(styles.indexOf("/* Services 01"), styles.indexOf("/* CTA 01"))
+  assert.doesNotMatch(serviceStyles, /\.site-services-01-panel/)
+  assert.match(serviceStyles, /\.site-services-01-item\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*var\(--siab-radius-2xl\)[^}]*color:\s*var\(--card-foreground\)/s)
+  assert.doesNotMatch(serviceStyles, /siab-services-cell-surface/)
+  assert.match(serviceStyles, /\.site-services-01-item\s*\{[^}]*background:\s*color-mix\(in oklab, var\(--background\) 96%, var\(--foreground\) 2%\)/s)
+  assert.match(serviceStyles, /\.site-services-01-item\s*\{[^}]*box-shadow:\s*none;/s)
+  assert.match(serviceStyles, /\.site-services-01-icon\s*\{[^}]*background:\s*var\(--background\)/s)
+  assert.match(serviceStyles, /data-rt-mode="dark"[\s\S]*\.site-services-01-item,[\s\S]*background:\s*color-mix\(in oklab, var\(--background\) 94%, var\(--foreground\) 4%\)/s)
+  assert.match(serviceStyles, /data-rt-mode="dark"[\s\S]*\.site-services-01-item,[\s\S]*box-shadow:\s*none;/s)
+  assert.match(serviceStyles, /data-rt-mode="dark"[\s\S]*\.site-services-01-icon,[\s\S]*background:\s*var\(--background\)/s)
+  assert.doesNotMatch(serviceStyles, /\.site-services-01-item[\s\S]*background:\s*var\(--card\)/s)
+  assert.doesNotMatch(serviceStyles, /\.site-services-01-icon[\s\S]*background:\s*var\(--card\)/s)
+  assert.match(serviceStyles, /\.site-services-01-icon\s*\{[^}]*box-shadow:\s*0 1px 2px 0 rgb\(0 0 0 \/ 0\.06\),[\s\S]*inset 0 0 0 1px color-mix\(in oklab, var\(--secondary\) 52%, var\(--border\) 48%\);/s)
+  assert.match(serviceStyles, /data-rt-mode="dark"[\s\S]*\.site-services-01-icon,[\s\S]*box-shadow:\s*0 1px 2px 0 rgb\(0 0 0 \/ 0\.04\),[\s\S]*inset 0 0 0 1px color-mix\(in oklab, var\(--secondary\) 88%, var\(--background\) 12%\);/s)
+  assert.doesNotMatch(serviceStyles, /--site-services-01-icon-(?:shadow|contact-shadow)/)
+  assert.doesNotMatch(serviceStyles, /0 0\.5rem 1rem var\(--site-services-01-icon-shadow\)|0 0\.125rem 0\.25rem var\(--site-services-01-icon-contact-shadow\)/)
+  assert.match(serviceStyles, /\.site-services-01-icon\s*\{[^}]*width:\s*3\.25rem;[^}]*height:\s*3\.25rem;[^}]*margin-top:\s*-1\.875rem;[^}]*color:\s*var\(--primary\)/s)
+  assert.match(serviceStyles, /\.site-services-01-icon > svg\s*\{[^}]*width:\s*1\.625rem;[^}]*height:\s*1\.625rem;/s)
+  assert.match(serviceStyles, /@media \(min-width:\s*48rem\)[\s\S]*\.site-services-01-icon > svg\s*\{[^}]*width:\s*1\.875rem;[^}]*height:\s*1\.875rem;/s)
+  assert.match(serviceStyles, /data-theme-shape="soft"[\s\S]*\.site-services-01-icon[\s\S]*border-radius:\s*var\(--siab-radius-xl\)/s)
+  assert.match(serviceStyles, /data-theme-shape="rounded"[\s\S]*\.site-services-01-icon[\s\S]*border-radius:\s*var\(--siab-radius-full\)/s)
+  assert.match(serviceStyles, /\.site-services-01-title\s*\{[^}]*font-size:\s*clamp\(2\.375rem, 4vw, 3\.125rem\)/s)
+  assert.match(serviceStyles, /\.site-services-01-intro\s*\{[^}]*font-size:\s*clamp\(1\.0625rem, 1\.8vw, 1\.125rem\)/s)
+  assert.match(serviceStyles, /\.site-services-01-item-title\s*\{[^}]*font-size:\s*1\.125rem;[^}]*line-height:\s*1\.5555556;/s)
+  assert.match(serviceStyles, /\.site-services-01-item-body\s*\{[^}]*margin:\s*0\.25rem 0 0;[^}]*font-size:\s*1rem;[^}]*line-height:\s*1\.5rem;/s)
+  assert.match(serviceStyles, /@media \(min-width:\s*64rem\)[\s\S]*\.site-services-01-grid\s*\{[^}]*row-gap:\s*4rem;/s)
+  assert.match(serviceStyles, /@media \(min-width:\s*48rem\)[\s\S]*\.site-services-01-icon\s*\{[^}]*margin-top:\s*-2rem;/s)
+  assert.match(serviceStyles, /\.site-services-01-action\s*\{[^}]*min-height:\s*2\.75rem[^}]*border:\s*1px solid/s)
+  assert.match(styles, /html\[data-siab-color-mode="dark"\][\s\S]*html\[data-rt-mode="dark"\][\s\S]*background:\s*oklch\(0\.145 0 0\)/s)
+  assert.match(styles, /body\s*\{[^}]*background:\s*oklch\(0\.985 0 0\)/s)
+  assert.match(styles, /html\[data-siab-color-mode="dark"\]\s+body,[\s\S]*html\[data-rt-mode="dark"\]\s+body\s*\{[^}]*background:\s*oklch\(0\.145 0 0\)/s)
   assert.match(styles, /data-siab-composed-sections="true"\] \.min-h-screen/)
-  assert.match(styles, /min-height:\s*auto/)
-  assert.match(styles, /--siab-chrome-header-height:\s*0px/)
-  assert.match(styles, /--siab-chrome-header-height:\s*4rem/)
-  assert.match(styles, /nav\.h-16\.border-b/)
-  assert.match(
-    styles,
-    /\[data-block-index="0"\]\[data-provider-variant\^="shadcnui-blocks\.hero-"\]\.min-h-screen/,
-  )
-  assert.match(
-    styles,
-    /min-height:\s*calc\(\s*var\(--siab-preview-viewport-height,\s*100dvh\)\s*-\s*var\(--siab-chrome-header-height/,
-  )
-  assert.match(styles, /hero-01"\]\.min-h-screen/)
-  assert.match(styles, /hero-02"\]\.min-h-screen/)
-  assert.match(styles, /padding-block:\s*6rem/)
-  assert.match(styles, /padding-block:\s*3\.5rem/)
-  assert.match(styles, /logo-cloud-01"\] :is\(img, svg\)/)
-  assert.match(styles, /logo-cloud-02"\] :is\(img, svg\)/)
-  assert.match(styles, /height:\s*3\.5rem/)
-  assert.match(styles, /\.gap-14 \{\s*gap:\s*2\.5rem/)
-  assert.doesNotMatch(styles, /cta-03"\] img/)
-  assert.doesNotMatch(styles, /cta-04"\] img/)
-})
-
-test("every color scheme emits secondary accent ramps for dual-tone surfaces", () => {
-  const css = generateStaticThemeCss()
-  // Shared slate secondary across every scheme; primary stays scheme-specific.
-  for (const id of COLOR_SCHEME_IDS) {
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--provider-accent-secondary-600:#475569`))
-  }
-  assert.match(css, /data-theme-color="monochrome"[^}]*--provider-accent-600:#475569/)
-  assert.match(css, /data-theme-color="blue-professional"[^}]*--provider-accent-600:#4f46e5/)
-  assert.match(css, /data-theme-color="red-confident"[^}]*--provider-accent-600:#dc2626/)
-  assert.match(css, /data-theme-color="emerald-calm"[^}]*--provider-accent-600:#059669/)
-})
-
-test("colored themes keep brand continuity with a modest dark lift", () => {
-  const css = generateStaticThemeCss()
-  const block = (id, dark) => {
-    const re = dark
-      ? new RegExp(`\\[data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^{]*\\{([^}]+)\\}`)
-      : new RegExp(`\\[data-theme-color="${id}"\\]:not\\(\\[data-rt-mode="dark"\\]\\)\\{([^}]+)\\}`)
-    const match = css.match(re)
-    assert.ok(match, `${id} ${dark ? "dark" : "light"} block`)
-    return match[1]
-  }
-  const token = (source, name) => {
-    const match = source.match(new RegExp(`--${name}:([^;]+)`))
-    assert.ok(match, `--${name}`)
-    return match[1]
-  }
-
-  assert.equal(token(block("blue-professional", false), "primary"), "#4338ca")
-  assert.equal(token(block("blue-professional", false), "color-accent"), "#4f46e5")
-  assert.equal(token(block("blue-professional", true), "primary"), "#6366f1")
-  assert.equal(token(block("blue-professional", true), "color-accent"), "#6366f1")
-  assert.equal(token(block("blue-professional", true), "accent"), "#312e81")
-  assert.equal(token(block("emerald-calm", true), "primary"), "#10b981")
-  assert.equal(token(block("terracotta-warm", true), "primary"), "#c45f41")
-  // Red / amber keep the previous soft dark 400 lift.
-  assert.equal(token(block("red-confident", true), "primary"), "#f87171")
-  assert.equal(token(block("red-confident", true), "color-accent"), "#f87171")
-  // Amber: light 600 / dark 500 yellow-gold; light mode uses light (white) button ink.
-  assert.equal(token(block("amber-warm", false), "primary"), "#d97706")
-  assert.equal(token(block("amber-warm", false), "color-accent"), "#d97706")
-  assert.equal(token(block("amber-warm", false), "primary-foreground"), "#ffffff")
-  assert.equal(token(block("amber-warm", true), "primary"), "#f59e0b")
-  assert.equal(token(block("amber-warm", true), "color-accent"), "#f59e0b")
-})
-
-test("monochrome provider accents stay on the same slate ramp in dark mode", () => {
-  const css = generateStaticThemeCss()
-  const block = (dark) => {
-    const re = dark
-      ? /\[data-theme-color="monochrome"\]\[data-rt-mode="dark"\][^{]*\{([^}]+)\}/
-      : /\[data-theme-color="monochrome"\]:not\(\[data-rt-mode="dark"\]\)\{([^}]+)\}/
-    const match = css.match(re)
-    assert.ok(match, `monochrome ${dark ? "dark" : "light"} block`)
-    return match[1]
-  }
-  const token = (source, name) => source.match(new RegExp(`--${name}:([^;]+)`))[1]
-
-  assert.equal(token(block(false), "provider-accent-600"), "#475569")
-  assert.equal(token(block(true), "provider-accent-600"), "#475569")
-  assert.equal(token(block(true), "color-accent"), "#64748b")
-})
-
-test("terracotta uses the Ami-care brand color as its light primary", () => {
-  const css = generateStaticThemeCss()
-  assert.match(css, /data-theme-color="terracotta-warm"[^}]*--primary:#a04e32/)
-})
-
-test("semantic controls override literal rounded-full without changing structural circles", async () => {
-  const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8")
-  const hero = await readFile(new URL("../providers/shadcnui-blocks/variants/hero-01/hero.tsx", import.meta.url), "utf8")
-  assert.match(hero, /<Button[^>]*rounded-full/)
-  assert.match(styles, /data-provider-token-mode="theme"\][^{]*\[data-slot="button"\][^{]*\{\s*border-radius: var\(--siab-radius-control\)/)
-  assert.doesNotMatch(styles, /\.rounded-full\s*\{[^}]*siab-radius-control/)
+  assert.doesNotMatch(styles, /container-name:\s*site-frame/)
+  assert.doesNotMatch(styles, /@container\s+site-frame\s+\(min-width:\s*64rem\)/)
+  assert.doesNotMatch(styles, /--siab-hero-(viewport|chrome|remaining|cap|min-height)/)
+  assert.doesNotMatch(styles, /data-siab-hero-height|hero-height-fill/)
+  assert.doesNotMatch(styles, /hero-lead-media-scrim|hero-lead-media-edge-fade|hero-lead-media-gutter-mask|hero-lead-media-gutter-fade/)
+  assert.match(styles, /\.hero-lead-media-bleed\s*\{[^}]*width:\s*min\(100%, 120rem\)/s)
+  assert.match(styles, /\.hero-lead-media-backdrop-image\s*\{[^}]*filter:\s*blur\(0\.75rem\)\s+saturate\(0\.94\)/s)
+  assert.match(styles, /\.hero-lead-media-glass\s*\{[^}]*backdrop-filter:\s*blur\(0\.5rem\)\s+saturate\(0\.94\)/s)
+  assert.match(styles, /\.hero-lead-media-overlay\s*\{[^}]*background-color:\s*var\(--overlay\)/s)
+  assert.match(styles, /\.hero-lead-value-points\s*\{[^}]*border:\s*1px solid[^}]*border-radius:\s*var\(--siab-radius-lg\)/s)
+  assert.match(styles, /\.hero-lead-value-points\s*\{[^}]*background-color:\s*color-mix\(in oklab, var\(--card\) 70%, transparent\)/s)
+  assert.match(styles, /\[data-rt-mode="dark"\] \.hero-lead-value-points[^}]*background-color:\s*color-mix\(in oklab, var\(--card\) 74%, transparent\)/s)
+  assert.match(styles, /\.hero-lead-value-points > ul > li \+ li::before\s*\{[^}]*background-color:\s*var\(--hero-highlight-divider\)/s)
+  assert.match(styles, /@media \(max-width: 47\.999rem\)[\s\S]*\.hero-lead-value-points > ul > li \+ li::before\s*\{[^}]*height:\s*1px/s)
+  assert.match(styles, /@media \(min-width: 48rem\)[\s\S]*\.hero-lead-value-points > ul > li \+ li::before\s*\{[^}]*width:\s*1px/s)
+  assert.match(styles, /\.hero-lead-value-points \.hero-value-point-icon\s*\{[^}]*color:\s*var\(--primary\)/s)
+  assert.match(styles, /\.hero-lead-value-points strong\s*\{[^}]*color:\s*var\(--card-foreground\)/s)
+  assert.match(styles, /\.hero-lead-background-animation\s*\{[^}]*background:\s*transparent/s)
+  assert.doesNotMatch(styles, /\.hero-lead-background-animation\s*\{[^}]*radial-gradient/s)
+  assert.doesNotMatch(styles, /hero-lead-animation-frame/)
+  assert.match(styles, /\.hero-lead-dither-canvas\s*\{[^}]*mix-blend-mode:\s*multiply/s)
+  assert.match(styles, /\.hero-lead-background-grid\s*\{[^}]*--siab-hero-grid-line:/s)
+  assert.match(styles, /\.hero-lead-background-ambient\s*\{[^}]*background:\s*var\(--background\)/s)
+  assert.match(styles, /\.hero-angled-background-ambient,[\s\S]*\.hero-pattern-split-background-ambient\s*\{[^}]*background:\s*transparent/s)
+  assert.match(styles, /\.hero-ambient-field\s*\{[\s\S]*position:\s*absolute/s)
+  assert.doesNotMatch(styles, /\.hero-ambient-field\s*\{[^}]*position:\s*relative/s)
+  assert.match(styles, /\.hero-ambient-mesh-canvas\s*\{[\s\S]*opacity:\s*0\.73/s)
+  assert.match(styles, /\.hero-mesh-layer\s*\{[\s\S]*position:\s*absolute/s)
+  assert.match(styles, /\.hero-mesh-layer-base\s*\{[\s\S]*background:\s*var\(--background\)[\s\S]*opacity:\s*1/s)
+  assert.match(styles, /\.hero-mesh-layer-overlay\s*\{[\s\S]*background:\s*transparent[\s\S]*opacity:\s*0\.4/s)
+  assert.match(styles, /\.hero-lead-background-mesh,[\s\S]*\.hero-pattern-split-background-mesh\s*\{[\s\S]*background:\s*var\(--background\)/s)
+  assert.doesNotMatch(styles, /\.hero-(angled|framed|pattern-split)-background-mesh \.hero-mesh-layer\s*\{[\s\S]*opacity:/s)
+  assert.doesNotMatch(styles, /\.hero-ambient-field::before|\.hero-ambient-field::after/)
+  assert.doesNotMatch(styles, /hero-ambient-primary-drift|hero-ambient-secondary-drift/)
+  assert.doesNotMatch(styles, /--hero-ambient-(surface|primary|secondary|highlight)/)
+  assert.doesNotMatch(styles, /hero-lead-dither-field|hero-lead-dither-ribbon|siab-hero-dither-field/)
+  assert.match(styles, /\.siab-hero-offset-plane\s*\{[\s\S]*--siab-hero-offset-surface: color-mix\(in oklab, var\(--primary\) 62%, var\(--card\)\)[\s\S]*--siab-hero-offset-surface-opacity: 0\.44[\s\S]*background-color: transparent/s)
+  assert.match(styles, /\.siab-hero-offset-plane::before\s*\{[\s\S]*background-color: var\(--siab-hero-offset-surface\)[\s\S]*opacity: var\(--siab-hero-offset-surface-opacity\)/s)
+  assert.match(styles, /\.rt-canvas\[data-rt-mode="dark"\] \.siab-hero-offset-plane[\s\S]*--siab-hero-offset-surface: color-mix\(in oklab, var\(--primary\) 58%, var\(--card\)\)[\s\S]*--siab-hero-offset-surface-opacity: 0\.4/s)
+  assert.match(styles, /\.rt-canvas\[data-rt-mode="dark"\] \[data-siab-hero-design="framed"\][\s\S]*background-color: var\(--background\)/)
+  assert.doesNotMatch(styles, /hero-lead-media-gutter-mask|hero-lead-media-gutter-fade/)
+  assert.doesNotMatch(styles, /\[data-siab-hero-design\][^\{]*\{[^}]*100svh/)
+  assert.match(styles, /prefers-reduced-motion/)
+  assert.doesNotMatch(styles, /provider|shadcnui-blocks/i)
 })

@@ -158,7 +158,7 @@ type AnalyticsLabels = {
   viewGeography: string
   variantRanking: string
   variantRankingDescription: string
-  providerVariant: string
+  variant: string
   rank: string
   score: string
   evidence: string
@@ -319,7 +319,7 @@ export function AnalyticsPageContent({
     share: labels.share,
     variantRanking: labels.variantRanking,
     variantRankingDescription: labels.variantRankingDescription,
-    providerVariant: labels.providerVariant,
+    variant: labels.variant,
     rank: labels.rank,
     score: labels.score,
     evidence: labels.evidence,

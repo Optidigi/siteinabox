@@ -5,8 +5,9 @@ import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
 import { ShapeControl } from "@/components/editor/theme/radius-control"
+import { BackgroundModeControl } from "@/components/editor/theme/background-mode-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
+import { mergeThemePatch, type ThemePatch } from "@/lib/theme/normalizeTheme"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { useTranslations } from "next-intl"
 
@@ -19,9 +20,9 @@ export function PreviewDesktopThemeToolbar({
 }) {
   const previewT = useTranslations("preview")
 
-  function handleUpdate(partial: Partial<ThemeTokens>) {
+  function handleUpdate(partial: ThemePatch) {
     onThemeChange((current) =>
-      normalizePreviewThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens),
+      mergeThemePatch(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC, partial),
     )
   }
 
@@ -37,6 +38,11 @@ export function PreviewDesktopThemeToolbar({
         mode={theme?.appearance?.mode ?? "light"}
         layout="inline"
         onChange={(patch) => handleUpdate(patch)}
+      />
+      <BackgroundModeControl
+        value={theme?.appearance?.backgroundMode}
+        layout="segment"
+        onChange={(backgroundMode) => handleUpdate({ appearance: { backgroundMode } })}
       />
       <ShapeControl
         shapeId={theme?.shape?.schemeId}

@@ -4,12 +4,13 @@ import { describe, expect, it } from "vitest"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("page-editor theme toolbar", () => {
-  it("exposes only color, font and shape controls", () => {
+  it("exposes color, font, shape and Hero 01 background controls", () => {
     const themeBar = read("src/components/editor/theme/editor-theme-toolbar.tsx")
     const radiusControl = read("src/components/editor/theme/radius-control.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
 
-    expect(themeBar).toContain('type Segment = "colors" | "fonts" | "shape"')
+    expect(themeBar).toContain('type Segment = "colors" | "fonts" | "shape" | "backgroundMode"')
+    expect(themeBar).toContain("BackgroundModeControl")
     expect(themeBar).not.toContain("DensityControl")
     expect(themeBar).not.toContain("densityLevels")
     expect(themeBar).not.toContain("stylePresetLevels")
@@ -25,7 +26,7 @@ describe("page-editor theme toolbar", () => {
     const themeBar = read("src/components/editor/theme/editor-theme-toolbar.tsx")
 
     expect(themeBar).toContain("React.Dispatch<React.SetStateAction<ThemeTokens | null>>")
-    expect(themeBar).toContain("onThemeChange((current) => normalizeThemeForSave")
+    expect(themeBar).toContain("onThemeChange((current) => mergeThemePatch")
   })
 
   it("renders mobile shuffle/default controls from approved theme presets only", () => {

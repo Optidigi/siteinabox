@@ -36,19 +36,18 @@ describe("blockArrayFields", () => {
 
   it("covers known editor-stamped array row field names", () => {
     const expected = [
-      "plans",
-      "tags",
-      "logos",
-      "images",
-      "members",
-      "posts",
-      "links",
-      "features",
       "items",
-      "pills",
-      "stats",
-      "fields",
-      "benefits",
+      "highlights",
+      "steps",
+      "projects",
+      "reviewSourceIds",
+      "pricingSourceIds",
+      "offers",
+      "contactMethods",
+      "serviceArea",
+      "media",
+      "features",
+      "options",
     ]
     for (const key of expected) {
       expect(EDITOR_ARRAY_ROW_KEYS.has(key)).toBe(true)
