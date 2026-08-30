@@ -123,6 +123,21 @@ type PreCommerceRoutingAdoptionInput = {
   reason?: unknown
 }
 
+const preCommerceRoutingAdoptionUnchanged = (
+  next: PreCommerceRoutingAdoptionInput | null | undefined,
+  original: PreCommerceRoutingAdoptionInput | null | undefined,
+): boolean => {
+  const fields = [
+    "state",
+    "adoptedDomain",
+    "evidenceVersion",
+    "adoptedAt",
+    "revokedAt",
+    "reason",
+  ] as const
+  return fields.every((field) => (next?.[field] ?? null) === (original?.[field] ?? null))
+}
+
 const validDateText = (value: unknown): boolean =>
   typeof value === "string" && Number.isFinite(Date.parse(value))
 
@@ -168,11 +183,16 @@ export const protectPreCommerceRoutingAdoption: CollectionBeforeChangeHook = ({
     !adoption?.adoptedDomain &&
     !adoption?.adoptedAt &&
     !adoption?.revokedAt
+  const unchangedExistingAdoption =
+    operation === "update" &&
+    originalState !== "not_adopted" &&
+    preCommerceRoutingAdoptionUnchanged(adoption, originalAdoption)
   if (operation === "create" && !pristineNotAdopted) {
     throw new Error("A tenant cannot be created with routing adoption.")
   }
   if (
     !pristineNotAdopted &&
+    !unchangedExistingAdoption &&
     req.context?.preCommerceRoutingAdoptionMutation !== true
   ) {
     throw new Error("Pre-commerce routing adoption is system-owned.")

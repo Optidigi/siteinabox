@@ -62,6 +62,21 @@ describe("pre-commerce routing adoption ownership", () => {
     })
   })
 
+  it("allows unrelated updates to preserve existing routing evidence", () => {
+    expect(callHook({
+      name: "Amicare-Zorg vernieuwd",
+      preCommerceRoutingAdoption: adopted,
+    }, {
+      originalDoc: {
+        domain: "ami-care.nl",
+        preCommerceRoutingAdoption: adopted,
+      },
+    })).toMatchObject({
+      name: "Amicare-Zorg vernieuwd",
+      preCommerceRoutingAdoption: adopted,
+    })
+  })
+
   it("requires complete versioned evidence for system adoption", () => {
     expect(callHook({
       preCommerceRoutingAdoption: adopted,
