@@ -16,11 +16,35 @@ export interface ElementSpec {
   field: string
   label: string
   kind: ElementKind
+  /** Optional select fields can expose an editor-only reset to inherited data. */
+  clearable?: boolean
   role?: ElementRole
   variant?: "block" | "inline"
   itemFields?: ElementSpec[]
   itemLabel?: (item: unknown, i: number) => string
   options?: ElementOption[]
+}
+
+/**
+ * UI-only select value. It is translated to null before the form is updated,
+ * so the canonical block never stores an editor sentinel.
+ */
+export const EDITOR_THEME_DEFAULT_SELECT_VALUE = "__siab_theme_default__"
+
+export const editorSelectValue = (
+  spec: Pick<ElementSpec, "clearable">,
+  value: unknown,
+): string => {
+  if (spec.clearable && value == null) return EDITOR_THEME_DEFAULT_SELECT_VALUE
+  return typeof value === "string" ? value : value == null ? "" : String(value)
+}
+
+export const editorSelectChangedValue = (
+  spec: Pick<ElementSpec, "clearable">,
+  value: string,
+): string | null => {
+  if (spec.clearable && value === EDITOR_THEME_DEFAULT_SELECT_VALUE) return null
+  return value
 }
 
 const fallbackItemLabel = (label: string) => (item: unknown, index: number) => {
@@ -118,7 +142,13 @@ const specForField = (field: Field): ElementSpec | null => {
   }
 
   if (field.type === "select") {
-    return { field: name, label, kind: "select", options: selectOptions(field) }
+    return {
+      field: name,
+      label,
+      kind: "select",
+      clearable: name === "backgroundMode",
+      options: selectOptions(field),
+    }
   }
 
   if (field.type === "checkbox") {
@@ -185,10 +215,23 @@ export const getBlockElementSpecs = (
   manifest?: RtManifest | null,
 ): ElementSpec[] => {
   const manifestSpecs = elementSpecsFromManifest(blockType, manifest)
-  if (manifestSpecs) return manifestSpecs
-  if (!blockType) return []
+  if (!blockType) return manifestSpecs ?? []
+
   const block = blockBySlug[blockType]
-  return block ? elementSpecsFromFields(block.fields as Field[]) : []
+  const ownedSpecs = block ? elementSpecsFromFields(block.fields as Field[]) : []
+  if (!manifestSpecs) return ownedSpecs
+
+  // The tenant manifest may tailor editor fields, but it cannot hide an owned
+  // effect override or replace its canonical options with a second contract.
+  const ownedBackgroundMode = ownedSpecs.find((spec) => spec.field === "backgroundMode")
+  if (!ownedBackgroundMode) return manifestSpecs
+
+  const manifestBackgroundIndex = manifestSpecs.findIndex((spec) => spec.field === "backgroundMode")
+  if (manifestBackgroundIndex < 0) return [...manifestSpecs, ownedBackgroundMode]
+
+  return manifestSpecs.map((spec, index) => index === manifestBackgroundIndex
+    ? { ...ownedBackgroundMode, label: spec.label || ownedBackgroundMode.label }
+    : spec)
 }
 
 /** Always buried under Advanced in the merchant inspector. */

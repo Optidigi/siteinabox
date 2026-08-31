@@ -7,7 +7,13 @@ import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
-import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/blockElements"
+import {
+  EDITOR_THEME_DEFAULT_SELECT_VALUE,
+  editorSelectChangedValue,
+  editorSelectValue,
+  getBlockElementSpecs,
+  type ElementSpec,
+} from "@/components/editor/blockElements"
 import type { ElementPath } from "@/components/editor/elementPath"
 import { useElementPathFieldController } from "@/components/editor/fields/fieldController"
 import type { RtManifest } from "@/lib/richText/manifest"
@@ -206,17 +212,23 @@ const MobileFieldRenderer: React.FC<{
     )
   }
   if (spec.kind === "select") {
+    const selectValue = editorSelectValue(spec, value)
     return (
       <div className="space-y-2 pb-4" data-mobile-editor-kind="select">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
         <Select
-          value={typeof value === "string" ? value : value == null ? "" : String(value)}
-          onValueChange={setValue}
+          value={selectValue}
+          onValueChange={(nextValue) => setValue(editorSelectChangedValue(spec, nextValue))}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={spec.label} />
           </SelectTrigger>
           <SelectContent data-siab-editor-ui>
+            {spec.clearable ? (
+              <SelectItem value={EDITOR_THEME_DEFAULT_SELECT_VALUE}>
+                {t("useThemeDefault")}
+              </SelectItem>
+            ) : null}
             {(spec.options ?? []).map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

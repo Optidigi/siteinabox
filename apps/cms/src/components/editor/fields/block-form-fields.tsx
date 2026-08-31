@@ -14,6 +14,9 @@ import {
   CollapsibleTrigger,
 } from "@siteinabox/ui/components/collapsible"
 import {
+  EDITOR_THEME_DEFAULT_SELECT_VALUE,
+  editorSelectChangedValue,
+  editorSelectValue,
   getBlockElementSpecs,
   partitionBlockElementSpecs,
   type ElementSpec,
@@ -47,13 +50,13 @@ export interface BlockFormFieldsProps {
   onSelectPath?: (path: ElementPath) => void
 }
 
-const ADVANCED_LABEL_KEYS = new Set(["variant", "anchor"])
+const LOCALIZED_LABEL_KEYS = new Set(["variant", "anchor", "backgroundMode"])
 
 function useLocalizedSpecLabel() {
   const t = useTranslations("editor")
   return React.useCallback((spec: ElementSpec): string => {
-    if (!ADVANCED_LABEL_KEYS.has(spec.field)) return spec.label
-    const key = spec.field as "variant" | "anchor"
+    if (!LOCALIZED_LABEL_KEYS.has(spec.field)) return spec.label
+    const key = spec.field as "variant" | "anchor" | "backgroundMode"
     return t.has(key) ? t(key) : spec.label
   }, [t])
 }
@@ -226,14 +229,23 @@ const FieldRenderer: React.FC<{
   }
 
   if (spec.kind === "select") {
+    const selectValue = editorSelectValue(spec, value)
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
-        <Select value={typeof value === "string" ? value : value == null ? "" : String(value)} onValueChange={setValue}>
+        <Select
+          value={selectValue}
+          onValueChange={(nextValue) => setValue(editorSelectChangedValue(spec, nextValue))}
+        >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={spec.label} />
           </SelectTrigger>
           <SelectContent data-siab-editor-ui>
+            {spec.clearable ? (
+              <SelectItem value={EDITOR_THEME_DEFAULT_SELECT_VALUE}>
+                {t("useThemeDefault")}
+              </SelectItem>
+            ) : null}
             {(spec.options ?? []).map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

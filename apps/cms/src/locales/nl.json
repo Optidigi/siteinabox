@@ -985,6 +985,8 @@
     "noEditorForElement": "Geen editor voor dit element.",
     "addItem": "{item} toevoegen",
     "inspectorAdvanced": "Geavanceerd",
+    "backgroundMode": "Achtergrondeffect",
+    "useThemeDefault": "Site-thema volgen",
     "anchor": "Anker",
     "metadata": "Metadata",
     "trustLabel": "Vertrouwenslabel",

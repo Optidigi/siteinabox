@@ -985,6 +985,8 @@
     "noEditorForElement": "No editor for this element.",
     "addItem": "Add {item}",
     "inspectorAdvanced": "Advanced",
+    "backgroundMode": "Background effect",
+    "useThemeDefault": "Use site theme",
     "anchor": "Anchor",
     "metadata": "Metadata",
     "trustLabel": "Trust label",
