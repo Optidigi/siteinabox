@@ -60,6 +60,14 @@ describe("SiteSettings collection config", () => {
     expect(findSubField(consentFields, "preferencesLabel")).toMatchObject({ type: "text" })
     expect(findSubField(consentFields, "statisticsLabel")).toMatchObject({ type: "text" })
     expect(findSubField(consentFields, "marketingLabel")).toMatchObject({ type: "text" })
+
+    const appointments = findField("appointments")
+    const appointmentFields = "fields" in appointments ? appointments.fields ?? [] : []
+    expect(appointments).toMatchObject({ type: "group" })
+    expect(findSubField(appointmentFields, "enabled")).toMatchObject({ type: "checkbox", defaultValue: false })
+    expect(findSubField(appointmentFields, "timezone")).toMatchObject({ type: "text", required: true, defaultValue: "Europe/Amsterdam" })
+    expect(findSubField(appointmentFields, "weeklyAvailability")).toMatchObject({ type: "json", defaultValue: [] })
+    expect(findSubField(appointmentFields, "dateOverrides")).toMatchObject({ type: "json", defaultValue: [] })
   })
 
   it("keeps contact, service-area and maintenance editing available", () => {

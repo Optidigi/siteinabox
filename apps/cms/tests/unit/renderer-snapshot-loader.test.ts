@@ -95,7 +95,12 @@ describe("renderer snapshot loader environment gates", () => {
       pathname: "/services",
     })
     await expect(resolvePublishedPage("/missing", "renderer.example.test")).resolves.toBeNull()
-    await expect(listPublishedPaths("renderer.example.test")).resolves.toEqual(["/", "/services", "/about"])
+    await expect(listPublishedPaths("renderer.example.test")).resolves.toEqual([
+      "/",
+      "/services",
+      "/about",
+      "/appointments",
+    ])
   })
 
   it("accepts canonical owned tenant snapshots from CMS responses", async () => {
@@ -223,6 +228,11 @@ describe("renderer snapshot loader environment gates", () => {
       SIAB_RENDERER_FIXTURE_MODE: "1",
       SIAB_CMS_URL: "",
     }
-    await expect(listPublishedPaths("localhost")).resolves.toEqual(["/", "/services", "/about"])
+    await expect(listPublishedPaths("localhost")).resolves.toEqual([
+      "/",
+      "/services",
+      "/about",
+      "/appointments",
+    ])
   })
 })

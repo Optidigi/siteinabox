@@ -41,10 +41,21 @@ export async function getTestPayload(): Promise<Payload> {
 }
 
 export async function resetTestData(payload: Payload) {
-  // Wipe collections in dependency order to satisfy FKs.
-  // Forms first (FK to tenant), then pages, media, site-settings, then users
-  // (which can reference tenant), then tenants last.
-  for (const slug of ["forms", "pages", "media", "site-settings", "users", "tenants"] as const) {
+  // Wipe collections in dependency order to satisfy FKs. Integration outboxes
+  // reference appointments/connections, and appointments reference tenants.
+  for (const slug of [
+    "appointment-calendar-events",
+    "appointment-notification-deliveries",
+    "appointment-calendar-oauth-states",
+    "appointment-calendar-connections",
+    "appointments",
+    "forms",
+    "pages",
+    "media",
+    "site-settings",
+    "users",
+    "tenants",
+  ] as const) {
     const docs = await payload.find({ collection: slug, limit: 1000, overrideAccess: true })
     for (const d of docs.docs) {
       await payload.delete({

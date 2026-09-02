@@ -8,6 +8,7 @@ import { Pricing } from "./Pricing"
 import { Faq } from "./Faq"
 import { Cta } from "./Cta"
 import { Contact } from "./Contact"
+import { Appointments } from "./Appointments"
 import type { BlockWithMeta } from "./_summary"
 
 export const ALL_BLOCKS = [
@@ -21,6 +22,7 @@ export const ALL_BLOCKS = [
   Faq,
   Cta,
   Contact,
+  Appointments,
 ] as const
 
 export const BLOCKS = ALL_BLOCKS as readonly BlockWithMeta[]

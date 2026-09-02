@@ -566,6 +566,7 @@ export function EditorFrameRuntime({
           tenantSlug={tenantSlug}
           domain={domain}
           mediaResolver={mediaResolver}
+          appointmentMode="preview"
           imageLoading="eager"
           editSlots={selectSlots}
           blockIndexOffset={paint.blockIndexOffset}

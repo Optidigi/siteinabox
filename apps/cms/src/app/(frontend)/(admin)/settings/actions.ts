@@ -110,6 +110,7 @@ export async function updateTenantNotificationSubscriptionAction(formData: FormD
     billingAndPayments: checked(formData, "billingAndPayments"),
     teamAndAccess: checked(formData, "teamAndAccess"),
     operationalDigest: false,
+    appointmentBookings: checked(formData, "appointmentBookings"),
   }
   const currentSubscription = await payload.find({
       collection: "tenant-notification-subscriptions",

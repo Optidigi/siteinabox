@@ -3,7 +3,7 @@ import { v1FixturePage, v1FixtureTheme } from "@siteinabox/site-renderer"
 
 const fixtureTheme = v1FixtureTheme
 
-const reviewBlocks = v1FixturePage.blocks.map((block) => {
+const reviewBlocks = v1FixturePage.blocks.filter((block) => block.blockType !== "appointments").map((block) => {
   const anchor = block.blockType
 
   if (block.blockType === "hero") {
@@ -23,6 +23,10 @@ const reviewBlocks = v1FixturePage.blocks.map((block) => {
 
   return { ...block, anchor }
 })
+
+const appointmentBlocks = v1FixturePage.blocks
+  .filter((block) => block.blockType === "appointments")
+  .map((block) => ({ ...block, anchor: "appointments" as const }))
 
 const pages: GeneratedPageSpec[] = [
   {
@@ -60,6 +64,15 @@ const pages: GeneratedPageSpec[] = [
       { blockType: "reviews", heading: "Fixture signal", intro: null, reviewSourceIds: ["fixture-review"], items: [{ sourceId: "fixture-review", quote: "The page output comes from structured snapshot data.", name: "SIAB Renderer", context: "Fixture" }], anchor: "reviews" },
       { blockType: "contact", heading: "Contact", body: null, contactMethods: [{ kind: "email", label: "Email", value: "hello@renderer.example.test", href: "mailto:hello@renderer.example.test" }], serviceArea: [], openingHours: null, bookingAction: null, form: null, image: null, anchor: "contact" },
     ],
+  },
+  {
+    id: "appointments",
+    slug: "appointments",
+    title: "Appointments",
+    status: "published",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+    seo: { title: "Renderer Fixture Appointments", description: "The appointment module fixture uses the public shared renderer." },
+    blocks: appointmentBlocks,
   },
 ]
 

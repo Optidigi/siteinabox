@@ -6,7 +6,7 @@ import {
   type NormalizedIntake,
   type SiteGenerationSpec,
 } from "@siteinabox/contracts/generation"
-import { BACKGROUND_MODE_IDS, CTA_VARIANTS, FOOTER_VARIANTS, HERO_BLOCK_TYPES, HERO_VARIANTS, NAVBAR_PLACEMENTS, NAVBAR_VARIANTS, SERVICES_VARIANTS } from "@siteinabox/contracts"
+import { APPOINTMENT_PRESENTATIONS, APPOINTMENT_VARIANTS, BACKGROUND_MODE_IDS, CTA_VARIANTS, FOOTER_VARIANTS, HERO_BLOCK_TYPES, HERO_VARIANTS, NAVBAR_PLACEMENTS, NAVBAR_VARIANTS, SERVICES_VARIANTS } from "@siteinabox/contracts"
 import { hashStableValue } from "@/lib/intake/normalizeIntake"
 import { loadMockSiteGenerationSpec, type MockGenerationFixture } from "@/lib/intake/mockGeneration"
 import { SitegenOutputSchema } from "@/lib/sitegen/output-schema"
@@ -175,6 +175,19 @@ const sectionSchemas = [
     serviceArea: { type: "array", maxItems: 8, items: stringValue },
     openingHours: nullableStringValue,
   }, ["blockType", "anchor", "heading", "body", "bookingAction", "serviceArea", "openingHours"]),
+  sectionSchema("appointments", {
+    variant: { type: "string", enum: [...APPOINTMENT_VARIANTS] },
+    presentation: { type: "string", enum: [...APPOINTMENT_PRESENTATIONS] },
+    backgroundMode: backgroundModeValue,
+    heading: stringValue,
+    body: nullableStringValue,
+    mediaId: nullableStringValue,
+    availabilityLabel: stringValue,
+    bookingLabel: stringValue,
+    confirmationHeading: stringValue,
+    confirmationBody: nullableStringValue,
+    privacyNote: nullableStringValue,
+  }, ["blockType", "variant", "anchor", "presentation", "heading", "body", "mediaId", "availabilityLabel", "bookingLabel", "confirmationHeading", "confirmationBody", "privacyNote"]),
 ] as const
 
 /** JSON Schema sent to a structured-output capable model. It contains only the shallow Sitegen projection. */

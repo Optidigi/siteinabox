@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { BACKGROUND_MODE_IDS, CTA_VARIANTS, FOOTER_VARIANTS, HERO_VARIANTS, NAVBAR_PLACEMENTS, NAVBAR_VARIANTS, SERVICES_VARIANTS } from "@siteinabox/contracts"
+import { APPOINTMENT_PRESENTATIONS, APPOINTMENT_VARIANTS, BACKGROUND_MODE_IDS, CTA_VARIANTS, DEFAULT_APPOINTMENT_PRESENTATION, FOOTER_VARIANTS, HERO_VARIANTS, NAVBAR_PLACEMENTS, NAVBAR_VARIANTS, SERVICES_VARIANTS } from "@siteinabox/contracts"
 
 const nullableString = z.string().trim().min(1).nullable()
 const optionalBackgroundMode = z.enum(BACKGROUND_MODE_IDS).nullable().optional()
@@ -32,6 +32,21 @@ export const PricingGenerationSchema = z.object({ blockType: z.literal("pricing"
 export const FaqGenerationSchema = z.object({ blockType: z.literal("faq"), ...base, heading: z.string().trim().min(1), intro: nullableString, items: z.array(z.object({ question: z.string().trim().min(1), answer: z.string().trim().min(1) }).strict()).min(2).max(10) }).strict()
 export const CtaGenerationSchema = z.object({ blockType: z.literal("cta"), variant: z.enum(CTA_VARIANTS), ...base, backgroundMode: optionalBackgroundMode, heading: z.string().trim().min(1), body: nullableString, primaryAction: action, secondaryAction: optionalAction, mediaId: nullableString }).strict()
 export const ContactGenerationSchema = z.object({ blockType: z.literal("contact"), ...base, heading: z.string().trim().min(1), body: nullableString, bookingAction: optionalAction, serviceArea: z.array(z.string().trim().min(1)).max(8), openingHours: nullableString }).strict()
+export const AppointmentGenerationSchema = z.object({
+  blockType: z.literal("appointments"),
+  variant: z.enum(APPOINTMENT_VARIANTS),
+  presentation: z.enum(APPOINTMENT_PRESENTATIONS).default(DEFAULT_APPOINTMENT_PRESENTATION),
+  ...base,
+  backgroundMode: optionalBackgroundMode,
+  heading: z.string().trim().min(1),
+  body: nullableString,
+  mediaId: nullableString,
+  availabilityLabel: z.string().trim().min(1).max(80).default("Beschikbaarheid"),
+  bookingLabel: z.string().trim().min(1).max(80).default("Afspraak aanvragen"),
+  confirmationHeading: z.string().trim().min(1).max(160).default("Afspraak bevestigd"),
+  confirmationBody: z.string().trim().max(500).nullable().optional(),
+  privacyNote: z.string().trim().max(500).nullable().optional(),
+}).strict()
 
 export const NavbarGenerationSchema = z.object({
   variant: z.enum(NAVBAR_VARIANTS),
@@ -53,6 +68,7 @@ export const SitegenGeneratedSectionSchema = z.discriminatedUnion("blockType", [
   FaqGenerationSchema,
   CtaGenerationSchema,
   ContactGenerationSchema,
+  AppointmentGenerationSchema,
 ])
 
 // Kept optional for replaying older offline generations; the live structured

@@ -17,7 +17,10 @@ const envPatterns = [
 ]
 
 function trackedSourceFiles(app) {
-  const output = execFileSync("git", ["ls-files", "--", `apps/${app}`], {
+  // Include non-ignored working-tree source as well as tracked files so a new
+  // operation cannot introduce an environment read that stays invisible until
+  // after its first commit. Ignored local worklogs remain excluded.
+  const output = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "--", `apps/${app}`], {
     cwd: root,
     encoding: "utf8",
   })
@@ -27,12 +30,25 @@ function trackedSourceFiles(app) {
     .filter((file) => file && sourceExtensions.test(file) && existsSync(path.join(root, file)))
 }
 
-function readNames(files) {
+function readNames(files, expectedNames) {
   const names = new Set()
   for (const file of files) {
     const source = readFileSync(path.join(root, file), "utf8")
     for (const pattern of envPatterns) {
       for (const match of source.matchAll(pattern)) names.add(match[1])
+    }
+
+    // Some modules intentionally inject a testable ProcessEnv object and read
+    // a key through a constant (`env[keyName]`). Keep those reads visible to
+    // the inventory without turning every uppercase string in application
+    // copy into an environment variable. Comments are stripped so an old
+    // name in documentation cannot satisfy the source contract.
+    const code = source
+      .replace(/\/\*[\\s\\S]*?\*\//g, "")
+      .replace(/(^|\s)\/\/.*$/gm, "$1")
+    for (const name of expectedNames) {
+      const literal = new RegExp(`[\\\"'\\\`]${name}[\\\"'\\\`]`)
+      if (literal.test(code)) names.add(name)
     }
   }
   return names
@@ -47,7 +63,7 @@ let totalNames = 0
 
 for (const app of appNames) {
   const expected = new Set(inventory.apps[app].names)
-  const observed = readNames(trackedSourceFiles(app))
+  const observed = readNames(trackedSourceFiles(app), expected)
   const missing = difference(observed, expected)
   const stale = difference(expected, observed)
 

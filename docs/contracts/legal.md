@@ -144,6 +144,44 @@ renderer as the rest of the site, but it is deliberately outside the page block
 catalog. Its legal link remains ordinary settings/navigation data so a future
 numbered footer design can render it when that chrome family is implemented.
 
+### Appointment data and calendar integrations
+
+Appointment scheduling is an optional, tenant-enabled service capability. When
+enabled, the booking flow needs the visitor's name and email address and may
+also collect a phone number, a visitor note, the selected time, and the page
+from which the request originated. These fields are used to create and manage
+the requested appointment. The visitor and the tenant notification recipients
+receive transactional appointment messages; tenant notification recipients are
+controlled by the existing operational subscription setting and are not a
+marketing list.
+
+Google Calendar and Microsoft Graph synchronization is optional and starts only
+after an authorised tenant owner completes the provider OAuth flow. Access and
+refresh tokens are encrypted at rest, provider scopes are recorded, and a
+disconnect clears credentials after pending calendar work has drained. The
+local appointment ledger remains the source of truth; only the minimum
+appointment details needed to create or remove the corresponding external
+calendar event are mirrored.
+
+Appointment rows are retained for 90 days after the appointment ends by
+default. Each tenant may choose a value from 30 to 730 days in the CMS, and a
+daily scheduled purge removes expired rows and their notification/calendar
+outboxes; appointment-linked outbound-mail metadata cascades with the row.
+OAuth correlation state is single-use and expires after ten minutes.
+Deleting a tenant cascades its appointment and integration records. Exports
+include the appointment's operational details and visitor contact fields, but
+exclude management-token digests, encrypted management tokens, OAuth state,
+calendar credentials, and outbox metadata.
+
+Before the future public appointment section is enabled, the tenant's privacy
+disclosure must explain the controller, purpose, fields, retention, mail
+delivery, and any enabled Google/Microsoft calendar processing. The currently
+published platform privacy release is immutable and predates this runtime
+capability; public activation therefore requires a new reviewed privacy release
+and corresponding supplier disclosure. Necessary booking processing is
+described by disclosure and service necessity, not by pretending that a
+separate marketing consent is required.
+
 Consent copy, navbar, footer, announcement, not-found, and maintenance data are
 currently reserved settings data. No numbered first-party chrome/system design
 is active yet, so the public renderer does not paint those surfaces as site

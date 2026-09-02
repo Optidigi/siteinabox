@@ -111,7 +111,7 @@ export const canonicalizeSiteGenerationSpecForCms = (spec: CmsSiteGenerationSpec
 
 export const validateSiteGenerationSpecForCms = (
   spec: CmsSiteGenerationSpec,
-  _options: SiteGenerationValidationOptions = {},
+  options: SiteGenerationValidationOptions = {},
 ): SiteGenerationValidationResult => {
   const candidate = spec as unknown
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -142,6 +142,7 @@ export const validateSiteGenerationSpecForCms = (
   if (typeof intakeRecord?.primaryDomain === "string" && intakeRecord.primaryDomain.toLowerCase() !== tenantDomain) issues.push(issue("tenant_domain_mismatch", "intake.primaryDomain must match tenant.domain.", ["intake", "primaryDomain"]))
 
   const pageSlugs = new Set<string>()
+  let appointmentBlockPath: Array<string | number> | null = null
   pages.forEach((page, pageIndex) => {
     if (!page || typeof page !== "object" || Array.isArray(page)) {
       issues.push(issue("invalid_page_shape", "Page entries must be objects.", ["pages", pageIndex]))
@@ -163,6 +164,9 @@ export const validateSiteGenerationSpecForCms = (
         return
       }
       const blockType = parsedBlock.data.blockType
+      if (blockType === "appointments" && appointmentBlockPath === null) {
+        appointmentBlockPath = ["pages", pageIndex, "blocks", blockIndex]
+      }
       if (!SITEGEN_TYPES.has(blockType)) issues.push(issue("unsupported_block_type", `Generated block type "${blockType}" is not a Sitegen section.`, ["pages", pageIndex, "blocks", blockIndex, "blockType"]))
       const anchor = typeof parsedBlock.data.anchor === "string" ? parsedBlock.data.anchor : ""
       if (seen.has(blockType) && !REPEATABLE_SECTION_TYPES.has(blockType)) {
@@ -180,6 +184,33 @@ export const validateSiteGenerationSpecForCms = (
     })
   })
   if (!pageSlugs.has("index")) issues.push(issue("missing_root_page", "Generated specs must include an index page.", ["pages"]))
+
+  // A provider result may already contain a canonical spec and therefore skip
+  // the shallow Sitegen output validator. Keep the appointment capability gate
+  // at the canonical CMS boundary as well, but only when the normalized intake
+  // actually contains contact capability facts. Thin/operator specs without
+  // those facts remain valid and can be configured manually in the CMS.
+  if (options.variantScope === "self-serve" && appointmentBlockPath && intakeRecord) {
+    const intakeBrief = asRecord(intakeRecord.intakeBrief)
+    const briefContact = asRecord(intakeBrief?.contactPreferences)
+    const rawIntake = asRecord(intakeRecord.raw)
+    const rawContact = asRecord(rawIntake?.contact)
+    const hasCapabilityFacts = briefContact !== null || rawContact !== null
+    const appointmentRequested =
+      briefContact?.availabilityMode === "appointment_only" ||
+      briefContact?.formType === "appointment" ||
+      (Array.isArray(briefContact?.formOptions) && briefContact.formOptions.includes("appointment")) ||
+      rawContact?.availabilityMode === "appointment_only" ||
+      rawContact?.formType === "appointment" ||
+      (Array.isArray(rawContact?.formOptions) && rawContact.formOptions.includes("appointment"))
+    if (hasCapabilityFacts && !appointmentRequested) {
+      issues.push(issue(
+        "appointment_capability_not_requested",
+        "Appointment sections require appointment capability to be requested by the intake before they can be generated.",
+        appointmentBlockPath,
+      ))
+    }
+  }
 
   const manifest = Array.isArray(value.blocks) ? value.blocks : []
   manifest.forEach((entry, index) => {

@@ -283,6 +283,7 @@ export function RendererFrameRuntime({
             domain={domain}
             mediaResolver={mediaResolver}
             consentAvailable={mode === "preview" ? consentAvailable : undefined}
+            appointmentMode="preview"
             imageLoading="eager"
             nonce={cspNonce}
             includeBehaviorScripts={false}

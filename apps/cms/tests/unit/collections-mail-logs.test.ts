@@ -20,7 +20,7 @@ describe("MailLogs collection config", () => {
   })
 
   it("indexes the fields operators need for admin list filters", () => {
-    for (const fieldName of ["flow", "tenant", "status", "retryState", "provider", "sender", "recipient"]) {
+    for (const fieldName of ["flow", "tenant", "appointment", "status", "retryState", "provider", "sender", "recipient"]) {
       expect(expectNamedField(MailLogs.fields, fieldName), fieldName).toMatchObject({ index: true })
     }
   })

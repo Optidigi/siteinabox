@@ -90,6 +90,7 @@ export default async function TenantSettingsPage({
         domainAndDns: subscription?.domainAndDns === true,
         billingAndPayments: subscription?.billingAndPayments === true,
         teamAndAccess: subscription?.teamAndAccess === true,
+        appointmentBookings: subscription?.appointmentBookings === true,
       },
     }
   }))

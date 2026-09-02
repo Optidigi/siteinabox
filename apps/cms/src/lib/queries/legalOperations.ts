@@ -449,7 +449,7 @@ export async function listTenantNotificationSubscriptions(options: LegalListOpti
     where: clauses(query ? { or: [{ email: { like: query } }, { subscriptionKey: { like: query } }] } : null),
     sort: "tenant", page, limit, depth: 1, overrideAccess: true,
   })
-  const categoryFields = ["formSubmissions", "publishingAndSiteStatus", "domainAndDns", "billingAndPayments", "teamAndAccess", "operationalDigest"] as const
+  const categoryFields = ["formSubmissions", "publishingAndSiteStatus", "domainAndDns", "billingAndPayments", "teamAndAccess", "operationalDigest", "appointmentBookings"] as const
   return mapResult(result, (item): TenantNotificationRow => ({
     id: String(item.id), tenant: tenantLabel(item.tenant), member: relationLabel(item.user, ["name", "email"]) ?? maskEmailRecipient(text(item.email)),
     emailMasked: maskEmailRecipient(text(item.email)), categories: categoryFields.filter((field) => item[field] === true), updatedAt: text(item.updatedAt),

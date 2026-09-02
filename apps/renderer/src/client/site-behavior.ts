@@ -12,6 +12,11 @@ void initializeHeroAmbientEffectsWhenPresent(document)
 void initializeHeroMeshEffectsWhenPresent(document)
 initializeNavbarBehavior(document)
 initializeConsentBehavior(document)
+if (document.querySelector("[data-siab-appointment-block]")) {
+  void import("@siteinabox/site-renderer/appointment-behavior").then(({ initializeAppointmentBlocks }) => {
+    initializeAppointmentBlocks(document)
+  })
+}
 
 const managedFormSelector = "form[data-siab-analytics-form='true']"
 

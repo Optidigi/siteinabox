@@ -77,8 +77,8 @@ Unknown or invalid hosts fail with a tenant-neutral 404.
 
 ### First-party Sitegen semantic blocks
 
-The ten Sitegen section families are `hero`, `services`, `about`, `process`,
-`work`, `reviews`, `pricing`, `faq`, `cta`, and `contact`. Each family owns a
+The eleven Sitegen section families are `hero`, `services`, `about`, `process`,
+`work`, `reviews`, `pricing`, `faq`, `cta`, `contact`, and `appointments`. Each family owns a
 small semantic contract under `packages/contracts/src/blocks/`. The current
 hero set is one semantic `hero` block family with five explicit code-owned
 design IDs—`hero-01` through `hero-05`—so each reviewed design has a clear
@@ -86,10 +86,10 @@ asset requirement, Payload option, Sitegen catalog entry, and local renderer
 case. Retired designs are not active in the contract, catalog, Payload
 registry, or renderer.
 The approved design variants currently cover `hero-01` through `hero-05`,
-`services-01` through `services-02`, and `cta-01` through `cta-02`. The other
-seven families remain semantic-only and render an explicit pending marker until
-their own designs are approved. `RenderBlock` uses an exhaustive block-type
-switch.
+`services-01` through `services-02`, `cta-01` through `cta-02`, and
+`appointments-01`. The other seven families remain semantic-only and render an
+explicit pending marker until their own designs are approved. `RenderBlock` uses
+an exhaustive block-type switch.
 There is no provider abstraction, runtime block registry, component-tree
 payload, or generated component source.
 
@@ -98,6 +98,55 @@ components. CMS may add edit slots and selection attributes around that output,
 but it does not maintain a second block renderer or iframe geometry protocol.
 Static sections remain server-rendered; only the smallest interactive boundary
 (such as FAQ disclosure or an existing contact form) may use client behavior.
+
+### Appointment runtime
+
+Appointment scheduling is a tenant-owned runtime capability, not a page-block
+or provider-specific renderer. `SiteSettings.appointments` stores a disabled-
+by-default local schedule: IANA time zone, appointment duration and interval,
+buffers, notice window, booking horizon, weekly windows, and date overrides.
+The shared contract lives in `packages/contracts/src/appointments.ts`; the
+Payload fields and the dedicated CMS schedule screen are projections of that
+contract.
+
+`apps/cms/src/lib/appointments` is the scheduling authority. It calculates
+local-time slots, removes occupied confirmed bookings, rechecks the chosen slot
+inside a database transaction, and relies on a PostgreSQL exclusion constraint
+as the final concurrent-booking guard. The public renderer resolves the tenant
+from the published host/snapshot and forwards validated availability and
+booking requests to authenticated CMS routes. Visitor input never selects a
+tenant, schedule, or source-code component.
+
+This slice provides the local booking ledger and tenant agenda, plus the
+authenticated renderer-to-CMS availability, booking, and management API. The
+`appointments-01` page block is a semantic presentation of this capability, not
+the schedule itself. Its contract carries only copy and `inline`/`dialog`
+presentation; schedule settings, availability, and authoritative booking facts
+remain in `SiteSettings.appointments` and the appointment runtime. Public output
+uses the same small DOM controller as the CMS preview, with preview mode using
+deterministic local weekday slots and never making a booking request. The public
+controller uses the renderer API and CMS booking ledger when the schedule is
+enabled.
+
+Appointment notifications are queued through the CMS outbox and delivered by
+the existing Cloudflare Email Sending adapter: the mail-scoped REST API is
+preferred and Cloudflare SMTP is the fallback. Owner-authorised Google Calendar
+and Microsoft Graph connections store encrypted OAuth tokens and synchronize
+appointments through a versioned outbox, so cancellation or rescheduling
+cannot leave an older provider operation authoritative. Calendar connections
+can be disconnected and their credentials are cleared once pending provider
+work has drained.
+
+Appointment records use a tenant-configured retention window (90 days by
+default, bounded to 30–730 days) measured from the appointment end. A daily
+CMS task purges expired appointment rows and their notification/calendar
+outboxes through foreign-key cascades; appointment-linked mail metadata follows
+the same cascade so visitor addresses are not retained separately. OAuth
+correlation state expires after ten minutes and is purged by the same task.
+Tenant deletion cascades the appointment ledger and integration records.
+Appointment records contain visitor contact data and remain tenant-scoped in
+CMS. The tenant privacy disclosure and published privacy release must describe
+this processing and any enabled calendar processors before activation.
 
 The generated-site shell is a separate settings-owned concern, not a
 `Page.blocks` choice. Active numbered chrome currently includes

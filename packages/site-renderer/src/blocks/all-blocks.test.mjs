@@ -38,6 +38,10 @@ test("every first-party Sitegen block renders through the explicit switch", () =
       } else if (blockType === "cta") {
         assert.match(html, new RegExp(`data-siab-cta-design="${key}"`))
         assert.doesNotMatch(html, /variant-pending/)
+      } else if (blockType === "appointments") {
+        assert.match(html, /data-siab-appointments-design="appointments-01"/)
+        assert.match(html, /data-siab-appointment-flow/)
+        assert.doesNotMatch(html, /variant-pending/)
       } else {
         assert.match(html, /data-siab-block-state="variant-pending"/)
       }
@@ -46,6 +50,78 @@ test("every first-party Sitegen block renders through the explicit switch", () =
   }
 
   assert.equal(renderedCount, SITEGEN_BLOCK_TYPES.length + HERO_VARIANTS.length + SERVICES_VARIANTS.length + CTA_VARIANTS.length - 3)
+})
+
+test("appointments-01 keeps inline and dialog presentations on the same flow markup", () => {
+  const source = v1FixturePage.blocks.find((candidate) => candidate.blockType === "appointments")
+  assert.ok(source)
+
+  const inline = renderToStaticMarkup(
+    React.createElement(BlockRenderer, { block: BlockSchema.parse({ ...source, presentation: "inline" }), options: { index: 5, appointmentMode: "preview" } }),
+  )
+  const dialog = renderToStaticMarkup(
+    React.createElement(BlockRenderer, { block: BlockSchema.parse({ ...source, presentation: "dialog" }), options: { index: 5, appointmentMode: "preview" } }),
+  )
+
+  for (const html of [inline, dialog]) {
+    assert.match(html, /data-siab-appointments-design="appointments-01"/)
+    assert.match(html, /data-siab-appointment-flow/)
+    assert.match(html, /data-siab-appointment-details/)
+    assert.match(html, /data-siab-appointment-confirmation-body/)
+    assert.match(html, /name="visitorEmail"/)
+  }
+  assert.doesNotMatch(inline, /<dialog /)
+  assert.match(dialog, /<dialog[^>]+data-siab-appointment-dialog/)
+  assert.match(dialog, /data-siab-appointment-runtime="preview"/)
+})
+
+test("appointments-01 consumes the shared effect bridge without leaking outside its surfaces", () => {
+  const source = v1FixturePage.blocks.find((candidate) => candidate.blockType === "appointments")
+  assert.ok(source)
+
+  for (const mode of BACKGROUND_MODE_IDS) {
+    const block = BlockSchema.parse({
+      ...source,
+      backgroundMode: mode,
+      ...(mode === "image" ? { image: "/fixture-media/project-office.webp" } : {}),
+    })
+    const html = renderToStaticMarkup(
+      React.createElement(BlockRenderer, { block, options: { index: 5, appointmentMode: "preview" } }),
+    )
+
+    const renderedMode = mode === "none" && block.image ? "image" : mode
+    assert.match(html, new RegExp(`data-siab-appointment-background-mode="${renderedMode}"`))
+    assert.match(html, /site-appointments-panel relative isolate overflow-hidden/)
+    assert.match(html, /data-siab-effect-hover-target="true"/)
+    if (mode === "none") {
+      assert.match(html, /site-appointments-background/)
+      assert.match(html, /data-siab-background-mode="image"/)
+      assert.match(html, /hero-lead-media-bleed/)
+    } else {
+      assert.match(html, /site-appointments-background/)
+      assert.match(html, new RegExp(`data-siab-background-mode="${mode}"`))
+    }
+  }
+
+  const dialog = renderToStaticMarkup(
+    React.createElement(BlockRenderer, {
+      block: BlockSchema.parse({ ...source, presentation: "dialog", backgroundMode: "mesh" }),
+      options: { index: 5, appointmentMode: "preview" },
+    }),
+  )
+  assert.match(dialog, /site-appointment-dialog-rail relative isolate overflow-hidden/)
+  assert.match(dialog, /site-appointment-dialog-rail-background/)
+  assert.match(dialog, /data-siab-hero-mesh-effect="true"[^>]*class="[^"]*site-appointment-dialog-rail-background/)
+  assert.doesNotMatch(dialog, /site-appointment-dialog-main[^]*data-siab-background-mode=/)
+})
+
+test("appointments-01 keeps the CTA-01 panel surface and neutral modal rail tokenized", () => {
+  const styles = readFileSync(new URL("../styles.css", import.meta.url), "utf8")
+  assert.match(styles, /\.site-appointments-panel\s*\{[\s\S]*border: 1px solid color-mix\(in oklab, var\(--border\) 87%, transparent\);[\s\S]*border-radius: var\(--siab-radius-3xl\);/)
+  assert.match(styles, /\.site-appointments-panel > \.site-appointments-background,[\s\S]*contain: paint;/)
+  assert.match(styles, /\.site-appointments-launcher\s*\{[\s\S]*align-items: center;[\s\S]*flex-direction: column;[\s\S]*text-align: center;/)
+  assert.match(styles, /\.site-appointment-launcher-button\s*\{[\s\S]*min-height: clamp\(3\.25rem, 5\.5vw, 3\.5rem\);[\s\S]*padding-inline: clamp\(1\.25rem, 2\.5vw, 2rem\);/)
+  assert.match(styles, /\.site-appointment-dialog-rail\s*\{[\s\S]*background: var\(--card\);/)
 })
 
 test("services-01 renders a centered icon-led feature grid through the shared renderer", () => {

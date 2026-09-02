@@ -8,6 +8,7 @@ import {
   type SettingsContract,
 } from "@/lib/settingsContract"
 import {
+  AppointmentScheduleSettingsSchema,
   DEFAULT_FOOTER_VARIANT,
   DEFAULT_CONSENT_VARIANT,
   DEFAULT_NAVBAR_PLACEMENT,
@@ -75,6 +76,12 @@ const privacyDisclosureToJson = (value: unknown) => {
   })
   if (!parsed.success) return undefined
   return materializeTenantPrivacyDisclosureValue(parsed.data)
+}
+
+const appointmentsToJson = (value: unknown) => {
+  if (value == null) return undefined
+  const parsed = AppointmentScheduleSettingsSchema.safeParse(value)
+  return parsed.success ? parsed.data : undefined
 }
 
 /**
@@ -156,6 +163,7 @@ export function settingsToJsonWithoutAnalytics(
       message: doc.maintenance.message,
     } : undefined,
     privacyDisclosure: privacyDisclosureToJson(doc.privacyDisclosure),
+    appointments: appointmentsToJson((doc as SiteSetting & { appointments?: unknown }).appointments),
     contact: contact && (
       contract.details.contact.phone ||
       contract.details.contact.address ||

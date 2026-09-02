@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList, Scale } from "lucide-react"
+import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList, Scale, CalendarDays } from "lucide-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -120,6 +120,7 @@ export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode
                 )}
                 <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/media`)}><Link href={`${base}/media`}><ImageIcon /> {t("media")}</Link></SidebarMenuButton></SidebarMenuItem>
                 <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/forms`)}><Link href={`${base}/forms`}><Inbox /> {t("forms")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/appointments`)}><Link href={`${base}/appointments`}><CalendarDays /> {t("appointments")}</Link></SidebarMenuButton></SidebarMenuItem>
                 {inTenantView && (
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/onboarding`)}><Link href={`${base}/onboarding`}><ListChecks /> {t("onboarding")}</Link></SidebarMenuButton></SidebarMenuItem>
                 )}

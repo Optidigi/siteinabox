@@ -238,6 +238,15 @@ const normalizeSection = (
       return { ...section }
     case "cta":
       return { ...withoutMediaId(section), image: mediaFor(section.mediaId, context, [...sectionPath, "mediaId"], issues) }
+    case "appointments":
+      // Scheduling facts are owned by SiteSettings.appointments and are never
+      // authored by the model. The section only carries its copy and the
+      // chosen presentation/effect; the CMS schedule/runtime resolves
+      // availability. Media is resolved from the supplied manifest here.
+      {
+        const image = mediaFor(section.mediaId, context, [...sectionPath, "mediaId"], issues)
+        return image === undefined ? withoutMediaId(section) : { ...withoutMediaId(section), image }
+      }
     case "contact":
       if (section.serviceArea.some((value) => !(context.serviceArea ?? []).includes(value))) {
         issues.push({ path: [...sectionPath, "serviceArea"], message: "Sitegen may not invent service-area values." })

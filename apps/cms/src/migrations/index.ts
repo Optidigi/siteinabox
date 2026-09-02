@@ -132,6 +132,12 @@ import * as migration_20260829_170000_add_consent_categories from './20260829_17
 import * as migration_20260830_151500_repair_published_snapshot_contract from './20260830_151500_repair_published_snapshot_contract';
 import * as migration_20260830_160000_repair_tenant_privacy_snapshot from './20260830_160000_repair_tenant_privacy_snapshot';
 import * as migration_20260830_163000_remove_legacy_provider_privacy_marker from './20260830_163000_remove_legacy_provider_privacy_marker';
+import * as migration_20260901_120000_appointment_module from './20260901_120000_appointment_module';
+import * as migration_20260901_150000_appointment_integrations from './20260901_150000_appointment_integrations';
+import * as migration_20260901_170000_appointment_hardening from './20260901_170000_appointment_hardening';
+import * as migration_20260901_180000_appointment_mail_retention from './20260901_180000_appointment_mail_retention';
+import * as migration_20260902_090000_appointment_section from './20260902_090000_appointment_section';
+import * as migration_20260902_100000_appointment_effects from './20260902_100000_appointment_effects';
 
 export const migrations = [
   {
@@ -803,5 +809,35 @@ export const migrations = [
     up: migration_20260830_163000_remove_legacy_provider_privacy_marker.up,
     down: migration_20260830_163000_remove_legacy_provider_privacy_marker.down,
     name: '20260830_163000_remove_legacy_provider_privacy_marker',
+  },
+  {
+    up: migration_20260901_120000_appointment_module.up,
+    down: migration_20260901_120000_appointment_module.down,
+    name: '20260901_120000_appointment_module',
+  },
+  {
+    up: migration_20260901_150000_appointment_integrations.up,
+    down: migration_20260901_150000_appointment_integrations.down,
+    name: '20260901_150000_appointment_integrations',
+  },
+  {
+    up: migration_20260901_170000_appointment_hardening.up,
+    down: migration_20260901_170000_appointment_hardening.down,
+    name: '20260901_170000_appointment_hardening',
+  },
+  {
+    up: migration_20260901_180000_appointment_mail_retention.up,
+    down: migration_20260901_180000_appointment_mail_retention.down,
+    name: '20260901_180000_appointment_mail_retention',
+  },
+  {
+    up: migration_20260902_090000_appointment_section.up,
+    down: migration_20260902_090000_appointment_section.down,
+    name: '20260902_090000_appointment_section',
+  },
+  {
+    up: migration_20260902_100000_appointment_effects.up,
+    down: migration_20260902_100000_appointment_effects.down,
+    name: '20260902_100000_appointment_effects',
   },
 ];

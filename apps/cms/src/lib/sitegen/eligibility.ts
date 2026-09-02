@@ -15,6 +15,7 @@ export type SitegenEligibilityInput = {
   comparablePricing?: boolean
   serviceAreaCount?: number
   hasBooking?: boolean
+  hasAppointmentSchedule?: boolean
   hasForm?: boolean
   contactMethodCount?: number
   serviceCount?: number
@@ -35,6 +36,7 @@ const requirementSatisfied = (requirement: SitegenRequirement, input: SitegenEli
     case "comparablePricing": return input.comparablePricing === true && (input.pricingCount ?? 0) >= 2
     case "serviceArea": return (input.serviceAreaCount ?? 0) > 0
     case "booking": return input.hasBooking === true
+    case "appointmentSchedule": return input.hasAppointmentSchedule === true
     case "form": return input.hasForm === true
     case "contactMethods": return (input.contactMethodCount ?? 0) > 0
     case "services": return (input.serviceCount ?? 0) >= 2

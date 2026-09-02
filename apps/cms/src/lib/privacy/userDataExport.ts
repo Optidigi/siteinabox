@@ -1,5 +1,5 @@
 import type { Payload } from "payload"
-import type { Form, Media, Page, User } from "@/payload-types"
+import type { Appointment, Form, Media, Page, User } from "@/payload-types"
 import { asMailLogPayload, sendEmail } from "@/lib/email/sendEmail"
 import { renderEmailLayout } from "@/lib/email/emailLayout"
 import { emailTheme } from "@/lib/email/emailTheme"
@@ -40,7 +40,7 @@ export async function buildUserDataExport(payload: Payload, user: Pick<User, "id
 
   const tenantExports = []
   for (const tenantId of tenantIds) {
-    const [tenant, settings, pages, media, forms] = await Promise.all([
+    const [tenant, settings, pages, media, forms, appointments] = await Promise.all([
       payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true }),
       payload.find({
         collection: "site-settings",
@@ -65,6 +65,13 @@ export async function buildUserDataExport(payload: Payload, user: Pick<User, "id
       }),
       payload.find({
         collection: "forms",
+        where: { tenant: { equals: tenantId } },
+        limit: 0,
+        depth: 0,
+        overrideAccess: true,
+      }),
+      payload.find({
+        collection: "appointments",
         where: { tenant: { equals: tenantId } },
         limit: 0,
         depth: 0,
@@ -103,6 +110,25 @@ export async function buildUserDataExport(payload: Payload, user: Pick<User, "id
         formName: form.formName,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
+      })),
+      // Appointment management digests, encrypted tokens, calendar tokens, and
+      // outbox/provider records are deliberately excluded from a user export.
+      appointments: appointments.docs.map((appointment: Appointment) => ({
+        id: appointment.id,
+        status: appointment.status,
+        startAt: appointment.startAt,
+        endAt: appointment.endAt,
+        timezone: appointment.timezone,
+        durationMinutes: appointment.durationMinutes,
+        visitorName: appointment.visitorName,
+        visitorEmail: appointment.visitorEmail,
+        visitorPhone: appointment.visitorPhone ?? null,
+        visitorNote: appointment.visitorNote ?? null,
+        pageUrl: appointment.pageUrl ?? null,
+        source: appointment.source,
+        eventVersion: appointment.eventVersion ?? 1,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
       })),
     })
   }

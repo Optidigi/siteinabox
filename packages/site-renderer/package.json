@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "theme:generate": "tsx scripts/generate-theme-css.mjs",
-    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/rich-text.test.mjs src/anchors.test.mjs src/blocks/all-blocks.test.mjs src/chrome/navbar.test.mjs src/chrome/footer.test.mjs src/chrome/consent.test.mjs",
+    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/rich-text.test.mjs src/anchors.test.mjs src/blocks/all-blocks.test.mjs src/blocks/appointments/appointment-behavior.test.mjs src/chrome/navbar.test.mjs src/chrome/footer.test.mjs src/chrome/consent.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "exports": {
@@ -48,6 +48,11 @@
       "types": "./src/blocks/hero/hero-mesh-effect.ts",
       "import": "./src/blocks/hero/hero-mesh-effect.ts",
       "default": "./src/blocks/hero/hero-mesh-effect.ts"
+    },
+    "./appointment-behavior": {
+      "types": "./src/blocks/appointments/appointment-behavior.ts",
+      "import": "./src/blocks/appointments/appointment-behavior.ts",
+      "default": "./src/blocks/appointments/appointment-behavior.ts"
     },
     "./styles.css": "./src/styles.css"
   },

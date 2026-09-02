@@ -2,6 +2,7 @@ import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import { assertNever } from "./shared"
 import { AboutBlockView } from "./about/AboutBlock"
+import { AppointmentBlockView } from "./appointments/AppointmentBlock"
 import { ContactBlockView } from "./contact/ContactBlock"
 import { CtaBlockView } from "./cta/CtaBlock"
 import { FaqBlockView } from "./faq/FaqBlock"
@@ -27,6 +28,7 @@ export function BlockRenderer({ block, options }: { block: Block; options: Block
     case "faq": return <FaqBlockView block={block} options={options} />
     case "cta": return <CtaBlockView block={block} options={options} />
     case "contact": return <ContactBlockView block={block} options={options} />
+    case "appointments": return <AppointmentBlockView block={block} options={options} />
     default: return assertNever(block)
   }
 }

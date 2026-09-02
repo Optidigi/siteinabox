@@ -87,6 +87,8 @@ Values to set:
 - `CLOUDFLARE_EMAIL_SMTP_TOKEN=` — leave empty in dev unless testing live email. Mail sends throw before opening SMTP when unset.
 - `EMAIL_FROM=noreply@siteinabox.nl`
 - `SIAB_EMAIL_PREFERENCE_SECRET=` — dedicated HMAC secret required only when testing preference/unsubscribe links.
+- `APPOINTMENT_CALENDAR_ENCRYPTION_KEY=` and `APPOINTMENT_MANAGEMENT_ENCRYPTION_KEY=` — separate base64-encoded 32-byte keys required when exercising calendar OAuth, booking, or visitor management links; leave appointments disabled when these are absent.
+- `SIAB_GOOGLE_CALENDAR_CALLBACK_HOSTS=` and `SIAB_MICROSOFT_CALENDAR_CALLBACK_HOSTS=` — optional callback host allowlists for calendar OAuth; when empty, the existing provider OAuth host allowlists are reused, and development localhost hosts are accepted.
 - `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10` and `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60` — anonymous POST budget for `/api/forms`, `/api/intake`, `/api/contact`, and `/api/users/forgot-password`.
 - `SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50` and `SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600` — extra anonymous generated-site form budget keyed by tenant/form target.
 

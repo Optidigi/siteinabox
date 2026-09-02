@@ -99,10 +99,12 @@ BETTER_AUTH_KV_URL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS=
+SIAB_GOOGLE_CALENDAR_CALLBACK_HOSTS=
 MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 MICROSOFT_TENANT_ID=common
 SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS=
+SIAB_MICROSOFT_CALENDAR_CALLBACK_HOSTS=
 APPLE_CLIENT_ID=
 APPLE_CLIENT_SECRET=
 SIAB_APPLE_OAUTH_CALLBACK_HOSTS=
@@ -110,6 +112,8 @@ DATA_HOST_PATH=/srv/data/saas/siab-payload
 SUPER_ADMIN_DOMAIN=siteinabox.nl
 CLOUDFLARE_EMAIL_API_TOKEN=
 CLOUDFLARE_EMAIL_SMTP_TOKEN=
+APPOINTMENT_CALENDAR_ENCRYPTION_KEY=<base64-encoded-32-byte-key>
+APPOINTMENT_MANAGEMENT_ENCRYPTION_KEY=<base64-encoded-32-byte-key>
 EMAIL_FROM=noreply@siteinabox.nl
 SIAB_EMAIL_PREFERENCE_SECRET=<dedicated-random-hmac-secret>
 SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10
@@ -260,6 +264,25 @@ verified, transactional and form-notification mail uses the configured
 platform `EMAIL_FROM`; `tenants.emailSending` continues to expose the truthful
 pending or failed branded-sender state.
 
+Appointment runtime operations are disabled by default per tenant. Before
+enabling a tenant schedule, set both appointment encryption keys and confirm
+that the next approved privacy release describes appointment data, Cloudflare
+transactional mail, and any optional Google Calendar or Microsoft Graph
+processing. Calendar OAuth callbacks use the dedicated callback-host env when
+set, otherwise the existing provider OAuth host allowlist. Register the exact
+CMS host and callback path with each provider; never accept a wildcard host.
+
+Appointment records are retained for 90 days after the appointment ends by
+default and may be configured per tenant between 30 and 730 days. The daily
+purge task removes expired appointments and their dependent outboxes and
+appointment-linked mail metadata; OAuth state expires after ten minutes.
+Tenant deletion cascades the appointment ledger, notification deliveries,
+calendar events, connections, and OAuth state. Monitor the appointment
+notification and calendar task logs and the
+existing operational-alerts collection for retry exhaustion. Do not rotate
+either appointment key without a reviewed re-encryption/rollback procedure;
+old encrypted values cannot be recovered with a new key.
+
 Mail sends write metadata-only `mail-logs` when the caller supplies Payload,
 and important or repeated failures upsert `operational-alerts`. These
 collections are super-admin-only and must not contain rendered subjects, bodies,
@@ -296,6 +319,7 @@ Current production environment requirements:
 | CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
 | Renderer token | Set the same `SIAB_RENDERER_API_TOKEN` for the CMS snapshot endpoint and renderer environment. |
 | Email | Set `CLOUDFLARE_ACCOUNT_ID`, dedicated `CLOUDFLARE_EMAIL_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; never reuse the DNS token; remove obsolete `RESEND_API_KEY`. |
+| Appointments | Keep schedules disabled until the two appointment encryption keys are backed up, callback hosts are registered, and the approved privacy disclosure covers appointment data and any enabled calendar processor. Default retention is 90 days after end, configurable 30–730 days. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
 | Mollie | Set `MOLLIE_API_KEY` and the webhook base URL. The classic webhook accepts Mollie's form-encoded payment ID and always retrieves authoritative state through the API; accepted order/payment-attempt amounts are the only monetary authority. |
 | Commerce release | Keep `COMMERCE_RELEASE_STAGE=disabled` until the evidence and staged enablement procedure in [commerce-release.md](commerce-release.md) is complete. |

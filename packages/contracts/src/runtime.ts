@@ -38,6 +38,7 @@ import {
   ServicesBlockSchema,
   WorkBlockSchema,
 } from "./blocks"
+import { AppointmentScheduleSettingsSchema } from "./appointments"
 import type {
   CmsApplyResult,
   GeneratedBlockSpec,
@@ -458,6 +459,7 @@ const createSiteSettingsSchema = (): z.ZodType<SiteSettings> => strictObject({
       captureForms: z.boolean().nullable().optional(),
     }).nullable().optional(),
     privacyDisclosure: TenantPrivacyDisclosureSchema.nullable().optional(),
+    appointments: AppointmentScheduleSettingsSchema.nullable().optional(),
     seoJsonLd: strictObject({
       organization: strictObject({
         enabled: z.boolean().nullable().optional(),

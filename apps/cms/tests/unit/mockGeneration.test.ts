@@ -41,6 +41,7 @@ describe("first-party mock Sitegen fixture", () => {
     const blockTypes = new Set(spec.pages.flatMap((page) => page.blocks.map((block) => block.blockType)))
     expect([...blockTypes].every((blockType) => SITE_BLOCK_SLUGS.includes(blockType))).toBe(true)
     expect(blockTypes).toEqual(new Set(["hero", "services", "about", "process", "faq", "cta", "contact"]))
+    expect(spec.blocks?.map((block) => block.slug)).toEqual([...SITE_BLOCK_SLUGS])
   })
 
   it("keeps an invalid fixture limited to tenant identity validation", () => {

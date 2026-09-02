@@ -44,6 +44,23 @@ function payloadStub() {
       if (collection === "pages") return { docs: [{ id: 30, title: "Home", slug: "home", status: "published" }] }
       if (collection === "media") return { docs: [{ id: 40, filename: "logo.png", alt: "Logo" }] }
       if (collection === "forms") return { docs: [{ id: 50, formName: "Contact" }] }
+      if (collection === "appointments") return { docs: [{
+        id: 60,
+        status: "confirmed",
+        startAt: "2026-09-07T09:00:00.000Z",
+        endAt: "2026-09-07T09:30:00.000Z",
+        timezone: "Europe/Amsterdam",
+        durationMinutes: 30,
+        visitorName: "Ada Lovelace",
+        visitorEmail: "ada@example.test",
+        visitorPhone: "+31 6 12345678",
+        visitorNote: "Please call first.",
+        pageUrl: "https://example.test/afspraak",
+        source: "website",
+        eventVersion: 1,
+        managementTokenDigest: "must-not-export",
+        encryptedManagementToken: "must-not-export",
+      }] }
       throw new Error(`unexpected collection ${collection}`)
     }),
   }
@@ -71,7 +88,10 @@ describe("user data export", () => {
       pages: [{ id: 30, title: "Home", slug: "home", status: "published" }],
       media: [{ id: 40, filename: "logo.png", alt: "Logo" }],
       forms: [{ id: 50, formName: "Contact" }],
+      appointments: [{ id: 60, visitorEmail: "ada@example.test", eventVersion: 1 }],
     })
+    expect(exportData.sites[0]?.appointments[0]).not.toHaveProperty("managementTokenDigest")
+    expect(exportData.sites[0]?.appointments[0]).not.toHaveProperty("encryptedManagementToken")
   })
 
   it("emails the export to the requesting user", async () => {

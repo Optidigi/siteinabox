@@ -37,6 +37,7 @@ export const SITE_SETTING_DISPOSITIONS = [
   { path: "analytics", disposition: "runtime", consumer: "renderer analytics initialization" },
   { path: "analyticsConsent", disposition: "consent", consumer: "renderer analytics consent gate" },
   { path: "privacyDisclosure", disposition: "rendered", consumer: "settings-owned legal document route when enabled" },
+  { path: "appointments", disposition: "runtime", consumer: "appointment availability, booking and tenant agenda" },
   { path: "seoJsonLd", disposition: "seo", consumer: "renderer JSON-LD output" },
   { path: "updatedAt", disposition: "publishing", consumer: "snapshot freshness and cache metadata" },
 ] as const satisfies readonly SiteSettingDisposition[]

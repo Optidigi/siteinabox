@@ -9,17 +9,21 @@ ordering.
 
 ## First-party block contract
 
-The ten Sitegen families are `hero`, `services`, `about`, `process`, `work`,
-`reviews`, `pricing`, `faq`, `cta`, and `contact`. Their semantic contracts
+The eleven Sitegen families are `hero`, `services`, `about`, `process`, `work`,
+`reviews`, `pricing`, `faq`, `cta`, `contact`, and `appointments`. Their semantic contracts
 are code-owned. The current five hero designs belong to one `hero` family and
 use local numbered variants—`hero-01`, `hero-02`, `hero-03`, `hero-04`, and
 `hero-05`. Approved services and CTA designs are `services-01` through
-`services-02` and `cta-01` through `cta-02`; the remaining seven families are
-currently pending until their own designs are reviewed. Future section families and chrome families follow the same
+`services-02`, `cta-01` through `cta-02`, and `appointments-01`; the remaining
+seven families are currently pending until their own designs are reviewed.
+Future section families and chrome families follow the same
 family-plus-numbered-design convention (for example `services-01` and
 `navbar-01`).
 The CMS owns the explicit Payload block configuration and Sitegen catalog; the
-shared renderer owns the exhaustive block switch and pending state.
+shared renderer owns the exhaustive block switch and pending state. Appointment
+schedule settings remain settings-owned and are not generated as page content;
+the appointment section selects copy/presentation only and resolves availability
+through the shared public/preview behavior.
 
 Unknown block types and retired visual variant fields fail validation before
 rendering. Renderers do not silently select a default for malformed persisted
@@ -48,12 +52,12 @@ remain outside the customer-site page-block catalog.
 - `packages/contracts` tests cover one valid example for every semantic block
   family plus rejected retired variant values.
 - `apps/cms/tests/unit/sitegenCatalog.test.ts` checks the enabled hero,
-  services, and CTA variants, deterministic media eligibility, and closed
-  requirement tags.
+  services, CTA, and appointment variants, deterministic media eligibility, and
+  closed requirement tags.
 - `packages/site-renderer/src/blocks/all-blocks.test.mjs` server-renders all
-  five heroes, both services designs, and both CTA designs through the explicit
-  switch, keeps the other families pending, and checks the image-alt
-  fallback/editor-slot path.
+  five heroes, both services designs, both CTA designs, and `appointments-01`
+  through the explicit switch, keeps the other families pending, and checks the
+  image-alt fallback/editor-slot path.
 - `packages/site-renderer/src/rich-text.test.mjs` covers the structured rich
   text DOM contract.
 - CMS integration smoke and migration tests exercise the published projection

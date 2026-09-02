@@ -27,7 +27,7 @@ export const validateSitegenOutput = (
   const issues: SitegenValidationIssue[] = []
   // Navbar is settings-owned and has no media/evidence prerequisites. Zod
   // performs the closed-variant validation; the catalog check keeps the AI
-  // projection tied to the three explicitly implemented designs.
+  // projection tied to the currently enabled first-party designs.
   if (parsed.data.navbar && !sitegenNavbarFor(parsed.data.navbar.variant)) {
     issues.push({ path: ["navbar", "variant"], message: `The navbar variant "${parsed.data.navbar.variant}" is not currently enabled.` })
   }
@@ -103,6 +103,14 @@ export const validateSitegenOutput = (
         if (!section.mediaId) {
           issues.push({ path: ["pages", pageIndex, "sections", sectionIndex, "mediaId"], message: "An image background override requires a supplied media ID." })
         } else if (eligibility.mediaById && !eligibility.mediaById[section.mediaId]) {
+          issues.push({ path: ["pages", pageIndex, "sections", sectionIndex, "mediaId"], message: `Unknown supplied media ID "${section.mediaId}".` })
+        }
+      }
+      if (section.blockType === "appointments") {
+        if (section.backgroundMode === "image" && !section.mediaId) {
+          issues.push({ path: ["pages", pageIndex, "sections", sectionIndex, "mediaId"], message: "An image background override requires a supplied media ID." })
+        }
+        if (section.mediaId && eligibility.mediaById && !eligibility.mediaById[section.mediaId]) {
           issues.push({ path: ["pages", pageIndex, "sections", sectionIndex, "mediaId"], message: `Unknown supplied media ID "${section.mediaId}".` })
         }
       }

@@ -4,6 +4,7 @@ import type { Payload, PayloadRequest, Where } from "payload"
 import {
   normalizePublicDomainHost,
   BlockSchema,
+  AppointmentScheduleSettingsSchema,
   type Page as ContractPage,
   type RendererActiveDomainRouting,
   type SiteSettings,
@@ -339,6 +340,23 @@ export function validatePublishedPageBlockVariants(
   }
 }
 
+export function validatePublishedAppointmentSchedule(
+  pages: Array<{ blocks: ContractPage["blocks"] }>,
+  appointments: SiteSettings["appointments"],
+): void {
+  const containsAppointments = pages.some((page) => page.blocks.some((block) => block.blockType === "appointments"))
+  if (!containsAppointments) return
+
+  const parsed = AppointmentScheduleSettingsSchema.safeParse(appointments)
+  const hasConfiguredWindow = parsed.success && (
+    parsed.data.weeklyAvailability.some((day) => day.windows.length > 0) ||
+    parsed.data.dateOverrides.some((override) => override.windows.length > 0)
+  )
+  if (!parsed.success || !parsed.data.enabled || !hasConfiguredWindow) {
+    throw new Error("Cannot publish a page with appointments until appointment availability is enabled and at least one schedule window is configured.")
+  }
+}
+
 export async function buildPublishedSiteSnapshot(
   payload: Payload,
   tenantId: string | number,
@@ -377,6 +395,7 @@ export async function buildPublishedSiteSnapshot(
     language: projectedSettings.language ?? settingsDoc?.language ?? "nl",
     siteUrl: `https://${tenant.domain}`,
   }
+  validatePublishedAppointmentSchedule(publishedPages, settings.appointments)
   const rendererTheme = snapshotThemeForTenant(tenant)
   const now = new Date().toISOString()
 

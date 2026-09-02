@@ -9,6 +9,7 @@ import {
   SERVICES_VARIANTS,
   SITEGEN_BLOCK_TYPES,
 } from "./blocks"
+import { APPOINTMENT_VARIANTS } from "./appointments"
 
 const action = { label: "Neem contact op", href: "#contact" }
 const serviceHighlights = [
@@ -33,6 +34,7 @@ const examples = {
   faq: { blockType: "faq", heading: "Vragen", items: [{ question: "Vraag?", answer: "Antwoord." }, { question: "Nog één?", answer: "Antwoord." }] },
   cta: { blockType: "cta", variant: "cta-01", heading: "Klaar om te starten?", primaryAction: action },
   contact: { blockType: "contact", heading: "Contact", contactMethods: [{ kind: "email", label: "E-mail", value: "hello@example.test", href: "mailto:hello@example.test" }] },
+  appointments: { blockType: "appointments", variant: "appointments-01", presentation: "dialog", heading: "Plan een afspraak" },
 } as const
 
 describe("first-party block contracts", () => {
@@ -41,7 +43,8 @@ describe("first-party block contracts", () => {
     expect(HERO_VARIANTS).toHaveLength(5)
     expect(SERVICES_VARIANTS).toEqual(["services-01", "services-02"])
     expect(CTA_VARIANTS).toEqual(["cta-01", "cta-02"])
-    expect(SITEGEN_BLOCK_TYPES).toHaveLength(10)
+    expect(APPOINTMENT_VARIANTS).toEqual(["appointments-01"])
+    expect(SITEGEN_BLOCK_TYPES).toHaveLength(11)
     expect(BLOCK_TYPES).toEqual([...SITEGEN_BLOCK_TYPES])
   })
 

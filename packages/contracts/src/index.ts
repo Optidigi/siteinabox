@@ -48,6 +48,7 @@ export type {
   WorkBlock,
 } from "./blocks"
 export * from "./commerce"
+export * from "./appointments"
 export * from "./consent"
 export * from "./deploy-targets"
 export * from "./generation"

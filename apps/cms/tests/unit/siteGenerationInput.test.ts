@@ -3,6 +3,7 @@ import type { NormalizedIntake } from "@siteinabox/contracts"
 import {
   createMockSiteGenerationProvider,
   createSiteGenerationProviderRequest,
+  siteGenerationJsonSchema,
 } from "@/lib/ai-generation/providers"
 import { buildSiteGenerationModelInput, sitegenEligibilityFromIntake } from "@/lib/ai-generation/siteGenerationInput"
 import { SITE_GENERATION_PROMPT_VERSION } from "@/lib/ai-generation/prompts/siteGenerationPrompt"
@@ -36,7 +37,7 @@ describe("site generation model input", () => {
       "cta:cta-01",
       "cta:cta-02",
     ])
-    expect(SITEGEN_SECTIONS).toHaveLength(3)
+    expect(SITEGEN_SECTIONS).toHaveLength(4)
     expect(JSON.stringify(input)).not.toMatch(/shadcn|legacyVariant/i)
   })
 
@@ -46,6 +47,53 @@ describe("site generation model input", () => {
     expect(SITE_GENERATION_PROMPT_VERSION).toBe("sitegen-owned-v1")
     expect(first.inputHash).toBe(second.inputHash)
     expect(JSON.stringify(first.input)).toBe(JSON.stringify(second.input))
+  })
+
+  it("keeps native appointment sections eligible, shallow, and schedule-owned", () => {
+    const appointment = {
+      blockType: "appointments" as const,
+      variant: "appointments-01" as const,
+      presentation: "dialog" as const,
+      backgroundMode: "none" as const,
+      anchor: "afspraak",
+      heading: "Plan een kennismaking",
+      body: "Kies een moment dat bij je past.",
+      mediaId: null,
+      availabilityLabel: "Beschikbaarheid",
+      bookingLabel: "Afspraak aanvragen",
+      confirmationHeading: "Afspraak aangevraagd",
+      confirmationBody: null,
+      privacyNote: null,
+    }
+    const hero = {
+      blockType: "hero" as const,
+      variant: "hero-01" as const,
+      anchor: null,
+      heading: "Een helder aanbod",
+      body: "Praktische hulp voor jouw situatie.",
+      primaryAction: { label: "Contact", href: "#contact" },
+      secondaryAction: null,
+      mediaId: null,
+    }
+    const output = { pages: [{ slug: "index", title: "Overzicht", sections: [hero, appointment] }] }
+
+    const unavailable = validateSitegenOutput(output, { hasAppointmentSchedule: false })
+    expect(unavailable.success).toBe(false)
+    if (!unavailable.success) expect(unavailable.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: expect.stringMatching(/not currently enabled/i) }),
+    ]))
+
+    const valid = validateSitegenOutput(output, { hasAppointmentSchedule: true })
+    expect(valid.success).toBe(true)
+    const normalized = normalizeSitegenOutput(output)
+    expect(normalized.success).toBe(true)
+    if (normalized.success) expect(normalized.pages[0]?.blocks[1]).toMatchObject({
+      blockType: "appointments",
+      variant: "appointments-01",
+      presentation: "dialog",
+    })
+
+    expect(JSON.stringify(siteGenerationJsonSchema)).toContain('"const":"appointments"')
   })
 
   it("accepts a numbered navbar choice and rejects unknown placement values", () => {

@@ -13,6 +13,8 @@ const importantFailureIntents = new Set<MailIntent>([
   "preview.site_ready",
   "privacy.data_export",
   "intake.internal_notification",
+  "appointments.visitor_notification",
+  "appointments.tenant_notification",
   "site.live_notice",
   "legal.reacceptance",
   "commerce.billing",

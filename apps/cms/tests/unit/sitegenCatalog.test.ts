@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest"
-import { CTA_VARIANTS, HERO_VARIANTS, SERVICES_VARIANTS } from "@siteinabox/contracts"
+import { APPOINTMENT_VARIANTS, CTA_VARIANTS, HERO_VARIANTS, SERVICES_VARIANTS } from "@siteinabox/contracts"
 import { SITEGEN_FOOTERS, SITEGEN_NAVBARS, SITEGEN_SECTIONS } from "@/lib/sitegen/catalog"
 import { eligibleSitegenSections } from "@/lib/sitegen/eligibility"
 
 describe("sitegen catalog eligibility", () => {
   it("keeps one catalog entry per enabled semantic family and one description per variant", () => {
-    expect(SITEGEN_SECTIONS).toHaveLength(3)
-    expect(SITEGEN_SECTIONS.map((section) => section.blockType)).toEqual(["hero", "services", "cta"])
+    expect(SITEGEN_SECTIONS).toHaveLength(4)
+    expect(SITEGEN_SECTIONS.map((section) => section.blockType)).toEqual(["hero", "services", "cta", "appointments"])
     expect(SITEGEN_SECTIONS[0]?.variants.map((variant) => variant.id)).toEqual([...HERO_VARIANTS])
     expect(SITEGEN_SECTIONS[1]?.variants.map((variant) => variant.id)).toEqual([...SERVICES_VARIANTS])
     expect(SITEGEN_SECTIONS[2]?.variants.map((variant) => variant.id)).toEqual([...CTA_VARIANTS])
-    expect(new Set(SITEGEN_SECTIONS.flatMap((section) => section.variants.map((variant) => variant.id))).size).toBe(HERO_VARIANTS.length + SERVICES_VARIANTS.length + CTA_VARIANTS.length)
+    expect(SITEGEN_SECTIONS[3]?.variants.map((variant) => variant.id)).toEqual([...APPOINTMENT_VARIANTS])
+    expect(new Set(SITEGEN_SECTIONS.flatMap((section) => section.variants.map((variant) => variant.id))).size).toBe(HERO_VARIANTS.length + SERVICES_VARIANTS.length + CTA_VARIANTS.length + APPOINTMENT_VARIANTS.length)
   })
 
   it("keeps the three numbered navbar choices separate from page sections", () => {
@@ -38,5 +39,10 @@ describe("sitegen catalog eligibility", () => {
     expect(eligibleSitegenSections({ serviceCount: 1 }).some((entry) => entry.blockType === "services")).toBe(false)
     expect(eligibleSitegenSections({ serviceCount: 2 }).filter((entry) => entry.blockType === "services").map((entry) => entry.variant)).toEqual([...SERVICES_VARIANTS])
     expect(eligibleSitegenSections({ serviceCount: 2 }).filter((entry) => entry.blockType === "services").every((entry) => entry.requires.join() === "services")).toBe(true)
+  })
+
+  it("keeps native appointments separate from external booking links", () => {
+    expect(eligibleSitegenSections({ hasBooking: true }).some((entry) => entry.blockType === "appointments")).toBe(false)
+    expect(eligibleSitegenSections({ hasAppointmentSchedule: true }).filter((entry) => entry.blockType === "appointments").map((entry) => entry.variant)).toEqual([...APPOINTMENT_VARIANTS])
   })
 })

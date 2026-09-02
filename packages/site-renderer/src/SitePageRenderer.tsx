@@ -34,6 +34,8 @@ export type SitePageRendererProps = {
   domain?: string | null
   /** Public runtime sets this only when an approved analytics config exists. */
   consentAvailable?: boolean
+  /** Appointment sections use the real public API by default and local behavior in CMS frames. */
+  appointmentMode?: "public" | "preview"
   includeBehaviorScripts?: boolean
   renderBlocks?: SiteRenderBlocks
 }
@@ -54,6 +56,7 @@ export function SitePageRenderer({
   tenantSlug,
   domain,
   consentAvailable,
+  appointmentMode = "public",
   includeBehaviorScripts = true,
   renderBlocks,
 }: SitePageRendererProps) {
@@ -72,6 +75,7 @@ export function SitePageRenderer({
           editSlots,
           siteSettings: settings,
           theme,
+          appointmentMode,
           sectionAttributes: {
             id: sectionAnchor,
             "data-block-index": blockIndexOffset + index,

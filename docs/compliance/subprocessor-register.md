@@ -8,6 +8,8 @@ removed, or changes role or processing location.
 | --- | --- | --- |
 | Hetzner | Hosting, compute, storage, and backups | Confirm locations and agreement |
 | Cloudflare | DNS, proxy, security, routing, and Email Sending | Confirm enabled products and data flow |
+| Google Calendar API | Optional owner-authorised appointment calendar synchronization | Add to the tenant disclosure only when enabled; verify scopes, region, and provider retention |
+| Microsoft Graph Calendar API | Optional owner-authorised appointment calendar synchronization | Add to the tenant disclosure only when enabled; verify scopes, region, and provider retention |
 | Openprovider | Domain registration and management | Confirm registrant and contact data flow |
 | Mollie | Payment processing | Confirm controller/processor allocation and retention |
 | Moneybird | Accounting and invoicing | Confirm actual integration and data fields |

@@ -497,6 +497,7 @@ export const TenantNotificationSubscriptions: CollectionConfig = {
     { name: "billingAndPayments", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "teamAndAccess", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "operationalDigest", type: "checkbox", required: true, defaultValue: false, index: true },
+    { name: "appointmentBookings", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "updatedAt", type: "date", required: true, index: true },
   ],
 }

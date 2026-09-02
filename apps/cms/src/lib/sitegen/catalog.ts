@@ -3,6 +3,8 @@ import {
   DEFAULT_NAVBAR_VARIANT,
   DEFAULT_FOOTER_VARIANT,
   CTA_VARIANTS,
+  APPOINTMENT_VARIANTS,
+  DEFAULT_APPOINTMENT_VARIANT,
   FOOTER_VARIANTS,
   HERO_BLOCK_TYPES,
   HERO_VARIANTS,
@@ -12,6 +14,7 @@ import {
   type NavbarPlacement,
   type NavbarVariant,
   type CtaVariant,
+  type AppointmentVariant,
   type FooterVariant,
   type HeroVariant,
   type ServicesVariant,
@@ -32,13 +35,14 @@ export const SITEGEN_REQUIREMENT_TAGS = [
   "comparablePricing",
   "serviceArea",
   "booking",
+  "appointmentSchedule",
   "form",
   "contactMethods",
   "services",
 ] as const
 
 export type SitegenRequirement = (typeof SITEGEN_REQUIREMENT_TAGS)[number]
-export type SitegenVariantId = HeroVariant | ServicesVariant | CtaVariant
+export type SitegenVariantId = HeroVariant | ServicesVariant | CtaVariant | AppointmentVariant
 
 export type SitegenFooterCatalogVariant = {
   id: FooterVariant
@@ -139,6 +143,18 @@ export const SITEGEN_SECTIONS = [
       },
     ],
   },
+  {
+    blockType: "appointments",
+    purpose: "Let a visitor choose an available appointment time and submit a small booking request without leaving the site.",
+    pageRules: { homepage: "optional", maxPerPage: 1 },
+    variants: [
+      {
+        id: DEFAULT_APPOINTMENT_VARIANT,
+        useWhen: "The intake requests native appointment booking and the client will configure at least one real schedule window in CMS before publishing.",
+        requires: ["appointmentSchedule"],
+      },
+    ],
+  },
 ] as const satisfies readonly SitegenSection[]
 
 /**
@@ -200,3 +216,5 @@ export const SITEGEN_HERO_VARIANTS = HERO_VARIANTS
 export const SITEGEN_SERVICES_VARIANTS = SERVICES_VARIANTS
 
 export const SITEGEN_CTA_VARIANTS = CTA_VARIANTS
+
+export const SITEGEN_APPOINTMENT_VARIANTS = APPOINTMENT_VARIANTS

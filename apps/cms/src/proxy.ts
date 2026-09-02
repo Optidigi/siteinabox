@@ -13,9 +13,11 @@ import {
 //   favicon.ico, robots.txt, etc.
 //
 // Most of /api/* is excluded (Payload's REST/GraphQL endpoints have their
-// own auth), with two opt-in exceptions for audit-p1 #5 (T4) rate-limit:
-// /api/forms, /api/intake, /api/contact, and /api/users/forgot-password are anonymous public surfaces
-// whose abuse-by-flood vector the matcher MUST route through middleware.
+// own auth), with opt-in exceptions for audit-p1 #5 (T4) rate-limit:
+// /api/forms, /api/intake, /api/contact, /api/renderer/appointments, and
+// /api/users/forgot-password are anonymous or renderer-mediated public
+// surfaces whose abuse-by-flood vector the matcher MUST route through
+// middleware.
 //
 // The (frontend) route group's pages (/, /login, /sites/*, etc.) all match
 // the matcher below and receive the stamped headers.
@@ -132,8 +134,9 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // fans out to multiple Node processes or hosts, swap to RateLimiterCluster
 // or a Redis-backed limiter. (Documented in audits/07-fix-batch-6-report.md.)
 //
-// Scope: /api/forms, /api/intake, /api/contact, and /api/users/forgot-password
-// ONLY. POST method only. /api/users (bootstrap surface) is INTENTIONALLY
+// Scope: /api/forms, /api/intake, /api/contact, /api/renderer/appointments,
+// and /api/users/forgot-password ONLY. POST method only. /api/users
+// (bootstrap surface) is INTENTIONALLY
 // out-of-scope; rate-limiting it would interfere with the P1 #6 BOOTSTRAP_TOKEN
 // seed runbook + AMD-1 owner-invite flow.
 //
@@ -219,6 +222,8 @@ const RATE_LIMITED_PATHS = new Set<string>([
   "/api/contact",
   "/api/intake",
   "/api/users/forgot-password",
+  "/api/renderer/appointments",
+  "/api/renderer/appointments/manage",
 ])
 
 const normalizePath = (p: string): string => {
@@ -494,5 +499,9 @@ export const config = {
     "/api/intake/",
     "/api/users/forgot-password",
     "/api/users/forgot-password/",
+    "/api/renderer/appointments",
+    "/api/renderer/appointments/",
+    "/api/renderer/appointments/manage",
+    "/api/renderer/appointments/manage/",
   ]
 }

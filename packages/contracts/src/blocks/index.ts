@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { AppointmentSectionSchema } from "../appointments"
 import { AboutBlockSchema } from "./about"
 import { ContactBlockSchema } from "./contact"
 import { CtaBlockSchema } from "./cta"
@@ -36,6 +37,7 @@ export const SITEGEN_BLOCK_TYPES = [
   "faq",
   "cta",
   "contact",
+  "appointments",
 ] as const
 
 export const BLOCK_TYPES = [...SITEGEN_BLOCK_TYPES] as const
@@ -53,6 +55,7 @@ export const BlockSchema = z.discriminatedUnion("blockType", [
   FaqBlockSchema,
   CtaBlockSchema,
   ContactBlockSchema,
+  AppointmentSectionSchema,
 ])
 
 export type Block = z.infer<typeof BlockSchema>

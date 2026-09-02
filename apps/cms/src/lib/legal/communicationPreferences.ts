@@ -32,6 +32,7 @@ export type TenantNotificationCategories = {
   billingAndPayments: boolean
   teamAndAccess: boolean
   operationalDigest: boolean
+  appointmentBookings: boolean
 }
 
 export type TenantMemberRole = "owner" | "editor" | "viewer"
@@ -44,6 +45,7 @@ export function defaultTenantNotificationCategories(role: TenantMemberRole): Ten
     billingAndPayments: true,
     teamAndAccess: true,
     operationalDigest: false,
+    appointmentBookings: true,
   }
   if (role === "editor") return {
     formSubmissions: true,
@@ -52,6 +54,7 @@ export function defaultTenantNotificationCategories(role: TenantMemberRole): Ten
     billingAndPayments: false,
     teamAndAccess: false,
     operationalDigest: false,
+    appointmentBookings: true,
   }
   return {
     formSubmissions: false,
@@ -60,6 +63,7 @@ export function defaultTenantNotificationCategories(role: TenantMemberRole): Ten
     billingAndPayments: false,
     teamAndAccess: false,
     operationalDigest: false,
+    appointmentBookings: false,
   }
 }
 

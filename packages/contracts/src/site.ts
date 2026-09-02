@@ -1,6 +1,7 @@
 import { SITEGEN_BLOCK_TYPES } from "./blocks"
 import type { Block as CanonicalBlock } from "./blocks"
 import type { CanonicalMediaRef } from "./blocks/common"
+import type { AppointmentScheduleSettings } from "./appointments"
 
 export { SITEGEN_BLOCK_TYPES }
 export type { SitegenBlockType } from "./blocks"
@@ -286,6 +287,7 @@ export type SiteSettings = {
   analytics?: Record<string, unknown> | null
   analyticsConsent?: AnalyticsConsentSettings | null
   privacyDisclosure?: TenantPrivacyDisclosure | null
+  appointments?: AppointmentScheduleSettings | null
   seoJsonLd?: JsonLdSettings | null
   updatedAt?: string
 }

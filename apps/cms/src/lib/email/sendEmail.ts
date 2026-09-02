@@ -23,6 +23,8 @@ export const mailIntents = [
   "privacy.data_export",
   "intake.internal_notification",
   "forms.tenant_notification",
+  "appointments.visitor_notification",
+  "appointments.tenant_notification",
   "site.live_notice",
   "legal.reacceptance",
   "commerce.billing",
@@ -64,10 +66,12 @@ export type SendEmailOptions = {
   text?: string
   intent?: MailIntent
   tenant?: MailTenantRef
+  /** Optional appointment context so its metadata log follows appointment retention. */
+  appointment?: MailTenantRef
   from?: string
   replyTo?: string
   category?: MailCategory
-  tenantSubscriptionCategory?: "formSubmissions" | "publishingAndSiteStatus" | "domainAndDns" | "billingAndPayments" | "teamAndAccess" | "operationalDigest"
+  tenantSubscriptionCategory?: "formSubmissions" | "publishingAndSiteStatus" | "domainAndDns" | "billingAndPayments" | "teamAndAccess" | "operationalDigest" | "appointmentBookings"
   /** Email whose effective personal preference must be checked for optional mail. */
   preferenceSubject?: string
   listUnsubscribe?: MailListUnsubscribe
@@ -431,6 +435,7 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
       flow: intent,
       category,
       tenant: formatTenantRef(opts.tenant),
+      appointment: formatTenantRef(opts.appointment),
       sender: from,
       replyTo: opts.replyTo,
       recipient: formatRecipient(opts.to),
@@ -444,7 +449,7 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
   } catch (error) {
     if (error instanceof MailPolicyBlockedError) {
       await logMailDelivery(opts.payload, {
-        flow: intent, category, tenant: formatTenantRef(opts.tenant), sender: from,
+        flow: intent, category, tenant: formatTenantRef(opts.tenant), appointment: formatTenantRef(opts.appointment), sender: from,
         replyTo: opts.replyTo, recipient: formatRecipient(opts.to), status: error.status,
         provider: "policy", providerErrorMessage: error.message, retryState: "none",
         failedAt: now().toISOString(),
@@ -459,6 +464,7 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
       flow: intent,
       category,
       tenant: formatTenantRef(opts.tenant),
+      appointment: formatTenantRef(opts.appointment),
       sender: from,
       replyTo: opts.replyTo,
       recipient: formatRecipient(opts.to),
@@ -577,7 +583,7 @@ export function inferMailCategory(intent: MailIntent): MailCategory {
   if (intent === "product.notification") return "product_notification"
   if (intent.startsWith("auth.")) return "security"
   if (intent.startsWith("legal.")) return "legal"
-  if (intent === "forms.tenant_notification" || intent === "intake.internal_notification" || intent === "platform.operational") return "tenant_operational"
+  if (intent === "forms.tenant_notification" || intent === "appointments.tenant_notification" || intent === "intake.internal_notification" || intent === "platform.operational") return "tenant_operational"
   return "transactional"
 }
 

@@ -104,6 +104,15 @@ const fixtureServices02 = {
   variant: "services-02" as const,
   anchor: "services-02",
 }
+const fixtureAppointmentSource = fixtureBlocks.find((candidate) => candidate.blockType === "appointments")
+if (!fixtureAppointmentSource) throw new Error("The sitegen review fixture requires an appointments block for the booking review.")
+const fixtureAppointment = {
+  ...fixtureAppointmentSource,
+  presentation: "dialog" as const,
+  heading: "Plan een moment dat past",
+  body: "Bekijk de beschikbare momenten en vraag direct een kennismaking aan.",
+  anchor: "appointments",
+}
 
 const fixturePageFor = (variant: FixtureHeroVariant): Page => {
   const block = fixtureBlocks.find(
@@ -119,7 +128,7 @@ const fixturePageFor = (variant: FixtureHeroVariant): Page => {
     id: `sitegen-review-${variant}`,
     slug: variant,
     title: pageConfig.title,
-    blocks: variant === "hero-01" ? [block, fixtureServices, fixtureCta02, fixtureCta, fixtureServices02] : [block],
+    blocks: variant === "hero-01" ? [block, fixtureServices, fixtureCta02, fixtureCta, fixtureServices02, fixtureAppointment] : [block],
   }
 }
 

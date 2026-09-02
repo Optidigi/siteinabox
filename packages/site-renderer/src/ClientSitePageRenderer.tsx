@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
 import { BlockRenderer, type BlockRenderOptions } from "./blocks"
@@ -30,7 +32,22 @@ export function ClientSitePageRenderer({
   canvasClassName,
   canvasAttributes,
   consentAvailable,
+  appointmentMode = "preview",
 }: SitePageRendererProps & { prepared: PreparedClientSiteRenderer }) {
+  React.useEffect(() => {
+    if (typeof document === "undefined" || !document.querySelector("[data-siab-appointment-block]")) return
+    let cleanup: (() => void) | undefined
+    let cancelled = false
+    void import("./blocks/appointments/appointment-behavior").then(({ initializeAppointmentBlocks }) => {
+      if (cancelled) return
+      cleanup = initializeAppointmentBlocks(document)
+    })
+    return () => {
+      cancelled = true
+      cleanup?.()
+    }
+  }, [appointmentMode, page.blocks, page.id, page.slug])
+
   const blocks = page.blocks.map((block, index) => {
     const sectionAnchor = resolveBlockAnchor(block)
     const options: BlockRenderOptions = {
@@ -41,6 +58,7 @@ export function ClientSitePageRenderer({
       editSlots,
       siteSettings: settings,
       theme,
+      appointmentMode,
       sectionAttributes: {
         id: sectionAnchor,
         "data-block-index": blockIndexOffset + index,

@@ -1,7 +1,12 @@
 import type { FieldAdminConditionContext, FieldValidateContext } from "@/lib/payloadFieldContext"
 import type { CollectionBeforeValidateHook, CollectionConfig, PayloadRequest } from "payload"
 import { ValidationError } from "payload"
-import { CONSENT_VARIANTS, DEFAULT_CONSENT_VARIANT, normalizePublicDomainHost } from "@siteinabox/contracts"
+import {
+  AppointmentScheduleSettingsSchema,
+  CONSENT_VARIANTS,
+  DEFAULT_CONSENT_VARIANT,
+  normalizePublicDomainHost,
+} from "@siteinabox/contracts"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -62,6 +67,22 @@ export const enforceSiteSettingsCapabilities: CollectionBeforeValidateHook = ({ 
     }
     if (disclosure.mode === "custom" && !isRecord(disclosure.body)) {
       errors.push({ path: "privacyDisclosure.body", message: adminValidationText(req.i18n?.language, "Custom mode requires structured document content.", "De aangepaste modus vereist gestructureerde documentinhoud.") })
+    }
+  }
+  const appointments = isRecord(record?.appointments) ? record.appointments : null
+  if (appointments) {
+    const parsed = AppointmentScheduleSettingsSchema.safeParse(appointments)
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        errors.push({
+          path: `appointments.${issue.path.join(".")}`,
+          message: adminValidationText(
+            req.i18n?.language,
+            issue.message,
+            issue.message,
+          ),
+        })
+      }
     }
   }
   if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors })
@@ -349,6 +370,32 @@ export const SiteSettings: CollectionConfig = {
         { name: "statisticsLabel", type: "text", maxLength: 32 },
         { name: "marketingLabel", type: "text", maxLength: 32 },
         { name: "privacyLink", type: "group", fields: linkRefFields() },
+      ]},
+    { name: "appointments", type: "group",
+      admin: { description: adminText("Configure appointment availability for the appointments-01 section and public booking API.", "Configureer beschikbaarheid voor de appointments-01-sectie en openbare boekings-API.") },
+      fields: [
+        { name: "enabled", type: "checkbox", defaultValue: false,
+          admin: { description: adminText("Enable public appointment booking. Availability remains closed while disabled.", "Schakel openbare afspraken in. Zolang dit uitstaat blijft beschikbaarheid gesloten.") } },
+        { name: "timezone", type: "text", required: true, defaultValue: "Europe/Amsterdam",
+          admin: { description: adminText("IANA time zone used for the schedule, for example Europe/Amsterdam.", "IANA-tijdzone voor de planning, bijvoorbeeld Europe/Amsterdam.") } },
+        { name: "durationMinutes", type: "number", required: true, defaultValue: 30, min: 5, max: 480,
+          admin: { description: adminText("Length of one appointment in minutes.", "Duur van één afspraak in minuten.") } },
+        { name: "slotIntervalMinutes", type: "number", required: true, defaultValue: 30, min: 5, max: 480,
+          admin: { description: adminText("How often a new start time is offered.", "Hoe vaak een nieuwe starttijd wordt aangeboden.") } },
+        { name: "bufferBeforeMinutes", type: "number", required: true, defaultValue: 0, min: 0, max: 240 },
+        { name: "bufferAfterMinutes", type: "number", required: true, defaultValue: 0, min: 0, max: 240 },
+        { name: "minimumNoticeMinutes", type: "number", required: true, defaultValue: 120, min: 0, max: 10080,
+          admin: { description: adminText("Minimum time between now and a new booking.", "Minimale tijd tussen nu en een nieuwe afspraak.") } },
+        { name: "minimumCancellationNoticeMinutes", type: "number", required: true, defaultValue: 120, min: 0, max: 10080,
+          admin: { description: adminText("Minimum time before the appointment when visitors may cancel or reschedule.", "Minimale tijd voor de afspraak waarin bezoekers kunnen annuleren of verzetten.") } },
+        { name: "bookingWindowDays", type: "number", required: true, defaultValue: 60, min: 1, max: 366,
+          admin: { description: adminText("How far into the future visitors may book.", "Hoe ver vooruit bezoekers mogen boeken.") } },
+        { name: "retentionDays", type: "number", required: true, defaultValue: 90, min: 30, max: 730,
+          admin: { description: adminText("How many days appointment records are retained after the appointment ends.", "Hoeveel dagen afspraakgegevens na afloop van de afspraak worden bewaard.") } },
+        { name: "weeklyAvailability", type: "json", defaultValue: [],
+          admin: { description: adminText("Structured weekly windows. Edit through the dedicated Appointments screen; each weekday may occur once and each day supports up to four windows.", "Gestructureerde wekelijkse tijdvensters. Bewerk dit via het speciale Afspraken-scherm; elke weekdag komt één keer voor en ondersteunt maximaal vier vensters.") } },
+        { name: "dateOverrides", type: "json", defaultValue: [],
+          admin: { description: adminText("Structured date-specific closures or opening windows. Edit through the dedicated Appointments screen.", "Gestructureerde uitzonderingen per datum. Bewerk dit via het speciale Afspraken-scherm.") } },
       ]},
     { name: "systemTemplates", type: "group", fields: [
       { name: "notFound", type: "group", fields: [

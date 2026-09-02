@@ -23,12 +23,13 @@ export const imageField = (name = "image", description?: string, required = fals
   ...(validate ? { validate } : {}),
 })
 
-export const backgroundModeField = (): Field => ({
+export const backgroundModeField = (defaultValue?: (typeof BACKGROUND_MODE_IDS)[number]): Field => ({
   name: "backgroundMode",
   type: "select",
   required: false,
   options: BACKGROUND_MODE_IDS.map((value) => ({ label: value, value })),
   admin: { description: "Optional section-specific background. Leave empty to inherit the site theme setting." },
+  ...(defaultValue ? { defaultValue } : {}),
 })
 
 export const sourceIdRows = (name: string, description: string): Field => ({

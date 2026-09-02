@@ -28,6 +28,13 @@ export const MailLogs: CollectionConfig = {
       index: true,
       admin: { description: adminText("Tenant context when the mail belongs to a generated site or tenant operation.", "Klantcontext wanneer de e-mail bij een gegenereerde site of klanthandeling hoort.") },
     },
+    {
+      name: "appointment",
+      type: "relationship",
+      relationTo: "appointments",
+      index: true,
+      admin: { description: adminText("Appointment context for transactional booking mail. Linked metadata is removed with the appointment.", "Afspraakcontext voor transactionele afspraakmail. Gekoppelde metadata wordt samen met de afspraak verwijderd.") },
+    },
     { name: "sender", type: "text", required: true, index: true },
     { name: "replyTo", type: "text" },
     { name: "recipient", type: "text", required: true, index: true },

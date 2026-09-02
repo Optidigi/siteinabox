@@ -1,4 +1,4 @@
-import type { GeneratedBlockSpec, NormalizedIntake, SiteGenerationSpec } from "@siteinabox/contracts"
+import { SITE_BLOCK_SLUGS, type GeneratedBlockSpec, type NormalizedIntake, type SiteGenerationSpec } from "@siteinabox/contracts"
 import { sitegenNormalizationContextFromIntake } from "@/lib/sitegen/normalize"
 
 export type MockGenerationFixture = "generic" | "invalid"
@@ -161,18 +161,7 @@ export function loadMockSiteGenerationSpec(
       page("diensten", "Diensten", blocks.filter((block) => ["hero", "services", "process", "contact"].includes(block.blockType)), normalized),
       page("contact", "Contact", blocks.filter((block) => ["hero", "contact"].includes(block.blockType)), normalized),
     ],
-    blocks: [
-      { slug: "hero", label: "Hero" },
-      { slug: "services", label: "Services" },
-      { slug: "about", label: "About" },
-      { slug: "process", label: "Process" },
-      { slug: "work", label: "Work" },
-      { slug: "reviews", label: "Reviews" },
-      { slug: "pricing", label: "Pricing" },
-      { slug: "faq", label: "FAQ" },
-      { slug: "cta", label: "CTA" },
-      { slug: "contact", label: "Contact" },
-    ],
+    blocks: SITE_BLOCK_SLUGS.map((slug) => ({ slug, label: slug })),
     assets: suppliedMedia(normalized),
     generatedAt: new Date().toISOString(),
     generator: { name: "mock-site-generation", version: "sitegen-owned-v1", model: "fixture" },

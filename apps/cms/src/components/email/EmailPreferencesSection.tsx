@@ -26,6 +26,7 @@ export type TenantNotificationMemberView = {
     domainAndDns: boolean
     billingAndPayments: boolean
     teamAndAccess: boolean
+    appointmentBookings: boolean
   }
 }
 
@@ -35,6 +36,7 @@ const categoryKeys = [
   "domainAndDns",
   "billingAndPayments",
   "teamAndAccess",
+  "appointmentBookings",
 ] as const
 
 function ResultAlert({ result, copy }: { result?: string; copy: { savedTitle: string; savedDescription: string; failedTitle: string; failedDescription: string; criticalDescription: string } }) {

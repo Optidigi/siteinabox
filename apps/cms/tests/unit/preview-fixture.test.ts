@@ -11,12 +11,13 @@ describe("sitegen review fixture page matrix", () => {
 
     expect(data?.pages.map((page) => page.slug)).toEqual(expectedPages)
     expect(data?.currentPage.slug).toBe("hero-01")
-    expect(data?.currentPage.blocks).toHaveLength(5)
+    expect(data?.currentPage.blocks).toHaveLength(6)
     expect(data?.currentPage.blocks[0]).toMatchObject({ blockType: "hero", variant: "hero-01" })
     expect(data?.currentPage.blocks[1]).toMatchObject({ blockType: "services", variant: "services-01" })
     expect(data?.currentPage.blocks[2]).toMatchObject({ blockType: "cta", variant: "cta-02", anchor: "cta-02" })
     expect(data?.currentPage.blocks[3]).toMatchObject({ blockType: "cta", variant: "cta-01" })
     expect(data?.currentPage.blocks[4]).toMatchObject({ blockType: "services", variant: "services-02", anchor: "services-02" })
+    expect(data?.currentPage.blocks[5]).toMatchObject({ blockType: "appointments", variant: "appointments-01", presentation: "dialog", anchor: "appointments" })
     expect(data?.settings.chrome?.navbar?.variant).toBe("navbar-01")
     expect(data?.settings.chrome?.navbar?.placement).toBe("sticky")
     expect(data?.consentAvailable).toBe(true)
@@ -30,7 +31,7 @@ describe("sitegen review fixture page matrix", () => {
     ] as const) {
       const data = getPreviewFixtureData(slug)
       expect(data?.currentPage.slug).toBe(slug)
-      expect(data?.currentPage.blocks).toHaveLength(slug === "hero-01" ? 5 : 1)
+      expect(data?.currentPage.blocks).toHaveLength(slug === "hero-01" ? 6 : 1)
       expect(data?.settings.chrome?.navbar?.variant).toBe(variant)
       expect(data?.settings.chrome?.navbar?.activeMode).toBe("path")
       expect(data?.settings.chrome?.navbar?.placement).toBe("sticky")

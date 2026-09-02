@@ -18,6 +18,13 @@ import {
   PaymentAttempts,
 } from "@/collections/CommerceRecords"
 import { Forms } from "@/collections/Forms"
+import { Appointments } from "@/collections/Appointments"
+import {
+  AppointmentCalendarConnections,
+  AppointmentCalendarEvents,
+  AppointmentCalendarOAuthStates,
+  AppointmentNotificationDeliveries,
+} from "@/collections/AppointmentIntegrations"
 import { DomainMigrations } from "@/collections/DomainMigrations"
 import { CheckoutProgressDrafts } from "@/collections/CheckoutProgressDrafts"
 import { MigrationCheckoutSecrets } from "@/collections/MigrationCheckoutSecrets"
@@ -57,6 +64,9 @@ import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
 import { renewDomainTask } from "@/lib/jobs/renewDomainTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
 import { sendLegalRequirementNotificationsTask } from "@/lib/jobs/sendLegalRequirementNotificationsTask"
+import { processAppointmentNotificationsTask } from "@/lib/jobs/appointmentNotificationsTask"
+import { processAppointmentCalendarEventsTask } from "@/lib/jobs/appointmentCalendarTask"
+import { purgeStaleAppointmentsTask } from "@/lib/jobs/purgeStaleAppointmentsTask"
 import { syncMolliePaymentTask } from "@/lib/jobs/syncMolliePaymentTask"
 import { payloadEmailAdapter } from "@/lib/email/payloadEmailAdapter"
 import type { Config } from "@/payload-types"
@@ -133,6 +143,11 @@ export default buildConfig({
     Pages,
     SiteSettings,
     Forms,
+    Appointments,
+    AppointmentNotificationDeliveries,
+    AppointmentCalendarOAuthStates,
+    AppointmentCalendarConnections,
+    AppointmentCalendarEvents,
     BlockPresets,
     IntakeSubmissions,
     SiteGenerationRuns,
@@ -176,6 +191,9 @@ export default buildConfig({
       purgeStaleFormSubmissionsTask,
       purgeExpiredCheckoutProgressDraftsTask,
       sendLegalRequirementNotificationsTask,
+      processAppointmentNotificationsTask,
+      processAppointmentCalendarEventsTask,
+      purgeStaleAppointmentsTask,
       syncMolliePaymentTask,
       fulfillOrderTask,
       prepareDomainMigrationTask,
@@ -240,6 +258,7 @@ export default buildConfig({
         media: {},
         "site-settings": { isGlobal: false },
         forms: {},
+        appointments: {},
         "block-presets": {}
       },
       tenantField: { name: "tenant" },

@@ -141,6 +141,36 @@ describe("owned Sitegen application", () => {
     expect(validateSiteGenerationSpecForCms(invalid as unknown as SiteGenerationSpec)).toMatchObject({ valid: false })
   })
 
+  it("rejects canonical appointment sections when intake did not request the capability", () => {
+    const spec = fixtureSpec()
+    const [hero, contact] = spec.pages[0]!.blocks
+    const appointment = {
+      blockType: "appointments" as const,
+      variant: "appointments-01" as const,
+      presentation: "dialog" as const,
+      backgroundMode: "none" as const,
+      anchor: "appointments",
+      heading: "Plan een afspraak",
+      body: "Kies een moment dat past.",
+      availabilityLabel: "Beschikbaarheid",
+      bookingLabel: "Afspraak aanvragen",
+      confirmationHeading: "Afspraak bevestigd",
+      confirmationBody: null,
+      privacyNote: null,
+    }
+    spec.intake.raw = { contact: { availabilityMode: "none", formType: "none", formOptions: [] } }
+    spec.pages[0]!.blocks = [hero!, appointment, contact!]
+
+    const invalid = validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" })
+    expect(invalid.valid).toBe(false)
+    if (!invalid.valid) expect(invalid.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "appointment_capability_not_requested" }),
+    ]))
+
+    spec.intake.raw = { contact: { availabilityMode: "appointment_only", formType: "appointment", formOptions: ["appointment"] } }
+    expect(validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" }).valid).toBe(true)
+  })
+
   it("enforces homepage ordering, singleton sections, and final contact", () => {
     const invalid = fixtureSpec()
     invalid.pages[0]!.blocks = [

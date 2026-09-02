@@ -31,6 +31,13 @@ const hasExplicitBookingAction = (intake: NormalizedIntake): boolean => {
 export const sitegenEligibilityFromIntake = (intake: NormalizedIntake): SitegenEligibilityInput => {
   const mediaById = sitegenMediaInventory(intake.brandSignals?.assets ?? [])
   const media = Object.values(mediaById)
+  const contactPreferences = intake.intakeBrief?.contactPreferences
+  // This is an intake capability request at generation time. Real schedule
+  // windows remain tenant-owned SiteSettings and must be configured before
+  // publishing; Sitegen never invents availability here.
+  const hasAppointmentSchedule = contactPreferences?.availabilityMode === "appointment_only"
+    || contactPreferences?.formType === "appointment"
+    || contactPreferences?.formOptions?.includes("appointment") === true
 
   return {
     mediaById,
@@ -40,6 +47,7 @@ export const sitegenEligibilityFromIntake = (intake: NormalizedIntake): SitegenE
     hasPortrait: media.some((asset) => asset.isPortrait),
     serviceAreaCount: intake.serviceArea.length,
     hasBooking: hasExplicitBookingAction(intake),
+    hasAppointmentSchedule,
     hasForm: Boolean(intake.intakeBrief?.contactPreferences.formType && intake.intakeBrief.contactPreferences.formType !== "none"),
     serviceCount: (intake.intakeBrief?.services ?? intake.goals).length,
     contactMethodCount: [

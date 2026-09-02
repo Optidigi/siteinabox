@@ -82,6 +82,8 @@ export type BlockRenderOptions = {
   sectionAttributes?: RendererSectionAttributes
   siteSettings?: SiteSettings
   theme?: ThemeTokenSpec | null
+  /** Public output uses the real appointment API; CMS frames use deterministic local behavior. */
+  appointmentMode?: "public" | "preview"
 }
 
 export type BlockRendererComponent<TBlock extends Block = Block> = (props: {
