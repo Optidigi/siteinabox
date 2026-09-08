@@ -4,7 +4,7 @@ import type { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { buildCheckoutQuote, sealCheckoutQuote } from "@/lib/checkout/checkoutQuote"
 
 const mocks = vi.hoisted(() => ({
-  headers: new Headers({ host: "preview.siteinabox.nl" }),
+  headers: new Headers({ host: "admin.siteinabox.nl" }),
   getSession: vi.fn(),
   isPreviewHost: vi.fn(),
   loadPreviewGrantContext: vi.fn(),

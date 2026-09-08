@@ -119,7 +119,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`preview.siteinabox.nl`)
+      - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`)
       - traefik.http.routers.siteinabox-cms.entrypoints=websecure
       - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
       - traefik.http.routers.siteinabox-cms.tls.options=siteinabox-cloudflare-aop@file

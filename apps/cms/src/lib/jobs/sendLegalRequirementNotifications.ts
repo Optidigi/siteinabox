@@ -5,6 +5,7 @@ import { LEGAL_REACCEPTANCE_TEMPLATE_VERSION, legalContinuedUseNoticeTemplate, l
 import { relationshipId } from "@/lib/relationshipId"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { asRecord } from "@/lib/record"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 
 type RequirementDoc = LegalRequirement & {
   tenant?: Tenant | number | null
@@ -21,13 +22,7 @@ const PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SIAB_SITE_URL ?? "https://www.si
 
 const relation = <T extends object>(value: unknown): T | null =>
   value && typeof value === "object" ? value as T : null
-const normalizedHost = (value: unknown) => typeof value === "string"
-  ? value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "")
-  : ""
-const tenantAdminUrl = (tenant: Tenant) => {
-  const domain = normalizedHost(tenant.domain)
-  return domain ? `https://admin.${domain}` : null
-}
+const tenantAdminUrl = (_tenant: Tenant) => platformCmsOrigin()
 const documentUrl = (document: LegalDocument) => document.documentType === "platform-terms"
   ? `${PUBLIC_SITE_URL}/juridisch/algemene-voorwaarden/${document.documentVersion}`
   : `${PUBLIC_SITE_URL}/juridisch/privacy-en-cookieverklaring/${document.documentVersion}`

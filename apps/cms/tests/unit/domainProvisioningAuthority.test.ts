@@ -1509,7 +1509,7 @@ describe("new-domain provider authority", () => {
     )
   })
 
-  it("blocks activation when public edge readiness is active but admin HTTPS is pending", async () => {
+  it("does not block activation when public edge is ready even if leftover admin HTTPS is pending", async () => {
     const store = fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     store.domain.edgeRoutingStatus = "active"
@@ -1544,7 +1544,7 @@ describe("new-domain provider authority", () => {
       },
     })).resolves.toMatchObject({
       status: "waiting",
-      message: expect.stringContaining("administration routing"),
+      message: expect.stringContaining("site-settings"),
       managedDomain: {
         authoritativeDnsStatus: "verified",
         httpsStatus: "verified",
@@ -1555,7 +1555,7 @@ describe("new-domain provider authority", () => {
       },
     })
     expect(store.collections.tenants?.[0]).toMatchObject({
-      domain: "preview.siteinabox.test",
+      domain: "example.nl",
       status: "preview",
     })
   })

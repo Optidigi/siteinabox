@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
 
 const mocks = vi.hoisted(() => ({
-  headers: new Headers({ host: "preview.siteinabox.nl" }),
+  headers: new Headers({ host: "admin.siteinabox.nl" }),
   getSession: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
   createMollieCheckoutForGenerationRun: vi.fn(),

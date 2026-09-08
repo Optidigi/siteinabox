@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   signInMagicLink: vi.fn(),
   headers: new Headers({
-    host: "preview.siteinabox.nl",
+    host: "admin.siteinabox.nl",
     "x-forwarded-proto": "https",
   }),
 }))
@@ -60,8 +60,8 @@ describe("requestPreviewMagicLinkAction", () => {
       headers: expect.any(Headers),
     }))
     const callHeaders = mocks.signInMagicLink.mock.calls[0]![0].headers as Headers
-    expect(callHeaders.get("host")).toBe("preview.siteinabox.nl")
-    expect(callHeaders.get("x-forwarded-host")).toBe("preview.siteinabox.nl")
+    expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
+    expect(callHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
   })
 
   it("returns the same public response when no matching grant exists", async () => {

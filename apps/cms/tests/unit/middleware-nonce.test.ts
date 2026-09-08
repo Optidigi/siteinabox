@@ -79,12 +79,12 @@ describe("middleware CSP nonce", () => {
   it("permits the server-to-server Mollie webhook without an Origin header", async () => {
     const mw = await importMiddleware()
     const response = await mw(new NextRequest(
-      "https://preview.siteinabox.nl/api/payments/mollie/webhook",
+      "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       {
         method: "POST",
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
         },
       },
     ))
@@ -95,11 +95,11 @@ describe("middleware CSP nonce", () => {
   it("rejects a request whose forwarded authority disagrees with Host", async () => {
     const mw = await importMiddleware()
     const response = await mw(new NextRequest(
-      "https://preview.siteinabox.nl/api/payments/mollie/webhook",
+      "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       {
         method: "POST",
         headers: {
-          host: "preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
           "x-forwarded-host": "attacker.example",
         },
       },
@@ -111,12 +111,12 @@ describe("middleware CSP nonce", () => {
   it("rejects cross-origin browser mutations", async () => {
     const mw = await importMiddleware()
     const response = await mw(new NextRequest(
-      "https://preview.siteinabox.nl/acme/checkout",
+      "https://admin.siteinabox.nl/acme/checkout",
       {
         method: "POST",
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
           origin: "https://attacker.example",
         },
       },

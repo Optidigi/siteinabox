@@ -5,12 +5,10 @@ executable configuration remain authoritative for exact behavior.
 
 ## Applications and packages
 
-- `apps/landing` owns the public marketing site, including Traefik redirects
-  for retired `/intake` and `/beheer` paths.
+- `apps/landing` owns the public marketing site.
 - `apps/cms` is the Payload administration, tenant, content, commercial, and
   publishing authority. Builder preview and `/builder` are served from the
-  same CMS image on `admin.siteinabox.nl` (with `preview.siteinabox.nl` kept
-  as a legacy alias).
+  same CMS image on `admin.siteinabox.nl`.
 - `apps/renderer` resolves tenants by request host and renders their active
   published snapshots.
 - `packages/contracts` owns shared data shapes and the first-party semantic

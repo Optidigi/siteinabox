@@ -54,7 +54,6 @@ const stringArray = (value: unknown): string[] =>
 const domainHosts = (domain: string) => ({
   apex: domain,
   www: `www.${domain}`,
-  admin: `admin.${domain}`,
 })
 
 export type CommerceEdgeRoutingInventory = {
@@ -128,8 +127,7 @@ export async function resolveCommerceEdgeRoutingInventory(
     const hosts = domainHosts(domain.domainNameAscii)
     return [hosts.apex, hosts.www]
   })
-  const cmsHosts = managedDomains.map((domain) =>
-    domainHosts(domain.domainNameAscii).admin)
+  const cmsHosts: string[] = []
 
   const activeTenants = await payload.find({
     collection: "tenants",
@@ -156,7 +154,6 @@ export async function resolveCommerceEdgeRoutingInventory(
     if (!adoption || adoption.tenantId !== String(tenant.id)) continue
     if (adoption.rendererApexReady) rendererHosts.push(domain)
     if (adoption.rendererWwwReady) rendererHosts.push(`www.${domain}`)
-    if (adoption.cmsAdminReady) cmsHosts.push(`admin.${domain}`)
   }
 
   return {
@@ -321,17 +318,15 @@ export async function reconcileCommerceEdgeRouting(
         ))
       }
       const hosts = domainHosts(domain.domainNameAscii)
-      const [apexCertificate, wwwCertificate, adminCertificate] = await Promise.all([
+      const [apexCertificate, wwwCertificate] = await Promise.all([
         dependencies.getHostnameCertificate(zoneId, hosts.apex),
         dependencies.getHostnameCertificate(zoneId, hosts.www),
-        dependencies.getHostnameCertificate(zoneId, hosts.admin),
       ])
       const certificatesReady =
         apexCertificate.covered &&
-        wwwCertificate.covered &&
-        adminCertificate.covered
-      const [apexHttps, wwwHttps, adminHttps] =
-        tunnelsConnected && certificatesReady
+        wwwCertificate.covered
+      const [apexHttps, wwwHttps] =
+        rendererTunnel.connected && certificatesReady
           ? await Promise.all([
               dependencies.verifyHttps(hosts.apex, {
                 service: "renderer",
@@ -339,10 +334,6 @@ export async function reconcileCommerceEdgeRouting(
               }),
               dependencies.verifyHttps(hosts.www, {
                 service: "renderer",
-                expectedDomain: domain.domainNameAscii,
-              }),
-              dependencies.verifyHttps(hosts.admin, {
-                service: "cms",
                 expectedDomain: domain.domainNameAscii,
               }),
             ])
@@ -357,20 +348,13 @@ export async function reconcileCommerceEdgeRouting(
                 httpStatus: null,
                 reason: "edge_tunnel_or_certificate_pending",
               },
-              {
-                status: "pending" as const,
-                httpStatus: null,
-                reason: "edge_tunnel_or_certificate_pending",
-              },
             ]
       const publicHttpsReady =
         apexHttps.status === "verified" &&
         wwwHttps.status === "verified"
-      const adminHttpsReady = adminHttps.status === "verified"
-      const edgeActive = tunnelsConnected &&
+      const edgeActive = rendererTunnel.connected &&
         certificatesReady &&
-        publicHttpsReady &&
-        adminHttpsReady
+        publicHttpsReady
       domain = await updateDomain(payload, domain, {
         cloudflareDnsRecordIds: [...new Set([
           ...ownedIds,
@@ -402,19 +386,12 @@ export async function reconcileCommerceEdgeRouting(
               covered: wwwCertificate.covered,
               statuses: wwwCertificate.certificateStatuses,
             },
-            admin: {
-              covered: adminCertificate.covered,
-              statuses: adminCertificate.certificateStatuses,
-            },
           },
-          probes: { apex: apexHttps, www: wwwHttps, admin: adminHttps },
+          probes: { apex: apexHttps, www: wwwHttps },
         },
         httpsStatus: publicHttpsReady ? "verified" : "pending",
         httpsCheckedAt: checkedAt,
         httpsEvidence: { apex: apexHttps, www: wwwHttps },
-        adminHttpsStatus: adminHttpsReady ? "verified" : "pending",
-        adminHttpsCheckedAt: checkedAt,
-        adminHttpsEvidence: { admin: adminHttps },
         reconciliationRequired: !edgeActive,
       })
       if (edgeActive) result.active += 1

@@ -29,14 +29,6 @@ export function buildStatusInventory(tenants: StatusInventoryTenant[], now = new
         tenantId,
         kind: "tenant-public" as const,
       },
-      {
-        hostname: `admin.${hostname}`,
-        name: `admin.${hostname}`,
-        description: "Customer content management.",
-        healthUrl: `https://admin.${hostname}/api/health`,
-        tenantId,
-        kind: "tenant-cms" as const,
-      },
     ]
   })
   return {

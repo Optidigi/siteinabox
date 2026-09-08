@@ -8,8 +8,8 @@ deploy, recovery from a wiped VPS, or replicating the stack onto a new VPS.
 
 The platform also includes the landing static application and the
 published-site renderer. Public create is the builder on
-`https://admin.siteinabox.nl/builder`. Landing `/intake` and `/beheer` redirect
-to platform login. Landing and renderer image workflows and health checks remain
+`https://admin.siteinabox.nl/builder`. Retired landing paths such as `/intake`
+and `/beheer` are not redirected. Landing and renderer image workflows and health checks remain
 application-owned; this runbook's Compose procedure is specifically for CMS
 operations.
 
@@ -139,7 +139,7 @@ COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED=
 COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED=
 CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID=
 CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET=
-CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI=https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback
+CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI=https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
@@ -474,37 +474,17 @@ labels:
   - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
 ```
 
-Landing Traefik also owns retired `/intake` and `/beheer` redirects to
-`https://admin.siteinabox.nl/login` (register intent for `/intake`). Those
-routers must outrank the host-root landing router:
+Landing does not redirect `/intake` or `/beheer`; those paths 404.
+
+Confirm the `siteinabox-cms` service keeps Traefik only for the platform admin
+host and public CMS API paths. Customer live apex/`www` hosts belong to the
+renderer Tunnel. Do not provision `admin.<customer-domain>`:
 
 ```yaml
 labels:
   - traefik.enable=true
   - traefik.docker.network=proxy
-  - traefik.http.routers.siteinabox-site.rule=Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)
-  - traefik.http.routers.siteinabox-site.entrypoints=websecure
-  - traefik.http.routers.siteinabox-site.tls.certresolver=letsencrypt
-  - traefik.http.routers.siteinabox-site.tls.options=siteinabox-cloudflare-aop@file
-  - traefik.http.routers.siteinabox-site.middlewares=hsts@docker
-  - traefik.http.routers.siteinabox-site.priority=100
-  - traefik.http.routers.siteinabox-site.service=siteinabox-site
-  - traefik.http.routers.siteinabox-intake-redirect.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
-  - traefik.http.routers.siteinabox-intake-redirect.priority=300
-  - traefik.http.routers.siteinabox-beheer-redirect.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/beheer`) || PathPrefix(`/beheer/`))
-  - traefik.http.routers.siteinabox-beheer-redirect.priority=300
-  - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
-```
-
-Confirm the `siteinabox-cms` service keeps Traefik only for the platform admin,
-preview hostname, and public CMS API paths. Customer `admin.<domain>` hosts
-belong to the private CMS Tunnel:
-
-```yaml
-labels:
-  - traefik.enable=true
-  - traefik.docker.network=proxy
-  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`preview.siteinabox.nl`)
+  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`)
   - traefik.http.routers.siteinabox-cms.entrypoints=websecure
   - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
   - traefik.http.routers.siteinabox-cms.tls.options=siteinabox-cloudflare-aop@file

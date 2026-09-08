@@ -11,7 +11,7 @@ describe("PostHog tenant enrollment", () => {
   it("derives both public and CMS URLs only for verified production domains", () => {
     expect(tenantAnalyticsAppUrls(tenant as never)).toEqual([
       "https://ami-care.nl",
-      "https://admin.ami-care.nl",
+      "https://admin.siteinabox.nl",
     ])
     expect(tenantAnalyticsAppUrls({ ...tenant, domain: "demo.localhost" } as never)).toEqual([])
     expect(tenantAnalyticsAppUrls({ ...tenant, domainVerification: { status: "failed" } } as never)).toEqual([])
@@ -34,7 +34,7 @@ describe("PostHog tenant enrollment", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://eu.posthog.com/api/projects/123/")
     expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toEqual({
-      app_urls: ["https://admin.ami-care.nl", "https://ami-care.nl", "https://siteinabox.nl"],
+      app_urls: ["https://admin.siteinabox.nl", "https://ami-care.nl", "https://siteinabox.nl"],
     })
   })
 
@@ -45,7 +45,7 @@ describe("PostHog tenant enrollment", () => {
 
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ app_urls: ["https://ami-care.nl", "https://admin.ami-care.nl"] }),
+      json: async () => ({ app_urls: ["https://ami-care.nl", "https://admin.siteinabox.nl"] }),
     })
     await expect(ensureTenantPostHogEnrollment(tenant as never, {
       env: { POSTHOG_PROJECT_ID: "123", POSTHOG_PERSONAL_API_KEY: "test-only-key" },

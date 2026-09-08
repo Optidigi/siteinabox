@@ -62,10 +62,8 @@ const cmsMagicLinkHost = (user: User, requestHost: string | null): string | null
   if (user.role === "super-admin") return requestHost ?? PLATFORM_ADMIN_HOST
   const tenant = user.tenants?.[0]?.tenant
   if (!tenant || typeof tenant !== "object") return null
-  const domain = tenant.domain?.trim().toLowerCase()
-  if (!domain) return null
-  if (tenant.status === "archived" || tenant.status === "suspended") return null
-  return `admin.${domain}`
+  if (tenant.status === "archived") return null
+  return requestHost ?? PLATFORM_ADMIN_HOST
 }
 
 const loadEligibleCmsUser = async (email: string): Promise<User | null> => {

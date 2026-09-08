@@ -370,7 +370,6 @@ export function buildCloudflareEdgeDnsRecordRequests(
 ): CloudflareDnsRecordRequest[] {
   const domain = splitDomain(domainInput).domain
   const rendererTarget = cloudflareTunnelTarget("renderer", env)
-  const cmsTarget = cloudflareTunnelTarget("cms", env)
   return [
     {
       type: "CNAME",
@@ -383,13 +382,6 @@ export function buildCloudflareEdgeDnsRecordRequests(
       type: "CNAME",
       name: `www.${domain}`,
       content: rendererTarget,
-      ttl: 1,
-      proxied: true,
-    },
-    {
-      type: "CNAME",
-      name: `admin.${domain}`,
-      content: cmsTarget,
       ttl: 1,
       proxied: true,
     },

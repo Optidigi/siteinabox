@@ -7,14 +7,14 @@ export type GateDecision =
   | { allow: false; reason: "no-user" | "wrong-host" | "super-admin-on-tenant-host" | "cross-tenant" }
 
 /**
- * Pure decision function for the host × role × tenant matrix. Lives apart
+ * Pure decision function for the role × membership matrix. Lives apart
  * from `authGate.ts` so unit tests can import it without booting Payload.
  *
- * The matrix:
+ * The matrix (tenancy is resolved from the user, not from Host):
  *   no user                                                       -> no-user
- *   super-admin host, user.role !== super-admin                   -> wrong-host
- *   tenant host,      user.role === super-admin                   -> super-admin-on-tenant-host
- *   tenant host,      user.tenants[0].tenant !== ctx.tenant.id    -> cross-tenant
+ *   super-admin ctx, user.role !== super-admin                    -> wrong-host
+ *   tenant ctx,      user.role === super-admin                    -> super-admin-on-tenant-host
+ *   tenant ctx,      user.tenants[0].tenant !== ctx.tenant.id     -> cross-tenant
  *   otherwise                                                     -> allow
  */
 export const evaluateGate = (user: User | null, ctx: SiabContext): GateDecision => {
@@ -25,9 +25,6 @@ export const evaluateGate = (user: User | null, ctx: SiabContext): GateDecision 
     return { allow: true }
   }
 
-  // ctx.mode === "tenant" — non-super-admin users carry exactly one tenant
-  // in their `tenants[]` array (plugin-multi-tenant native shape; our domain
-  // invariant collapses it to length 1 for non-super-admins).
   if (user.role === "super-admin") {
     return { allow: false, reason: "super-admin-on-tenant-host" }
   }

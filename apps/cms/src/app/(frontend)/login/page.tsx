@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { LoginForm } from "@/components/forms/LoginForm"
 import { AuthShell } from "@/components/auth-shell"
 import { getEnabledSocialAuthProvidersForHost } from "@/lib/socialAuth/providers"
-import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
+import { isPlatformAdminHost } from "@/lib/hostToTenant"
 import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
 
 /**
@@ -14,17 +14,15 @@ import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
  * Departures from a generic two-column login block:
  *   - Social providers are shown only when configured — siab-payload remains
  *     invite-only and Payload-owned for authorization.
- *   - On the platform admin/preview host, register and login share this page;
- *     CMS users are routed to CMS magic links and everyone else to the builder.
- *   - Tenant admin hosts stay invite-only CMS login.
+ *   - This page is the one public login/register surface on the platform
+ *     admin host. CMS users get CMS magic links; everyone else goes to the builder.
  *   - Right panel uses the real SVG logo with dark/light CSS switching.
  */
 export default async function LoginPage() {
   const headerStore = await headers()
   const host = headerStore.get("host") || ""
   const socialProviders = getEnabledSocialAuthProvidersForHost(host)
-  const domain = stripAdminPrefix(host)
-  const allowPasswordLogin = isSuperAdminDomain(domain, process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN)
+  const allowPasswordLogin = isPlatformAdminHost(host)
   const unifyPublicAuth = isPreviewRequestAuthority(headerStore)
 
   return (

@@ -66,13 +66,13 @@ describe("Cloudflare source OAuth routes", () => {
       "@/app/(payload)/api/domain-migration-source/cloudflare/start/route"
     )
     const response = await POST(new Request(
-      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/start",
+      "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/start",
       {
         method: "POST",
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
-          origin: "https://preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
+          origin: "https://admin.siteinabox.nl",
         },
         body: new URLSearchParams({
           clientSlug: "example",
@@ -111,13 +111,13 @@ describe("Cloudflare source OAuth routes", () => {
     )
     mocks.sourceCheckoutEnabled.mockReturnValue(false)
     const request = () => new Request(
-      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/start",
+      "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/start",
       {
         method: "POST",
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
-          origin: "https://preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
+          origin: "https://admin.siteinabox.nl",
         },
         body: new URLSearchParams({
           clientSlug: "example",
@@ -146,11 +146,11 @@ describe("Cloudflare source OAuth routes", () => {
     )
     const state = "a".repeat(43)
     const response = await GET(new Request(
-      `https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${state}&code=one-time-code`,
+      `https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${state}&code=one-time-code`,
       {
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
           cookie: `siab_cf_source_${state.slice(0, 12)}=browser-binding`,
         },
       },
@@ -188,11 +188,11 @@ describe("Cloudflare source OAuth routes", () => {
     )
     mocks.authorizationContext.mockResolvedValue(null)
     const response = await GET(new Request(
-      `https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${"a".repeat(43)}&code=code`,
+      `https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${"a".repeat(43)}&code=code`,
       {
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
         },
       },
     ))
@@ -206,7 +206,7 @@ describe("Cloudflare source OAuth routes", () => {
       "@/app/(payload)/api/domain-migration-source/cloudflare/start/route"
     )
     const request = (headers: Record<string, string>) => new Request(
-      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/start",
+      "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/start",
       {
         method: "POST",
         headers,
@@ -218,17 +218,17 @@ describe("Cloudflare source OAuth routes", () => {
     )
 
     expect((await POST(request({
-      host: "preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
       "x-forwarded-host": "attacker.example",
       origin: "https://attacker.example",
     }))).status).toBe(404)
     expect((await POST(request({
-      host: "preview.siteinabox.nl",
-      "x-forwarded-host": "preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl",
     }))).status).toBe(403)
     expect((await POST(request({
-      host: "preview.siteinabox.nl",
-      "x-forwarded-host": "preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl",
       origin: "https://attacker.example",
     }))).status).toBe(403)
     expect(mocks.createAuthorization).not.toHaveBeenCalled()
@@ -240,11 +240,11 @@ describe("Cloudflare source OAuth routes", () => {
     )
     mocks.sourceCheckoutEnabled.mockReturnValue(false)
     const response = await GET(new Request(
-      `https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${"a".repeat(43)}&code=code`,
+      `https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback?state=${"a".repeat(43)}&code=code`,
       {
         headers: {
-          host: "preview.siteinabox.nl",
-          "x-forwarded-host": "preview.siteinabox.nl",
+          host: "admin.siteinabox.nl",
+          "x-forwarded-host": "admin.siteinabox.nl",
         },
       },
     ))

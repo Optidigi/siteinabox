@@ -447,12 +447,24 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
     )
   })
 
-  it("generated-site forms: host-derived tenant target works when the form body omits tenant", async () => {
+  it("generated-site forms: retired customer hosts 404 instead of sharing the form budget", async () => {
+    for (let i = 1; i <= 50; i++) {
+      const res = await middleware(formPostAt({
+        path: "/api/forms",
+        ip: `198.51.102.${i}`,
+        host: "client-one.example",
+        formName: "contact",
+      }))
+      expect(res.status, `retired host #${i}`).toBe(404)
+    }
+  })
+
+  it("generated-site forms: host-derived tenant target works on the platform host when the form body omits tenant", async () => {
     for (let i = 1; i <= 50; i++) {
       await middleware(formPostAt({
         path: "/api/forms",
         ip: `198.51.102.${i}`,
-        host: "client-one.example",
+        host: "admin.siteinabox.nl",
         formName: "contact",
       }))
     }
@@ -461,7 +473,7 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       await middleware(formPostAt({
         path: "/api/forms",
         ip: "198.51.102.251",
-        host: "client-one.example",
+        host: "admin.siteinabox.nl",
         formName: "contact",
       })),
       "same host/form"
@@ -470,10 +482,10 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       await middleware(formPostAt({
         path: "/api/forms",
         ip: "198.51.102.252",
-        host: "client-two.example",
-        formName: "contact",
+        host: "admin.siteinabox.nl",
+        formName: "newsletter",
       })),
-      "different host"
+      "different form"
     )
   })
 
@@ -652,10 +664,10 @@ describe("audit-p1 #5 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 #1-#3 / P1 #
     // with the BOOTSTRAP_TOKEN header to make the seed-runbook shape explicit.
     for (let i = 1; i <= 30; i++) {
       const res = await middleware(
-        new NextRequest("https://admin.example.com/api/users", {
+        new NextRequest("https://admin.siteinabox.nl/api/users", {
           method: "POST",
           headers: {
-            host: "admin.example.com",
+            host: "admin.siteinabox.nl",
             "x-bootstrap-token": "secret-1234",
             "x-forwarded-for": "203.0.113.90",
           },

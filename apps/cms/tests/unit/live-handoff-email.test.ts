@@ -170,13 +170,13 @@ describe("CMS live handoff email", () => {
     expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
         email: "customer@example.com",
-        callbackURL: "https://admin.clientsite.nl",
-        errorCallbackURL: "https://admin.clientsite.nl/login",
+        callbackURL: "https://admin.siteinabox.nl",
+        errorCallbackURL: "https://admin.siteinabox.nl/login",
         metadata: expect.objectContaining({
           intent: "site_live_handoff",
           recipientEmail: "customer@example.com",
           siteUrl: "https://clientsite.nl",
-          adminUrl: "https://admin.clientsite.nl",
+          adminUrl: "https://admin.siteinabox.nl",
           tenantId: "1",
           _siabPrivilegedSignature: expect.any(String),
         }),
@@ -184,8 +184,8 @@ describe("CMS live handoff email", () => {
       headers: expect.any(Headers),
     }))
     const authHeaders = mocks.signInMagicLink.mock.calls[0]?.[0].headers as Headers
-    expect(authHeaders.get("host")).toBe("admin.clientsite.nl")
-    expect(authHeaders.get("x-forwarded-host")).toBe("admin.clientsite.nl")
+    expect(authHeaders.get("host")).toBe("admin.siteinabox.nl")
+    expect(authHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
     expect(authHeaders.get("x-forwarded-proto")).toBe("https")
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })

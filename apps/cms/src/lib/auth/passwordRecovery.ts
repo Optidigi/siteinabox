@@ -1,14 +1,9 @@
-const DEFAULT_SUPER_ADMIN_DOMAIN = "siteinabox.nl"
-const DEFAULT_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 
-export const SUPER_ADMIN_RESET_TOKEN_TTL_MS = DEFAULT_RESET_TOKEN_TTL_MS
+export const SUPER_ADMIN_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
 
 export function getSuperAdminOrigin(env: NodeJS.ProcessEnv = process.env): string {
-  const domain = env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN?.trim() || DEFAULT_SUPER_ADMIN_DOMAIN
-  if (env.NODE_ENV !== "production" && domain === "localhost") {
-    return `http://localhost:${env.PORT || "3001"}`
-  }
-  return `https://admin.${domain}`
+  return platformCmsOrigin(env)
 }
 
 export function buildSuperAdminResetUrl(token: string, env: NodeJS.ProcessEnv = process.env): string {

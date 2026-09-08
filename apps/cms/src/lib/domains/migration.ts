@@ -3841,7 +3841,7 @@ const evaluateEdgeReadinessPhase = (
     return {
       outcome: "waiting",
       message:
-        "Automatic website and administration routing is being prepared before transfer.",
+        "Automatic website routing is being prepared before transfer.",
     }
   }
   return {
@@ -5017,8 +5017,7 @@ async function verifyPostCutoverTargetAndSecureDnssecPhase(
   )
   const edgeReady =
     managedDomain.edgeRoutingStatus === "active" &&
-    managedDomain.httpsStatus === "verified" &&
-    managedDomain.adminHttpsStatus === "verified"
+    managedDomain.httpsStatus === "verified"
   const https = edgeReady
     ? { status: "verified" as const, httpStatus: 200, reason: null }
     : {

@@ -42,10 +42,6 @@ const healthyTunnel = (kind: "renderer" | "cms") => ({
         { service: "http_status:404" },
       ]
     : [
-        {
-          hostname: "admin.example.nl",
-          service: "http://siteinabox-cms:3000",
-        },
         { service: "http_status:404" },
       ],
   configurationVersion: 3,
@@ -312,7 +308,7 @@ describe("read-only production provider capability preflight", () => {
         "www.example.nl",
         "www.pending.nl",
       ],
-      cmsHosts: ["admin.example.nl", "admin.pending.nl"],
+      cmsHosts: [],
       zoneDomains: ["example.nl"],
     })
 
@@ -359,11 +355,11 @@ describe("read-only production provider capability preflight", () => {
     }))).resolves.toEqual([])
   })
 
-  it("requires certificate coverage for apex, www and tenant admin", async () => {
+  it("requires certificate coverage for apex and www", async () => {
     const deps = dependencies()
     deps.getCertificate.mockImplementation(async (_zoneId, hostname) => ({
       universalSslEnabled: true,
-      covered: hostname !== "admin.example.nl",
+      covered: hostname !== "www.example.nl",
     }))
 
     await expect(commerceProviderCapabilityBlockers(options({
@@ -375,7 +371,6 @@ describe("read-only production provider capability preflight", () => {
       .toEqual([
         "example.nl",
         "www.example.nl",
-        "admin.example.nl",
       ])
   })
 
@@ -415,11 +410,6 @@ describe("read-only production provider capability preflight", () => {
             return left.hostname.localeCompare(right.hostname)
           })
         : [
-            ...domains.map((domain) => ({
-              hostname: `admin.${domain}`,
-              service: "http://siteinabox-cms:3000",
-            })).sort((left, right) =>
-              left.hostname.localeCompare(right.hostname)),
             { service: "http_status:404" },
           ],
     }))

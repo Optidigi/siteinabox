@@ -66,7 +66,7 @@ describe("shared email template safety", () => {
   })
 
   it("provides escaped HTML and plain text for preview-ready links", () => {
-    const url = "https://preview.siteinabox.nl/client?a=1&b=2"
+    const url = "https://admin.siteinabox.nl/client?a=1&b=2"
     const message = siteReadyPreviewTemplate({ loginUrl: url })
 
     expect(message.html).toContain("a=1&amp;b=2")

@@ -32,7 +32,7 @@ async function resolvePreCommerceEdgeIdentity(
   const adoption = await resolvePreCommerceRoutingAdoption(payload, domain)
   if (!adoption) return null
   const ready = surface === "cms"
-    ? host === `admin.${domain}` && adoption.cmsAdminReady
+    ? false
     : host === domain
       ? adoption.rendererApexReady
       : host === `www.${domain}` && adoption.rendererWwwReady
@@ -44,14 +44,13 @@ export async function resolveManagedDomainEdgeIdentity(
   rawHost: string | null,
   surface: "renderer" | "cms",
 ): Promise<EdgeReadinessIdentity | null> {
+  if (surface === "cms") return null
   const host = normalizePublicDomainHost(rawHost)
   if (!host) return null
-  const domain = surface === "cms"
-    ? host.startsWith("admin.") ? host.slice("admin.".length) : ""
-    : host.startsWith("www.") ? host.slice("www.".length) : host
+  const domain = host.startsWith("www.") ? host.slice("www.".length) : host
   if (
     !domain ||
-    host !== (surface === "cms" ? `admin.${domain}` : host.startsWith("www.") ? `www.${domain}` : domain)
+    host !== (host.startsWith("www.") ? `www.${domain}` : domain)
   ) {
     return null
   }
@@ -106,10 +105,7 @@ export async function resolveManagedDomainEdgeIdentity(
     depth: 0,
     overrideAccess: true,
   }) as Tenant
-  if (
-    tenant.status === "archived" ||
-    (surface === "renderer" && tenant.status === "suspended")
-  ) {
+  if (tenant.status === "archived" || tenant.status === "suspended") {
     return null
   }
   return { domain, tenantId: String(tenant.id) }

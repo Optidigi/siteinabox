@@ -26,17 +26,16 @@ describe("preview Better Auth host configuration", () => {
     vi.unstubAllEnvs()
   })
 
-  it("accepts the platform admin host and the legacy preview host in production", async () => {
+  it("accepts the platform admin host in production", async () => {
     const { getPreviewBetterAuthBaseURL, getPreviewTrustedOrigins } = await import("@/lib/preview/betterAuth")
 
     expect(getPreviewBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["admin.siteinabox.nl", "preview.siteinabox.nl"],
+      allowedHosts: ["admin.siteinabox.nl"],
       protocol: "https",
       fallback: "https://admin.siteinabox.nl",
     })
     expect(getPreviewTrustedOrigins()).toEqual([
       "https://admin.siteinabox.nl",
-      "https://preview.siteinabox.nl",
     ])
     const headers = new Headers({
       host: "admin.siteinabox.nl",
@@ -55,7 +54,6 @@ describe("preview Better Auth host configuration", () => {
     expect(getPreviewBetterAuthBaseURL()).toEqual({
       allowedHosts: [
         "admin.siteinabox.nl",
-        "preview.siteinabox.nl",
         "localhost:*",
         "127.0.0.1:*",
         "*.localhost:*",
@@ -68,7 +66,6 @@ describe("preview Better Auth host configuration", () => {
     })
     expect(getPreviewTrustedOrigins()).toEqual([
       "https://admin.siteinabox.nl",
-      "https://preview.siteinabox.nl",
       "http://localhost:*",
       "https://localhost:*",
       "http://127.0.0.1:*",

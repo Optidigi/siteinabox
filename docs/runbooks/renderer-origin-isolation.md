@@ -49,8 +49,9 @@ Tunnels make outbound connections:
 
 - `siteinabox-renderer` forwards exact approved apex and `www` hosts to
   `http://siteinabox-renderer:4321` on `renderer-origin`.
-- `siteinabox-cms` forwards exact approved `admin.<domain>` hosts to
-  `http://siteinabox-cms:3000` on `cms-origin`.
+- `siteinabox-cms` no longer inventories customer `admin.<domain>` hosts.
+  Leftover CMS-tunnel hostnames are dropped on the next approved
+  reconciliation. Platform CMS remains on Traefik at `admin.siteinabox.nl`.
 
 Both remote ingress configurations end with `http_status:404`. Neither uses a
 wildcard, `httpHostHeader`, public origin port, or customer-host Traefik

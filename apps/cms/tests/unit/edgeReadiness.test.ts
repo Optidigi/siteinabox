@@ -123,13 +123,20 @@ describe("domain-bound edge readiness", () => {
   it.each([
     ["renderer", "example.nl"],
     ["renderer", "www.example.nl"],
-    ["cms", "admin.example.nl"],
   ] as const)("resolves an eligible %s host", async (surface, host) => {
     await expect(resolveManagedDomainEdgeIdentity(
       payload(),
       host,
       surface,
     )).resolves.toEqual({ domain: "example.nl", tenantId: "12" })
+  })
+
+  it("rejects retired customer CMS hosts", async () => {
+    await expect(resolveManagedDomainEdgeIdentity(
+      payload(),
+      "admin.example.nl",
+      "cms",
+    )).resolves.toBeNull()
   })
 
   it.each([
@@ -155,12 +162,12 @@ describe("domain-bound edge readiness", () => {
     }))).toBe("admin.example.nl")
   })
 
-  it("keeps suspended customer administration reachable while public rendering is blocked", async () => {
+  it("does not keep retired customer CMS hosts reachable for suspended tenants", async () => {
     await expect(resolveManagedDomainEdgeIdentity(
       payload("suspended"),
       "admin.example.nl",
       "cms",
-    )).resolves.toEqual({ domain: "example.nl", tenantId: "12" })
+    )).resolves.toBeNull()
     await expect(resolveManagedDomainEdgeIdentity(
       payload("suspended"),
       "example.nl",
@@ -171,7 +178,6 @@ describe("domain-bound edge readiness", () => {
   it.each([
     ["renderer", "ami-care.nl"],
     ["renderer", "www.ami-care.nl"],
-    ["cms", "admin.ami-care.nl"],
   ] as const)("resolves the durably adopted %s identity", async (surface, host) => {
     await expect(resolveManagedDomainEdgeIdentity(
       adoptedPayload(),
@@ -256,13 +262,13 @@ describe("domain-bound edge readiness", () => {
     )).resolves.toBeNull()
   })
 
-  it("keeps suspended adopted administration reachable while blocking rendering", async () => {
+  it("does not keep retired adopted CMS hosts reachable for suspended tenants", async () => {
     const suspended = adoptedPayload({ tenantStatus: "suspended" })
     await expect(resolveManagedDomainEdgeIdentity(
       suspended,
       "admin.ami-care.nl",
       "cms",
-    )).resolves.toEqual({ domain: "ami-care.nl", tenantId: "1" })
+    )).resolves.toBeNull()
     await expect(resolveManagedDomainEdgeIdentity(
       suspended,
       "ami-care.nl",

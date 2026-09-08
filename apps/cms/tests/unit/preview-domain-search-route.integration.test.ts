@@ -34,14 +34,14 @@ import { POST } from "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/doma
 const routeContext = { params: Promise.resolve({ clientSlug: "acme" }) }
 
 const request = (body: unknown, headers: Record<string, string> = {}) => new NextRequest(
-  "https://preview.siteinabox.nl/acme/checkout/domain-search",
+  "https://admin.siteinabox.nl/acme/checkout/domain-search",
   {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      host: "preview.siteinabox.nl",
-      "x-forwarded-host": "preview.siteinabox.nl",
-      origin: "https://preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl",
+      origin: "https://admin.siteinabox.nl",
       ...headers,
     },
     body: JSON.stringify(body),

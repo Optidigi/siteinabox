@@ -18,7 +18,7 @@ const ENV = {
   CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID: "oauth-client-id",
   CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET: "oauth-client-secret",
   CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI:
-    "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback",
+    "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback",
 } as unknown as NodeJS.ProcessEnv
 const NOW = new Date("2026-07-30T08:00:00.000Z")
 type OAuthUpdateArgs = {

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { RateLimiterMemory } from "rate-limiter-flexible"
-import { stripAdminPrefix, isSuperAdminDomain } from "@/lib/hostToTenant"
+import {
+  isPlatformAdminHost,
+  PLATFORM_PROXY_MODE,
+  stripAdminPrefix,
+} from "@/lib/hostToTenant"
 import {
   browserOriginMatchesAuthority,
   canonicalRequestAuthority,
@@ -340,22 +344,8 @@ const buildMalformedApiKeyResponse = (pathname: string, nonce: string): NextResp
   return applySecurityHeaders(res, pathname, nonce)
 }
 
-const isPasswordLoginRequest = (req: NextRequest): boolean =>
-  req.method === "POST" && normalizePath(req.nextUrl.pathname) === "/api/users/login"
-
-const isPasswordRecoveryPath = (pathname: string): boolean => {
-  const path = normalizePath(pathname)
-  return path === "/forgot-password" || path.startsWith("/reset-password/") ||
-    path === "/api/users/forgot-password" || path === "/api/users/reset-password"
-}
-
-const buildPasswordRecoveryNotFoundResponse = (pathname: string, nonce: string): NextResponse =>
+const buildRetiredTenantCmsResponse = (pathname: string, nonce: string): NextResponse =>
   applySecurityHeaders(new NextResponse(null, { status: 404 }), pathname, nonce)
-
-const buildPasswordLoginUnavailableResponse = (pathname: string, nonce: string): NextResponse => {
-  const res = NextResponse.json({ error: "Password login is only available on the SIAB admin host" }, { status: 403 })
-  return applySecurityHeaders(res, pathname, nonce)
-}
 
 const rateLimitFallbackMs = (durationSeconds: number): number => durationSeconds * 1000
 
@@ -413,14 +403,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 
   const host = req.headers.get("host") || ""
   const domain = stripAdminPrefix(host)
-  const superAdminDomain = process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN
+  const platformHost = isPlatformAdminHost(host)
 
-  if (isPasswordRecoveryPath(req.nextUrl.pathname) && !isSuperAdminDomain(domain, superAdminDomain)) {
-    return buildPasswordRecoveryNotFoundResponse(req.nextUrl.pathname, nonce)
-  }
-
-  if (isPasswordLoginRequest(req) && !isSuperAdminDomain(domain, superAdminDomain)) {
-    return buildPasswordLoginUnavailableResponse(req.nextUrl.pathname, nonce)
+  if (!platformHost) {
+    return buildRetiredTenantCmsResponse(req.nextUrl.pathname, nonce)
   }
 
   // Rate-limit every caller on public POST surfaces. Middleware cannot
@@ -460,13 +446,8 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 
   const reqHeaders = new Headers(req.headers)
   reqHeaders.set("x-csp-nonce", nonce)
-  if (isSuperAdminDomain(domain, superAdminDomain)) {
-    reqHeaders.set("x-siab-mode", "super-admin")
-    reqHeaders.set("x-siab-host", "")
-  } else {
-    reqHeaders.set("x-siab-mode", "tenant")
-    reqHeaders.set("x-siab-host", domain)
-  }
+  reqHeaders.set("x-siab-mode", PLATFORM_PROXY_MODE)
+  reqHeaders.set("x-siab-host", "")
 
   const res = NextResponse.next({ request: { headers: reqHeaders } })
   return applySecurityHeaders(res, req.nextUrl.pathname, nonce)

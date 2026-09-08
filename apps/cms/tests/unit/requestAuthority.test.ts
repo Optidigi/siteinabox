@@ -10,26 +10,26 @@ import {
 describe("canonical request authority", () => {
   it("requires Host and forwarded Host to agree exactly", () => {
     expect(canonicalRequestAuthority(new Headers({
-      host: "preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
       "x-forwarded-host": "attacker.example",
     }))).toBeNull()
     expect(canonicalRequestAuthority(new Headers({
-      host: "preview.siteinabox.nl",
-      "x-forwarded-host": "preview.siteinabox.nl, attacker.example",
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl, attacker.example",
     }))).toBeNull()
   })
 
   it("forces HTTPS in production despite a spoofed forwarded protocol", () => {
     const headers = new Headers({
-      host: "preview.siteinabox.nl",
-      "x-forwarded-host": "preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl",
       "x-forwarded-proto": "http",
-      origin: "http://preview.siteinabox.nl",
+      origin: "http://admin.siteinabox.nl",
     })
     expect(canonicalRequestAuthority(headers, {
       NODE_ENV: "production",
     })).toMatchObject({
-      origin: "https://preview.siteinabox.nl",
+      origin: "https://admin.siteinabox.nl",
     })
     expect(browserOriginMatchesAuthority(headers, {
       env: { NODE_ENV: "production" },
@@ -65,7 +65,7 @@ describe("canonical request authority", () => {
     expect(isPreviewRequestAuthority(new Headers({
       host: "preview.siteinabox.nl",
       "x-forwarded-host": "preview.siteinabox.nl",
-    }), { NODE_ENV: "production" })).toBe(true)
+    }), { NODE_ENV: "production" })).toBe(false)
     expect(isPreviewRequestAuthority(new Headers({
       host: "dev.example.test",
       "x-forwarded-host": "dev.example.test",

@@ -4,14 +4,12 @@ import {
   isPreviewRequestAuthority,
 } from "@/lib/requestAuthority"
 
-/** Legacy public preview hostname. Still accepted; new links use the admin host. */
-export const PREVIEW_HOST = "preview.siteinabox.nl"
 export const PLATFORM_ADMIN_HOST = "admin.siteinabox.nl"
 export const PUBLIC_PREVIEW_HOST = PLATFORM_ADMIN_HOST
 export const PUBLIC_PREVIEW_ORIGIN = `https://${PUBLIC_PREVIEW_HOST}`
 
 export const isPublicPreviewHostname = (hostname: string): boolean =>
-  hostname === PLATFORM_ADMIN_HOST || hostname === PREVIEW_HOST
+  hostname === PLATFORM_ADMIN_HOST
 
 export async function isPreviewHost(): Promise<boolean> {
   const headerStore = await headers()

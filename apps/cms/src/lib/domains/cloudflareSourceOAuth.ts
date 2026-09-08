@@ -150,7 +150,7 @@ const oauthConfig = (
   const parsed = new URL(redirectUri)
   if (
     parsed.protocol !== "https:" ||
-    parsed.hostname !== "preview.siteinabox.nl" ||
+    parsed.hostname !== "admin.siteinabox.nl" ||
     parsed.port ||
     parsed.username ||
     parsed.password ||
