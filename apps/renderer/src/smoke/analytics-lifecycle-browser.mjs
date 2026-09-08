@@ -246,9 +246,11 @@ try {
     })
     await waitFor(() => failedConsentedRequests > 0, "consented request fixture did not fail")
     // Let the request that was already handed to the browser settle before
-    // the revocation marker starts counting post-revoke retry attempts.
-    await page.waitForTimeout(250)
+    // revoke. In-flight XHRs cannot be recalled; the marker below only counts
+    // retry-queue and post-revoke captures.
+    await page.waitForTimeout(500)
     await page.evaluate(() => window.SIABAnalytics.applyConsent({ analytics: false }))
+    await page.waitForTimeout(500)
     revoked = true
     assert.deepEqual(
       await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
