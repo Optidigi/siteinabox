@@ -43,6 +43,9 @@ executable configuration remain authoritative for exact behavior.
 
 New sites are data and snapshots. They never create tenant-specific source
 trees, GitHub workflows, application images, or arbitrary executable AI output.
+Local projection files (`DATA_DIR`, default `./.data-out`) and test scratch
+(`.data-test-*`, stray `.data`) stay on the developer machine or the VPS
+bind-mount (`/data-out`). Image builds must not copy them.
 
 ## Rendering
 

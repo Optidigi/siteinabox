@@ -3,7 +3,9 @@
 `docs/workflow-path-matrix.json` records the minimum source paths that must
 trigger each deployable image workflow. Because these workflows build with the
 repository root as Docker context, the root `.dockerignore` is also a required
-trigger for every image. `pnpm workflow:check` compares the matrix with the
+trigger for every image. That file must exclude local projection trees
+(`.data-out`, `.data-test-*`, stray `.data`) so tenant JSON/media never enter
+an image. `pnpm workflow:check` compares the matrix with the
 tracked workflow YAML and fails when a required trigger is removed or a new
 `build-*-image.yml` workflow is not recorded.
 

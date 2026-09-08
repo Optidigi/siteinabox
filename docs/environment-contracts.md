@@ -55,9 +55,9 @@ Static applications keep their build/runtime boundary explicit:
 - intake `PUBLIC_*` values and `SITE_URL` are build inputs;
 - landing PostHog, Turnstile, and `SITE_URL` values are build inputs;
 - CMS `NEXT_PUBLIC_*` values are build inputs while CMS server settings remain
-  runtime values;
-- renderer `SITE_URL`, token-file, fixture, and origin settings are runtime
-  container configuration.
+  runtime values (`DATA_DIR=/data-out` in production compose, `./.data-out` locally);
+- renderer `SITE_URL`, token-file, fixture, origin, and `DATA_DIR` settings are
+  runtime container configuration (`DATA_DIR=/data-out` in production compose).
 
 ## Validation
 

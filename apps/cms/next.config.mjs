@@ -30,6 +30,11 @@ const nextConfig = {
   // sibling lockfile and emit "We detected multiple lockfiles" in dev /
   // a giant unrelated trace at build time.
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
+  // Projection dirs are bind-mounted at runtime. Do not copy local
+  // `.data-out` / test scratch / stray `.data` trees into standalone.
+  outputFileTracingExcludes: {
+    "*": ["**/.data-out/**", "**/.data-test-*/**", "**/.data/**"],
+  },
   reactCompiler: false,
   allowedDevOrigins,
   typescript: {

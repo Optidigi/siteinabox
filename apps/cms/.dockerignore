@@ -1,3 +1,5 @@
+# Not used by production image builds (repo-root context + root .dockerignore).
+# Keep in sync so a mistaken `docker build` from apps/cms still excludes tenant data.
 node_modules
 .next
 dist-runtime
@@ -13,6 +15,7 @@ tests
 README.md
 .data-out
 .data-test-*
+.data
 playwright-report
 test-results
 *.tsbuildinfo

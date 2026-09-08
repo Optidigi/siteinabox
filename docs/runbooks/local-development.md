@@ -80,7 +80,13 @@ Values to set:
   - `openssl rand -hex 32` (Linux/macOS)
   - `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` (any platform)
 - `DATABASE_URI=postgres://payload:change-me@localhost:5432/payload` — matches the compose defaults; already set in `.env.example`
-- `DATA_DIR=./.data-out` — gitignored; Payload writes per-tenant JSON snapshots here
+- `DATA_DIR=./.data-out` — gitignored local projection root. Payload writes
+  per-tenant JSON and media here. Production compose bind-mounts the host
+  path to `/data-out` instead. Never commit these trees or copy them into
+  images:
+  - `.data-out/` — local `DATA_DIR`
+  - `.data-test-<pid>/` — Vitest scratch from `apps/cms/tests/setup.ts`
+  - `.data/` — stray Next/tooling cache; not a SIAB `DATA_DIR`
 - `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl` — the current tenant resolver
   treats `localhost` as the super-admin surface in development
 - `SIAB_ALLOWED_DEV_ORIGINS=admin.siteinabox.nl` — allows Next dev resources when local browser checks map the production admin hostname to `127.0.0.1`.
@@ -189,6 +195,9 @@ Production landing and `/intake` keep `https://preview.siteinabox.nl/builder`.
 - **Remove abandoned test data:** from the repository root, run
   `pnpm cms:cleanup-test-data` to list matching `apps/cms/.data-test-<pid>`
   directories. Review the list, then rerun with `--apply` to remove them.
+  Local `.data-out/` can be deleted when you want a clean projection tree;
+  Postgres content is separate. Do not keep agent plans, screenshots, or
+  tenant exports under `.data-out/` expecting them to ship in an image.
 
 ## Verify all four applications
 

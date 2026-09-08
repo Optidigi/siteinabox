@@ -16,6 +16,7 @@ playwright-report/
 # Local generated/runtime data
 .data-out/
 .data-test-*/
+.data/
 
 # Local editor/system files
 .DS_Store

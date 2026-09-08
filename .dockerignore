@@ -4,6 +4,9 @@
 **/.astro
 **/.next
 **/dist-runtime
+**/.data-out
+**/.data-test-*
+**/.data
 .git
 .github
 **/.env
