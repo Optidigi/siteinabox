@@ -164,8 +164,8 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
       body: expect.objectContaining({
         email: "new@example.com",
         name: "New User",
-        callbackURL: "https://admin.example.nl",
-        errorCallbackURL: "https://admin.example.nl/login",
+        callbackURL: "https://admin.siteinabox.nl",
+        errorCallbackURL: "https://admin.siteinabox.nl/login",
         metadata: expect.objectContaining({
           intent: "user_invite",
           recipientEmail: "new@example.com",
@@ -173,15 +173,15 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
           tenantName: "Example tenant",
           recipientName: "New User",
           role: "editor",
-          adminUrl: "https://admin.example.nl",
+          adminUrl: "https://admin.siteinabox.nl",
           _siabPrivilegedSignature: expect.any(String),
         }),
       }),
       headers: expect.any(Headers),
     }))
     const callHeaders = mocks.signInMagicLink.mock.calls[0]![0].headers as Headers
-    expect(callHeaders.get("host")).toBe("admin.example.nl")
-    expect(callHeaders.get("x-forwarded-host")).toBe("admin.example.nl")
+    expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
+    expect(callHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
   })
 
   it("reports when the user was created but Cloudflare-backed invitation delivery failed", async () => {
@@ -272,7 +272,7 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
     expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
         email: "member@example.com",
-        callbackURL: "https://admin.example.nl",
+        callbackURL: "https://admin.siteinabox.nl",
         metadata: expect.objectContaining({ role: "viewer", tenantId: "1" }),
       }),
     }))

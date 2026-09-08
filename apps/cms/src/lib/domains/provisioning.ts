@@ -1982,8 +1982,7 @@ async function verifyProvisioningReadinessPhase(
 
   if (
     managedDomain.edgeRoutingStatus !== "active" ||
-    managedDomain.httpsStatus !== "verified" ||
-    managedDomain.adminHttpsStatus !== "verified"
+    managedDomain.httpsStatus !== "verified"
   ) {
     await queueCommerceReconciliation(payload)
     managedDomain = await updateManagedDomain(payload, managedDomain, {
@@ -1996,7 +1995,7 @@ async function verifyProvisioningReadinessPhase(
         context.normalized.domain,
         run,
         managedDomain,
-        "Automatic website and administration routing is awaiting Cloudflare activation.",
+        "Automatic website routing is awaiting Cloudflare activation.",
       ),
     }
   }
@@ -2380,7 +2379,6 @@ export async function activateManagedDomainEntitlement(
     candidate.cloudflareZoneStatus === "active" &&
     candidate.authoritativeDnsStatus === "verified" &&
     candidate.httpsStatus === "verified" &&
-    candidate.adminHttpsStatus === "verified" &&
     candidate.edgeRoutingStatus === "active" &&
     candidate.reconciliationRequired === false &&
     candidate.failureReason == null
@@ -2425,7 +2423,6 @@ export async function activateManagedDomainEntitlement(
         { cloudflareZoneStatus: { equals: "active" } },
         { authoritativeDnsStatus: { equals: "verified" } },
         { httpsStatus: { equals: "verified" } },
-        { adminHttpsStatus: { equals: "verified" } },
         { edgeRoutingStatus: { equals: "active" } },
         { entitlementStatus: { equals: "pending" } },
         { customerStatus: { equals: "provisioning" } },

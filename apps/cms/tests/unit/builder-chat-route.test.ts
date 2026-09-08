@@ -63,7 +63,7 @@ const thread = {
 }
 
 const chatReq = () =>
-  new NextRequest("https://preview.siteinabox.nl/api/builder/chat", {
+  new NextRequest("https://admin.siteinabox.nl/api/builder/chat", {
     method: "POST",
     body: JSON.stringify({ message: "Maak het thema groen en donker." }),
     headers: { "content-type": "application/json" },
@@ -89,7 +89,7 @@ describe("builder chat route", () => {
 
   it("rejects chat without a preview session", async () => {
     mocks.getSession.mockResolvedValue(null)
-    const res = await POST(new NextRequest("https://preview.siteinabox.nl/api/builder/chat", {
+    const res = await POST(new NextRequest("https://admin.siteinabox.nl/api/builder/chat", {
       method: "POST",
       body: JSON.stringify({ message: "Ik ben kapper in Tilburg en doe knippen, kleur en baard." }),
       headers: { "content-type": "application/json" },

@@ -18,6 +18,7 @@ import {
   queueCommerceNotification,
 } from "@/lib/commerce/notifications"
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 
 import type { PublishedSiteSnapshot as PublishedSiteSnapshotDoc } from "@/payload-types"
 
@@ -147,9 +148,8 @@ export function buildLiveSiteUrl(snapshotDoc: Pick<PublishedSiteSnapshotDoc, "do
   return domain ? `https://${domain}` : null
 }
 
-export function buildTenantAdminUrl(tenant: Pick<Tenant, "domain">): string | null {
-  const domain = normalizeHandoffHost(tenant.domain)
-  return domain ? `https://admin.${domain}` : null
+export function buildTenantAdminUrl(_tenant?: Pick<Tenant, "domain">): string {
+  return platformCmsOrigin()
 }
 
 function authHeadersForAdminUrl(adminUrl: string): Headers {

@@ -1,4 +1,5 @@
 import type { Tenant } from "@/payload-types"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 
 type EnrollmentTenant = Pick<Tenant, "id" | "domain" | "domainVerification">
 type FetchLike = typeof fetch
@@ -10,7 +11,7 @@ const productionDomain = (domain: string) =>
 export const tenantAnalyticsAppUrls = (tenant: EnrollmentTenant): string[] => {
   const domain = String(tenant.domain || "").trim().toLowerCase()
   if (!domain || tenant.domainVerification?.status !== "verified" || !productionDomain(domain)) return []
-  return [`https://${domain}`, `https://admin.${domain}`]
+  return [`https://${domain}`, platformCmsOrigin()]
 }
 
 export const ensureTenantPostHogEnrollment = async (

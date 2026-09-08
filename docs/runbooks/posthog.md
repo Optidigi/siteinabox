@@ -41,7 +41,8 @@ PostHog's web analytics installation health checks map to SIAB as follows:
   have Web Vitals and performance capture enabled server-side.
 - Authorized URLs: this is the PostHog project/environment `app_urls` setting.
   When a production tenant domain becomes verified, the tenant lifecycle hook
-  merges both `https://<domain>` and `https://admin.<domain>` if project API
+  merges `https://<domain>` and the platform CMS origin
+  `https://admin.siteinabox.nl` if project API
   credentials are configured. The manual sync command remains the repair and
   reconciliation path.
 - Reverse proxy: this is an infra/DNS concern. Keep it out of per-site runtime
@@ -56,7 +57,7 @@ settings:
 ```bash
 POSTHOG_PERSONAL_API_KEY=phx_... \
 POSTHOG_PROJECT_ID=12345 \
-pnpm --dir apps/cms posthog:sync-settings -- --app-url https://ami-care.nl --app-url https://admin.ami-care.nl
+pnpm --dir apps/cms posthog:sync-settings -- --app-url https://ami-care.nl --app-url https://admin.siteinabox.nl
 ```
 
 For organization-scoped PostHog API deployments, also set
@@ -65,7 +66,7 @@ For organization-scoped PostHog API deployments, also set
 Multiple domains can be passed in one run:
 
 ```bash
-POSTHOG_APP_URLS="https://ami-care.nl,https://admin.ami-care.nl,https://example.nl,https://admin.example.nl" \
+POSTHOG_APP_URLS="https://ami-care.nl,https://admin.siteinabox.nl,https://example.nl" \
 POSTHOG_PERSONAL_API_KEY=phx_... \
 POSTHOG_PROJECT_ID=12345 \
 pnpm --dir apps/cms posthog:sync-settings
@@ -100,7 +101,7 @@ Re-run the read-only check before relying on it.
 PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
 (`193842`) is configured with:
 
-- `app_urls`: `https://ami-care.nl`, `https://admin.ami-care.nl`,
+- `app_urls`: `https://ami-care.nl`, `https://admin.siteinabox.nl`,
   `https://siteinabox.nl`, `https://admin.siteinabox.nl`
 - CMS semantic tracking is enabled when `POSTHOG_PROJECT_TOKEN` is set and is
   sent by the authenticated server boundary. Site and CMS events are separated

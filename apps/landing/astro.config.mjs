@@ -10,27 +10,9 @@ export default defineConfig({
   output: 'static',
   redirects: {
     '/privacy-policy': '/privacy-en-cookieverklaring',
-    '/beheer': {
-      status: 301,
-      destination: 'https://admin.siteinabox.nl/login',
-    },
-    '/beheer/': {
-      status: 301,
-      destination: 'https://admin.siteinabox.nl/login',
-    },
-    '/intake': {
-      status: 301,
-      destination: 'https://admin.siteinabox.nl/login?intent=register',
-    },
-    '/intake/': {
-      status: 301,
-      destination: 'https://admin.siteinabox.nl/login?intent=register',
-    },
   },
   integrations: [
-    sitemap({
-      filter: (page) => new URL(page).pathname !== '/beheer/',
-    }),
+    sitemap(),
     react(),
   ],
   vite: {

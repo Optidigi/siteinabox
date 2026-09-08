@@ -272,7 +272,7 @@ const configurationBlockers = (env: NodeJS.ProcessEnv): string[] => {
       !clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID) ||
       !clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET) ||
       clean(env.CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI) !==
-        "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
+        "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
     )
   ) {
     blockers.push(code("cloudflare_source_oauth", "configuration_mismatch"))
@@ -340,7 +340,7 @@ export async function commerceProviderCapabilityBlockers(
   const zoneDomains = uniqueDomains(options.zoneDomains)
   const tunnelHostnames = options.tunnelHostnames ?? {
     renderer: zoneDomains.flatMap((domain) => [domain, `www.${domain}`]),
-    cms: zoneDomains.map((domain) => `admin.${domain}`),
+    cms: [] as string[],
   }
   const derivedOverallTimeoutMs = Math.min(
     MAX_OVERALL_TIMEOUT_MS,
@@ -461,7 +461,7 @@ export async function commerceProviderCapabilityBlockers(
           }).catch((error) => {
             recordFailure("cloudflare_dnssec", error)
           }),
-          ...[domain, `www.${domain}`, `admin.${domain}`].map(
+          ...[domain, `www.${domain}`].map(
             async (hostname) => {
               try {
                 const result = await dependencies.getCertificate(

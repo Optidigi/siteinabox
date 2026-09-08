@@ -55,7 +55,7 @@ describe("requestUnifiedMagicLinkAction", () => {
     vi.restoreAllMocks()
   })
 
-  it("sends a tenant CMS magic link to admin.<domain> without falling through to builder", async () => {
+  it("sends a tenant CMS magic link to the platform admin host without falling through to builder", async () => {
     mocks.findUsers.mockResolvedValue({
       totalDocs: 1,
       docs: [{
@@ -75,7 +75,7 @@ describe("requestUnifiedMagicLinkAction", () => {
     expect(result.ok).toBe(true)
     expect(mocks.cmsSignInMagicLink).toHaveBeenCalledTimes(1)
     const callHeaders = mocks.cmsSignInMagicLink.mock.calls[0]![0].headers as Headers
-    expect(callHeaders.get("host")).toBe("admin.ami-care.nl")
+    expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
     expect(mocks.builderAction).not.toHaveBeenCalled()
   })
 

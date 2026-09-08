@@ -46,7 +46,7 @@ const cloudflareSourceOAuthConfigured = (
     Boolean(clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID)) &&
     Boolean(clean(env.CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET)) &&
     clean(env.CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI) ===
-      "https://preview.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
+      "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback"
   )
 }
 
@@ -181,7 +181,6 @@ export async function commerceEdgeInventoryBlockers(
           ...(requireActiveRouting
             ? [
                 { edgeRoutingStatus: { equals: "active" } },
-                { adminHttpsStatus: { equals: "verified" } },
                 { httpsStatus: { equals: "verified" } },
               ]
             : []),
@@ -206,8 +205,7 @@ export async function commerceEdgeInventoryBlockers(
       const auditedPreCommerceAdoption =
         adoption?.tenantId === String(tenant.id) &&
         adoption.rendererApexReady &&
-        adoption.rendererWwwReady &&
-        adoption.cmsAdminReady
+        adoption.rendererWwwReady
       if (auditedPreCommerceAdoption) continue
       blockers.push(
         requireActiveRouting

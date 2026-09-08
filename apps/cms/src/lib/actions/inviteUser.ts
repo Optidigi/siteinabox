@@ -6,6 +6,7 @@ import config from "@/payload.config"
 import crypto from "node:crypto"
 import { auth } from "@/lib/betterAuth"
 import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
 import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
 
@@ -35,9 +36,8 @@ type InviteTenant = {
   status?: string | null
 }
 
-function tenantAdminUrl(tenant: InviteTenant): string | null {
-  const domain = tenant.domain?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "")
-  return domain ? `https://admin.${domain}` : null
+function tenantAdminUrl(): string {
+  return platformCmsOrigin()
 }
 
 async function loadInviteTenant(payload: Payload, tenantId: number | string): Promise<{ tenant: InviteTenant; adminUrl: string }> {
@@ -49,8 +49,8 @@ async function loadInviteTenant(payload: Payload, tenantId: number | string): Pr
     // narrow system lookup runs only after the action's caller/tenant gate.
     overrideAccess: true,
   }) as InviteTenant
-  const adminUrl = tenantAdminUrl(tenant)
-  if (!adminUrl || tenant.status === "suspended" || tenant.status === "archived") {
+  const adminUrl = tenantAdminUrl()
+  if (tenant.status === "suspended" || tenant.status === "archived") {
     throw new Error("Invitation target tenant is unavailable")
   }
   return { tenant, adminUrl }

@@ -139,7 +139,7 @@ You can still use Payload's first-user form if the database has no users yet.
 
 Preview is **not a fourth app**. `apps/cms` on `http://localhost:3000` is the
 admin, the preview host, and `/builder`. Development treats loopback as a
-preview authority, so you do not need `preview.siteinabox.nl` in `/etc/hosts`
+preview authority, so you do not need a separate preview hostname in `/etc/hosts`
 for the builder.
 
 Public funnel (before checkout):
@@ -149,7 +149,7 @@ Public funnel (before checkout):
 3. **Inloggen** → `http://localhost:3000/login`
 4. CMS/preview already running: `pnpm --dir apps/cms dev` → `http://localhost:3000`
 
-`/intake` is a landing redirect to register login. Do not start `apps/renderer` to review the draft canvas; the builder
+Do not start `apps/renderer` to review the draft canvas; the builder
 iframe is `renderer-frame` inside CMS.
 
 Magic-link mail is not required for local builder work. On development
@@ -157,7 +157,7 @@ loopback only, open http://localhost:3000/api/builder/dev-session (or the
 **open builder zonder e-mail** link on `/builder`). That creates a Better Auth
 preview session for `builder@local.test`, stores accepted legal on
 `builder-sessions`, and redirects to `/builder`. The route is 404 on every
-non-loopback host, including `preview.siteinabox.nl`.
+non-loopback host.
 
 If `CLOUDFLARE_EMAIL_SMTP_TOKEN` is empty and you still request a magic link,
 mail send fails; use the loopback session bypass instead of expecting SMTP.

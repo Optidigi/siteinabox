@@ -120,7 +120,6 @@ export async function resolvePreCommerceRoutingAdoption(
     rendererApexReady: tenant.status === "active" && activeSnapshot,
     rendererWwwReady:
       tenant.status === "active" && activeSnapshot && explicitUniqueWww,
-    cmsAdminReady:
-      tenant.status === "active" || tenant.status === "suspended",
+    cmsAdminReady: false,
   }
 }

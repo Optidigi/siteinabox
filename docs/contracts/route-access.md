@@ -9,43 +9,47 @@ This file is intentionally scoped to CMS role/context access. Route ownership
 is summarized in `docs/architecture.md`; application source and route tests are
 canonical for the exact current surface.
 
+CMS UI lives on one platform host (`admin.siteinabox.nl`). Tenancy comes from
+the authenticated user's membership: `super-admin` has no tenant;
+`owner` / `editor` / `viewer` have exactly one. Retired `admin.{customer-domain}`
+hosts 404.
+
 ## Result Meanings
 
 - `Allowed`: route renders for the role/context.
 - `Forbidden redirect`: route redirects to `/?error=forbidden`.
 - `Sites redirect`: route redirects to `/sites`.
 - `404`: missing or cross-tenant selected-site target resolves with `notFound()`.
-- `Host-gated`: blocked by `requireAuth()` host/tenant checks before route-level logic.
 - `Hidden`: no in-app navigation affordance should be visible for that role/context.
 
-## Super-Admin Host
+## Platform host — super-admin
 
-| Route | Super-admin | Owner / Editor / Viewer |
-| --- | --- | --- |
-| `/` | Allowed | Host-gated |
-| `/sites` | Allowed | Host-gated |
-| `/sites/new` | Redirects to `/sites` | Host-gated |
-| `/sites/[slug]` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/edit` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/onboarding` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/analytics` | Allowed; unknown slug 404; mobile redirects to `/sites/[slug]` | Host-gated |
-| `/sites/[slug]/pages` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/pages/new` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/pages/edit/[pageSlug]` | Allowed when page slug belongs to slug tenant; otherwise 404 | Host-gated |
-| `/sites/[slug]/pages/[id]` | Allowed when page belongs to slug tenant; otherwise 404 | Host-gated |
-| `/sites/[slug]/media` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/forms` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/settings` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/navigation` | Allowed; unknown slug 404 | Host-gated |
-| `/sites/[slug]/users` | Allowed; unknown slug 404 | Host-gated |
-| `/users` | Allowed | Host-gated |
-| `/users/[id]/edit` | Allowed when collection access can read the user; otherwise 404 | Host-gated |
-| `/analytics` | Allowed; mobile redirects to `/` | Host-gated |
-| `/api-key` | Allowed with `ApiKeyManager` | Host-gated |
-| `/profile` | Allowed | Host-gated |
-| `/pages`, `/media`, `/forms`, `/settings`, `/navigation` | Sites redirect | Host-gated |
+| Route | Super-admin |
+| --- | --- |
+| `/` | Allowed |
+| `/sites` | Allowed |
+| `/sites/new` | Redirects to `/sites` |
+| `/sites/[slug]` | Allowed; unknown slug 404 |
+| `/sites/[slug]/edit` | Allowed; unknown slug 404 |
+| `/sites/[slug]/onboarding` | Allowed; unknown slug 404 |
+| `/sites/[slug]/analytics` | Allowed; unknown slug 404; mobile redirects to `/sites/[slug]` |
+| `/sites/[slug]/pages` | Allowed; unknown slug 404 |
+| `/sites/[slug]/pages/new` | Allowed; unknown slug 404 |
+| `/sites/[slug]/pages/edit/[pageSlug]` | Allowed when page slug belongs to slug tenant; otherwise 404 |
+| `/sites/[slug]/pages/[id]` | Allowed when page belongs to slug tenant; otherwise 404 |
+| `/sites/[slug]/media` | Allowed; unknown slug 404 |
+| `/sites/[slug]/forms` | Allowed; unknown slug 404 |
+| `/sites/[slug]/settings` | Allowed; unknown slug 404 |
+| `/sites/[slug]/navigation` | Allowed; unknown slug 404 |
+| `/sites/[slug]/users` | Allowed; unknown slug 404 |
+| `/users` | Allowed |
+| `/users/[id]/edit` | Allowed when collection access can read the user; otherwise 404 |
+| `/analytics` | Allowed; mobile redirects to `/` |
+| `/api-key` | Allowed with `ApiKeyManager` |
+| `/profile` | Allowed |
+| `/pages`, `/media`, `/forms`, `/settings`, `/navigation` | Sites redirect |
 
-## Tenant Host
+## Platform host — owner / editor / viewer
 
 | Route | Owner | Editor | Viewer | In-App Navigation |
 | --- | --- | --- | --- | --- |
@@ -63,8 +67,8 @@ canonical for the exact current surface.
 | `/users/[id]/edit` | Allowed when collection access can read the user; otherwise 404 | Forbidden redirect | Forbidden redirect | User edit affordance visible only to owner |
 | `/profile` | Allowed | Allowed | Allowed | Account menu visible to all |
 | `/api-key` | Shows non-super-admin explanatory placeholder | Shows non-super-admin explanatory placeholder | Shows non-super-admin explanatory placeholder | Account menu link hidden for non-super-admin |
-| `/sites`, `/sites/new`, `/sites/[slug]`, `/sites/[slug]/edit`, `/sites/[slug]/onboarding`, `/sites/[slug]/analytics`, `/sites/[slug]/pages`, `/sites/[slug]/pages/new`, `/sites/[slug]/pages/edit/[pageSlug]`, `/sites/[slug]/pages/[id]`, `/sites/[slug]/media`, `/sites/[slug]/forms` | Host-gated or forbidden via super-admin route guards | Host-gated or forbidden via super-admin route guards | Host-gated or forbidden via super-admin route guards | Hidden |
-| `/sites/[ownSlug]/settings`, `/sites/[ownSlug]/navigation`, `/sites/[ownSlug]/users` | Allowed through selected-tenant boundary | Forbidden redirect | Forbidden redirect | Hidden in sidebar; selected-site pill links back to `/` for tenant-host owner |
+| `/sites`, `/sites/new`, `/sites/[slug]`, `/sites/[slug]/edit`, `/sites/[slug]/onboarding`, `/sites/[slug]/analytics`, `/sites/[slug]/pages`, `/sites/[slug]/pages/new`, `/sites/[slug]/pages/edit/[pageSlug]`, `/sites/[slug]/pages/[id]`, `/sites/[slug]/media`, `/sites/[slug]/forms` | Forbidden via super-admin route guards | Forbidden via super-admin route guards | Forbidden via super-admin route guards | Hidden |
+| `/sites/[ownSlug]/settings`, `/sites/[ownSlug]/navigation`, `/sites/[ownSlug]/users` | Allowed through selected-tenant boundary | Forbidden redirect | Forbidden redirect | Hidden in sidebar; selected-site pill links back to `/` for tenant owner |
 | `/sites/[otherSlug]/settings`, `/sites/[otherSlug]/navigation`, `/sites/[otherSlug]/users` | 404 via selected-tenant boundary | Forbidden redirect before tenant boundary | Forbidden redirect before tenant boundary | Hidden |
 
 ## Viewer Page Detail
@@ -76,7 +80,7 @@ site-chrome mutation controls.
 
 ## Verification Coverage
 
-- Pure host × role × tenant gate matrix:
+- Pure role × membership gate matrix:
   `tests/unit/auth-gate-matrix.test.ts`.
 - Selected-site tenant boundary:
   `tests/unit/selected-tenant-route-access.test.ts`.

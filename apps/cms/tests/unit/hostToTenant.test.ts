@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { stripAdminPrefix, isSuperAdminDomain } from "@/lib/hostToTenant"
+import { stripAdminPrefix, isSuperAdminDomain, isPlatformAdminHost } from "@/lib/hostToTenant"
 
 describe("stripAdminPrefix", () => {
   it("removes admin. prefix", () => {
@@ -34,5 +34,12 @@ describe("isSuperAdminDomain", () => {
   })
   it("prod: localhost is NOT super-admin when configured is set", () => {
     expect(isSuperAdminDomain("localhost", "siteinabox.nl", false)).toBe(false)
+  })
+})
+
+describe("isPlatformAdminHost", () => {
+  it("accepts the platform admin host and rejects customer admin hosts", () => {
+    expect(isPlatformAdminHost("admin.siteinabox.nl", "siteinabox.nl", false)).toBe(true)
+    expect(isPlatformAdminHost("admin.ami-care.nl", "siteinabox.nl", false)).toBe(false)
   })
 })

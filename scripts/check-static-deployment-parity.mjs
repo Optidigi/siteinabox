@@ -89,7 +89,7 @@ for (const [label, expected] of staticComposeContracts) {
 present("landing digest-pinned image", files.landingCompose, "image: ghcr.io/optidigi/siteinabox-site@${SIAB_SITE_IMAGE_DIGEST:?required}");
 
 const allowedVariances = [
-  "landing owns host-root priority 100 and retired /intake plus /beheer Traefik redirects at priority 300",
+  "landing owns host-root priority 100",
   "landing CSP includes Turnstile, PostHog, Google Tag Manager, and Google Analytics destinations",
 ];
 
@@ -97,10 +97,8 @@ present("landing analytics/security CSP", files.landingNginx, "https://challenge
 present("landing Google Tag Manager CSP", files.landingNginx, "https://www.googletagmanager.com");
 present("landing Google Analytics CSP", files.landingNginx, "https://www.google-analytics.com");
 absent("landing must not own intake Nginx route", files.landingNginx, "location = /intake");
-present("landing /intake Traefik path", files.landingCompose, "Path(`/intake`)");
-present("landing /intake register redirect", files.landingCompose, "https://admin.siteinabox.nl/login?intent=register");
-present("landing /beheer login redirect", files.landingCompose, "Path(`/beheer`)");
-present("landing intake redirect priority", files.landingCompose, "priority=300");
+absent("landing must not own /intake Traefik redirect", files.landingCompose, "Path(`/intake`)");
+absent("landing must not own /beheer Traefik redirect", files.landingCompose, "Path(`/beheer`)");
 present("landing router priority", files.landingCompose, "priority=100");
 
 function hasExactLine(label, content, line) {

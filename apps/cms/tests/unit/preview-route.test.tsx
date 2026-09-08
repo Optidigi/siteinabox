@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   headers: new Headers({
-    host: "preview.siteinabox.nl",
+    host: "admin.siteinabox.nl",
     "x-forwarded-proto": "https",
   }),
   getSession: vi.fn(),

@@ -3,7 +3,7 @@ import { getPayload } from "payload"
 import { captureCmsUsageEvent } from "@/lib/analytics/cms"
 import type { AnalyticsEventProperties, CmsEventName } from "@/lib/analytics/events"
 import { isCmsEventName } from "@/lib/analytics/events"
-import { getSiabContext } from "@/lib/context"
+import { getSiabContext, UnauthenticatedSiabError } from "@/lib/context"
 import { evaluateGate } from "@/lib/gateDecision"
 import config from "@/payload.config"
 import type { User } from "@/payload-types"
@@ -101,7 +101,15 @@ export async function POST(req: NextRequest) {
   const payload = await getPayload({ config })
   const result = await payload.auth({ headers: req.headers })
   const user = result.user as User | null
-  const ctx = await getSiabContext()
+  let ctx
+  try {
+    ctx = await getSiabContext()
+  } catch (error) {
+    if (error instanceof UnauthenticatedSiabError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    throw error
+  }
   const decision = evaluateGate(user, ctx)
   if (!decision.allow || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

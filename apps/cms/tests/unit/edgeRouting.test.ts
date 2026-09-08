@@ -65,13 +65,6 @@ const setup = () => {
       ttl: 1,
       proxied: true,
     },
-    {
-      type: "CNAME" as const,
-      name: "admin.example.nl",
-      content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
-      ttl: 1,
-      proxied: true,
-    },
   ]
   return { payload, stored, update, records }
 }
@@ -125,11 +118,10 @@ describe("automatic Cloudflare edge routing", () => {
     })
 
     expect(result).toEqual({ examined: 1, active: 1, pending: 0, failed: 0 })
-    expect(reconcileDnsRecord).toHaveBeenCalledTimes(3)
+    expect(reconcileDnsRecord).toHaveBeenCalledTimes(2)
     expect(fixture.stored).toMatchObject({
       edgeRoutingStatus: "active",
       httpsStatus: "verified",
-      adminHttpsStatus: "verified",
       reconciliationRequired: false,
     })
   })
@@ -176,17 +168,15 @@ describe("automatic Cloudflare edge routing", () => {
     })
 
     expect(result).toEqual({ examined: 1, active: 0, pending: 1, failed: 0 })
-    expect(verifyHttps).toHaveBeenCalledTimes(3)
+    expect(verifyHttps).toHaveBeenCalledTimes(2)
     expect(fixture.stored).toMatchObject({
       edgeRoutingStatus: "configured",
       httpsStatus: "pending",
-      adminHttpsStatus: "pending",
       reconciliationRequired: true,
       edgeRoutingEvidence: {
         probes: {
           apex: { status: "verified" },
           www: { status: "pending", reason: "www_edge_pending" },
-          admin: { status: "pending", reason: "admin_edge_pending" },
         },
       },
     })
@@ -227,18 +217,16 @@ describe("automatic Cloudflare edge routing", () => {
     })
 
     expect(result).toEqual({ examined: 1, active: 0, pending: 1, failed: 0 })
-    expect(getHostnameCertificate).toHaveBeenCalledTimes(3)
+    expect(getHostnameCertificate).toHaveBeenCalledTimes(2)
     expect(verifyHttps).not.toHaveBeenCalled()
     expect(fixture.stored).toMatchObject({
       edgeRoutingStatus: "configured",
       httpsStatus: "pending",
-      adminHttpsStatus: "pending",
       reconciliationRequired: true,
       edgeRoutingEvidence: {
         certificates: {
           apex: { covered: true, statuses: ["active"] },
           www: { covered: false, statuses: ["pending_validation"] },
-          admin: { covered: true, statuses: ["active"] },
         },
         probes: {
           apex: {
@@ -246,10 +234,6 @@ describe("automatic Cloudflare edge routing", () => {
             reason: "edge_tunnel_or_certificate_pending",
           },
           www: {
-            status: "pending",
-            reason: "edge_tunnel_or_certificate_pending",
-          },
-          admin: {
             status: "pending",
             reason: "edge_tunnel_or_certificate_pending",
           },
@@ -383,7 +367,6 @@ describe("automatic Cloudflare edge routing", () => {
       "dmarc",
       "edge-example.nl",
       "edge-www.example.nl",
-      "edge-admin.example.nl",
     ]))
   })
 
@@ -423,7 +406,6 @@ describe("automatic Cloudflare edge routing", () => {
     expect(fixture.stored.cloudflareDnsRecordIds).not.toContain("foreign-example")
     expect(fixture.stored.cloudflareDnsRecordIds).toEqual(expect.arrayContaining([
       "edge-www.example.nl",
-      "edge-admin.example.nl",
     ]))
   })
 })

@@ -1,6 +1,4 @@
-import { getPayload } from "payload"
-import config from "@/payload.config"
-import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
+import { isPlatformAdminHost, platformCmsHost, platformCmsOrigin } from "@/lib/hostToTenant"
 
 const splitList = (value: string | undefined): string[] =>
   (value ?? "")
@@ -52,14 +50,9 @@ const cleanOrigin = (value: string | undefined): string | undefined => {
 export const getConfiguredBetterAuthOrigin = (): string | undefined =>
   cleanOrigin(process.env.BETTER_AUTH_URL) ?? cleanOrigin(process.env.SITE_URL)
 
-const getDefaultSuperAdminOrigin = (): string => {
-  const domain = process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN?.trim() || "siteinabox.nl"
-  return `https://admin.${domain}`
-}
-
 export const getCmsAuthFallbackOrigin = (): string | undefined =>
   getConfiguredBetterAuthOrigin() ??
-  (process.env.NODE_ENV === "production" ? getDefaultSuperAdminOrigin() : undefined)
+  (process.env.NODE_ENV === "production" ? platformCmsOrigin() : undefined)
 
 export const isInternalAuthHost = (host: string): boolean =>
   host === "0.0.0.0" ||
@@ -75,16 +68,13 @@ export function buildCmsAuthHeaders(source: Headers): Headers {
   const next = new Headers(source)
   const forwardedHost = cleanHeaderHost(source.get("x-forwarded-host"))
   const host = cleanHeaderHost(source.get("host"))
-  const tenantDomain = cleanHeaderHost(source.get("x-siab-host"))
   const fallbackOrigin = getCmsAuthFallbackOrigin()
   const fallbackHost = fallbackOrigin ? cleanHeaderHost(new URL(fallbackOrigin).host) : ""
   const publicHost = forwardedHost && !isInternalAuthHost(forwardedHost)
     ? forwardedHost
     : host && !isInternalAuthHost(host)
       ? host
-      : tenantDomain
-        ? `admin.${tenantDomain}`
-        : fallbackHost
+      : fallbackHost || platformCmsHost()
 
   if (publicHost) {
     next.set("host", publicHost)
@@ -119,7 +109,7 @@ export function buildCmsAuthRequest(request: Request): Request {
 
 export function getBetterAuthBaseURL() {
   const allowedHosts = [
-    "admin.*",
+    platformCmsHost(),
     ...splitList(process.env.BETTER_AUTH_ALLOWED_HOSTS),
   ]
   if (process.env.NODE_ENV === "development") {
@@ -141,22 +131,7 @@ export async function isAllowedSocialAuthHost(request: Request): Promise<boolean
 
   if (process.env.NODE_ENV === "development" && isLoopbackHost(host)) return true
   if (isExtraAllowedHost(host)) return true
-
-  const domain = stripAdminPrefix(host)
-  if (isSuperAdminDomain(domain, process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN)) return true
-
-  if (!host.startsWith("admin.")) return false
-
-  const payload = await getPayload({ config })
-  const tenants = await payload.find({
-    collection: "tenants",
-    where: { domain: { equals: domain } },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const tenant = tenants.docs[0]
-  return Boolean(tenant && tenant.status !== "archived")
+  return isPlatformAdminHost(host)
 }
 
 export async function getTrustedSocialAuthOrigins(request?: Request): Promise<string[]> {

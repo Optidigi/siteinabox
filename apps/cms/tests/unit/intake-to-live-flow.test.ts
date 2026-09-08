@@ -837,11 +837,11 @@ describe("intake-to-live mocked flow", () => {
     expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
         email: "demo@example.com",
-        callbackURL: "https://admin.flow-live.nl",
+        callbackURL: "https://admin.siteinabox.nl",
         metadata: expect.objectContaining({
           intent: "site_live_handoff",
           siteUrl: "https://flow-live.nl",
-          adminUrl: "https://admin.flow-live.nl",
+          adminUrl: "https://admin.siteinabox.nl",
         }),
       }),
     }))

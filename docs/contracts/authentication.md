@@ -7,9 +7,9 @@ membership, and sessions.
 
 Payload password login is intentionally still present as a ghosted fallback for
 bootstrap, break-glass, reset-password, and API-key/service-user workflows. It
-is host-gated by the proxy: `POST /api/users/login` is accepted only on the
-SIAB super-admin host and returns 403 on tenant admin hosts. Do not document or
-surface password login as the normal tenant-user auth path.
+is host-gated by the proxy: `POST /api/users/login` is accepted only on
+`admin.siteinabox.nl`. Retired `admin.{customer-domain}` hosts 404. Do not
+document or surface password login as the normal tenant-user auth path.
 
 ## Required Environment
 
@@ -40,16 +40,16 @@ SIAB_APPLE_OAUTH_CALLBACK_HOSTS=
 `BETTER_AUTH_SECRET` may fall back to `PAYLOAD_SECRET`, but a separate
 high-entropy secret is preferred. `BETTER_AUTH_PREVIEW_SECRET` is optional and
 scopes the separate customer-preview Better Auth instance; when omitted it falls
-back to `BETTER_AUTH_SECRET` or `PAYLOAD_SECRET`. Normal tenant admin hosts are
-accepted dynamically from Payload `tenants.domain`; use
+back to `BETTER_AUTH_SECRET` or `PAYLOAD_SECRET`. Production CMS auth accepts
+only `admin.siteinabox.nl`; use
 `BETTER_AUTH_ALLOWED_HOSTS` only for additional CMS auth hosts that must accept
 auth traffic. Social OAuth is stricter: each provider button and endpoint is
 enabled only on an exact hostname in that provider's
 `SIAB_<PROVIDER>_OAUTH_CALLBACK_HOSTS` list. Add a hostname only after the
 provider application contains
 `https://<host>/api/auth/callback/<provider>`; wildcards are not evidence.
-Better Auth is configured with its dynamic `baseURL` option for `admin.*`
-hosts so provider redirects are built from the incoming admin host; SIAB's
+Better Auth is configured with its dynamic `baseURL` option for the platform
+admin host so provider redirects are built from the incoming admin host; SIAB's
 Payload-backed host gate still runs before Better Auth handles the request.
 In production, localhost/internal container hosts are not accepted as Better
 Auth base hosts. Set `SITE_URL=https://admin.siteinabox.nl`; optionally set
@@ -58,18 +58,18 @@ Auth base hosts. Set `SITE_URL=https://admin.siteinabox.nl`; optionally set
 available. CMS auth routes and server actions normalize `host`,
 `x-forwarded-host`, and `x-forwarded-proto` before handing the request to
 Better Auth, so Better Auth's native magic-link URL generation sees the public
-admin origin (`admin.siteinabox.nl` or a verified `admin.<tenant-domain>`) and
+admin origin (`admin.siteinabox.nl`) and
 does not derive links from the container bind host.
 Customer preview auth is a separate Better Auth instance on
-`/api/preview-auth`. In production it accepts `admin.siteinabox.nl` and the
-legacy `preview.siteinabox.nl` host, and uses `https://admin.siteinabox.nl` as
+`/api/preview-auth`. In production it accepts `admin.siteinabox.nl` and uses
+`https://admin.siteinabox.nl` as
 its fallback origin. Preview auth routes preserve the public request host so
 cookies stay on that host. Localhost preview auth is development-only.
 
 Public login on `admin.siteinabox.nl/login` is unified: register stays preview
-auth; login first tries an eligible Payload CMS user (super-admin on
-`admin.siteinabox.nl`, tenant users on `admin.<tenant-domain>`), otherwise a
-preview/builder magic link. Tenant CMS hosts stay invite-only CMS login.
+auth; login first tries an eligible Payload CMS user (super-admin or tenant
+owner/editor/viewer on `admin.siteinabox.nl`), otherwise a preview/builder
+magic link. Tenant CMS users keep unprefixed CMS URLs after login.
 
 `BETTER_AUTH_API_KEY` is optional and enables the Better Auth Infrastructure
 `dash()` plugin for dashboard/audit visibility. Use the key from the existing
@@ -107,7 +107,7 @@ live handoff, not at preview register.
 Local development may skip preview magic-link mail: `GET /api/builder/dev-session`
 exists only when `NODE_ENV=development` and the request Host is loopback. It
 sets the same `siab-preview-auth` session cookie a verified magic link would.
-It is not available on `preview.siteinabox.nl` or production. CMS local login
+It is not available on production. CMS local login
 uses a seeded password super-admin (`pnpm --dir apps/cms run seed:local-admin`),
 not a preview session.
 
@@ -145,12 +145,12 @@ https://admin.siteinabox.nl/builder
 https://admin.siteinabox.nl/builder/<clientSlug>
 ```
 
-Example for Amicare:
+Example for the platform CMS:
 
 ```text
-https://admin.ami-care.nl/api/auth/callback/google
-https://admin.ami-care.nl/api/auth/callback/microsoft
-https://admin.ami-care.nl/api/auth/callback/apple
+https://admin.siteinabox.nl/api/auth/callback/google
+https://admin.siteinabox.nl/api/auth/callback/microsoft
+https://admin.siteinabox.nl/api/auth/callback/apple
 ```
 
 ## Provider Notes
@@ -180,7 +180,7 @@ those to generate the JWT before deployment.
    verified and matches exactly.
 6. Confirm unknown, unverified, or ambiguous provider accounts fail back to
    `/login`.
-7. Confirm a tenant user cannot complete login on a different tenant admin host.
+7. Confirm a tenant user cannot open another tenant's selected-site routes.
 8. Confirm logout clears both Payload and Better Auth sessions.
 9. If `BETTER_AUTH_API_KEY` is set, confirm the Better Auth Infrastructure
    dashboard receives sign-in/audit events for successful test logins.

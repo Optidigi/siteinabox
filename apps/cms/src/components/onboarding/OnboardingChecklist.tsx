@@ -45,8 +45,7 @@ export function OnboardingChecklist({
       title: t("automaticCertificates"),
       description: t("automaticCertificatesDescription"),
       ready:
-        routing?.httpsStatus === "verified" &&
-        routing?.adminHttpsStatus === "verified",
+        routing?.httpsStatus === "verified",
     },
     {
       id: "handoff",
@@ -84,9 +83,9 @@ export function OnboardingChecklist({
           </CardContent>
         </Card>
       ))}
-      {routing?.adminHttpsStatus === "verified" && tenant.domain ? (
+      {routing?.httpsStatus === "verified" ? (
         <a
-          href={`https://admin.${tenant.domain}`}
+          href="https://admin.siteinabox.nl"
           className="inline-flex min-h-11 items-center underline"
           target="_blank"
           rel="noopener noreferrer"

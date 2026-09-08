@@ -286,7 +286,7 @@ describe("Cloudflare domain adapter", () => {
     ])
   })
 
-  it("builds exact apex, www, and admin records for the dedicated Tunnels", () => {
+  it("builds exact apex and www records for the renderer Tunnel", () => {
     expect(buildCloudflareEdgeDnsRecordRequests("Example.nl.", env)).toEqual([
       {
         type: "CNAME",
@@ -299,13 +299,6 @@ describe("Cloudflare domain adapter", () => {
         type: "CNAME",
         name: "www.example.nl",
         content: "11111111-1111-4111-8111-111111111111.cfargotunnel.com",
-        ttl: 1,
-        proxied: true,
-      },
-      {
-        type: "CNAME",
-        name: "admin.example.nl",
-        content: "22222222-2222-4222-8222-222222222222.cfargotunnel.com",
         ttl: 1,
         proxied: true,
       },
@@ -351,7 +344,7 @@ describe("Cloudflare domain adapter", () => {
           : [{
               id: "foreign-aaaa",
               type: "AAAA",
-              name: "admin.example.nl",
+              name: "www.example.nl",
               content: "2001:db8::1",
             }],
         result_info: { total_pages: 2 },

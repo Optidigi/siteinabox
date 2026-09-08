@@ -33,7 +33,7 @@ vi.mock("@/lib/analytics/projectEnrollment", () => ({
     const verification = tenant.domainVerification as { status?: string } | undefined
     const domain = String(tenant.domain ?? "")
     return verification?.status === "verified"
-      ? [`https://${domain}`, `https://admin.${domain}`]
+      ? [`https://${domain}`, `https://admin.siteinabox.nl`]
       : []
   },
 }))

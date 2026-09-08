@@ -178,6 +178,7 @@ for (const requiredFragment of [
 }
 for (const forbiddenFragment of [
   "Host(`admin.ami-care.nl`)",
+  "Host(`preview.siteinabox.nl`)",
   "HostRegexp(",
   "cloudflare_cms_tunnel_token\n      - --url",
   "httpHostHeader",

@@ -38,9 +38,9 @@ git status --short
 
 ## Architecture boundaries
 
-- `apps/landing` owns the marketing site and the public `/intake` redirect;
-  `apps/cms` owns Payload administration, tenants, and content;
-  `apps/renderer` serves published tenant snapshots.
+- `apps/landing` owns the marketing site; `apps/cms` owns Payload
+  administration, tenants, and content; `apps/renderer` serves published tenant
+  snapshots.
 - New sites are validated tenant/site/page/theme/SEO/publishing data, not
   tenant-specific source trees, workflows, images, or executable AI output.
 - Shared contracts belong in `packages/contracts`, shared UI in `packages/ui`,
@@ -56,7 +56,9 @@ When changing `apps/cms`:
 
 - Treat authentication, authorization, tenancy, schema/data migrations,
   production operations, and legal/privacy behavior as High risk.
-- Tenancy is resolved by `src/proxy.ts`; consumers use `getSiabContext()`.
+- Tenancy is classified by `src/proxy.ts` (platform admin host only).
+  `getSiabContext()` resolves super-admin vs tenant from the authenticated
+  user's membership.
 - `super-admin` has no tenant; `owner`, `editor`, and `viewer` have exactly one.
 - RSC pages use `requireAuth()` or `requireRole()`; server actions authenticate
   with `payload.auth(...)`; user-triggered Local API calls pass the caller.

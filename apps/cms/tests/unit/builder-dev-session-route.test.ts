@@ -23,7 +23,7 @@ describe("local preview session bypass route", () => {
 
   it("returns 404 outside development loopback", async () => {
     mocks.isLocalPreviewSessionBypass.mockReturnValue(false)
-    const response = await GET(new NextRequest("https://preview.siteinabox.nl/api/builder/dev-session"))
+    const response = await GET(new NextRequest("https://admin.siteinabox.nl/api/builder/dev-session"))
     expect(response.status).toBe(404)
     expect(mocks.createLocalPreviewSessionCookie).not.toHaveBeenCalled()
   })

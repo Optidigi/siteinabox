@@ -17,18 +17,18 @@ describe("passwordless auth surface", () => {
     expect(loginForm).toContain("magicLinkLogin")
 
     const loginPage = src("src/app/(frontend)/login/page.tsx")
-    expect(loginPage).toContain("isSuperAdminDomain")
+    expect(loginPage).toContain("isPlatformAdminHost")
     expect(loginPage).toContain("allowPasswordLogin")
     expect(loginPage).toContain("unifyPublicAuth")
     expect(loginForm).toContain("requestUnifiedMagicLinkAction")
   })
 
-  it("blocks the Payload password-login endpoint outside the SIAB admin host", () => {
+  it("404s retired tenant CMS hosts instead of serving a second cookie jar", () => {
     const proxy = src("src/proxy.ts")
-    expect(proxy).toContain('"/api/users/login"')
-    expect(proxy).toContain("isPasswordLoginRequest")
-    expect(proxy).toContain("buildPasswordLoginUnavailableResponse")
-    expect(proxy).toMatch(/isPasswordLoginRequest\(req\)[\s\S]*?!isSuperAdminDomain/)
+    expect(proxy).toContain("isPlatformAdminHost")
+    expect(proxy).toContain("PLATFORM_PROXY_MODE")
+    expect(proxy).toContain("buildRetiredTenantCmsResponse")
+    expect(proxy).toMatch(/if\s*\(\s*!platformHost\s*\)/)
   })
 
   it("sets persistent Better Auth and Payload session durations from one server-side source", () => {

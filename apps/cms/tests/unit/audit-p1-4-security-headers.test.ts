@@ -93,12 +93,10 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
       expect(rp).toMatch(/(same-origin|strict-origin)/)
     })
 
-    it("preserves existing x-siab-mode / x-siab-host stamping (no regression on tenant routing)", async () => {
-      const res = await middleware(reqAt("/sites/foo/users", "tenant.example.com"))
-      // Inspecting the request-side override is what hostToTenant downstream
-      // reads. We assert the function still returns a NextResponse (didn't
-      // throw / didn't strip the host stamp from request headers).
-      expect(res).toBeTruthy()
+    it("404s retired tenant CMS hosts while still stamping security headers", async () => {
+      const res = await middleware(reqAt("/sites/foo/users", "admin.ami-care.nl"))
+      expect(res.status).toBe(404)
+      expect(headerOf(res, "content-security-policy")).toMatch(/frame-ancestors\s+'none'/)
     })
   })
 

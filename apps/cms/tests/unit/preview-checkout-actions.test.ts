@@ -17,7 +17,7 @@ import { migrationCheckoutSecretKey } from "@/lib/domains/migrationCheckoutSecre
 import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 import type { CompleteZoneExport } from "@siteinabox/contracts/domain-migration"
 const mocks = vi.hoisted(() => ({
-  headers: new Headers({ host: "preview.siteinabox.nl" }),
+  headers: new Headers({ host: "admin.siteinabox.nl" }),
   getSession: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
   loadPreviewGrantAuthority: vi.fn(),

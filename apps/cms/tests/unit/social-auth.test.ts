@@ -51,19 +51,19 @@ describe("social auth provider configuration", () => {
     process.env.MICROSOFT_CLIENT_ID = "microsoft-id"
     process.env.MICROSOFT_CLIENT_SECRET = "microsoft-secret"
     process.env.SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS =
-      "admin.siteinabox.nl, ADMIN.AMI-CARE.NL:443"
+      "admin.siteinabox.nl"
     process.env.SIAB_MICROSOFT_OAUTH_CALLBACK_HOSTS =
       "admin.siteinabox.nl"
 
     expect(getEnabledSocialAuthProvidersForHost("admin.ami-care.nl"))
-      .toEqual(["google"])
+      .toEqual([])
     expect(getEnabledSocialAuthProvidersForHost("admin.siteinabox.nl"))
       .toEqual(["google", "microsoft"])
     expect(getEnabledSocialAuthProvidersForHost("admin.unknown.nl"))
       .toEqual([])
     expect(socialAuthCallbackRegisteredForHost(
       "google",
-      "ADMIN.AMI-CARE.NL:443",
+      "admin.siteinabox.nl",
     )).toBe(true)
   })
 
@@ -176,7 +176,7 @@ describe("social auth host validation", () => {
     process.env.SITE_URL = "https://admin.siteinabox.nl"
 
     expect(getBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["admin.*", "preview.example.com", "admin.extra.test"],
+      allowedHosts: ["admin.siteinabox.nl", "preview.example.com", "admin.extra.test"],
       protocol: "https",
       fallback: "https://admin.siteinabox.nl",
     })
@@ -185,60 +185,26 @@ describe("social auth host validation", () => {
   it("allows localhost dynamic auth bases only in development", () => {
     vi.stubEnv("NODE_ENV", "development")
     expect(getBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["admin.*", "localhost:*", "127.0.0.1:*", "*.trycloudflare.com"],
+      allowedHosts: ["admin.siteinabox.nl", "localhost:*", "127.0.0.1:*", "*.trycloudflare.com"],
       protocol: "http",
     })
   })
 
-  it("allows generated tenant admin hosts from Payload tenant domains", async () => {
-    fakeFind
-      .mockResolvedValueOnce({ docs: [{ id: 7, domain: "ami-care.nl", status: "active" }] })
-      .mockResolvedValueOnce({ docs: [{ id: 7, domain: "ami-care.nl", status: "active" }] })
+  it("rejects retired tenant admin hosts", async () => {
     const req = new Request("https://admin.ami-care.nl/api/auth/sign-in/social", {
       headers: { host: "admin.ami-care.nl" },
     })
 
-    await expect(isAllowedSocialAuthHost(req)).resolves.toBe(true)
-    await expect(getTrustedSocialAuthOrigins(req)).resolves.toEqual(["https://admin.ami-care.nl"])
-    expect(fakeFind).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "tenants",
-        where: { domain: { equals: "ami-care.nl" } },
-      }),
-    )
+    await expect(isAllowedSocialAuthHost(req)).resolves.toBe(false)
+    expect(fakeFind).not.toHaveBeenCalled()
   })
 
-  it("keeps tenant admin origins first while also trusting the canonical CMS fallback", async () => {
-    process.env.SITE_URL = "https://admin.siteinabox.nl"
-    fakeFind.mockResolvedValueOnce({ docs: [{ id: 7, domain: "ami-care.nl", status: "active" }] })
-    const req = new Request("https://admin.ami-care.nl/api/auth/sign-in/magic-link", {
-      headers: { host: "admin.ami-care.nl" },
-    })
-
-    await expect(getTrustedSocialAuthOrigins(req)).resolves.toEqual([
-      "https://admin.ami-care.nl",
-      "https://admin.siteinabox.nl",
-    ])
-  })
-
-  it("rejects unknown tenant admin hosts", async () => {
-    fakeFind.mockResolvedValueOnce({ docs: [] })
+  it("rejects unknown admin hosts", async () => {
     const req = new Request("https://admin.unknown.example/api/auth/sign-in/social", {
       headers: { host: "admin.unknown.example" },
     })
 
     await expect(isAllowedSocialAuthHost(req)).resolves.toBe(false)
-  })
-
-  it("allows suspended tenant admin hosts for billing recovery and transfer-out", async () => {
-    fakeFind.mockResolvedValueOnce({
-      docs: [{ id: 7, domain: "ami-care.nl", status: "suspended" }],
-    })
-    const req = new Request("https://admin.ami-care.nl/api/auth/sign-in/social", {
-      headers: { host: "admin.ami-care.nl" },
-    })
-
-    await expect(isAllowedSocialAuthHost(req)).resolves.toBe(true)
   })
 
   it("trusts the configured canonical Better Auth origin without a request", async () => {
@@ -263,16 +229,16 @@ describe("social auth host validation", () => {
     )
   })
 
-  it("derives tenant server-action auth headers from middleware tenant context when host is internal", () => {
+  it("falls back to the platform CMS host when the request host is internal", () => {
+    process.env.SITE_URL = "https://admin.siteinabox.nl"
     const next = buildCmsAuthHeaders(new Headers({
       host: "0.0.0.0:3000",
-      "x-siab-host": "ami-care.nl",
     }))
 
-    expect(next.get("host")).toBe("admin.ami-care.nl")
-    expect(next.get("x-forwarded-host")).toBe("admin.ami-care.nl")
+    expect(next.get("host")).toBe("admin.siteinabox.nl")
+    expect(next.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
     expect(resolveBaseURL(getBetterAuthBaseURL(), "/api/auth", next, false, true)).toBe(
-      "https://admin.ami-care.nl/api/auth",
+      "https://admin.siteinabox.nl/api/auth",
     )
   })
 

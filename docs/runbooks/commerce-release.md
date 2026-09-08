@@ -85,13 +85,13 @@ Before moving to the next stage:
      /app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs
    ```
 
-   This command only reconciles exact customer apex, `www`, and
-   `admin.<domain>` Cloudflare/Tunnel routes. A pending certificate exits
+   This command only reconciles exact customer apex and `www`
+   Cloudflare/Tunnel routes. A pending certificate exits
    non-zero and is rerun; it does not enable unrelated payment, registrar, or
    renewal writes.
 
 10. Prove Tunnel identity, terminal 404 ingress, direct-origin rejection,
-    apex/`www`/admin HTTPS, unknown/inactive/cross-tenant rejection, and
+    apex/`www` HTTPS, unknown/inactive/cross-tenant rejection, and
     certificate readiness. Only then set
     `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` in the reviewed deployment
     environment and run the read-only readiness gate:
@@ -181,10 +181,10 @@ For a new-domain canary, the expected sequence is:
    final tenant-admin magic link is recorded as a
    `site_live_handoff` commerce delivery and retried by the existing delivery
    queue on transient failure. Its admin link uses
-   `https://admin.<customer-domain>` so the existing host-based tenant gate
-   can authorize the owner. DNS, edge TLS, and the CMS route for that exact
-   hostname must be active before the paid canary; a tenant owner is
-   intentionally rejected on the central super-admin host.
+   `https://admin.siteinabox.nl` so the owner signs in on the platform host
+   and is authorized from their tenant membership. DNS, edge TLS, and the
+   renderer route for the live apex/`www` hostname must be active before the
+   paid canary.
 
 Customer-visible status never contains provider IDs, raw provider payloads,
 failure details, transfer codes, or full DNS evidence. Operators inspect:

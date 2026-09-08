@@ -7,9 +7,10 @@ use:
 browser -> Cloudflare -> public Traefik -> application
 ```
 
-Customer website and `admin.<customer-domain>` routes continue to use the
-private renderer and CMS Cloudflare Tunnels. Do not move the platform routes
-into those customer-host ingress arrays.
+Customer website routes continue to use the
+private renderer Cloudflare Tunnel. Do not move the platform routes
+into those customer-host ingress arrays. Do not provision
+`admin.<customer-domain>` onto the CMS Tunnel.
 
 Traefik must authenticate Cloudflare before serving any `siteinabox.nl` HTTPS
 router. A proxied DNS record and a valid origin certificate encrypt traffic but
@@ -101,7 +102,6 @@ dependency.
    curl --fail --silent --show-error https://siteinabox.nl/ >/dev/null
    curl --fail --silent --show-error https://www.siteinabox.nl/ >/dev/null
    curl --fail --silent --show-error https://admin.siteinabox.nl/api/health >/dev/null
-   curl --fail --silent --show-error https://preview.siteinabox.nl/ami-care >/dev/null
    ```
 
    Then prove direct HTTPS to the VPS fails without a client certificate. Set
@@ -111,8 +111,7 @@ dependency.
    for host_path in \
      'siteinabox.nl:/' \
      'www.siteinabox.nl:/' \
-     'admin.siteinabox.nl:/api/health' \
-     'preview.siteinabox.nl:/ami-care'
+     'admin.siteinabox.nl:/api/health'
    do
      host=${host_path%%:*}
      path=${host_path#*:}
@@ -131,7 +130,6 @@ dependency.
    - `siteinabox.nl`
    - `www.siteinabox.nl`
    - `admin.siteinabox.nl`
-   - `preview.siteinabox.nl`
 10. Set the Cloudflare edge minimum TLS version to 1.2 and re-run the probes.
 
 Do not enable mandatory client authentication before Cloudflare has activated

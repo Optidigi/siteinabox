@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { buildStatusInventory, normalizeInventoryHostname } from "@/lib/statusInventory"
 
 describe("status inventory", () => {
-  it("emits public and CMS checks for active tenants", () => {
+  it("emits public checks for active tenants", () => {
     const inventory = buildStatusInventory([
       { id: 42, domain: "Ami-Care.nl", status: "active" },
       { id: 43, domain: "draft.test", status: "provisioning" },
@@ -10,7 +10,6 @@ describe("status inventory", () => {
     expect(inventory.generation).toBe("2026-07-15T20:00:00Z")
     expect(inventory.services).toEqual([
       expect.objectContaining({ hostname: "ami-care.nl", tenantId: "42", kind: "tenant-public" }),
-      expect.objectContaining({ hostname: "admin.ami-care.nl", tenantId: "42", kind: "tenant-cms" }),
     ])
   })
 
