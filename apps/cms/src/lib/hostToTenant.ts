@@ -25,6 +25,15 @@ export const isPlatformAdminHost = (
   isDev = process.env.NODE_ENV === "development",
 ): boolean => isSuperAdminDomain(stripAdminPrefix(host), configured, isDev)
 
+export const isMarketingSiteHost = (
+  host: string,
+  configured: string | undefined = process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN?.trim() || "siteinabox.nl",
+): boolean => {
+  const hostname = (host.split(":")[0] || host).toLowerCase()
+  const domain = (configured || "siteinabox.nl").toLowerCase()
+  return hostname === domain || hostname === `www.${domain}`
+}
+
 export function platformCmsHost(env: NodeJS.ProcessEnv = process.env): string {
   const domain = env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN?.trim() || "siteinabox.nl"
   if (env.NODE_ENV !== "production" && domain === "localhost") {

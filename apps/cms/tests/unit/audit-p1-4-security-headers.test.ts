@@ -98,6 +98,22 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
       expect(res.status).toBe(404)
       expect(headerOf(res, "content-security-policy")).toMatch(/frame-ancestors\s+'none'/)
     })
+
+    it("lets container liveness probes through on loopback", async () => {
+      const res = await middleware(reqAt("/api/health", "127.0.0.1:3000"))
+      expect(res.status).not.toBe(404)
+      expect(headerOf(res, "content-security-policy")).toMatch(/frame-ancestors\s+'none'/)
+    })
+
+    it("lets the marketing contact API through on the public site host", async () => {
+      const res = await middleware(reqAt("/api/contact", "siteinabox.nl"))
+      expect(res.status).not.toBe(404)
+    })
+
+    it("still 404s marketing-only APIs on retired customer CMS hosts", async () => {
+      const res = await middleware(reqAt("/api/contact", "admin.ami-care.nl"))
+      expect(res.status).toBe(404)
+    })
   })
 
   describe("the audit's exact exploit URL still gets frame-ancestors 'none'", () => {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { RateLimiterMemory } from "rate-limiter-flexible"
 import {
+  isMarketingSiteHost,
   isPlatformAdminHost,
   PLATFORM_PROXY_MODE,
   stripAdminPrefix,
@@ -347,6 +348,16 @@ const buildMalformedApiKeyResponse = (pathname: string, nonce: string): NextResp
 const buildRetiredTenantCmsResponse = (pathname: string, nonce: string): NextResponse =>
   applySecurityHeaders(new NextResponse(null, { status: 404 }), pathname, nonce)
 
+const isCmsLivenessPath = (pathname: string): boolean =>
+  pathname === "/api/health" || pathname === "/api/health/"
+
+const isMarketingContactPath = (pathname: string): boolean =>
+  pathname === "/api/contact" || pathname.startsWith("/api/contact/")
+
+const allowsNonPlatformProxy = (pathname: string, host: string): boolean =>
+  isCmsLivenessPath(pathname) ||
+  (isMarketingContactPath(pathname) && isMarketingSiteHost(host))
+
 const rateLimitFallbackMs = (durationSeconds: number): number => durationSeconds * 1000
 
 const retryMsFromLimiterRejection = (rejRes: unknown, fallbackMs: number): number => {
@@ -405,7 +416,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const domain = stripAdminPrefix(host)
   const platformHost = isPlatformAdminHost(host)
 
-  if (!platformHost) {
+  if (!platformHost && !allowsNonPlatformProxy(req.nextUrl.pathname, host)) {
     return buildRetiredTenantCmsResponse(req.nextUrl.pathname, nonce)
   }
 
