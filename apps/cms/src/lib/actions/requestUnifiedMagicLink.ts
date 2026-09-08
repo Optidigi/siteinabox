@@ -5,9 +5,9 @@ import { getPayload } from "payload"
 import { auth } from "@/lib/betterAuth"
 import {
   BUILDER_MAGIC_LINK_GENERIC_SUCCESS,
-  requestBuilderMagicLinkAction,
+  sendBuilderMagicLink,
   type RequestBuilderMagicLinkState,
-} from "@/lib/actions/requestBuilderMagicLink"
+} from "@/lib/builder/sendBuilderMagicLink"
 import { PLATFORM_ADMIN_HOST } from "@/lib/preview/previewHost"
 import { canonicalRequestAuthority, isPreviewRequestAuthority } from "@/lib/requestAuthority"
 import { normalizeBuilderEmail } from "@/lib/builder/thread"
@@ -15,7 +15,41 @@ import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
 import type { User } from "@/payload-types"
 import config from "@/payload.config"
 
-export type RequestUnifiedMagicLinkState = RequestBuilderMagicLinkState
+export async function requestUnifiedMagicLinkAction(
+  _state: RequestBuilderMagicLinkState,
+  formData: FormData,
+): Promise<RequestBuilderMagicLinkState> {
+  const headerStore = await headers()
+  if (!isPreviewRequestAuthority(headerStore)) {
+    return { ok: false, message: "Niet beschikbaar." }
+  }
+
+  const intent = String(formData.get("intent") ?? "login")
+  if (intent === "register") {
+    return sendBuilderMagicLink(formData)
+  }
+
+  const email = normalizeBuilderEmail(String(formData.get("email") ?? ""))
+  if (!email || !email.includes("@")) {
+    return { ok: false, message: "Vul een geldig e-mailadres in." }
+  }
+
+  try {
+    const authority = canonicalRequestAuthority(headerStore)
+    const superAdminHost = authority?.developmentLoopback ? authority.host : PLATFORM_ADMIN_HOST
+    const user = await loadEligibleCmsUser(email)
+    const host = user ? cmsMagicLinkHost(user, superAdminHost) : null
+    if (user && host) {
+      await sendCmsLoginMagicLink(email, host)
+      return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
+    }
+  } catch (error) {
+    console.error("Unified CMS magic-link request failed", error)
+    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
+  }
+
+  return sendBuilderMagicLink(formData)
+}
 
 const cmsAuthHeadersForHost = (host: string): Headers =>
   buildCmsAuthHeaders(new Headers({
@@ -60,40 +94,4 @@ async function sendCmsLoginMagicLink(email: string, host: string): Promise<void>
     },
     headers: cmsAuthHeadersForHost(host),
   })
-}
-
-export async function requestUnifiedMagicLinkAction(
-  state: RequestUnifiedMagicLinkState,
-  formData: FormData,
-): Promise<RequestUnifiedMagicLinkState> {
-  const headerStore = await headers()
-  if (!isPreviewRequestAuthority(headerStore)) {
-    return { ok: false, message: "Niet beschikbaar." }
-  }
-
-  const intent = String(formData.get("intent") ?? "login")
-  if (intent === "register") {
-    return requestBuilderMagicLinkAction(state, formData)
-  }
-
-  const email = normalizeBuilderEmail(String(formData.get("email") ?? ""))
-  if (!email || !email.includes("@")) {
-    return { ok: false, message: "Vul een geldig e-mailadres in." }
-  }
-
-  try {
-    const authority = canonicalRequestAuthority(headerStore)
-    const superAdminHost = authority?.developmentLoopback ? authority.host : PLATFORM_ADMIN_HOST
-    const user = await loadEligibleCmsUser(email)
-    const host = user ? cmsMagicLinkHost(user, superAdminHost) : null
-    if (user && host) {
-      await sendCmsLoginMagicLink(email, host)
-      return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
-    }
-  } catch (error) {
-    console.error("Unified CMS magic-link request failed", error)
-    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
-  }
-
-  return requestBuilderMagicLinkAction(state, formData)
 }
