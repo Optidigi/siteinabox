@@ -97,19 +97,6 @@
         "Requiredness is classified by source evidence; runtime presence is not treated as proof of universal requiredness."
       ]
     },
-    "intake": {
-      "names": [
-        "DEV",
-        "PROD",
-        "PUBLIC_INTAKE_SUBMIT_ENDPOINT",
-        "PUBLIC_KVK_PROFILE_ENDPOINT",
-        "PUBLIC_KVK_SEARCH_ENDPOINT",
-        "SITE_URL"
-      ],
-      "notes": [
-        "The PUBLIC_* values are build-time browser configuration; requiredness remains operation-specific and is not inferred from VPS presence."
-      ]
-    },
     "landing": {
       "names": [
         "CI",

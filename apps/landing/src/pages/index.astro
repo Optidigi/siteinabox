@@ -16,7 +16,7 @@ import { site } from '../content/site';
 const home = await getEntry('pages', 'index');
 if (!home) throw new Error('Missing required content entry: pages/index');
 
-const ctaSignup = site.links.builder;
+const ctaSignup = site.links.signup;
 const professions = ['kapper', 'schilder', 'coach', 'fotograaf', 'hovenier', 'personal trainer', 'loodgieter', 'klusser', 'schoonheidsspecialist', 'timmerman', 'stukadoor', 'kok'];
 const guarantees = [
   { title: 'Jij levert input, wij bouwen', text: "Een 15 minuten vragenlijst en wat foto's. Wij verwerken het tot je website.", color: 'text-yellow', shadow: 'bg-yellow', paths: ['M9 5h6', 'M9 9h6', 'M9 13h4', 'M5 3h14v18H5z'] },
@@ -45,14 +45,14 @@ const comparisonRows = [
               <a
                 href={ctaSignup}
                 class={buttonVariants({ size: 'lg', className: 'min-h-[60px] min-w-[220px]' })}
-                data-analytics-component="cta-start-intake-hero"
+                data-analytics-component="cta-start-signup-hero"
                 data-analytics-component-type="cta"
                 data-analytics-component-role="primary"
-                data-analytics-action="start_intake"
+                data-analytics-action="start_signup"
                 data-analytics-placement="hero"
-                data-analytics-destination="intake"
+                data-analytics-destination="register"
                 data-analytics-conversion="true"
-                data-analytics-conversion-source="intake_handoff"
+                data-analytics-conversion-source="signup_handoff"
               >Maak mijn website</a>
               <a
                 href="#zo-werkt-het"
@@ -221,7 +221,7 @@ const comparisonRows = [
     </section>
 
     <section id="prijzen" class="py-16 md:mt-[120px] md:py-0" aria-labelledby="prijzen-heading" data-analytics-section="pricing" data-analytics-position="5">
-      <PricingTabs client:visible intakeHref={ctaSignup} />
+      <PricingTabs client:visible signupHref={ctaSignup} />
     </section>
 
     <section class="relative overflow-hidden bg-plum pb-36 pt-20 text-white md:mt-[140px] md:pb-[260px] md:pt-[100px]" aria-labelledby="klanten-heading" data-analytics-section="testimonials" data-analytics-position="6">

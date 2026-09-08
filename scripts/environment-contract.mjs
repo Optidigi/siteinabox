@@ -71,7 +71,6 @@ function isPublic(name) {
 
 function isBuildInput(app, name) {
   if (name.startsWith("PUBLIC_") || name.startsWith("NEXT_PUBLIC_")) return true
-  if (app === "intake" && name === "SITE_URL") return true
   if (app === "landing" && ["POSTHOG_HOST", "POSTHOG_PROJECT_TOKEN", "POSTHOG_PUBLIC_HOST", "SITE_URL"].includes(name)) {
     return true
   }

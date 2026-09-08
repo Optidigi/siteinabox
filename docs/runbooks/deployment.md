@@ -6,11 +6,10 @@ This runbook walks a fresh production VPS to a healthy `https://admin.siteinabox
 serving the Payload-based admin console for SiteInABox. Use it for an initial
 deploy, recovery from a wiped VPS, or replicating the stack onto a new VPS.
 
-The platform also includes the landing and intake static applications and the
-published-site renderer. Public create is the preview builder
-(`https://preview.siteinabox.nl/builder`). `/intake` remains a Traefik-owned
-legacy adapter that redirects there until that stack is retired. Landing,
-intake, and renderer image workflows and health checks remain
+The platform also includes the landing static application and the
+published-site renderer. Public create is the builder on
+`https://admin.siteinabox.nl/builder`. Landing `/intake` and `/beheer` redirect
+to platform login. Landing and renderer image workflows and health checks remain
 application-owned; this runbook's Compose procedure is specifically for CMS
 operations.
 
@@ -475,24 +474,26 @@ labels:
   - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
 ```
 
-Public intake belongs to `apps/intake/compose.yml` and must outrank landing for
-`/intake` on both apex and `www`. That image is a legacy adapter: Nginx 302s
-`/intake` to `https://preview.siteinabox.nl/builder?intent=register`. Set
-`SIAB_INTAKE_IMAGE_DIGEST=sha256:<digest>` to the verified digest emitted by
-the successful `build-intake-image` workflow; never deploy a mutable tag:
+Landing Traefik also owns retired `/intake` and `/beheer` redirects to
+`https://admin.siteinabox.nl/login` (register intent for `/intake`). Those
+routers must outrank the host-root landing router:
 
 ```yaml
 labels:
   - traefik.enable=true
   - traefik.docker.network=proxy
-  - traefik.http.routers.siteinabox-intake.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
-  - traefik.http.routers.siteinabox-intake.entrypoints=websecure
-  - traefik.http.routers.siteinabox-intake.tls.certresolver=letsencrypt
-  - traefik.http.routers.siteinabox-intake.tls.options=siteinabox-cloudflare-aop@file
-  - traefik.http.routers.siteinabox-intake.middlewares=hsts@docker
-  - traefik.http.routers.siteinabox-intake.priority=300
-  - traefik.http.routers.siteinabox-intake.service=siteinabox-intake
-  - traefik.http.services.siteinabox-intake.loadbalancer.server.port=80
+  - traefik.http.routers.siteinabox-site.rule=Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)
+  - traefik.http.routers.siteinabox-site.entrypoints=websecure
+  - traefik.http.routers.siteinabox-site.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-site.tls.options=siteinabox-cloudflare-aop@file
+  - traefik.http.routers.siteinabox-site.middlewares=hsts@docker
+  - traefik.http.routers.siteinabox-site.priority=100
+  - traefik.http.routers.siteinabox-site.service=siteinabox-site
+  - traefik.http.routers.siteinabox-intake-redirect.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
+  - traefik.http.routers.siteinabox-intake-redirect.priority=300
+  - traefik.http.routers.siteinabox-beheer-redirect.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/beheer`) || PathPrefix(`/beheer/`))
+  - traefik.http.routers.siteinabox-beheer-redirect.priority=300
+  - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
 ```
 
 Confirm the `siteinabox-cms` service keeps Traefik only for the platform admin,
@@ -509,9 +510,6 @@ labels:
   - traefik.http.routers.siteinabox-cms.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
   - traefik.http.routers.siteinabox-cms.service=siteinabox-cms
-  - traefik.http.routers.siteinabox-cms-intake-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/intake`)
-  - traefik.http.routers.siteinabox-cms-intake-api.priority=250
-  - traefik.http.routers.siteinabox-cms-intake-api.tls.options=siteinabox-cloudflare-aop@file
   - traefik.http.routers.siteinabox-cms-contact-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/contact`)
   - traefik.http.routers.siteinabox-cms-contact-api.priority=250
   - traefik.http.routers.siteinabox-cms-contact-api.tls.options=siteinabox-cloudflare-aop@file

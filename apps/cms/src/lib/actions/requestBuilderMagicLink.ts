@@ -3,7 +3,7 @@
 import { headers } from "next/headers"
 import { getPayload } from "payload"
 import { previewAuth } from "@/lib/preview/betterAuth"
-import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { previewAuthRequestHeaders } from "@/lib/preview/previewHost"
 import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
 import { upsertBuilderRegistration } from "@/lib/builder/sessionStore"
 import { BuilderLegalSchema, normalizeBuilderEmail } from "@/lib/builder/thread"
@@ -15,15 +15,8 @@ export type RequestBuilderMagicLinkState = {
   message: string
 }
 
-const previewAuthHeaders = (source: Headers): Headers => {
-  const next = new Headers(source)
-  next.set("host", PREVIEW_HOST)
-  next.set("x-forwarded-host", PREVIEW_HOST)
-  next.set("x-forwarded-proto", "https")
-  return next
-}
-
-const genericSuccess = "Als dit e-mailadres bij ons bekend is of net is geregistreerd, sturen we een inloglink."
+export const BUILDER_MAGIC_LINK_GENERIC_SUCCESS =
+  "Als dit e-mailadres bij ons bekend is of net is geregistreerd, sturen we een inloglink."
 
 export async function requestBuilderMagicLinkAction(
   _state: RequestBuilderMagicLinkState,
@@ -74,14 +67,14 @@ export async function requestBuilderMagicLinkAction(
       body: {
         email,
         callbackURL,
-        errorCallbackURL: "/builder?intent=login",
+        errorCallbackURL: "/login",
       },
-      headers: previewAuthHeaders(headerStore),
+      headers: previewAuthRequestHeaders(headerStore),
     })
-    return { ok: true, message: genericSuccess }
+    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
   } catch (error) {
     console.error("Builder magic-link request failed", error)
-    return { ok: true, message: genericSuccess }
+    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
   }
 }
 
@@ -89,6 +82,6 @@ export async function signOutBuilderAction(): Promise<void> {
   const headerStore = await headers()
   if (!isPreviewRequestAuthority(headerStore)) return
   await (previewAuth.api).signOut({
-    headers: previewAuthHeaders(headerStore),
+    headers: previewAuthRequestHeaders(headerStore),
   }).catch(() => null)
 }

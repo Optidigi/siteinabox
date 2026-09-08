@@ -1,29 +1,38 @@
 import { previewAuth } from "@/lib/preview/betterAuth"
-import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { isPublicPreviewHostname } from "@/lib/preview/previewHost"
 import { toNextJsHandler } from "better-auth/next-js"
 
 const handlers = toNextJsHandler(previewAuth)
 
-const normalizeHost = (value: string | null): string => {
-  const host = (value ?? "").split(",")[0]?.trim().toLowerCase() ?? ""
+const requestHostHeader = (request: Request): string =>
+  (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
+    .split(",")[0]
+    ?.trim()
+    .toLowerCase() ?? ""
+
+const hostnameOf = (host: string): string => {
   if (host.startsWith("[")) return host
   return host.split(":")[0] ?? host
 }
 
 const isAllowedPreviewAuthHost = (request: Request): boolean => {
-  const host = normalizeHost(request.headers.get("x-forwarded-host") || request.headers.get("host"))
-  if (host === PREVIEW_HOST) return true
+  const host = hostnameOf(requestHostHeader(request))
+  if (isPublicPreviewHostname(host)) return true
   return process.env.NODE_ENV === "development" && (host === "localhost" || host === "127.0.0.1")
 }
 
 const buildPreviewAuthRequest = (request: Request): Request => {
+  const host = requestHostHeader(request)
+  const hostname = hostnameOf(host)
+  const developmentLoopback =
+    process.env.NODE_ENV === "development" && (hostname === "localhost" || hostname === "127.0.0.1")
   const headers = new Headers(request.headers)
-  headers.set("host", PREVIEW_HOST)
-  headers.set("x-forwarded-host", PREVIEW_HOST)
-  headers.set("x-forwarded-proto", "https")
+  headers.set("host", host)
+  headers.set("x-forwarded-host", host)
+  headers.set("x-forwarded-proto", developmentLoopback ? "http" : "https")
   const url = new URL(request.url)
-  url.protocol = "https:"
-  url.host = PREVIEW_HOST
+  url.protocol = developmentLoopback ? "http:" : "https:"
+  url.host = host
   const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
     headers,

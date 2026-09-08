@@ -6,7 +6,7 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import { nodeErrorCode } from "@/lib/record"
 import { previewAuth } from "@/lib/preview/betterAuth"
-import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { isPublicPreviewHostname } from "@/lib/preview/previewHost"
 import { hasActivePreviewGrantForTenant } from "@/lib/preview/previewAccess"
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
@@ -46,7 +46,7 @@ const normalizeHost = (value: string | null): string => {
 
 const isPreviewMediaHost = (req: NextRequest): boolean => {
   const host = normalizeHost(req.headers.get("x-forwarded-host") || req.headers.get("host"))
-  if (host === PREVIEW_HOST) return true
+  if (isPublicPreviewHostname(host)) return true
   return process.env.NODE_ENV === "development" && (host === "localhost" || host === "127.0.0.1")
 }
 

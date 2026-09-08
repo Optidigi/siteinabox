@@ -27,7 +27,7 @@ import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFi
 //     caller is "anonymous" iff BOTH `Authorization` header is absent
 //     AND the `payload-token` cookie is absent. Authed super-admin
 //     callers (API-key client requests) bypass.
-//   • Path scope: `/api/forms`, `/api/contact`, `/api/intake`, and
+//   • Path scope: `/api/forms`, `/api/contact`, `/api/builder/chat`, and
 //     `/api/users/forgot-password`. POST method only. The audit's
 //     `/api/users` bootstrap path is INTENTIONALLY out of scope (T2 is
 //     closed by P1 #6's BOOTSTRAP_TOKEN gate; rate-limiting that path

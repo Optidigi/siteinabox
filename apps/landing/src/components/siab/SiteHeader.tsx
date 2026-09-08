@@ -16,13 +16,12 @@ type NavItem = { label: string; href: string };
 
 type Props = {
   nav: NavItem[];
-  intakeHref: string;
+  signupHref: string;
   loginHref: string;
-  liveSiteHref: string;
   hero?: boolean;
 };
 
-export function SiteHeader({ nav, intakeHref, loginHref, liveSiteHref, hero = false }: Props) {
+export function SiteHeader({ nav, signupHref, loginHref, hero = false }: Props) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [scrolled, setScrolled] = useState(false);
 
@@ -85,13 +84,10 @@ export function SiteHeader({ nav, intakeHref, loginHref, liveSiteHref, hero = fa
           >
             {theme === 'dark' ? <Moon aria-hidden /> : <Sun aria-hidden />}
           </Button>
-          <a className="hidden min-h-11 items-center font-body text-[13px] font-semibold text-muted-foreground underline decoration-dashed underline-offset-4 sm:inline-flex sm:text-sm" href={liveSiteHref} data-analytics-action="open_live_site_admin" data-analytics-placement="header" data-analytics-destination="beheer">
-            Beheer je live site
-          </a>
           <a className="inline-flex min-h-11 items-center font-body text-[15px] font-semibold underline decoration-dashed underline-offset-4 sm:text-base" href={loginHref} data-analytics-action="open_login" data-analytics-placement="header" data-analytics-destination="login">
             Inloggen
           </a>
-          <a className={cn(buttonVariants({ size: 'lg' }), 'hidden min-h-12 px-[clamp(20px,1.4vw,26px)] py-[clamp(10px,.7vw,13px)] text-[clamp(15px,1vw,17px)] md:inline-flex')} href={intakeHref} data-analytics-component="cta-start-intake-header" data-analytics-component-type="cta" data-analytics-component-role="primary" data-analytics-action="start_intake" data-analytics-placement="header" data-analytics-destination="intake" data-analytics-conversion="true" data-analytics-conversion-source="intake_handoff">
+          <a className={cn(buttonVariants({ size: 'lg' }), 'hidden min-h-12 px-[clamp(20px,1.4vw,26px)] py-[clamp(10px,.7vw,13px)] text-[clamp(15px,1vw,17px)] md:inline-flex')} href={signupHref} data-analytics-component="cta-start-signup-header" data-analytics-component-type="cta" data-analytics-component-role="primary" data-analytics-action="start_signup" data-analytics-placement="header" data-analytics-destination="register" data-analytics-conversion="true" data-analytics-conversion-source="signup_handoff">
             Start gratis
           </a>
 
@@ -132,13 +128,10 @@ export function SiteHeader({ nav, intakeHref, loginHref, liveSiteHref, hero = fa
                 </ul>
               </nav>
               <div className="mt-auto grid gap-3 p-6">
-                <SheetClose nativeButton={false} render={<a className={buttonVariants({ variant: 'outline', size: 'lg' })} href={liveSiteHref} data-analytics-action="open_live_site_admin" data-analytics-placement="mobile_menu" data-analytics-destination="beheer" />}>
-                  Beheer je live site
-                </SheetClose>
                 <SheetClose nativeButton={false} render={<a className={buttonVariants({ variant: 'outline', size: 'lg' })} href={loginHref} data-analytics-action="open_login" data-analytics-placement="mobile_menu" data-analytics-destination="login" />}>
                   Inloggen
                 </SheetClose>
-                <SheetClose nativeButton={false} render={<a className={buttonVariants({ size: 'lg' })} href={intakeHref} data-analytics-component="cta-start-intake-mobile-menu" data-analytics-component-type="cta" data-analytics-component-role="primary" data-analytics-action="start_intake" data-analytics-placement="mobile_menu" data-analytics-destination="intake" data-analytics-conversion="true" data-analytics-conversion-source="intake_handoff" />}>
+                <SheetClose nativeButton={false} render={<a className={buttonVariants({ size: 'lg' })} href={signupHref} data-analytics-component="cta-start-signup-mobile-menu" data-analytics-component-type="cta" data-analytics-component-role="primary" data-analytics-action="start_signup" data-analytics-placement="mobile_menu" data-analytics-destination="register" data-analytics-conversion="true" data-analytics-conversion-source="signup_handoff" />}>
                   Start gratis
                 </SheetClose>
               </div>

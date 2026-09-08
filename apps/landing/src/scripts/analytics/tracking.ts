@@ -228,7 +228,7 @@ export const bindLandingAnalytics = (runtime: LandingAnalyticsRuntime) => {
     if (contactConversion || action?.dataset.analyticsConversion === 'true') {
       runtime.capture('site_conversion_completed', {
         conversion_source: action?.dataset.analyticsConversionSource
-          ?? (contactConversion ? 'contact_click' : 'intake_handoff'),
+          ?? (contactConversion ? 'contact_click' : 'signup_handoff'),
         action_key: actionKey,
         action_placement: actionPlacement,
         destination_type: destinationType ?? target.target_type,

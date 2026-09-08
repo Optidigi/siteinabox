@@ -4,6 +4,7 @@ import { LoginForm } from "@/components/forms/LoginForm"
 import { AuthShell } from "@/components/auth-shell"
 import { getEnabledSocialAuthProvidersForHost } from "@/lib/socialAuth/providers"
 import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
+import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
 
 /**
  * Adopts the local shadcn-style auth shell: two-column card with the form on
@@ -13,7 +14,9 @@ import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
  * Departures from a generic two-column login block:
  *   - Social providers are shown only when configured — siab-payload remains
  *     invite-only and Payload-owned for authorization.
- *   - No "Don't have an account? Sign up" footer — invite-only.
+ *   - On the platform admin/preview host, register and login share this page;
+ *     CMS users are routed to CMS magic links and everyone else to the builder.
+ *   - Tenant admin hosts stay invite-only CMS login.
  *   - Right panel uses the real SVG logo with dark/light CSS switching.
  */
 export default async function LoginPage() {
@@ -22,6 +25,7 @@ export default async function LoginPage() {
   const socialProviders = getEnabledSocialAuthProvidersForHost(host)
   const domain = stripAdminPrefix(host)
   const allowPasswordLogin = isSuperAdminDomain(domain, process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN)
+  const unifyPublicAuth = isPreviewRequestAuthority(headerStore)
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
@@ -36,7 +40,11 @@ export default async function LoginPage() {
         >
           <div className="flex flex-col gap-6">
             <Suspense>
-              <LoginForm socialProviders={socialProviders} allowPasswordLogin={allowPasswordLogin} />
+              <LoginForm
+                socialProviders={socialProviders}
+                allowPasswordLogin={allowPasswordLogin}
+                unifyPublicAuth={unifyPublicAuth}
+              />
             </Suspense>
           </div>
         </AuthShell>

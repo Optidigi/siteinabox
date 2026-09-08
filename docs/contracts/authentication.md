@@ -61,11 +61,15 @@ Better Auth, so Better Auth's native magic-link URL generation sees the public
 admin origin (`admin.siteinabox.nl` or a verified `admin.<tenant-domain>`) and
 does not derive links from the container bind host.
 Customer preview auth is a separate Better Auth instance on
-`https://preview.siteinabox.nl/api/preview-auth`. In production it accepts only
-the public preview host and uses `https://preview.siteinabox.nl` as its
-fallback origin. Preview auth routes and preview server actions normalize
-their Better Auth headers to that public host. Localhost preview auth is
-development-only.
+`/api/preview-auth`. In production it accepts `admin.siteinabox.nl` and the
+legacy `preview.siteinabox.nl` host, and uses `https://admin.siteinabox.nl` as
+its fallback origin. Preview auth routes preserve the public request host so
+cookies stay on that host. Localhost preview auth is development-only.
+
+Public login on `admin.siteinabox.nl/login` is unified: register stays preview
+auth; login first tries an eligible Payload CMS user (super-admin on
+`admin.siteinabox.nl`, tenant users on `admin.<tenant-domain>`), otherwise a
+preview/builder magic link. Tenant CMS hosts stay invite-only CMS login.
 
 `BETTER_AUTH_API_KEY` is optional and enables the Better Auth Infrastructure
 `dash()` plugin for dashboard/audit visibility. Use the key from the existing
@@ -90,7 +94,7 @@ CMS magic-link signup remains closed. A CMS login link is only sent when the
 submitted email matches exactly one existing eligible Payload `users` record.
 Customer preview magic links are separate: they use `/api/preview-auth/*`,
 isolated `preview_auth_*` tables, and the `siab-preview-auth` cookie prefix.
-Public builder access is login-first on `/builder`. A first-time register or
+Public builder access starts at `/login`. A first-time register or
 login magic link may be sent without a preview grant when the callback is the
 builder itself. When a `previewClientSlug` is present, the email must still
 have an active `preview-access-grants` row for that slug. Normalized email is
@@ -136,9 +140,9 @@ preview auth route and redirect to the
 slug-scoped preview route:
 
 ```text
-https://preview.siteinabox.nl/api/preview-auth/magic-link/verify
-https://preview.siteinabox.nl/builder
-https://preview.siteinabox.nl/builder/<clientSlug>
+https://admin.siteinabox.nl/api/preview-auth/magic-link/verify
+https://admin.siteinabox.nl/builder
+https://admin.siteinabox.nl/builder/<clientSlug>
 ```
 
 Example for Amicare:

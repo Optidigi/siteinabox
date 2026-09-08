@@ -1,6 +1,0 @@
----
-const builderUrl = import.meta.env.PROD
-  ? "https://preview.siteinabox.nl/builder?intent=register"
-  : "http://localhost:3000/builder?intent=register";
-return Astro.redirect(builderUrl, 302);
----

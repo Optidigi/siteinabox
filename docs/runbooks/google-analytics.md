@@ -105,7 +105,7 @@ default monetary value and counts at most once per session:
 | Event | Trigger in the landing runtime | Meaning |
 | --- | --- | --- |
 | `generate_lead` | `conversion_source=contact_form` | Contact form accepted by the backend |
-| `intake_started` | `conversion_source=intake_handoff` | Visitor leaves the landing site for intake |
+| `signup_started` | `conversion_source=signup_handoff` | Visitor leaves the landing site for platform register/login |
 | `direct_contact_clicked` | `conversion_source=contact_click` | Visitor opens telephone, email, or WhatsApp contact |
 
 The canonical `site_conversion_completed` event is still sent to both

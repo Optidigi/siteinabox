@@ -38,7 +38,7 @@ const semanticEventNames = new Set<string>(LANDING_EVENT_NAMES);
 const googleKeyEventByConversionSource = {
   contact_form: 'generate_lead',
   contact_click: 'direct_contact_clicked',
-  intake_handoff: 'intake_started',
+  signup_handoff: 'signup_started',
 } as const;
 const semanticPropertyKeys = new Set([
   'section_id', 'section_position', 'component_id', 'component_type', 'component_role',

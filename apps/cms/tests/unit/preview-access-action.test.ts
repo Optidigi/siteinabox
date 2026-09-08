@@ -69,7 +69,7 @@ describe("sendPreviewAccessAction", () => {
 
     expect(result).toEqual({
       ok: true,
-      previewUrl: "https://preview.siteinabox.nl/preview-studio",
+      previewUrl: "https://admin.siteinabox.nl/preview-studio",
       message: "Preview magic link sent.",
     })
     expect(mocks.createOrRefreshPreviewGrant).toHaveBeenCalledWith({
@@ -80,7 +80,7 @@ describe("sendPreviewAccessAction", () => {
     expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
         email: "customer@example.com",
-        callbackURL: "https://preview.siteinabox.nl/preview-studio",
+        callbackURL: "https://admin.siteinabox.nl/preview-studio",
         metadata: expect.objectContaining({
           previewClientSlug: "preview-studio",
           previewSiteReady: true,
@@ -93,8 +93,8 @@ describe("sendPreviewAccessAction", () => {
       headers: expect.any(Headers),
     }))
     const callHeaders = mocks.signInMagicLink.mock.calls[0]?.[0]?.headers as Headers
-    expect(callHeaders.get("host")).toBe("preview.siteinabox.nl")
-    expect(callHeaders.get("x-forwarded-host")).toBe("preview.siteinabox.nl")
+    expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
+    expect(callHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
   })
 
   it("blocks non-super-admin operators before creating a grant", async () => {

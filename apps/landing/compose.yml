@@ -19,6 +19,26 @@ services:
       - traefik.http.routers.siteinabox-site.middlewares=hsts@docker
       - traefik.http.routers.siteinabox-site.priority=100
       - traefik.http.routers.siteinabox-site.service=siteinabox-site
+      - traefik.http.middlewares.siteinabox-intake-redirect.redirectregex.regex=.*
+      - traefik.http.middlewares.siteinabox-intake-redirect.redirectregex.replacement=https://admin.siteinabox.nl/login?intent=register
+      - traefik.http.middlewares.siteinabox-intake-redirect.redirectregex.permanent=true
+      - traefik.http.routers.siteinabox-intake-redirect.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
+      - traefik.http.routers.siteinabox-intake-redirect.entrypoints=websecure
+      - traefik.http.routers.siteinabox-intake-redirect.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-intake-redirect.tls.options=siteinabox-cloudflare-aop@file
+      - traefik.http.routers.siteinabox-intake-redirect.middlewares=hsts@docker,siteinabox-intake-redirect
+      - traefik.http.routers.siteinabox-intake-redirect.priority=300
+      - traefik.http.routers.siteinabox-intake-redirect.service=siteinabox-site
+      - traefik.http.middlewares.siteinabox-beheer-redirect.redirectregex.regex=.*
+      - traefik.http.middlewares.siteinabox-beheer-redirect.redirectregex.replacement=https://admin.siteinabox.nl/login
+      - traefik.http.middlewares.siteinabox-beheer-redirect.redirectregex.permanent=true
+      - traefik.http.routers.siteinabox-beheer-redirect.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/beheer`) || PathPrefix(`/beheer/`))
+      - traefik.http.routers.siteinabox-beheer-redirect.entrypoints=websecure
+      - traefik.http.routers.siteinabox-beheer-redirect.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-beheer-redirect.tls.options=siteinabox-cloudflare-aop@file
+      - traefik.http.routers.siteinabox-beheer-redirect.middlewares=hsts@docker,siteinabox-beheer-redirect
+      - traefik.http.routers.siteinabox-beheer-redirect.priority=300
+      - traefik.http.routers.siteinabox-beheer-redirect.service=siteinabox-site
       - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
     logging:
       driver: json-file

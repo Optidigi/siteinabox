@@ -10,13 +10,17 @@ describe("passwordless auth surface", () => {
     expect(loginForm).toContain("allowPasswordLogin")
     expect(loginForm).toContain("passwordMode")
     expect(loginForm).toContain("authClient.signIn.magicLink")
-    expect(loginForm).toMatch(/passwordMode\s*&&\s*allowPasswordLogin/)
+    expect(loginForm).toContain("showCmsPassword")
+    expect(loginForm).toMatch(/passwordMode\s*&&\s*showCmsPassword/)
+    expect(loginForm).toMatch(/allowPasswordLogin\s*&&\s*!isRegister/)
     expect(loginForm).toContain("passwordLogin")
     expect(loginForm).toContain("magicLinkLogin")
 
     const loginPage = src("src/app/(frontend)/login/page.tsx")
     expect(loginPage).toContain("isSuperAdminDomain")
     expect(loginPage).toContain("allowPasswordLogin")
+    expect(loginPage).toContain("unifyPublicAuth")
+    expect(loginForm).toContain("requestUnifiedMagicLinkAction")
   })
 
   it("blocks the Payload password-login endpoint outside the SIAB admin host", () => {

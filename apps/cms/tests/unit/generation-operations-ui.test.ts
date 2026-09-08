@@ -328,10 +328,10 @@ describe("generation operations route access", () => {
     expect(verificationPanel).not.toMatch(/cloudflare|route53|dnsimple/i)
   })
 
-  it("exposes manager-facing intake review and guarded deletion while public intake auto-generates", () => {
+  it("exposes manager-facing intake review and guarded deletion while builder generation auto-runs", () => {
     const action = read("src/lib/actions/reviewIntakeSubmission.ts")
     const detail = read("src/app/(frontend)/(admin)/generation-runs/submissions/[id]/page.tsx")
-    const intakeRoute = read("src/app/(payload)/api/intake/route.ts")
+    const generatePreview = read("src/lib/builder/generatePreview.ts")
 
     expect(action).toContain('requireRole(["super-admin"])')
     expect(action).toContain("prepareReviewedGenerationInputUpdate")
@@ -362,7 +362,8 @@ describe("generation operations route access", () => {
     expect(detail).not.toContain("Idempotency key")
     expect(detail).not.toContain("Normalized hash")
     expect(detail).toContain("defaultReviewedGenerationInput")
-    expect(intakeRoute).toContain("processStoredIntakeSubmission")
+    expect(generatePreview).toContain("storeIntakeSubmission")
+    expect(generatePreview).toContain("processStoredIntakeSubmission")
   })
 
   it("exposes post-payment automation recovery only in Advanced", () => {
@@ -389,7 +390,7 @@ describe("generation operations route access", () => {
 
     expect(detail).toContain("<PreviewAccessShare")
     expect(detail).toContain('run.status !== "preview_ready"')
-    expect(detail).toContain("https://preview.siteinabox.nl/")
+    expect(detail).toContain("https://admin.siteinabox.nl/")
     expect(detail).toContain("previewClientSlugFromDomain")
     expect(share).toContain('t("sendPreview")')
     expect(share).toContain("navigator.clipboard.writeText")

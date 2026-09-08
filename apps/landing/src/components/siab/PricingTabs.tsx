@@ -41,7 +41,7 @@ function InfoTooltip({ text }: { text: string }) {
   );
 }
 
-function Plan({ yearly, intakeHref }: { yearly: boolean; intakeHref: string }) {
+function Plan({ yearly, signupHref }: { yearly: boolean; signupHref: string }) {
   return (
     <Card className={cn(
       'relative mx-auto w-full max-w-[560px] overflow-visible border-black bg-white px-5 pb-12 pt-7 text-black shadow-[6px_6px_0_#090709] dark:bg-card dark:text-white lg:px-[35px] lg:pb-[70px] lg:pt-10',
@@ -57,15 +57,15 @@ function Plan({ yearly, intakeHref }: { yearly: boolean; intakeHref: string }) {
         </p>
       </div>
       <a
-        href={intakeHref}
-        data-analytics-component="cta-start-intake-pricing"
+        href={signupHref}
+        data-analytics-component="cta-start-signup-pricing"
         data-analytics-component-type="cta"
         data-analytics-component-role="primary"
-        data-analytics-action="start_intake"
+        data-analytics-action="start_signup"
         data-analytics-placement="pricing"
-        data-analytics-destination="intake"
+        data-analytics-destination="register"
         data-analytics-conversion="true"
-        data-analytics-conversion-source="intake_handoff"
+        data-analytics-conversion-source="signup_handoff"
         className={cn(
           buttonVariants({ variant: 'secondary', size: 'lg' }),
           'min-h-[60px] w-full justify-between bg-black px-5 text-white hover:bg-yellow hover:text-black dark:bg-yellow dark:text-black dark:hover:bg-primary-hover',
@@ -91,7 +91,7 @@ function Plan({ yearly, intakeHref }: { yearly: boolean; intakeHref: string }) {
   );
 }
 
-export function PricingTabs({ intakeHref }: { intakeHref: string }) {
+export function PricingTabs({ signupHref }: { signupHref: string }) {
   const [yearly, setYearly] = useState(false);
   const selectBillingPeriod = (nextYearly: boolean) => {
     if (yearly === nextYearly) return;
@@ -138,7 +138,7 @@ export function PricingTabs({ intakeHref }: { intakeHref: string }) {
           </div>
           <p className="mt-3 text-sm text-foreground/60 dark:text-white/55">Alle prijzen excl. btw</p>
         </div>
-        <div className="lg:col-start-2 lg:row-start-1"><Plan yearly={yearly} intakeHref={intakeHref} /></div>
+        <div className="lg:col-start-2 lg:row-start-1"><Plan yearly={yearly} signupHref={signupHref} /></div>
       </div>
     </TooltipProvider>
   );

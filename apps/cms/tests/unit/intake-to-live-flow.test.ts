@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
+import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
 import { createMollieCheckoutForGenerationRun, synchronizeMolliePayment } from "@/lib/payments/molliePayments"
 import { fulfillPaidOrder } from "@/lib/payments/fulfillOrder"
 import { deliverCommerceNotification } from "@/lib/commerce/notifications"
 import { reconcileCommerceEdgeRouting } from "@/lib/domains/edgeRouting"
-import { POST as intakePOST } from "@/app/(payload)/api/intake/route"
+import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
+import { processStoredIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
 
-import { asNextRequest, asGenerationRun, asMockDoc } from "../_helpers/cast"
+import { asGenerationRun, asMockDoc } from "../_helpers/cast"
 import { createArgs, relationId, updateArgs } from "../_helpers/payloadApi"
 import { asFindClient } from "../_helpers/payloadFindClient"
 import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
@@ -536,14 +538,12 @@ describe("intake-to-live mocked flow", () => {
     const { payload, store } = createPayloadStub()
     mocks.getPayload.mockResolvedValue(payload)
 
-    const response = await intakePOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/intake", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(richIntake()),
-    })))
-    const body = await response.json()
-    expect(response.status).toBe(202)
-    expect(body.status).toBe("preview_ready")
+    const stored = await storeIntakeSubmission(payload, richIntake() as PublicIntakeSubmission)
+    const processed = stored.ok && stored.intakeSubmissionId
+      ? await processStoredIntakeSubmission(payload, stored.intakeSubmissionId)
+      : stored
+    expect(processed.ok).toBe(true)
+    expect(processed.status).toBe("preview_ready")
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)

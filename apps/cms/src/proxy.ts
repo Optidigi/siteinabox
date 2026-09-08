@@ -14,7 +14,7 @@ import {
 //
 // Most of /api/* is excluded (Payload's REST/GraphQL endpoints have their
 // own auth), with opt-in exceptions for audit-p1 #5 (T4) rate-limit:
-// /api/forms, /api/intake, /api/builder/chat, /api/contact, /api/renderer/appointments, and
+// /api/forms, /api/builder/chat, /api/contact, /api/renderer/appointments, and
 // /api/users/forgot-password are anonymous or renderer-mediated public
 // surfaces whose abuse-by-flood vector the matcher MUST route through
 // middleware.
@@ -134,7 +134,7 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // fans out to multiple Node processes or hosts, swap to RateLimiterCluster
 // or a Redis-backed limiter. (Documented in audits/07-fix-batch-6-report.md.)
 //
-// Scope: /api/forms, /api/intake, /api/builder/chat, /api/contact, /api/renderer/appointments,
+// Scope: /api/forms, /api/builder/chat, /api/contact, /api/renderer/appointments,
 // and /api/users/forgot-password ONLY. POST method only. /api/users
 // (bootstrap surface) is INTENTIONALLY
 // out-of-scope; rate-limiting it would interfere with the P1 #6 BOOTSTRAP_TOKEN
@@ -220,7 +220,6 @@ export const __resetRateLimitersForTests = (): void => {
 const RATE_LIMITED_PATHS = new Set<string>([
   "/api/forms",
   "/api/contact",
-  "/api/intake",
   "/api/builder/chat",
   "/api/users/forgot-password",
   "/api/renderer/appointments",
@@ -496,8 +495,6 @@ export const config = {
     "/api/forms/",
     "/api/contact",
     "/api/contact/",
-    "/api/intake",
-    "/api/intake/",
     "/api/builder/chat",
     "/api/builder/chat/",
     "/api/users/forgot-password",

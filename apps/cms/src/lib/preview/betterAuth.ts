@@ -46,7 +46,8 @@ if (process.env.NODE_ENV !== "production") {
   globalThis.__siabPreviewBetterAuthPool = pool
 }
 
-export const PREVIEW_ORIGIN = "https://preview.siteinabox.nl"
+export const PREVIEW_ORIGIN = "https://admin.siteinabox.nl"
+export const LEGACY_PREVIEW_ORIGIN = "https://preview.siteinabox.nl"
 const DEV_PREVIEW_HOST_PATTERNS = [
   "localhost:*",
   "127.0.0.1:*",
@@ -62,7 +63,7 @@ const DEV_PREVIEW_ORIGIN_PATTERNS = DEV_PREVIEW_HOST_PATTERNS.flatMap((host) => 
 ])
 
 export function getPreviewBetterAuthBaseURL() {
-  const allowedHosts = ["preview.siteinabox.nl"]
+  const allowedHosts = ["admin.siteinabox.nl", "preview.siteinabox.nl"]
   if (process.env.NODE_ENV === "development") {
     allowedHosts.push(...DEV_PREVIEW_HOST_PATTERNS)
   }
@@ -75,7 +76,7 @@ export function getPreviewBetterAuthBaseURL() {
 }
 
 export function getPreviewTrustedOrigins() {
-  const origins = [PREVIEW_ORIGIN]
+  const origins = [PREVIEW_ORIGIN, LEGACY_PREVIEW_ORIGIN]
   if (process.env.NODE_ENV === "development") {
     origins.push(...DEV_PREVIEW_ORIGIN_PATTERNS)
   }

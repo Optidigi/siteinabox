@@ -38,7 +38,7 @@ git status --short
 
 ## Architecture boundaries
 
-- `apps/landing` owns the marketing site; `apps/intake` owns `/intake`;
+- `apps/landing` owns the marketing site and the public `/intake` redirect;
   `apps/cms` owns Payload administration, tenants, and content;
   `apps/renderer` serves published tenant snapshots.
 - New sites are validated tenant/site/page/theme/SEO/publishing data, not

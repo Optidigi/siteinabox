@@ -723,7 +723,7 @@ describe("Mollie payment flow", () => {
       amount: { currency: "EUR", value: "499.00" },
       sequenceType: "first",
       customerId: "cst_test_123",
-      redirectUrl: "https://preview.siteinabox.nl/acme/checkout?payment=return",
+      redirectUrl: "https://admin.siteinabox.nl/acme/checkout?payment=return",
       webhookUrl: "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       metadata: {
         generationRunId: 500,

@@ -23,8 +23,6 @@
     "contracts:typecheck": "pnpm --dir packages/contracts typecheck",
     "docs:check": "node scripts/check-doc-links.mjs",
     "frontend:verify": "pnpm packages:typecheck && pnpm --dir apps/cms lint:ui-boundary && pnpm --dir apps/cms lint:ui-composition && pnpm --dir apps/cms lint:no-css",
-    "intake:build": "pnpm --filter siteinabox-intake build",
-    "intake:test": "pnpm --filter siteinabox-intake test",
     "landing:build": "pnpm --filter siteinabox-landing build",
     "landing:test": "pnpm --filter siteinabox-landing test",
     "legal:check": "pnpm --dir packages/legal-content check",
