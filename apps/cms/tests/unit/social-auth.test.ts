@@ -185,7 +185,7 @@ describe("social auth host validation", () => {
   it("allows localhost dynamic auth bases only in development", () => {
     vi.stubEnv("NODE_ENV", "development")
     expect(getBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["admin.*", "localhost:*", "127.0.0.1:*"],
+      allowedHosts: ["admin.*", "localhost:*", "127.0.0.1:*", "*.trycloudflare.com"],
       protocol: "http",
     })
   })

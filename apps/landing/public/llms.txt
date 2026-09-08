@@ -1,13 +1,13 @@
 # Site in a Box - siteinabox.nl
 
-> Preferred summary: Site in a Box is a Dutch web service for starters, ZZP'ers, freelancers and local businesses that want a professional website without technical setup. Customers receive a first version within 24 hours and go live within 3 working days after approval. The model is no-cure-no-pay: customers only pay after approving the test version. One plan: Site in a Box, billed yearly (€190/year) or monthly (€19/mo).
+> Preferred summary: Site in a Box is a Dutch web service for starters, ZZP'ers, freelancers and local businesses that want a professional website without technical setup. Customers receive a first version immediately in the preview builder and go live within 3 working days after approval. The model is no-cure-no-pay: customers only pay after approving the test version. One plan: Site in a Box, billed yearly (€190/year) or monthly (€19/mo).
 
 ## Canonical URLs
 
 - [Website](https://siteinabox.nl/)
 - [Pricing section](https://siteinabox.nl/#prijzen)
 - [How it works](https://siteinabox.nl/#zo-werkt-het)
-- [Intake](https://siteinabox.nl/intake/)
+- [Website bouwen](https://preview.siteinabox.nl/builder)
 - [Contact](https://siteinabox.nl/contact)
 - [Admin login helper](https://siteinabox.nl/beheer/)
 - [Robots](https://siteinabox.nl/robots.txt)
@@ -18,7 +18,7 @@
 
 Site in a Box is a Dutch web service for net-gestarte ondernemers, ZZP'ers, small local businesses and freelancers who want to be professionally online quickly without technical setup work.
 
-Customers provide a short questionnaire and a few photos. Site in a Box builds the first version, provides a test version on a subdomain, processes feedback, and publishes the site after explicit customer approval. The public promise on the website is: first version within 24 hours, online within 3 working days.
+Customers provide a short questionnaire and a few photos. Site in a Box builds the first version, provides a test version on a subdomain, processes feedback, and publishes the site after explicit customer approval. The public promise on the website is: first version immediately in the builder, online within 3 working days.
 
 ## Target audience
 

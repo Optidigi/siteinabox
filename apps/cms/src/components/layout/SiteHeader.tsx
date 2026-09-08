@@ -1,14 +1,15 @@
 "use client"
 
 import { SidebarTrigger } from "@siteinabox/ui/components/sidebar"
-import { Separator } from "@siteinabox/ui/components/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserMenu } from "./UserMenu"
+import { CmsAgentDrawer } from "./CmsAgentDrawer"
+import { useCmsAgentSelectionState } from "./CmsAgentSelection"
 import type { User } from "@/payload-types"
 import { usePathname } from "next/navigation"
 import { SiteSwitcher, type SiteSwitcherSite } from "@/components/layout/SiteSwitcher"
 
-function isPageEditorPath(pathname: string) {
+export function isPageEditorPath(pathname: string) {
   return /^\/pages\/(?:new|\d+|edit\/[^/]+)$/.test(pathname)
     || /^\/sites\/[^/]+\/pages\/(?:new|\d+|edit\/[^/]+)$/.test(pathname)
 }
@@ -23,28 +24,38 @@ export function SiteHeader({
   sites?: SiteSwitcherSite[]
 }) {
   const pathname = usePathname() ?? "/"
+  const selection = useCmsAgentSelectionState()
   const onPageEditor = isPageEditorPath(pathname)
-  const hideMobileNavTrigger = onPageEditor
-  const mobileNavClass = hideMobileNavTrigger ? "max-md:hidden" : undefined
   const slugMatch = pathname.match(/^\/sites\/([^/]+)/)
   const rawSlug = slugMatch?.[1]
-  const tenantSlug = rawSlug && !RESERVED_SITES_SEGMENTS.has(rawSlug) ? rawSlug : undefined
+  const tenantSlug = (rawSlug && !RESERVED_SITES_SEGMENTS.has(rawSlug) ? rawSlug : undefined)
+    ?? selection.tenantSlug
+    ?? (sites.length === 1 ? sites[0]?.slug : undefined)
   const currentSite = tenantSlug
     ? sites.find((site) => site.slug === tenantSlug) ?? { name: tenantSlug, slug: tenantSlug }
     : null
 
   return (
-    <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 flex h-14 md:h-12 items-center gap-2 border-b bg-background px-4">
-      <div className={mobileNavClass}>
-        <SidebarTrigger />
-      </div>
-      <Separator orientation="vertical" className={mobileNavClass ? `${mobileNavClass} mx-2 h-4` : "mx-2 h-4"} />
+    <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b-2 border-border bg-background px-4 md:px-5">
+      {!onPageEditor ? (
+        <SidebarTrigger variant="outline" className="md:hidden" />
+      ) : null}
       {currentSite && !onPageEditor ? (
         <div className="min-w-0">
           <SiteSwitcher current={currentSite} sites={sites} />
         </div>
       ) : null}
       <div className="flex-1" />
+      {tenantSlug ? (
+        <div className={onPageEditor ? "hidden min-[1280px]:block" : undefined}>
+          <CmsAgentDrawer
+            tenantSlug={tenantSlug}
+            pageSlug={selection.pageSlug}
+            selectedBlockIndex={selection.selectedBlockIndex}
+            onApplied={selection.applySnapshot ?? undefined}
+          />
+        </div>
+      ) : null}
       <div className="max-md:hidden">
         <ThemeToggle />
       </div>

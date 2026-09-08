@@ -50,6 +50,7 @@ import { LegalOperatorEvents } from "@/collections/LegalOperatorEvents"
 import { Pages } from "@/collections/Pages"
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { PreviewAccessGrants } from "@/collections/PreviewAccessGrants"
+import { BuilderSessions } from "@/collections/BuilderSessions"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
@@ -124,7 +125,10 @@ export default buildConfig({
     // blocks on an interactive prompt with no TTY, hanging every integration
     // suite's beforeAll. Dev (`pnpm dev`) and the `payload` CLI keep the
     // default (push on in dev) since `VITEST` is unset there.
-    push: process.env.VITEST ? false : undefined,
+    // `PAYLOAD_DB_PUSH=false` skips the same interactive drizzle prompt when a
+    // running local database already has schema (reconnect after Postgres was
+    // down must not hang waiting for y/N).
+    push: process.env.VITEST || process.env.PAYLOAD_DB_PUSH === "false" ? false : undefined,
     // Schema is managed via committed migration files in `src/migrations/`.
     // Generate via `pnpm payload migrate:create <name>`, apply via
     // `pnpm payload migrate`. In production, `scripts/migrate-on-boot.mjs`
@@ -153,6 +157,7 @@ export default buildConfig({
     SiteGenerationRuns,
     PublishedSiteSnapshots,
     PreviewAccessGrants,
+    BuilderSessions,
     CheckoutProgressDrafts,
     LegalDocuments,
     LegalPublicationEvents,

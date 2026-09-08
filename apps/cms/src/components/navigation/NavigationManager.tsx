@@ -17,20 +17,16 @@ import {
 } from "@dnd-kit/sortable"
 import { ArrowLeft, Plus, ListTree, PanelTop, PanelBottom } from "lucide-react"
 import { SegmentedPill } from "@/components/common/segmented-pill"
-import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { Button } from "@siteinabox/ui/components/button"
 import { SaveButton } from "@/components/save-ui/save-button"
 import { SaveStatusBar, type SaveStatus } from "@/components/save-ui/save-status-bar"
-import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
-import { MobileBackPill } from "@/components/common/mobile-back-pill"
-import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
+import { MobileFormActionBar } from "@/components/save-ui/mobile-form-action-bar"
 import { useRouter } from "next/navigation"
 import { EmptyState } from "@/components/empty-state"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { UnsavedChangesDialog } from "@/components/save-ui/unsaved-changes-dialog"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { updateNav } from "@/lib/actions/updateNav"
-import { cn } from "@siteinabox/ui/lib/utils"
 import { NavEntryRow, describeEntry } from "./NavEntryRow"
 import { NavEntryDialog } from "./NavEntryDialog"
 import type { NavEntry, NavPageOption, NavZone } from "./navTypes"
@@ -85,7 +81,6 @@ export function NavigationManager({
   const [showSaved, setShowSaved] = React.useState(false)
   const [saveFailed, setSaveFailed] = React.useState(false)
   const router = useRouter()
-  const isMobile = useIsMobile()
 
   // Per-menu dirtiness — drives the Save button's amber border + count badge,
   // exactly like PublishControls counts unsaved field changes in the editor.
@@ -160,38 +155,31 @@ export function NavigationManager({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Toolbar row — zone switch (left) + Save (right). The switch copies
-          the editor's ModeBar treatment: a SegmentedPill inside the shared
-          FLOATING_PILL_CLASS surface. Rendered inline here rather than fixed. */}
+      {/* Toolbar row — zone switch (left) + Save (right). One neo tray, same as the page-editor theme toolbar. */}
       <div className="flex items-center justify-between gap-3">
-        <div className={cn(FLOATING_PILL_CLASS, "inline-flex")}>
-          <SegmentedPill<NavZone>
-            ariaLabel={t("menu")}
-            value={zone}
-            onValueChange={(next) => next && setZone(next)}
-            allowDeselect={false}
-            items={[
-              { value: "navbar", label: `${t("header")} (${navbar.length})`, icon: PanelTop, ariaLabel: t("headerAria") },
-              { value: "footer", label: `${t("footer")} (${footer.length})`, icon: PanelBottom, ariaLabel: t("footerAria") },
-            ]}
+        <SegmentedPill<NavZone>
+          ariaLabel={t("menu")}
+          value={zone}
+          onValueChange={(next) => next && setZone(next)}
+          allowDeselect={false}
+          items={[
+            { value: "navbar", label: `${t("header")} (${navbar.length})`, icon: PanelTop, ariaLabel: t("headerAria") },
+            { value: "footer", label: `${t("footer")} (${footer.length})`, icon: PanelBottom, ariaLabel: t("footerAria") },
+          ]}
+        />
+
+        <div className="hidden items-center gap-2 md:flex">
+          <Button type="button" variant="outline" onClick={() => guard.guardedNavigate(goBack)}>
+            <ArrowLeft className="h-4 w-4" /> {tCommon("back")}
+          </Button>
+          <SaveButton
+            type="button"
+            onClick={save}
+            pending={saving}
+            isDirty={isDirty}
+            dirtyCount={dirtyCount}
           />
         </div>
-
-        {/* Back + Save — desktop. Phone gets the floating pills below. */}
-        {!isMobile && (
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => guard.guardedNavigate(goBack)}>
-              <ArrowLeft className="h-4 w-4" /> {tCommon("back")}
-            </Button>
-            <SaveButton
-              type="button"
-              onClick={save}
-              pending={saving}
-              isDirty={isDirty}
-              dirtyCount={dirtyCount}
-            />
-          </div>
-        )}
       </div>
 
       {list.length === 0 ? (
@@ -290,12 +278,16 @@ export function NavigationManager({
         onConfirm={guard.confirm}
       />
       <SaveStatusBar status={saveStatus} onRetry={save} />
-      {isMobile && (
-        <>
-          <MobileBackPill onBack={() => guard.guardedNavigate(goBack)} position="top-right" offset="3.75rem" />
-          <MobileSavePill status={saveStatus} dirtyCount={dirtyCount} onSave={save} />
-        </>
-      )}
+      <MobileFormActionBar
+        onBack={() => guard.guardedNavigate(goBack)}
+        save={{
+          type: "button",
+          onClick: save,
+          pending: saving,
+          isDirty,
+          dirtyCount,
+        }}
+      />
     </div>
   )
 }

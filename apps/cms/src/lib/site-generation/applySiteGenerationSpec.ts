@@ -78,6 +78,8 @@ export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
   mediaAssets?: readonly SiteGenerationMediaAsset[]
   /** Move unspecified published pages to draft during an explicit replacement cutover. */
   retireUnspecifiedPages?: boolean
+  /** Apply and retire only this tenant; refuse slug/domain owned by a different tenant. */
+  pinTenantId?: string | number
 }
 
 /** A local, operator-supplied asset that can be uploaded during a seed/import. */
@@ -461,6 +463,7 @@ const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSit
     contact: settings.contact,
     nap: settings.nap,
     hours: settings.hours,
+    appointments: settings.appointments,
     serviceArea: settings.serviceArea,
     navigation: settings.navigation ? {
       primary: normalizeNav(settings.navigation.primary, pageBySlug),
@@ -553,10 +556,28 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
   return mediaIds
 }
 
-const upsertTenant = async (payload: Payload, spec: SiteGenerationSpec, siteManifest: Record<string, unknown>, theme: ThemeTokens | null) => {
+const upsertTenant = async (
+  payload: Payload,
+  spec: SiteGenerationSpec,
+  siteManifest: Record<string, unknown>,
+  theme: ThemeTokens | null,
+  pinTenantId?: string | number,
+) => {
   const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } })
   const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } })
   if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
+  if (pinTenantId != null) {
+    const pinned = await findOne<Tenant>(payload, "tenants", { id: { equals: pinTenantId } })
+    if (!pinned) throw new Error(`Pinned tenant ${pinTenantId} was not found.`)
+    if (bySlug && String(bySlug.id) !== String(pinTenantId)) {
+      throw new Error(`Generation spec slug "${spec.tenant.slug}" belongs to another tenant.`)
+    }
+    if (byDomain && String(byDomain.id) !== String(pinTenantId)) {
+      throw new Error(`Generation spec domain "${spec.tenant.domain}" belongs to another tenant.`)
+    }
+    const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: pinned.status ?? "provisioning", emailSending: pinned.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
+    return { doc: await payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+  }
   const existing = bySlug ?? byDomain
   const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: existing?.status ?? "provisioning", emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
   if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
@@ -621,7 +642,7 @@ export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGen
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const preparedMedia = await prepareMediaAssets(options.mediaAssets)
   try {
-    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
+    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId)
     const tenantId = tenant.doc.id as string | number
     const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets) : new Map<string, string | number>()
     const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)

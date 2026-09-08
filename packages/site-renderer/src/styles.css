@@ -163,6 +163,35 @@ html[data-rt-mode="dark"] {
   box-shadow: none;
 }
 
+.site-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--siab-radius-md, 0.5rem);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.site-btn-outline {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.site-btn:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent);
+  outline-offset: 2px;
+}
+
 :where(.rt-canvas) a.hero-secondary-action {
   border: 1px solid color-mix(in oklab, var(--foreground) 58%, transparent);
   background-color: transparent;

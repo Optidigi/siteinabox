@@ -3,12 +3,16 @@ import { AlertTriangle } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@siteinabox/ui/components/table"
 import { useLocale, useTranslations } from "next-intl"
 import type { OperationsAttentionRow } from "@/lib/queries/generationOperations"
+import { encodeWorkflowTextKey } from "@/i18n/workflowText"
 import { OperationsTableFrame } from "./OperationsTableFrame"
 
 export function OperationsAttentionTable({ rows }: { rows: OperationsAttentionRow[] }) {
   const t = useTranslations("generationOperations")
   const locale = useLocale()
-  const workflowText = (value: string) => t.has(`workflowText.${value}`) ? t(`workflowText.${value}`) : value
+  const workflowText = (value: string) => {
+    const key = `workflowText.${encodeWorkflowTextKey(value)}`
+    return t.has(key) ? t(key) : value
+  }
   const dateTime = (value: string | null) => value
     ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Amsterdam" }).format(new Date(value))
     : "-"

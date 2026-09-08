@@ -89,10 +89,29 @@ fallback remains `CLOUDFLARE_EMAIL_SMTP_TOKEN`.
 CMS magic-link signup remains closed. A CMS login link is only sent when the
 submitted email matches exactly one existing eligible Payload `users` record.
 Customer preview magic links are separate: they use `/api/preview-auth/*`,
-isolated `preview_auth_*` tables, and the `siab-preview-auth` cookie prefix. A
-link is sent only when the email has an active `preview-access-grants` row for
-the requested client slug, and the session is authorized server-side against
-that grant before preview data loads or mutates.
+isolated `preview_auth_*` tables, and the `siab-preview-auth` cookie prefix.
+Public builder access is login-first on `/builder`. A first-time register or
+login magic link may be sent without a preview grant when the callback is the
+builder itself. When a `previewClientSlug` is present, the email must still
+have an active `preview-access-grants` row for that slug. Normalized email is
+the lead id. A CMS `tenants` row is created only after the first successful
+Sitegen apply. Builder chat and facts persist in `builder-sessions` keyed by
+email so another device can resume the same thread after a magic link. HMAC
+preview cookies are not used. Payload CMS users are created only after paid
+live handoff, not at preview register.
+
+Local development may skip preview magic-link mail: `GET /api/builder/dev-session`
+exists only when `NODE_ENV=development` and the request Host is loopback. It
+sets the same `siab-preview-auth` session cookie a verified magic link would.
+It is not available on `preview.siteinabox.nl` or production. CMS local login
+uses a seeded password super-admin (`pnpm --dir apps/cms run seed:local-admin`),
+not a preview session.
+
+The session is authorized server-side against the grant before preview data
+loads or mutates. Builder chat patches or regenerates a site only when the
+session email has an active preview grant for that tenant. A revoked grant
+does not fall back to a stored `builder-sessions` slug. Preview `/{clientSlug}`
+routes redirect to `/builder`.
 
 ## Provider Redirect URLs
 
@@ -118,7 +137,8 @@ slug-scoped preview route:
 
 ```text
 https://preview.siteinabox.nl/api/preview-auth/magic-link/verify
-https://preview.siteinabox.nl/<clientSlug>
+https://preview.siteinabox.nl/builder
+https://preview.siteinabox.nl/builder/<clientSlug>
 ```
 
 Example for Amicare:

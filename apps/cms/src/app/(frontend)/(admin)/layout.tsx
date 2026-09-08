@@ -12,6 +12,7 @@ import config from "@/payload.config"
 import { getTenantLegalRequirements } from "@/lib/legal/customerRequirements"
 import { tenantAnalyticsDashboardVisible } from "@/lib/analytics/config"
 import { LegalRequirementBanner } from "@/components/legal/LegalRequirementBanner"
+import { CmsAgentSelectionProvider } from "@/components/layout/CmsAgentSelection"
 import { listTenants } from "@/lib/queries/tenants"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,12 +38,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <SidebarProvider>
         <AppSidebar mode={ctx.mode} role={user.role} analyticsVisible={analyticsVisible} />
         <SidebarInset className="min-w-0">
+          <CmsAgentSelectionProvider>
           <SiteHeader user={user} sites={sites} />
           <LegalRequirementBanner requirements={legalRequirements} canAccept={user.role === "owner"} locale={locale} />
           {/* U2 / methodology §1 16-px content-inset floor — `max-md:p-4`
               keeps Cards from touching the viewport edge on phones (Cards
               previously sat with only 8 px inset under `max-md:p-2`). */}
           <main className="min-w-0 flex-1 max-md:p-4 md:p-6">{children}</main>
+          </CmsAgentSelectionProvider>
         </SidebarInset>
       </SidebarProvider>
     </NextIntlClientProvider>

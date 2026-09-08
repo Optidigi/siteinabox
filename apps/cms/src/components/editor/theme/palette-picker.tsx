@@ -1,6 +1,7 @@
 "use client"
 import * as React from "react"
 import { Moon, Sun } from "lucide-react"
+import { Button } from "@siteinabox/ui/components/button"
 import { Switch } from "@siteinabox/ui/components/switch"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
@@ -18,7 +19,7 @@ export const PalettePicker: React.FC<{
   value: ColorSchemeId | undefined
   mode: ThemeMode
   onChange: (next: { colors?: { schemeId: ColorSchemeId }; appearance?: { mode: ThemeMode } }) => void
-  layout?: "default" | "mobile" | "inline"
+  layout?: "default" | "mobile" | "inline" | "settings"
   swatchSizeClassName?: string
 }> = ({ palettes, value, mode, onChange, layout = "default", swatchSizeClassName }) => {
   const t = useTranslations("editor")
@@ -100,6 +101,35 @@ export const PalettePicker: React.FC<{
         ))}
       </div>
     )
+
+  if (layout === "settings") {
+    return (
+      <div role="group" aria-label={t("colourPalette")} className="flex w-full flex-col gap-1">
+        {palettes.map((preset) => {
+          const active = activeId === preset.id
+          return (
+            <Button
+              key={preset.id}
+              type="button"
+              variant={active ? "secondary" : "ghost"}
+              aria-pressed={active}
+              aria-label={t("applyPalette", { label: preset.label })}
+              onClick={() => onChange({ colors: { schemeId: preset.id } })}
+              className="h-auto w-full justify-start gap-3 rounded-none px-2.5 py-2"
+            >
+              <PaletteSwatch
+                accent={preset.swatch.accent}
+                surface={preset.swatch.surface}
+                fill="solid"
+                className="size-8 shrink-0 rounded-full border border-border"
+              />
+              <span className="min-w-0 flex-1 text-left text-sm font-medium">{preset.label}</span>
+            </Button>
+          )
+        })}
+      </div>
+    )
+  }
 
   if (layout === "mobile") {
     return (

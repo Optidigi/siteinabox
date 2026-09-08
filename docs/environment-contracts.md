@@ -1,6 +1,6 @@
 # Environment contracts
 
-`docs/environment-inventory.json` records the 102 environment names read by
+`docs/environment-inventory.json` records the 109 environment names read by
 application source and tests across CMS, intake, landing, and renderer. The
 inventory is source-owned; deployment-only image digests and Compose plumbing
 are not falsely presented as application reads. The check includes non-ignored

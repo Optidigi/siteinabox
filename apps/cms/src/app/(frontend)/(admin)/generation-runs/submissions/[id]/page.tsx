@@ -16,6 +16,7 @@ import {
 import { statusVariant } from "@/lib/badge-helpers"
 import { requireRole } from "@/lib/authGate"
 import { getAdminLocale, getAdminTranslations } from "@/i18n/admin"
+import { encodeWorkflowTextKey } from "@/i18n/workflowText"
 import { defaultReviewedGenerationInput } from "@/lib/intake/reviewIntakeSubmission"
 import {
   getIntakeSubmissionForOperations,
@@ -130,6 +131,10 @@ export default async function IntakeSubmissionDetailPage({
   }
   const canDelete = !runId && !tenantId
   const workflowSummary = workflowSummaryForIntakeSubmission(submission)
+  const workflowText = (value: string) => {
+    const key = `workflowText.${encodeWorkflowTextKey(value)}`
+    return operationsT.has(key) ? operationsT(key) : value
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -139,9 +144,9 @@ export default async function IntakeSubmissionDetailPage({
           <span className="inline-flex flex-wrap items-center gap-2">
             <Badge variant={workflowSummary.state === "Needs attention" ? "destructive" : "secondary"}>
               <span className="size-1.5 rounded-full bg-current" aria-hidden />
-              {operationsT.has(`workflowText.${workflowSummary.label}`) ? operationsT(`workflowText.${workflowSummary.label}`) : workflowSummary.label}
+              {workflowText(workflowSummary.label)}
             </Badge>
-            <span>{operationsT.has(`workflowText.${workflowSummary.helper}`) ? operationsT(`workflowText.${workflowSummary.helper}`) : workflowSummary.helper}</span>
+            <span>{workflowText(workflowSummary.helper)}</span>
           </span>
         }
         action={
@@ -175,8 +180,8 @@ export default async function IntakeSubmissionDetailPage({
         </CardHeader>
         <CardContent className="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <div className="text-lg font-semibold">{operationsT.has(`workflowText.${workflowSummary.primaryAction}`) ? operationsT(`workflowText.${workflowSummary.primaryAction}`) : workflowSummary.primaryAction}</div>
-            <div className="text-muted-foreground">{operationsT.has(`workflowText.${workflowSummary.helper}`) ? operationsT(`workflowText.${workflowSummary.helper}`) : workflowSummary.helper}</div>
+            <div className="text-lg font-semibold">{workflowText(workflowSummary.primaryAction)}</div>
+            <div className="text-muted-foreground">{workflowText(workflowSummary.helper)}</div>
           </div>
           <div className="flex flex-wrap gap-2">
             {runId && (

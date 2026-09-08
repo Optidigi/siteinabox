@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { LinkRef, NavLink, SiteFooter, SiteSettings } from "@siteinabox/contracts"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../cn"
 import { assertNever } from "../blocks/shared"
 import type { MediaResolver } from "../media"
 import { Footer01 } from "./Footer01"

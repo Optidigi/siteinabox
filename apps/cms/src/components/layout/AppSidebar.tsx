@@ -4,8 +4,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList, Scale, CalendarDays } from "lucide-react"
+import { Button } from "@siteinabox/ui/components/button"
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
+  Sidebar, SidebarCollapseTrigger, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   useSidebar
 } from "@siteinabox/ui/components/sidebar"
@@ -16,7 +17,8 @@ type Role = "super-admin" | "owner" | "editor" | "viewer"
 export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode; role: Role; analyticsVisible?: boolean }) {
   const pathname = usePathname() ?? "/"
   const t = useTranslations("app")
-  const { isMobile, setOpenMobile } = useSidebar()
+  const tCommon = useTranslations("common")
+  const { isMobile, open, setOpenMobile, toggleSidebar } = useSidebar()
   const lastPathRef = useRef(pathname)
   useEffect(() => {
     if (isMobile && lastPathRef.current !== pathname) {
@@ -70,40 +72,50 @@ export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode
       className="[--sidebar-primary:var(--brand)] [--sidebar-primary-foreground:var(--brand-foreground)]"
     >
       <SidebarHeader>
-        <Link href="/" aria-label={t("home")} className="flex items-center px-2 py-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
-          {/* Expanded: full wordmark logo */}
-          <span className="group-data-[collapsible=icon]:hidden">
-            <img src="/logos/logo-light.svg" alt="SiteInABox" className="h-7 w-auto dark:hidden" />
-            <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="hidden dark:block h-7 w-auto" />
-          </span>
-          {/* Collapsed: icon mark only */}
-          <span className="hidden group-data-[collapsible=icon]:flex items-center justify-center">
-            <img src="/logos/icon-light.svg" alt="" className="h-6 w-6 dark:hidden" />
-            <img src="/logos/icon-dark.svg"  alt="" className="hidden dark:block h-6 w-6" />
-          </span>
-        </Link>
+        <div className="flex items-center gap-1 group-data-[collapsible=icon]:justify-center">
+          {isMobile || open ? (
+            <Link href="/" aria-label={t("home")} className="flex min-w-0 flex-1 items-center px-2 py-1.5">
+              <img src="/logos/logo-light.svg" alt="SiteInABox" className="h-7 w-auto dark:hidden" />
+              <img src="/logos/logo-dark.svg" alt="SiteInABox" className="hidden h-7 w-auto dark:block" />
+            </Link>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-8"
+              aria-label={tCommon("openSidebar")}
+              title={tCommon("openSidebar")}
+              onClick={toggleSidebar}
+            >
+              <img src="/logos/icon-light.svg" alt="" className="h-6 w-6 dark:hidden" />
+              <img src="/logos/icon-dark.svg" alt="" className="hidden h-6 w-6 dark:block" />
+            </Button>
+          )}
+          <SidebarCollapseTrigger className="group-data-[collapsible=icon]:hidden" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("overview")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/")}><Link href="/"><LayoutDashboard /> {t("dashboard")}</Link></SidebarMenuButton></SidebarMenuItem>
+              <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/")} tooltip={t("dashboard")}><Link href="/"><LayoutDashboard /> {t("dashboard")}</Link></SidebarMenuButton></SidebarMenuItem>
               {(mode === "super-admin" || analyticsVisible) && (
-                <SidebarMenuItem className="max-md:hidden"><SidebarMenuButton asChild isActive={isActive(analyticsHref)}><Link href={analyticsHref}><BarChart3 /> {t("analytics")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem className="max-md:hidden"><SidebarMenuButton asChild isActive={isActive(analyticsHref)} tooltip={t("analytics")}><Link href={analyticsHref}><BarChart3 /> {t("analytics")}</Link></SidebarMenuButton></SidebarMenuItem>
               )}
               {showSettings && (
-                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(settingsHref)}><Link href={settingsHref}><Settings /> {t("settings")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(settingsHref)} tooltip={t("settings")}><Link href={settingsHref}><Settings /> {t("settings")}</Link></SidebarMenuButton></SidebarMenuItem>
               )}
               {showTeam && (
-                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(teamHref)}><Link href={teamHref}><Users /> {t("team")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(teamHref)} tooltip={t("team")}><Link href={teamHref}><Users /> {t("team")}</Link></SidebarMenuButton></SidebarMenuItem>
               )}
               {mode === "super-admin" && !inTenantView && (
                 <>
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/sites")}><Link href="/sites"><Globe /> {t("sites")}</Link></SidebarMenuButton></SidebarMenuItem>
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/operations")}><Link href="/operations"><ClipboardList /> {t("operations")}</Link></SidebarMenuButton></SidebarMenuItem>
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/legal")}><Link href="/legal"><Scale /> {t("legal")}</Link></SidebarMenuButton></SidebarMenuItem>
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/users")}><Link href="/users"><Users /> {t("users")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/sites")} tooltip={t("sites")}><Link href="/sites"><Globe /> {t("sites")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/operations")} tooltip={t("operations")}><Link href="/operations"><ClipboardList /> {t("operations")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/legal")} tooltip={t("legal")}><Link href="/legal"><Scale /> {t("legal")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/users")} tooltip={t("users")}><Link href="/users"><Users /> {t("users")}</Link></SidebarMenuButton></SidebarMenuItem>
                 </>
               )}
             </SidebarMenu>
@@ -114,15 +126,15 @@ export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode
             <SidebarGroupLabel>{t("site")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/pages`)}><Link href={`${base}/pages`}><FileText /> {t("pages")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/pages`)} tooltip={t("pages")}><Link href={`${base}/pages`}><FileText /> {t("pages")}</Link></SidebarMenuButton></SidebarMenuItem>
                 {(role === "super-admin" || role === "owner") && (
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/navigation`)}><Link href={`${base}/navigation`}><Navigation /> {t("navigation")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/navigation`)} tooltip={t("navigation")}><Link href={`${base}/navigation`}><Navigation /> {t("navigation")}</Link></SidebarMenuButton></SidebarMenuItem>
                 )}
-                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/media`)}><Link href={`${base}/media`}><ImageIcon /> {t("media")}</Link></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/forms`)}><Link href={`${base}/forms`}><Inbox /> {t("forms")}</Link></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/appointments`)}><Link href={`${base}/appointments`}><CalendarDays /> {t("appointments")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/media`)} tooltip={t("media")}><Link href={`${base}/media`}><ImageIcon /> {t("media")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/forms`)} tooltip={t("forms")}><Link href={`${base}/forms`}><Inbox /> {t("forms")}</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/appointments`)} tooltip={t("appointments")}><Link href={`${base}/appointments`}><CalendarDays /> {t("appointments")}</Link></SidebarMenuButton></SidebarMenuItem>
                 {inTenantView && (
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/onboarding`)}><Link href={`${base}/onboarding`}><ListChecks /> {t("onboarding")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/onboarding`)} tooltip={t("onboarding")}><Link href={`${base}/onboarding`}><ListChecks /> {t("onboarding")}</Link></SidebarMenuButton></SidebarMenuItem>
                 )}
               </SidebarMenu>
             </SidebarGroupContent>

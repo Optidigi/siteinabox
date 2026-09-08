@@ -28,6 +28,10 @@ describe("isSuperAdminDomain", () => {
   it("dev convenience: localhost is super-admin in dev even when configured is set", () => {
     expect(isSuperAdminDomain("localhost", "siteinabox.nl", true)).toBe(true)
   })
+  it("dev convenience: Cloudflare quick tunnels are super-admin in development", () => {
+    expect(isSuperAdminDomain("random-words.trycloudflare.com", "siteinabox.nl", true)).toBe(true)
+    expect(isSuperAdminDomain("random-words.trycloudflare.com", "siteinabox.nl", false)).toBe(false)
+  })
   it("prod: localhost is NOT super-admin when configured is set", () => {
     expect(isSuperAdminDomain("localhost", "siteinabox.nl", false)).toBe(false)
   })

@@ -7,13 +7,10 @@ import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@siteinabox/ui/components/card"
 import { SegmentedPill } from "@/components/common/segmented-pill"
-import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { Button } from "@siteinabox/ui/components/button"
 import { SaveButton } from "@/components/save-ui/save-button"
 import { SaveStatusBar, type SaveStatus } from "@/components/save-ui/save-status-bar"
-import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
-import { MobileBackPill } from "@/components/common/mobile-back-pill"
-import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
+import { MobileFormActionBar } from "@/components/save-ui/mobile-form-action-bar"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
@@ -155,7 +152,6 @@ export function SettingsForm({
   const [showSaved, setShowSaved] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const [dataRequestPending, setDataRequestPending] = useState(false)
-  const isMobile = useIsMobile()
 
   // FN-2026-0050 — guard against accidental nav loss with unsaved settings.
   // Same shape every other form in the admin uses.
@@ -342,34 +338,28 @@ export function SettingsForm({
     <RtManifestProvider manifest={manifest}>
       <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="flex max-w-3xl flex-col gap-4">
-        {/* Toolbar row — section switch (left) + Save (right). Mirrors the
-            navigation page shell: a SegmentedPill inside the shared
-            FLOATING_PILL_CLASS surface, paired with the canonical SaveButton. */}
+        {/* Toolbar row — section switch (left) + Save (right). One neo tray, same as the page-editor theme toolbar. */}
         <div className="flex items-center justify-between gap-3">
-          <div className={cn(FLOATING_PILL_CLASS, "inline-flex")}>
-            <SegmentedPill<SectionKey>
-              ariaLabel={t("sectionLabel")}
-              value={section}
-              onValueChange={(next) => next && setSection(next)}
-              allowDeselect={false}
-              items={sections.map((s) => ({
-                value: s.key,
-                label: s.label,
-                icon: s.Icon,
-                ariaLabel: s.label,
-              }))}
-            />
+          <SegmentedPill<SectionKey>
+            ariaLabel={t("sectionLabel")}
+            value={section}
+            onValueChange={(next) => next && setSection(next)}
+            allowDeselect={false}
+            items={sections.map((s) => ({
+              value: s.key,
+              label: s.label,
+              icon: s.Icon,
+              ariaLabel: s.label,
+            }))}
+          />
+          <div className="hidden items-center gap-2 md:flex">
+            <Button type="button" variant="outline" onClick={() => guard.guardedNavigate(goBack)}>
+              <ArrowLeft className="h-4 w-4" /> {tCommon("back")}
+            </Button>
+            {canEdit && (
+              <SaveButton type="submit" pending={pending} isDirty={form.formState.isDirty} dirtyCount={dirtyCount} errorCount={errorCount} />
+            )}
           </div>
-          {!isMobile && (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => guard.guardedNavigate(goBack)}>
-                <ArrowLeft className="h-4 w-4" /> {tCommon("back")}
-              </Button>
-              {canEdit && (
-                <SaveButton type="submit" pending={pending} isDirty={form.formState.isDirty} dirtyCount={dirtyCount} errorCount={errorCount} />
-              )}
-            </div>
-          )}
         </div>
 
         {/* All sections stay mounted (inactive ones hidden) so react-hook-form
@@ -410,23 +400,19 @@ export function SettingsForm({
         onConfirm={guard.confirm}
       />
       {canEdit && <SaveStatusBar status={saveStatus} errorCount={errorCount} onRetry={onSubmit} />}
-      {isMobile && (
-        <>
-          <MobileBackPill
-            onBack={() => guard.guardedNavigate(goBack)}
-            position="top-right"
-            offset={canEdit ? "3.75rem" : undefined}
-          />
-          {canEdit && (
-            <MobileSavePill
-              status={saveStatus}
-              dirtyCount={dirtyCount}
-              errorCount={errorCount}
-              onSave={onSubmit}
-            />
-          )}
-        </>
-      )}
+      <MobileFormActionBar
+        onBack={() => guard.guardedNavigate(goBack)}
+        save={canEdit
+          ? {
+              type: "button",
+              onClick: onSubmit,
+              pending,
+              isDirty: form.formState.isDirty,
+              dirtyCount,
+              errorCount,
+            }
+          : null}
+      />
       </FormProvider>
     </RtManifestProvider>
   )

@@ -210,6 +210,8 @@ const processStoredIntakeGeneration = async (
     provider: SiteGenerationProvider
     mockFixture?: MockGenerationFixture
     maxGenerationAttempts: number
+    retireUnspecifiedPages?: boolean
+    pinTenantId?: string | number
   },
 ): Promise<IntakeProcessingResult> => {
   let intake = input.intake
@@ -285,6 +287,8 @@ const processStoredIntakeGeneration = async (
     const applyResult = await applySiteGenerationSpec(payload, spec, {
       variantScope: "self-serve",
       mediaMode,
+      ...(input.retireUnspecifiedPages ? { retireUnspecifiedPages: true } : {}),
+      ...(input.pinTenantId != null ? { pinTenantId: input.pinTenantId } : {}),
     })
     if (!applyResult.ok) {
       const failure = { message: "Generated SiteGenerationSpec could not be applied", validation: applyResult.validation }
@@ -410,6 +414,8 @@ export async function processStoredIntakeSubmission(
     provider?: SiteGenerationProvider
     providerConfig?: SiteGenerationProviderConfig
     maxGenerationAttempts?: number
+    retireUnspecifiedPages?: boolean
+    pinTenantId?: string | number
   } = {},
 ): Promise<IntakeProcessingResult> {
   const mockFixture = options.mockFixture ?? "generic"
@@ -455,6 +461,8 @@ export async function processStoredIntakeSubmission(
     provider,
     mockFixture,
     maxGenerationAttempts,
+    retireUnspecifiedPages: options.retireUnspecifiedPages,
+    pinTenantId: options.pinTenantId,
   })
 }
 

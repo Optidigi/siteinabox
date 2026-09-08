@@ -13,6 +13,7 @@ import { relationId, relationLabel, relationSlug, workflowSummaryForGenerationRu
 import type { SiteGenerationRun } from "@/payload-types"
 import { ExternalLink } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { encodeWorkflowTextKey } from "@/i18n/workflowText"
 import { PreviewAccessQuickSend } from "./PreviewAccessQuickSend"
 
 const formatDate = (value: string | null | undefined, locale: string) => {
@@ -58,7 +59,10 @@ export function GenerationOperationsTable({
             const workflow = workflowSummaryForGenerationRun(run)
             const email = textField(run.intakeSubmission, "contactEmail") ?? textField(run.payment, "customerEmail")
             const canSendPreview = workflow.primaryAction === "Send preview" && Boolean(email)
-            const workflowText = (value: string) => t.has(`workflowText.${value}`) ? t(`workflowText.${value}`) : value
+            const workflowText = (value: string) => {
+              const key = `workflowText.${encodeWorkflowTextKey(value)}`
+              return t.has(key) ? t(key) : value
+            }
 
             return (
               <TableRow key={run.id}>

@@ -95,11 +95,11 @@ export function EditorThemeToolbar({
   return (
     <>
       <div className="flex justify-center py-2 md:hidden">
-        <div className="rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur-sm">
+        <div className={cn(FLOATING_PILL_CLASS, "inline-flex")}>
           <div
             role="group"
             aria-label={t("themeControls")}
-            className="inline-flex items-center gap-1"
+            className="inline-flex items-center gap-1.5"
           >
             <BackgroundModeControl
               value={theme?.appearance?.backgroundMode}
@@ -110,22 +110,20 @@ export function EditorThemeToolbar({
             <Button
               type="button"
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={handleShuffle}
-              className="h-8 rounded-md px-2.5"
             >
               <Dices className="size-4" aria-hidden />
-              <span className="ml-1.5">{t("shuffle")}</span>
+              <span>{t("shuffle")}</span>
             </Button>
             <Button
               type="button"
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={handleDefault}
-              className="h-8 rounded-md px-2.5"
             >
               <RotateCcw className="size-4" aria-hidden />
-              <span className="ml-1.5">{t("default")}</span>
+              <span>{t("default")}</span>
             </Button>
           </div>
         </div>
@@ -137,7 +135,7 @@ export function EditorThemeToolbar({
             <div className="flex justify-center py-2">
               <div className={cn(FLOATING_PILL_CLASS, "inline-flex")}>
                 <div
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5"
+                  className="inline-flex items-center gap-1.5"
                   role="group"
                   aria-label={t("themeControls")}
                 >
@@ -152,14 +150,13 @@ export function EditorThemeToolbar({
                       ref={(element) => { segmentRefs.current[segment] = element }}
                       type="button"
                       size="sm"
-                      variant={openSegment === segment ? "secondary" : "ghost"}
+                      variant={openSegment === segment ? "default" : "outline"}
                       aria-label={ariaLabel}
                       aria-pressed={openSegment === segment}
-                      className="h-8 rounded-md px-3"
                       onClick={() => setOpenSegment((current) => (current === segment ? null : segment))}
                     >
                       <Icon className="size-4" aria-hidden />
-                      <span className="ml-1.5">{label}</span>
+                      <span>{label}</span>
                     </Button>
                   ))}
                 </div>
@@ -170,7 +167,7 @@ export function EditorThemeToolbar({
             side="bottom"
             align="center"
             sideOffset={4}
-            className="w-auto max-w-[calc(100vw-2rem)] rounded-md border border-border/40 bg-card/95 shadow-md backdrop-blur-sm p-3"
+            className="w-auto max-w-[calc(100vw-2rem)] p-3"
             onPointerDownOutside={() => setOpenSegment(null)}
             onFocusOutside={() => setOpenSegment(null)}
             onOpenAutoFocus={(e) => e.preventDefault()}

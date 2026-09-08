@@ -4,14 +4,12 @@ import * as React from "react"
 import type { LucideIcon } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
+import { neoTray } from "@siteinabox/ui/lib/retro"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 /**
- * Shared segmented-pill control matching the ModeToggle (Canvas / Sidebar)
- * visual: a rounded-md `bg-muted/30` capsule containing filled-on-active /
- * ghost-on-inactive shadcn Buttons.
- *
- * Used by `ModeToggle` (2-state, always one active).
+ * Shared segmented control on the operator neo chrome tile.
+ * Active = yellow default button; inactive = outline. No second capsule style.
  */
 export interface SegmentedPillItem<V extends string> {
   value: V
@@ -55,12 +53,7 @@ export function SegmentedPill<V extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={cn(
-        size === "lg"
-          ? "inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 p-1"
-          : "inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5",
-        className,
-      )}
+      className={cn(neoTray, "inline-flex items-center gap-1.5 p-1.5", className)}
     >
       {items.map((item) => {
         const Icon = item.icon
@@ -73,18 +66,15 @@ export function SegmentedPill<V extends string>({
           <Button
             key={item.value}
             type="button"
-            size="sm"
-            variant={isActive ? "default" : "ghost"}
+            size={size === "lg" ? "default" : "sm"}
+            variant={isActive ? "default" : "outline"}
             aria-pressed={isActive}
             aria-label={item.ariaLabel ?? item.label}
             ref={itemRef ? (el) => itemRef(item.value, el) : undefined}
             onClick={onClick}
-            className={cn(
-              size === "lg" ? "h-9 rounded-md px-3 text-sm" : "h-7 rounded-sm px-2",
-            )}
           >
             <Icon className={cn(size === "lg" ? "size-5" : "size-4")} aria-hidden />
-            <span className={cn(size === "lg" ? "ml-2" : "ml-1.5", labelBreakpoint === "md" && "hidden md:inline")}>
+            <span className={cn(labelBreakpoint === "md" && "hidden md:inline")}>
               {item.label}
             </span>
           </Button>

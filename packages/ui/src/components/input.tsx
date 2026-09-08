@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { cn } from "../lib/utils"
+import { neoField } from "../lib/retro"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -8,12 +9,9 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        // 44 px tap-target floor on mobile (h-11). h-9 from md+ keeps
-        // desktop density. Text sizes (text-base on mobile, md:text-sm)
-        // unchanged — that pair already prevents iOS auto-zoom.
-        "h-11 md:h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-        "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+        "flex h-11 w-full min-w-0 px-3 py-2 text-base file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-heading md:h-10 md:text-sm",
+        neoField,
+        "shadow-shadow aria-invalid:border-destructive",
         className
       )}
       {...props}
@@ -22,4 +20,3 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 }
 
 export { Input }
-

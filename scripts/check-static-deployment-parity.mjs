@@ -36,6 +36,7 @@ const staticDockerContracts = [
   ["Node build stage", "FROM node:${NODE_VERSION} AS build"],
   ["pinned pnpm bootstrap", "RUN npm install -g pnpm@11.21.0"],
   ["frozen dependency installation", "RUN pnpm install --frozen-lockfile"],
+  ["production Node build", "ENV NODE_ENV=production"],
   ["Nginx static runtime", "FROM nginx:${NGINX_VERSION}"],
   ["default Nginx config removal", "RUN rm -f /etc/nginx/conf.d/default.conf"],
   ["static healthcheck", "HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1"],
@@ -113,6 +114,7 @@ const allowedVariances = [
 present("intake /intake redirect", files.intakeNginx, "location = /intake");
 present("intake /intake prefix route", files.intakeNginx, "location ^~ /intake/");
 present("intake /intake rewrite", files.intakeNginx, "rewrite ^/intake/(.*)$ /$1 break;");
+present("intake /intake builder handoff", files.intakeNginx, "return 302 https://preview.siteinabox.nl/builder?intent=register;");
 present("landing analytics/security CSP", files.landingNginx, "https://challenges.cloudflare.com");
 present("landing Google Tag Manager CSP", files.landingNginx, "https://www.googletagmanager.com");
 present("landing Google Analytics CSP", files.landingNginx, "https://www.google-analytics.com");

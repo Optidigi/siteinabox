@@ -11,11 +11,12 @@ import { PricingTabs } from '../components/siab/PricingTabs';
 import { Testimonials } from '../components/siab/Testimonials';
 import { buttonVariants } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { site } from '../content/site';
 
 const home = await getEntry('pages', 'index');
 if (!home) throw new Error('Missing required content entry: pages/index');
 
-const ctaSignup = '/intake/';
+const ctaSignup = site.links.builder;
 const professions = ['kapper', 'schilder', 'coach', 'fotograaf', 'hovenier', 'personal trainer', 'loodgieter', 'klusser', 'schoonheidsspecialist', 'timmerman', 'stukadoor', 'kok'];
 const guarantees = [
   { title: 'Jij levert input, wij bouwen', text: "Een 15 minuten vragenlijst en wat foto's. Wij verwerken het tot je website.", color: 'text-yellow', shadow: 'bg-yellow', paths: ['M9 5h6', 'M9 9h6', 'M9 13h4', 'M5 3h14v18H5z'] },
@@ -39,7 +40,7 @@ const comparisonRows = [
         <div class="site-container grid items-center gap-8 lg:grid-cols-2 lg:gap-5">
           <div class="relative z-10">
             <h1 class="max-w-[570px] text-[clamp(3.25rem,6.1vw,5.9rem)] font-medium leading-[.88] tracking-[-.055em]">Een website voor je bedrijf. <br class="hidden md:block" />Zonder gedoe.</h1>
-            <p class="mt-8 text-[17px] font-medium leading-relaxed text-muted-foreground md:text-2xl md:text-foreground">Voorbeeld binnen 24 uur · Geen startkosten · €{SITE_IN_A_BOX_PRODUCT.pricing.monthlyEur} p/m</p>
+            <p class="mt-8 text-[17px] font-medium leading-relaxed text-muted-foreground md:text-2xl md:text-foreground">Voorbeeld meteen · Geen startkosten · €{SITE_IN_A_BOX_PRODUCT.pricing.monthlyEur} p/m</p>
             <div class="mt-7 flex flex-wrap items-center gap-4 md:gap-6">
               <a
                 href={ctaSignup}
@@ -107,7 +108,7 @@ const comparisonRows = [
                   <span class="grid size-12 place-items-center rounded-full border-2 border-black bg-orange font-head text-xl font-bold text-black">2</span>
                   <h3 class="text-2xl tracking-[-.02em]">Wij maken je site</h3>
                 </div>
-                <p class="mt-4 leading-relaxed text-muted-foreground">Binnen 24 uur zie je hoe jouw website eruitziet.</p>
+                <p class="mt-4 leading-relaxed text-muted-foreground">Je ziet direct hoe jouw website eruitziet.</p>
               </div>
               <div data-process-visual class="mx-6 mb-6 flex h-[210px] flex-col overflow-hidden border-2 border-border bg-muted lg:mt-auto lg:h-[200px]">
                 <div class="flex items-center gap-2 border-b-2 border-border px-3 py-2">
@@ -192,7 +193,7 @@ const comparisonRows = [
             <img data-bento-stars src="/theme/images/shape/shape_80.svg" alt="" width="481" height="343" class="absolute left-[6%] top-[14%] hidden w-1/2 max-w-[50%] md:block" />
           </Card>
           <Card as="article" className="min-h-[250px] justify-center border-black bg-[#f6f6f6] p-6 text-black shadow-[4px_4px_0_#090709] dark:bg-white/[.07] dark:text-foreground md:p-8 lg:col-span-4 lg:min-h-[460px] lg:px-[15px] lg:py-5 min-[1200px]:!px-[45px] min-[1200px]:!py-[50px]">
-            <h3 class="mb-10 text-[26px] !font-medium leading-[1.238] min-[1200px]:mb-[90px] min-[1200px]:!text-[28px] min-[1400px]:!text-[42px]">Eerste versie binnen 24 uur, online binnen 3 werkdagen.</h3>
+            <h3 class="mb-10 text-[26px] !font-medium leading-[1.238] min-[1200px]:mb-[90px] min-[1200px]:!text-[28px] min-[1400px]:!text-[42px]">Eerste versie direct in de builder, online binnen 3 werkdagen.</h3>
             <BentoIcon name="speed" />
           </Card>
         </div>

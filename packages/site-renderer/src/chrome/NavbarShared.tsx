@@ -6,7 +6,7 @@ import type {
   SiteNavbar,
   SiteSettings,
 } from "@siteinabox/contracts"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../cn"
 import { resolveMedia, type MediaResolver } from "../media"
 import {
   SiteArrowUpRight,

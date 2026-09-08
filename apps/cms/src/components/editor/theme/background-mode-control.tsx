@@ -42,7 +42,7 @@ const MODE_COPY = {
 type BackgroundModeControlProps = {
   value?: BackgroundMode
   onChange: (value: BackgroundMode) => void
-  layout?: "list" | "segment" | "pill"
+  layout?: "list" | "segment" | "pill" | "settings"
   sizeClassName?: string
 }
 
@@ -176,6 +176,32 @@ export function BackgroundModeControl({
             <BackgroundPreview mode={option.id} compact />
           </MobilePickerOption>
         ))}
+      </div>
+    )
+  }
+
+  if (layout === "settings") {
+    return (
+      <div role="group" aria-label={t("backgroundModeControls")} className="grid w-full grid-cols-2 gap-2">
+        {options.map((option) => {
+          const active = activeId === option.id
+          return (
+            <Button
+              key={option.id}
+              type="button"
+              variant={active ? "default" : "outline"}
+              size="default"
+              title={option.description}
+              aria-pressed={active}
+              aria-label={option.label}
+              onClick={() => onChange(option.id)}
+              className="h-auto min-h-11 items-center justify-start gap-2 rounded-none px-2.5 py-2 text-left whitespace-normal"
+            >
+              <BackgroundPreview mode={option.id} compact />
+              <span className="text-sm font-medium leading-5">{option.label}</span>
+            </Button>
+          )
+        })}
       </div>
     )
   }

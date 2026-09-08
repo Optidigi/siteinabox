@@ -10,10 +10,8 @@ import { Input } from "@siteinabox/ui/components/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { SaveButton } from "@/components/save-ui/save-button"
 import { SaveStatusBar, type SaveStatus } from "@/components/save-ui/save-status-bar"
-import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
-import { MobileBackPill } from "@/components/common/mobile-back-pill"
+import { MobileFormActionBar } from "@/components/save-ui/mobile-form-action-bar"
 import { PageHeader } from "@/components/page-header"
-import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@siteinabox/ui/components/form"
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
@@ -64,7 +62,6 @@ export function UserEditForm({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [showSaved, setShowSaved] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
-  const isMobile = useIsMobile()
 
   // Extract current tenant id from the user's tenants[] array (Wave 1 shape).
   const currentTenantId = user.tenants?.[0]?.tenant
@@ -163,7 +160,7 @@ export function UserEditForm({
   const errorCount = countLeafErrors(form.formState.errors)
 
   // Save-affordance status — mirrors the page editor's saveStatus machine so
-  // the SaveStatusBar / MobileSavePill show saving → saved / failed badges.
+  // the SaveStatusBar / MobileFormActionBar show saving → saved / failed badges.
   const saveStatus: SaveStatus = deriveSaveStatus({
     pending: savePending,
     hasError: errorCount > 0 || saveFailed,
@@ -174,26 +171,24 @@ export function UserEditForm({
   return (
     <div className="flex w-full max-w-5xl flex-col gap-4">
       {/* Header row — back + save sit beside the title (desktop). Phone gets
-          the floating MobileBackPill + MobileSavePill, mirroring the editor. */}
+          the header on desktop and the bottom action bar on phone. */}
       <PageHeader
         title={t("edit")}
         subtitle={user.email}
         action={
-          isMobile ? undefined : (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => guard.guardedNavigate(goBack)}>
-                <ArrowLeft className="h-4 w-4" /> {tCommon("back")}
-              </Button>
-              <SaveButton
-                type="button"
-                onClick={submitForm}
-                pending={savePending}
-                isDirty={form.formState.isDirty}
-                dirtyCount={dirtyCount}
-                errorCount={errorCount}
-              />
-            </div>
-          )
+          <div className="hidden items-center gap-2 md:flex">
+            <Button type="button" variant="outline" onClick={() => guard.guardedNavigate(goBack)}>
+              <ArrowLeft className="h-4 w-4" /> {tCommon("back")}
+            </Button>
+            <SaveButton
+              type="button"
+              onClick={submitForm}
+              pending={savePending}
+              isDirty={form.formState.isDirty}
+              dirtyCount={dirtyCount}
+              errorCount={errorCount}
+            />
+          </div>
         }
       />
 
@@ -311,17 +306,17 @@ export function UserEditForm({
         onConfirm={guard.confirm}
       />
       <SaveStatusBar status={saveStatus} errorCount={errorCount} onRetry={submitForm} />
-      {isMobile && (
-        <>
-          <MobileBackPill onBack={() => guard.guardedNavigate(goBack)} position="top-right" offset="3.75rem" />
-          <MobileSavePill
-            status={saveStatus}
-            dirtyCount={dirtyCount}
-            errorCount={errorCount}
-            onSave={submitForm}
-          />
-        </>
-      )}
+      <MobileFormActionBar
+        onBack={() => guard.guardedNavigate(goBack)}
+        save={{
+          type: "button",
+          onClick: submitForm,
+          pending: savePending,
+          isDirty: form.formState.isDirty,
+          dirtyCount,
+          errorCount,
+        }}
+      />
     </div>
   )
 }

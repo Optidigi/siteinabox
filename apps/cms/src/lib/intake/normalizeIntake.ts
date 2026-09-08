@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { COLOR_SCHEME_IDS, type ColorSchemeId } from "@siteinabox/contracts"
 import {
   GenerationInputSchema,
   IntakeSubmissionSchema,
@@ -42,8 +43,12 @@ const cleanStringArray = (value: unknown): string[] => {
 const compactUnique = <T extends string>(values: Array<T | null | undefined>): T[] =>
   Array.from(new Set(values.filter((entry): entry is T => Boolean(entry))))
 
-const themeColorHint = (value: string | null | undefined) => {
+const themeColorHint = (value: string | null | undefined): ColorSchemeId => {
   const lower = value?.toLowerCase() ?? ""
+  const firstToken = lower.split(/\s+/)[0] ?? ""
+  if ((COLOR_SCHEME_IDS as readonly string[]).includes(firstToken)) {
+    return firstToken as ColorSchemeId
+  }
   if (/\b(terracotta|rust|clay|copper)\b/.test(lower)) return "terracotta-warm"
   if (/\b(red|rose|pink|confident)\b/.test(lower)) return "red-confident"
   if (/\b(green|emerald|calm|nature|eco)\b/.test(lower)) return "emerald-calm"

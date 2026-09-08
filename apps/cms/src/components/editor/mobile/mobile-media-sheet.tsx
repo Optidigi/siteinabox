@@ -70,7 +70,7 @@ export const MobileMediaSheet: React.FC<MobileMediaSheetProps> = ({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-10 rounded-full border border-border bg-muted text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+              className="size-10 rounded-none border border-border bg-muted text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
               aria-label={tCommon("close")}
               data-mobile-media-close
             >

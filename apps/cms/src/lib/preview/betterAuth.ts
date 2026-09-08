@@ -4,6 +4,7 @@ import { Pool } from "pg"
 import { magicLink } from "better-auth/plugins"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
 import { hasActivePreviewGrant } from "@/lib/preview/previewAccess"
+import { allowPreviewMagicLinkWithoutGrant } from "@/lib/builder/magicLinkPolicy"
 import { asMailLogPayload, sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
@@ -52,6 +53,7 @@ const DEV_PREVIEW_HOST_PATTERNS = [
   "*.localhost:*",
   "*.lvh.me:*",
   "*.localtest.me:*",
+  "*.trycloudflare.com",
 ]
 
 const DEV_PREVIEW_ORIGIN_PATTERNS = DEV_PREVIEW_HOST_PATTERNS.flatMap((host) => [
@@ -113,7 +115,10 @@ export const previewAuth = betterAuth({
       rateLimit: getMagicLinkRateLimit(),
       sendMagicLink: async ({ email, url, metadata }) => {
         const clientSlug = typeof metadata?.previewClientSlug === "string" ? metadata.previewClientSlug : ""
-        if (!clientSlug || !(await hasActivePreviewGrant(email, clientSlug))) {
+        const builderAccess = allowPreviewMagicLinkWithoutGrant({
+          previewClientSlug: metadata?.previewClientSlug,
+        })
+        if (!builderAccess && (!clientSlug || !(await hasActivePreviewGrant(email, clientSlug)))) {
           throw new APIError("UNAUTHORIZED", {
             message: "No active preview access grant matches this email.",
           })

@@ -1,27 +1,6 @@
 ---
-import { IntakeShell } from "@/components/intake/shell";
-import "../styles/global.css";
+const builderUrl = import.meta.env.PROD
+  ? "https://preview.siteinabox.nl/builder?intent=register"
+  : "http://localhost:3000/builder?intent=register";
+return Astro.redirect(builderUrl, 302);
 ---
-
-<html lang="nl">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <link rel="icon" type="image/png" href="/intake/favicon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chivo:wght@400;500;600;700;900&family=DM+Sans:wght@400;500;600&family=Familjen+Grotesk:wght@400;500;600;700&family=Inter:wght@400;600;700&family=Inter+Tight:wght@400;600;700&family=Lora:wght@400;500;600&family=Nunito+Sans:wght@400;600;700&family=Roboto+Slab:wght@400;600;700&display=swap"
-    />
-    <meta
-      name="description"
-      content="Site in a Box intake voor een eerste websitevoorstel."
-    />
-    <title>Site in a Box intake</title>
-  </head>
-  <body>
-    <IntakeShell client:only="react" />
-  </body>
-</html>

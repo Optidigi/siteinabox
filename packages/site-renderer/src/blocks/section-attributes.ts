@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../cn"
 import type { RendererSectionAttributes } from "./types"
 
 function mergeSyntheticEventHandlers<Event extends React.SyntheticEvent>(

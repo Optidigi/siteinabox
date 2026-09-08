@@ -44,6 +44,7 @@
         "NODE_ENV",
         "OPENAI_API_KEY",
         "OPENAI_BASE_URL",
+        "PAYLOAD_DB_PUSH",
         "PAYLOAD_DISABLE_ADMIN",
         "PAYLOAD_DISABLE_JOBS_AUTORUN",
         "PAYLOAD_MIGRATION_DIR",
@@ -79,6 +80,10 @@
         "SIAB_PREVIEW_FIXTURE_MODE",
         "SIAB_RENDERER_API_TOKEN",
         "SIAB_SITE_BUILD_ID",
+        "SITE_GENERATION_MASTRA_CHAT_REASONING_EFFORT",
+        "SITE_GENERATION_MASTRA_MAINTAIN_REASONING_EFFORT",
+        "SITE_GENERATION_MASTRA_MODEL",
+        "SITE_GENERATION_MASTRA_REASONING_EFFORT",
         "SITE_GENERATION_OPENAI_MODEL",
         "SITE_GENERATION_PROVIDER",
         "SITE_URL",
@@ -94,6 +99,7 @@
     },
     "intake": {
       "names": [
+        "DEV",
         "PUBLIC_INTAKE_SUBMIT_ENDPOINT",
         "PUBLIC_KVK_PROFILE_ENDPOINT",
         "PUBLIC_KVK_SEARCH_ENDPOINT",
@@ -106,6 +112,7 @@
     "landing": {
       "names": [
         "CI",
+        "DEV",
         "POSTHOG_HOST",
         "POSTHOG_PROJECT_TOKEN",
         "POSTHOG_PUBLIC_HOST",

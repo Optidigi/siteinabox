@@ -138,6 +138,7 @@ import * as migration_20260901_170000_appointment_hardening from './20260901_170
 import * as migration_20260901_180000_appointment_mail_retention from './20260901_180000_appointment_mail_retention';
 import * as migration_20260902_090000_appointment_section from './20260902_090000_appointment_section';
 import * as migration_20260902_100000_appointment_effects from './20260902_100000_appointment_effects';
+import * as migration_20260905_200000_builder_sessions from './20260905_200000_builder_sessions';
 
 export const migrations = [
   {
@@ -839,5 +840,10 @@ export const migrations = [
     up: migration_20260902_100000_appointment_effects.up,
     down: migration_20260902_100000_appointment_effects.down,
     name: '20260902_100000_appointment_effects',
+  },
+  {
+    up: migration_20260905_200000_builder_sessions.up,
+    down: migration_20260905_200000_builder_sessions.down,
+    name: '20260905_200000_builder_sessions',
   },
 ];

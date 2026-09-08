@@ -211,7 +211,6 @@ export function LoginForm({
                 autoCorrect="off"
                 spellCheck={false}
                 enterKeyHint={passwordMode ? "next" : "send"}
-                className="rounded-lg"
                 {...field}
               />
             </FormControl>
@@ -230,7 +229,6 @@ export function LoginForm({
                   type="password"
                   autoComplete="current-password"
                   enterKeyHint="go"
-                  className="rounded-lg"
                   {...field}
                 />
               </FormControl>
@@ -238,7 +236,7 @@ export function LoginForm({
             </FormItem>
           )}/>
         )}
-        <Button type="submit" disabled={pending} className="w-full rounded-lg">
+        <Button type="submit" disabled={pending} className="w-full">
           {!passwordMode && <Mail aria-hidden />}
           {pending
             ? passwordMode
@@ -253,7 +251,7 @@ export function LoginForm({
             type="button"
             variant="outline"
             disabled={pending}
-            className="w-full rounded-lg border-transparent ring-1 ring-foreground/25 dark:ring-foreground/30"
+            className="w-full"
             onClick={() => void onMagicLinkSignIn()}
           >
           <Mail aria-hidden />
@@ -274,7 +272,7 @@ export function LoginForm({
               type="button"
               variant="outline"
               disabled={pending}
-              className="w-full rounded-lg border-transparent ring-1 ring-foreground/25 dark:ring-foreground/30"
+              className="w-full"
               aria-label={t("continueWith", { provider: SOCIAL_AUTH_PROVIDER_LABELS[provider] })}
               onClick={() => void onSocialSignIn(provider)}
             >

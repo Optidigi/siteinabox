@@ -165,9 +165,8 @@ function currentAdminSidebarOffset(): AdminSidebarOffset {
   if (!window.matchMedia("(min-width: 768px)").matches) return "none"
   const sidebar = document.querySelector<HTMLElement>('[data-slot="sidebar"]')
   if (!sidebar) return "none"
-  return sidebar.getAttribute("data-state") === "collapsed"
-    ? "icon"
-    : "full"
+  if (sidebar.getAttribute("data-state") !== "collapsed") return "full"
+  return sidebar.getAttribute("data-collapsible") === "icon" ? "icon" : "none"
 }
 
 function useAdminSidebarOffset() {
@@ -186,7 +185,7 @@ function useAdminSidebarOffset() {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ["data-state"],
+      attributeFilter: ["data-state", "data-collapsible"],
     })
 
     return () => {

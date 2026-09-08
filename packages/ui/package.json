@@ -35,6 +35,10 @@
       "types": "./src/lib/utils.ts",
       "default": "./src/lib/utils.ts"
     },
+    "./lib/retro": {
+      "types": "./src/lib/retro.ts",
+      "default": "./src/lib/retro.ts"
+    },
     "./styles/shadcn.css": "./src/styles/shadcn.css"
   },
   "dependencies": {

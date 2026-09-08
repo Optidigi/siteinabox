@@ -4,6 +4,61 @@ This repo uses upstream shadcn as the primitive baseline, but it does not treat
 every local primitive as blindly overwriteable. Shared primitive source now
 lives in `packages/ui`; the CMS app keeps compatibility re-export shims.
 
+There are three UI kits. They do not share source:
+
+- Marketing Retro lives only in `apps/landing`. Do not restyle it from dashboard tokens.
+- Operator dashboard (CMS, builder, checkout, logins) uses `packages/ui`:
+  neutral admin surfaces, a neobrutalism jacket (hard borders, 5px offset
+  shadow, `rounded-none`), and SIAB yellow as an **accent only**.
+- Tenant canvas lives in `packages/site-renderer` with numbered variants and `ThemeTokenSpec`. It must not import `@siteinabox/ui`.
+
+`packages/ui` is the only visual source of truth for those apps. Recipes live
+in `packages/ui/src/lib/retro.ts` (`neoChrome`, `neoTray`, `neoPress`,
+`neoPressFlat`, `neoField`, `neoFocus`). CMS composites compose those
+primitives. Do not introduce a second glass/pill language (`backdrop-blur`,
+`rounded-lg` overlays).
+
+Light mode is a light admin theme (warm cream page, white cards, dark text,
+near-black 5px slabs). Dark mode is the same operator kit inverted to lifted
+charcoal `#242321`, cream ink `#f7f4ed`, slightly lifted charcoal tiles
+(card/popover/sidebar, not `#000`), and white 5px slabs (`--neo-slab`).
+2px strokes (`--border`, `--input`, `--sidebar-border`) are a 30/70 mix of
+ink into the page so they stay greyer than `--neo-slab` in both modes.
+Yellow (`--main`, `#f5e900`, the same SIAB yellow as landing) is for primary
+CTAs, checked controls, selected nav, and chart highlight — not page, card,
+sidebar, select, table hover, or header chrome. Do not invent a second gold.
+Builder does not override this palette.
+
+Chrome slabs (`neoPress`) use `--neo-slab` (near-black in light, white in
+dark). Single-line inputs and select triggers sit on that slab so they match
+default buttons. `neoField` / `Textarea` stay border-only — chat composers
+own their well and must not grow a second drop. Yellow faces
+(`default`/`brand`, selected nav) sit on the theme slab. Ink tiles (`Opslaan`, builder **Stuur**, checkout ink) keep the
+inverted fill (`bg-foreground text-background`), the greyer `border-border`
+hairline, and the same `--neo-slab` drop. Default text buttons and icon buttons share a 40px face (`h-10` /
+`size-10`); `sm` / `icon-sm` share 36px (`h-9` / `size-9`). The collapsed
+sidebar rail stays 3rem: labels hide, the selected 5px slab stays.
+
+Button press (`neoPress`) matches landing ratios without sharing landing
+source: rest 5px, hover 2px translate with a 3px leftover (`shadow-shadow-hover`),
+active 5px sit-down and no shadow. Motion includes the CSS `translate` property
+(not only `transform`) at `duration-200` with CSS `ease`, so the sit-down does
+not snap ahead of the shadow. Ghost/link stay flat.
+Packed toolbars use `neoTray` (border only); inner press tiles drop their own
+rest offset so slabs do not stack. Static chrome (`neoChrome`, cards, dialogs)
+keeps a 5px offset and does not translate. Keyboard focus uses `focus-visible`
+only so mouse clicks do not leave a stuck ring. Buttons and toggles defer blur
+until after `click` on mouse/pen up (not when they own a popup). Select and
+dropdown menus do not auto-refocus the trigger after a pointer close.
+
+Button roles: `default`/`brand` = primary (yellow tile, `--neo-slab` drop);
+`ink` = inverted fill with the same drop; `outline`/`secondary` = neo control
+tile; `ghost`/`link` = quiet (no tile). Selected sidebar nav keeps the yellow
+fill. Header sparkle matches the other outline chrome tiles (theme toggle,
+account, site switcher).
+
+Landing keeps `apps/landing/src/components/ui/*`. Payload `/admin` CSS is out of scope.
+
 ## Paths
 
 - `packages/ui/src/components/` owns shadcn primitive source.
@@ -72,6 +127,30 @@ reimplemented elsewhere:
 
 Other primitive overwrites are lower risk, but still review the diff and run the
 frontend gates.
+
+## Builder agent stage
+
+`/builder` is agent-first until a preview slug exists. The empty landing is a
+short headline (`BUILDER_STAGE_HEADLINE`) and composer — no interview billboard
+and no stored greeting bubble. A leftover assistant opener is dropped on load.
+Desktop centers a logo, headline, and composer with space between title and
+field; phone shows the same headline as a visual-only assistant turn in the
+thread (not stored) and pins the composer to the
+bottom. Landing and thread share a 40rem reading well (`BUILDER_CHAT_WELL_CLASS`);
+the header rule, docked composer rule, and thread scrollbar stay on the
+full chat column so they meet the viewport edge while the agent is
+full-width. After the first send, the prompt stays mounted and docks on desktop
+(~320ms); phone already has a docked composer, so only
+the landing line fades into the thread. After the first apply, desktop
+animates chat to `28rem` and slides the preview in from a `0fr` column;
+phone stays on chat until **Bekijk je site** or the header preview control.
+`prefers-reduced-motion: reduce` keeps the old hard swap. The builder header
+uses the Site in a Box wordmark only — no “SIAB” label, no status line, and no
+busy pulse. Assistant turns have no avatar. The desktop prompt box keeps its
+2px border on hover and keyboard focus — ink color only, no extra outline or
+width change. Do not show an
+empty preview pane, auto-swipe the mobile pager on first generate, or copy
+Gemini/Lovable pill/glow chrome.
 
 ## Gates
 

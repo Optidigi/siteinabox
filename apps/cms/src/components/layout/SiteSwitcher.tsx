@@ -64,8 +64,7 @@ export function SiteSwitcher({
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className={cn("h-8 max-w-[14rem] gap-1.5 px-2 text-xs font-normal", className)}
+          className={cn("max-w-[14rem] gap-1.5 px-2 text-xs font-normal", className)}
           aria-label={t("switchSite", { name: current.name })}
         >
           <Globe className="h-3 w-3 shrink-0" aria-hidden />

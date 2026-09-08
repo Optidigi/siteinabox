@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { HeroBlock } from "@siteinabox/contracts"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../../cn"
 import type { BlockRenderOptions } from "../types"
 import { HeroBackground, HeroInner, HeroSection, HeroText, HeroValuePoints, resolveBackgroundMode } from "./HeroShared"
 import { HeroAngledBlockView } from "./HeroAngledBlock"

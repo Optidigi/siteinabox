@@ -6,7 +6,6 @@
 @custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *, [data-siab-color-mode="dark"], [data-siab-color-mode="dark"] *));
 
 @source "../../../../packages/site-renderer/src";
-@source "../../../../packages/ui/src/components";
 
 [data-siab-editor-frame-runtime] {
   position: relative;

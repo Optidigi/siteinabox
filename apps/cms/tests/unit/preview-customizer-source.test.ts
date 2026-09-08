@@ -33,6 +33,7 @@ describe("preview customizer source contract", () => {
     expect(componentSource).toContain('frameDocument.addEventListener("focusin", onFrameInteraction, true)')
     expect(componentSource).toContain("document.activeElement === frameRef.current")
     expect(componentSource).toMatch(/<iframe\b/i)
+    expect(componentSource).not.toContain("sandbox=")
     expect(componentSource.includes("@/components/editor/canvas/CanvasMode")).toBe(false)
     expect(componentSource.includes("<CanvasMode")).toBe(false)
     expect(componentSource).toContain("@siteinabox/contracts")

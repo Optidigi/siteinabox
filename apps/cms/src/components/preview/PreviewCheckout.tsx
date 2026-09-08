@@ -1513,7 +1513,7 @@ export function PreviewCheckout({
               </p>
             </div>
             {["failed", "canceled", "cancelled", "expired"].includes(paymentStatusLive) && <div className="flex flex-wrap justify-center gap-2">
-              <Button type="button" className="min-h-11 bg-foreground text-background hover:bg-foreground/90" onClick={() => window.location.assign(window.location.pathname)}><RefreshCw className="size-4" aria-hidden />{t("checkoutReviewOrderAction")}</Button>
+              <Button type="button" variant="ink" className="min-h-11 hover:bg-foreground/90" onClick={() => window.location.assign(window.location.pathname)}><RefreshCw className="size-4" aria-hidden />{t("checkoutReviewOrderAction")}</Button>
             </div>}
           </section>
         )}
@@ -1830,7 +1830,8 @@ export function PreviewCheckout({
                       )}
                     <Button
                       type="submit"
-                      className="min-h-11 w-full bg-foreground text-background hover:bg-foreground/90"
+                      variant="ink"
+                      className="min-h-11 w-full hover:bg-foreground/90"
                       disabled={
                         transferCodePending ||
                         (

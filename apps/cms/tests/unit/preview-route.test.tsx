@@ -1,4 +1,3 @@
-import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -41,6 +40,9 @@ vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("not found")
   }),
+  redirect: vi.fn((url: string) => {
+    throw new Error(`redirect:${url}`)
+  }),
 }))
 
 vi.mock("@/lib/preview/betterAuth", () => ({
@@ -61,15 +63,12 @@ describe("preview host route", () => {
     mocks.getSession.mockResolvedValue(null)
   })
 
-  it("shows the request magic-link screen for unauthenticated direct visits", async () => {
+  it("redirects unauthenticated customer preview visits to the login-first builder", async () => {
     const { renderPreviewRoute } = await import("@/lib/preview/renderPreviewRoute")
 
-    const element = await renderPreviewRoute({ clientSlug: "preview-studio" })
-    const html = renderToStaticMarkup(element)
-
-    expect(html).toContain("Preview login")
-    expect(html).toContain("Enter the email address from your preview invitation.")
-    expect(html).toContain("Send magic link")
+    await expect(renderPreviewRoute({ clientSlug: "preview-studio" })).rejects.toThrow(
+      "redirect:/builder/preview-studio",
+    )
     expect(mocks.getPreviewCustomizerDataForGrant).not.toHaveBeenCalled()
   })
 })

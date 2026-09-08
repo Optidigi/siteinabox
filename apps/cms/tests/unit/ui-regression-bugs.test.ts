@@ -56,9 +56,14 @@ import { CreateUserForm } from "@/components/forms/CreateUserForm"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("observed UI bug regressions", () => {
-  it("keeps the sidebar selected accent on the brand token", () => {
+  it("keeps the sidebar selected item on a yellow fill with the theme slab", () => {
+    const primitive = read("../../packages/ui/src/components/sidebar.tsx")
     const sidebar = read("src/components/layout/AppSidebar.tsx")
 
+    expect(primitive).toContain("data-[active=true]:bg-main")
+    expect(primitive).toContain("data-[active=true]:text-main-foreground")
+    expect(primitive).toContain("data-[active=true]:shadow-shadow")
+    expect(primitive).not.toContain("data-[active=true]:shadow-shadow-accent")
     expect(sidebar).toContain("[--sidebar-primary:var(--brand)]")
     expect(sidebar).toContain("[--sidebar-primary-foreground:var(--brand-foreground)]")
   })
@@ -162,7 +167,8 @@ describe("observed UI bug regressions", () => {
     const manager = read("src/components/navigation/NavigationManager.tsx")
 
     expect(manager).toContain("const save = async () => {\n    if (!isDirty || saving) return")
-    expect(manager).toContain("<MobileSavePill status={saveStatus} dirtyCount={dirtyCount} onSave={save} />")
+    expect(manager).toContain("onClick: save")
+    expect(manager).toContain("@/components/save-ui/mobile-form-action-bar")
   })
 
   it("disables the shared mobile save pill when the form is clean, saved, or already saving", () => {

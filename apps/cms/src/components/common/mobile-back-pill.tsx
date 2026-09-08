@@ -18,9 +18,8 @@ export interface MobileBackPillProps {
  * Floating back/close pill for mobile sub-views. Mirrors MobileSavePill's
  * MobileFloatingPill base — same size, same default inverted colour.
  *
- * Top-left by default (the page/section editor's placement). The entity-edit
- * forms place it top-right beside the MobileSavePill via `position="top-right"`
- * + an `offset` of one pill-width-plus-gap.
+ * Top-left by default (the page/section editor's placement — pinned until
+ * that chrome is refactored). Operator forms use `MobileFormActionBar`.
  */
 export const MobileBackPill: React.FC<MobileBackPillProps> = ({
   onBack,

@@ -55,11 +55,9 @@ export function SaveButton({
         onClick={onClick}
         disabled={pending || !isDirty}
         title={title}
-        variant="default"
+        variant="ink"
         className={cn(
-          // Inverted shadcn surface — dark pill on light mode, light pill on
-          // dark mode. Matches the MobileSavePill default treatment.
-          "bg-foreground text-background hover:bg-foreground/90 gap-2",
+          "gap-2 hover:bg-foreground/90",
           isDirty && !hasErrors && "border-2 border-amber-500/70",
           hasErrors && "border-2 border-destructive/70",
         )}

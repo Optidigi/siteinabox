@@ -1,9 +1,9 @@
 /**
  * Cumulative height of the sticky chrome above the canvas:
- *   SiteHeader (h-14 / md:h-12) + PageMeta header (~py-3 + content) ≈ 104px = 6.5rem.
+ *   SiteHeader (h-16) + PageMeta header (~py-3 + content) ≈ 120px = 7.5rem.
  * Used by the editor theme toolbar's sticky top and the sidebar <aside>'s top/height/maxHeight.
  */
-export const CHROME_STACK_HEIGHT = "6.5rem"
+export const CHROME_STACK_HEIGHT = "7.5rem"
 
 /**
  * Page editor breakpoint. Tablets and cramped browser widths use the mobile

@@ -123,7 +123,7 @@ export function getBetterAuthBaseURL() {
     ...splitList(process.env.BETTER_AUTH_ALLOWED_HOSTS),
   ]
   if (process.env.NODE_ENV === "development") {
-    allowedHosts.push("localhost:*", "127.0.0.1:*")
+    allowedHosts.push("localhost:*", "127.0.0.1:*", "*.trycloudflare.com")
   }
 
   const fallback = getCmsAuthFallbackOrigin()

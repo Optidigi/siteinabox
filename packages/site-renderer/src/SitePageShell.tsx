@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "./cn"
 import { ThemeCanvas } from "./theme"
 import type { SitePageRendererProps } from "./SitePageRenderer"
 import { NavbarRenderer } from "./chrome/Navbar"

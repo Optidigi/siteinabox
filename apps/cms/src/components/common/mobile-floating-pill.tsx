@@ -110,7 +110,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   const sharedClassName = cn(
     cspPosition.className,
     visibilityClassName,
-    "fixed inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
+    "fixed inline-flex items-center justify-center rounded-none transition-[translate,opacity,background-color] duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
     sizeClassName,
     // Keep full opacity when merely disabled (e.g. clean save pill). Only the
     // visibility flag fades/slides the control away.

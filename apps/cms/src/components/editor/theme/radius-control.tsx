@@ -1,5 +1,6 @@
 "use client"
 import * as React from "react"
+import { Button } from "@siteinabox/ui/components/button"
 import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
 import { InlineToolbarGroup, InlineToolbarOption } from "@/components/common/inline-toolbar-group"
@@ -46,7 +47,7 @@ export const ShapeControl: React.FC<{
   shapeId: ShapeSchemeId | undefined
   radiusLevels?: ShapePreset[]
   onChange: (next: { schemeId: ShapeSchemeId }) => void
-  layout?: "toggle" | "pill" | "segment"
+  layout?: "toggle" | "pill" | "segment" | "settings"
   sizeClassName?: string
 }> = ({ shapeId, radiusLevels = [], onChange, layout = "toggle", sizeClassName }) => {
   const activeId = shapeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId
@@ -87,6 +88,31 @@ export const ShapeControl: React.FC<{
             >
               <Icon className={sizeClassName === "size-8" ? "size-3.5 stroke-[1.5]" : "size-5"} aria-hidden />
             </MobilePickerOption>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (layout === "settings") {
+    return (
+      <div role="group" className="grid grid-cols-3 gap-2">
+        {radiusLevels.map((level) => {
+          const Icon = iconFor(level)
+          const isActive = activeId === level.id
+          return (
+            <Button
+              key={level.id}
+              type="button"
+              variant={isActive ? "default" : "outline"}
+              aria-pressed={isActive}
+              aria-label={level.label}
+              onClick={() => onChange({ schemeId: level.id })}
+              className="h-auto min-h-11 flex-col gap-1 rounded-none px-2 py-2.5"
+            >
+              <Icon className="size-4" aria-hidden />
+              <span className="text-xs font-medium">{level.label}</span>
+            </Button>
           )
         })}
       </div>
