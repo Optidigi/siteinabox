@@ -33,11 +33,13 @@ vi.mock("@/lib/betterAuth", () => ({
   },
 }))
 
-vi.mock("@/lib/actions/requestBuilderMagicLink", () => ({
-  BUILDER_MAGIC_LINK_GENERIC_SUCCESS:
-    "Als dit e-mailadres bij ons bekend is of net is geregistreerd, sturen we een inloglink.",
-  requestBuilderMagicLinkAction: mocks.builderAction,
-}))
+vi.mock("@/lib/builder/sendBuilderMagicLink", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/builder/sendBuilderMagicLink")>()
+  return {
+    ...actual,
+    sendBuilderMagicLink: mocks.builderAction,
+  }
+})
 
 describe("requestUnifiedMagicLinkAction", () => {
   beforeEach(() => {
