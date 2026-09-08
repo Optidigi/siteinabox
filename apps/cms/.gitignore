@@ -50,6 +50,8 @@ tmp/
 .data-out/
 # test-run scratch dirs (DATA_DIR override in tests/setup.ts)
 .data-test-*/
+# stray Next/tooling caches; never a production DATA_DIR
+.data/
 
 # typescript incremental build cache
 *.tsbuildinfo

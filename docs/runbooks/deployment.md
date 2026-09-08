@@ -7,7 +7,10 @@ serving the Payload-based admin console for SiteInABox. Use it for an initial
 deploy, recovery from a wiped VPS, or replicating the stack onto a new VPS.
 
 The platform also includes the landing and intake static applications and the
-published-site renderer. Their image workflows and health checks remain
+published-site renderer. Public create is the preview builder
+(`https://preview.siteinabox.nl/builder`). `/intake` remains a Traefik-owned
+legacy adapter that redirects there until that stack is retired. Landing,
+intake, and renderer image workflows and health checks remain
 application-owned; this runbook's Compose procedure is specifically for CMS
 operations.
 
@@ -53,7 +56,9 @@ Two containers, one Compose project, two networks:
 
 - Compose stack lives at `/srv/saas/infra/stacks/siteinabox/apps/cms/`.
 - Per-tenant data is bind-mounted to `/srv/data/saas/siab-payload/` on the
-  host and surfaces inside the app container at `/data-out`.
+  host and surfaces inside the app container at `/data-out` (`DATA_DIR=/data-out`).
+  Local clones use gitignored `.data-out/` (plus `.data-test-*` test scratch and
+  stray `.data/` caches). Those directories must never be copied into images.
 - The Postgres volume is pinned to the legacy Docker volume name
   `siab-payload_postgres-data` so container/project renames never create an
   empty database.
@@ -471,7 +476,8 @@ labels:
 ```
 
 Public intake belongs to `apps/intake/compose.yml` and must outrank landing for
-`/intake` on both apex and `www`. Set
+`/intake` on both apex and `www`. That image is a legacy adapter: Nginx 302s
+`/intake` to `https://preview.siteinabox.nl/builder?intent=register`. Set
 `SIAB_INTAKE_IMAGE_DIGEST=sha256:<digest>` to the verified digest emitted by
 the successful `build-intake-image` workflow; never deploy a mutable tag:
 
@@ -600,6 +606,20 @@ Store this key in the calling service's secret store. Do not commit it to the
 repo or to project-local MCP/config files.
 
 ## Common gotchas
+
+### Issue: Image or standalone output contains `.data-out`, `.data-test-*`, or `.data`
+
+**Cause:** CMS and renderer `DATA_DIR` defaults to `./.data-out`. Next file
+tracing and a root Docker context can copy a local projection tree, Vitest
+scratch, or a stray `.data` cache into `.next/standalone` or the image.
+Production must only see tenant files from the bind-mount.
+
+**Fix:** Keep using the host mount `${DATA_HOST_PATH:-/srv/data/saas/siab-payload}:/data-out`
+and `DATA_DIR=/data-out`. Do not copy local data dirs into the image. The root
+`.dockerignore`, CMS Next `outputFileTracingExcludes`, and
+`pnpm deployment:static-parity` enforce that boundary. If an image was built
+from a dirty local tree before those excludes existed, rebuild from a clean
+checkout rather than deleting files inside a running container.
 
 ### Issue: `relation "users" does not exist` at boot
 
@@ -741,7 +761,7 @@ SIAB_CMS_URL=https://admin.siteinabox.nl
 SIAB_RENDERER_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
 SIAB_RENDERER_API_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-api-token
 CLOUDFLARE_TUNNEL_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-tunnel-token
-DATA_DIR=/data
+DATA_DIR=/data-out
 SITE_URL=https://<renderer-host-or-default-public-origin>
 SIAB_RENDERER_FIXTURE_MODE=
 ```
@@ -756,7 +776,8 @@ SIAB_RENDERER_FIXTURE_MODE=
 - The secret `*_FILE` values are host paths to mode-`0600` files. Compose mounts
   them as container secrets; none of their contents belongs in the environment
   or repository.
-- `DATA_DIR` is the tenant data root mounted read-only. Public snapshot media is
+- `DATA_DIR` is `/data-out`, the tenant data root bind-mounted read-only from
+  `DATA_HOST_PATH`. Public snapshot media is
   served through `/siab-media/<tenantId>/<filename>` only after host/snapshot
   authorization; missing files fall back to the authenticated CMS renderer
   media endpoint.

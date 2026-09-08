@@ -121,8 +121,47 @@ present("landing Google Analytics CSP", files.landingNginx, "https://www.google-
 absent("intake must not own landing Turnstile CSP", files.intakeNginx, "https://challenges.cloudflare.com");
 absent("landing must not own intake Nginx route", files.landingNginx, "location = /intake");
 absent("landing must not claim intake path", files.landingCompose, "Path(`/intake`)");
+function hasExactLine(label, content, line) {
+  assertions += 1;
+  const lines = content.split(/\r?\n/).map((entry) => entry.trim());
+  if (!lines.includes(line)) failures.push(`${label}: missing line ${JSON.stringify(line)}`);
+}
+
 present("intake router priority", files.intakeCompose, "priority=300");
 present("landing router priority", files.landingCompose, "priority=100");
+
+const dataDirFiles = {
+  rootDockerignore: read(".dockerignore"),
+  cmsDockerignore: read("apps/cms/.dockerignore"),
+  rootGitignore: read(".gitignore"),
+  cmsGitignore: read("apps/cms/.gitignore"),
+  cmsNextConfig: read("apps/cms/next.config.mjs"),
+  cmsCompose: read("apps/cms/docker-compose.yml"),
+  rendererCompose: read("apps/renderer/compose.yml"),
+};
+
+hasExactLine("root dockerignore excludes .data-out", dataDirFiles.rootDockerignore, "**/.data-out");
+hasExactLine("root dockerignore excludes test DATA_DIR scratch", dataDirFiles.rootDockerignore, "**/.data-test-*");
+hasExactLine("root dockerignore excludes stray .data", dataDirFiles.rootDockerignore, "**/.data");
+hasExactLine("cms dockerignore excludes .data-out", dataDirFiles.cmsDockerignore, ".data-out");
+hasExactLine("cms dockerignore excludes test DATA_DIR scratch", dataDirFiles.cmsDockerignore, ".data-test-*");
+hasExactLine("cms dockerignore excludes stray .data", dataDirFiles.cmsDockerignore, ".data");
+hasExactLine("root gitignore excludes .data-out", dataDirFiles.rootGitignore, ".data-out/");
+hasExactLine("root gitignore excludes test DATA_DIR scratch", dataDirFiles.rootGitignore, ".data-test-*/");
+hasExactLine("root gitignore excludes stray .data", dataDirFiles.rootGitignore, ".data/");
+hasExactLine("cms gitignore excludes .data-out", dataDirFiles.cmsGitignore, ".data-out/");
+hasExactLine("cms gitignore excludes test DATA_DIR scratch", dataDirFiles.cmsGitignore, ".data-test-*/");
+hasExactLine("cms gitignore excludes stray .data", dataDirFiles.cmsGitignore, ".data/");
+present("Next standalone tracing excludes projection dirs", dataDirFiles.cmsNextConfig, "outputFileTracingExcludes");
+present("Next standalone tracing excludes .data-out", dataDirFiles.cmsNextConfig, "**/.data-out/**");
+present("Next standalone tracing excludes test scratch", dataDirFiles.cmsNextConfig, "**/.data-test-*/**");
+present("Next standalone tracing excludes stray .data", dataDirFiles.cmsNextConfig, "**/.data/**");
+present("CMS compose DATA_DIR", dataDirFiles.cmsCompose, "DATA_DIR: /data-out");
+present("CMS compose host bind", dataDirFiles.cmsCompose, ":/data-out");
+present("renderer compose DATA_DIR", dataDirFiles.rendererCompose, "DATA_DIR: /data-out");
+present("renderer compose host bind", dataDirFiles.rendererCompose, ":/data-out:ro");
+absent("CMS compose must not use /data DATA_DIR", dataDirFiles.cmsCompose, "DATA_DIR: /data\n");
+absent("renderer compose must not use /data DATA_DIR", dataDirFiles.rendererCompose, "DATA_DIR: /data\n");
 
 if (failures.length > 0) {
   console.error("Static deployment parity failed:");
