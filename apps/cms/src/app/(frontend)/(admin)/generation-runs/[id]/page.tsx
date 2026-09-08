@@ -194,7 +194,7 @@ export default async function GenerationRunDetailPage({
   const previewClientSlug = lifecycle.tenant
     ? previewClientSlugFromDomain(lifecycle.tenant.domain, tenantSlug ?? relationLabel(run.tenant))
     : null
-  const customerPreviewUrl = previewClientSlug ? `https://preview.siteinabox.nl/${previewClientSlug}` : null
+  const customerPreviewUrl = previewClientSlug ? `https://admin.siteinabox.nl/${previewClientSlug}` : null
   const liveUrl = lifecycle.tenant?.domain ? `https://${lifecycle.tenant.domain}` : null
   const defaultPreviewEmail = intakeContactEmail(run.intakeSubmission)
   const readyToGoLive = Boolean(tenantId) && lifecycle.publishBlockers.length === 0 && lifecycle.blockers.length === 0

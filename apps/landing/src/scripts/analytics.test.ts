@@ -59,7 +59,7 @@ describe("landing analytics contract", () => {
   it("maps accepted landing outcomes to distinct GA4 key events", () => {
     expect(runtime).toContain("contact_form: 'generate_lead'")
     expect(runtime).toContain("contact_click: 'direct_contact_clicked'")
-    expect(runtime).toContain("intake_handoff: 'intake_started'")
+    expect(runtime).toContain("signup_handoff: 'signup_started'")
     expect(runtime).toContain("event === 'site_conversion_completed'")
     expect(runtime).toContain("googleKeyEventByConversionSource")
   })

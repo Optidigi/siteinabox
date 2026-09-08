@@ -42,7 +42,7 @@ click that indicates interest.
 | GA4 event | Google Ads role | Reason |
 | --- | --- | --- |
 | `generate_lead` | Primary and account-default | Backend-accepted contact request |
-| `intake_started` | Secondary / observation | Landing-to-intake handoff, not a confirmed submitted intake |
+| `signup_started` | Secondary / observation | Landing-to-register handoff, not a confirmed paid customer |
 | `direct_contact_clicked` | Secondary / observation | Contact intent, not proof that a conversation occurred |
 
 All three actions are imported from GA4 and use `One`/`Only one conversion`.
@@ -54,7 +54,7 @@ bidding targets. Do not resolve that warning by changing either action to
 primary.
 
 Replace the primary optimization signal with an opaque, server-confirmed
-qualified-lead or won-customer event when the intake and sales lifecycle can
+qualified-lead or won-customer event when the signup and sales lifecycle can
 support it without exporting personal data.
 
 Keep Google Signals, enhanced conversions, customer matching, remarketing, and
@@ -113,7 +113,7 @@ and landing-page release as a GA4 annotation.
 Before publishing or funding a campaign:
 
 1. Deploy the landing analytics runtime.
-2. Validate `generate_lead`, `intake_started`, and
+2. Validate `generate_lead`, `signup_started`, and
    `direct_contact_clicked` in GA4 Realtime and DebugView.
 3. Confirm the GA4-to-Ads link and auto-tagging.
 4. Import only the approved conversion actions and verify their primary or

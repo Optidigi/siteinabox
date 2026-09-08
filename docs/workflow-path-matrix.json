@@ -17,18 +17,6 @@
         ".dockerignore"
       ]
     },
-    "build-intake-image.yml": {
-      "application": "intake",
-      "requiredPaths": [
-        "apps/intake/**",
-        "packages/contracts/**",
-        "package.json",
-        "pnpm-lock.yaml",
-        "pnpm-workspace.yaml",
-        ".dockerignore",
-        ".github/workflows/build-intake-image.yml"
-      ]
-    },
     "build-renderer-image.yml": {
       "application": "renderer",
       "requiredPaths": [

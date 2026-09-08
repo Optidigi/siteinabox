@@ -22,12 +22,12 @@ request to align every workspace to one version.
 | Dependency | Current workspace ranges | Policy decision |
 | --- | --- | --- |
 | React / React DOM | exact `19.2.8` in apps and shared runtime packages | Retain exact singleton versions. |
-| Astro | `^7.2.0` in intake, landing, and renderer | Framework-constrained; align only through an Astro compatibility change. |
+| Astro | `^7.2.0` in landing and renderer | Framework-constrained; align only through an Astro compatibility change. |
 | Next / Payload | CMS-only `16.3.0` / `3.87.1` | CMS framework and schema boundary; do not align with Astro apps. |
 | Tailwind | `^4.3.3` across apps and shared packages | Compare generated CSS and framework support before alignment. |
 | Vite | `^8.2.1` in Astro apps and CMS | Framework/tooling constrained. |
 | Vitest | exact `4.1.10` in all direct consumers | Keep the test runner reproducible; upgrade only as one reviewed toolchain change. |
-| React Hook Form | `^7.85.0` in CMS/intake, with the UI peer range aligned | Peer/runtime compatibility; keep the supported form contract aligned. |
+| React Hook Form | `^7.85.0` in CMS, with the UI peer range aligned | Peer/runtime compatibility; keep the supported form contract aligned. |
 | PostHog | `^1.415.2` in CMS, landing, and renderer | Privacy-sensitive runtime; retain lifecycle and consent checks. |
 | Motion | `^13.1.0` in UI and renderer | Shared runtime aligned after renderer visual and type checks. |
 | TypeScript | exact `6.0.3` in all direct consumers | Keep the compiler reproducible; upgrade only as one reviewed toolchain change. |

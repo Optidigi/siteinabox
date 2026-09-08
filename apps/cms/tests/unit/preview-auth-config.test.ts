@@ -26,22 +26,25 @@ describe("preview Better Auth host configuration", () => {
     vi.unstubAllEnvs()
   })
 
-  it("uses only the public preview host in production", async () => {
+  it("accepts the platform admin host and the legacy preview host in production", async () => {
     const { getPreviewBetterAuthBaseURL, getPreviewTrustedOrigins } = await import("@/lib/preview/betterAuth")
 
     expect(getPreviewBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["preview.siteinabox.nl"],
+      allowedHosts: ["admin.siteinabox.nl", "preview.siteinabox.nl"],
       protocol: "https",
-      fallback: "https://preview.siteinabox.nl",
+      fallback: "https://admin.siteinabox.nl",
     })
-    expect(getPreviewTrustedOrigins()).toEqual(["https://preview.siteinabox.nl"])
+    expect(getPreviewTrustedOrigins()).toEqual([
+      "https://admin.siteinabox.nl",
+      "https://preview.siteinabox.nl",
+    ])
     const headers = new Headers({
-      host: "preview.siteinabox.nl",
-      "x-forwarded-host": "preview.siteinabox.nl",
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl",
       "x-forwarded-proto": "https",
     })
     expect(resolveBaseURL(getPreviewBetterAuthBaseURL(), "/api/preview-auth", headers, false, true)).toBe(
-      "https://preview.siteinabox.nl/api/preview-auth",
+      "https://admin.siteinabox.nl/api/preview-auth",
     )
   })
 
@@ -51,6 +54,7 @@ describe("preview Better Auth host configuration", () => {
 
     expect(getPreviewBetterAuthBaseURL()).toEqual({
       allowedHosts: [
+        "admin.siteinabox.nl",
         "preview.siteinabox.nl",
         "localhost:*",
         "127.0.0.1:*",
@@ -60,9 +64,10 @@ describe("preview Better Auth host configuration", () => {
         "*.trycloudflare.com",
       ],
       protocol: "http",
-      fallback: "https://preview.siteinabox.nl",
+      fallback: "https://admin.siteinabox.nl",
     })
     expect(getPreviewTrustedOrigins()).toEqual([
+      "https://admin.siteinabox.nl",
       "https://preview.siteinabox.nl",
       "http://localhost:*",
       "https://localhost:*",

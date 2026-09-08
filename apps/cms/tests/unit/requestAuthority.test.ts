@@ -59,6 +59,14 @@ describe("canonical request authority", () => {
       originRequired: true,
     })).toBe(false)
     expect(isPreviewRequestAuthority(new Headers({
+      host: "admin.siteinabox.nl",
+      "x-forwarded-host": "admin.siteinabox.nl",
+    }), { NODE_ENV: "production" })).toBe(true)
+    expect(isPreviewRequestAuthority(new Headers({
+      host: "preview.siteinabox.nl",
+      "x-forwarded-host": "preview.siteinabox.nl",
+    }), { NODE_ENV: "production" })).toBe(true)
+    expect(isPreviewRequestAuthority(new Headers({
       host: "dev.example.test",
       "x-forwarded-host": "dev.example.test",
     }), {

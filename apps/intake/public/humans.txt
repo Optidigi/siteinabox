@@ -1,9 +1,0 @@
-/* TEAM */
-  Site in a Box
-  Contact: info@siteinabox.nl
-  Roermond, Nederland
-
-/* SITE */
-  Last update: 2026/05
-  Standards: HTML5, CSS, Astro
-  Components: Astro, Tailwind CSS, nginx, Docker, GitHub Actions

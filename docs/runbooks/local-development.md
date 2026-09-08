@@ -95,7 +95,7 @@ Values to set:
 - `SIAB_EMAIL_PREFERENCE_SECRET=` — dedicated HMAC secret required only when testing preference/unsubscribe links.
 - `APPOINTMENT_CALENDAR_ENCRYPTION_KEY=` and `APPOINTMENT_MANAGEMENT_ENCRYPTION_KEY=` — separate base64-encoded 32-byte keys required when exercising calendar OAuth, booking, or visitor management links; leave appointments disabled when these are absent.
 - `SIAB_GOOGLE_CALENDAR_CALLBACK_HOSTS=` and `SIAB_MICROSOFT_CALENDAR_CALLBACK_HOSTS=` — optional callback host allowlists for calendar OAuth; when empty, the existing provider OAuth host allowlists are reused, and development localhost hosts are accepted.
-- `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10` and `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60` — anonymous POST budget for `/api/forms`, `/api/intake`, `/api/builder/chat`, `/api/contact`, and `/api/users/forgot-password`.
+- `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10` and `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60` — anonymous POST budget for `/api/forms`, `/api/builder/chat`, `/api/contact`, and `/api/users/forgot-password`.
 - `SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50` and `SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600` — extra anonymous generated-site form budget keyed by tenant/form target.
 
 ## Step 4: First-boot schema push
@@ -145,12 +145,11 @@ for the builder.
 Public funnel (before checkout):
 
 1. Landing: `pnpm --dir apps/landing dev` → typically `http://localhost:4321`
-2. **Start gratis** / **Bouwen** → `http://localhost:3000/builder?intent=register`
-3. **Inloggen** → `http://localhost:3000/builder?intent=login`
+2. **Start gratis** → `http://localhost:3000/login?intent=register`
+3. **Inloggen** → `http://localhost:3000/login`
 4. CMS/preview already running: `pnpm --dir apps/cms dev` → `http://localhost:3000`
 
-Do not start `apps/intake` for this funnel. `/intake` only redirects to the
-builder. Do not start `apps/renderer` to review the draft canvas; the builder
+`/intake` is a landing redirect to register login. Do not start `apps/renderer` to review the draft canvas; the builder
 iframe is `renderer-frame` inside CMS.
 
 Magic-link mail is not required for local builder work. On development
@@ -183,8 +182,8 @@ from `20260626_120000_add_preview_access_grants` exist; create those four if
 they are missing. New disposable databases can use `payload migrate` from a
 clean volume.
 
-The marketing site's local `astro dev` CTAs point at `http://localhost:3000/builder`.
-Production landing and `/intake` keep `https://preview.siteinabox.nl/builder`.
+The marketing site's local `astro dev` CTAs point at `http://localhost:3000/login`.
+Production landing uses `https://admin.siteinabox.nl/login`.
 
 ## Step 7: Run the test suite
 
@@ -199,7 +198,7 @@ Production landing and `/intake` keep `https://preview.siteinabox.nl/builder`.
   Postgres content is separate. Do not keep agent plans, screenshots, or
   tenant exports under `.data-out/` expecting them to ship in an image.
 
-## Verify all four applications
+## Verify the applications
 
 The steps above cover the database-backed CMS setup. Use the matrix below from
 the repository root when verifying a change across the monorepo. These checks
@@ -210,7 +209,6 @@ production smoke, and image publication are separate release activities.
 | --- | --- | --- | --- |
 | Shared contracts and repository policy | `packages/*` and root | `pnpm check:fast` | None |
 | Marketing site | `apps/landing` | `pnpm landing:build` and `pnpm landing:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
-| Intake (legacy `/intake` redirect) | `apps/intake` | Optional: `pnpm intake:build` and `pnpm intake:test` | Not part of the public create funnel; keep until Traefik `/intake` and the intake image are retired |
 | CMS | `apps/cms` | Generate Payload types/import map, then `pnpm --dir apps/cms typecheck` and `pnpm --dir apps/cms test` | Local PostgreSQL, `DATABASE_URI`, and `PAYLOAD_SECRET` |
 | Published-site renderer | `apps/renderer` | `pnpm renderer:deploy-contract`, `pnpm renderer:typecheck`, `pnpm renderer:test`, and `pnpm renderer:build` | Browser checks need Chromium; renderer provider checks use local fixtures |
 

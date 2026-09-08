@@ -244,4 +244,9 @@ describe("builder workspace routing", () => {
     expect(workspace).toContain("if (!allowed) redirect(\"/builder\")")
     expect(workspace).not.toContain("if (!allowed) notFound()")
   })
+
+  it("sends unauthenticated production builder traffic to the unified login page", () => {
+    const workspace = read("src/lib/builder/loadBuilderWorkspace.tsx")
+    expect(workspace).toContain('redirect(intent === "register" ? "/login?intent=register" : "/login")')
+  })
 })

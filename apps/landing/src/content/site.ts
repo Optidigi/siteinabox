@@ -45,10 +45,9 @@ export type SiteConfig = {
     x?: string;
   };
   links: {
-    intake: string;
+    signup: string;
     builder: string;
     login: string;
-    beheer: string;
     platformAdminLogin: string;
     whatsapp: string;
     phone: string;
@@ -81,16 +80,15 @@ export const site: SiteConfig = {
     instagram: 'https://www.instagram.com/siteinabox/',
   },
   links: {
-    intake: import.meta.env.PROD
-      ? 'https://preview.siteinabox.nl/builder?intent=register'
-      : 'http://localhost:3000/builder?intent=register',
+    signup: import.meta.env.PROD
+      ? 'https://admin.siteinabox.nl/login?intent=register'
+      : 'http://localhost:3000/login?intent=register',
     builder: import.meta.env.PROD
-      ? 'https://preview.siteinabox.nl/builder?intent=register'
-      : 'http://localhost:3000/builder?intent=register',
+      ? 'https://admin.siteinabox.nl/login?intent=register'
+      : 'http://localhost:3000/login?intent=register',
     login: import.meta.env.PROD
-      ? 'https://preview.siteinabox.nl/builder?intent=login'
-      : 'http://localhost:3000/builder?intent=login',
-    beheer: '/beheer/',
+      ? 'https://admin.siteinabox.nl/login'
+      : 'http://localhost:3000/login',
     platformAdminLogin: 'https://admin.siteinabox.nl/login',
     whatsapp: `https://wa.me/${contact.whatsapp.e164.slice(1)}`,
     phone: `tel:${contact.phone.e164}`,
@@ -100,7 +98,6 @@ export const site: SiteConfig = {
     // Root-absolute (/#...) so these section links work from any page, not just the homepage.
     { label: 'Hoe het werkt', href: '/#zo-werkt-het' },
     { label: 'Prijzen', href: '/#prijzen' },
-    { label: 'Bouwen', href: import.meta.env.PROD ? 'https://preview.siteinabox.nl/builder?intent=register' : 'http://localhost:3000/builder?intent=register' },
     { label: 'Contact', href: '/contact' },
   ],
 };

@@ -158,8 +158,6 @@ jobs:
           path: apps/landing/test-results/
           if-no-files-found: ignore
           retention-days: 7
-      - run: pnpm intake:build
-      - run: pnpm intake:test
 
   renderer:
     runs-on: ubuntu-latest

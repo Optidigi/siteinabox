@@ -1,6 +1,6 @@
 # siteinabox
 
-Site in a Box is one pnpm monorepo for the public landing and intake surfaces,
+Site in a Box is one pnpm monorepo for the public landing site,
 the Payload CMS, the generic generated-site renderer, and their shared packages.
 
 ## Workspace
@@ -8,7 +8,6 @@ the Payload CMS, the generic generated-site renderer, and their shared packages.
 | Path | Ownership |
 | --- | --- |
 | `apps/landing` | Public marketing site |
-| `apps/intake` | Public intake flow |
 | `apps/cms` | Tenant, content, administration, and publishing authority |
 | `apps/renderer` | Host-resolved public runtime for generated sites |
 | `packages/contracts` | Shared data contracts and block catalog |
@@ -36,7 +35,6 @@ Use Node and pnpm versions declared at the repository root.
 pnpm install --frozen-lockfile
 pnpm --filter siab-payload dev
 pnpm --filter siteinabox-landing dev
-pnpm --filter siteinabox-intake dev
 pnpm --filter @siteinabox/renderer dev
 ```
 

@@ -27,8 +27,10 @@ export async function renderBuilderWorkspace({
   const email = session?.user?.email?.trim().toLowerCase()
   if (!email) {
     const headerStore = await headers()
-    const localSessionHref = isLocalPreviewSessionBypass(headerStore) ? "/api/builder/dev-session" : null
-    return <BuilderAuthGate intent={intent} localSessionHref={localSessionHref} />
+    if (isLocalPreviewSessionBypass(headerStore)) {
+      return <BuilderAuthGate intent={intent} localSessionHref="/api/builder/dev-session" />
+    }
+    redirect(intent === "register" ? "/login?intent=register" : "/login")
   }
 
   const payload = await getPayload({ config })

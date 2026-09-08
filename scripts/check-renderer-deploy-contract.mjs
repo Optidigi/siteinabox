@@ -11,7 +11,6 @@ const rendererDockerfilePath = resolve(repoRoot, "apps/renderer/Dockerfile")
 const rendererPackagePath = resolve(repoRoot, "apps/renderer/package.json")
 const cmsComposePath = resolve(repoRoot, "apps/cms/docker-compose.yml")
 const landingComposePath = resolve(repoRoot, "apps/landing/compose.yml")
-const intakeComposePath = resolve(repoRoot, "apps/intake/compose.yml")
 const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-renderer-image.yml")
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 const traefikAopConfigPath = resolve(repoRoot, "ops/traefik/cloudflare-aop.dynamic.yml")
@@ -127,7 +126,7 @@ for (const requiredFragment of [
 }
 
 const cloudflareAopOption = "tls.options=siteinabox-cloudflare-aop@file"
-for (const composePath of [cmsComposePath, landingComposePath, intakeComposePath]) {
+for (const composePath of [cmsComposePath, landingComposePath]) {
   const compose = await readFile(composePath, "utf8")
   const websecureRouters = [
     ...compose.matchAll(/traefik\.http\.routers\.([a-z0-9-]+)\.entrypoints=websecure/g),
@@ -192,10 +191,6 @@ for (const [composePath, requiredImage] of [
   [
     landingComposePath,
     "image: ghcr.io/optidigi/siteinabox-site@${SIAB_SITE_IMAGE_DIGEST:?required}",
-  ],
-  [
-    intakeComposePath,
-    "image: ghcr.io/optidigi/siteinabox-intake@${SIAB_INTAKE_IMAGE_DIGEST:?required}",
   ],
 ]) {
   const compose = await readFile(composePath, "utf8")

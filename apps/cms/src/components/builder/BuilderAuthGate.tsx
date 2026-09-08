@@ -20,7 +20,6 @@ export function BuilderAuthGate({
 }) {
   const [state, formAction, pending] = useActionState(requestBuilderMagicLinkAction, initialState)
   const isRegister = intent === "register"
-  const otherHref = isRegister ? "/builder?intent=login" : "/builder?intent=register"
   const termsHref = CURRENT_INTAKE_TERMS_ACCEPTANCE.url
   const title = useMemo(() => (isRegister ? "Maak je builder-account" : "Log in om verder te bouwen"), [isRegister])
 
@@ -107,14 +106,8 @@ export function BuilderAuthGate({
 
           <p className="mt-6 text-sm text-[var(--muted-foreground)]">
             {isRegister ? "Heb je al een preview?" : "Nog geen account?"}{" "}
-            <a className="font-semibold underline" href={otherHref}>
+            <a className="font-semibold underline" href={isRegister ? "/login" : "/login?intent=register"}>
               {isRegister ? "Inloggen" : "Registreren"}
-            </a>
-          </p>
-          <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-            Heb je al een live site op je eigen domein?{" "}
-            <a className="font-semibold underline" href="https://siteinabox.nl/beheer/">
-              Beheer je live site
             </a>
           </p>
         </form>

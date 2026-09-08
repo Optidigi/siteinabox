@@ -12,7 +12,6 @@ tracked workflow YAML and fails when a required trigger is removed or a new
 | Image workflow | Application | Shared paths covered |
 | --- | --- | --- |
 | `build-cms-image.yml` | CMS | contracts, legal content, site renderer, UI, root install inputs, `.dockerignore` |
-| `build-intake-image.yml` | Intake | contracts and root install inputs, `.dockerignore` |
 | `build-renderer-image.yml` | Renderer | contracts, legal content, site renderer, UI, root install inputs, `.dockerignore` |
 | `build-site-image.yml` | Landing site | contracts, legal content, root install inputs, `.dockerignore` |
 

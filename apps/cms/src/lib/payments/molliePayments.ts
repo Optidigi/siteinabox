@@ -60,7 +60,7 @@ import {
   targetAttemptState,
   totalMollieAdjustmentMinor,
 } from "@/lib/payments/paymentDecisions"
-import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { publicCheckoutReturnUrl } from "@/lib/preview/previewHost"
 import {
   ensureCommerceNotification,
   queueCommerceNotification,
@@ -791,8 +791,7 @@ const claimAndCreateFirstMolliePayment = async (
       customerId: agreement.providerCustomerId,
       sequenceType: "first",
       description: `Site in a Box website ${input.selectedDomain}`,
-      redirectUrl:
-        `https://${PREVIEW_HOST}/${input.clientSlug}/checkout?payment=return`,
+      redirectUrl: publicCheckoutReturnUrl(input.clientSlug),
       webhookUrl: `${origin}/api/payments/mollie/webhook`,
       idempotencyKey: claimedAttempt.idempotencyKey,
       metadata: {

@@ -1,6 +1,6 @@
 # Platform origin authentication
 
-The platform admin, preview, intake, contact, and marketing routes intentionally
+The platform admin, preview, contact, and marketing routes intentionally
 use:
 
 ```text
@@ -26,7 +26,7 @@ certificate and Traefik mTLS.
   flags that the base Traefik command must include.
 - `ops/traefik/compose.cloudflare-aop.yml` mounts the dynamic configuration and
   AOP CA certificate.
-- Every platform HTTPS router in the CMS, landing, and intake compose files
+- Every platform HTTPS router in the CMS and landing compose files
   selects that exact TLS option.
 - `pnpm renderer:deploy-contract` fails when a platform router loses the
   option or the mTLS configuration weakens.
@@ -93,7 +93,7 @@ dependency.
 6. Enable **zone-level** AOP for `siteinabox.nl`. Do not toggle the weaker
    global/shared AOP setting.
 7. Confirm the proxied platform routes still succeed.
-8. Deploy the reviewed CMS, landing, and intake compose files. Their router
+8. Deploy the reviewed CMS and landing compose files. Their router
    labels now enforce `siteinabox-cloudflare-aop@file`.
 9. Confirm Cloudflare routes succeed:
 

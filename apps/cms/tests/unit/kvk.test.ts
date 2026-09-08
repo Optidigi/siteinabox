@@ -1,27 +1,17 @@
-import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  getKvkProfile,
   normalizeKvkProfileResponse,
   normalizeKvkSearchResponse,
   searchKvk,
   validateKvkNumber,
   validateKvkSearchQuery,
 } from "@/lib/intake/kvk"
-import { POST as POST_PROFILE } from "@/app/(payload)/api/intake/kvk/profile/route"
-import { POST as POST_SEARCH } from "@/app/(payload)/api/intake/kvk/search/route"
 
-import { errLike } from "../_helpers/cast"
 const ORIGINAL_ENV = { ...process.env }
 const ORIGINAL_FETCH = globalThis.fetch
 
-const request = (url: string, body: unknown) =>
-  new NextRequest(url, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  })
-
-describe("KVK intake helpers", () => {
+describe("KVK lookup helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env = { ...ORIGINAL_ENV }
@@ -50,7 +40,7 @@ describe("KVK intake helpers", () => {
     expect(validateKvkNumber(" 12345678 ")).toEqual({ ok: true, kvkNumber: "12345678" })
   })
 
-  it("normalizes search responses to the intake-facing shape", () => {
+  it("normalizes search responses without a public HTTP wrapper", () => {
     expect(normalizeKvkSearchResponse({
       totaal: 1,
       resultaten: [{
@@ -73,7 +63,7 @@ describe("KVK intake helpers", () => {
     })
   })
 
-  it("normalizes profile responses without inferring intake brief fields", () => {
+  it("normalizes profile responses without inferring brief fields", () => {
     expect(normalizeKvkProfileResponse({
       kvkNummer: "12345678",
       naam: "Holding Naam",
@@ -134,7 +124,7 @@ describe("KVK intake helpers", () => {
   })
 })
 
-describe("KVK intake routes", () => {
+describe("KVK lookup helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env = { ...ORIGINAL_ENV }
@@ -145,18 +135,19 @@ describe("KVK intake routes", () => {
     globalThis.fetch = ORIGINAL_FETCH
   })
 
-  it("rejects malformed route payloads before calling KVK", async () => {
+  it("rejects malformed queries before calling KVK", () => {
     process.env.KVK_API_KEY = "test-key"
     const fetchMock = vi.fn()
     globalThis.fetch = fetchMock
 
-    const search = await POST_SEARCH(request("https://cms.test/api/intake/kvk/search", { query: "1" }))
-    const profile = await POST_PROFILE(request("https://cms.test/api/intake/kvk/profile", { kvkNumber: "123" }))
-
-    expect(search.status).toBe(400)
-    expect(await search.json()).toEqual({ error: "Een KVK-nummer bestaat uit 8 cijfers." })
-    expect(profile.status).toBe(400)
-    expect(await profile.json()).toEqual({ error: "Een KVK-nummer bestaat uit 8 cijfers." })
+    expect(validateKvkSearchQuery("1")).toEqual({
+      ok: false,
+      error: "Een KVK-nummer bestaat uit 8 cijfers.",
+    })
+    expect(validateKvkNumber("123")).toEqual({
+      ok: false,
+      error: "Een KVK-nummer bestaat uit 8 cijfers.",
+    })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -169,34 +160,40 @@ describe("KVK intake routes", () => {
     }))
     globalThis.fetch = fetchMock
 
-    const res = await POST_SEARCH(request("https://cms.test/api/intake/kvk/search", { query: "Optidigi" }))
+    const result = await searchKvk("Optidigi")
 
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({
-      total: 1,
-      results: [{
-        id: "12345678",
-        kvkNumber: "12345678",
-        branchNumber: null,
-        name: "Optidigi",
-        city: null,
-        type: null,
-      }],
+    expect(result).toEqual({
+      ok: true,
+      status: 200,
+      data: {
+        total: 1,
+        results: [{
+          id: "12345678",
+          kvkNumber: "12345678",
+          branchNumber: null,
+          name: "Optidigi",
+          city: null,
+          type: null,
+        }],
+      },
     })
     expect(fetchMock).toHaveBeenCalledWith(new URL("https://kvk.test/search?naam=Optidigi&resultatenPerPagina=5"), {
       headers: { apikey: "server-only-key" },
     })
   })
 
-  it("returns a graceful route response when the API key is missing", async () => {
+  it("returns a graceful profile response when the API key is missing", async () => {
     delete process.env.KVK_API_KEY
 
-    const res = await POST_PROFILE(request("https://cms.test/api/intake/kvk/profile", { kvkNumber: "12345678" }))
+    const result = await getKvkProfile("12345678")
 
-    expect(res.status).toBe(503)
-    expect(await res.json()).toEqual({
-      unavailable: true,
-      error: "Bedrijfsgegevens ophalen lukt nu niet.",
+    expect(result).toEqual({
+      ok: false,
+      status: 503,
+      data: {
+        unavailable: true,
+        error: "Bedrijfsgegevens ophalen lukt nu niet.",
+      },
     })
   })
 })

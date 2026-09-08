@@ -76,7 +76,11 @@ export function isPreviewRequestAuthority(
 ): boolean {
   const authority = canonicalRequestAuthority(headers, env)
   if (!authority) return false
-  if (authority.hostname === "preview.siteinabox.nl" || authority.developmentLoopback) return true
+  if (
+    authority.hostname === "preview.siteinabox.nl"
+    || authority.hostname === "admin.siteinabox.nl"
+    || authority.developmentLoopback
+  ) return true
   return env.NODE_ENV === "development" && authority.hostname.endsWith(TRYCLOUDFLARE_SUFFIX)
 }
 

@@ -290,7 +290,7 @@ try {
     assert.equal(semanticGoogleCommand?.[2]?.journey_step, "semantic_contract_test")
     assert.equal("visitor_email" in (semanticGoogleCommand?.[2] ?? {}), false, "GA4 receives the same sanitized payload")
     await acceptedPage.evaluate(() => {
-      for (const conversion_source of ["contact_form", "contact_click", "intake_handoff"]) {
+      for (const conversion_source of ["contact_form", "contact_click", "signup_handoff"]) {
         window.dispatchEvent(new CustomEvent("siab:landing-analytics", {
           detail: {
             event: "site_conversion_completed",
@@ -307,13 +307,13 @@ try {
       (window.dataLayer ?? [])
         .filter((entry) =>
           entry[0] === "event"
-          && ["generate_lead", "direct_contact_clicked", "intake_started"].includes(entry[1]),
+          && ["generate_lead", "direct_contact_clicked", "signup_started"].includes(entry[1]),
         )
         .map((entry) => ({ event: entry[1], properties: entry[2] })),
     )
     assert.deepEqual(
       googleKeyEvents.map(({ event }) => event).sort(),
-      ["direct_contact_clicked", "generate_lead", "intake_started"],
+      ["direct_contact_clicked", "generate_lead", "signup_started"],
       "GA4 receives distinct business outcomes instead of one ambiguous key event",
     )
     assert.ok(

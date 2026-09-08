@@ -5,12 +5,12 @@ executable configuration remain authoritative for exact behavior.
 
 ## Applications and packages
 
-- `apps/landing` owns the public marketing site.
-- `apps/intake` is a **legacy adapter**. Public `/intake` redirects to the
-  preview builder. It is not the self-serve create path. Keep the package until
-  production Traefik `/intake` routing and the intake image workflow are retired.
+- `apps/landing` owns the public marketing site, including Traefik redirects
+  for retired `/intake` and `/beheer` paths.
 - `apps/cms` is the Payload administration, tenant, content, commercial, and
-  publishing authority.
+  publishing authority. Builder preview and `/builder` are served from the
+  same CMS image on `admin.siteinabox.nl` (with `preview.siteinabox.nl` kept
+  as a legacy alias).
 - `apps/renderer` resolves tenants by request host and renders their active
   published snapshots.
 - `packages/contracts` owns shared data shapes and the first-party semantic
@@ -19,11 +19,11 @@ executable configuration remain authoritative for exact behavior.
 - `packages/site-renderer` owns tenant-canvas rendering shared by CMS preview/editor surfaces and the public renderer. It does not import `@siteinabox/ui`.
 - `packages/legal-content` owns versioned legal text and release metadata.
 - `packages/contracts/src/product.ts` owns shared public product facts used by
-  the landing and intake applications, including approved pricing.
+  the landing application, including approved pricing.
 
 ## Product flow
 
-1. Public builder chat on the preview host requires a Better Auth preview
+1. Public builder chat on `admin.siteinabox.nl` requires a Better Auth preview
    session (magic link in production; development loopback may use
    `GET /api/builder/dev-session` instead of mail). The first successful Sitegen apply creates the tenant, pages,
    settings, generation run, and preview grant. Later turns patch or regenerate

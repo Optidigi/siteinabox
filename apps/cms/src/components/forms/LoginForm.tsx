@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter, useSearchParams } from "next/navigation"
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { Button } from "@siteinabox/ui/components/button"
 import { Input } from "@siteinabox/ui/components/input"
 import { Separator } from "@siteinabox/ui/components/separator"
@@ -14,19 +15,24 @@ import { validateNextRedirect } from "@/lib/auth/validateNextRedirect"
 import { useTranslations } from "next-intl"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { authClient } from "@/lib/auth-client"
+import { requestUnifiedMagicLinkAction } from "@/lib/actions/requestUnifiedMagicLink"
 import { SOCIAL_AUTH_PROVIDER_LABELS, type SocialAuthProvider } from "@/lib/socialAuth/providers"
 
-const createSchema = (t: (key: string) => string) => z.object({
+const createSchema = (t: (key: string) => string, isRegister: boolean) => z.object({
   email: z.string().email(t("validEmail")),
   password: z.string().optional(),
+  displayName: isRegister
+    ? z.string().trim().min(2, t("nameRequired"))
+    : z.string().optional(),
+  businessUseAccepted: isRegister
+    ? z.boolean().refine((value) => value === true, t("termsRequired"))
+    : z.boolean().optional(),
+  termsAccepted: isRegister
+    ? z.boolean().refine((value) => value === true, t("termsRequired"))
+    : z.boolean().optional(),
+  marketingOptIn: z.boolean().optional(),
 })
 
-// FN-2026-0043 — surface a friendly inline alert for the documented gate
-// reasons in src/lib/gateDecision.ts. The middleware bounces a tenant
-// user from the super-admin host (or a super-admin from a tenant host)
-// to /login?error=<reason> with no UI signal pre-fix; users would re-
-// enter credentials and get the same redirect, looking identical to a
-// password failure.
 const ERROR_KEYS: Record<string, string> = {
   "wrong-host": "wrongHost",
   "super-admin-on-tenant-host": "superAdminOnSiteHost",
@@ -71,9 +77,11 @@ const SocialProviderIcon = ({ provider }: { provider: SocialAuthProvider }) => {
 export function LoginForm({
   socialProviders = [],
   allowPasswordLogin = false,
+  unifyPublicAuth = false,
 }: {
   socialProviders?: SocialAuthProvider[]
   allowPasswordLogin?: boolean
+  unifyPublicAuth?: boolean
 }) {
   const t = useTranslations("auth")
   const router = useRouter()
@@ -81,20 +89,30 @@ export function LoginForm({
   const status = useStatusFeedback()
   const [pending, setPending] = useState(false)
   const [passwordMode, setPasswordMode] = useState(false)
+  const isRegister = unifyPublicAuth && params.get("intent") === "register"
+  const showCmsPassword = allowPasswordLogin && !isRegister
+  const showSocial = socialProviders.length > 0 && !isRegister
   const errorParam = params.get("error")
   const errorCopy = errorParam
     ? ERROR_KEYS[errorParam]
       ? t(ERROR_KEYS[errorParam])
       : t("signInError", { error: errorParam })
     : null
-  const schema = createSchema(t)
+  const schema = createSchema(t, isRegister)
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" }
+    defaultValues: {
+      email: "",
+      password: "",
+      displayName: "",
+      businessUseAccepted: false,
+      termsAccepted: false,
+      marketingOptIn: false,
+    }
   })
 
   const onPasswordSignIn = async (values: z.infer<typeof schema>) => {
-    if (!allowPasswordLogin) return
+    if (!showCmsPassword) return
     if (!values.password) {
       form.setError("password", { message: t("passwordRequired") })
       return
@@ -103,7 +121,7 @@ export function LoginForm({
     const res = await fetch("/api/users/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(values)
+      body: JSON.stringify({ email: values.email, password: values.password })
     })
     setPending(false)
     if (!res.ok) {
@@ -115,8 +133,12 @@ export function LoginForm({
   }
 
   const onSubmit = async (values: z.infer<typeof schema>) => {
-    if (passwordMode && allowPasswordLogin) {
+    if (passwordMode && showCmsPassword) {
       await onPasswordSignIn(values)
+      return
+    }
+    if (unifyPublicAuth) {
+      await onUnifiedMagicLink(values)
       return
     }
     await onMagicLinkSignIn()
@@ -139,6 +161,23 @@ export function LoginForm({
         }
       }
     )
+  }
+
+  const onUnifiedMagicLink = async (values: z.infer<typeof schema>) => {
+    setPending(true)
+    const formData = new FormData()
+    formData.set("intent", isRegister ? "register" : "login")
+    formData.set("email", values.email)
+    if (isRegister) {
+      formData.set("displayName", values.displayName ?? "")
+      if (values.businessUseAccepted) formData.set("businessUseAccepted", "true")
+      if (values.termsAccepted) formData.set("termsAccepted", "true")
+      if (values.marketingOptIn) formData.set("marketingOptIn", "true")
+    }
+    const result = await requestUnifiedMagicLinkAction({ ok: false, message: "" }, formData)
+    setPending(false)
+    if (result.ok) status.success(result.message || t("magicLinkGenericSuccess"))
+    else status.error(result.message || t("magicLinkFailed"))
   }
 
   const onMagicLinkSignIn = async () => {
@@ -177,6 +216,8 @@ export function LoginForm({
     })
   }
 
+  const termsHref = CURRENT_INTAKE_TERMS_ACCEPTANCE.url
+
   return (
     <Form {...form}>
       <form method="post" onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -186,12 +227,26 @@ export function LoginForm({
             <AlertDescription>{errorCopy}</AlertDescription>
           </Alert>
         )}
-        <h2 className="text-left text-xl font-semibold">{t("signIn")}</h2>
+        <h2 className="text-left text-xl font-semibold">{isRegister ? t("createAccount") : t("signIn")}</h2>
+        {isRegister ? (
+          <p className="text-sm text-muted-foreground">{t("createAccountSubtitle")}</p>
+        ) : null}
+        {isRegister ? (
+          <FormField name="displayName" control={form.control} render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("name")}</FormLabel>
+              <FormControl>
+                <Input autoComplete="name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}/>
+        ) : null}
         <FormField name="email" control={form.control} render={({ field }) => (
           <FormItem>
             <div className="flex items-center">
               <FormLabel>{t("email")}</FormLabel>
-              {allowPasswordLogin && (
+              {showCmsPassword && (
                 <Button
                   type="button"
                   variant="link"
@@ -217,7 +272,7 @@ export function LoginForm({
             <FormMessage />
           </FormItem>
         )}/>
-        {passwordMode && allowPasswordLogin && (
+        {passwordMode && showCmsPassword && (
           <FormField name="password" control={form.control} render={({ field }) => (
             <FormItem>
               <div className="flex items-center">
@@ -236,6 +291,57 @@ export function LoginForm({
             </FormItem>
           )}/>
         )}
+        {isRegister ? (
+          <div className="grid gap-3 border-t pt-4">
+            <FormField name="businessUseAccepted" control={form.control} render={({ field }) => (
+              <FormItem>
+                <label className="flex cursor-pointer items-start gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 shrink-0"
+                    checked={Boolean(field.value)}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                  <span>{t("businessUse")}</span>
+                </label>
+                <FormMessage />
+              </FormItem>
+            )}/>
+            <FormField name="termsAccepted" control={form.control} render={({ field }) => (
+              <FormItem>
+                <label className="flex cursor-pointer items-start gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 shrink-0"
+                    checked={Boolean(field.value)}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                  <span>
+                    {t("termsAcceptLead")}{" "}
+                    <a className="font-semibold underline" href={termsHref} target="_blank" rel="noopener noreferrer">
+                      {t("termsLinkLabel")}
+                    </a>
+                    .
+                  </span>
+                </label>
+                <FormMessage />
+              </FormItem>
+            )}/>
+            <FormField name="marketingOptIn" control={form.control} render={({ field }) => (
+              <FormItem>
+                <label className="flex cursor-pointer items-start gap-3 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 shrink-0"
+                    checked={Boolean(field.value)}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                  <span>{t("marketingOptIn")}</span>
+                </label>
+              </FormItem>
+            )}/>
+          </div>
+        ) : null}
         <Button type="submit" disabled={pending} className="w-full">
           {!passwordMode && <Mail aria-hidden />}
           {pending
@@ -244,21 +350,26 @@ export function LoginForm({
               : t("sending")
             : passwordMode
               ? t("signIn")
-              : t("continueWithMagicLink")}
+              : isRegister
+                ? t("sendRegisterLink")
+                : t("continueWithMagicLink")}
         </Button>
-        {passwordMode && allowPasswordLogin && (
+        {passwordMode && showCmsPassword && (
           <Button
             type="button"
             variant="outline"
             disabled={pending}
             className="w-full"
-            onClick={() => void onMagicLinkSignIn()}
+            onClick={() => {
+              if (unifyPublicAuth) void onUnifiedMagicLink(form.getValues())
+              else void onMagicLinkSignIn()
+            }}
           >
           <Mail aria-hidden />
           {pending ? t("sending") : t("continueWithMagicLink")}
           </Button>
         )}
-        {socialProviders.length > 0 && (
+        {showSocial && (
           <>
             <div className="flex items-center gap-3">
               <Separator className="flex-1" />
@@ -283,6 +394,14 @@ export function LoginForm({
             </div>
           </>
         )}
+        {unifyPublicAuth ? (
+          <p className="text-sm text-muted-foreground">
+            {isRegister ? t("haveAccount") : t("noAccount")}{" "}
+            <a className="font-semibold underline" href={isRegister ? "/login" : "/login?intent=register"}>
+              {isRegister ? t("signIn") : t("register")}
+            </a>
+          </p>
+        ) : null}
       </form>
     </Form>
   )

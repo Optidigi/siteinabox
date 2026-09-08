@@ -317,6 +317,7 @@ test("compact header and process cards keep their responsive geometry", async ({
 
   await expect(page.getByRole("link", { name: "Inloggen" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Start gratis" })).toBeHidden();
+  await expect(page.getByRole("link", { name: "Bouwen" })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Open navigatie" }),
   ).toBeVisible();
@@ -445,7 +446,6 @@ test("representative routes have no serious accessibility violations", async ({
   for (const route of [
     "/",
     "/contact",
-    "/beheer",
     "/algemene-voorwaarden",
     "/privacy-en-cookieverklaring",
     "/juridisch/algemene-voorwaarden/2026-07-07.1",
@@ -466,7 +466,7 @@ test("representative routes have no serious accessibility violations", async ({
   }
 });
 
-test("contact and beheer validation contracts remain intact", async ({
+test("contact validation contracts remain intact", async ({
   page,
 }) => {
   await page.goto("/contact");
@@ -478,14 +478,6 @@ test("contact and beheer validation contracts remain intact", async ({
     "aria-invalid",
     "true",
   );
-
-  await page.goto("/beheer");
-  await page.locator("#tenant-domain").fill("geen geldig domein");
-  await page.getByRole("button", { name: "Inloggen" }).click();
-  await expect(
-    page.getByText("Vul een geldig domein in, bijvoorbeeld ami-care.nl."),
-  ).toBeVisible();
-  await expect(page.locator("#tenant-domain")).toBeFocused();
 });
 
 test("contact success and failure states remain actionable", async ({
@@ -544,21 +536,9 @@ test("contact success and failure states remain actionable", async ({
   ).toBeEnabled();
 });
 
-test("beheer redirects valid tenant domains and public routing remains intact", async ({
+test("public routing remains intact", async ({
   page,
 }) => {
-  await page.route("https://admin.ami-care.nl/login", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "text/html",
-      body: "<title>Tenant login</title>",
-    }),
-  );
-  await page.goto("/beheer");
-  await page.locator("#tenant-domain").fill("https://www.ami-care.nl/");
-  await page.getByRole("button", { name: "Inloggen" }).click();
-  await expect(page).toHaveURL("https://admin.ami-care.nl/login");
-
   const redirectResponse = await page.goto("/privacy-policy");
   expect(redirectResponse?.ok()).toBe(true);
   await expect(page).toHaveURL(/\/privacy-en-cookieverklaring\/?$/);

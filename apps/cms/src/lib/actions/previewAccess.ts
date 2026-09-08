@@ -6,7 +6,7 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { createOrRefreshPreviewGrant } from "@/lib/preview/previewAccess"
-import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { previewAuthRequestHeaders, PUBLIC_PREVIEW_ORIGIN } from "@/lib/preview/previewHost"
 import { createPreviewSiteReadyAuthorization } from "@/lib/preview/trustedSiteReadyIntent"
 
 export type PreviewAccessActionState = {
@@ -21,15 +21,6 @@ const requireSuperAdmin = async (forbiddenMessage: string) => {
   if (authResult.user?.role !== "super-admin") {
     throw new Error(forbiddenMessage)
   }
-}
-
-const previewAuthHeaders = async (): Promise<Headers> => {
-  const source = await headers()
-  const next = new Headers(source)
-  next.set("host", PREVIEW_HOST)
-  next.set("x-forwarded-host", PREVIEW_HOST)
-  next.set("x-forwarded-proto", "https")
-  return next
 }
 
 export async function sendPreviewAccessAction(
@@ -48,7 +39,7 @@ export async function sendPreviewAccessAction(
       customerEmail: email,
       sendEmail: true,
     })
-    const previewUrl = `https://${PREVIEW_HOST}/${grant.clientSlug}`
+    const previewUrl = `${PUBLIC_PREVIEW_ORIGIN}/${grant.clientSlug}`
     const previewSiteReadyAuthorization = createPreviewSiteReadyAuthorization({
       email,
       clientSlug: grant.clientSlug,
@@ -64,7 +55,7 @@ export async function sendPreviewAccessAction(
           previewSiteReadyAuthorization,
         },
       },
-      headers: await previewAuthHeaders(),
+      headers: previewAuthRequestHeaders(await headers()),
     })
 
     return { ok: true, previewUrl, message: t("previewMagicLinkSent") }

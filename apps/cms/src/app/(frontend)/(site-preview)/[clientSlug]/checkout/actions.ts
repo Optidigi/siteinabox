@@ -91,7 +91,7 @@ import {
   requirePreviewCheckoutContext,
   requirePreviewDomainSearchContext,
 } from "./previewCheckoutContext"
-import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { publicCheckoutReturnUrl } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
   acquireAutomaticMigrationInputs,
@@ -922,7 +922,7 @@ async function recollectAcceptedMigrationInput(
     sourceZoneHash: quote.migrationSourceZoneHash!,
     encryptedInput: assessment.encryptedInput,
   })
-  return `https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return`
+  return publicCheckoutReturnUrl(context.clientSlug)
 }
 
 export async function recollectAcceptedMigrationInputAction(

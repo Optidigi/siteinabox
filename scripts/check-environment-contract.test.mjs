@@ -29,13 +29,13 @@ test("CMS startup requirements are explicit", () => {
 })
 
 test("static site and renderer phases remain application-specific", () => {
-  assert.equal(classifyEnvironmentName("intake", "SITE_URL").phase, "build")
+  assert.equal(classifyEnvironmentName("landing", "SITE_URL").phase, "build")
   assert.equal(classifyEnvironmentName("renderer", "SITE_URL").phase, "runtime")
 })
 
 test("the checked-in inventory is fully classifiable", async () => {
   const inventory = JSON.parse(await readFile(new URL("../docs/environment-inventory.json", import.meta.url), "utf8"))
   const classifications = classifyInventory(inventory)
-  assert.equal(classifications.length, 111)
+  assert.equal(classifications.length, 105)
   assert.ok(classifications.every(({ exposure, phase, requiredness }) => exposure && phase && requiredness))
 })

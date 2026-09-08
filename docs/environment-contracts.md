@@ -1,7 +1,7 @@
 # Environment contracts
 
-`docs/environment-inventory.json` records the 111 environment names read by
-application source and tests across CMS, intake, landing, and renderer. The
+`docs/environment-inventory.json` records the environment names read by
+application source and tests across CMS, landing, and renderer. The
 inventory is source-owned; deployment-only image digests and Compose plumbing
 are not falsely presented as application reads. The check includes non-ignored
 working-tree source, so new environment reads are caught before commit too.
@@ -11,7 +11,7 @@ working-tree source, so new environment reads are caught before commit too.
 The classification was researched on 2026-08-12 from:
 
 - source access patterns under `apps/`, `packages/`, and `scripts/`;
-- the active VPS `.env` key names for all four application stacks;
+- the active VPS `.env` key names for the CMS, landing, and renderer stacks;
 - the running container environment key names;
 - Dockerfiles, Compose files, image workflows, deployment runbooks, and
   `.env.example` files.
@@ -52,7 +52,6 @@ invoked.
 
 Static applications keep their build/runtime boundary explicit:
 
-- intake `PUBLIC_*` values and `SITE_URL` are build inputs;
 - landing PostHog, Turnstile, and `SITE_URL` values are build inputs;
 - CMS `NEXT_PUBLIC_*` values are build inputs while CMS server settings remain
   runtime values (`DATA_DIR=/data-out` in production compose, `./.data-out` locally);
