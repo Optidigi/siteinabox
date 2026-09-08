@@ -30,8 +30,9 @@ export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error"
  * failed states. Saved/error keep the stronger success/destructive contrast
  * while staying smaller than the old wide default badge.
  *
- * Phone is suppressed entirely (`hidden md:flex`); the MobileSavePill
- * owns small-viewport save UI.
+ * Phone is suppressed entirely (`hidden md:flex`); operator forms use
+ * `MobileFormActionBar` on small viewports, and the page editor uses
+ * `MobilePageEditorShell` with a bottom save control.
  *
  * The bar is UI-only: navigation guarding is handled by
  * `useNavigationGuard` mounted by the parent form.

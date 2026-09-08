@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { PanelLeftIcon } from "lucide-react"
+import { PanelLeftCloseIcon, PanelLeftIcon } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { useIsMobile } from "../hooks/use-mobile"
@@ -68,8 +68,6 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
   const setOpen = React.useCallback(
@@ -81,24 +79,18 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, open]
   )
 
-  // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    return isMobile ? setOpenMobile((current) => !current) : setOpen((current) => !current)
   }, [isMobile, setOpen, setOpenMobile])
 
-  // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
-      ) {
+      if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
         event.preventDefault()
         toggleSidebar()
       }
@@ -108,8 +100,6 @@ function SidebarProvider({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
 
-  // We add a state so that we can do data-state="expanded" or "collapsed".
-  // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed"
 
   const contextValue = React.useMemo<SidebarContextProps>(
@@ -255,7 +245,7 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("size-11 md:size-7", className)}
+      className={className}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -268,6 +258,33 @@ function SidebarTrigger({
   )
 }
 
+function SidebarCollapseTrigger({
+  className,
+  ...props
+}: React.ComponentProps<typeof Button>) {
+  const t = useTranslations("common")
+  const { isMobile, open, toggleSidebar } = useSidebar()
+
+  if (isMobile) return null
+
+  return (
+    <Button
+      data-sidebar="collapse-trigger"
+      data-slot="sidebar-collapse-trigger"
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={className}
+      aria-label={open ? t("closeSidebar") : t("openSidebar")}
+      title={open ? t("closeSidebar") : t("openSidebar")}
+      onClick={toggleSidebar}
+      {...props}
+    >
+      {open ? <PanelLeftCloseIcon /> : <PanelLeftIcon />}
+    </Button>
+  )
+}
+
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   const t = useTranslations("common")
   const { toggleSidebar } = useSidebar()
@@ -276,6 +293,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
+      type="button"
       aria-label={props["aria-label"] ?? t("toggleSidebar")}
       tabIndex={-1}
       onClick={toggleSidebar}
@@ -327,7 +345,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-header"
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:p-1.5", className)}
       {...props}
     />
   )
@@ -364,7 +382,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-visible",
         className
       )}
       {...props}
@@ -377,7 +395,7 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-group"
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn("relative flex w-full min-w-0 flex-col p-2 group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:pb-2", className)}
       {...props}
     />
   )
@@ -396,7 +414,7 @@ function SidebarGroupLabel({
       data-sidebar="group-label"
       className={cn(
         "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
+        "group-data-[collapsible=icon]:hidden",
         className
       )}
       {...props}
@@ -470,13 +488,13 @@ const sidebarMenuButtonVariants = cva(
   // positioned bar anchors to this element. The collapsed-icon variant
   // hides the bar (`group-data-[collapsible=icon]:before:hidden`) since
   // there's no room for it next to a 32px icon button.
-  "peer/menu-button relative flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground data-[active=true]:before:absolute data-[active=true]:before:left-0 data-[active=true]:before:top-1/2 data-[active=true]:before:-translate-y-1/2 data-[active=true]:before:h-5 data-[active=true]:before:w-1 data-[active=true]:before:rounded-r-sm data-[active=true]:before:bg-sidebar-primary data-[active=true]:before:content-[''] group-data-[collapsible=icon]:data-[active=true]:before:hidden data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button relative flex w-full items-center gap-2 overflow-visible rounded-base border-2 border-transparent p-2 text-left text-sm font-base outline-none transition-[width,height,padding,box-shadow,background-color] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:text-[0px] group-data-[collapsible=icon]:leading-none group-data-[collapsible=icon]:[&>span]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:border-border data-[active=true]:bg-main data-[active=true]:font-heading data-[active=true]:text-main-foreground data-[active=true]:shadow-shadow data-[active=true]:hover:bg-main data-[active=true]:hover:text-main-foreground data-[active=true]:active:bg-main data-[active=true]:active:text-main-foreground group-data-[collapsible=icon]:data-[active=true]:before:hidden data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&_svg]:size-4",
   {
     variants: {
       variant: {
         default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-card shadow-shadow hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
       },
       size: {
         default: "h-8 text-sm max-md:h-11 max-md:text-base",
@@ -711,6 +729,7 @@ export {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarCollapseTrigger,
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,

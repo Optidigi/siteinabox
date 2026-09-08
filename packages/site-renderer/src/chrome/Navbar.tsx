@@ -1,6 +1,6 @@
 import * as React from "react"
 import { DEFAULT_THEME_TOKEN_SPEC, type Page, type SiteSettings, type ThemeTokenSpec } from "@siteinabox/contracts"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../cn"
 import { assertNever } from "../blocks/shared"
 import { resolveMedia } from "../media"
 import { Navbar01 } from "./Navbar01"

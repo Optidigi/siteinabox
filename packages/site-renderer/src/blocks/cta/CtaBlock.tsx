@@ -1,7 +1,6 @@
 import * as React from "react"
 import type { Action, CtaBlock } from "@siteinabox/contracts"
-import { buttonVariants } from "@siteinabox/ui/components/button"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../../cn"
 import { HeroActions, HeroBackground, resolveBackgroundMode } from "../hero/HeroShared"
 import { Section, SectionInner, assertNever } from "../shared"
 import type { BlockRenderOptions } from "../types"
@@ -91,7 +90,7 @@ function Cta02Action({
   const primary = name === "primaryAction"
   const className = primary
     ? cn(
-      buttonVariants({ variant: "default", size: "lg" }),
+      "site-btn site-btn-lg",
       "hero-action hero-primary-action site-cta-02-primary max-w-full whitespace-nowrap",
     )
     : "site-cta-02-more-link"

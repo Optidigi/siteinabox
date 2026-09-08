@@ -6,25 +6,34 @@ executable configuration remain authoritative for exact behavior.
 ## Applications and packages
 
 - `apps/landing` owns the public marketing site.
-- `apps/intake` owns the public intake flow at `/intake`.
+- `apps/intake` is a **legacy adapter**. Public `/intake` redirects to the
+  preview builder. It is not the self-serve create path. Keep the package until
+  production Traefik `/intake` routing and the intake image workflow are retired.
 - `apps/cms` is the Payload administration, tenant, content, commercial, and
   publishing authority.
 - `apps/renderer` resolves tenants by request host and renders their active
   published snapshots.
 - `packages/contracts` owns shared data shapes and the first-party semantic
   block contracts.
-- `packages/ui` owns shared primitives, tokens, and application-neutral UI.
-- `packages/site-renderer` owns rendering shared by CMS preview/editor surfaces
-  and the public renderer.
+- `packages/ui` owns shared primitives, tokens, and operator-dashboard UI.
+- `packages/site-renderer` owns tenant-canvas rendering shared by CMS preview/editor surfaces and the public renderer. It does not import `@siteinabox/ui`.
 - `packages/legal-content` owns versioned legal text and release metadata.
 - `packages/contracts/src/product.ts` owns shared public product facts used by
   the landing and intake applications, including approved pricing.
 
 ## Product flow
 
-1. Intake creates validated CMS-owned intake and tenant data.
+1. Public builder chat on the preview host requires a Better Auth preview
+   session (magic link in production; development loopback may use
+   `GET /api/builder/dev-session` instead of mail). The first successful Sitegen apply creates the tenant, pages,
+   settings, generation run, and preview grant. Later turns patch or regenerate
+   only when that email still has an active grant for the tenant; regenerate
+   apply is pinned to the grant tenant id. The model never emits React, HTML,
+   or a component tree.
 2. CMS workflows edit site, page, theme, SEO, domain, commercial, and publishing
-   data.
+   data. The Sparkles agent uses the same patch tools: editors may change
+   theme and page sections; appointments, hours, and contact settings stay
+   owner (and super-admin) only.
 3. Publishing creates an immutable validated snapshot and selects the tenant's
    active snapshot.
 4. The renderer resolves the request host, loads that snapshot, and renders it

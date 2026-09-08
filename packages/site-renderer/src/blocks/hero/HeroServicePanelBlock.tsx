@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { Action, HeroBlock, HeroServiceHighlight } from "@siteinabox/contracts"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../../cn"
 import type { BlockRenderOptions } from "../types"
 import { SiteBriefcase, SiteBuilding, SiteHouse, SiteWrench } from "../../icons/SiteIcons"
 import { HeroActions, HeroBackground, HeroSection, HeroServiceHighlights, resolveBackgroundMode } from "./HeroShared"

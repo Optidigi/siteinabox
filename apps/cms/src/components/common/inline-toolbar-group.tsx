@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Button } from "@siteinabox/ui/components/button"
+import { neoTray } from "@siteinabox/ui/lib/retro"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 export function InlineToolbarGroup({
@@ -13,10 +14,7 @@ export function InlineToolbarGroup({
 }) {
   return (
     <div
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border/80 bg-card p-1 shadow-sm",
-        className,
-      )}
+      className={cn(neoTray, "inline-flex items-center gap-1 p-1", className)}
     >
       {children}
     </div>
@@ -24,7 +22,7 @@ export function InlineToolbarGroup({
 }
 
 export function InlineToolbarDivider() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border/80" aria-hidden />
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
 }
 
 export function InlineToolbarOption({
@@ -45,19 +43,13 @@ export function InlineToolbarOption({
   return (
     <Button
       type="button"
-      variant="ghost"
-      size="icon"
+      variant={active ? "default" : "outline"}
+      size="icon-sm"
       onClick={onClick}
       aria-pressed={active}
       aria-label={ariaLabel}
       title={title}
-      className={cn(
-        "size-8 shrink-0 rounded-md",
-        active
-          ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/20 hover:bg-primary/15"
-          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-        className,
-      )}
+      className={className}
     >
       {children}
     </Button>

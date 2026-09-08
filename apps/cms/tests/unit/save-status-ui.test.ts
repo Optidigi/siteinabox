@@ -14,6 +14,7 @@ describe("FE-80 save status UI", () => {
   it("uses the registry-owned merged save status primitives", () => {
     const statusBar = read("src/components/save-ui/save-status-bar.tsx")
     const statusBadge = read("src/components/save-ui/status-badge.tsx")
+    const mobileActionBar = read("src/components/save-ui/mobile-form-action-bar.tsx")
     const mobilePill = read("src/components/save-ui/mobile-save-pill.tsx")
     const statusFeedback = read("src/components/status-feedback.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
@@ -34,9 +35,9 @@ describe("FE-80 save status UI", () => {
     expect(statusBar).not.toContain(legacyImport)
     expect(statusBar).not.toContain(legacyCall)
     expect(statusBadge).toContain("export function StatusBadge")
-    expect(statusBadge).toContain("h-8 px-3 rounded-md")
-    expect(statusBadge).toContain("bg-success/75 supports-[backdrop-filter]:bg-success/65")
-    expect(statusBadge).toContain("bg-destructive/75 supports-[backdrop-filter]:bg-destructive/65")
+    expect(statusBadge).toContain("h-8 px-3 rounded-base border-2 border-border shadow-shadow")
+    expect(statusBadge).toContain("bg-success text-success-foreground")
+    expect(statusBadge).toContain("bg-destructive text-destructive-foreground")
     expect(statusBar).toContain("useCspStyleRule")
     expect(statusBar).toContain("save-status-bar-position")
     expect(statusBar).toContain("bottom:calc(env(safe-area-inset-bottom, 0px) + 4.75rem)")
@@ -49,6 +50,10 @@ describe("FE-80 save status UI", () => {
     expect(pageForm).toContain("grid-cols-[minmax(0,1fr)_360px]")
     // Save failure stays on SaveStatusBar + submitError banner (no StatusFeedback collision).
     expect(pageForm).toContain("onSaveFailed: () => {}")
+    expect(mobileActionBar).toContain("data-mobile-form-action-bar")
+    expect(mobileActionBar).toContain("md:hidden")
+    expect(mobileActionBar).toContain('variant="outline"')
+    expect(mobileActionBar).toContain("<SaveButton")
     expect(mobilePill).toContain('displayStatus === "error" ? t("saveFailed")')
     expect(mobilePill).toContain("2_000")
     expect(statusFeedback).toContain("@/components/save-ui/status-badge")
@@ -70,8 +75,13 @@ describe("FE-80 save status UI", () => {
       expect(source).toContain("@/components/save-ui/save-status-bar")
       expect(source).not.toContain("@/components/save-status/")
     }
-    for (const source of [pageForm, settingsForm, tenantForm, userForm, navigation]) {
-      expect(source).toContain("@/components/save-ui/mobile-save-pill")
+    for (const source of [pageForm]) {
+      expect(source).toContain("@/components/editor/iframe/MobilePageEditorShell")
+      expect(source).not.toContain("@/components/save-ui/mobile-save-pill")
+    }
+    for (const source of [settingsForm, tenantForm, userForm, navigation]) {
+      expect(source).toContain("@/components/save-ui/mobile-form-action-bar")
+      expect(source).not.toContain("@/components/save-ui/mobile-save-pill")
     }
 
     expect(navigation).not.toContain(legacyCall)

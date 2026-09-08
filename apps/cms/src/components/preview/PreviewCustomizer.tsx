@@ -482,7 +482,6 @@ function PreviewRendererFrame({
           "block h-full min-h-[32rem] w-full border-0 bg-transparent transition-opacity duration-200 ease-out",
           visible ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-        sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-renderer-frame
         onLoad={() => {
           // A fast mobile iframe can finish its first render before the host

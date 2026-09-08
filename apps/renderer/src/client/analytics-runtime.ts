@@ -36,15 +36,23 @@ export {}
 
 type PostHogRequest = {
   data?: unknown
+  callback?: (response: { statusCode: number }) => void
+}
+
+type GatedPostHogSend = ((request: PostHogRequest) => void) & {
+  __siabConsentGated?: true
 }
 
 type PostHogRetryQueue = {
   _enqueue?: (request: PostHogRequest) => void
-  unload?: () => void
+  retriableRequest?: (request: PostHogRequest) => void
+  _queue?: unknown[]
+  _poller?: number
+  _isPolling?: boolean
 }
 
 type PostHogRequestQueue = {
-  unload?: () => void
+  _queue?: unknown[]
 }
 
 type PostHogClient = {
@@ -56,7 +64,7 @@ type PostHogClient = {
   opt_out_capturing?: () => void
   clear_opt_in_out_capturing?: () => void
   reset?: () => void
-  _send_request?: (request: PostHogRequest) => void
+  _send_request?: GatedPostHogSend
   _requestQueue?: PostHogRequestQueue
   _retryQueue?: PostHogRetryQueue
 }
@@ -136,7 +144,6 @@ type ConsentCleanup = () => void
 const consentCleanups = new Set<ConsentCleanup>()
 let consentEpoch = 0
 let posthogStartupToken = 0
-const gatedPostHogInstances = new WeakSet<object>()
 const gatedPostHogRetryQueues = new WeakSet<object>()
 
 const isBaselinePostHogRequest = (request: PostHogRequest) => {
@@ -155,16 +162,33 @@ const isBaselinePostHogRequest = (request: PostHogRequest) => {
 const canSendPostHogRequest = (request: PostHogRequest) =>
   state.consentGranted || isBaselinePostHogRequest(request)
 
+const dropPostHogRequest = (request: PostHogRequest) => {
+  // 4xx tells RetryQueue the payload was rejected and must not be retried.
+  request.callback?.({ statusCode: 400 })
+}
+
+const discardQueuedPostHogTransport = (queue?: PostHogRetryQueue | PostHogRequestQueue) => {
+  if (!queue) return
+  if (Array.isArray(queue._queue)) queue._queue.length = 0
+  if ("_poller" in queue && queue._poller !== undefined) {
+    window.clearTimeout(queue._poller)
+    queue._poller = undefined
+  }
+  if ("_isPolling" in queue) queue._isPolling = false
+}
+
 const installPostHogConsentGate = (instance: PostHogClient) => {
-  if (!gatedPostHogInstances.has(instance)) {
-    const sendRequest = instance._send_request
-    if (sendRequest) {
-      instance._send_request = (request) => {
-        if (!canSendPostHogRequest(request)) return
-        sendRequest.call(instance, request)
+  const sendRequest = instance._send_request
+  if (sendRequest && sendRequest.__siabConsentGated !== true) {
+    const gatedSend: GatedPostHogSend = (request) => {
+      if (!canSendPostHogRequest(request)) {
+        dropPostHogRequest(request)
+        return
       }
-      gatedPostHogInstances.add(instance)
+      sendRequest.call(instance, request)
     }
+    gatedSend.__siabConsentGated = true
+    instance._send_request = gatedSend
   }
 
   const retryQueue = instance._retryQueue
@@ -175,8 +199,24 @@ const installPostHogConsentGate = (instance: PostHogClient) => {
       if (!canSendPostHogRequest(request)) return
       enqueue.call(retryQueue, request)
     }
-    gatedPostHogRetryQueues.add(retryQueue)
   }
+  const retriableRequest = retryQueue.retriableRequest
+  if (retriableRequest) {
+    retryQueue.retriableRequest = (request) => {
+      if (!canSendPostHogRequest(request)) {
+        dropPostHogRequest(request)
+        return
+      }
+      retriableRequest.call(retryQueue, request)
+    }
+  }
+  gatedPostHogRetryQueues.add(retryQueue)
+}
+
+const sealPostHogTransportAfterRevoke = (instance: PostHogClient) => {
+  installPostHogConsentGate(instance)
+  discardQueuedPostHogTransport(instance._requestQueue)
+  discardQueuedPostHogTransport(instance._retryQueue)
 }
 
 const registerConsentCleanup = (cleanup: ConsentCleanup) => {
@@ -1007,15 +1047,13 @@ const deactivateAnalyticsConsent = () => {
     // PostHog has no public API to abort an in-flight request. The gate above
     // prevents consented payloads from entering or re-entering its transport
     // after revoke; a request already accepted by the network cannot be recalled.
-    installPostHogConsentGate(state.posthog)
-    // Clear requests that are waiting in either of the SDK's private queues.
-    // RequestQueue must be drained first because its unload path hands items to
-    // RetryQueue. Both unload paths attempt sendBeacon, but the gate above drops
-    // every consented request before it reaches the transport.
-    state.posthog._requestQueue?.unload?.()
-    state.posthog._retryQueue?.unload?.()
+    // opt_out_capturing can reset the client and replace retry queues, so seal
+    // transport both before and after that call. Never unload()/sendBeacon the
+    // consented retry queue on revoke.
+    sealPostHogTransportAfterRevoke(state.posthog)
     state.posthog.opt_out_capturing?.()
     state.posthog.clear_opt_in_out_capturing?.()
+    sealPostHogTransportAfterRevoke(state.posthog)
   }
   try {
     window.localStorage.removeItem("siab_analytics_distinct_id")

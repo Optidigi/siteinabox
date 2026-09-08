@@ -2,6 +2,7 @@
 import { useTranslations } from "next-intl"
 import { useTransition } from "react"
 import { Avatar, AvatarFallback } from "@siteinabox/ui/components/avatar"
+import { Button } from "@siteinabox/ui/components/button"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
@@ -34,13 +35,16 @@ export function UserMenu({ user }: Props) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label={t("menuLabel", { name: user.name || user.email })}
-        className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center justify-center h-7 w-7 max-md:h-11 max-md:w-11"
-      >
-        <Avatar className="h-7 w-7 max-md:h-9 max-md:w-9">
-          <AvatarFallback className="text-xs">{initial}</AvatarFallback>
-        </Avatar>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("menuLabel", { name: user.name || user.email })}
+        >
+          <Avatar className="size-7 rounded-base max-md:size-8">
+            <AvatarFallback className="rounded-base text-xs">{initial}</AvatarFallback>
+          </Avatar>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52 max-md:w-60">
         <DropdownMenuLabel className="flex flex-col gap-0.5">

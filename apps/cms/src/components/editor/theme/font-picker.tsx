@@ -6,6 +6,7 @@ import type { FontPreset } from "@/lib/theme/presets"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
 import { InlineToolbarGroup, InlineToolbarOption } from "@/components/common/inline-toolbar-group"
 import { formatFontFamilyCssValue, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 const FONT_GLYPH_PREVIEW_FAMILIES: Record<FontSchemeId, string> = {
@@ -18,7 +19,7 @@ export const FontPicker: React.FC<{
   fonts: FontPreset[]
   value: FontSchemeId | undefined
   onChange: (next: { schemeId: FontSchemeId }) => void
-  layout?: "list" | "glyph" | "segment"
+  layout?: "list" | "glyph" | "segment" | "settings"
   sizeClassName?: string
 }> = ({ fonts, value, onChange, layout = "list", sizeClassName }) => {
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId
@@ -64,8 +65,31 @@ export const FontPicker: React.FC<{
     )
   }
 
+  if (layout === "settings") {
+    return (
+      <div className="flex w-full flex-col gap-1">
+        {fonts.map((preset) => {
+          const isActive = activeId === preset.id
+          return (
+            <Button
+              key={preset.id}
+              type="button"
+              variant={isActive ? "secondary" : "ghost"}
+              aria-pressed={isActive}
+              aria-label={`Apply ${preset.label} font preset`}
+              onClick={() => onChange({ schemeId: preset.id })}
+              className="h-auto w-full justify-between rounded-none px-2.5 py-2"
+            >
+              <FontPresetLabel font={preset.previewFont} label={preset.label} />
+            </Button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
-    <div className="flex w-[14rem] flex-col">
+    <div className="flex w-full flex-col">
       {fonts.map((preset) => {
         const isActive = activeId === preset.id
         return (

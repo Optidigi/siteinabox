@@ -17,7 +17,6 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { localizePageEditorSaveError } from "@/lib/editor/localizePageEditorSaveError"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
-import { blockWireId } from "@/lib/editor/ensureBlockIds"
 import type { EditorBlock } from "@/lib/editor/editorBlock"
 import {
   aggregatePageEditorDirty,
@@ -57,6 +56,7 @@ import { scrollToFirstError } from "@/lib/formScroll"
 import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
 import type { Page } from "@/payload-types"
 import type { PageEditorSaveRequest } from "@/lib/publish/pageEditorSaveContract"
+import type { SiteEditorSnapshot } from "@/lib/agent/tools"
 
 const pageEditorThemeCache = new Map<string, ThemeTokens | null>()
 
@@ -108,8 +108,6 @@ export type PageEditorCoreApi = {
   revealFrameSelection: boolean
   selectElement: Dispatch<SetStateAction<ElementPath | null>>
   selectInspectorElement: (selection: ElementPath) => void
-  mobileFocusedSectionIndex: number | null
-  setMobileFocusedSectionIndex: Dispatch<SetStateAction<number | null>>
   themeState: ThemeTokens | null
   setThemeState: Dispatch<SetStateAction<ThemeTokens | null>>
   themeDirty: boolean
@@ -131,13 +129,6 @@ export type PageEditorCoreApi = {
   addBlock: (blockType: string, seed?: Record<string, unknown>) => void
   insertBlockAtIndex: (index: number, block: Record<string, unknown>) => void
   insertMobileBlockAt: (index: number, blockType: string, seed?: Record<string, unknown>) => void
-  mobileFrameBlocksApi: {
-    blocks: EditorBlock[]
-    reorderBlocks: (from: number, to: number) => void
-    insertBlockAt: (index: number, blockType: string, seed?: Record<string, unknown>) => void
-    deleteBlock: (i: number) => void
-    duplicateBlock: (i: number) => void
-  }
   draftCandidate: PageEditorDraft | null
   restorePageDraft: () => void
   discardPageDraft: () => void
@@ -149,17 +140,10 @@ export type PageEditorCoreApi = {
   onInvalid: (errors: FieldErrors<PageEditorFormValues>) => void
   handleFrameSelectionChanged: (selection: IframeEditorSelection | null) => void
   frameSelection: IframeEditorSelection | null
-  frameMobileMode:
-    | {
-        mode: "focusedSection"
-        focusedBlockIndex: number
-        focusedBlockId?: string
-        showChrome: false
-      }
-    | undefined
   cancelScheduledDraftWrite: () => void
   setThemeBaseline: Dispatch<SetStateAction<ThemeTokens | null>>
   setSavedNav: (snapshot: { inNavbar: boolean; inFooter: boolean }) => void
+  applyAgentSnapshot: (snapshot: SiteEditorSnapshot) => void
   canEditPage: boolean
   canManageNavResolved: boolean
   pageDraftKey: string
@@ -223,7 +207,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const [selected, setSelected] = useState<ElementPath | null>(null)
   const [revealInspectorSelection, setRevealInspectorSelection] = useState(false)
   const [revealFrameSelection, setRevealFrameSelection] = useState(false)
-  const [mobileFocusedSectionIndex, setMobileFocusedSectionIndex] = useState<number | null>(null)
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {
     setRevealInspectorSelection(true)
@@ -645,43 +628,10 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     [insertBlockAtIndex, manifest?.blocks, readOnly],
   )
 
-  const mobileFrameBlocksApi = useMemo(
-    () => ({
-      blocks: watchedBlocks,
-      reorderBlocks,
-      insertBlockAt: insertMobileBlockAt,
-      deleteBlock,
-      duplicateBlock,
-    }),
-    [deleteBlock, duplicateBlock, insertMobileBlockAt, reorderBlocks, watchedBlocks],
-  )
-
-  useEffect(() => {
-    if (mobileFocusedSectionIndex == null) return
-    if (watchedBlocks[mobileFocusedSectionIndex]) return
-    setMobileFocusedSectionIndex(null)
-  }, [mobileFocusedSectionIndex, watchedBlocks])
-
   const framePageId = initial?.id ?? "new"
   const frameSelection = useMemo((): IframeEditorSelection | null => {
     return elementPathToIframeSelection(selected, watchedBlocks, framePageId)
   }, [framePageId, selected, watchedBlocks])
-  const frameMobileMode = useMemo(() => {
-    // Unresolved breakpoint (null) and desktop must not prepare a focused mobile iframe.
-    if (isDesktop !== false || mobileFocusedSectionIndex == null) return undefined
-    const focusedBlock = watchedBlocks[mobileFocusedSectionIndex]
-    const focusedBlockId =
-      focusedBlock && typeof focusedBlock === "object"
-        ? (blockWireId(focusedBlock as Record<string, unknown>) ?? undefined)
-        : undefined
-    return {
-      mode: "focusedSection" as const,
-      focusedBlockIndex: mobileFocusedSectionIndex,
-      ...(focusedBlockId ? { focusedBlockId } : {}),
-      showChrome: false as const,
-    }
-  }, [isDesktop, mobileFocusedSectionIndex, watchedBlocks])
-
   const handleFrameSelectionChanged = useCallback(
     (selection: IframeEditorSelection | null) => {
       if (readOnly) return
@@ -698,6 +648,29 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     [readOnly, watchedBlocks],
   )
 
+  const applyAgentSnapshot = useCallback((snapshot: SiteEditorSnapshot) => {
+    if (!initial || !snapshot.page) return
+    form.reset(pageEditorDefaultValues({
+      ...initial,
+      title: snapshot.page.title,
+      slug: snapshot.page.slug,
+      blocks: snapshot.page.blocks as Page["blocks"],
+      seo: {
+        title: snapshot.page.seo.title,
+        description: snapshot.page.seo.description,
+        ogImage: initial.seo?.ogImage ?? null,
+      },
+      updatedAt: snapshot.page.updatedAt,
+    }))
+    baselineUpdatedAtRef.current = snapshot.page.updatedAt
+    if (snapshot.theme) {
+      const savedTheme = normalizeThemeForSave(snapshot.theme)
+      setThemeState(savedTheme)
+      setThemeBaseline(savedTheme)
+      if (savedTheme) pageEditorThemeCache.set(tenantStyleCacheKey, savedTheme)
+    }
+  }, [form, initial, tenantStyleCacheKey])
+
   return {
     form,
     schema,
@@ -707,8 +680,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     revealFrameSelection,
     selectElement,
     selectInspectorElement,
-    mobileFocusedSectionIndex,
-    setMobileFocusedSectionIndex,
     themeState,
     setThemeState,
     themeDirty,
@@ -730,7 +701,6 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     addBlock,
     insertBlockAtIndex,
     insertMobileBlockAt,
-    mobileFrameBlocksApi,
     draftCandidate,
     restorePageDraft,
     discardPageDraft,
@@ -742,10 +712,10 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     onInvalid,
     handleFrameSelectionChanged,
     frameSelection,
-    frameMobileMode,
     cancelScheduledDraftWrite,
     setThemeBaseline,
     setSavedNav,
+    applyAgentSnapshot,
     canEditPage,
     canManageNavResolved,
     pageDraftKey,

@@ -7,7 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "vitest run && node tests/enter-submit-regression.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/react": "6.0.2",

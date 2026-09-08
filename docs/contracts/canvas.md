@@ -146,6 +146,11 @@ preferences-management command in the iframe protocol yet.
 - Links/forms are inert in the editor. Internal preview links route through the
   parent so all generated pages remain testable.
 - The editor-frame layout imports only generated-site renderer CSS.
+- Preview, builder, and editor hosts are first-party same-origin frames
+  (`/renderer-frame`, `/editor-frame`). They do not set `sandbox`: combining
+  `allow-scripts` with `allow-same-origin` is escapable and browsers flag it,
+  and dropping `allow-same-origin` would break the origin-checked snapshot
+  protocol.
 - Ami Care and newly generated tenants use the same first-party renderer in the
   editor frame and public runtime; tenant identity never selects a renderer.
 

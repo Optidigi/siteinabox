@@ -46,6 +46,8 @@ export type SiteConfig = {
   };
   links: {
     intake: string;
+    builder: string;
+    login: string;
     beheer: string;
     platformAdminLogin: string;
     whatsapp: string;
@@ -72,15 +74,22 @@ export const site: SiteConfig = {
   language: 'nl',
   primaryDomain: 'siteinabox.nl',
   aliases: ['www.siteinabox.nl'],
-  description:
-    `Een professionele website voor je nieuwe bedrijf. Vanaf €${SITE_IN_A_BOX_PRODUCT.pricing.monthlyEur} per maand. Eerste versie binnen 24 uur, live binnen 3 werkdagen. Pas betalen als je tevreden bent.`,
+  description: "Professionele website voor je nieuwe bedrijf. Vanaf €19 per maand. Eerste versie in de builder, live binnen 3 werkdagen. Betalen als je tevreden bent.",
   contact,
   serviceArea: ['Nederland'],
   socials: {
     instagram: 'https://www.instagram.com/siteinabox/',
   },
   links: {
-    intake: '/intake/',
+    intake: import.meta.env.PROD
+      ? 'https://preview.siteinabox.nl/builder?intent=register'
+      : 'http://localhost:3000/builder?intent=register',
+    builder: import.meta.env.PROD
+      ? 'https://preview.siteinabox.nl/builder?intent=register'
+      : 'http://localhost:3000/builder?intent=register',
+    login: import.meta.env.PROD
+      ? 'https://preview.siteinabox.nl/builder?intent=login'
+      : 'http://localhost:3000/builder?intent=login',
     beheer: '/beheer/',
     platformAdminLogin: 'https://admin.siteinabox.nl/login',
     whatsapp: `https://wa.me/${contact.whatsapp.e164.slice(1)}`,
@@ -91,7 +100,7 @@ export const site: SiteConfig = {
     // Root-absolute (/#...) so these section links work from any page, not just the homepage.
     { label: 'Hoe het werkt', href: '/#zo-werkt-het' },
     { label: 'Prijzen', href: '/#prijzen' },
-    { label: 'Intake', href: '/intake/' },
+    { label: 'Bouwen', href: import.meta.env.PROD ? 'https://preview.siteinabox.nl/builder?intent=register' : 'http://localhost:3000/builder?intent=register' },
     { label: 'Contact', href: '/contact' },
   ],
 };

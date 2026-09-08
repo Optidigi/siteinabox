@@ -14,6 +14,7 @@ const defaultAllowedDevOrigins = [
   "*.localhost",
   "*.lvh.me",
   "*.localtest.me",
+  "*.trycloudflare.com",
 ].join(",")
 
 const allowedDevOrigins = (process.env.SIAB_ALLOWED_DEV_ORIGINS || defaultAllowedDevOrigins)

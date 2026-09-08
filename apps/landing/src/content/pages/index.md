@@ -1,6 +1,6 @@
 ---
 title: "Een website voor je bedrijf. Zonder gedoe."
-description: "Een professionele website voor je nieuwe bedrijf. Vanaf €19 per maand. Eerste versie binnen 24 uur, live binnen 3 werkdagen. Pas betalen als je tevreden bent."
+description: "Professionele website voor je nieuwe bedrijf. Vanaf €19 per maand. Eerste versie in de builder, live binnen 3 werkdagen. Betalen als je tevreden bent."
 keywords:
   - website laten maken
   - KVK starter

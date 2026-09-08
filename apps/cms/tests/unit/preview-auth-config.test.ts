@@ -57,6 +57,7 @@ describe("preview Better Auth host configuration", () => {
         "*.localhost:*",
         "*.lvh.me:*",
         "*.localtest.me:*",
+        "*.trycloudflare.com",
       ],
       protocol: "http",
       fallback: "https://preview.siteinabox.nl",
@@ -73,6 +74,8 @@ describe("preview Better Auth host configuration", () => {
       "https://*.lvh.me:*",
       "http://*.localtest.me:*",
       "https://*.localtest.me:*",
+      "http://*.trycloudflare.com",
+      "https://*.trycloudflare.com",
     ])
   })
 })

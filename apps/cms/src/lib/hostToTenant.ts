@@ -10,9 +10,8 @@ export const isSuperAdminDomain = (
 ): boolean => {
   if (!configured) return domain === "localhost"
   if (domain === configured) return true
-  // Dev convenience: in dev, localhost is also treated as super-admin so
-  // navigating to http://localhost:3001 doesn't 404. Production sets
-  // NODE_ENV=production and only the configured domain matches.
-  if (isDev && domain === "localhost") return true
+  // Dev convenience: localhost and Cloudflare quick tunnels are super-admin
+  // so a demo tunnel can show /login. Production only matches the configured domain.
+  if (isDev && (domain === "localhost" || domain.endsWith(".trycloudflare.com"))) return true
   return false
 }

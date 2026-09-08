@@ -108,7 +108,7 @@ export const MobileComponentEditor: React.FC<MobileComponentEditorProps> = ({ pa
             type="button"
             variant="ghost"
             size="icon"
-            className="size-10 rounded-full border border-border bg-muted text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+            className="size-10 rounded-none border border-border bg-muted text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
             onClick={handleCloseClick}
             aria-label={t("doneEditing")}
             data-mobile-editor-close

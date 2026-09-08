@@ -3,6 +3,7 @@
 @import "@fontsource-variable/inter/index.css";
 @source "../../../../packages/site-renderer/src";
 @source "../../../../packages/ui/src/components";
+@source "../../../../packages/ui/src/lib";
 
 /* SIAB-owned app/editor CSS. Do not point components.json at this file. */
 
@@ -11,6 +12,135 @@
  * UI uses the Inter/system-ui stack from the token. The border-color
  * and bg/color resets are handled by the shadcn @layer base block. */
 body { font-family: var(--font-sans); }
+
+/* Keyboard hint only — button/press chrome lives on packages/ui primitives. */
+[data-siab-builder-pager],
+[data-siab-editor-pager] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-siab-builder-pager]::-webkit-scrollbar,
+[data-siab-editor-pager]::-webkit-scrollbar {
+  display: none;
+}
+
+[data-siab-builder] .siab-builder-kbd,
+[data-siab-agent-chat] .siab-builder-kbd {
+  display: inline-block;
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  padding: 0.15rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: var(--shadow-hover);
+}
+
+[data-siab-builder] .siab-builder-cursor,
+[data-siab-agent-chat] .siab-builder-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--border);
+  background: var(--main);
+  animation: siab-builder-cursor-blink 1s steps(1) infinite;
+}
+
+[data-siab-builder] .siab-builder-turn,
+[data-siab-agent-chat] .siab-builder-turn {
+  border: 1px solid color-mix(in oklab, var(--border) 12%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-siab-builder] .siab-builder-cursor,
+  [data-siab-agent-chat] .siab-builder-cursor {
+    animation: none;
+  }
+}
+
+@keyframes siab-builder-cursor-blink {
+  50% { opacity: 0; }
+}
+
+@keyframes siab-builder-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@property --siab-builder-chat-col {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+
+@property --siab-builder-preview-col {
+  syntax: "<flex>";
+  inherits: false;
+  initial-value: 0fr;
+}
+
+[data-siab-builder] {
+  --siab-builder-motion: 320ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+[data-siab-builder-chat] > .siab-builder-thread-cell {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+[data-siab-builder-chat] > [data-siab-builder-composer] {
+  flex: 0 0 auto;
+}
+
+[data-siab-builder] .siab-builder-stage-spacer {
+  flex: 0 1 0%;
+  min-height: 0;
+  overflow: hidden;
+  transition: flex-grow var(--siab-builder-motion);
+}
+
+@media (min-width: 1024px) {
+  [data-siab-builder][data-split-motion] {
+    --siab-builder-chat-col: 100%;
+    --siab-builder-preview-col: 0fr;
+    grid-template-columns: minmax(0, var(--siab-builder-chat-col)) minmax(0, var(--siab-builder-preview-col));
+    transition:
+      --siab-builder-chat-col var(--siab-builder-motion),
+      --siab-builder-preview-col var(--siab-builder-motion);
+  }
+
+  [data-siab-builder][data-split-motion][data-split-ready="true"] {
+    --siab-builder-chat-col: 28rem;
+    --siab-builder-preview-col: 1fr;
+  }
+
+  [data-siab-builder-chat][data-agent-stage="true"] .siab-builder-stage-spacer {
+    flex-grow: 1;
+  }
+}
+
+[data-siab-builder] .siab-builder-fade {
+  animation: siab-builder-fade-in var(--siab-builder-motion);
+}
+
+[data-siab-builder] .siab-builder-stage-copy,
+[data-siab-builder] .siab-builder-thread-slot {
+  transition: opacity var(--siab-builder-motion);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-siab-builder][data-split-motion],
+  [data-siab-builder] .siab-builder-stage-spacer,
+  [data-siab-builder] .siab-builder-stage-copy,
+  [data-siab-builder] .siab-builder-thread-slot {
+    transition: none;
+  }
+  [data-siab-builder] .siab-builder-fade {
+    animation: none;
+  }
+}
 
 /* The customer command bar is fixed outside the preview canvas. Keep its
    entrance here rather than relying on an arbitrary utility transform: the
@@ -238,8 +368,8 @@ body { font-family: var(--font-sans); }
   --sidebar-accent-foreground: #191b1e;
   --sidebar-border: #dfe2e5;
   --sidebar-ring: #5c6168;
-  --radius: 0.5rem;
-  --brand: oklch(0.902 0.194 99);
+  --radius: 0px;
+  --brand: #f5e900;
   --brand-foreground: oklch(0.214 0.004 17);
   --shadow-color: #17171c;
   --shadow-opacity: 0.1;

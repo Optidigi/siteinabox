@@ -1,11 +1,13 @@
 import {
   BlockSchema,
+  DEFAULT_APPOINTMENT_SCHEDULE,
   DEFAULT_FOOTER_VARIANT,
   DEFAULT_NAVBAR_PLACEMENT,
   DEFAULT_NAVBAR_VARIANT,
   DEFAULT_THEME_TOKEN_SPEC,
   SITEGEN_BLOCK_TYPES,
   type Action,
+  type AppointmentScheduleSettings,
   type Block,
   type ContactMethod,
   type FooterVariant,
@@ -15,6 +17,7 @@ import {
   type NavbarPlacement,
   type NavbarVariant,
   type SiteGenerationSpec,
+  type ThemeTokenSpec,
 } from "@siteinabox/contracts"
 import { sitegenVariantFor } from "./catalog"
 import {
@@ -306,6 +309,39 @@ export const normalizeSitegenOutput = (
 
 const titleCase = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1)
 
+const WEEKDAY_WINDOWS = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const
+
+export const themeTokenSpecFromIntake = (intake: NormalizedIntake): ThemeTokenSpec => {
+  const visual = intake.intakeBrief?.visualPreferences
+  const source = visual?.colorSourceValue ?? ""
+  return {
+    version: 3,
+    appearance: {
+      mode: /\bdark\b/i.test(source) ? "dark" : DEFAULT_THEME_TOKEN_SPEC.appearance.mode,
+      backgroundMode: DEFAULT_THEME_TOKEN_SPEC.appearance.backgroundMode,
+    },
+    colors: { schemeId: visual?.colorSchemeId ?? DEFAULT_THEME_TOKEN_SPEC.colors.schemeId },
+    fonts: { schemeId: visual?.fontSchemeId ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId },
+    shape: { schemeId: visual?.shapeSchemeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId },
+  }
+}
+
+export const appointmentsSettingsFromIntake = (intake: NormalizedIntake): AppointmentScheduleSettings | undefined => {
+  const preferences = intake.intakeBrief?.contactPreferences
+  const wantsAppointments = preferences?.formType === "appointment"
+    || preferences?.formOptions?.includes("appointment") === true
+    || preferences?.availabilityMode === "appointment_only"
+  if (!wantsAppointments) return undefined
+  return {
+    ...DEFAULT_APPOINTMENT_SCHEDULE,
+    enabled: true,
+    weeklyAvailability: WEEKDAY_WINDOWS.map((weekday) => ({
+      weekday,
+      windows: [{ start: "09:00", end: "17:00" }],
+    })),
+  }
+}
+
 /** Build the canonical SiteGenerationSpec after the shallow model response is normalized. */
 export const sitegenOutputToGenerationSpec = (
   output: SitegenOutput,
@@ -319,11 +355,12 @@ export const sitegenOutputToGenerationSpec = (
   }
 
   const description = intake.intakeBrief?.intro ?? `Informatie over ${intake.businessName}.`
+  const appointments = appointmentsSettingsFromIntake(intake)
   return {
     schemaVersion: 1,
     intake,
     tenant: { name: intake.businessName, slug: intake.tenantSlug, domain: intake.primaryDomain, status: "provisioning" },
-    theme: DEFAULT_THEME_TOKEN_SPEC,
+    theme: themeTokenSpecFromIntake(intake),
     settings: {
       siteName: intake.businessName,
       siteUrl: intake.siteUrl,
@@ -343,6 +380,7 @@ export const sitegenOutputToGenerationSpec = (
       contactEmail: intake.contact?.email ?? null,
       contact: { phone: intake.contact?.phone ?? null, address: intake.intakeBrief?.contactPreferences.publicAddress ?? null, social: [] },
       serviceArea: intake.serviceArea.map((name) => ({ name })),
+      ...(appointments ? { appointments } : {}),
     },
     pages: normalized.pages.map((page) => ({
       slug: page.slug,

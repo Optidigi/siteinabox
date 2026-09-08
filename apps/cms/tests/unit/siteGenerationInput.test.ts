@@ -6,7 +6,7 @@ import {
   siteGenerationJsonSchema,
 } from "@/lib/ai-generation/providers"
 import { buildSiteGenerationModelInput, sitegenEligibilityFromIntake } from "@/lib/ai-generation/siteGenerationInput"
-import { SITE_GENERATION_PROMPT_VERSION } from "@/lib/ai-generation/prompts/siteGenerationPrompt"
+import { SITE_GENERATION_PROMPT_VERSION, SITE_GENERATION_SYSTEM_PROMPT } from "@/lib/ai-generation/prompts/siteGenerationPrompt"
 import { SITEGEN_SECTIONS } from "@/lib/sitegen/catalog"
 import { sitegenMediaFacts } from "@/lib/sitegen/mediaEligibility"
 import { validateSitegenOutput } from "@/lib/sitegen/validate"
@@ -44,7 +44,9 @@ describe("site generation model input", () => {
   it("is deterministic for the owned prompt version", () => {
     const first = createSiteGenerationProviderRequest(normalized)
     const second = createSiteGenerationProviderRequest(normalized)
-    expect(SITE_GENERATION_PROMPT_VERSION).toBe("sitegen-owned-v1")
+    expect(SITE_GENERATION_PROMPT_VERSION).toBe("sitegen-owned-v5")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toMatch(/Bespreek \{title\} via bellen of WhatsApp/)
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toMatch(/Interpret the trade/)
     expect(first.inputHash).toBe(second.inputHash)
     expect(JSON.stringify(first.input)).toBe(JSON.stringify(second.input))
   })

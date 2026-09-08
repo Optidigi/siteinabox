@@ -20,7 +20,16 @@ export const isSafeHref = (value: unknown): value is string => {
 
   try {
     const url = new URL(href)
-    return SAFE_SCHEMES.has(url.protocol)
+    if (!SAFE_SCHEMES.has(url.protocol)) return false
+    if (url.protocol === "tel:") {
+      const number = `${url.pathname}${url.username}`.replace(/^\/*/, "")
+      return /\d{6,}/.test(number)
+    }
+    if (url.protocol === "mailto:") {
+      const address = url.pathname || `${url.username}${url.hostname ? `@${url.hostname}` : ""}`
+      return address.includes("@")
+    }
+    return true
   } catch {
     return false
   }

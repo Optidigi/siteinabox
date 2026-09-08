@@ -4,12 +4,13 @@ import { describe, expect, it } from "vitest"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("sidebar inspector composition", () => {
-  it("keeps the active mobile iframe editor layout primitives available for composition", () => {
+  it("keeps the page-editor inspector composition slots on SidebarDrillDown", () => {
     const sectionList = read("src/components/editor/mobile/mobile-section-list.tsx")
     const inspectorBar = read("src/components/editor/mobile/mobile-inspector-bar.tsx")
     const pageSettings = read("src/components/editor/mobile/mobile-page-settings.tsx")
     const seoSettings = read("src/components/editor/mobile/mobile-seo-settings.tsx")
-    const frameEditor = read("src/components/editor/iframe/MobileFrameEditor.tsx")
+    const shell = read("src/components/editor/iframe/MobilePageEditorShell.tsx")
+    const pageForm = read("src/components/forms/PageForm.tsx")
 
     expect(sectionList).toContain("export interface MobileSectionListSlotContext")
     expect(sectionList).toContain("export const MobileSectionListLayout")
@@ -19,9 +20,9 @@ describe("sidebar inspector composition", () => {
     expect(pageSettings).toContain("export const MobilePageSettingsLayout")
     expect(seoSettings).toContain("export interface MobileSeoSettingsSlotContext")
     expect(seoSettings).toContain("export const MobileSeoSettingsLayout")
-    expect(frameEditor).toContain("function MobileFocusedSection")
-    expect(frameEditor).toContain("<MobileSectionList")
-    expect(frameEditor).toContain("<MobileInspectorBar")
+    expect(shell).toContain("export function MobilePageEditorShell")
+    expect(pageForm).toContain("<SidebarDrillDown")
+    expect(pageForm).toContain("<MobilePageEditorShell")
   })
 
   it("keeps the registry page settings state exposed through a host-composable slot", () => {
@@ -35,6 +36,13 @@ describe("sidebar inspector composition", () => {
     expect(sidebarInspector).toContain("footer: React.ReactNode")
     expect(sidebarInspector).toContain("const actionsHeader = (")
     expect(sidebarInspector).toContain("const footer = null")
+
+    expect(sidebarInspector).toContain("kind: \"site-appearance\"")
+    expect(sidebarInspector).toContain("siteLook?: React.ReactNode")
+    expect(sidebarInspector).toContain("openSiteLook")
+    expect(sidebarInspector).toContain("siteLookButton")
+    expect(pageForm).toContain("siteLook={siteLookPanel}")
+    expect(pageForm).toContain("SiteAppearancePanel")
 
     expect(pageForm).toContain("type SidebarPageSettingsSlotContext")
     expect(pageForm).toContain("const renderSidebarPageSettings")

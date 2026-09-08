@@ -27,13 +27,15 @@ import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { PageEditorFrameHost } from "@/components/editor/iframe/PageEditorFrameHost"
-import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
+import { MobilePageEditorShell } from "@/components/editor/iframe/MobilePageEditorShell"
 import { ensureCanvasWirePage, ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
 import { settingsToJsonWithoutAnalytics } from "@/lib/projection/settingsToJsonCore"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { BlockPresetsProvider } from "@/components/editor/BlockPresetsContext"
 import { MobileMediaSheetProvider } from "@/components/editor/mobile/MobileMediaSheetContext"
+import { useCmsAgentSelection } from "@/components/layout/CmsAgentSelection"
+import { CmsAgentPanel } from "@/components/layout/CmsAgentPanel"
 import {
   SidebarBlockFormLayout,
   SidebarDrillDown,
@@ -45,7 +47,7 @@ import {
 } from "@/components/editor/sidebar-drill-down"
 import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
 import { EditorThemeToolbar } from "@/components/editor/theme/editor-theme-toolbar"
-import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
+import { SiteAppearancePanel } from "@/components/editor/theme/site-appearance-panel"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { useSidebar } from "@siteinabox/ui/components/sidebar"
 import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
@@ -58,7 +60,6 @@ export { useRtManifest }
 
 export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inNavbarNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: SiteSetting | null; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inNavbarNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
-  const tCommon = useTranslations("common")
   const router = useRouter()
   const status = useStatusFeedback()
   const seoFields = [
@@ -105,8 +106,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     revealFrameSelection,
     selectElement,
     selectInspectorElement,
-    mobileFocusedSectionIndex,
-    setMobileFocusedSectionIndex,
     themeState,
     setThemeState,
     inNavbar,
@@ -123,7 +122,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     deleteBlock,
     duplicateBlock,
     addBlock,
-    mobileFrameBlocksApi,
     draftCandidate,
     restorePageDraft,
     discardPageDraft,
@@ -135,10 +133,16 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     onInvalid,
     handleFrameSelectionChanged,
     frameSelection,
-    frameMobileMode,
-    canEditPage,
+    applyAgentSnapshot,
     canManageNavResolved,
   } = core
+
+  useCmsAgentSelection({
+    tenantSlug: tenantSlug ?? null,
+    pageSlug: String(form.watch("slug") || initial?.slug || "index"),
+    selectedBlockIndex: selected?.blockIndex ?? null,
+    applySnapshot: applyAgentSnapshot,
+  })
 
   const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar()
   const saveStatusBarOffset = sidebarIsMobile
@@ -184,9 +188,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const pageMetaControl = form.control as unknown as import("react-hook-form").Control<PageMetaFormValues>
   const pageMetaSetValue = form.setValue as unknown as import("react-hook-form").UseFormSetValue<PageMetaFormValues>
   const pageMetaGetValues = form.getValues as unknown as import("react-hook-form").UseFormGetValues<PageMetaFormValues>
-  const onDeletePage = () => {
-    if (!readOnly) setDeleteOpen(true)
-  }
   const pageTitle = form.watch("title") || initial?.title || ""
 
   // Danger zone shown from page settings in the inspector/mobile shell.
@@ -332,6 +333,16 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [],
   )
 
+  const siteLookPanel = readOnly ? null : (
+    <SiteAppearancePanel
+      theme={themeState}
+      onThemeChange={setThemeState}
+      palettes={PALETTE_PRESETS}
+      fonts={FONT_PRESETS}
+      radiusLevels={RADIUS_PRESETS}
+    />
+  )
+
   // View-live + copy-URL affordances. Page editor saves publish page rows
   // internally; the status field is no longer an editor-facing control.
   const liveLinks = form.watch("slug") ? (
@@ -409,7 +420,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       tenantSlug={tenantSlug}
       selection={frameSelection}
       revealSelection={revealFrameSelection}
-      mobileMode={frameMobileMode}
       onSelectionChanged={handleFrameSelectionChanged}
     />
   ) : (
@@ -428,7 +438,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       >
           {/* Shared sticky header — sits below SiteHeader, above the editor theme toolbar. */}
           {isDesktop && (
-            <header data-siab-cms-sticky-chrome className="sticky top-12 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
+            <header data-siab-cms-sticky-chrome className="sticky top-16 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
               <Button asChild type="button" variant="secondary" size="sm" className="h-8 shrink-0 gap-1">
                 <Link href={baseHref} aria-label={t("backToPages")}>
                   <ChevronLeft className="size-4" aria-hidden />
@@ -461,7 +471,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           {!readOnly && isDesktop && (
             <div
               data-siab-cms-sticky-chrome
-              className="pointer-events-none sticky top-[6.5rem] z-20 grid w-full grid-cols-[minmax(0,1fr)_360px] gap-3"
+              className="pointer-events-none sticky top-[7.5rem] z-20 grid w-full grid-cols-[minmax(0,1fr)_360px] gap-3"
             >
               <div className="pointer-events-auto flex justify-center">
                 <EditorThemeToolbar
@@ -481,16 +491,56 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           {isDesktop === false && !readOnly && (
             <MobileMediaSheetProvider>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                <MobileFrameEditor
-                  api={mobileFrameBlocksApi}
-                  manifest={manifest}
-                  theme={themeState}
-                  pageTitle={pageTitle}
+                <MobilePageEditorShell
                   selected={selected}
-                  onSelectElement={selectElement}
-                  onFocusedSectionChange={setMobileFocusedSectionIndex}
-                  focusedFrame={pageEditorFrame}
-                  onDeletePage={onDeletePage}
+                  onExit={() => guard.guardedNavigate(() => router.push(baseHref))}
+                  save={{
+                    type: "button",
+                    onClick: triggerSave,
+                    pending,
+                    isDirty,
+                    dirtyCount,
+                    errorCount,
+                  }}
+                  preview={pageEditorFrame}
+                  inspector={
+                    <EditorErrorBoundary>
+                      <SidebarDrillDown
+                        blocks={watchedBlocks}
+                        selectedBlockIndex={selected?.blockIndex ?? null}
+                        selectedPath={selected}
+                        revealSelectedPath={revealInspectorSelection}
+                        onSelectBlock={(i) => {
+                          selectElement(i != null ? { blockIndex: i, field: "" } : null)
+                        }}
+                        onSelectPath={selectInspectorElement}
+                        onReorder={reorderBlocks}
+                        onDeleteBlock={deleteBlock}
+                        onDuplicateBlock={duplicateBlock}
+                        onAddBlock={addBlock}
+                        manifest={manifest}
+                        seoCard={pageSettings}
+                        dangerZone={dangerZone}
+                        siteLook={siteLookPanel}
+                        theme={themeState}
+                        renderList={renderSidebarList}
+                        renderBlockForm={renderSidebarBlockForm}
+                        renderPageSettings={renderSidebarPageSettings}
+                      />
+                    </EditorErrorBoundary>
+                  }
+                  agent={
+                    tenantSlug ? (
+                      <CmsAgentPanel
+                        tenantSlug={tenantSlug}
+                        pageSlug={String(form.watch("slug") || initial?.slug || "index")}
+                        selectedBlockIndex={selected?.blockIndex ?? null}
+                        onApplied={applyAgentSnapshot}
+                      />
+                    ) : (
+                      <p className="p-5 text-sm text-muted-foreground">{t("editorFrameRequiresSettings")}</p>
+                    )
+                  }
                 />
               </BlockPresetsProvider>
             </MobileMediaSheetProvider>
@@ -510,7 +560,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                 </div>
                 {isDesktop && !readOnly && (
                   <aside
-                    className="sticky top-[calc(6.5rem+0.5rem)] h-[calc(100dvh-6.5rem)] max-h-[calc(100dvh-6.5rem)] w-[360px] shrink-0 self-start overflow-hidden rounded-lg border border-border bg-card"
+                    className="sticky top-[calc(7.5rem+0.5rem)] h-[calc(100dvh-7.5rem)] max-h-[calc(100dvh-7.5rem)] w-[360px] shrink-0 self-start overflow-hidden rounded-lg border border-border bg-card"
                   >
                     <EditorErrorBoundary>
                       <SidebarDrillDown
@@ -529,6 +579,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                           manifest={manifest}
                           seoCard={pageSettings}
                           dangerZone={dangerZone}
+                          siteLook={siteLookPanel}
                           theme={themeState}
                           renderList={renderSidebarList}
                           renderBlockForm={renderSidebarBlockForm}
@@ -542,21 +593,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             </>
           )}
 
-        {/*
-          Phone-only floating Save pill. Mounted unconditionally so the
-          icon is always visible in mobile views — visual state (amber/
-          spinner/error/muted) carries the dirty signal across all views.
-        */}
-        {isDesktop === false && !readOnly && (
-          <div className="[&_[data-mobile-save-pill]]:!inline-flex">
-            <MobileSavePill
-              status={saveStatus}
-              dirtyCount={dirtyCount}
-              errorCount={errorCount}
-              onSave={triggerSave}
-            />
-          </div>
-        )}
       </form>
       {isDesktop && !readOnly && (
         <div

@@ -1,7 +1,6 @@
 import * as React from "react"
 import type { AppointmentSection } from "@siteinabox/contracts"
-import { buttonVariants } from "@siteinabox/ui/components/button"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../../cn"
 import { SiteCalendar, SiteCheckCircle, SiteChevronRight, SiteClock, SiteClose } from "../../icons/SiteIcons"
 import { HeroBackground, resolveBackgroundMode } from "../hero/HeroShared"
 import { Section, SectionInner } from "../shared"
@@ -97,7 +96,7 @@ function AppointmentFlowMarkup({
         <div className="site-appointment-flow-actions">
           <button
             type="button"
-            className={cn(buttonVariants({ variant: "default", size: "lg" }), "site-appointment-action")}
+            className={cn("site-btn site-btn-lg", "site-appointment-action")}
             data-siab-appointment-continue
             disabled
           >
@@ -137,7 +136,7 @@ function AppointmentFlowMarkup({
           <button type="button" className="site-appointment-back" data-siab-appointment-back>
             Terug
           </button>
-          <button type="submit" className={cn(buttonVariants({ variant: "default", size: "lg" }), "site-appointment-action")}>
+          <button type="submit" className={cn("site-btn site-btn-lg", "site-appointment-action")}>
             {block.bookingLabel}
           </button>
         </div>
@@ -234,7 +233,7 @@ export function AppointmentBlockView({
                 </div>
                 <button
                   type="button"
-                  className={cn(buttonVariants({ variant: "default", size: "lg" }), "site-appointment-launcher-button")}
+                  className={cn("site-btn site-btn-lg", "site-appointment-launcher-button")}
                   data-siab-appointment-open
                   aria-controls={`${flowId}-dialog`}
                 >

@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { SitegenBlockType } from "@siteinabox/contracts"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../cn"
 import type { BlockRenderOptions, RendererSectionAttributes } from "./types"
 
 export function Section({

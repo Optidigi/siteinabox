@@ -13,6 +13,7 @@ import { relationId, workflowSummaryForIntakeSubmission } from "@/lib/queries/ge
 import type { IntakeSubmission } from "@/payload-types"
 import { ClipboardCheck } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { encodeWorkflowTextKey } from "@/i18n/workflowText"
 
 const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "-"
@@ -48,7 +49,10 @@ export function IntakeSubmissionsTable({
           {submissions.map((submission) => {
             const runId = relationId(submission.generationRun)
             const workflow = workflowSummaryForIntakeSubmission(submission)
-            const workflowText = (value: string) => t.has(`workflowText.${value}`) ? t(`workflowText.${value}`) : value
+            const workflowText = (value: string) => {
+              const key = `workflowText.${encodeWorkflowTextKey(value)}`
+              return t.has(key) ? t(key) : value
+            }
 
             return (
               <TableRow key={submission.id}>

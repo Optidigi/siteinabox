@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   browserOriginMatchesAuthority,
   canonicalRequestAuthority,
+  isLocalPreviewSessionBypass,
   isPreviewRequestAuthority,
 } from "@/lib/requestAuthority"
 
@@ -63,5 +64,33 @@ describe("canonical request authority", () => {
     }), {
       NODE_ENV: "development",
     })).toBe(false)
+  })
+
+  it("allows Cloudflare quick tunnels only during development", () => {
+    const tunnel = new Headers({
+      host: "random-words.trycloudflare.com",
+      origin: "https://random-words.trycloudflare.com",
+    })
+    expect(isPreviewRequestAuthority(tunnel, { NODE_ENV: "development" })).toBe(true)
+    expect(browserOriginMatchesAuthority(tunnel, {
+      env: { NODE_ENV: "development" },
+      originRequired: true,
+    })).toBe(true)
+    expect(isPreviewRequestAuthority(tunnel, { NODE_ENV: "production" })).toBe(false)
+  })
+
+  it("limits the local preview session bypass to development loopback and quick tunnels", () => {
+    const localhost = new Headers({ host: "localhost:3000" })
+    expect(isLocalPreviewSessionBypass(localhost, { NODE_ENV: "development" })).toBe(true)
+    expect(isLocalPreviewSessionBypass(localhost, { NODE_ENV: "production" })).toBe(false)
+    expect(isLocalPreviewSessionBypass(new Headers({
+      host: "preview.siteinabox.nl",
+    }), { NODE_ENV: "development" })).toBe(false)
+    expect(isLocalPreviewSessionBypass(new Headers({
+      host: "random-words.trycloudflare.com",
+    }), { NODE_ENV: "development" })).toBe(true)
+    expect(isLocalPreviewSessionBypass(new Headers({
+      host: "random-words.trycloudflare.com",
+    }), { NODE_ENV: "production" })).toBe(false)
   })
 })

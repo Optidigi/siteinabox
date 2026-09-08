@@ -496,6 +496,7 @@ describe("intake-to-live mocked flow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("SITE_GENERATION_PROVIDER", "mock")
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
     vi.stubEnv(
@@ -660,6 +661,7 @@ describe("intake-to-live mocked flow", () => {
       acceptanceVersion: "platform-terms-2026-07-07",
     }, { overrideAccess: true }))
 
+    vi.stubEnv("NODE_ENV", "production")
     const checkout = await createMollieCheckoutForGenerationRun(payload, {
       runId: relationId(run),
       customerEmail: "demo@example.com",

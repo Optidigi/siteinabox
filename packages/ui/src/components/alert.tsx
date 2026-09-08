@@ -4,19 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "../lib/utils"
 
 const alertVariants = cva(
-  "relative grid w-full grid-cols-[0_1fr] items-start gap-y-0.5 rounded-lg border px-4 py-3 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  "relative w-full rounded-base border-2 border-border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current shadow-shadow",
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
-        info:
-          "border-info/30 bg-info/10 text-foreground *:data-[slot=alert-description]:text-foreground/80 [&>svg]:text-info",
-        success:
-          "border-success/30 bg-success/10 text-foreground *:data-[slot=alert-description]:text-foreground/80 [&>svg]:text-success",
-        destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
-        warning:
-          "border-warning/50 bg-warning/10 text-foreground *:data-[slot=alert-description]:text-foreground/80 [&>svg]:text-warning",
+        default: "bg-card text-foreground",
+        info: "bg-card text-foreground",
+        success: "bg-success text-success-foreground",
+        destructive: "bg-destructive text-destructive-foreground",
+        warning: "bg-warning text-warning-foreground",
       },
     },
     defaultVariants: {

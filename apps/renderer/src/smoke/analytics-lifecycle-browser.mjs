@@ -110,6 +110,7 @@ try {
     let failedConsentedRequests = 0
     let revoked = false
     let consentedAttemptsAfterRevoke = 0
+    const consentedEventsAfterRevoke = []
     page.on("request", (request) => {
       if (/posthog/i.test(new URL(request.url()).hostname)) externalAnalyticsRequests.push(request.url())
     })
@@ -117,7 +118,10 @@ try {
     await page.route(`${ingestOrigin}/**`, async (route) => {
       const decoded = decodedEvents(route.request())
       const isConsented = decoded.some((event) => event.properties?.analytics_tier === "consented")
-      if (revoked && isConsented) consentedAttemptsAfterRevoke += 1
+      if (revoked && isConsented) {
+        consentedAttemptsAfterRevoke += 1
+        consentedEventsAfterRevoke.push(decoded.map((event) => event.event).join(","))
+      }
       if (failConsentedRequests && isConsented) {
         failedConsentedRequests += 1
         await route.abort("failed")
@@ -240,15 +244,23 @@ try {
     const journeyBeforeRevoke = events.filter((event) => event.event === "site_journey_step").length
     const eventsBeforeRevoke = events.length
     failConsentedRequests = true
-    await page.evaluate(() => {
-      const action = document.querySelector("button:not([data-consent-action])")
-      action?.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
+    const firstFailed = page.waitForEvent("requestfailed", {
+      predicate: (request) => request.url().startsWith(ingestOrigin),
     })
+    assert.equal(
+      await page.evaluate(() => {
+        const control = document.querySelector("[data-theme-toggle], main a[href], main button")
+        if (!control || control.closest("[data-siab-cookie-consent]")) return false
+        control.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
+        return true
+      }),
+      true,
+      "fixture page has no non-consent control to capture",
+    )
+    await firstFailed
     await waitFor(() => failedConsentedRequests > 0, "consented request fixture did not fail")
-    // Let the request that was already handed to the browser settle before
-    // the revocation marker starts counting post-revoke retry attempts.
-    await page.waitForTimeout(250)
     await page.evaluate(() => window.SIABAnalytics.applyConsent({ analytics: false }))
+    await page.waitForTimeout(250)
     revoked = true
     assert.deepEqual(
       await page.evaluate(() => JSON.parse(localStorage.getItem("siab_lifecycle_test_consent"))),
@@ -261,8 +273,10 @@ try {
       "declined runtime state is exposed to the consent chrome",
     )
     await page.evaluate(() => {
-      const action = document.querySelector("button:not([data-consent-action])")
-      action?.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
+      const control = document.querySelector("[data-theme-toggle], main a[href], main button")
+      if (control && !control.closest("[data-siab-cookie-consent]")) {
+        control.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }))
+      }
       window.dispatchEvent(new Event("scroll"))
     })
     await page.waitForTimeout(800)
@@ -275,7 +289,7 @@ try {
     assert.equal(
       consentedAttemptsAfterRevoke,
       0,
-      "revocation drops failed consented requests before the SDK retry queue can resend them",
+      `revocation drops failed consented requests before the SDK retry queue can resend them (${consentedEventsAfterRevoke.join(" | ") || "none"})`,
     )
     failConsentedRequests = false
     revoked = false

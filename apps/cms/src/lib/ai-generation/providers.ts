@@ -10,13 +10,14 @@ import { APPOINTMENT_PRESENTATIONS, APPOINTMENT_VARIANTS, BACKGROUND_MODE_IDS, C
 import { hashStableValue } from "@/lib/intake/normalizeIntake"
 import { loadMockSiteGenerationSpec, type MockGenerationFixture } from "@/lib/intake/mockGeneration"
 import { SitegenOutputSchema } from "@/lib/sitegen/output-schema"
+import { createMastraSiteGenerationProvider } from "./mastraProvider"
 import {
   SITE_GENERATION_PROMPT_VERSION,
   SITE_GENERATION_SYSTEM_PROMPT,
 } from "./prompts/siteGenerationPrompt"
 import { buildSiteGenerationModelInput, type SiteGenerationModelInput } from "./siteGenerationInput"
 
-export type SiteGenerationProviderName = "mock" | "openai"
+export type SiteGenerationProviderName = "mock" | "openai" | "mastra"
 
 export type SiteGenerationProviderRequest = {
   normalized: NormalizedIntake
@@ -309,7 +310,9 @@ export const createOpenAISiteGenerationProvider = (config: SiteGenerationProvide
 
 export const resolveSiteGenerationProvider = (config: SiteGenerationProviderConfig = {}): SiteGenerationProvider => {
   const provider = config.provider ?? (process.env.SITE_GENERATION_PROVIDER as SiteGenerationProviderName | undefined) ?? "mock"
-  return provider === "openai" ? createOpenAISiteGenerationProvider(config) : createMockSiteGenerationProvider(config.mockFixture)
+  if (provider === "mastra") return createMastraSiteGenerationProvider(config)
+  if (provider === "openai") return createOpenAISiteGenerationProvider(config)
+  return createMockSiteGenerationProvider(config.mockFixture)
 }
 
 export const createSiteGenerationProviderRequest = (

@@ -1,4 +1,5 @@
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"])
+const TRYCLOUDFLARE_SUFFIX = ".trycloudflare.com"
 type HeaderReader = Pick<Headers, "get">
 
 const parseAuthority = (
@@ -75,6 +76,17 @@ export function isPreviewRequestAuthority(
 ): boolean {
   const authority = canonicalRequestAuthority(headers, env)
   if (!authority) return false
-  return authority.hostname === "preview.siteinabox.nl" ||
-    authority.developmentLoopback
+  if (authority.hostname === "preview.siteinabox.nl" || authority.developmentLoopback) return true
+  return env.NODE_ENV === "development" && authority.hostname.endsWith(TRYCLOUDFLARE_SUFFIX)
+}
+
+/** Local preview login that skips magic-link mail. Development loopback, plus quick tunnels. */
+export function isLocalPreviewSessionBypass(
+  headers: HeaderReader,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const authority = canonicalRequestAuthority(headers, env)
+  if (!authority || env.NODE_ENV !== "development") return false
+  if (authority.developmentLoopback) return true
+  return authority.hostname.endsWith(TRYCLOUDFLARE_SUFFIX)
 }

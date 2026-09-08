@@ -1,6 +1,7 @@
 "use client"
 import { Moon, Sun, Monitor } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useTranslations } from "next-intl"
 import { Button } from "@siteinabox/ui/components/button"
 import {
   DropdownMenu,
@@ -9,8 +10,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger
 } from "@siteinabox/ui/components/dropdown-menu"
-import { cn } from "@siteinabox/ui/lib/utils"
-import { useTranslations } from "next-intl"
 
 /**
  * Three-state theme toggle: Light / Dark / System.
@@ -35,7 +34,7 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button variant="outline" size="icon" className="relative">
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">{t("changeTheme")}</span>
@@ -84,20 +83,18 @@ export function ThemeSwitcher() {
       {(["light", "dark", "system"] as const).map((mode) => {
         const Icon = themeIcons[mode]
         return (
-          <button
+          <Button
             key={mode}
             type="button"
+            size="icon-sm"
+            variant={theme === mode ? "default" : "outline"}
             onClick={() => setTheme(mode)}
-            className={cn(
-              "inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-accent transition-colors",
-              theme === mode && "bg-accent",
-            )}
             aria-pressed={theme === mode}
             aria-label={themeLabel[mode]}
             title={themeLabel[mode]}
           >
-            <Icon className="h-4 w-4" aria-hidden />
-          </button>
+            <Icon className="size-4" aria-hidden />
+          </Button>
         )
       })}
     </div>

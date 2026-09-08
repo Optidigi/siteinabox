@@ -38,6 +38,17 @@ function waitForWindowLoad(): Promise<void> {
   return new Promise((resolve) => window.addEventListener("load", () => resolve(), { once: true }))
 }
 
+/** Scroll the iframe document only. `scrollIntoView` also moves parent overflow (the mobile pager). */
+function scrollWithinFrame(node: HTMLElement) {
+  const win = node.ownerDocument.defaultView
+  if (!win) return
+  const rect = node.getBoundingClientRect()
+  win.scrollTo({
+    top: Math.max(0, win.scrollY + rect.top - win.innerHeight / 2 + rect.height / 2),
+    behavior: "smooth",
+  })
+}
+
 function waitForAnimationFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()))
 }
@@ -441,13 +452,13 @@ export function EditorFrameRuntime({
       }) ?? null
       if (fieldNode) {
         fieldNode.setAttribute("data-siab-editor-field-selected", "true")
-        if (shouldScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "center" })
+        if (shouldScroll) scrollWithinFrame(fieldNode)
         return
       }
     }
 
     blockNode.setAttribute("data-siab-editor-selected", "true")
-    if (shouldScroll) blockNode.scrollIntoView({ behavior: "smooth", block: "center" })
+    if (shouldScroll) scrollWithinFrame(blockNode)
   }, [activeSelection, framePage, mobileMode.mode])
 
   const focusedBlockIndex = mobileMode.mode === "focusedSection"

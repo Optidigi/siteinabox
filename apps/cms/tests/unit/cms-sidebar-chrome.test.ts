@@ -1,0 +1,43 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const read = (path: string) => readFileSync(path, "utf8")
+
+describe("CMS sidebar chrome", () => {
+  it("collapses to an icon rail and expands from the sidebar itself", () => {
+    const sidebar = read("src/components/layout/AppSidebar.tsx")
+    const header = read("src/components/layout/SiteHeader.tsx")
+    const primitive = read("../../packages/ui/src/components/sidebar.tsx")
+
+    expect(sidebar).toContain('collapsible="icon"')
+    expect(sidebar).toContain("SidebarCollapseTrigger")
+    expect(sidebar).toContain("toggleSidebar")
+    expect(sidebar).toContain("/logos/icon-light.svg")
+    expect(header).toContain('className="md:hidden"')
+    expect(header).toContain("SidebarTrigger")
+    expect(primitive).toContain("[--sidebar-width-icon:3rem]")
+    expect(primitive).toContain("data-[active=true]:bg-main")
+    expect(primitive).toContain("data-[active=true]:text-main-foreground")
+    expect(primitive).toContain("data-[active=true]:shadow-shadow")
+    expect(primitive).toContain("group-data-[collapsible=icon]:overflow-visible")
+    expect(primitive).toContain("group-data-[collapsible=icon]:text-[0px]")
+    expect(primitive).toContain("group-data-[collapsible=icon]:[&>span]:hidden")
+    expect(primitive).toContain("group-data-[collapsible=icon]:size-8!")
+    expect(primitive).not.toContain("data-[active=true]:bg-foreground")
+    expect(primitive).not.toContain("data-[active=true]:shadow-shadow-accent")
+    expect(primitive).not.toContain("[--sidebar-width-icon:4rem]")
+    expect(primitive).not.toContain("group-data-[collapsible=icon]:overflow-hidden")
+    expect(sidebar).toContain("tooltip={t(\"dashboard\")}")
+    expect(sidebar).toContain('className="size-8"')
+    expect(read("src/components/layout/SiteSwitcher.tsx")).not.toContain("h-8 max-w-[14rem]")
+    expect(read("../../packages/ui/src/components/button.tsx")).toContain('"icon-sm": "size-9"')
+    expect(read("../../packages/ui/src/components/input.tsx")).toContain("shadow-shadow")
+    expect(read("../../packages/ui/src/components/select.tsx")).toContain("shadow-shadow")
+    expect(read("../../packages/ui/src/components/textarea.tsx")).not.toContain("shadow-shadow")
+    expect(read("../../packages/ui/src/lib/retro.ts")).not.toContain("bg-card font-base text-foreground shadow-shadow")
+    expect(sidebar).toContain("SidebarCollapseTrigger")
+    expect(primitive).toContain("SidebarCollapseTrigger")
+    expect(primitive).not.toContain("startPeek")
+    expect(primitive).not.toContain("SidebarPeekTrigger")
+  })
+})

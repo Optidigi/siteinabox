@@ -133,6 +133,45 @@ describe("owned Sitegen application", () => {
     ])
   })
 
+  it("pins replacement apply to the grant tenant and refuses another tenant's slug", async () => {
+    const { payload, store } = payloadStub()
+    store.tenants.push({
+      id: 1,
+      name: "Mine",
+      slug: "mine",
+      domain: "mine.test",
+      status: "provisioning",
+    })
+    store.tenants.push({
+      id: 2,
+      name: "Other",
+      slug: "fixture-care",
+      domain: "fixture-care.test",
+      status: "provisioning",
+    })
+
+    await expect(applySiteGenerationSpec(payload, fixtureSpec(), { pinTenantId: 1 })).rejects.toThrow(/another tenant/)
+    expect(store.tenants).toHaveLength(2)
+    expect(store.tenants[0]).toMatchObject({ slug: "mine" })
+  })
+
+  it("updates the pinned tenant when the spec slug is free", async () => {
+    const { payload, store } = payloadStub()
+    store.tenants.push({
+      id: 4,
+      name: "Mine",
+      slug: "mine",
+      domain: "mine.test",
+      status: "provisioning",
+    })
+
+    const result = await applySiteGenerationSpec(payload, fixtureSpec(), { pinTenantId: 4 })
+    expect(result.ok).toBe(true)
+    expect(result.tenantId).toBe(4)
+    expect(store.tenants).toHaveLength(1)
+    expect(store.tenants[0]).toMatchObject({ id: 4, slug: "fixture-care", name: "Fixture Care" })
+  })
+
   it("rejects legacy fields and unsupported sections before writes", () => {
     const invalid = fixtureSpec() as unknown as Record<string, unknown>
     const pages = invalid.pages as Array<Record<string, unknown>>

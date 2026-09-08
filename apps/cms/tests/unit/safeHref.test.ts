@@ -47,7 +47,7 @@ describe("safe CMS href validation", () => {
     expect(isSafeHref("")).toBe(false)
     expect(validateSafeHref("")).toBe(true)
 
-    for (const href of ["javascript:alert(1)", "data:text/html,<p>x</p>", "//evil.test/path", "ftp://example.test", "example.test/path", "bad\0url", "/\\evil"]) {
+    for (const href of ["javascript:alert(1)", "data:text/html,<p>x</p>", "//evil.test/path", "ftp://example.test", "example.test/path", "bad\0url", "/\\evil", "#", "tel:", "mailto:", "whatsapp:0612345678"]) {
       expect(isSafeHref(href), href).toBe(false)
       expect(validateSafeHref(href), href).not.toBe(true)
     }

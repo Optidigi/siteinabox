@@ -18,10 +18,11 @@ type Props = {
   nav: NavItem[];
   intakeHref: string;
   loginHref: string;
+  liveSiteHref: string;
   hero?: boolean;
 };
 
-export function SiteHeader({ nav, intakeHref, loginHref, hero = false }: Props) {
+export function SiteHeader({ nav, intakeHref, loginHref, liveSiteHref, hero = false }: Props) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [scrolled, setScrolled] = useState(false);
 
@@ -84,6 +85,9 @@ export function SiteHeader({ nav, intakeHref, loginHref, hero = false }: Props) 
           >
             {theme === 'dark' ? <Moon aria-hidden /> : <Sun aria-hidden />}
           </Button>
+          <a className="hidden min-h-11 items-center font-body text-[13px] font-semibold text-muted-foreground underline decoration-dashed underline-offset-4 sm:inline-flex sm:text-sm" href={liveSiteHref} data-analytics-action="open_live_site_admin" data-analytics-placement="header" data-analytics-destination="beheer">
+            Beheer je live site
+          </a>
           <a className="inline-flex min-h-11 items-center font-body text-[15px] font-semibold underline decoration-dashed underline-offset-4 sm:text-base" href={loginHref} data-analytics-action="open_login" data-analytics-placement="header" data-analytics-destination="login">
             Inloggen
           </a>
@@ -128,6 +132,9 @@ export function SiteHeader({ nav, intakeHref, loginHref, hero = false }: Props) 
                 </ul>
               </nav>
               <div className="mt-auto grid gap-3 p-6">
+                <SheetClose nativeButton={false} render={<a className={buttonVariants({ variant: 'outline', size: 'lg' })} href={liveSiteHref} data-analytics-action="open_live_site_admin" data-analytics-placement="mobile_menu" data-analytics-destination="beheer" />}>
+                  Beheer je live site
+                </SheetClose>
                 <SheetClose nativeButton={false} render={<a className={buttonVariants({ variant: 'outline', size: 'lg' })} href={loginHref} data-analytics-action="open_login" data-analytics-placement="mobile_menu" data-analytics-destination="login" />}>
                   Inloggen
                 </SheetClose>

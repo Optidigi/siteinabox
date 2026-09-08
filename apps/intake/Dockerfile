@@ -18,6 +18,7 @@ RUN pnpm install --frozen-lockfile \
 
 ARG SITE_URL=https://example.com
 ENV SITE_URL=${SITE_URL}
+ENV NODE_ENV=production
 RUN pnpm --filter siteinabox-intake build
 
 FROM nginx:${NGINX_VERSION}

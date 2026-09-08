@@ -28,9 +28,9 @@ describe("preview desktop theme toolbar", () => {
 
     expect(inlineGroup).toContain("InlineToolbarGroup")
     expect(inlineGroup).toContain("InlineToolbarOption")
-    expect(inlineGroup).toContain("bg-card")
+    expect(inlineGroup).toContain("neoTray")
     expect(read("src/components/editor/theme/font-picker.tsx")).toContain('resolvedSize === "segment"')
-    expect(inlineGroup).toContain("rounded-md")
+    expect(inlineGroup).toContain('variant={active ? "default" : "outline"}')
     expect(palettePicker).toContain("InlineToolbarGroup")
     expect(palettePicker).toContain('layout === "inline"')
     expect(palettePicker).toContain("rounded-full")

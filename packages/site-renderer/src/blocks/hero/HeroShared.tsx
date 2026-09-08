@@ -1,7 +1,6 @@
 import * as React from "react"
 import { DEFAULT_THEME_TOKEN_SPEC, type Action, type AnyHeroBlock, type BackgroundMode, type HeroHighlight, type HeroServiceHighlight, type MediaRef } from "@siteinabox/contracts"
-import { buttonVariants } from "@siteinabox/ui/components/button"
-import { cn } from "@siteinabox/ui/lib/utils"
+import { cn } from "../../cn"
 import { resolveMedia } from "../../media"
 import {
   SiteArrowRight,
@@ -163,13 +162,13 @@ export function HeroActions({
 }) {
   return (
     <div className={cn("flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center", actionStyle === "lead" ? "mt-8" : "mt-9", align === "center" ? "items-center sm:justify-center" : "items-start")}>
-      {actionNode(block.primaryAction, "primaryAction", options, cn(buttonVariants({ variant: "default", size: "lg" }), "min-w-44 max-w-full justify-center whitespace-nowrap"), showArrows, actionElementPath?.("primaryAction"))}
+      {actionNode(block.primaryAction, "primaryAction", options, cn("site-btn site-btn-lg", "min-w-44 max-w-full justify-center whitespace-nowrap"), showArrows, actionElementPath?.("primaryAction"))}
       {block.secondaryAction
         ? actionNode(
           block.secondaryAction,
           "secondaryAction",
           options,
-          cn(buttonVariants({ variant: "outline", size: "lg" }), "max-w-full justify-center whitespace-nowrap shadow-none"),
+          cn("site-btn site-btn-lg site-btn-outline", "max-w-full justify-center whitespace-nowrap shadow-none"),
           showArrows && actionStyle === "lead",
           actionElementPath?.("secondaryAction"),
         )

@@ -63,12 +63,14 @@ describe("renderer iframe source contract", () => {
     if (!host) return
     expect(host.relativePath).toBe("apps/cms/src/components/preview/PreviewCustomizer.tsx")
     expect(/<iframe\b/i.test(host.source)).toBe(true)
-    expect(/\bsandbox=/.test(host.source)).toBe(true)
+    expect(/\bsandbox=/.test(host.source)).toBe(false)
     expect(host.source.includes("@/components/editor/canvas/CanvasMode")).toBe(false)
     expect(host.source.includes("@siteinabox/site-renderer")).toBe(false)
     expect(host.source.includes("@siteinabox/site-renderer/styles.css")).toBe(false)
     expect(host.source.includes("site-renderer-canvas.css")).toBe(false)
     expect(host.source.includes("<SitePageRenderer")).toBe(false)
+    expect(read(sourcePath("src/components/builder/BuilderShell.tsx"))).not.toMatch(/\bsandbox=/)
+    expect(read(sourcePath("src/components/editor/iframe/PageEditorFrameHost.tsx"))).not.toMatch(/\bsandbox=/)
   })
 
   it("loads full renderer CSS only inside the embedded renderer route, not CMS layouts", () => {

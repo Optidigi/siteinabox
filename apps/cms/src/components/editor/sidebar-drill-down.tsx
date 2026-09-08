@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { ChevronLeft, ChevronRight, GripVertical, MoreVertical, Plus, Settings, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, GripVertical, MoreVertical, Palette, Plus, Settings, Trash2 } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import {
   DropdownMenu,
@@ -44,6 +44,7 @@ type Mode =
   | { kind: "list" }
   | { kind: "block"; blockIndex: number }
   | { kind: "page-settings" }
+  | { kind: "site-appearance" }
 
 export interface SidebarDrillDownProps {
   blocks: EditorBlock[]
@@ -60,6 +61,7 @@ export interface SidebarDrillDownProps {
   manifest: RtManifest
   seoCard: React.ReactNode
   dangerZone: React.ReactNode
+  siteLook?: React.ReactNode
   theme?: ThemeTokens | null
   renderList?: (context: SidebarListSlotContext) => React.ReactNode
   renderBlockForm?: (context: SidebarBlockFormSlotContext) => React.ReactNode
@@ -70,9 +72,11 @@ export interface SidebarListSlotContext {
   blocks: EditorBlock[]
   isEmpty: boolean
   openPageSettings: () => void
+  openSiteLook: () => void
   openAddBlock: () => void
   title: React.ReactNode
   pageSettingsButton: React.ReactNode
+  siteLookButton: React.ReactNode
   header: React.ReactNode
   emptyState: React.ReactNode
   blockRows: React.ReactNode
@@ -140,6 +144,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
   manifest,
   seoCard,
   dangerZone,
+  siteLook,
   theme,
   renderList,
   renderBlockForm,
@@ -193,8 +198,19 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
 
   if (mode.kind === "list") {
     const openPageSettings = () => setMode({ kind: "page-settings" })
+    const openSiteLook = () => setMode({ kind: "site-appearance" })
     const openAddBlock = () => setAddBlockOpen(true)
     const title = <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("page")}</h2>
+    const siteLookButton = siteLook ? (
+      <button
+        type="button"
+        onClick={openSiteLook}
+        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        aria-label={t("siteLook")}
+      >
+        <Palette className="size-3.5" />
+      </button>
+    ) : null
     const pageSettingsButton = (
       <button
         type="button"
@@ -208,7 +224,10 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
     const header = (
       <header className="flex items-center justify-between border-b border-border px-3 py-2">
         {title}
-        {pageSettingsButton}
+        <div className="flex items-center gap-0.5">
+          {siteLookButton}
+          {pageSettingsButton}
+        </div>
       </header>
     )
     const emptyState = (
@@ -296,9 +315,11 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
             blocks,
             isEmpty: blocks.length === 0,
             openPageSettings,
+            openSiteLook,
             openAddBlock,
             title,
             pageSettingsButton,
+            siteLookButton,
             header,
             emptyState,
             blockRows,
@@ -334,6 +355,13 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
         />
       )
     }
+  } else if (mode.kind === "site-appearance") {
+    content = (
+      <SiteAppearanceState
+        onBack={() => setMode({ kind: "list" })}
+        siteLook={siteLook ?? null}
+      />
+    )
   } else {
     content = (
       <PageSettingsState
@@ -652,6 +680,45 @@ export const SidebarBlockFormLayout: React.FC<SidebarBlockFormLayoutProps> = ({
     {deleteDialog}
   </div>
 )
+
+const SiteAppearanceState: React.FC<{
+  onBack: () => void
+  siteLook: React.ReactNode
+}> = ({ onBack, siteLook }) => {
+  const t = useTranslations("editor")
+  const title = <span className="text-xs font-medium">{t("siteLook")}</span>
+  const backButton = (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onClick={onBack}
+      className="h-8 gap-1"
+      aria-label={t("backToBlockList")}
+    >
+      <ChevronLeft className="size-4" aria-hidden />
+      {t("back")}
+    </Button>
+  )
+  const header = (
+    <>
+      <header className="flex items-center border-b border-border px-3 py-2">
+        {backButton}
+      </header>
+      <header className="flex items-center border-b border-border px-3 py-2">
+        {title}
+      </header>
+    </>
+  )
+
+  return (
+    <SidebarPageSettingsLayout
+      header={header}
+      body={siteLook}
+      footer={null}
+    />
+  )
+}
 
 const PageSettingsState: React.FC<{
   onBack: () => void
