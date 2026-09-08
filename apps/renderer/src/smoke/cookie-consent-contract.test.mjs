@@ -25,6 +25,7 @@ test("renderer keeps only structural consent and transport guards here", () => {
   assert.match(runtimeSource, /posthogStartupToken/)
   assert.match(runtimeSource, /installPostHogConsentGate/)
   assert.match(runtimeSource, /_retryQueue/)
+  assert.match(runtimeSource, /discardQueuedPostHogTransport/)
   assert.match(runtimeSource, /analytics_tier === "baseline"/)
   assert.match(runtimeSource, /disable_scroll_properties: false/)
   assert.match(runtimeSource, /opt_in_capturing\?\.\(\{ captureEventName: false \}\)/)

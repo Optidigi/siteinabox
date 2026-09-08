@@ -40,10 +40,13 @@ type PostHogRequest = {
 
 type PostHogRetryQueue = {
   _enqueue?: (request: PostHogRequest) => void
+  _queue?: unknown[]
+  _poller?: number
   unload?: () => void
 }
 
 type PostHogRequestQueue = {
+  _queue?: unknown[]
   unload?: () => void
 }
 
@@ -154,6 +157,16 @@ const isBaselinePostHogRequest = (request: PostHogRequest) => {
 
 const canSendPostHogRequest = (request: PostHogRequest) =>
   state.consentGranted || isBaselinePostHogRequest(request)
+
+const discardQueuedPostHogTransport = (queue?: PostHogRetryQueue | PostHogRequestQueue) => {
+  if (!queue) return
+  if (Array.isArray(queue._queue)) queue._queue.length = 0
+  if ("_poller" in queue && queue._poller !== undefined) {
+    window.clearTimeout(queue._poller)
+    queue._poller = undefined
+  }
+  queue.unload?.()
+}
 
 const installPostHogConsentGate = (instance: PostHogClient) => {
   if (!gatedPostHogInstances.has(instance)) {
@@ -1008,12 +1021,9 @@ const deactivateAnalyticsConsent = () => {
     // prevents consented payloads from entering or re-entering its transport
     // after revoke; a request already accepted by the network cannot be recalled.
     installPostHogConsentGate(state.posthog)
-    // Clear requests that are waiting in either of the SDK's private queues.
-    // RequestQueue must be drained first because its unload path hands items to
-    // RetryQueue. Both unload paths attempt sendBeacon, but the gate above drops
-    // every consented request before it reaches the transport.
-    state.posthog._requestQueue?.unload?.()
-    state.posthog._retryQueue?.unload?.()
+    // Drop queued retries instead of flushing them with sendBeacon on revoke.
+    discardQueuedPostHogTransport(state.posthog._requestQueue)
+    discardQueuedPostHogTransport(state.posthog._retryQueue)
     state.posthog.opt_out_capturing?.()
     state.posthog.clear_opt_in_out_capturing?.()
   }

@@ -100,6 +100,7 @@
     "intake": {
       "names": [
         "DEV",
+        "PROD",
         "PUBLIC_INTAKE_SUBMIT_ENDPOINT",
         "PUBLIC_KVK_PROFILE_ENDPOINT",
         "PUBLIC_KVK_SEARCH_ENDPOINT",
@@ -113,6 +114,7 @@
       "names": [
         "CI",
         "DEV",
+        "PROD",
         "POSTHOG_HOST",
         "POSTHOG_PROJECT_TOKEN",
         "POSTHOG_PUBLIC_HOST",
