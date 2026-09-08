@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
   cookies: vi.fn(async () => ({
-    toString: () => "",
+    toString(): string {
+      return ""
+    },
   })),
   notFound: vi.fn(() => {
     throw new Error("not_found")
