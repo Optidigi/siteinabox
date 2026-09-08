@@ -28,7 +28,8 @@ describe("passwordless auth surface", () => {
     expect(proxy).toContain("isPlatformAdminHost")
     expect(proxy).toContain("PLATFORM_PROXY_MODE")
     expect(proxy).toContain("buildRetiredTenantCmsResponse")
-    expect(proxy).toMatch(/if\s*\(\s*!platformHost\s*\)/)
+    expect(proxy).toContain("allowsNonPlatformProxy")
+    expect(proxy).toMatch(/if\s*\(\s*!platformHost\s*&&\s*!allowsNonPlatformProxy\(/)
   })
 
   it("sets persistent Better Auth and Payload session durations from one server-side source", () => {
