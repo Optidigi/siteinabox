@@ -115,8 +115,8 @@
       "advisoryId": "GHSA-6vj9-mwq6-2f5v",
       "package": "nodemailer",
       "previousVersion": "9.1.1",
-      "fixedVersion": "10.0.9",
-      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "fixedVersion": "10.0.13",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.13 fixes the five reported mail findings and four later publisher notices; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
       "sources": [
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-6vj9-mwq6-2f5v"
       ]
@@ -125,8 +125,8 @@
       "advisoryId": "GHSA-8vvx-rff5-p5rq",
       "package": "nodemailer",
       "previousVersion": "9.1.1",
-      "fixedVersion": "10.0.9",
-      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "fixedVersion": "10.0.13",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.13 fixes the five reported mail findings and four later publisher notices; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
       "sources": [
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-8vvx-rff5-p5rq"
       ]
@@ -135,8 +135,8 @@
       "advisoryId": "GHSA-g57g-f23g-4646",
       "package": "nodemailer",
       "previousVersion": "9.1.1",
-      "fixedVersion": "10.0.9",
-      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "fixedVersion": "10.0.13",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.13 fixes the five reported mail findings and four later publisher notices; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
       "sources": [
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g57g-f23g-4646"
       ]
@@ -145,8 +145,8 @@
       "advisoryId": "GHSA-prgh-xp8r-p3m5",
       "package": "nodemailer",
       "previousVersion": "9.1.1",
-      "fixedVersion": "10.0.9",
-      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "fixedVersion": "10.0.13",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.13 fixes the five reported mail findings and four later publisher notices; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
       "sources": [
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-prgh-xp8r-p3m5"
       ]
@@ -155,11 +155,339 @@
       "advisoryId": "GHSA-v53p-9fqp-m79j",
       "package": "nodemailer",
       "previousVersion": "9.1.1",
-      "fixedVersion": "10.0.9",
-      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "fixedVersion": "10.0.13",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.13 fixes the five reported mail findings and four later publisher notices; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
       "sources": [
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-v53p-9fqp-m79j"
       ]
+    }
+  ],
+  "publisherReviewedPackages": [
+    {
+      "package": "next",
+      "manifest": "apps/cms/package.json",
+      "version": "16.3.8",
+      "patchedVersion": "16.3.8",
+      "advisoryIds": [
+        "GHSA-cjq9-62q9-8jv4",
+        "GHSA-4jqv-mc3x-m676",
+        "GHSA-mcj8-r9mp-w47p",
+        "GHSA-f87g-xv8r-7p7x",
+        "GHSA-h694-7cp9-m8p3",
+        "GHSA-3w37-wq28-93x7",
+        "GHSA-39w2-rjm5-chcv"
+      ],
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ]
+    },
+    {
+      "package": "nodemailer",
+      "manifest": "apps/cms/package.json",
+      "version": "10.0.13",
+      "patchedVersion": "10.0.13",
+      "advisoryIds": [
+        "GHSA-39m8-27wv-hr27",
+        "GHSA-4g23-2xm8-66gc",
+        "GHSA-4ffr-jq9g-5ffx",
+        "GHSA-g73g-hqqh-jr95"
+      ],
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+      ]
+    }
+  ],
+  "publisherOnlyResolvedAdvisories": [
+    {
+      "advisoryId": "GHSA-cjq9-62q9-8jv4",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "high"
+    },
+    {
+      "advisoryId": "GHSA-4jqv-mc3x-m676",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-mcj8-r9mp-w47p",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-f87g-xv8r-7p7x",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-h694-7cp9-m8p3",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-3w37-wq28-93x7",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-39w2-rjm5-chcv",
+      "package": "next",
+      "reviewedVersion": "16.3.8",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "development",
+      "reason": "Next CMS runtime feature exposure is conditional on routing/cache/image configuration; publisher patch closes the complete September30 release.",
+      "sources": [
+        "https://nextjs.org/blog/september-2026-security-release",
+        "https://github.com/vercel/next.js/releases/tag/v16.3.8"
+      ],
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/next>next",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next",
+        "apps__cms>better-auth>next",
+        "apps__cms>next",
+        "apps__cms>next-intl>next",
+        "packages__ui>next-intl>next"
+      ],
+      "sourceUse": "CMS Next server; affected feature configuration is conditional",
+      "patchedVersion": "16.3.8",
+      "severity": "low"
+    },
+    {
+      "advisoryId": "GHSA-39m8-27wv-hr27",
+      "package": "nodemailer",
+      "reviewedVersion": "10.0.13",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "CMS ships the SMTP fallback and address handling; DKIM options are not enabled, but the patch also closes that optional library path. No exploit or attacker-controlled SMTP host is claimed.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+      ],
+      "paths": [
+        "apps__cms>nodemailer"
+      ],
+      "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
+      "patchedVersion": "10.0.10",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-4g23-2xm8-66gc",
+      "package": "nodemailer",
+      "reviewedVersion": "10.0.13",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "CMS ships the SMTP fallback and address handling; DKIM options are not enabled, but the patch also closes that optional library path. No exploit or attacker-controlled SMTP host is claimed.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+      ],
+      "paths": [
+        "apps__cms>nodemailer"
+      ],
+      "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
+      "patchedVersion": "10.0.10",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-4ffr-jq9g-5ffx",
+      "package": "nodemailer",
+      "reviewedVersion": "10.0.13",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "CMS ships the SMTP fallback and address handling; DKIM options are not enabled, but the patch also closes that optional library path. No exploit or attacker-controlled SMTP host is claimed.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+      ],
+      "paths": [
+        "apps__cms>nodemailer"
+      ],
+      "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
+      "patchedVersion": "10.0.13",
+      "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-g73g-hqqh-jr95",
+      "package": "nodemailer",
+      "reviewedVersion": "10.0.13",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "CMS ships the SMTP fallback and address handling; DKIM options are not enabled, but the patch also closes that optional library path. No exploit or attacker-controlled SMTP host is claimed.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+      ],
+      "paths": [
+        "apps__cms>nodemailer"
+      ],
+      "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
+      "patchedVersion": "10.0.13",
+      "severity": "moderate"
     }
   ]
 }

@@ -23,7 +23,7 @@ request to align every workspace to one version.
 | --- | --- | --- |
 | React / React DOM | exact `19.2.8` in apps and shared runtime packages | Retain exact singleton versions. |
 | Astro | exact `7.2.8` in landing and renderer | Framework-constrained; align only through an Astro compatibility change. |
-| Next / Payload | CMS-only `16.3.6` / `3.90.1` | CMS framework and schema boundary; do not align with Astro apps. |
+| Next / Payload | CMS-only `16.3.8` / `3.90.1` | CMS framework and schema boundary; do not align with Astro apps. |
 | Tailwind | `^4.3.3` across apps and shared packages | Compare generated CSS and framework support before alignment. |
 | Vite | `^8.2.1` in Astro apps and CMS | Framework/tooling constrained. |
 | Vitest | exact `4.1.11` in all direct consumers | Keep the test runner reproducible; upgrade only as one reviewed toolchain change. |
@@ -69,7 +69,7 @@ no current resolved consumer and are retained as separately reviewable historica
 policy pending their documented removal checks, rather than combined with this
 security patch. DOMPurify, js-yaml, Sharp and Undici receive compatible security
 patches. No peer-major override is used to hide findings. Nodemailer is directly updated
-to exact `10.0.9` after verifying no email-adapter peer constraint, supported
+to exact `10.0.13` after verifying no email-adapter peer constraint, supported
 imports, own types and existing mail tests. Selector-parser remains a reviewed
 build-time finding pending its consumer-contract migration.
 

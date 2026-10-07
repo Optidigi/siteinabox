@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
+import { isAbsolute, relative, resolve, sep } from "node:path"
 
 const args = process.argv.slice(2)
 const release = args.includes("--release")
@@ -27,7 +28,7 @@ function key(id, name, version) {
 
 try {
   for (let i = 0; i < args.length; i++) {
-    if (["--audit-file", "--policy-file"].includes(args[i])) {
+    if (["--audit-file", "--policy-file", "--root"].includes(args[i])) {
       i++
       continue
     }
@@ -51,6 +52,70 @@ try {
     throw new Error(
       "Dependency advisory review expired; rerun inventory and review",
     )
+  // Publisher notices can precede the audit database. Bind the expiring
+  // upstream review to both direct manifests and every locked identity.
+  const root = resolve(
+    option("--root", fileURLToPath(new URL("..", import.meta.url))),
+  )
+  const lockfile = readFileSync(resolve(root, "pnpm-lock.yaml"), "utf8")
+  if (
+    !Array.isArray(policy.publisherReviewedPackages) ||
+    !policy.publisherReviewedPackages.length
+  )
+    throw new Error("Publisher security review is missing")
+  const reviewed = new Set()
+  for (const entry of policy.publisherReviewedPackages) {
+    if (
+      !entry ||
+      typeof entry.package !== "string" ||
+      !/^(?:@[\w.-]+\/)?[\w.-]+$/.test(entry.package) ||
+      reviewed.has(entry.package) ||
+      typeof entry.manifest !== "string" ||
+      !/^\d+\.\d+\.\d+$/.test(entry.version) ||
+      !/^\d+\.\d+\.\d+$/.test(entry.patchedVersion) ||
+      !Array.isArray(entry.advisoryIds) ||
+      !entry.advisoryIds.length ||
+      entry.advisoryIds.some(
+        (id) => typeof id !== "string" || !id.startsWith("GHSA-"),
+      ) ||
+      !Array.isArray(entry.sources) ||
+      !entry.sources.length ||
+      entry.sources.some(
+        (source) =>
+          typeof source !== "string" || !source.startsWith("https://"),
+      )
+    ) {
+      throw new Error("Publisher security review is malformed")
+    }
+    reviewed.add(entry.package)
+    const version = entry.version.split(".").map(Number)
+    const floor = entry.patchedVersion.split(".").map(Number)
+    for (let index = 0; index < version.length; index++) {
+      if (version[index] > floor[index]) break
+      if (version[index] < floor[index])
+        throw new Error("Publisher security floor is unmet: " + entry.package)
+    }
+    const manifestPath = resolve(root, entry.manifest)
+    const location = relative(root, manifestPath)
+    if (
+      location === ".." ||
+      location.startsWith(".." + sep) ||
+      isAbsolute(location)
+    )
+      throw new Error("Publisher manifest must belong to the repository")
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+    const escaped = entry.package.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const versions = [
+      ...lockfile.matchAll(new RegExp("^  " + escaped + "@([^\\s:(]+)", "gm")),
+    ].map((match) => match[1])
+    if (
+      manifest.dependencies?.[entry.package] !== entry.version ||
+      !versions.length ||
+      versions.some((actual) => actual !== entry.version)
+    ) {
+      throw new Error("Publisher-reviewed dependency changed: " + entry.package)
+    }
+  }
   const auditFile = option("--audit-file")
   let audit
   if (auditFile) {

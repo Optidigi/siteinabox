@@ -48,7 +48,8 @@ try {
   } else if (app === "cms") {
     docker(["run", "--rm", "--entrypoint", "/usr/bin/named-checkzone", image, "-v"])
     docker(["network", "create", "--internal", network])
-    docker(["run", "--detach", "--name", database, "--network", network, "--network-alias", "postgres",
+    docker(["run", "--rm", "--detach", "--name", database, "--network", network, "--network-alias", "postgres",
+      "--tmpfs", "/var/lib/postgresql",
       "--env", "POSTGRES_USER=payload", "--env", "POSTGRES_PASSWORD=verification-only", "--env", "POSTGRES_DB=payload_test", "postgres:18-alpine"])
     let ready = false
     for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -87,7 +88,7 @@ try {
   try { docker(["logs", container]) } catch { /* The container may not have started. */ }
   throw error
 } finally {
-  for (const args of [["rm", "--force", container], ["rm", "--force", database], ["network", "rm", network], ["image", "rm", image]]) {
+  for (const args of [["rm", "--force", "--volumes", container], ["rm", "--force", "--volumes", database], ["network", "rm", network], ["image", "rm", image]]) {
     try { docker(args, true) } catch { /* Only these uniquely owned disposable resources are eligible for cleanup. */ }
   }
 }

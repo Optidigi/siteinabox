@@ -10,6 +10,16 @@ function run(mutate, extra = []) {
   const policy = {
     schemaVersion: 1,
     expiresAt: "2999-01-01T00:00:00Z",
+    publisherReviewedPackages: [
+      {
+        package: "fixture",
+        manifest: "package.json",
+        version: "1.0.0",
+        patchedVersion: "1.0.0",
+        advisoryIds: ["GHSA-publisher-fixture"],
+        sources: ["https://example.test/publisher"],
+      },
+    ],
     advisories: [
       {
         advisoryId: "GHSA-fixture",
@@ -38,10 +48,16 @@ function run(mutate, extra = []) {
       vulnerabilities: { info: 0, low: 0, moderate: 0, high: 1, critical: 0 },
     },
   }
-  mutate?.(policy, audit)
+  const manifest = { dependencies: { fixture: "1.0.0" } }
+  const lock = {
+    text: "packages:\n  fixture@1.0.0:\n    resolution: {integrity: fixture}\n",
+  }
+  mutate?.(policy, audit, manifest, lock)
   try {
     writeFileSync(join(dir, "policy.json"), JSON.stringify(policy))
     writeFileSync(join(dir, "audit.json"), JSON.stringify(audit))
+    writeFileSync(join(dir, "package.json"), JSON.stringify(manifest))
+    writeFileSync(join(dir, "pnpm-lock.yaml"), lock.text)
     return spawnSync(
       process.execPath,
       [
@@ -50,6 +66,8 @@ function run(mutate, extra = []) {
         join(dir, "policy.json"),
         "--audit-file",
         join(dir, "audit.json"),
+        "--root",
+        dir,
         ...extra,
       ],
       { encoding: "utf8" },
@@ -62,6 +80,27 @@ function run(mutate, extra = []) {
 test("reviewed inventory can pass while release remains blocked", () => {
   assert.equal(run().status, 0)
   assert.match(run(undefined, ["--release"]).stderr, /Release blocked/)
+})
+test("publisher-reviewed packages cannot regress while the audit omits their advisories", () => {
+  for (const mutate of [
+    (_policy, _audit, manifest) => {
+      manifest.dependencies.fixture = "0.9.0"
+    },
+    (_policy, _audit, _manifest, lock) => {
+      lock.text += "  fixture@0.9.0:\n"
+    },
+    (_policy, _audit, _manifest, lock) => {
+      lock.text = "packages: {}\n"
+    },
+    (policy) => {
+      policy.publisherReviewedPackages[0].version = "0.9.0"
+    },
+    (policy) => {
+      policy.publisherReviewedPackages = []
+    },
+  ]) {
+    assert.match(run(mutate).stderr, /Publisher/)
+  }
 })
 test("runtime high cannot bypass release by clearing the row flag", () => {
   assert.equal(
