@@ -253,26 +253,20 @@ const storedValue = (value: unknown): unknown => {
 
 const matchesWhere = (doc: MockDoc, where: MockWhere | undefined): boolean => {
   if (!where) return true
-  if (where.and) return where.and.every((entry: MockDoc) => matchesWhere(doc, entry))
-  if (where.or) return (where.or as MockWhere[]).some((entry) => matchesWhere(doc, entry))
+  if (where.and && !where.and.every(entry => matchesWhere(doc, entry))) return false
+  if (where.or && !where.or.some(entry => matchesWhere(doc, entry))) return false
   return Object.entries(where).every(([field, condition]) => {
+    if (field === "and" || field === "or") return true
     const value = valueAtPath(doc, field)
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      return sameRelation(value, asMockDoc(condition).equals)
-    }
-    if (condition && typeof condition === "object" && "in" in condition) {
-      return Array.isArray(asMockDoc(condition).in) && (asMockDoc(condition).in as unknown[]).map(String).includes(String(value))
-    }
-    if (condition && typeof condition === "object" && "not_in" in condition) {
-      return Array.isArray(asMockDoc(condition).not_in) &&
-        !(asMockDoc(condition).not_in as unknown[]).map(String).includes(String(value))
-    }
-    if (condition && typeof condition === "object" && "exists" in condition) {
-      return asMockDoc(condition).exists === true
-        ? value != null
-        : value == null
-    }
-    return value === condition
+    if (!condition || typeof condition !== "object") return value === condition
+    if ("equals" in condition) return condition.equals == null ? value == null : sameRelation(value, condition.equals)
+    if ("not_equals" in condition) return condition.not_equals == null ? value != null : value != null && !sameRelation(value, condition.not_equals)
+    if ("in" in condition) return Array.isArray(condition.in) && condition.in.some(entry => sameRelation(value, entry))
+    if ("not_in" in condition) return Array.isArray(condition.not_in) && !condition.not_in.some(entry => sameRelation(value, entry))
+    if ("exists" in condition) return (value != null) === condition.exists
+    if ("less_than_equal" in condition) return value != null && (typeof value === "number" && typeof condition.less_than_equal === "number" ? value <= condition.less_than_equal : String(value) <= String(condition.less_than_equal))
+    if ("greater_than" in condition) return value != null && (typeof value === "number" && typeof condition.greater_than === "number" ? value > condition.greater_than : String(value) > String(condition.greater_than))
+    return false
   })
 }
 
@@ -355,7 +349,14 @@ const createPayloadStub = async () => {
   vi.spyOn(payload, "findByID").mockImplementation(async args => {
     const doc = documents(args.collection).find(entry => String(entry.id) === String(args.id))
     if (!doc) throw new Error("Missing " + args.collection + " " + args.id)
-    return doc
+    return structuredClone(doc)
+  })
+  vi.spyOn(payload.db, "updateOne").mockImplementation(async ({ collection, where, data, options, returning }) => {
+    if (collection !== "commerce-notification-deliveries" || options?.atomic !== true || returning !== true) throw new Error("Unexpected atomic fixture operation")
+    const delivery = store[collection].find(doc => matchesWhere(asDocRecord(doc), where))
+    if (!delivery) return null
+    Object.assign(delivery, storedValue(data))
+    return structuredClone(delivery)
   })
   vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
     const docs = documents(args.collection)
@@ -836,10 +837,21 @@ describe("intake-to-live mocked flow", () => {
       status: "queued",
     })
     expect(mocks.signInMagicLink).not.toHaveBeenCalled()
+    mocks.signInMagicLink.mockImplementationOnce(async () => {
+      expect(handoffDelivery).toMatchObject({ status: "processing", attemptCount: 1, retryState: "permanent" })
+      return { ok: true }
+    })
     await expect(deliverCommerceNotification({
       payload,
       deliveryId: handoffDelivery!.id as string | number,
     })).resolves.toBe("sent")
+    expect(handoffDelivery).toMatchObject({ status: "sent", attemptCount: 1, retryState: "none", leaseUntil: null })
+    const originalClaim = vi.mocked(payload.db.updateOne).mock.calls[0]?.[0]
+    if (!originalClaim) throw new Error("Missing atomic handoff claim")
+    await expect(payload.db.updateOne(originalClaim)).resolves.toBeNull()
+    await expect(deliverCommerceNotification({ payload, deliveryId: handoffDelivery!.id })).resolves.toBe("skipped")
+    expect(handoffDelivery).toMatchObject({ status: "sent", attemptCount: 1 })
+    expect(mocks.signInMagicLink).toHaveBeenCalledOnce()
 
     const tenant = tenants[0]!
     const finalRun = runs[0]!

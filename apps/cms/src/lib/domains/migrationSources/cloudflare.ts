@@ -91,8 +91,13 @@ const recordFromCloudflare = (
   const name = typeof value.name === "string" ? canonical(value.name) : ""
   const ttlValue = value.ttl === 1 ? 300 : value.ttl
   const ttl = integer(ttlValue, "record TTL", 86_400)
-  if (value.proxied != null && typeof value.proxied !== "boolean") throw new Error("Cloudflare source proxy state is invalid.")
-  const proxied = value.proxied === true
+  const proxyable = type === "A" || type === "AAAA" || type === "CNAME"
+  // Address proxy evidence must be explicit. Other supported record types
+  // are always DNS-only: https://developers.cloudflare.com/dns/proxy-status/
+  if (proxyable ? typeof value.proxied !== "boolean" : value.proxied !== undefined && value.proxied !== false) {
+    throw new Error("Cloudflare source proxy state is invalid.")
+  }
+  const proxied = proxyable && value.proxied === true
   if (!name || (name !== domain && !name.endsWith(`.${domain}`))) {
     throw new Error("Cloudflare source record owner is outside the selected zone.")
   }

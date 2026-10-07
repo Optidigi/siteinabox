@@ -72,6 +72,18 @@ const publicEvidence = {
   supplementalOnly: true as const,
 }
 
+const cloudflareSourceRecordRead = (record: Record<string, unknown>) => vi.fn<typeof fetch>(async (input) => {
+  const url = String(input)
+  if (url.includes("/dns_records?")) return Response.json({
+    success: true, result: [record], result_info: { page: 1, total_pages: 1, total_count: 1 },
+  })
+  if (url.endsWith("/dnssec")) return Response.json({ success: true, result: { status: "disabled" } })
+  return Response.json({ success: true, result: [{
+    id: "zone-1", name: "example.nl", status: "active",
+    name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+  }] })
+})
+
 const checkoutInput = async (): Promise<AutomaticCheckoutMigrationInput> => {
   const parsed = parseBindZone(BIND_ZONE, "example.nl")
   const sourceZone: CompleteZoneExport = {
@@ -312,6 +324,37 @@ describe("complete migration source acquisition", () => {
       name: "blog.example.nl",
       proxied: false,
     }))
+    expect(fetchImpl).toHaveBeenCalledTimes(6)
+  })
+
+  it.each(["A", "AAAA", "CNAME"] as const)("requires explicit proxy evidence in captured %s records", async (type) => {
+    for (const proxied of [undefined, null]) {
+      const fetchImpl = cloudflareSourceRecordRead({
+        id: "record-1", type, name: "blog.example.nl", ttl: 3600,
+        content: type === "AAAA" ? "2001:db8::15" : type === "CNAME" ? "target.example.nl" : "192.0.2.15",
+        ...(proxied === undefined ? {} : { proxied }),
+      })
+      await expect(acquireCloudflareSource({
+        domain: "example.nl", token: "customer-zone-read-token",
+        publicEvidence: { ...publicEvidence, authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"] },
+        options: { fetchImpl, apiBaseUrl: "https://cloudflare.test/client/v4" },
+      })).rejects.toThrow("proxy state")
+      expect(fetchImpl).toHaveBeenCalledTimes(3)
+    }
+  })
+
+  it.each(["TXT", "MX"] as const)("preserves documented DNS-only %s source records without a proxy flag", async (type) => {
+    const fetchImpl = cloudflareSourceRecordRead({
+      id: "record-1", type, name: "blog.example.nl", ttl: 3600,
+      content: type === "TXT" ? "v=spf1 -all" : "mail.example.nl",
+      ...(type === "MX" ? { priority: 10 } : {}),
+    })
+    const acquired = await acquireCloudflareSource({
+      domain: "example.nl", token: "customer-zone-read-token",
+      publicEvidence: { ...publicEvidence, authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"] },
+      options: { fetchImpl, apiBaseUrl: "https://cloudflare.test/client/v4" },
+    })
+    expect(acquired.zone.records).toEqual([expect.objectContaining({ type, proxied: false })])
     expect(fetchImpl).toHaveBeenCalledTimes(6)
   })
 
