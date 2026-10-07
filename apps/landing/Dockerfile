@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG NODE_VERSION=26.7.0-alpine
+ARG NODE_VERSION=26.10.0-alpine
 ARG NGINX_VERSION=alpine
 
 FROM node:${NODE_VERSION} AS build

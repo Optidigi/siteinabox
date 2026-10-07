@@ -34,6 +34,8 @@ jobs:
         run: pnpm deployment:static-parity
       - name: Repository configuration contracts
         run: |
+          pnpm check:toolchain
+          pnpm dependency:check
           pnpm mcp:check
           pnpm docs:check
           pnpm type-safety:check
@@ -103,6 +105,7 @@ jobs:
       PAYLOAD_SECRET: ci-test-secret
       DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
       PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
+      SITE_GENERATION_PROVIDER: mock
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -117,6 +120,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends bind9-utils
+      - name: Prove isolated verification prerequisites
+        run: node scripts/check-verification-prerequisites.mjs --cms
       - name: Generate Payload types
         run: |
           pnpm --dir apps/cms payload generate:types
@@ -140,6 +145,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir apps/landing check
       - run: pnpm landing:build
       - run: pnpm landing:test
       - name: Install site browser-test browser
@@ -178,3 +184,43 @@ jobs:
         run: pnpm --dir apps/renderer exec playwright install --with-deps chromium
       - name: Verify analytics lifecycle ownership
         run: pnpm --dir apps/renderer test:analytics-browser
+
+  image-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [cms, renderer, site]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build and smoke the actual packaged image without publication
+        run: pnpm image:verify ${{ matrix.app }}
+      - name: Retain packaged-image evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: verified-image-${{ matrix.app }}
+          path: artifacts/image-${{ matrix.app }}.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  required-ci:
+    if: ${{ always() }}
+    needs: [package-quality, cms-quality, cms-test, site, renderer, image-verification]
+    runs-on: ubuntu-latest
+    env:
+      CI_JOB_RESULTS: ${{ toJSON(needs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/check-required-ci.mjs

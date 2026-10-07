@@ -9,6 +9,11 @@ on:
       - "packages/legal-content/**"
       - "packages/site-renderer/**"
       - "packages/ui/**"
+      - ".nvmrc"
+      - "scripts/check-publication.mjs"
+      - "scripts/check-dependency-security.mjs"
+      - "docs/dependency-security.json"
+      - "ops/github/main-ruleset.json"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -18,7 +23,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: build-cms-image-${{ github.ref }}
@@ -26,6 +30,14 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
+    environment: ghcr-publish
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      packages: write
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -43,6 +55,21 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up reviewed verification toolchain
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Require exact-source checks and independent publication approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-publication.mjs
+      - name: Reject unresolved shipped Critical or High dependency issues
+        run: pnpm dependency:release
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4

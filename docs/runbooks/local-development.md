@@ -208,8 +208,8 @@ production smoke, and image publication are separate release activities.
 | Surface | Owner | Minimum gate | Extra prerequisite |
 | --- | --- | --- | --- |
 | Shared contracts and repository policy | `packages/*` and root | `pnpm check:fast` | None |
-| Marketing site | `apps/landing` | `pnpm landing:build` and `pnpm landing:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
-| CMS | `apps/cms` | Generate Payload types/import map, then `pnpm --dir apps/cms typecheck` and `pnpm --dir apps/cms test` | Local PostgreSQL, `DATABASE_URI`, and `PAYLOAD_SECRET` |
+| Marketing site | `apps/landing` | `pnpm --dir apps/landing check`, `pnpm landing:build` and `pnpm landing:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
+| CMS | `apps/cms` | Generate Payload types/import map, then `pnpm --dir apps/cms typecheck` and `pnpm --dir apps/cms test` | Disposable PostgreSQL 18, synthetic secrets, disabled jobs, mock providers and real `/usr/bin/named-checkzone` |
 | Published-site renderer | `apps/renderer` | `pnpm renderer:deploy-contract`, `pnpm renderer:typecheck`, `pnpm renderer:test`, and `pnpm renderer:build` | Browser checks need Chromium; renderer provider checks use local fixtures |
 
 For the complete CI command sequence, run `pnpm check:ci` after installing the
@@ -217,6 +217,57 @@ documented prerequisites. The profile does not install PostgreSQL, operating
 system packages, or browser binaries for you. Use `pnpm check:toolchain` to
 verify the repository's Node, pnpm, workflow, Docker, and verification-matrix
 authorities.
+
+## Complete isolated verification
+
+The full CI-equivalent profile is supported on Linux with the root-selected
+Node/pnpm, Docker Engine, real BIND, PostgreSQL 18 and Playwright Chromium.
+Application development remains cross-platform; Windows/macOS contributors use
+an existing Linux verification host or hosted CI for the full profile. The
+production validator's `/usr/bin/named-checkzone` path is retained. Ubuntu/Debian
+verification hosts install the actual package and verify the binary:
+
+```bash
+sudo apt-get update
+sudo apt-get install --yes --no-install-recommends bind9-utils
+/usr/bin/named-checkzone -v
+pnpm --dir apps/cms exec playwright install --with-deps chromium
+```
+
+Use a disposable database separate from the development `payload` database:
+
+```bash
+docker run --rm --detach --name siab-verification-postgres \
+  --publish 127.0.0.1:15432:5432 \
+  --tmpfs /var/lib/postgresql \
+  --env POSTGRES_USER=payload \
+  --env POSTGRES_PASSWORD=verification-only \
+  --env POSTGRES_DB=payload_test postgres:18-alpine
+docker exec siab-verification-postgres pg_isready -U payload -d payload_test
+```
+
+Wait for readiness; choose another unused name/loopback port if these are
+already owned. From a clean committed checkout, with provider credentials
+absent from the shell and `.env` files, run:
+
+```bash
+DATABASE_URI=postgres://payload:verification-only@127.0.0.1:15432/payload_test \
+PAYLOAD_SECRET=verification-only-synthetic-secret \
+PAYLOAD_DISABLE_JOBS_AUTORUN=1 SITE_GENERATION_PROVIDER=mock \
+NEXT_TELEMETRY_DISABLED=1 pnpm check:ci
+docker stop siab-verification-postgres
+```
+
+Stop the owned database even after a failed check. The CMS prerequisite gate
+performs a bounded read-only database query and invokes the real BIND binary;
+unreachable DBs cannot silently turn integration coverage into skips. Existing
+domain tests reach authoritative validation and reject mismatched zones. Image
+checks build and smoke unique local images, record safe source/image evidence
+under ignored `artifacts/`, and remove only their owned resources. They never
+publish images or use production credentials. Hosted CI performs the same
+package installation, prerequisite proof and canonical checks on isolated
+runners; operating-system/browser setup requires host privileges, not weaker
+validation or substituted binaries.
 
 ## Common operations
 

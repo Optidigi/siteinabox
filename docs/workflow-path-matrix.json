@@ -14,7 +14,12 @@
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",
         ".github/workflows/build-cms-image.yml",
-        ".dockerignore"
+        ".dockerignore",
+        ".nvmrc",
+        "scripts/check-publication.mjs",
+        "scripts/check-dependency-security.mjs",
+        "docs/dependency-security.json",
+        "ops/github/main-ruleset.json"
       ]
     },
     "build-renderer-image.yml": {
@@ -29,7 +34,12 @@
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",
         ".dockerignore",
-        ".github/workflows/build-renderer-image.yml"
+        ".github/workflows/build-renderer-image.yml",
+        ".nvmrc",
+        "scripts/check-publication.mjs",
+        "scripts/check-dependency-security.mjs",
+        "docs/dependency-security.json",
+        "ops/github/main-ruleset.json"
       ]
     },
     "build-site-image.yml": {
@@ -42,7 +52,12 @@
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",
         ".dockerignore",
-        ".github/workflows/build-site-image.yml"
+        ".github/workflows/build-site-image.yml",
+        ".nvmrc",
+        "scripts/check-publication.mjs",
+        "scripts/check-dependency-security.mjs",
+        "docs/dependency-security.json",
+        "ops/github/main-ruleset.json"
       ]
     }
   }

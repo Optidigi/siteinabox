@@ -41,4 +41,21 @@ describe("Payload Cloudflare email adapter", () => {
     expect(htmlToPlainText("<p>First &amp; second</p><p>Next</p>"))
       .toBe("First & second\n\nNext")
   })
+
+  it("preserves recipient addresses in Nodemailer's nested input lists", async () => {
+    const payload = asPayload({ create: vi.fn(), logger: { warn: vi.fn() } })
+    await payloadEmailAdapter({ payload }).sendEmail({
+      to: ["first@example.nl", [{ name: "Second", address: "second@example.nl" }]],
+      subject: "Fixture", html: "<p>Fixture</p>",
+    })
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ["first@example.nl", "second@example.nl"] }))
+  })
+
+  it("rejects an address-less input before calling the transport", async () => {
+    const payload = asPayload({ create: vi.fn(), logger: { warn: vi.fn() } })
+    await expect(payloadEmailAdapter({ payload }).sendEmail({
+      to: { name: "Missing address" }, subject: "Fixture", html: "<p>Fixture</p>",
+    })).rejects.toThrow("recipient address")
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
 })

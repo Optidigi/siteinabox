@@ -2,6 +2,7 @@
   "version": 1,
   "profiles": {
     "fast": [
+      "toolchain-check",
       "mcp-check",
       "docs-check",
       "type-safety",
@@ -12,6 +13,8 @@
       "workflow-path-matrix"
     ],
     "ci": [
+      "toolchain-check",
+      "dependency-security",
       "mcp-check",
       "docs-check",
       "type-safety",
@@ -32,9 +35,11 @@
       "cms-ui-boundary",
       "cms-ui-composition",
       "cms-no-css",
+      "cms-prerequisites",
       "cms-commerce-release",
       "cms-test",
       "cms-checkout-browser",
+      "landing-check",
       "site-build",
       "site-test",
       "landing-analytics-browser",
@@ -43,41 +48,635 @@
       "renderer-typecheck",
       "renderer-test",
       "renderer-build",
-      "renderer-analytics-browser"
+      "renderer-analytics-browser",
+      "image-cms",
+      "image-renderer",
+      "image-site"
     ]
   },
   "checks": [
-    { "id": "mcp-check", "command": "pnpm mcp:check", "run": ["pnpm", "mcp:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "docs-check", "command": "pnpm docs:check", "run": ["pnpm", "docs:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "type-safety", "command": "pnpm type-safety:check", "run": ["pnpm", "type-safety:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "environment-check", "command": "pnpm environment:check", "run": ["pnpm", "environment:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "workflow-actions-check", "command": "pnpm workflow:actions:check", "run": ["pnpm", "workflow:actions:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "packages-typecheck", "command": "pnpm packages:typecheck", "run": ["pnpm", "packages:typecheck"], "owner": "packages", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "static-deployment-parity", "command": "pnpm deployment:static-parity", "run": ["pnpm", "deployment:static-parity"], "owner": "deployment", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
-    { "id": "workflow-path-matrix", "command": "pnpm workflow:check", "run": ["pnpm", "workflow:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "contracts-test", "command": "pnpm --dir packages/contracts test", "run": ["pnpm", "--dir", "packages/contracts", "test"], "owner": "packages/contracts", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "site-renderer-test", "command": "pnpm --dir packages/site-renderer test", "run": ["pnpm", "--dir", "packages/site-renderer", "test"], "owner": "packages/site-renderer", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "low" },
-    { "id": "legal-check", "command": "pnpm legal:check", "run": ["pnpm", "legal:check"], "owner": "packages/legal-content", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "legal-test", "command": "pnpm --dir packages/legal-content test", "run": ["pnpm", "--dir", "packages/legal-content", "test"], "owner": "packages/legal-content", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "cms-generate-types", "command": "pnpm --dir apps/cms payload generate:types", "run": ["pnpm", "--dir", "apps/cms", "payload", "generate:types"], "owner": "apps/cms", "ciJob": "cms-quality", "env": { "PAYLOAD_SECRET": "ci-placeholder", "DATABASE_URI": "postgres://placeholder@placeholder/placeholder" }, "prerequisites": ["pnpm install --frozen-lockfile", "Payload placeholder environment"], "risk": "medium" },
-    { "id": "cms-generate-importmap", "command": "pnpm --dir apps/cms payload generate:importmap", "run": ["pnpm", "--dir", "apps/cms", "payload", "generate:importmap"], "owner": "apps/cms", "ciJob": "cms-quality", "env": { "PAYLOAD_SECRET": "ci-placeholder", "DATABASE_URI": "postgres://placeholder@placeholder/placeholder" }, "prerequisites": ["pnpm install --frozen-lockfile", "Payload placeholder environment"], "risk": "medium" },
-    { "id": "cms-payload-contract", "command": "pnpm --dir apps/cms payload:contract", "run": ["pnpm", "--dir", "apps/cms", "payload:contract"], "owner": "apps/cms", "ciJob": "cms-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "cms-typecheck", "command": "pnpm --dir apps/cms typecheck", "run": ["pnpm", "--dir", "apps/cms", "typecheck"], "owner": "apps/cms", "ciJob": "cms-quality", "prerequisites": ["pnpm install --frozen-lockfile", "generated Payload types and import map"], "risk": "medium" },
-    { "id": "cms-responsive", "command": "pnpm --dir apps/cms check:responsive", "run": ["pnpm", "--dir", "apps/cms", "check:responsive"], "owner": "apps/cms", "ciJob": "cms-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "cms-ui-boundary", "command": "pnpm --dir apps/cms lint:ui-boundary", "run": ["pnpm", "--dir", "apps/cms", "lint:ui-boundary"], "owner": "apps/cms", "ciJob": "cms-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "cms-ui-composition", "command": "pnpm --dir apps/cms lint:ui-composition", "run": ["pnpm", "--dir", "apps/cms", "lint:ui-composition"], "owner": "apps/cms", "ciJob": "cms-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "cms-no-css", "command": "pnpm --dir apps/cms lint:no-css", "run": ["pnpm", "--dir", "apps/cms", "lint:no-css"], "owner": "apps/cms", "ciJob": "cms-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "cms-commerce-release", "command": "pnpm --dir apps/cms check:commerce-release", "run": ["pnpm", "--dir", "apps/cms", "check:commerce-release"], "owner": "apps/cms", "ciJob": "cms-test", "prerequisites": ["pnpm install --frozen-lockfile", "disposable PostgreSQL 18 service"], "risk": "high" },
-    { "id": "cms-test", "command": "pnpm --dir apps/cms test", "run": ["pnpm", "--dir", "apps/cms", "test"], "owner": "apps/cms", "ciJob": "cms-test", "prerequisites": ["pnpm install --frozen-lockfile", "PostgreSQL 18 service", "DATABASE_URI", "PAYLOAD_SECRET", "bind9-utils"], "risk": "high" },
-    { "id": "cms-checkout-browser", "command": "pnpm --dir apps/cms test:checkout-browser", "run": ["pnpm", "--dir", "apps/cms", "test:checkout-browser"], "owner": "apps/cms", "ciJob": "cms-test", "prerequisites": ["pnpm install --frozen-lockfile", "PostgreSQL 18 service", "Chromium with Playwright dependencies"], "risk": "high" },
-    { "id": "site-build", "command": "pnpm landing:build", "run": ["pnpm", "landing:build"], "owner": "apps/landing", "ciJob": "site", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "site-test", "command": "pnpm landing:test", "run": ["pnpm", "landing:test"], "owner": "apps/landing", "ciJob": "site", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "landing-analytics-browser", "command": "pnpm --dir apps/landing test:analytics-browser", "run": ["pnpm", "--dir", "apps/landing", "test:analytics-browser"], "owner": "apps/landing", "ciJob": "site", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "medium" },
-    { "id": "landing-ui", "command": "pnpm --dir apps/landing test:ui", "run": ["pnpm", "--dir", "apps/landing", "test:ui"], "owner": "apps/landing", "ciJob": "site", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "medium" },
-    { "id": "renderer-deploy-contract", "command": "pnpm renderer:deploy-contract", "run": ["pnpm", "renderer:deploy-contract"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
-    { "id": "renderer-typecheck", "command": "pnpm renderer:typecheck", "run": ["pnpm", "renderer:typecheck"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "medium" },
-    { "id": "renderer-test", "command": "pnpm renderer:test", "run": ["pnpm", "renderer:test"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
-    { "id": "renderer-build", "command": "pnpm renderer:build", "run": ["pnpm", "renderer:build"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
-    { "id": "renderer-analytics-browser", "command": "pnpm --dir apps/renderer test:analytics-browser", "run": ["pnpm", "--dir", "apps/renderer", "test:analytics-browser"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "high" }
+    {
+      "id": "mcp-check",
+      "command": "pnpm mcp:check",
+      "run": [
+        "pnpm",
+        "mcp:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "docs-check",
+      "command": "pnpm docs:check",
+      "run": [
+        "pnpm",
+        "docs:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "type-safety",
+      "command": "pnpm type-safety:check",
+      "run": [
+        "pnpm",
+        "type-safety:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "environment-check",
+      "command": "pnpm environment:check",
+      "run": [
+        "pnpm",
+        "environment:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "workflow-actions-check",
+      "command": "pnpm workflow:actions:check",
+      "run": [
+        "pnpm",
+        "workflow:actions:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "packages-typecheck",
+      "command": "pnpm packages:typecheck",
+      "run": [
+        "pnpm",
+        "packages:typecheck"
+      ],
+      "owner": "packages",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "static-deployment-parity",
+      "command": "pnpm deployment:static-parity",
+      "run": [
+        "pnpm",
+        "deployment:static-parity"
+      ],
+      "owner": "deployment",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "workflow-path-matrix",
+      "command": "pnpm workflow:check",
+      "run": [
+        "pnpm",
+        "workflow:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "contracts-test",
+      "command": "pnpm --dir packages/contracts test",
+      "run": [
+        "pnpm",
+        "--dir",
+        "packages/contracts",
+        "test"
+      ],
+      "owner": "packages/contracts",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "site-renderer-test",
+      "command": "pnpm --dir packages/site-renderer test",
+      "run": [
+        "pnpm",
+        "--dir",
+        "packages/site-renderer",
+        "test"
+      ],
+      "owner": "packages/site-renderer",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "legal-check",
+      "command": "pnpm legal:check",
+      "run": [
+        "pnpm",
+        "legal:check"
+      ],
+      "owner": "packages/legal-content",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "legal-test",
+      "command": "pnpm --dir packages/legal-content test",
+      "run": [
+        "pnpm",
+        "--dir",
+        "packages/legal-content",
+        "test"
+      ],
+      "owner": "packages/legal-content",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-generate-types",
+      "command": "pnpm --dir apps/cms payload generate:types",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "payload",
+        "generate:types"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "env": {
+        "PAYLOAD_SECRET": "ci-placeholder",
+        "DATABASE_URI": "postgres://placeholder@placeholder/placeholder"
+      },
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Payload placeholder environment"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-generate-importmap",
+      "command": "pnpm --dir apps/cms payload generate:importmap",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "payload",
+        "generate:importmap"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "env": {
+        "PAYLOAD_SECRET": "ci-placeholder",
+        "DATABASE_URI": "postgres://placeholder@placeholder/placeholder"
+      },
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Payload placeholder environment"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-payload-contract",
+      "command": "pnpm --dir apps/cms payload:contract",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "payload:contract"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-typecheck",
+      "command": "pnpm --dir apps/cms typecheck",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "typecheck"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "generated Payload types and import map"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-responsive",
+      "command": "pnpm --dir apps/cms check:responsive",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "check:responsive"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-ui-boundary",
+      "command": "pnpm --dir apps/cms lint:ui-boundary",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "lint:ui-boundary"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-ui-composition",
+      "command": "pnpm --dir apps/cms lint:ui-composition",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "lint:ui-composition"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-no-css",
+      "command": "pnpm --dir apps/cms lint:no-css",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "lint:no-css"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "cms-commerce-release",
+      "command": "pnpm --dir apps/cms check:commerce-release",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "check:commerce-release"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-test",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "disposable PostgreSQL 18 service"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-test",
+      "command": "pnpm --dir apps/cms test",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "test"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-test",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "PostgreSQL 18 service",
+        "DATABASE_URI",
+        "PAYLOAD_SECRET",
+        "bind9-utils"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-checkout-browser",
+      "command": "pnpm --dir apps/cms test:checkout-browser",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "test:checkout-browser"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-test",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "PostgreSQL 18 service",
+        "Chromium with Playwright dependencies"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "site-build",
+      "command": "pnpm landing:build",
+      "run": [
+        "pnpm",
+        "landing:build"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "site-test",
+      "command": "pnpm landing:test",
+      "run": [
+        "pnpm",
+        "landing:test"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "landing-analytics-browser",
+      "command": "pnpm --dir apps/landing test:analytics-browser",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/landing",
+        "test:analytics-browser"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Chromium with Playwright dependencies"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "landing-ui",
+      "command": "pnpm --dir apps/landing test:ui",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/landing",
+        "test:ui"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Chromium with Playwright dependencies"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "renderer-deploy-contract",
+      "command": "pnpm renderer:deploy-contract",
+      "run": [
+        "pnpm",
+        "renderer:deploy-contract"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "renderer-typecheck",
+      "command": "pnpm renderer:typecheck",
+      "run": [
+        "pnpm",
+        "renderer:typecheck"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "renderer-test",
+      "command": "pnpm renderer:test",
+      "run": [
+        "pnpm",
+        "renderer:test"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "renderer-build",
+      "command": "pnpm renderer:build",
+      "run": [
+        "pnpm",
+        "renderer:build"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "renderer-analytics-browser",
+      "command": "pnpm --dir apps/renderer test:analytics-browser",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/renderer",
+        "test:analytics-browser"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Chromium with Playwright dependencies"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "toolchain-check",
+      "command": "pnpm check:toolchain",
+      "run": [
+        "pnpm",
+        "check:toolchain"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "root-selected Node and pnpm",
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "dependency-security",
+      "command": "pnpm dependency:check",
+      "run": [
+        "pnpm",
+        "dependency:check"
+      ],
+      "owner": "repository",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "registry audit access"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-prerequisites",
+      "command": "node scripts/check-verification-prerequisites.mjs --cms",
+      "run": [
+        "node",
+        "scripts/check-verification-prerequisites.mjs",
+        "--cms"
+      ],
+      "owner": "repository",
+      "ciJob": "cms-test",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "real /usr/bin/named-checkzone",
+        "reachable isolated PostgreSQL 18 payload_test",
+        "synthetic secrets, mock Sitegen and disabled jobs"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "landing-check",
+      "command": "pnpm --dir apps/landing check",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/landing",
+        "check"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "image-cms",
+      "command": "pnpm image:verify cms",
+      "run": [
+        "pnpm",
+        "image:verify",
+        "cms"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "image-verification",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Docker Engine",
+        "isolated image and database resources",
+        "no provider credentials"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "image-renderer",
+      "command": "pnpm image:verify renderer",
+      "run": [
+        "pnpm",
+        "image:verify",
+        "renderer"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "image-verification",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Docker Engine",
+        "isolated image and database resources",
+        "no provider credentials"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "image-site",
+      "command": "pnpm image:verify site",
+      "run": [
+        "pnpm",
+        "image:verify",
+        "site"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "image-verification",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "Docker Engine",
+        "isolated image and database resources",
+        "no provider credentials"
+      ],
+      "risk": "high"
+    }
   ]
 }

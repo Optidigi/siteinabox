@@ -10,7 +10,7 @@
   "scripts": {
     "check:ci": "node scripts/run-verification.mjs ci",
     "check:fast": "node scripts/run-verification.mjs fast",
-    "check:toolchain": "node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
+    "check:toolchain": "node --test scripts/check-toolchain.test.mjs scripts/check-required-ci.test.mjs scripts/check-verification-prerequisites.test.mjs scripts/check-publication.test.mjs && node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
     "environment:check": "node --test scripts/check-environment-contract.test.mjs && node scripts/check-environment-inventory.mjs",
     "workflow:check": "node --test scripts/workflow-path-parser.test.mjs && node scripts/check-workflow-path-matrix.mjs",
     "workflow:actions:check": "node scripts/check-workflow-actions.mjs",
@@ -38,6 +38,9 @@
     "site:test": "pnpm landing:test",
     "type-safety:check": "node --test scripts/check-type-safety.test.mjs && node scripts/check-type-safety.mjs",
     "type-safety:test": "node --test scripts/check-type-safety.test.mjs",
-    "ui:typecheck": "pnpm --dir packages/ui typecheck"
+    "ui:typecheck": "pnpm --dir packages/ui typecheck",
+    "dependency:check": "node --test scripts/check-dependency-security.test.mjs && node scripts/check-dependency-security.mjs",
+    "dependency:release": "node scripts/check-dependency-security.mjs --release",
+    "image:verify": "node scripts/verify-image.mjs"
   }
 }

@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-07",
+  "expiresAt": "2026-10-14T00:00:00Z",
+  "auditMode": "full",
+  "reviewTriggers": [
+    "Any new advisory ID, package, version, severity or resolved path",
+    "New source usage, transport configuration, request-controlled build input or target platform",
+    "Publisher correction or a compatible published security fix",
+    "Seven-day review expiry"
+  ],
+  "baselineCorrections": [
+    {
+      "package": "braces",
+      "reportedFloor": "3.0.4",
+      "correction": "Unpublished; GitHub reviewed advisory also reports no fixed version."
+    },
+    {
+      "package": "smol-toml",
+      "reportedFloor": "1.8.1",
+      "correction": "Unpublished; publisher identifies 1.9.0, selected."
+    },
+    {
+      "package": "http-cache-semantics",
+      "reportedFloor": "4.2.1",
+      "correction": "Unpublished; registry publishes 4.3.0, selected. GitHub reviewed advisory currently lists no first fixed version."
+    },
+    {
+      "package": "@astrojs/node",
+      "reportedSeverity": "high",
+      "correction": "Publisher calls Host-port flaw low and distinguishes standalone 500 from opt-in staticHeaders process exit; upgraded regardless."
+    }
+  ],
+  "advisories": [
+    {
+      "advisoryId": "GHSA-rj75-hqrm-r3gf",
+      "package": "postcss-selector-parser",
+      "version": "6.0.10",
+      "severity": "moderate",
+      "paths": [
+        "apps__landing>@tailwindcss/typography>postcss-selector-parser"
+      ],
+      "shippedReachability": "build",
+      "disposition": "triaged",
+      "releaseBlocked": false,
+      "reason": "Only @tailwindcss/typography > postcss-selector-parser 6.0.10 resolves this finding. The plugin parses repository typography selectors during landing CSS generation, not request-provided selectors. The advisory requires 7.1.6, which crosses the current 6.x consumer contract; defer that migration and recheck before accepting untrusted stylesheet builds.",
+      "sources": [
+        "https://github.com/postcss/postcss-selector-parser/security/advisories/GHSA-rj75-hqrm-r3gf"
+      ],
+      "fixGate": "Tailwind typography compatibility review for selector-parser >=7.1.6"
+    },
+    {
+      "advisoryId": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "paths": [
+        "apps__cms>@better-auth/infra>better-auth>next>sass>chokidar>braces",
+        "apps__cms>@better-auth/infra>better-auth>vitest>@vitest/mocker>vite>sass>chokidar>braces",
+        "apps__cms>@better-auth/infra>better-auth>vitest>vite>sass>chokidar>braces",
+        "apps__cms>@payloadcms/next>@payloadcms/ui>next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/next>next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>next>sass>chokidar>braces",
+        "apps__cms>@vitejs/plugin-react>vite>sass>chokidar>braces",
+        "apps__cms>@vitest/ui>vitest>@vitest/mocker>vite>sass>chokidar>braces",
+        "apps__cms>@vitest/ui>vitest>vite>sass>chokidar>braces",
+        "apps__cms>better-auth>next>sass>chokidar>braces",
+        "apps__cms>better-auth>vitest>@vitest/mocker>vite>sass>chokidar>braces",
+        "apps__cms>better-auth>vitest>vite>sass>chokidar>braces",
+        "apps__cms>next-intl>next>sass>chokidar>braces",
+        "apps__cms>next>sass>chokidar>braces",
+        "apps__cms>vite>sass>chokidar>braces",
+        "apps__cms>vitest>@vitest/mocker>vite>sass>chokidar>braces",
+        "apps__cms>vitest>vite>sass>chokidar>braces",
+        "apps__landing>@astrojs/react>@vitejs/plugin-react>vite>sass>chokidar>braces",
+        "apps__landing>@astrojs/react>vite>sass>chokidar>braces",
+        "apps__landing>@tailwindcss/vite>vite>sass>chokidar>braces",
+        "apps__landing>astro>vite>sass>chokidar>braces",
+        "apps__landing>astro>vitefu>vite>sass>chokidar>braces",
+        "apps__landing>vite>sass>chokidar>braces",
+        "apps__landing>vitest>@vitest/mocker>vite>sass>chokidar>braces",
+        "apps__landing>vitest>vite>sass>chokidar>braces",
+        "apps__renderer>@astrojs/node>astro>vite>sass>chokidar>braces",
+        "apps__renderer>@astrojs/node>astro>vitefu>vite>sass>chokidar>braces",
+        "apps__renderer>@astrojs/react>@vitejs/plugin-react>vite>sass>chokidar>braces",
+        "apps__renderer>@astrojs/react>vite>sass>chokidar>braces",
+        "apps__renderer>@tailwindcss/vite>vite>sass>chokidar>braces",
+        "apps__renderer>astro>vite>sass>chokidar>braces",
+        "apps__renderer>astro>vitefu>vite>sass>chokidar>braces",
+        "apps__renderer>vite>sass>chokidar>braces",
+        "packages__contracts>vitest>@vitest/mocker>vite>sass>chokidar>braces",
+        "packages__contracts>vitest>vite>sass>chokidar>braces",
+        "packages__ui>next-intl>next>sass>chokidar>braces"
+      ],
+      "shippedReachability": "build",
+      "disposition": "triaged",
+      "releaseBlocked": false,
+      "reason": "Resolved paths are Sass 1.77.4 > chokidar 3.6.0 > braces 3.0.3, reached through framework and Vite peers. Chokidar expands watched filesystem glob patterns during Sass compilation; first-party runtime code does not accept request-controlled watch patterns or invoke Sass compilation. The library can remain in image traces: build reachability is a source-use classification, not proof of artifact absence. No fixed version is published; restrict build inputs to reviewed repository content and recheck before dynamic compilation.",
+      "sources": [
+        "https://github.com/micromatch/braces/issues/70",
+        "https://github.com/micromatch/braces/blob/3.0.3/lib/compile.js#L49-L53",
+        "https://github.com/micromatch/braces/blob/3.0.3/lib/expand.js#L102-L105",
+        "https://github.com/micromatch/braces/blob/3.0.3/lib/parse.js#L38-L40"
+      ],
+      "fixGate": "Published patched braces compatible with chokidar"
+    }
+  ],
+  "resolvedAdvisories": [
+    {
+      "advisoryId": "GHSA-6vj9-mwq6-2f5v",
+      "package": "nodemailer",
+      "previousVersion": "9.1.1",
+      "fixedVersion": "10.0.9",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-6vj9-mwq6-2f5v"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-8vvx-rff5-p5rq",
+      "package": "nodemailer",
+      "previousVersion": "9.1.1",
+      "fixedVersion": "10.0.9",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-8vvx-rff5-p5rq"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-g57g-f23g-4646",
+      "package": "nodemailer",
+      "previousVersion": "9.1.1",
+      "fixedVersion": "10.0.9",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g57g-f23g-4646"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-prgh-xp8r-p3m5",
+      "package": "nodemailer",
+      "previousVersion": "9.1.1",
+      "fixedVersion": "10.0.9",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-prgh-xp8r-p3m5"
+      ]
+    },
+    {
+      "advisoryId": "GHSA-v53p-9fqp-m79j",
+      "package": "nodemailer",
+      "previousVersion": "9.1.1",
+      "fixedVersion": "10.0.9",
+      "reason": "Current graph has one direct CMS consumer and no installed email adapter peer constraint. Nodemailer 10 own types replace @types/nodemailer. Exact 10.0.9 fixes all five reported mail findings; the Payload adapter now flattens nested recipients and rejects missing addresses before transport, with focused regression coverage. SMTP options and provider transport behavior are preserved.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-v53p-9fqp-m79j"
+      ]
+    }
+  ]
+}
