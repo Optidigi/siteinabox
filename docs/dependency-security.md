@@ -51,10 +51,12 @@ its own types replace `@types/nodemailer`. The Payload adapter flattens nested
 recipient lists and rejects missing addresses before transport to accommodate
 the new address types. The provider boundary separately validates receipts and bounds SMTP/REST delivery
 time, cancellation and response sizes.
-Focused regression tests, existing mail tests and the CMS typecheck verify this
-security-driven major update. Node stays on the selected Node 26 toolchain.
+Focused regression tests, existing mail tests and the CMS typecheck verify mail
+compatibility. Node stays on the selected Node 26 toolchain.
 The 1,440-minute release-age policy and native build allowlist remain separate
-controls; no release-age exclusions are introduced.
+controls. The only temporary release-age exception is exact
+`nodemailer@10.0.16`, for the reviewed shipped-parser hardening; remove it after
+the normal age floor is met. See [dependency policy](dependency-policy.md).
 
 ## Required Payload compatibility migration
 
