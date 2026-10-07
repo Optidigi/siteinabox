@@ -22,8 +22,9 @@ Payload and its complete installed family are aligned to `3.90.1`. This includes
 the critical `3.90.0` fixes and the immediate relationship-filter follow-up.
 Its owned Lexical graph requires exact `0.50.0`; direct Lexical dependencies
 are aligned to that identity. Custom editor features must pass compilation and
-copy/paste/browser checks before release. No schema migration or access-control
-relaxation is included. Review the
+copy/paste/browser checks before release. Only the required upstream cooldown
+schema addition described below is included; access-control rules are preserved.
+Review the
 [Payload release notes](https://github.com/payloadcms/payload/releases/tag/v3.90.0)
 and [3.90.1 follow-up](https://github.com/payloadcms/payload/releases/tag/v3.90.1),
 especially changed field restrictions, API-key visibility and polymorphic joins.
