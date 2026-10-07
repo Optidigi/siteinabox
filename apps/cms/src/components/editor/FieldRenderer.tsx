@@ -1,4 +1,5 @@
 "use client"
+import { asRtRootValue } from "@/lib/editor/blockFieldValues"
 import { useFormContext, Controller } from "react-hook-form"
 import type { Control } from "react-hook-form"
 import { Input } from "@siteinabox/ui/components/input"
@@ -23,7 +24,7 @@ function RichTextFormField({
 }: {
   field: EditorField
   fieldName: string
-  control: Control
+  control: Control<Record<string, unknown>>
   variant: "block" | "inline"
 }) {
   const manifest = useRtManifest()
@@ -43,7 +44,7 @@ function RichTextFormField({
             <LexicalField
               variant={variant}
               manifest={manifest}
-              value={(f.value) ?? empty}
+              value={asRtRootValue(f.value) ?? empty}
               onChange={(v) => f.onChange(v)}
               placeholder={(field.admin)?.placeholder}
             />
@@ -61,7 +62,7 @@ function RichTextFormField({
 export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; namePrefix?: string }) {
   const t = useTranslations("editor")
   const fieldName = field.name ? (namePrefix ? `${namePrefix}.${field.name}` : field.name) : namePrefix
-  const { control } = useFormContext()
+  const { control } = useFormContext<Record<string, unknown>>()
 
   switch (field.type) {
     case "text":
@@ -82,7 +83,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
                   autoCorrect="off"
                   spellCheck={false}
                   {...f}
-                  value={f.value ?? ""}
+                  value={typeof f.value === "string" || typeof f.value === "number" ? f.value : ""}
                 />
               ) : field.type === "url" ? (
                 <Input
@@ -91,17 +92,17 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
                   autoCapitalize="none"
                   autoCorrect="off"
                   {...f}
-                  value={f.value ?? ""}
+                  value={typeof f.value === "string" || typeof f.value === "number" ? f.value : ""}
                 />
               ) : field.type === "tel" ? (
                 <Input
                   type="tel"
                   autoComplete="tel"
                   {...f}
-                  value={f.value ?? ""}
+                  value={typeof f.value === "string" || typeof f.value === "number" ? f.value : ""}
                 />
               ) : (
-                <Input type="text" {...f} value={f.value ?? ""} />
+                <Input type="text" {...f} value={typeof f.value === "string" || typeof f.value === "number" ? f.value : ""} />
               )}
             </FormControl>
             {field.admin?.description && <FormDescription>{field.admin.description}</FormDescription>}
@@ -114,7 +115,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
         <FormField control={control} name={fieldName} render={({ field: f }) => (
           <FormItem>
             <FormLabel>{field.label ?? field.name}{field.required && "*"}</FormLabel>
-            <FormControl><Textarea rows={4} {...f} value={f.value ?? ""} /></FormControl>
+            <FormControl><Textarea rows={4} {...f} value={typeof f.value === "string" || typeof f.value === "number" ? f.value : ""} /></FormControl>
             <FormMessage />
           </FormItem>
         )}/>
@@ -124,7 +125,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
         <FormField control={control} name={fieldName} render={({ field: f }) => (
           <FormItem>
             <FormLabel>{field.label ?? field.name}</FormLabel>
-            <FormControl><Input type="number" {...f} value={f.value ?? ""} onChange={(e) => f.onChange(e.target.valueAsNumber)} /></FormControl>
+            <FormControl><Input type="number" {...f} value={typeof f.value === "string" || typeof f.value === "number" ? f.value : ""} onChange={(e) => f.onChange(e.target.valueAsNumber)} /></FormControl>
             <FormMessage />
           </FormItem>
         )}/>
@@ -143,7 +144,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
         <FormField control={control} name={fieldName} render={({ field: f }) => (
           <FormItem>
             <FormLabel>{field.label ?? field.name}</FormLabel>
-            <Select value={f.value ?? ""} onValueChange={f.onChange}>
+            <Select value={typeof f.value === "string" ? f.value : ""} onValueChange={f.onChange}>
               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
               <SelectContent data-siab-editor-ui>
                 {field.options?.map((opt) => (
@@ -199,8 +200,9 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; 
 
 function ArrayFieldRenderer({ field, namePrefix }: { field: EditorField; namePrefix: string }) {
   const t = useTranslations("editor")
-  const { getValues, setValue } = useFormContext()
-  const items: unknown[] = getValues(namePrefix) ?? []
+  const { getValues, setValue } = useFormContext<Record<string, unknown>>()
+  const rawItems = getValues(namePrefix)
+  const items: unknown[] = Array.isArray(rawItems) ? rawItems : []
 
   const append = () => setValue(namePrefix, [...items, {}], { shouldDirty: true })
   const removeAt = (i: number) => setValue(namePrefix, items.filter((_, j) => j !== i), { shouldDirty: true })

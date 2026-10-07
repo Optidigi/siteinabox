@@ -1,19 +1,22 @@
 import "server-only"
 
 import { createHash, randomBytes } from "node:crypto"
-import type { Payload, PayloadRequest } from "payload"
-import type { User } from "@/payload-types"
+import type { Payload, RequiredDataFromCollectionSlug } from "payload"
+import { z } from "zod"
+import { requestProviderJson } from "@/lib/providers/http"
+import type { Appointment, AppointmentCalendarConnection, AppointmentCalendarEvent, AppointmentCalendarOauthState, User } from "@/payload-types"
 import { browserOriginMatchesAuthority, canonicalRequestAuthority, type CanonicalRequestAuthority } from "@/lib/requestAuthority"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { openAppointmentSecret, sealAppointmentSecret } from "./secrets"
+import { AppointmentAtomicClaimError, claimAppointmentCalendarEvent, claimAppointmentCalendarOAuthState, transitionAppointmentCalendarEvent } from "./atomicClaims"
 import {
-  asAppointmentSystemPayload,
   recordNumber,
   recordText,
   relationId,
-  type AppointmentSystemPayload,
-  type AppointmentSystemRecord,
 } from "./systemPayload"
+
+type CalendarReadWritePayload = Pick<Payload, "find" | "update" | "db">
+type CalendarSystemPayload = Pick<Payload, "find" | "update" | "create" | "db">
 
 export type AppointmentCalendarProvider = "google" | "microsoft"
 
@@ -201,7 +204,7 @@ const authorizationUrl = (provider: AppointmentCalendarProvider, input: {
 }
 
 export async function startCalendarAuthorization(input: {
-  payload: Payload
+  payload: Pick<Payload, "create">
   user: User
   tenantId: number | string
   provider: AppointmentCalendarProvider
@@ -218,7 +221,7 @@ export async function startCalendarAuthorization(input: {
   const state = base64url(randomBytes(OAUTH_STATE_BYTES))
   const pkce = makePkce()
   const returnPath = safeAppointmentReturnPath(input.returnPath)
-  await asAppointmentSystemPayload(input.payload).create({
+  await input.payload.create({
     collection: "appointment-calendar-oauth-states",
     data: {
       stateDigest: digest(state),
@@ -250,17 +253,22 @@ const asJsonObject = (value: unknown): JsonObject | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as JsonObject : null
 
 const stringValue = (value: unknown): string | null => typeof value === "string" && value.trim() ? value.trim() : null
-const numberValue = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) ? value : null
+const boundaryFailure = (): AppointmentCalendarError => new AppointmentCalendarError("The calendar provider returned an invalid response.", 503)
+const opaqueId = z.string().min(1).max(2048).refine(value => value === value.trim() && !/[\x00-\x20\x7f]/.test(value))
+const tokenText = z.string().min(1).max(16384).refine(value => !/[\x00-\x20\x7f]/.test(value))
+const tokenSchema = z.object({ access_token: tokenText, token_type: z.string().refine(value => value.toLowerCase() === "bearer"), expires_in: z.number().int().positive().max(31_536_000), refresh_token: tokenText.optional(), scope: z.string().max(16384).optional() }).passthrough()
+const parseBoundary = <T>(schema: z.ZodType<T>, value: unknown): T => {
+  const parsed = schema.safeParse(value)
+  if (!parsed.success) throw boundaryFailure()
+  return parsed.data
+}
 
-const fetchJson = async (input: RequestInfo | URL, init: RequestInit): Promise<{ status: number; body: JsonObject | null }> => {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+const fetchJson = async (input: string, init: RequestInit): Promise<{ status: number; body: unknown }> => {
   try {
-    const response = await fetch(input, { ...init, signal: controller.signal })
-    const body = asJsonObject(await response.json().catch(() => null))
-    return { status: response.status, body }
-  } finally {
-    clearTimeout(timeout)
+    return await requestProviderJson(input, init, { operation: "Calendar provider", timeoutMs: REQUEST_TIMEOUT_MS, maxBodyBytes: 512 * 1024, readAttempts: 2, allowEmpty: init.method === "DELETE" })
+  } catch {
+    // Provider bodies, URLs and transport diagnostics must never enter the queue.
+    throw new AppointmentCalendarError("The calendar provider request could not be completed.", 503)
   }
 }
 
@@ -270,7 +278,8 @@ const oauthToken = async (provider: AppointmentCalendarProvider, input: {
   verifier?: string
   redirectUri?: string
   env: NodeJS.ProcessEnv
-}): Promise<JsonObject> => {
+  signal?: AbortSignal
+}): Promise<z.infer<typeof tokenSchema>> => {
   const credentials = credentialsFor(provider, input.env)
   const body = new URLSearchParams({
     client_id: credentials.clientId,
@@ -284,86 +293,126 @@ const oauthToken = async (provider: AppointmentCalendarProvider, input: {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,
+    signal: input.signal,
   })
-  if (response.status < 200 || response.status >= 300 || !response.body?.access_token) {
-    const error = stringValue(response.body?.error_description) ?? stringValue(response.body?.error)
-    if (error && /invalid_grant|invalid_token|unauthori[sz]ed/i.test(error)) throw new AppointmentCalendarAuthError()
-    throw new AppointmentCalendarError("The calendar provider could not authorise the connection.", response.status >= 500 ? 503 : 400)
+  if (response.status !== 200) {
+    const error = asJsonObject(response.body)?.error
+    if (error === "invalid_grant" || error === "invalid_token" || error === "unauthorized_client") throw new AppointmentCalendarAuthError()
+    throw new AppointmentCalendarError("The calendar provider could not authorise the connection.", response.status === 429 || response.status >= 500 ? 503 : 400)
   }
-  return response.body
+  return parseBoundary(tokenSchema, response.body)
 }
 
-const accessTokenFrom = (body: JsonObject): string => {
-  const token = stringValue(body.access_token)
-  if (!token) throw new AppointmentCalendarError("The calendar provider returned no access token.", 503)
-  return token
-}
+const accessTokenFrom = (body: z.infer<typeof tokenSchema>): string => body.access_token
 
-const tokenExpiry = (body: JsonObject, now = new Date()): string => {
-  const seconds = Math.max(60, Math.floor(numberValue(body.expires_in) ?? 3_600) - 60)
+const tokenExpiry = (body: z.infer<typeof tokenSchema>, now = new Date()): string => {
+  const token = parseBoundary(tokenSchema, body)
+  const seconds = Math.max(1, token.expires_in - 60)
   return new Date(now.getTime() + seconds * 1_000).toISOString()
 }
 
-const providerRequest = async (url: string, token: string, init: RequestInit = {}): Promise<JsonObject> => {
+const providerRequest = async (url: string, token: string, init: RequestInit = {}, successStatus = 200): Promise<JsonObject> => {
+  parseBoundary(tokenText, token)
   const headers = new Headers(init.headers)
   headers.set("authorization", `Bearer ${token}`)
-  const response = await fetchJson(url, {
-    ...init,
-    headers,
-  })
+  const response = await fetchJson(url, { ...init, headers })
+  const error = asJsonObject(asJsonObject(response.body)?.error)
+  const reasons = Array.isArray(error?.errors) ? error.errors.map(value => asJsonObject(value)?.reason) : []
+  if (response.status === 429 || response.status >= 500 || (response.status === 403 && reasons.some(reason => reason === "rateLimitExceeded" || reason === "userRateLimitExceeded"))) throw new AppointmentCalendarError("The calendar provider is temporarily unavailable.", 503)
   if (response.status === 401 || response.status === 403) throw new AppointmentCalendarAuthError()
-  if (response.status < 200 || response.status >= 300) {
-    const statusCode = response.status === 404
-      ? 404
-      : response.status >= 500
-        ? 503
-        : 400
-    throw new AppointmentCalendarError(`Calendar provider request failed with HTTP ${response.status}.`, statusCode)
+  if (response.status < 200 || response.status >= 300) throw new AppointmentCalendarError(`Calendar provider request failed with HTTP ${response.status}.`, response.status === 404 ? 404 : response.status === 409 ? 409 : 400)
+  if (init.method === "DELETE") {
+    if (response.status !== 204) throw boundaryFailure()
+    return {}
   }
-  return response.body ?? {}
+  if (response.status !== successStatus) throw boundaryFailure()
+  const body = asJsonObject(response.body)
+  if (!body) throw boundaryFailure()
+  return body
 }
 
-const googleAccount = async (token: string): Promise<{ email: string }> => {
-  const profile = await providerRequest("https://www.googleapis.com/oauth2/v3/userinfo", token)
-  const email = stringValue(profile.email)
+const googleAccount = async (token: string, signal?: AbortSignal): Promise<{ email: string }> => {
+  const profile = await providerRequest("https://www.googleapis.com/oauth2/v3/userinfo", token, { signal })
+  const email = parseBoundary(z.object({ email: z.string().email().max(320) }), profile).email
   if (!email) throw new AppointmentCalendarError("Google returned no account email.", 503)
   return { email: email.toLowerCase() }
 }
 
-const microsoftAccount = async (token: string): Promise<{ email: string }> => {
-  const profile = await providerRequest("https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName", token)
-  const email = stringValue(profile.mail) ?? stringValue(profile.userPrincipalName)
+const microsoftAccount = async (token: string, signal?: AbortSignal): Promise<{ email: string }> => {
+  const profile = await providerRequest("https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName", token, { signal })
+  const account = parseBoundary(z.object({ mail: z.string().email().max(320).nullable().optional(), userPrincipalName: z.string().email().max(320).optional() }), profile)
+  const email = account.mail ?? account.userPrincipalName
   if (!email) throw new AppointmentCalendarError("Microsoft returned no account email.", 503)
   return { email: email.toLowerCase() }
 }
 
 type CalendarChoice = { id: string; name: string }
 
-const googleCalendar = async (token: string): Promise<CalendarChoice> => {
-  const result = await providerRequest("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false&maxResults=250", token)
-  const items = Array.isArray(result.items) ? result.items : []
-  const candidates = items.filter((item): item is JsonObject => Boolean(item && typeof item === "object" && !Array.isArray(item)))
-  const selected = candidates.find((item) => item.primary === true && stringValue(item.id)) ?? candidates.find((item) => stringValue(item.id))
-  const id = stringValue(selected?.id)
-  if (!id) throw new AppointmentCalendarError("Google returned no writable calendar.", 503)
-  return { id, name: stringValue(selected?.summaryOverride) ?? stringValue(selected?.summary) ?? "Google Calendar" }
+const googleCalendarSchema = z.object({ items: z.array(z.object({ id: opaqueId, accessRole: z.enum(["none", "freeBusyReader", "reader", "writerWithoutPrivateAccess", "writer", "owner"]), primary: z.boolean().optional(), deleted: z.boolean().optional(), summary: z.string().max(4096).optional(), summaryOverride: z.string().max(4096).optional() }).passthrough()).max(250), nextPageToken: z.string().min(1).max(4096).optional() })
+const graphCalendarSchema = z.object({ value: z.array(z.object({ id: opaqueId, name: z.string().max(4096), canEdit: z.boolean(), isDefaultCalendar: z.boolean() }).passthrough()).max(100), "@odata.nextLink": z.string().min(1).max(8192).optional() })
+const calendarChoice = async (provider: AppointmentCalendarProvider, token: string, signal?: AbortSignal): Promise<CalendarChoice> => {
+  const base = provider === "google" ? "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false&maxResults=250" : "https://graph.microsoft.com/v1.0/me/calendars?$select=id,name,isDefaultCalendar,canEdit&$top=100"
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30_000)
+  const abort = () => controller.abort()
+  signal?.addEventListener("abort", abort, { once: true })
+  if (signal?.aborted) controller.abort()
+  let url = base
+  const seen = new Set<string>()
+  let first: CalendarChoice | undefined
+  let total = 0
+  try {
+    for (let page = 0; page < 10; page += 1) {
+      if (seen.has(url)) throw boundaryFailure()
+      seen.add(url)
+      const result = await providerRequest(url, token, { signal: controller.signal })
+      if (provider === "google") {
+        const body = parseBoundary(googleCalendarSchema, result)
+        total += body.items.length
+        if (total > 1000) throw boundaryFailure()
+        for (const item of body.items) {
+          if (item.deleted || !["writer", "owner"].includes(item.accessRole)) continue
+          const choice = { id: item.id, name: item.summaryOverride ?? item.summary ?? "Google Calendar" }
+          first ??= choice
+          if (item.primary) return choice
+        }
+        if (!body.nextPageToken) break
+        const next = new URL(base); next.searchParams.set("pageToken", body.nextPageToken); url = next.href
+      } else {
+        const body = parseBoundary(graphCalendarSchema, result)
+        total += body.value.length
+        if (total > 1000) throw boundaryFailure()
+        for (const item of body.value) {
+          if (!item.canEdit) continue
+          const choice = { id: item.id, name: item.name }
+          first ??= choice
+          if (item.isDefaultCalendar) return choice
+        }
+        const link = body["@odata.nextLink"]
+        if (!link) break
+        let next: URL
+        try { next = new URL(link) } catch { throw boundaryFailure() }
+        const original = new URL(base)
+        if (next.origin !== original.origin || next.pathname !== original.pathname || next.username || next.password || next.hash || next.searchParams.get("$select") !== original.searchParams.get("$select") || next.searchParams.get("$top") !== "100" || [...next.searchParams.keys()].some(key => !["$select", "$top", "$skip", "$skiptoken"].includes(key)) || [...next.searchParams.keys()].some(key => next.searchParams.getAll(key).length !== 1)) throw boundaryFailure()
+        url = next.href
+      }
+      if (page === 9) throw boundaryFailure()
+    }
+    if (!first) throw new AppointmentCalendarError("The calendar provider returned no writable calendar.", 503)
+    return first
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener("abort", abort)
+  }
 }
+const googleCalendar = (token: string, signal?: AbortSignal) => calendarChoice("google", token, signal)
+const microsoftCalendar = (token: string, signal?: AbortSignal) => calendarChoice("microsoft", token, signal)
 
-const microsoftCalendar = async (token: string): Promise<CalendarChoice> => {
-  const result = await providerRequest("https://graph.microsoft.com/v1.0/me/calendars?$select=id,name,isDefaultCalendar,canEdit&$top=100", token)
-  const items = Array.isArray(result.value) ? result.value : []
-  const candidates = items.filter((item): item is JsonObject => Boolean(item && typeof item === "object" && !Array.isArray(item) && item.canEdit !== false))
-  const selected = candidates.find((item) => item.isDefaultCalendar === true && stringValue(item.id)) ?? candidates.find((item) => stringValue(item.id))
-  const id = stringValue(selected?.id)
-  if (!id) throw new AppointmentCalendarError("Microsoft returned no writable calendar.", 503)
-  return { id, name: stringValue(selected?.name) ?? "Microsoft Calendar" }
-}
-
-const consumeOAuthState = async (payload: AppointmentSystemPayload, input: {
+const consumeOAuthState = async (payload: CalendarReadWritePayload, input: {
   state: string
   provider: AppointmentCalendarProvider
   now: Date
-}): Promise<AppointmentSystemRecord> => {
+}): Promise<AppointmentCalendarOauthState> => {
   if (!/^[A-Za-z0-9_-]{32,128}$/.test(input.state)) throw new AppointmentCalendarError("Invalid calendar OAuth state.", 400)
   const result = await payload.find({
     collection: "appointment-calendar-oauth-states",
@@ -381,34 +430,18 @@ const consumeOAuthState = async (payload: AppointmentSystemPayload, input: {
   })
   const candidate = result.docs[0]
   if (!candidate) throw new AppointmentCalendarError("Invalid or expired calendar OAuth state.", 400)
-  const claimed = await payload.update({
-    collection: "appointment-calendar-oauth-states",
-    id: candidate.id,
-    where: {
-      and: [
-        { id: { equals: candidate.id } },
-        { usedAt: { equals: null } },
-        { expiresAt: { greater_than: input.now.toISOString() } },
-      ],
-    },
-    data: { usedAt: input.now.toISOString() },
-    depth: 0,
-    overrideAccess: true,
-  })
-  const docs = claimed && typeof claimed === "object" && !Array.isArray(claimed) && Array.isArray((claimed as unknown as { docs?: unknown }).docs)
-    ? (claimed as unknown as { docs: AppointmentSystemRecord[] }).docs
-    : []
-  if (!docs[0]) throw new AppointmentCalendarError("Calendar OAuth state was already used.", 400)
-  return docs[0]
+  const state = await claimAppointmentCalendarOAuthState(payload, candidate, input.now)
+  if (!state) throw new AppointmentCalendarError("Calendar OAuth state was already used.", 400)
+  return state
 }
 
 export async function getCalendarOAuthReturnPath(
-  inputPayload: Payload,
+  inputPayload: Pick<Payload, "find">,
   stateValue: string,
   providerValue: AppointmentCalendarProvider,
 ): Promise<string> {
   if (!/^[A-Za-z0-9_-]{32,128}$/.test(stateValue)) return "/appointments"
-  const payload = asAppointmentSystemPayload(inputPayload)
+  const payload = inputPayload
   const result = await payload.find({
     collection: "appointment-calendar-oauth-states",
     where: {
@@ -427,15 +460,15 @@ export async function getCalendarOAuthReturnPath(
 const calendarEventKey = (appointmentId: string | number, connectionId: string | number): string =>
   `appointment:${appointmentId}:calendar:${connectionId}`
 
-const eventVersionOf = (record: AppointmentSystemRecord | null | undefined): number => {
+const eventVersionOf = (record: Pick<Appointment | AppointmentCalendarEvent, "eventVersion"> | null | undefined): number => {
   const value = recordNumber(record ?? { id: "" }, "eventVersion", 1)
   return Number.isSafeInteger(value) && value >= 1 ? value : 1
 }
 
 const createCalendarEventIfMissing = async (
-  payload: AppointmentSystemPayload,
-  input: { where: { eventKey: { equals: string } }; data: Record<string, unknown> },
-): Promise<AppointmentSystemRecord> => {
+  payload: CalendarSystemPayload,
+  input: { where: { eventKey: { equals: string } }; data: RequiredDataFromCollectionSlug<"appointment-calendar-events"> },
+): Promise<AppointmentCalendarEvent> => {
   const existing = await payload.find({
     collection: "appointment-calendar-events",
     where: input.where,
@@ -466,8 +499,8 @@ const createCalendarEventIfMissing = async (
 }
 
 const enqueueConfirmedAppointmentsForConnection = async (
-  payload: AppointmentSystemPayload,
-  connection: AppointmentSystemRecord,
+  payload: CalendarSystemPayload,
+  connection: AppointmentCalendarConnection,
   now: Date,
 ): Promise<void> => {
   const tenantId = relationId(connection.tenant)
@@ -491,7 +524,7 @@ const enqueueConfirmedAppointmentsForConnection = async (
     for (const appointment of appointments.docs) {
       const key = calendarEventKey(appointment.id, connection.id)
       const eventVersion = eventVersionOf(appointment)
-      const data = {
+      const data: RequiredDataFromCollectionSlug<"appointment-calendar-events"> = {
         eventKey: key,
         appointment: Number(appointment.id),
         connection: Number(connection.id),
@@ -518,7 +551,8 @@ const enqueueConfirmedAppointmentsForConnection = async (
             eventVersion,
             status: "queued",
             operation: "upsert",
-            attemptCount: 0,
+            // Keep same-version attempts monotonic so a requeue cannot recreate an old lease.
+            ...(existing.docs[0].eventVersion === eventVersion ? {} : { attemptCount: 0 }),
             nextAttemptAt: now.toISOString(),
             leaseUntil: null,
             lastError: null,
@@ -536,7 +570,7 @@ const enqueueConfirmedAppointmentsForConnection = async (
   }
 }
 
-const upsertConnection = async (payload: AppointmentSystemPayload, input: {
+const upsertConnection = async (payload: CalendarSystemPayload, input: {
   provider: AppointmentCalendarProvider
   tenantId: string
   userId: string
@@ -560,7 +594,7 @@ const upsertConnection = async (payload: AppointmentSystemPayload, input: {
   const existing = existingResult.docs[0]
   const existingEncryptedRefreshToken = recordText(existing ?? { id: "" }, "encryptedRefreshToken")
   if (!input.refreshToken && !existingEncryptedRefreshToken) throw new AppointmentCalendarError("The calendar provider did not return a refresh token. Re-authorise with offline access enabled.", 503)
-  const data = {
+  const data: RequiredDataFromCollectionSlug<"appointment-calendar-connections"> = {
     connectionKey,
     tenant: Number(input.tenantId),
     provider: input.provider,
@@ -600,20 +634,21 @@ const upsertConnection = async (payload: AppointmentSystemPayload, input: {
 }
 
 export async function completeCalendarAuthorization(input: {
-  payload: Payload
+  payload: CalendarSystemPayload & Pick<Payload, "auth">
   provider: AppointmentCalendarProvider
   state: string
   code: string
   headers: Headers
   env?: NodeJS.ProcessEnv
   now?: Date
+  signal?: AbortSignal
 }): Promise<{ returnPath: string; provider: AppointmentCalendarProvider; accountEmail: string; calendarName: string }> {
   const env = input.env ?? process.env
   const provider = providerFrom(input.provider)
   const authority = callbackAuthority(input.headers, provider, env)
   if (!input.code || input.code.length > 4_096) throw new AppointmentCalendarError("The calendar authorisation code is invalid.")
   const now = input.now ?? new Date()
-  const payload = asAppointmentSystemPayload(input.payload)
+  const payload = input.payload
   const state = await consumeOAuthState(payload, { state: input.state, provider, now })
   const verifierEncrypted = recordText(state, "encryptedCodeVerifier")
   const tenantId = relationId(state.tenant)
@@ -625,7 +660,7 @@ export async function completeCalendarAuthorization(input: {
   // bearer credential if the initiating CMS session was logged out or its
   // tenant role changed while the provider screen was open.
   const auth = await input.payload.auth({ headers: input.headers })
-  const actor = auth.user as User | null
+  const actor = auth.user
   const actorTenantId = relationId(actor?.tenants?.[0]?.tenant)
   const authorized = Boolean(
     actor &&
@@ -640,11 +675,12 @@ export async function completeCalendarAuthorization(input: {
     verifier,
     redirectUri: appointmentCalendarCallbackUrl(provider, authority),
     env,
+    signal: input.signal,
   })
   const accessToken = accessTokenFrom(token)
   const refreshToken = stringValue(token.refresh_token) ?? ""
-  const account = provider === "google" ? await googleAccount(accessToken) : await microsoftAccount(accessToken)
-  const calendar = provider === "google" ? await googleCalendar(accessToken) : await microsoftCalendar(accessToken)
+  const account = provider === "google" ? await googleAccount(accessToken, input.signal) : await microsoftAccount(accessToken, input.signal)
+  const calendar = provider === "google" ? await googleCalendar(accessToken, input.signal) : await microsoftCalendar(accessToken, input.signal)
   const scopes = (stringValue(token.scope) ?? (provider === "google" ? "https://www.googleapis.com/auth/calendar.events" : "offline_access Calendars.ReadWrite User.Read")).split(/\s+/).filter(Boolean)
   await upsertConnection(payload, {
     provider,
@@ -662,7 +698,7 @@ export async function completeCalendarAuthorization(input: {
   return { returnPath, provider, accountEmail: account.email, calendarName: calendar.name }
 }
 
-const loadConnection = async (payload: AppointmentSystemPayload, id: string | number): Promise<AppointmentSystemRecord | null> => {
+const loadConnection = async (payload: CalendarReadWritePayload, id: string | number): Promise<AppointmentCalendarConnection | null> => {
   const result = await payload.find({
     collection: "appointment-calendar-connections",
     where: { id: { equals: id } },
@@ -673,7 +709,7 @@ const loadConnection = async (payload: AppointmentSystemPayload, id: string | nu
   return result.docs[0] ?? null
 }
 
-const loadAppointment = async (payload: AppointmentSystemPayload, id: string | number): Promise<AppointmentSystemRecord | null> => {
+const loadAppointment = async (payload: CalendarReadWritePayload, id: string | number): Promise<Appointment | null> => {
   const result = await payload.find({
     collection: "appointments",
     where: { id: { equals: id } },
@@ -684,7 +720,7 @@ const loadAppointment = async (payload: AppointmentSystemPayload, id: string | n
   return result.docs[0] ?? null
 }
 
-const markConnection = async (payload: AppointmentSystemPayload, connection: AppointmentSystemRecord, data: Record<string, unknown>) =>
+const markConnection = async (payload: CalendarReadWritePayload, connection: AppointmentCalendarConnection, data: Partial<AppointmentCalendarConnection>) =>
   payload.update({
     collection: "appointment-calendar-connections",
     id: connection.id,
@@ -694,7 +730,7 @@ const markConnection = async (payload: AppointmentSystemPayload, connection: App
     context: { appointmentCalendarLifecycleMutation: true },
   })
 
-const clearRevokedConnectionIfIdle = async (payload: AppointmentSystemPayload, connection: AppointmentSystemRecord): Promise<void> => {
+const clearRevokedConnectionIfIdle = async (payload: CalendarReadWritePayload, connection: AppointmentCalendarConnection): Promise<void> => {
   if (recordText(connection, "status") !== "revoked") return
   const pending = await payload.find({
     collection: "appointment-calendar-events",
@@ -716,7 +752,7 @@ const clearRevokedConnectionIfIdle = async (payload: AppointmentSystemPayload, c
   })
 }
 
-const refreshAccessToken = async (payload: AppointmentSystemPayload, connection: AppointmentSystemRecord, now: Date, env: NodeJS.ProcessEnv): Promise<string> => {
+const refreshAccessToken = async (payload: CalendarReadWritePayload, connection: AppointmentCalendarConnection, now: Date, env: NodeJS.ProcessEnv, signal?: AbortSignal): Promise<string> => {
   const existingAccess = recordText(connection, "encryptedAccessToken")
   const expiresAt = recordText(connection, "accessTokenExpiresAt")
   if (existingAccess && expiresAt && Number.isFinite(Date.parse(expiresAt)) && new Date(expiresAt).getTime() > now.getTime() + 60_000) {
@@ -736,12 +772,12 @@ const refreshAccessToken = async (payload: AppointmentSystemPayload, connection:
     throw new AppointmentCalendarAuthError()
   }
   try {
-    const token = await oauthToken(provider, { refreshToken, env })
+    const token = await oauthToken(provider, { refreshToken, env, signal })
     const accessToken = accessTokenFrom(token)
     await markConnection(payload, connection, {
       status: "connected",
       encryptedAccessToken: sealAppointmentSecret(accessToken, "appointment-calendar-access-token", env),
-      ...(token.refresh_token ? { encryptedRefreshToken: sealAppointmentSecret(String(token.refresh_token), "appointment-calendar-refresh-token", env) } : {}),
+      ...(token.refresh_token ? { encryptedRefreshToken: sealAppointmentSecret(token.refresh_token, "appointment-calendar-refresh-token", env) } : {}),
       accessTokenExpiresAt: tokenExpiry(token, now),
       lastError: null,
     })
@@ -767,6 +803,10 @@ type AppointmentCalendarEventInput = {
   startAt: string
   endAt: string
   timezone: string
+  signal?: AbortSignal
+  createUncertain?: boolean
+  onCreateIntent?: () => Promise<void>
+  assertLease?: () => Promise<void>
 }
 
 const calendarEventBody = (input: AppointmentCalendarEventInput): JsonObject => {
@@ -790,79 +830,98 @@ const calendarEventBody = (input: AppointmentCalendarEventInput): JsonObject => 
   }
 }
 
-const externalEvent = async (input: AppointmentCalendarEventInput): Promise<{ id: string }> => {
-  const body = calendarEventBody(input)
+const eventTimeSchema = z.object({ dateTime: z.string().min(1).max(128).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})?$/).refine(value => Number.isFinite(Date.parse(value))), timeZone: z.string().min(1).max(128).optional() })
+const googleEventSchema = z.object({ id: z.string().regex(/^[a-v0-9]{5,1024}$/), status: z.literal("confirmed"), summary: z.string().max(4096), description: z.string().max(65536), start: eventTimeSchema, end: eventTimeSchema }).passthrough()
+const graphEventSchema = z.object({ id: opaqueId, transactionId: opaqueId, isCancelled: z.literal(false), subject: z.string().max(4096), body: z.object({ contentType: z.string().refine(value => value.toLowerCase() === "text"), content: z.string().max(65536) }), start: eventTimeSchema, end: eventTimeSchema }).passthrough()
+const validateEvent = (input: AppointmentCalendarEventInput, response: unknown, expectedId?: string): { id: string } => {
+  const requested = calendarEventBody(input)
   if (input.provider === "google") {
-    const calendarPath = encodeURIComponent(input.calendarId)
-    if (input.providerEventId) {
-      try {
-        await providerRequest(`https://www.googleapis.com/calendar/v3/calendars/${calendarPath}/events/${encodeURIComponent(input.providerEventId)}`, input.token, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
-        return { id: input.providerEventId }
-      } catch (error) {
-        if (!(error instanceof AppointmentCalendarError) || error.statusCode !== 404) throw error
-      }
-    }
-    const created = await providerRequest(`https://www.googleapis.com/calendar/v3/calendars/${calendarPath}/events?sendUpdates=none`, input.token, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
-    const id = stringValue(created.id)
-    if (!id) throw new AppointmentCalendarError("Google returned no event id.", 503)
-    return { id }
+    const event = parseBoundary(googleEventSchema, response)
+    const start = asJsonObject(requested.start)!
+    const end = asJsonObject(requested.end)!
+    if (event.id !== (expectedId ?? eventIdFor(input.eventKey)) || event.summary !== requested.summary || event.description !== requested.description || Date.parse(event.start.dateTime) !== Date.parse(String(start.dateTime)) || Date.parse(event.end.dateTime) !== Date.parse(String(end.dateTime)) || (event.start.timeZone !== undefined && event.start.timeZone !== input.timezone) || (event.end.timeZone !== undefined && event.end.timeZone !== input.timezone)) throw boundaryFailure()
+    return { id: event.id }
   }
+  const event = parseBoundary(graphEventSchema, response)
+  const utc = (value: string) => Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`)
+  if ((expectedId !== undefined && event.id !== expectedId) || event.transactionId !== eventIdFor(input.eventKey) || event.subject !== requested.subject || event.body.content !== asJsonObject(requested.body)?.content || event.start.timeZone !== "UTC" || event.end.timeZone !== "UTC" || utc(event.start.dateTime) !== Date.parse(input.startAt) || utc(event.end.dateTime) !== Date.parse(input.endAt)) throw boundaryFailure()
+  return { id: event.id }
+}
+
+const externalEvent = async (input: AppointmentCalendarEventInput): Promise<{ id: string }> => {
+  parseBoundary(opaqueId, input.calendarId)
+  if (!input.eventKey || input.eventKey.length > 2048) throw new AppointmentCalendarError("Calendar event identity is unavailable.", 400)
+  if (input.providerEventId) parseBoundary(input.provider === "google" ? z.string().regex(/^[a-v0-9]{5,1024}$/) : opaqueId, input.providerEventId)
+  const body = calendarEventBody(input)
   const calendarPath = encodeURIComponent(input.calendarId)
+  const base = input.provider === "google" ? `https://www.googleapis.com/calendar/v3/calendars/${calendarPath}/events` : `https://graph.microsoft.com/v1.0/me/calendars/${calendarPath}/events`
+  const write = (method: string) => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: input.signal })
   if (input.providerEventId) {
     try {
-      await providerRequest(`https://graph.microsoft.com/v1.0/me/calendars/${calendarPath}/events/${encodeURIComponent(input.providerEventId)}`, input.token, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
-      return { id: input.providerEventId }
+      await input.assertLease?.()
+      const updated = await providerRequest(`${base}/${encodeURIComponent(input.providerEventId)}`, input.token, write("PATCH"))
+      return validateEvent(input, updated, input.providerEventId)
     } catch (error) {
       if (!(error instanceof AppointmentCalendarError) || error.statusCode !== 404) throw error
     }
   }
-  const created = await providerRequest(`https://graph.microsoft.com/v1.0/me/calendars/${calendarPath}/events`, input.token, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
-  const id = stringValue(created.id)
-  if (!id) throw new AppointmentCalendarError("Microsoft returned no event id.", 503)
-  return { id }
+  if (input.createUncertain) {
+    if (input.provider === "microsoft") throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
+    try {
+      const existing = await providerRequest(`${base}/${eventIdFor(input.eventKey)}`, input.token, { signal: input.signal })
+      return validateEvent(input, existing, eventIdFor(input.eventKey))
+    } catch (error) {
+      // Absence now cannot rule out an earlier timed-out create finishing later.
+      if (error instanceof AppointmentCalendarError && error.statusCode === 404) throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
+      throw error
+    }
+  }
+  await input.onCreateIntent?.()
+  try {
+    const created = await providerRequest(input.provider === "google" ? `${base}?sendUpdates=none` : base, input.token, write("POST"), input.provider === "google" ? 200 : 201)
+    return validateEvent(input, created)
+  } catch (error) {
+    if (input.provider !== "google" || !(error instanceof AppointmentCalendarError) || error.statusCode !== 409) throw error
+    // A previous deterministic POST may have succeeded despite a lost response.
+    // Never generate another ID or claim an unrelated existing event.
+    const existing = await providerRequest(`${base}/${eventIdFor(input.eventKey)}`, input.token, { signal: input.signal })
+    return validateEvent(input, existing)
+  }
 }
 
-const deleteExternalEvent = async (input: { provider: AppointmentCalendarProvider; token: string; calendarId: string; providerEventId: string }): Promise<void> => {
+const deleteExternalEvent = async (input: { provider: AppointmentCalendarProvider; token: string; calendarId: string; providerEventId: string; signal?: AbortSignal; assertLease?: () => Promise<void> }): Promise<void> => {
+  parseBoundary(opaqueId, input.calendarId)
+  parseBoundary(input.provider === "google" ? z.string().regex(/^[a-v0-9]{5,1024}$/) : opaqueId, input.providerEventId)
   const calendarPath = encodeURIComponent(input.calendarId)
   const endpoint = input.provider === "google"
     ? `https://www.googleapis.com/calendar/v3/calendars/${calendarPath}/events/${encodeURIComponent(input.providerEventId)}`
     : `https://graph.microsoft.com/v1.0/me/calendars/${calendarPath}/events/${encodeURIComponent(input.providerEventId)}`
   try {
-    await providerRequest(endpoint, input.token, { method: "DELETE" })
+    await input.assertLease?.()
+    await providerRequest(endpoint, input.token, { method: "DELETE", signal: input.signal })
   } catch (error) {
-    if (error instanceof AppointmentCalendarError && (error.statusCode === 404 || error.message.includes("HTTP 404"))) return
+    if (error instanceof AppointmentCalendarError && error.statusCode === 404) return
     throw error
   }
 }
 
-const claimCalendarEvent = async (payload: AppointmentSystemPayload, event: AppointmentSystemRecord, now: Date): Promise<AppointmentSystemRecord | null> => {
-  const attemptCount = recordNumber(event, "attemptCount") + 1
-  const result = await payload.update({
-    collection: "appointment-calendar-events",
-    id: event.id,
-    where: {
-      and: [
-        { id: { equals: event.id } },
-        {
-          or: [
-            { and: [{ status: { in: ["queued", "failed"] } }, { nextAttemptAt: { less_than_equal: now.toISOString() } }] },
-            { and: [{ status: { equals: "processing" } }, { leaseUntil: { less_than_equal: now.toISOString() } }] },
-          ],
-        },
-      ],
-    },
-    data: { status: "processing", attemptCount, lastAttemptAt: now.toISOString(), leaseUntil: new Date(now.getTime() + CALENDAR_LEASE_MS).toISOString(), lastError: null },
-    depth: 0,
-    overrideAccess: true,
-    context: { appointmentCalendarLifecycleMutation: true },
-  })
-  if (result && typeof result === "object" && !Array.isArray(result)) {
-    const docs = (result as { docs?: unknown }).docs
-    if (Array.isArray(docs) && docs[0] && typeof docs[0] === "object" && "id" in docs[0]) return docs[0] as AppointmentSystemRecord
-    if ("id" in result) return result
+const resolveUncertainDeletion = async (input: { provider: AppointmentCalendarProvider; token: string; calendarId: string; eventKey: string; signal?: AbortSignal; assertLease?: () => Promise<void> }): Promise<void> => {
+  if (input.provider !== "google") throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
+  parseBoundary(opaqueId, input.calendarId)
+  if (!input.eventKey) throw boundaryFailure()
+  const id = eventIdFor(input.eventKey)
+  const endpoint = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${id}`
+  try {
+    const existing = parseBoundary(googleEventSchema, await providerRequest(endpoint, input.token, { signal: input.signal }))
+    if (existing.id !== id) throw boundaryFailure()
+  } catch {
+    // GET404 does not prove a timed-out remote create cannot finish later.
+    throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
   }
-  return null
+  await deleteExternalEvent({ ...input, providerEventId: id })
 }
+
+const claimCalendarEvent = (payload: CalendarReadWritePayload, event: AppointmentCalendarEvent, now: Date): Promise<AppointmentCalendarEvent | null> => claimAppointmentCalendarEvent(payload, event, now, CALENDAR_LEASE_MS)
 
 const calendarRetryAt = (now: Date, attemptCount: number): string => {
   const delay = CALENDAR_RETRY_DELAYS_MS[Math.min(Math.max(attemptCount - 1, 0), CALENDAR_RETRY_DELAYS_MS.length - 1)] ?? 60_000
@@ -870,9 +929,9 @@ const calendarRetryAt = (now: Date, attemptCount: number): string => {
 }
 
 const queueLatestCalendarEvent = async (
-  payload: AppointmentSystemPayload,
-  event: AppointmentSystemRecord,
-  appointment: AppointmentSystemRecord | null,
+  payload: CalendarReadWritePayload,
+  event: AppointmentCalendarEvent,
+  appointment: Appointment | null,
   now: Date,
   providerEventId?: string | null,
 ): Promise<void> => {
@@ -882,27 +941,22 @@ const queueLatestCalendarEvent = async (
   const hasAppointment = Boolean(appointment)
   const status = recordText(appointment, "status")
   const operation = status === "confirmed" ? "upsert" : "delete"
-  await payload.update({
-    collection: "appointment-calendar-events",
-    id: event.id,
-    data: {
-      eventVersion: eventVersionOf(appointment ?? event),
+  const latestVersion = eventVersionOf(appointment ?? event)
+  await transitionAppointmentCalendarEvent(payload, event, {
+      eventVersion: latestVersion,
       status: hasAppointment || latestProviderEventId ? "queued" : "cancelled",
       operation,
       providerEventId: latestProviderEventId,
-      attemptCount: 0,
+      ...(providerEventId !== undefined ? { providerCreateUncertain: false } : {}),
+      ...(latestVersion === event.eventVersion ? {} : { attemptCount: 0 }),
       nextAttemptAt: now.toISOString(),
       leaseUntil: null,
       lastError: null,
-    },
-    depth: 0,
-    overrideAccess: true,
-    context: { appointmentCalendarLifecycleMutation: true },
-  })
+    })
 }
 
-export async function processAppointmentCalendarEvents(input: { payload: Payload; now?: Date; limit?: number }) {
-  const payload = asAppointmentSystemPayload(input.payload)
+export async function processAppointmentCalendarEvents(input: { payload: CalendarReadWritePayload; now?: Date; limit?: number; signal?: AbortSignal }) {
+  const payload = input.payload
   const now = input.now ?? new Date()
   const limit = Math.max(1, Math.min(Math.floor(input.limit ?? 100), 500))
   const result = await payload.find({
@@ -922,6 +976,7 @@ export async function processAppointmentCalendarEvents(input: { payload: Payload
   let failed = 0
   let skipped = 0
   for (const event of result.docs.slice(0, limit)) {
+    if (input.signal?.aborted) break
     const claimed = await claimCalendarEvent(payload, event, now)
     if (!claimed) {
       skipped += 1
@@ -929,17 +984,12 @@ export async function processAppointmentCalendarEvents(input: { payload: Payload
     }
     const claimedVersion = eventVersionOf(claimed)
     try {
+      const createUncertain = claimed.providerCreateUncertain === true
       const connectionId = relationId(claimed.connection)
       const appointmentId = relationId(claimed.appointment)
+      if ((!connectionId || !appointmentId) && createUncertain) throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
       if (!connectionId || !appointmentId) {
-        await payload.update({
-          collection: "appointment-calendar-events",
-          id: claimed.id,
-          data: { eventVersion: claimedVersion, status: "cancelled", leaseUntil: null, lastError: "Calendar event is missing its appointment or connection." },
-          depth: 0,
-          overrideAccess: true,
-          context: { appointmentCalendarLifecycleMutation: true },
-        })
+        await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "cancelled", leaseUntil: null, lastError: "Calendar event is missing its appointment or connection." })
         skipped += 1
         continue
       }
@@ -947,33 +997,27 @@ export async function processAppointmentCalendarEvents(input: { payload: Payload
       const connection = await loadConnection(payload, connectionId)
       const appointment = await loadAppointment(payload, appointmentId)
       const providerEventId = recordText(claimed, "providerEventId")
+      const persistCreateUncertainty = async (value: boolean) => {
+        await transitionAppointmentCalendarEvent(payload, claimed, { providerCreateUncertain: value })
+      }
+      if (!connection && createUncertain) throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
       if (!connection) {
-        await payload.update({
-          collection: "appointment-calendar-events",
-          id: claimed.id,
-          data: { eventVersion: claimedVersion, status: "cancelled", leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: "Calendar connection no longer exists." },
-          depth: 0,
-          overrideAccess: true,
-          context: { appointmentCalendarLifecycleMutation: true },
-        })
+        await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "cancelled", leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: "Calendar connection no longer exists." })
         skipped += 1
         continue
       }
 
       const provider = providerFrom(recordText(connection, "provider"))
       if (!appointment) {
-        if (providerEventId) {
-          const token = await refreshAccessToken(payload, connection, now, process.env)
-          await deleteExternalEvent({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", providerEventId })
+        if (createUncertain && !providerEventId) {
+          const token = await refreshAccessToken(payload, connection, now, process.env, input.signal)
+          await resolveUncertainDeletion({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", eventKey: recordText(claimed, "eventKey") ?? "", signal: input.signal, assertLease: () => transitionAppointmentCalendarEvent(payload, claimed, {}) })
         }
-        await payload.update({
-          collection: "appointment-calendar-events",
-          id: claimed.id,
-          data: { eventVersion: claimedVersion, status: "cancelled", operation: "delete", providerEventId: null, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null },
-          depth: 0,
-          overrideAccess: true,
-          context: { appointmentCalendarLifecycleMutation: true },
-        })
+        if (providerEventId) {
+          const token = await refreshAccessToken(payload, connection, now, process.env, input.signal)
+          await deleteExternalEvent({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", providerEventId, signal: input.signal, assertLease: () => transitionAppointmentCalendarEvent(payload, claimed, {}) })
+        }
+        await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "cancelled", operation: "delete", providerEventId: null, providerCreateUncertain: false, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null })
         await clearRevokedConnectionIfIdle(payload, connection)
         synced += 1
         continue
@@ -991,19 +1035,13 @@ export async function processAppointmentCalendarEvents(input: { payload: Payload
       const operation = recordText(claimed, "operation") === "delete" ? "delete" : "upsert"
       const appointmentStatus = recordText(appointment, "status")
       const shouldDelete = operation === "delete" || appointmentStatus !== "confirmed"
-      const token = await refreshAccessToken(payload, connection, now, process.env)
+      const token = await refreshAccessToken(payload, connection, now, process.env, input.signal)
       if (shouldDelete) {
-        if (providerEventId) await deleteExternalEvent({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", providerEventId })
+        if (createUncertain && !providerEventId) await resolveUncertainDeletion({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", eventKey: recordText(claimed, "eventKey") ?? "", signal: input.signal, assertLease: () => transitionAppointmentCalendarEvent(payload, claimed, {}) })
+        if (providerEventId) await deleteExternalEvent({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", providerEventId, signal: input.signal, assertLease: () => transitionAppointmentCalendarEvent(payload, claimed, {}) })
         const latest = await loadAppointment(payload, appointment.id)
         if (!latest) {
-          await payload.update({
-            collection: "appointment-calendar-events",
-            id: claimed.id,
-            data: { eventVersion: claimedVersion, status: "cancelled", operation: "delete", providerEventId: null, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null },
-            depth: 0,
-            overrideAccess: true,
-            context: { appointmentCalendarLifecycleMutation: true },
-          })
+          await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "cancelled", operation: "delete", providerEventId: null, providerCreateUncertain: false, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null })
           await clearRevokedConnectionIfIdle(payload, connection)
           synced += 1
           continue
@@ -1013,53 +1051,45 @@ export async function processAppointmentCalendarEvents(input: { payload: Payload
           skipped += 1
           continue
         }
-        await payload.update({
-          collection: "appointment-calendar-events",
-          id: claimed.id,
-          data: { eventVersion: claimedVersion, status: "cancelled", operation: "delete", providerEventId: null, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null },
-          depth: 0,
-          overrideAccess: true,
-          context: { appointmentCalendarLifecycleMutation: true },
-        })
+        await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "cancelled", operation: "delete", providerEventId: null, providerCreateUncertain: false, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null })
       } else {
         const visitorName = recordText(appointment, "visitorName") ?? "Bezoeker"
         const startAt = recordText(appointment, "startAt")
         const endAt = recordText(appointment, "endAt")
         const timezone = recordText(appointment, "timezone") ?? "UTC"
         if (!startAt || !endAt) throw new AppointmentCalendarError("Appointment has invalid calendar times.", 400)
-        const external = await externalEvent({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", providerEventId, eventKey: recordText(claimed, "eventKey") ?? `appointment:${claimed.id}`, visitorName, visitorNote: recordText(appointment, "visitorNote"), startAt, endAt, timezone })
+        const external = await externalEvent({ provider, token, calendarId: recordText(connection, "calendarId") ?? "", providerEventId, eventKey: recordText(claimed, "eventKey") ?? "", visitorName, visitorNote: recordText(appointment, "visitorNote"), startAt, endAt, timezone, signal: input.signal, createUncertain, onCreateIntent: () => persistCreateUncertainty(true), assertLease: () => transitionAppointmentCalendarEvent(payload, claimed, {}) })
         const latest = await loadAppointment(payload, appointment.id)
         if (!latest || eventVersionOf(latest) !== claimedVersion || recordText(latest, "status") !== "confirmed") {
           await queueLatestCalendarEvent(payload, claimed, latest, now, external.id)
           skipped += 1
           continue
         }
-        await payload.update({
-          collection: "appointment-calendar-events",
-          id: claimed.id,
-          data: { eventVersion: claimedVersion, status: "synced", operation: "upsert", providerEventId: external.id, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null },
-          depth: 0,
-          overrideAccess: true,
-          context: { appointmentCalendarLifecycleMutation: true },
-        })
+        await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "synced", operation: "upsert", providerEventId: external.id, providerCreateUncertain: false, leaseUntil: null, nextAttemptAt: now.toISOString(), syncedAt: now.toISOString(), lastError: null })
       }
       await markConnection(payload, connection, { lastSyncedAt: now.toISOString(), lastError: null, ...(recordText(connection, "status") === "reauth_required" ? { status: "connected" } : {}) })
       await clearRevokedConnectionIfIdle(payload, connection)
       synced += 1
     } catch (error) {
+      if (error instanceof AppointmentAtomicClaimError) { skipped += 1; continue }
       const attemptCount = recordNumber(claimed, "attemptCount")
       const authError = error instanceof AppointmentCalendarAuthError
       const retryable = !authError && (error instanceof AppointmentCalendarError ? error.statusCode === 503 : true) && attemptCount < CALENDAR_MAX_ATTEMPTS
       const message = redactOperationalMessage(error)
-      await payload.update({ collection: "appointment-calendar-events", id: claimed.id, data: { eventVersion: claimedVersion, status: "failed", leaseUntil: null, nextAttemptAt: retryable ? calendarRetryAt(now, attemptCount) : PERMANENT_RETRY_AT, lastError: message }, depth: 0, overrideAccess: true, context: { appointmentCalendarLifecycleMutation: true } })
+      try {
+        await transitionAppointmentCalendarEvent(payload, claimed, { eventVersion: claimedVersion, status: "failed", leaseUntil: null, nextAttemptAt: retryable ? calendarRetryAt(now, attemptCount) : PERMANENT_RETRY_AT, lastError: message })
+      } catch (transitionError) {
+        if (transitionError instanceof AppointmentAtomicClaimError) { skipped += 1; continue }
+        throw transitionError
+      }
       failed += 1
     }
   }
   return { examined: result.docs.length, synced, failed, skipped }
 }
 
-export async function disconnectCalendarConnection(input: { payload: Payload; tenantId: number | string; provider: AppointmentCalendarProvider; now?: Date }): Promise<void> {
-  const payload = asAppointmentSystemPayload(input.payload)
+export async function disconnectCalendarConnection(input: { payload: CalendarReadWritePayload; tenantId: number | string; provider: AppointmentCalendarProvider; now?: Date }): Promise<void> {
+  const payload = input.payload
   const provider = providerFrom(input.provider)
   const result = await payload.find({ collection: "appointment-calendar-connections", where: { and: [{ tenant: { equals: input.tenantId } }, { provider: { equals: provider } }] }, limit: 1, depth: 0, overrideAccess: true })
   const connection = result.docs[0]

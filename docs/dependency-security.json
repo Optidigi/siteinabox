@@ -185,7 +185,7 @@
     {
       "package": "nodemailer",
       "manifest": "apps/cms/package.json",
-      "version": "10.0.13",
+      "version": "10.0.16",
       "patchedVersion": "10.0.13",
       "advisoryIds": [
         "GHSA-39m8-27wv-hr27",
@@ -197,7 +197,22 @@
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
-        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95",
+        "https://github.com/nodemailer/nodemailer/releases/tag/v10.0.14",
+        "https://github.com/nodemailer/nodemailer/releases/tag/v10.0.16"
+      ]
+    },
+    {
+      "package": "payload",
+      "manifest": "apps/cms/package.json",
+      "version": "3.90.1",
+      "patchedVersion": "3.90.0",
+      "advisoryIds": [
+        "GHSA-2qw6-cm49-277x"
+      ],
+      "sources": [
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-2qw6-cm49-277x",
+        "https://github.com/payloadcms/payload/releases/tag/v3.90.0"
       ]
     }
   ],
@@ -408,7 +423,7 @@
     {
       "advisoryId": "GHSA-39m8-27wv-hr27",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
@@ -429,7 +444,7 @@
     {
       "advisoryId": "GHSA-4g23-2xm8-66gc",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
@@ -450,7 +465,28 @@
     {
       "advisoryId": "GHSA-4ffr-jq9g-5ffx",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "CMS ships the SMTP fallback and address handling; DKIM options are not enabled, but the patch also closes that optional library path. No exploit or attacker-controlled SMTP host is claimed. Publisher raised severity to High on 2026-10-07; its affected range still ends at 10.0.12 and its fixed floor remains 10.0.13. The resolved direct CMS path ships 10.0.16.",
+      "sources": [
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+      ],
+      "paths": [
+        "apps__cms>nodemailer"
+      ],
+      "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
+      "patchedVersion": "10.0.13",
+      "severity": "high"
+    },
+    {
+      "advisoryId": "GHSA-g73g-hqqh-jr95",
+      "package": "nodemailer",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
@@ -469,25 +505,37 @@
       "severity": "moderate"
     },
     {
-      "advisoryId": "GHSA-g73g-hqqh-jr95",
-      "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "advisoryId": "GHSA-2qw6-cm49-277x",
+      "package": "payload",
+      "reviewedVersion": "3.90.1",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
-      "reason": "CMS ships the SMTP fallback and address handling; DKIM options are not enabled, but the patch also closes that optional library path. No exploit or attacker-controlled SMTP host is claimed.",
+      "reason": "The CMS ships Payload Jobs. The October 6 access-control notice is fixed in the selected family; retain the complete 3.90.0 floor including its security migration.",
       "sources": [
-        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
-        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
-        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
-        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-2qw6-cm49-277x"
       ],
       "paths": [
-        "apps__cms>nodemailer"
+        "apps__cms>payload"
       ],
-      "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
-      "patchedVersion": "10.0.13",
-      "severity": "moderate"
+      "sourceUse": "CMS Payload Local API and Jobs worker",
+      "patchedVersion": "3.89.0",
+      "severity": "high"
+    }
+  ],
+  "publisherAbsentPackages": [
+    {
+      "package": "@payloadcms/plugin-mcp",
+      "advisoryIds": [
+        "GHSA-jjm7-864w-gg8q",
+        "GHSA-h5rh-4jwf-738p"
+      ],
+      "disposition": "not installed",
+      "reason": "The root lockfile contains no resolved plugin-mcp package. Reassess both notices before adding it; the current Payload family is 3.90.1.",
+      "sources": [
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-jjm7-864w-gg8q",
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-h5rh-4jwf-738p"
+      ]
     }
   ]
 }

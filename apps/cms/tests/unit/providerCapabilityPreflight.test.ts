@@ -10,7 +10,8 @@ import {
   resolveCommerceEdgeRoutingInventory,
 } from "@/lib/domains/edgeRouting"
 import { buildCloudflareTunnelIngress } from "@/lib/domains/cloudflareTunnels"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, managedDomainFixture, orderFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
 const rendererTunnelId = "11111111-1111-4111-8111-111111111111"
 const cmsTunnelId = "22222222-2222-4222-8222-222222222222"
@@ -25,7 +26,7 @@ const baseEnv = {
   CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
   CLOUDFLARE_RENDERER_TUNNEL_ID: rendererTunnelId,
   CLOUDFLARE_CMS_TUNNEL_ID: cmsTunnelId,
-} as unknown as NodeJS.ProcessEnv
+} satisfies NodeJS.ProcessEnv
 
 const healthyTunnel = (kind: "renderer" | "cms") => ({
   tunnel: { status: "healthy" },
@@ -114,7 +115,7 @@ describe("read-only production provider capability preflight", () => {
         ...baseEnv,
         COMMERCE_RELEASE_STAGE: "shadow",
         OPENPROVIDER_API_BASE_URL: "https://attacker.example",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       dependencies: deps,
     }))
 
@@ -134,7 +135,7 @@ describe("read-only production provider capability preflight", () => {
         ...baseEnv,
         COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
         COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED: "1",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       dependencies: deps,
     }))).resolves.toEqual([
       "provider_capability:cloudflare_source_oauth:configuration_mismatch",
@@ -150,7 +151,7 @@ describe("read-only production provider capability preflight", () => {
       env: {
         ...baseEnv,
         COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED: "1",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       dependencies: deps,
     }))).resolves.toEqual([
       "provider_capability:existing_domain_source:configuration_mismatch",
@@ -217,7 +218,7 @@ describe("read-only production provider capability preflight", () => {
       env: {
         ...baseEnv,
         OPENPROVIDER_MIN_BALANCE_EUR: "10",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       dependencies: deps,
     }))).resolves.toEqual([
       "provider_capability:cloudflare_cms_tunnel:provider_response_invalid",
@@ -250,15 +251,15 @@ describe("read-only production provider capability preflight", () => {
   })
 
   it("uses the writer inventory for a paid domain still being provisioned", async () => {
-    const activeDomain = {
+    const activeDomain = managedDomainFixture({
       id: 1,
       domainNameAscii: "example.nl",
       state: "active",
       custodyStatus: "managed",
       cloudflareZoneId: "zone-active",
       tenant: 10,
-    }
-    const pendingDomain = {
+    })
+    const pendingDomain = managedDomainFixture({
       id: 2,
       domainNameAscii: "pending.nl",
       state: "registration_pending",
@@ -266,39 +267,26 @@ describe("read-only production provider capability preflight", () => {
       cloudflareZoneId: "zone-pending",
       tenant: 20,
       originatingOrder: 200,
-    }
-    const payload = asPayload({
-      find: vi.fn(async ({
-        collection,
-        where,
-      }: {
-        collection: string
-        where?: unknown
-      }) => {
+    })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
         if (collection === "tenants") {
-          return {
-            docs: [{ id: 10, status: "active", domain: "example.nl" }],
-            totalDocs: 1,
-          }
+          return paginatedFixture([tenantFixture({ id: 10, status: "active", domain: "example.nl" })])
         }
         if (collection === "managed-domains") {
           const serializedWhere = JSON.stringify(where)
           if (serializedWhere.includes('"domainNameAscii"')) {
-            return { docs: [activeDomain], totalDocs: 1 }
+            return paginatedFixture([activeDomain])
           }
-          return {
-            docs: [activeDomain, pendingDomain],
-            totalDocs: 2,
-          }
+          return paginatedFixture([activeDomain, pendingDomain])
         }
-        return { docs: [], totalDocs: 0 }
-      }),
-      findByID: vi.fn(async () => ({
-        id: 200,
-        paymentStatus: "paid",
-        state: "fulfillment_pending",
-      })),
-      update: vi.fn(async ({ id, data }) => ({ id, ...data })),
+        return paginatedFixture([])
+      })
+    vi.spyOn(payload, "findByID").mockResolvedValue(orderFixture({ id: 200, paymentStatus: "paid", state: "fulfillment_pending" }))
+    vi.spyOn(payload, "update").mockImplementation(async ({ id, data }) => {
+      const domain = id === 1 ? activeDomain : pendingDomain
+      Object.assign(domain, data)
+      return domain
     })
     const inventory = await resolveCommerceEdgeRoutingInventory(payload)
     expect(inventory).toMatchObject({

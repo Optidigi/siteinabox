@@ -1,4 +1,6 @@
 "use client"
+import { clientMediaSchema, type ClientMedia } from "@/components/clientPayload"
+import { asRecord } from "@/lib/record"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@siteinabox/ui/components/button"
@@ -14,7 +16,7 @@ export function MediaUploader({
   refreshOnUploaded = false,
 }: {
   tenantId: number | string
-  onUploaded?: (m: unknown) => void
+  onUploaded?: (m: ClientMedia) => void
   refreshOnUploaded?: boolean
 }) {
   const router = useRouter()
@@ -61,8 +63,8 @@ export function MediaUploader({
         })
         return
       }
-      const json = await res.json()
-      const uploaded = json.doc ?? json
+      const json: unknown = await res.json()
+      const uploaded = clientMediaSchema.parse(asRecord(json)?.doc ?? json)
       status.success(t("uploaded", { name: file.name }), { id: statusId })
       captureCmsBrowserEvent({
         event: "cms_media_uploaded",

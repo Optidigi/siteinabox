@@ -1,3 +1,4 @@
+import { generationRunFixture } from "../_helpers/generatedDocs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { ThemeTokenSpecV3 } from "@siteinabox/contracts/generation"
@@ -80,14 +81,14 @@ const createState = () => {
       updatedAt: "2026-06-25T19:02:00.000Z",
     },
   ] as Page[]
-  const run = {
+  const run = generationRunFixture({
     id: 500,
     status: "preview_ready",
     tenant: 1,
     pages: [100, 101],
     clientApproval: { status: "pending" },
     payment: { status: "not_started" },
-  } as unknown as SiteGenerationRun
+  })
 
   mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => ({ id, ...data }))
   mocks.loadPreviewGrantContext.mockResolvedValue({

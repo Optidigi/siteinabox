@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@sit
 import { Button } from "@siteinabox/ui/components/button"
 import { MediaGrid } from "./MediaGrid"
 import { MediaUploader } from "./MediaUploader"
-import type { Media } from "@/payload-types"
+import { clientMediaSchema, type ClientMedia } from "@/components/clientPayload"
 import { useTranslations } from "next-intl"
 import { fetchTenantMedia, useResolvedMediaTenantId } from "@/components/media/clientMedia"
 
@@ -14,7 +14,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   const t = useTranslations("media")
   const tCommon = useTranslations("common")
   const [open, setOpen] = useState(false)
-  const [items, setItems] = useState<Media[]>([])
+  const [items, setItems] = useState<ClientMedia[]>([])
   const resolvedTenantId = useResolvedMediaTenantId(tenantId)
 
   const reload = useCallback(async () => {
@@ -44,8 +44,10 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   // can render. Fresh picker selections keep the full Media object so
   // editor previews can update immediately; submit handlers normalize
   // populated objects to ids before sending them to Payload.
-  const [resolvedById, setResolvedById] = useState<Media | null>(null)
-  const valueId = typeof value === "object" && value ? (value as { id?: string | number }).id : value
+  const [resolvedById, setResolvedById] = useState<ClientMedia | null>(null)
+  const parsedValue = clientMediaSchema.safeParse(value)
+  const populatedValue = parsedValue.success ? parsedValue.data : null
+  const valueId = populatedValue?.id ?? (typeof value === "string" || typeof value === "number" ? value : null)
   useEffect(() => {
     if (valueId == null) {
       if (resolvedById !== null) setResolvedById(null)
@@ -60,8 +62,9 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
     ;(async () => {
       const res = await fetch(`/api/media/${valueId}`)
       if (!res.ok) return
-      const doc = (await res.json()) as Media
-      if (!cancelled) setResolvedById(doc)
+      const body: unknown = await res.json()
+      const parsed = clientMediaSchema.safeParse(body)
+      if (!cancelled && parsed.success) setResolvedById(parsed.data)
     })()
     return () => { cancelled = true }
   }, [valueId, value, items, resolvedById])
@@ -70,7 +73,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   // then the items grid (after the user has opened the picker), then
   // the lazy by-id fetch above.
   const current =
-    (typeof value === "object" && value ? (value as Media) : null) ??
+    populatedValue ??
     items.find((m) => (m.id) === valueId) ??
     (resolvedById && (resolvedById.id) === valueId ? resolvedById : null)
 

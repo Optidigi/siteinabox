@@ -1,3 +1,4 @@
+import { payloadDeleteFixture } from "../_helpers/payloadDeleteFixture"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   cloudflareOAuthCookieName,
@@ -9,22 +10,23 @@ import {
   resolveCloudflareOAuthCredential,
   revokeCloudflareOAuthCredential,
 } from "@/lib/domains/cloudflareSourceOAuth"
-import { asPayload, type MockDoc } from "../_helpers/mockPayload"
+import type { MigrationSourceAuthorization } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { migrationSourceAuthorizationFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { payloadUpdateFixture, type PayloadUpdateOptions } from "../_helpers/payloadUpdateFixture"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 17).toString("base64")
-const ENV = {
+const ENV = { NODE_ENV: "test",
   DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
   COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_OAUTH_ENABLED: "1",
   CLOUDFLARE_SOURCE_OAUTH_CLIENT_ID: "oauth-client-id",
   CLOUDFLARE_SOURCE_OAUTH_CLIENT_SECRET: "oauth-client-secret",
   CLOUDFLARE_SOURCE_OAUTH_REDIRECT_URI:
     "https://admin.siteinabox.nl/api/domain-migration-source/cloudflare/callback",
-} as unknown as NodeJS.ProcessEnv
+} satisfies NodeJS.ProcessEnv
 const NOW = new Date("2026-07-30T08:00:00.000Z")
-type OAuthUpdateArgs = {
-  where?: Record<string, unknown>
-  data: Record<string, unknown>
-}
+
 
 const zone = {
   schemaVersion: 1 as const,
@@ -55,63 +57,44 @@ const zone = {
 }
 
 const createStore = () => {
-  const records: MockDoc[] = []
+  const records: MigrationSourceAuthorization[] = []
   let nextId = 1
-  const payload = asPayload({
-    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
-      const record = { id: nextId++, ...data }
-      records.push(record)
-      return record
-    }),
-    find: vi.fn(async ({ where }: { where?: Record<string, unknown> }) => {
-      const serialized = JSON.stringify(where)
-      const docs = serialized.includes("expiresAt")
-        ? records.filter((record) =>
-          [
-            "pending",
-            "authorized",
-            "attached",
-            "refreshing",
-            "revocation_pending",
-          ].includes(String(record.state)) &&
-          String(record.expiresAt) <=
-            String((where as {
-              and: Array<{ expiresAt?: { less_than_equal?: string } }>
-            }).and.find((entry) => entry.expiresAt)?.expiresAt?.less_than_equal))
-        : records.filter((record) =>
-        (
-          serialized.includes("stateDigest") &&
-          serialized.includes(String(record.stateDigest))
-        ) ||
-        (
-          serialized.includes("authorizationKey") &&
-          serialized.includes(String(record.authorizationKey))
-        ))
-      return { docs, totalDocs: docs.length }
-    }),
-    update: vi.fn(async ({
-      where,
-      data,
-    }: {
-      where?: Record<string, unknown>
-      data: Record<string, unknown>
-    }) => {
-      const serialized = JSON.stringify(where)
-      const record = records.find((candidate) =>
-        serialized.includes(String(candidate.id)) &&
-        serialized.includes(String(candidate.state)) &&
-        serialized.includes(String(candidate.updatedAt)))
-      if (!record) return { docs: [], totalDocs: 0 }
-      Object.assign(record, data)
-      return { docs: [record], totalDocs: 1 }
-    }),
-    delete: vi.fn(async ({ id }: { id: string | number }) => {
-      const index = records.findIndex((record) => String(record.id) === String(id))
-      if (index >= 0) records.splice(index, 1)
-      return null
-    }),
+  const payload = createTestPayload()
+  const create = vi.spyOn(payload, "create").mockImplementation(async args => {
+    if (args.collection !== "migration-source-authorizations") throw new Error(`Unexpected collection ${args.collection}`)
+    const record = Object.assign(migrationSourceAuthorizationFixture({ id: nextId++ }), args.data)
+    records.push(record)
+    return record
   })
-  return { payload, records }
+  vi.spyOn(payload, "find").mockImplementation(async ({ where }) => {
+    const serialized = JSON.stringify(where)
+    const expiry = asDocRecord(where?.and?.find(entry => entry.expiresAt)?.expiresAt ?? {}).less_than_equal
+    const docs = serialized.includes("expiresAt")
+      ? records.filter(record => ["pending", "authorized", "attached", "refreshing", "revocation_pending"].includes(record.state) && String(record.expiresAt) <= String(expiry))
+      : records.filter(record => (serialized.includes("stateDigest") && serialized.includes(record.stateDigest)) || (serialized.includes("authorizationKey") && serialized.includes(record.authorizationKey)))
+    return paginatedFixture(docs)
+  })
+  const update = vi.fn(async (args: PayloadUpdateOptions) => {
+    if (args.collection !== "migration-source-authorizations") throw new Error(`Unexpected collection ${args.collection}`)
+    const serialized = JSON.stringify(args.where)
+    const record = args.where ? records.find(candidate => serialized.includes(String(candidate.id)) && serialized.includes(candidate.state) && serialized.includes(candidate.updatedAt)) : records.find(candidate => String(candidate.id) === String(args.id))
+    if (!record) {
+      if (args.where) return { docs: [], errors: [], totalDocs: 0 }
+      throw new Error(`Missing authorization ${args.id}`)
+    }
+    Object.assign(record, args.data)
+    return args.where ? { docs: [record], errors: [], totalDocs: 1 } : record
+  })
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(update))
+  vi.spyOn(payload, "delete").mockImplementation(payloadDeleteFixture(async args => {
+    if (args.where) throw new Error("Unexpected bulk authorization delete")
+    const id = args.id
+    const index = records.findIndex(record => String(record.id) === String(id))
+    const record = index >= 0 ? records.splice(index, 1)[0] : undefined
+    if (!record) throw new Error(`Missing authorization ${id}`)
+    return record
+  }))
+  return { payload, records, update, create }
 }
 
 const tokenFetch = vi.fn(async () => new Response(JSON.stringify({
@@ -396,18 +379,17 @@ describe("Cloudflare delegated source OAuth", () => {
     })
     expect(store.records[0]?.state).toBe("refreshing")
 
-    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
-    const originalUpdate = update.getMockImplementation() as (
-      args: OAuthUpdateArgs,
-    ) => Promise<unknown>
+    const update = store.update
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Expected store update implementation")
     let staleLeaseClaims = 0
-    update.mockImplementation(async (args: OAuthUpdateArgs) => {
+    update.mockImplementation(async (args: PayloadUpdateOptions) => {
       if (
-        args.data.updatedAt === "2026-07-30T09:02:00.000Z" &&
+        asDocRecord(args.data).updatedAt === "2026-07-30T09:02:00.000Z" &&
         Object.keys(args.data).length === 1
       ) {
         staleLeaseClaims += 1
-        if (staleLeaseClaims > 1) return { docs: [], totalDocs: 0 }
+        if (staleLeaseClaims > 1) return { docs: [], errors: [], totalDocs: 0 }
       }
       return originalUpdate(args)
     })
@@ -475,18 +457,17 @@ describe("Cloudflare delegated source OAuth", () => {
   it("retains reduced-scope authority when quarantine loses its CAS", async () => {
     const store = createStore()
     const reference = await authorize(store)
-    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
-    const originalUpdate = update.getMockImplementation() as (
-      args: OAuthUpdateArgs,
-    ) => Promise<unknown>
+    const update = store.update
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Expected store update implementation")
     let loseQuarantine = true
-    update.mockImplementation(async (args: OAuthUpdateArgs) => {
+    update.mockImplementation(async (args: PayloadUpdateOptions) => {
       if (
         loseQuarantine &&
-        args.data.state === "revocation_pending"
+        asDocRecord(args.data).state === "revocation_pending"
       ) {
         loseQuarantine = false
-        return { docs: [], totalDocs: 0 }
+        return { docs: [], errors: [], totalDocs: 0 }
       }
       return originalUpdate(args)
     })
@@ -519,23 +500,22 @@ describe("Cloudflare delegated source OAuth", () => {
   it("revokes a rotated grant when neither authoritative nor detached persistence succeeds", async () => {
     const store = createStore()
     const reference = await authorize(store)
-    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
-    const originalUpdate = update.getMockImplementation() as (
-      args: OAuthUpdateArgs,
-    ) => Promise<unknown>
+    const update = store.update
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Expected store update implementation")
     let persistenceFailures = 3
-    update.mockImplementation(async (args: OAuthUpdateArgs) => {
+    update.mockImplementation(async (args: PayloadUpdateOptions) => {
       if (
         persistenceFailures > 0 &&
-        args.data.state === "attached" &&
-        typeof args.data.encryptedAuthority === "string"
+        asDocRecord(args.data).state === "attached" &&
+        typeof asDocRecord(args.data).encryptedAuthority === "string"
       ) {
         persistenceFailures -= 1
-        return { docs: [], totalDocs: 0 }
+        return { docs: [], errors: [], totalDocs: 0 }
       }
       return originalUpdate(args)
     })
-    const create = store.payload.create as unknown as ReturnType<typeof vi.fn>
+    const create = store.create
     create.mockRejectedValueOnce(new Error("detached persistence unavailable"))
     const provider = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -720,20 +700,11 @@ describe("Cloudflare delegated source OAuth", () => {
 
   it("retries a zero-row first claim before source capture", async () => {
     const store = createStore()
-    const update = store.payload.update as unknown as {
-      mockResolvedValueOnce: (value: unknown) => void
-    }
+    const update = store.update
     update.mockResolvedValueOnce({
       docs: [],
       totalDocs: 0,
-      limit: 0,
-      page: 1,
-      pagingCounter: 1,
-      hasPrevPage: false,
-      hasNextPage: false,
-      prevPage: null,
-      nextPage: null,
-      totalPages: 1,
+      errors: [],
     })
     const started = await start(store)
     const state = new URL(started.authorizationUrl).searchParams.get("state")!
@@ -780,7 +751,7 @@ describe("Cloudflare delegated source OAuth", () => {
   })
 
   it("revokes refresh authority without placing it in the request URL", async () => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }))
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }))
     const credential = {
       accessToken: "access-token-" + "a".repeat(40),
       refreshToken: "refresh-token-" + "b".repeat(40),
@@ -794,37 +765,24 @@ describe("Cloudflare delegated source OAuth", () => {
       fetchImpl: fetchImpl as typeof fetch,
     })
 
-    const [url, request] = (fetchImpl.mock.calls as unknown as Array<
-      [string, RequestInit]
-    >)[0]!
+    const [url, request] = fetchImpl.mock.calls[0]!
     expect(url).toBe("https://dash.cloudflare.com/oauth2/revoke")
     expect(String(url)).not.toContain(credential.refreshToken)
-    expect(String(request.body)).toContain("token=refresh-token-")
-    expect(String(request.body)).toContain("token_type_hint=refresh_token")
+    expect(String(request?.body)).toContain("token=refresh-token-")
+    expect(String(request?.body)).toContain("token_type_hint=refresh_token")
   })
 
   it("reclaims a revocation CAS race before reporting durable cleanup", async () => {
     const store = createStore()
     const reference = await authorize(store)
     const record = store.records[0]!
-    const update = store.payload.update as unknown as {
-      mockImplementationOnce: (
-        implementation: () => Promise<unknown>,
-      ) => void
-    }
+    const update = store.update
     update.mockImplementationOnce(async () => {
       record.updatedAt = "2026-07-30T08:59:59.000Z"
       return {
         docs: [],
         totalDocs: 0,
-        limit: 0,
-        page: 1,
-        pagingCounter: 1,
-        hasPrevPage: false,
-        hasNextPage: false,
-        prevPage: null,
-        nextPage: null,
-        totalPages: 1,
+        errors: [],
       }
     })
     const revokeFetch = vi.fn(async () => new Response(null, { status: 200 }))

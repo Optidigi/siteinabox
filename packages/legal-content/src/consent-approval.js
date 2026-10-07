@@ -10,6 +10,8 @@ export const publicAnalyticsConsentApproval = Object.freeze({
   maxEventRetentionDays: 396,
 })
 
+/** @param {import("./consent-approval.js").PublicAnalyticsConsentSettings | null | undefined} consent
+ * @param {string | null} [approvedVersion] */
 export function matchesApprovedPublicAnalyticsConsent(consent, approvedVersion = publicAnalyticsConsentApproval.consentVersion) {
   if (typeof approvedVersion !== 'string' || !approvedVersion.trim()) return false
   if (!consent || typeof consent !== 'object' || Array.isArray(consent)) return false

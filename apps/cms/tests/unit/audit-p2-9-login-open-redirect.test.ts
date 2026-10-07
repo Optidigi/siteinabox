@@ -75,8 +75,8 @@ describe("audit-p2 #9 — validateNextRedirect", () => {
   })
 
   it("Case 8 — non-string types (number, boolean, object, array) fall back to '/'", () => {
-    expect(validateNextRedirect(42 as unknown as string)).toBe("/")
-    expect(validateNextRedirect(true as unknown as string)).toBe("/")
+    expect(validateNextRedirect(42)).toBe("/")
+    expect(validateNextRedirect(true)).toBe("/")
     expect(validateNextRedirect({})).toBe("/")
     expect(validateNextRedirect(cast<unknown>([]))).toBe("/")
     expect(validateNextRedirect(cast<unknown>(["/legit"]))).toBe("/")

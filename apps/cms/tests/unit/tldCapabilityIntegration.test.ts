@@ -1,7 +1,8 @@
+import { generationRunFixture } from "../_helpers/generatedDocs"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { SiteGenerationRun } from "@/payload-types"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
 
 const openProviderMocks = vi.hoisted(() => ({
   checkAvailability: vi.fn(),
@@ -20,10 +21,10 @@ import {
   suggestAvailablePreviewDomainBatch,
 } from "@/lib/domains/previewDomainOrder"
 
-const run = {
+const run = generationRunFixture({
   id: 50,
   domainOrder: null,
-} as unknown as SiteGenerationRun
+})
 const LEGACY_NL_ENABLED_AT = "2026-07-28T14:59:59.999Z"
 
 afterEach(() => {
@@ -41,7 +42,7 @@ describe("effective TLD allowlist integration", () => {
       price: { amount: "8.00", currency: "EUR" },
       internalReason: null,
     })
-    const payload = asPayload({ update: vi.fn() })
+    const payload = createTestPayload()
 
     await expect(checkAndRecordPreviewDomainOrder(
       payload,
@@ -68,7 +69,7 @@ describe("effective TLD allowlist integration", () => {
     expect(openProviderMocks.suggestions).not.toHaveBeenCalled()
 
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload({ update: vi.fn() }),
+      createTestPayload(),
       run,
       "a.nl",
       null,
@@ -86,7 +87,7 @@ describe("effective TLD allowlist integration", () => {
       price: { amount: "8.00", currency: "EUR" },
       internalReason: null,
     })
-    const payload = asPayload({ update: vi.fn() })
+    const payload = createTestPayload()
 
     await expect(checkAndRecordPreviewDomainOrder(
       payload,
@@ -110,7 +111,7 @@ describe("effective TLD allowlist integration", () => {
     })
 
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload({ update: vi.fn() }),
+      createTestPayload(),
       run,
       "example.nl",
       null,
@@ -138,7 +139,7 @@ describe("effective TLD allowlist integration", () => {
       const expectedMessageKey = tld === "nl" ? "checkoutDomainAvailable" : "checkoutDomainAvailableExtraFee"
 
       await expect(checkAndRecordPreviewDomainOrder(
-        asPayload({ update: vi.fn() }),
+        createTestPayload(),
         run,
         `example.${tld}`,
         null,
@@ -152,7 +153,7 @@ describe("effective TLD allowlist integration", () => {
       openProviderMocks.checkAvailability.mockClear()
 
       await expect(checkAndRecordPreviewDomainOrder(
-        asPayload({ update: vi.fn() }),
+        createTestPayload(),
         run,
         `example.${tld}`,
         null,

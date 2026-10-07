@@ -1,15 +1,23 @@
 # Protected delivery
 
-The integration owner submits one PR and stops for independent architect review.
-GitHub review identities and environment approval are real provider controls;
-local agent reviews supply evidence and never impersonate those identities.
+The integration owner owns one PR through fresh, separate Standards and Spec
+reviews, verification and delivery. Resolve findings before merging the exact
+reviewed head under the principal's delivery authorization. GitHub review
+identities and environment approval are real provider controls; agent reviews
+supply engineering evidence and never impersonate those identities.
 
 ## Main policy
 
 `ops/github/main-ruleset.json` is the reviewed installation proposal. It requires
-PRs, one non-author approval, dismissal of stale approvals, approval after the
-last push, resolved conversations, strict current-base checks, no deletion or
-force push, and zero standing bypass actors. The five stable canonical job
+PRs, resolved conversations, strict current-base checks, no deletion or force
+push, and zero standing bypass actors. The principal approved a single-account
+engineering delivery policy: required GitHub approvals are zero and last-push
+approval is disabled; stale-review dismissal remains enabled. Fresh independent
+Standards and Spec agent reviews remain required engineering gates, with their
+findings resolved at the exact final head. These manual gates do not provide
+GitHub-enforced non-author approval. Policy and administration changes retain
+explicit principal authorization; this exception does not alter publication or
+production authorization. The five stable canonical job
 contexts plus `required-ci` are bound to the observed GitHub Actions app.
 The summary rejects skipped, cancelled and missing canonical jobs, including
 all packaged-image variants.
@@ -28,10 +36,12 @@ a ruleset. Obtain explicit owner authorization immediately before the write.
 Read the existing rulesets and active main rules first, prepare the exact diff,
 and rehearse the same proposed policy on an explicitly disposable target branch.
 Create the target before activating its ruleset. Intentionally fail an actual
-Actions-source required context; an independently operated write-capable reviewer
-approves the unchanged fixture head before the normal merge attempt. The
-rejection must identify the failed check, with the target SHA unchanged. A
-missing approval, conflict or wrong-SHA rejection proves a different gate.
+Actions-source required context and attempt a normal merge at the unchanged
+fixture head. The rejection must identify the failed check, with both PR and
+target SHAs unchanged. A conflict or wrong-SHA rejection proves a different gate.
+The disposable policy must have the same required-check and bypass restrictions
+as main and zero required GitHub approvals, so no approval gate confounds this
+proof.
 
 Test direct update, non-fast-forward update and deletion only on that disposable
 target with the actual administrator absent from bypass. Fixture check statuses
@@ -108,4 +118,4 @@ Payload version requires the field. Rehearse any separately authorized database
 recovery on a disposable prior state first. Git reverts do not remove external rules/environment
 configuration; prepare any administrative rollback separately and obtain owner
 authorization immediately before it. Keep publication/deployment blocked while
-required checks, independent approval or control evidence are unavailable.
+required checks, publication approval or control evidence are unavailable.

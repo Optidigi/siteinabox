@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest"
 import { Users } from "@/collections/Users"
 import { expectAccessField, type FieldAccessArgs } from "../_helpers/payloadFields"
 
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit AMENDMENT AMD-2 (T2 primary, T5 secondary) — `apiKey` mass-assignment.
 //
 // Background: Payload v3.84.1 auto-injects three fields when a collection

@@ -18,7 +18,7 @@ export function EditsChart({ data }: { data: { date: string; count: number }[] }
           <ChartContainer config={chartConfig} className="h-[260px] min-w-0 w-full">
             <BarChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickLine={false} axisLine={false} interval={0} tickFormatter={(v) => v.slice(5)} />
+              <XAxis dataKey="date" tickLine={false} axisLine={false} interval={0} tickFormatter={(v: string) => v.slice(5)} />
               <YAxis width={32} tickLine={false} axisLine={false} allowDecimals={false} />
               <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
               <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />

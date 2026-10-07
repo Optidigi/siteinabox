@@ -2,7 +2,8 @@ import { promises as fs } from "node:fs"
 import path from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
-import { asPayload } from "../_helpers/mockPayload"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { cast } from "../_helpers/cast"
 
 const tenantDir = (tenantId: number | string) =>
@@ -28,25 +29,9 @@ describe("projectPageToDisk", () => {
       }),
     )
 
-    const payload = Object.assign(asPayload({
-      find: vi.fn().mockResolvedValue({ docs: [] }),
-      findByID: vi.fn().mockResolvedValue({
-        id: 7,
-        slug: "amicare",
-        domain: "ami-care.nl",
-        siteManifest: { version: 1 },
-      }),
-      logger: { info: vi.fn() },
-    }), {
-      find: vi.fn().mockResolvedValue({ docs: [] }),
-      findByID: vi.fn().mockResolvedValue({
-        id: 7,
-        slug: "amicare",
-        domain: "ami-care.nl",
-        siteManifest: { version: 1 },
-      }),
-      logger: { info: vi.fn() },
-    })
+    const payload = await createInitializedTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 7, slug: "amicare", domain: "ami-care.nl", siteManifest: { version: 1 } }))
 
     await projectPageToDisk(cast<Parameters<typeof projectPageToDisk>[0]>({
       doc: {
@@ -80,15 +65,9 @@ describe("projectPageToDisk", () => {
   })
 
   it("does not project draft-import pages when skipProjection context is set", async () => {
-    const payload = Object.assign(asPayload({
-      find: vi.fn(),
-      findByID: vi.fn(),
-      logger: { info: vi.fn() },
-    }), {
-      find: vi.fn(),
-      findByID: vi.fn(),
-      logger: { info: vi.fn() },
-    })
+    const payload = await createInitializedTestPayload()
+    vi.spyOn(payload, "find")
+    vi.spyOn(payload, "findByID")
 
     await projectPageToDisk(cast<Parameters<typeof projectPageToDisk>[0]>({
       doc: {

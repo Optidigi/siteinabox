@@ -1,9 +1,12 @@
+import type { Tenant } from "@/payload-types"
+import { tenantFixture } from "../_helpers/generatedDocs"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
 /** Regression: Payload beforeValidate backfills billing fields on theme-only updates. */
 import { describe, expect, it } from "vitest"
 import { protectBillingSuspensionMetadata } from "@/collections/Tenants"
 import { hookArgsFor } from "../_helpers/hookFixtures"
 
-const suspendedTenant = {
+const suspendedTenant: Partial<Tenant> = {
   status: "suspended",
   billingSuspensionAgreement: 900,
   billingSuspendedAt: "2026-08-15T10:00:00.000Z",
@@ -11,23 +14,25 @@ const suspendedTenant = {
 }
 
 const callHook = (
-  data: Record<string, unknown>,
+  data: Partial<Tenant>,
   input: {
     operation?: "create" | "update"
     system?: boolean
-    originalDoc?: Record<string, unknown>
+    originalDoc?: Partial<Tenant>
   } = {},
-) => protectBillingSuspensionMetadata(hookArgsFor(
+) : unknown => protectBillingSuspensionMetadata(hookArgsFor(
   protectBillingSuspensionMetadata,
   {
     data,
     operation: input.operation ?? "update",
-    originalDoc: input.originalDoc ?? suspendedTenant,
-    req: {
+    originalDoc: tenantFixture(input.originalDoc ?? suspendedTenant),
+    collection: hookCollection("tenants"),
+    context: {},
+    req: hookRequest({
       context: input.system
         ? { billingTenantLifecycleMutation: true }
         : {},
-    },
+    }),
   },
 ))
 
@@ -70,21 +75,21 @@ describe("billing suspension metadata ownership", () => {
   })
 
   it("rejects unauthorized writes to billingSuspensionAgreement", () => {
-    expect(() => callHook({
+    expect(() => { callHook({
       billingSuspensionAgreement: 999,
       billingSuspendedAt: suspendedTenant.billingSuspendedAt,
-    })).toThrow("Billing suspension metadata is system-owned.")
-    expect(() => callHook({
+    }) }).toThrow("Billing suspension metadata is system-owned.")
+    expect(() => { callHook({
       billingSuspensionAgreement: null,
       billingSuspendedAt: null,
-    })).toThrow("Billing suspension metadata is system-owned.")
+    }) }).toThrow("Billing suspension metadata is system-owned.")
   })
 
   it("rejects unauthorized writes to billingSuspendedAt", () => {
-    expect(() => callHook({
+    expect(() => { callHook({
       billingSuspensionAgreement: suspendedTenant.billingSuspensionAgreement,
       billingSuspendedAt: "2026-09-01T00:00:00.000Z",
-    })).toThrow("Billing suspension metadata is system-owned.")
+    }) }).toThrow("Billing suspension metadata is system-owned.")
   })
 
   it("allows reviewed billing lifecycle mutations with context", () => {

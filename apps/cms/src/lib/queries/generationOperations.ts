@@ -4,8 +4,9 @@ import config from "@/payload.config"
 import {
   findAllPaginated,
   normalisePagination,
+  normaliseFindResult,
   type PayloadFindResult,
-  type PayloadLikeFindClient,
+  type PayloadFindClient,
 } from "./paginate"
 import type { Where } from "payload"
 import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
@@ -122,14 +123,14 @@ export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: s
 
 export async function listGenerationOperations(
   opts?: ListGenerationOperationsOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"site-generation-runs" | "intake-submissions">,
 ): Promise<GenerationOperationsResult> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
   const filter = opts?.filter ?? "all"
 
   const [runs, intakes] = await Promise.all([
-    client.find<SiteGenerationRun>({
+    client.find({
       collection: "site-generation-runs",
       overrideAccess: true,
       where: generationRunWhere(filter, opts?.q),
@@ -138,7 +139,7 @@ export async function listGenerationOperations(
       page,
       limit,
     }),
-    client.find<IntakeSubmission>({
+    client.find({
       collection: "intake-submissions",
       overrideAccess: true,
       where: intakeSubmissionWhere(filter, opts?.q),
@@ -149,7 +150,7 @@ export async function listGenerationOperations(
     }),
   ])
 
-  return { runs, intakes }
+  return { runs: normaliseFindResult(runs), intakes: normaliseFindResult(intakes) }
 }
 
 const operationsStateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | null => {
@@ -175,16 +176,17 @@ const paginatedResult = <T>(docs: T[], page: number, limit: number): PayloadFind
     hasPrevPage: currentPage > 1,
     nextPage: currentPage < totalPages ? currentPage + 1 : null,
     prevPage: currentPage > 1 ? currentPage - 1 : null,
+    pagingCounter: start + 1,
   }
 }
 
 export async function listOperationRuns(
   opts?: ListGenerationOperationsOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"site-generation-runs" | "intake-submissions">,
 ): Promise<PayloadFindResult<SiteGenerationRun>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
-  const runs = await findAllPaginated<SiteGenerationRun>(client, {
+  const runs = await findAllPaginated(client, {
     collection: "site-generation-runs",
     overrideAccess: true,
     where: generationRunWhere("all"),
@@ -209,11 +211,11 @@ export async function listOperationRuns(
 
 export async function listOperationIntakes(
   opts?: ListGenerationOperationsOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"site-generation-runs" | "intake-submissions">,
 ): Promise<PayloadFindResult<IntakeSubmission>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
-  const submissions = await findAllPaginated<IntakeSubmission>(client, {
+  const submissions = await findAllPaginated(client, {
     collection: "intake-submissions",
     overrideAccess: true,
     where: intakeSubmissionWhere("all", opts?.q),
@@ -225,11 +227,11 @@ export async function listOperationIntakes(
 }
 
 export async function getGenerationOperationsOverview(
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"site-generation-runs" | "intake-submissions">,
 ): Promise<GenerationOperationsOverview> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const [runs, intakes] = await Promise.all([
-    findAllPaginated<SiteGenerationRun>(client, {
+    findAllPaginated(client, {
       collection: "site-generation-runs",
       overrideAccess: true,
       where: generationRunWhere("all"),
@@ -237,7 +239,7 @@ export async function getGenerationOperationsOverview(
       depth: 2,
       pageSize: 250,
     }),
-    findAllPaginated<IntakeSubmission>(client, {
+    findAllPaginated(client, {
       collection: "intake-submissions",
       overrideAccess: true,
       where: intakeSubmissionWhere("all"),

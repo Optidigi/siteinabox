@@ -1,6 +1,13 @@
+import { paymentAttemptFixture, tenantFixture, orderFixture, managedDomainFixture } from "../_helpers/generatedDocs"
+import { validRenewalCycle } from "../_helpers/commerceBuilders"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { payloadUpdateFixture, type PayloadUpdateOptions } from "../_helpers/payloadUpdateFixture"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { paginatedFixture } from "../_helpers/generatedDocs"
+import type { Payload } from "payload"
+import type { BillingAgreement, Order, PaymentAttempt, ManagedDomain, DomainRenewalCycle, Tenant } from "@/payload-types"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
-  asPayload,
   matchesWhere,
   type MockDoc,
   type MockFindArgs,
@@ -36,7 +43,7 @@ import {
 import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePayments"
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 
-const baseOrigin = {
+const baseOrigin = orderFixture({
   id: 600,
   orderNumber: "SIAB-500-TEST",
   tenant: 1,
@@ -66,9 +73,9 @@ const baseOrigin = {
   paymentStatus: "paid",
   paymentProvider: "mollie",
   createdAt: "2026-07-01T00:00:00.000Z",
-}
+})
 
-const baseAgreement = {
+const baseAgreement: BillingAgreement = {
   id: 900,
   idempotencyKey: "agreement-900",
   originatingOrder: 600,
@@ -94,36 +101,37 @@ const baseAgreement = {
   updatedAt: "2026-07-01T10:00:00.000Z",
 }
 
-const createStore = (input: {
-  agreement?: Record<string, unknown>
-  origin?: Record<string, unknown>
-  tenant?: Record<string, unknown>
-  orders?: MockDoc[]
-  attempts?: MockDoc[]
-  domains?: MockDoc[]
-  cycles?: MockDoc[]
+const createStore = async (input: {
+  agreement?: Partial<BillingAgreement>
+  origin?: Partial<Order>
+  tenant?: Partial<Tenant>
+  orders?: Order[]
+  attempts?: PaymentAttempt[]
+  domains?: ManagedDomain[]
+  cycles?: DomainRenewalCycle[]
   beforeAgreementConditionalUpdate?: (state: {
-    agreement: MockDoc
-    orders: MockDoc[]
-    attempts: MockDoc[]
+    agreement: BillingAgreement
+    orders: Order[]
+    attempts: PaymentAttempt[]
   }) => void
   beforeRenewalCycleConditionalUpdate?: (state: {
-    cycles: MockDoc[]
+    cycles: DomainRenewalCycle[]
   }) => void
   failManagedDomainUpdateOnce?: boolean
 } = {}) => {
   const agreement = { ...baseAgreement, ...input.agreement }
-  const tenant = {
+  const tenant = tenantFixture({
     id: 1,
     name: "Acme Studio",
     status: "active",
     ...input.tenant,
-  }
-  const orders: MockDoc[] = [{ ...baseOrigin, ...input.origin }, ...(input.orders ?? [])]
+  })
+  const orders: Order[] = [orderFixture({ ...baseOrigin, ...input.origin }), ...(input.orders ?? [])]
   const attempts = input.attempts ?? []
   const domains = input.domains ?? []
   const cycles = input.cycles ?? []
-  const collections: Record<string, MockDoc[]> = {
+  type Doc = Order | BillingAgreement | PaymentAttempt | ManagedDomain | DomainRenewalCycle | Tenant
+  const collections: Record<string, Doc[]> = {
     orders,
     "billing-agreements": [agreement],
     "payment-attempts": attempts,
@@ -132,32 +140,32 @@ const createStore = (input: {
     tenants: [tenant],
   }
   let nextId = 1_000
-  const find = vi.fn(async ({ collection, where, sort }: MockFindArgs) => {
-    let docs = (collections[collection] ?? []).filter((doc) => matchesWhere(doc, where))
+  const find = vi.fn(async ({ collection, where, sort }: Parameters<Payload["find"]>[0]) => {
+    let docs = (collections[collection] ?? []).filter((doc) => matchesWhere(asDocRecord(doc), where))
     if (sort === "attemptNumber") {
       docs = [...docs].sort(
-        (a, b) => Number(a.attemptNumber ?? 0) - Number(b.attemptNumber ?? 0),
+        (a, b) => Number(asDocRecord(a).attemptNumber ?? 0) - Number(asDocRecord(b).attemptNumber ?? 0),
       )
     }
     if (sort === "-servicePeriodEndsAt") {
       docs = [...docs].sort(
-        (a, b) => String(b.servicePeriodEndsAt).localeCompare(String(a.servicePeriodEndsAt)),
+        (a, b) => String(asDocRecord(b).servicePeriodEndsAt).localeCompare(String(asDocRecord(a).servicePeriodEndsAt)),
       )
     }
-    return { docs, totalDocs: docs.length }
+    return paginatedFixture(docs, { totalDocs: docs.length })
   })
-  const findByID = vi.fn(async ({ collection, id }: { collection: string; id: string | number }) => {
+  const findByID = vi.fn(async ({ collection, id }: Parameters<Payload["findByID"]>[0]) => {
     const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
     return doc
   })
-  const create = vi.fn(async ({ collection, data }: { collection: string; data: Record<string, unknown> }) => {
-    const duplicate = collection === "orders" && (collections.orders ?? []).find(
-      (entry) => entry.billingCycleKey && entry.billingCycleKey === data.billingCycleKey,
-    )
-    if (duplicate) throw new Error("unique violation")
-    const doc = { id: nextId++, ...data }
-    ;(collections[collection] ??= []).push(doc)
+  const create = vi.fn(async ({ collection, data }: Parameters<Payload["create"]>[0]) => {
+    if (collection !== "orders") throw new Error("Unexpected create " + collection)
+    const key = asDocRecord(data).billingCycleKey
+    if (orders.some(entry => entry.billingCycleKey && entry.billingCycleKey === key)) throw new Error("unique violation")
+    const doc = orderFixture({ id: nextId++ })
+    Object.assign(doc, data)
+    orders.push(doc)
     return doc
   })
   let conditionalHookPending = Boolean(input.beforeAgreementConditionalUpdate)
@@ -168,7 +176,7 @@ const createStore = (input: {
     id,
     where,
     data,
-  }: MockUpdateArgs & { where?: MockWhere }) => {
+  }: PayloadUpdateOptions) => {
     if (collection === "billing-agreements" && where) {
       if (conditionalHookPending) {
         conditionalHookPending = false
@@ -179,7 +187,7 @@ const createStore = (input: {
         })
       }
       const docs = (collections["billing-agreements"] ?? []).filter((doc) =>
-        matchesWhere(doc, where)
+        matchesWhere(asDocRecord(doc), where)
       )
       for (const doc of docs) {
         Object.assign(doc, data)
@@ -187,16 +195,16 @@ const createStore = (input: {
           new Date(String(doc.updatedAt)).getTime() + 1,
         ).toISOString()
       }
-      return { docs, totalDocs: docs.length }
+      return { docs, errors: [], totalDocs: docs.length }
     }
     if (collection === "domain-renewal-cycles" && where) {
       if (renewalCycleHookPending) {
         renewalCycleHookPending = false
         input.beforeRenewalCycleConditionalUpdate?.({ cycles })
       }
-      const docs = cycles.filter((doc) => matchesWhere(doc, where))
+      const docs = cycles.filter((doc) => matchesWhere(asDocRecord(doc), where))
       for (const doc of docs) Object.assign(doc, data)
-      return { docs, totalDocs: docs.length }
+      return { docs, errors: [], totalDocs: docs.length }
     }
     if (collection === "managed-domains" && managedDomainFailurePending) {
       managedDomainFailurePending = false
@@ -207,23 +215,14 @@ const createStore = (input: {
     Object.assign(doc, data)
     return doc
   })
-  return {
-    agreement,
-    tenant,
-    orders,
-    attempts,
-    domains,
-    cycles,
-    update,
-    payload: asPayload({
-      find,
-      findByID,
-      create,
-      update,
-      jobs: { queue: vi.fn() },
-      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-    }),
-  }
+  const payload = await createInitializedTestPayload()
+  vi.spyOn(payload, "find").mockImplementation(find)
+  vi.spyOn(payload, "findByID").mockImplementation(findByID)
+  vi.spyOn(payload, "create").mockImplementation(create)
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(update))
+  vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, totalTried: 0, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" })
+  for (const method of ["warn", "error", "info"] as const) vi.spyOn(payload.logger, method)
+  return { agreement, tenant, orders, attempts, domains, cycles, update, payload }
 }
 
 beforeEach(() => {
@@ -232,10 +231,10 @@ beforeEach(() => {
 
 describe("application-created recurring billing", () => {
   it("freezes a monthly renewal order and starts exactly one first recurring attempt", async () => {
-    const store = createStore()
+    const store = await createStore()
     const result = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-01T10:00:00.000Z"),
     })
 
@@ -267,7 +266,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("sends the day-zero failure notice only after Mollie reports a terminal attempt", async () => {
-    const renewalOrder = {
+    const renewalOrder = orderFixture({
       ...baseOrigin,
       id: 601,
       billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
@@ -277,26 +276,26 @@ describe("application-created recurring billing", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
       state: "accepted",
       paymentStatus: "failed",
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       agreement: {
         state: "past_due",
         graceStartedAt: "2026-08-01T10:00:00.000Z",
         graceEndsAt: "2026-08-15T10:00:00.000Z",
       },
       orders: [renewalOrder],
-      attempts: [{
+      attempts: [paymentAttemptFixture({
         id: 700,
         order: 601,
         purpose: "recurring",
         attemptNumber: 1,
         state: "failed",
-      }],
+      })],
     })
 
     await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-01T10:15:00.000Z"),
     })
 
@@ -309,7 +308,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("freezes annual coverage at EUR 190 excl. VAT", async () => {
-    const store = createStore({
+    const store = await createStore({
       agreement: {
         packageCode: "siteinabox-annual",
         billingPeriod: "annual",
@@ -324,7 +323,7 @@ describe("application-created recurring billing", () => {
     })
     const order = await ensureSubscriptionRenewalOrder({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
     })
     expect(order).toMatchObject({
       servicePeriodEndsAt: "2028-07-01T10:00:00.000Z",
@@ -335,7 +334,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("does not collect a future period while provider state requires reconciliation", async () => {
-    const store = createStore({
+    const store = await createStore({
       agreement: {
         state: "past_due",
         reconciliationRequired: true,
@@ -345,7 +344,7 @@ describe("application-created recurring billing", () => {
 
     const result = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-07-27T10:00:00.000Z"),
     })
 
@@ -358,7 +357,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("is idempotent under duplicate workers and retries only at the governed dunning offset", async () => {
-    const renewalOrder = {
+    const renewalOrder = orderFixture({
       ...baseOrigin,
       id: 601,
       billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
@@ -368,40 +367,41 @@ describe("application-created recurring billing", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
       state: "accepted",
       paymentStatus: "failed",
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       agreement: {
         state: "past_due",
         graceStartedAt: "2026-08-01T10:00:00.000Z",
         graceEndsAt: "2026-08-15T10:00:00.000Z",
       },
       orders: [renewalOrder],
-      attempts: [{
+      attempts: [paymentAttemptFixture({
         id: 700,
         order: 601,
         purpose: "recurring",
         attemptNumber: 1,
         state: "failed",
-      }],
+      })],
     })
     vi.mocked(createApplicationRecurringMolliePayment).mockImplementationOnce(async (_payload, call) => {
-      store.attempts.push({
+      const paymentAttempt = paymentAttemptFixture({
         id: 701,
         order: 601,
         purpose: "recurring",
         attemptNumber: call.attemptNumber ?? 1,
         state: "pending_provider",
       })
-      return { paymentAttempt: store.attempts.at(-1) as never, reused: false }
+      store.attempts.push(paymentAttemptFixture({ ...paymentAttempt }))
+      return { paymentAttempt, reused: false }
     })
     await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-04T10:00:00.000Z"),
     })
     await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-04T10:05:00.000Z"),
     })
 
@@ -413,7 +413,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("suspends after 14 days without mutating the customer-owned domain", async () => {
-    const renewalOrder = {
+    const renewalOrder = orderFixture({
       ...baseOrigin,
       id: 601,
       billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
@@ -423,8 +423,8 @@ describe("application-created recurring billing", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
       state: "accepted",
       paymentStatus: "failed",
-    }
-    const domain = {
+    })
+    const domain = managedDomainFixture({
       id: 950,
       tenant: 1,
       domainNameAscii: "example.nl",
@@ -434,26 +434,26 @@ describe("application-created recurring billing", () => {
       cloudflareZoneId: "zone-example",
       cloudflareDnsRecordIds: ["mx", "spf", "dkim", "website"],
       renewalIntent: true,
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       agreement: {
         state: "past_due",
         graceStartedAt: "2026-08-01T10:00:00.000Z",
         graceEndsAt: "2026-08-15T10:00:00.000Z",
       },
       orders: [renewalOrder],
-      attempts: [{
+      attempts: [paymentAttemptFixture({
         id: 700,
         order: 601,
         purpose: "recurring",
         attemptNumber: 1,
         state: "failed",
-      }],
+      })],
       domains: [domain],
     })
     await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-15T10:00:00.000Z"),
     })
     expect(store.tenant).toMatchObject({
@@ -478,10 +478,10 @@ describe("application-created recurring billing", () => {
   })
 
   it("does not start dunning while provider writes are release-blocked", async () => {
-    const store = createStore()
+    const store = await createStore()
     const blocked = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-15T10:00:00.000Z"),
       providerWritesAllowed: () => false,
     })
@@ -499,7 +499,7 @@ describe("application-created recurring billing", () => {
 
     const enabled = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-15T10:05:00.000Z"),
       providerWritesAllowed: () => true,
     })
@@ -514,14 +514,14 @@ describe("application-created recurring billing", () => {
   })
 
   it("schedules cancellation at paid period end and preserves a committed domain cycle", async () => {
-    const domain = {
+    const domain = managedDomainFixture({
       id: 950,
       tenant: 1,
       domainNameAscii: "example.nl",
       state: "active",
       renewalIntent: true,
-    }
-    const uncovered = {
+    })
+    const uncovered = validRenewalCycle({
       id: 960,
       managedDomain: 950,
       billingAgreement: 900,
@@ -529,8 +529,8 @@ describe("application-created recurring billing", () => {
       providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
       paymentSecuredAt: null,
       stateHistory: [],
-    }
-    const committed = {
+    })
+    const committed = validRenewalCycle({
       id: 961,
       managedDomain: 950,
       billingAgreement: 900,
@@ -538,8 +538,8 @@ describe("application-created recurring billing", () => {
       providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
       paymentSecuredAt: "2026-07-20T00:00:00.000Z",
       stateHistory: [],
-    }
-    const store = createStore({ domains: [domain], cycles: [uncovered, committed] })
+    })
+    const store = await createStore({ domains: [domain], cycles: [uncovered, committed] })
     await scheduleCancellationAtPeriodEnd({
       payload: store.payload,
       agreementId: 900,
@@ -561,9 +561,9 @@ describe("application-created recurring billing", () => {
 
   it("linearizes concurrent cancellation after a recurring collection claim", async () => {
     const claimAt = "2026-07-27T10:00:00.000Z"
-    const store = createStore({
+    const store = await createStore({
       beforeAgreementConditionalUpdate: ({ agreement, orders, attempts }) => {
-        orders.push({
+        orders.push(orderFixture({
           ...baseOrigin,
           id: 601,
           billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
@@ -573,8 +573,8 @@ describe("application-created recurring billing", () => {
           servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
           state: "accepted",
           paymentStatus: "pending",
-        })
-        attempts.push({
+        }))
+        attempts.push(paymentAttemptFixture({
           id: 700,
           order: 601,
           purpose: "recurring",
@@ -582,7 +582,7 @@ describe("application-created recurring billing", () => {
           state: "pending_provider",
           reconciliationRequired: true,
           createdAt: claimAt,
-        })
+        }))
         agreement.lastPaymentAttemptAt = claimAt
         agreement.updatedAt = "2026-07-27T10:00:00.000Z"
       },
@@ -607,14 +607,14 @@ describe("application-created recurring billing", () => {
   })
 
   it("preserves a renewal cycle committed concurrently with cancellation", async () => {
-    const domain = {
+    const domain = managedDomainFixture({
       id: 950,
       tenant: 1,
       domainNameAscii: "example.nl",
       state: "active",
       renewalIntent: true,
-    }
-    const cycle = {
+    })
+    const cycle = validRenewalCycle({
       id: 960,
       managedDomain: 950,
       billingAgreement: 900,
@@ -622,8 +622,8 @@ describe("application-created recurring billing", () => {
       providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
       paymentSecuredAt: null,
       stateHistory: [],
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       domains: [domain],
       cycles: [cycle],
       beforeRenewalCycleConditionalUpdate: ({ cycles }) => {
@@ -652,14 +652,14 @@ describe("application-created recurring billing", () => {
   })
 
   it("resumes cancellation cleanup and notification after a partial failure", async () => {
-    const domain = {
+    const domain = managedDomainFixture({
       id: 950,
       tenant: 1,
       domainNameAscii: "example.nl",
       state: "active",
       renewalIntent: true,
-    }
-    const cycle = {
+    })
+    const cycle = validRenewalCycle({
       id: 960,
       managedDomain: 950,
       billingAgreement: 900,
@@ -667,8 +667,8 @@ describe("application-created recurring billing", () => {
       providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
       paymentSecuredAt: null,
       stateHistory: [],
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       domains: [domain],
       cycles: [cycle],
       failManagedDomainUpdateOnce: true,
@@ -695,14 +695,14 @@ describe("application-created recurring billing", () => {
   })
 
   it("repairs effective cancellation side effects after the agreement was committed", async () => {
-    const domain = {
+    const domain = managedDomainFixture({
       id: 950,
       tenant: 1,
       domainNameAscii: "example.nl",
       state: "active",
       renewalIntent: true,
-    }
-    const uncovered = {
+    })
+    const uncovered = validRenewalCycle({
       id: 960,
       managedDomain: 950,
       billingAgreement: 900,
@@ -710,8 +710,8 @@ describe("application-created recurring billing", () => {
       providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
       paymentSecuredAt: null,
       stateHistory: [],
-    }
-    const committed = {
+    })
+    const committed = validRenewalCycle({
       id: 961,
       managedDomain: 950,
       billingAgreement: 900,
@@ -719,8 +719,8 @@ describe("application-created recurring billing", () => {
       providerSafeCutoffAt: "2027-01-01T00:00:00.000Z",
       paymentSecuredAt: "2026-07-20T00:00:00.000Z",
       stateHistory: [],
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       agreement: {
         state: "cancellation_scheduled",
         renewalIntent: false,
@@ -732,7 +732,7 @@ describe("application-created recurring billing", () => {
     })
     const processInput = {
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-01T10:00:00.000Z"),
     }
 
@@ -758,7 +758,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("does not regress a concurrently paid agreement back to past due", async () => {
-    const store = createStore({
+    const store = await createStore({
       beforeAgreementConditionalUpdate: ({ agreement }) => {
         Object.assign(agreement, {
           state: "active",
@@ -775,7 +775,7 @@ describe("application-created recurring billing", () => {
 
     const result = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-01T10:00:00.000Z"),
     })
 
@@ -793,7 +793,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("does not suspend a tenant after a concurrent paid synchronization", async () => {
-    const store = createStore({
+    const store = await createStore({
       agreement: {
         state: "past_due",
         graceStartedAt: "2026-08-01T10:00:00.000Z",
@@ -815,7 +815,7 @@ describe("application-created recurring billing", () => {
 
     const result = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-15T10:00:00.000Z"),
     })
 
@@ -831,7 +831,7 @@ describe("application-created recurring billing", () => {
   })
 
   it("extends cancellation through a provider-committed in-flight renewal", async () => {
-    const renewalOrder = {
+    const renewalOrder = orderFixture({
       ...baseOrigin,
       id: 601,
       billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
@@ -841,15 +841,15 @@ describe("application-created recurring billing", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
       state: "accepted",
       paymentStatus: "open",
-    }
-    const store = createStore({
+    })
+    const store = await createStore({
       agreement: {
         state: "cancellation_scheduled",
         renewalIntent: false,
         cancelAt: "2026-08-01T10:00:00.000Z",
       },
       orders: [renewalOrder],
-      attempts: [{
+      attempts: [paymentAttemptFixture({
         id: 700,
         order: 601,
         purpose: "recurring",
@@ -857,12 +857,12 @@ describe("application-created recurring billing", () => {
         state: "pending_provider",
         providerPaymentId: "tr_in_flight",
         reconciliationRequired: false,
-      }],
+      })],
     })
 
     const result = await processBillingAgreement({
       payload: store.payload,
-      agreement: store.agreement as never,
+      agreement: store.agreement,
       now: new Date("2026-08-01T10:00:00.000Z"),
     })
 

@@ -1,3 +1,4 @@
+import type { Media, Page } from "@/payload-types"
 import path from "node:path"
 import { promises as fs } from "node:fs"
 import type { CollectionAfterDeleteHook } from "payload"
@@ -18,7 +19,7 @@ const tenantIdOf = (doc: { tenant?: unknown }): string | undefined => {
   return String(t)
 }
 
-export const deletePageFile: CollectionAfterDeleteHook = async ({ doc, req }) => {
+export const deletePageFile: CollectionAfterDeleteHook<Page> = async ({ doc, req }) => {
   const tenantId = tenantIdOf(doc)
   if (!tenantId) return
   const slug = doc.slug as string
@@ -33,7 +34,7 @@ export const deletePageFile: CollectionAfterDeleteHook = async ({ doc, req }) =>
   req.payload.logger.info({ tenantId, slug }, "[projection] page deleted from disk")
 }
 
-export const deleteMediaFile: CollectionAfterDeleteHook = async ({ doc, req }) => {
+export const deleteMediaFile: CollectionAfterDeleteHook<Media> = async ({ doc, req }) => {
   const tenantId = tenantIdOf(doc)
   if (!tenantId || doc.filename == null) return
   if (!isSafeMediaFilename(doc.filename)) {

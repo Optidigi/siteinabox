@@ -92,11 +92,11 @@ describe("automatic migration source gates", () => {
   })
 
   it("fails closed independently for each source mechanism", () => {
-    const sourceEnv = {
+    const sourceEnv = { NODE_ENV: "test",
       COMMERCE_MIGRATION_SOURCE_CLOUDFLARE_ENABLED: "1",
       COMMERCE_MIGRATION_SOURCE_AXFR_ENABLED: "0",
       COMMERCE_MIGRATION_SOURCE_PROVIDER_EXPORT_ENABLED: "",
-    } as unknown as NodeJS.ProcessEnv
+    } satisfies NodeJS.ProcessEnv
     expect(automaticMigrationSourceEnabled(
       "cloudflare_api_v1",
       sourceEnv,
@@ -511,7 +511,7 @@ describe("existing-domain checkout preflight", () => {
           kind: "provider_export",
           sourceSoaSerial: 2026072901,
         },
-      } as never,
+      },
       env,
       now: new Date("2026-07-28T10:00:00.000Z"),
     })

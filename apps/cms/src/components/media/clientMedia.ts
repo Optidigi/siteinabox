@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { Media } from "@/payload-types"
+import { clientMediaListSchema, clientMeSchema, clientTenantListSchema, type ClientMedia } from "@/components/clientPayload"
 
 export type MediaTenantId = number | string
 
@@ -19,7 +19,9 @@ export async function resolveMediaTenantId({
   const meRes = await fetcher("/api/users/me")
   if (!meRes.ok) return null
 
-  const me = (await meRes.json()).user
+  const meBody: unknown = await meRes.json()
+  const meResult = clientMeSchema.safeParse(meBody)
+  const me = meResult.success ? meResult.data.user : null
   if (!me) return null
 
   if (me.role === "super-admin") {
@@ -31,8 +33,9 @@ export async function resolveMediaTenantId({
     )
     if (!tenantRes.ok) return null
 
-    const tenantJson = await tenantRes.json()
-    return tenantJson.docs?.[0]?.id ?? null
+    const tenantBody: unknown = await tenantRes.json()
+    const tenantResult = clientTenantListSchema.safeParse(tenantBody)
+    return tenantResult.success ? tenantResult.data.docs[0]?.id ?? null : null
   }
 
   const first = me.tenants?.[0]?.tenant
@@ -42,14 +45,15 @@ export async function resolveMediaTenantId({
 export async function fetchTenantMedia(
   tenantId: MediaTenantId,
   fetcher: FetchLike = fetch,
-): Promise<Media[]> {
+): Promise<ClientMedia[]> {
   const res = await fetcher(
     `/api/media?where[tenant][equals]=${encodeURIComponent(String(tenantId))}&limit=200&sort=-updatedAt`,
   )
   if (!res.ok) return []
 
-  const json = await res.json()
-  return (json.docs as Media[]) ?? []
+  const body: unknown = await res.json()
+  const parsed = clientMediaListSchema.safeParse(body)
+  return parsed.success ? parsed.data.docs : []
 }
 
 export function useResolvedMediaTenantId(initialTenantId?: MediaTenantId | null) {

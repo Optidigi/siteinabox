@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import * as React from "react"
+import { Heart } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { createEditorSelectSlots } from "@/lib/editor/createEditorSelectSlots"
@@ -37,13 +38,12 @@ describe("createEditorSelectSlots", () => {
 
   it("emits data-siab-field on icon slots", () => {
     const slots = createEditorSelectSlots()
-    const Icon = (props: { className?: string }) => <svg className={props.className} data-testid="icon" />
     const icon = renderToStaticMarkup(
       <>
         {slots.renderIcon?.({
           name: "services.items.title",
           value: "heart",
-          icon: Icon as never,
+          icon: Heart,
           className: "size-5",
           elementPath: { blockIndex: 0, field: "items", itemIndex: 1, subField: "title" },
         })}

@@ -1,3 +1,4 @@
+import type { MigrationSourceAuthorization } from "@/payload-types"
 import type {
   CollectionBeforeChangeHook,
   CollectionBeforeValidateHook,
@@ -5,12 +6,12 @@ import type {
 } from "payload"
 
 const lifecycleEnabled = (
-  args: Parameters<CollectionBeforeChangeHook>[0],
+  args: Parameters<CollectionBeforeChangeHook<MigrationSourceAuthorization>>[0],
 ): boolean =>
   args.req?.context?.migrationSourceAuthorizationLifecycle === true ||
   args.context?.migrationSourceAuthorizationLifecycle === true
 
-export const protectMigrationSourceAuthorization: CollectionBeforeChangeHook = (args) => {
+export const protectMigrationSourceAuthorization: CollectionBeforeChangeHook<MigrationSourceAuthorization> = (args) => {
   if (args.operation !== "update") return args.data
   if (!lifecycleEnabled(args)) {
     throw new Error(
@@ -35,7 +36,7 @@ export const protectMigrationSourceAuthorization: CollectionBeforeChangeHook = (
   return args.data
 }
 
-export const validateMigrationSourceAuthorization: CollectionBeforeValidateHook = ({
+export const validateMigrationSourceAuthorization: CollectionBeforeValidateHook<MigrationSourceAuthorization> = ({
   data,
   originalDoc,
 }) => {

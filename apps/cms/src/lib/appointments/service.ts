@@ -14,7 +14,7 @@ import {
   type AppointmentManagementResponse,
   type AppointmentScheduleSettings,
 } from "@siteinabox/contracts"
-import type { Appointment, SiteSetting } from "@/payload-types"
+import type { Appointment } from "@/payload-types"
 import { relationshipId } from "@/lib/relationshipId"
 import { APPOINTMENT_MANAGEMENT_KEY_ENV, sealAppointmentSecret } from "./secrets"
 import { ensureAppointmentSideEffects } from "./sideEffects"
@@ -25,13 +25,6 @@ import {
   localDateForInstant,
   type OccupiedAppointment,
 } from "./schedule"
-
-type AppointmentRecord = Appointment & {
-  eventVersion?: number | null
-  managementTokenDigest?: string | null
-  managementTokenExpiresAt?: string | null
-  encryptedManagementToken?: string | null
-}
 
 export class AppointmentUnavailableError extends Error {
   constructor(message = "Appointment booking is not available.") {
@@ -117,7 +110,7 @@ export async function getAppointmentSchedule(
     overrideAccess: true,
     ...(req ? { req } : {}),
   })
-  const settings = result.docs[0] as SiteSetting | undefined
+  const settings = result.docs[0]
   if (!settings?.appointments) return DEFAULT_APPOINTMENT_SCHEDULE
   const parsed = AppointmentScheduleSettingsSchema.safeParse(settings.appointments)
   if (!parsed.success) throw new AppointmentUnavailableError("Appointment availability is configured incorrectly.")
@@ -306,8 +299,8 @@ export async function bookAppointment(input: {
         managementTokenExpiresAt: managementTokenExpiry(slot.endAt, settings.retentionDays),
         encryptedManagementToken,
       },
-      req: request as PayloadRequest,
-    }) as AppointmentRecord
+      req: request,
+    })
 
     await ensureAppointmentSideEffects({
       payload: input.payload,
@@ -329,10 +322,10 @@ export async function bookAppointment(input: {
   }
 }
 
-const appointmentTenantMatches = (appointment: AppointmentRecord, tenantId: number | string): boolean =>
+const appointmentTenantMatches = (appointment: Appointment, tenantId: number | string): boolean =>
   relationshipId(appointment.tenant) === String(tenantId)
 
-const appointmentEventVersion = (appointment: AppointmentRecord): number => {
+const appointmentEventVersion = (appointment: Appointment): number => {
   const version = Number(appointment.eventVersion ?? 1)
   return Number.isSafeInteger(version) && version >= 1 ? version : 1
 }
@@ -343,7 +336,7 @@ const loadManagedAppointment = async (input: {
   token: string
   now: Date
   req?: Partial<PayloadRequest>
-}): Promise<AppointmentRecord> => {
+}): Promise<Appointment> => {
   const digest = hashAppointmentManagementToken(input.token)
   const result = await input.payload.find({
     collection: "appointments",
@@ -359,19 +352,19 @@ const loadManagedAppointment = async (input: {
     overrideAccess: true,
     ...(input.req ? { req: input.req } : {}),
   })
-  const appointment = result.docs[0] as AppointmentRecord | undefined
+  const appointment = result.docs[0]
   if (!appointment) throw new AppointmentManagementNotFoundError()
   return appointment
 }
 
-const managementAppointmentView = (appointment: AppointmentRecord): AppointmentManagementResponse["appointment"] => ({
+const managementAppointmentView = (appointment: Appointment): AppointmentManagementResponse["appointment"] => ({
   status: appointment.status,
   startAt: appointmentDate(appointment.startAt).toISOString(),
   endAt: appointmentDate(appointment.endAt).toISOString(),
   timezone: appointment.timezone,
 })
 
-const ensureCancellationAllowed = (appointment: AppointmentRecord, settings: AppointmentScheduleSettings, now: Date): void => {
+const ensureCancellationAllowed = (appointment: Appointment, settings: AppointmentScheduleSettings, now: Date): void => {
   if (appointment.status !== "confirmed") throw new AppointmentConflictError("This appointment is no longer open for visitor changes.")
   const cutoff = appointmentDate(appointment.startAt).getTime() - settings.minimumCancellationNoticeMinutes * 60_000
   if (now.getTime() >= cutoff) throw new AppointmentConflictError("This appointment can no longer be changed online.")
@@ -407,9 +400,9 @@ export async function manageAppointment(input: {
         id: current.id,
         data: { status: "cancelled", eventVersion: currentVersion + 1 },
         overrideAccess: true,
-        req: request as PayloadRequest,
+        req: request,
         context: { appointmentLifecycleMutation: true },
-      }) as AppointmentRecord
+      })
       await ensureAppointmentSideEffects({
         payload: input.payload,
         appointmentId: updated.id,
@@ -448,9 +441,9 @@ export async function manageAppointment(input: {
         managementTokenExpiresAt: managementTokenExpiry(slot.endAt, settings.retentionDays),
       },
       overrideAccess: true,
-      req: request as PayloadRequest,
+      req: request,
       context: { appointmentLifecycleMutation: true },
-    }) as AppointmentRecord
+    })
     await ensureAppointmentSideEffects({
       payload: input.payload,
       appointmentId: updated.id,
@@ -487,7 +480,7 @@ export async function updateAppointmentStatus(input: {
     depth: 0,
     overrideAccess: true,
     ...(input.req ? { req: input.req } : {}),
-  }) as AppointmentRecord
+  })
   if (input.tenantId != null && !appointmentTenantMatches(current, input.tenantId)) throw new AppointmentManagementNotFoundError()
   if (current.status !== "confirmed") throw new AppointmentConflictError("Only confirmed appointments can change status.")
 
@@ -501,10 +494,10 @@ export async function updateAppointmentStatus(input: {
       id: current.id,
       data: { status: input.status, eventVersion: version },
       ...(input.req?.user ? { user: input.req.user } : {}),
-      req: request as PayloadRequest,
+      req: request,
       overrideAccess: true,
       context: { appointmentLifecycleMutation: true },
-    }) as AppointmentRecord
+    })
     const tenantId = relationshipId(updated.tenant)
     if (!tenantId) throw new AppointmentUnavailableError("The appointment tenant is invalid.")
     await ensureAppointmentSideEffects({

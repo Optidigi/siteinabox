@@ -58,7 +58,7 @@ describe("domain order state", () => {
   })
 
   it("defaults to a low provider cost cap and rejects domains above it", () => {
-    const cap = maxDomainProviderPriceFromEnv({} as unknown as NodeJS.ProcessEnv)
+    const cap = maxDomainProviderPriceFromEnv({ NODE_ENV: "test",} satisfies NodeJS.ProcessEnv)
     expect(cap).toEqual({ amount: "10.00", currency: "EUR" })
     expect(providerPriceWithinCap({ amount: "9.99", currency: "EUR" }, cap)).toBe(true)
     expect(providerPriceWithinCap({ amount: "10.01", currency: "EUR" }, cap)).toBe(false)

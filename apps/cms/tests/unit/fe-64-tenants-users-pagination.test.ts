@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import type { PayloadFindArgs } from "@/lib/queries/paginate"
 // FE-64 — server-side pagination for the Tenants (/sites) and Users
 // (/users) admin lists. Mirrors the audit-p2 #13 mock-client pattern:
 // listTenantsPaginated / listUsersPaginated are thin wrappers around
@@ -17,8 +17,8 @@ import { listTenantsPaginated } from "@/lib/queries/tenants"
 import { listUsersPaginated } from "@/lib/queries/users"
 
 const mockClient = () => {
-  const calls: MockFindArgs[] = []
-  const find = vi.fn(async (args: MockFindArgs) => {
+  const calls: PayloadFindArgs[] = []
+  const find = vi.fn(async (args: PayloadFindArgs) => {
     calls.push(args)
     return {
       docs: [],
@@ -30,6 +30,7 @@ const mockClient = () => {
       hasPrevPage: false,
       nextPage: null,
       prevPage: null,
+      pagingCounter: 1,
     }
   })
   return { client: { find }, calls }

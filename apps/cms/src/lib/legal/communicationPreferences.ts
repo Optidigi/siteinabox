@@ -111,7 +111,7 @@ type CollectionSlug = keyof Config["collections"]
 type CollectionDoc<T extends CollectionSlug> = Config["collections"][T]
 
 const findOne = async <T extends CollectionSlug>(
-  payload: Payload,
+  payload: Pick<Payload, "find">,
   collection: T,
   where: Where,
   req?: Partial<PayloadRequest>,
@@ -125,10 +125,10 @@ export const normalizeCommunicationEmail = (email: string) => email.trim().toLow
 export const communicationSubjectKey = (email: string) =>
   `email:${crypto.createHash("sha256").update(normalizeCommunicationEmail(email)).digest("hex")}`
 
-export const findCommunicationPreferenceBySubjectKey = (payload: Payload, subjectKey: string) =>
+export const findCommunicationPreferenceBySubjectKey = (payload: Pick<Payload, "find">, subjectKey: string) =>
   findOne(payload, "communication-preferences", { subjectKey: { equals: subjectKey } })
 
-export const findCommunicationPreference = (payload: Payload, email: string) =>
+export const findCommunicationPreference = (payload: Pick<Payload, "find">, email: string) =>
   findCommunicationPreferenceBySubjectKey(payload, communicationSubjectKey(email))
 
 export async function mutateCommunicationPreference(input: {

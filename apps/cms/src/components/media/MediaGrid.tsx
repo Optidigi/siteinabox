@@ -26,7 +26,9 @@ import { useStatusFeedback } from "@/components/status-feedback"
  *  - In the management view (selectable=false), cards can be multi-selected
  *    via checkboxes; a sticky action bar enables bulk delete.
  */
-export function MediaGrid({
+export type MediaGridItem = { id: number | string } & Pick<Media, "url" | "alt" | "filename" | "width" | "height" | "mimeType">
+
+export function MediaGrid<T extends MediaGridItem>({
   items,
   onSelect,
   selectable,
@@ -35,8 +37,8 @@ export function MediaGrid({
   usage,
   pagesBaseHref = "/pages"
 }: {
-  items: Media[]
-  onSelect?: (m: Media) => void
+  items: T[]
+  onSelect?: (m: T) => void
   selectable?: boolean
   canManage?: boolean
   onDeleted?: () => void
@@ -47,8 +49,8 @@ export function MediaGrid({
   const tCommon = useTranslations("common")
   const router = useRouter()
   const status = useStatusFeedback()
-  const [confirmFor, setConfirmFor] = useState<Media | null>(null)
-  const [usageFor, setUsageFor] = useState<Media | null>(null)
+  const [confirmFor, setConfirmFor] = useState<T | null>(null)
+  const [usageFor, setUsageFor] = useState<T | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set())
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
 
@@ -62,19 +64,19 @@ export function MediaGrid({
     if (usageFor && !liveIds.has(usageFor.id as number | string)) setUsageFor(null)
   }, [items, confirmFor, usageFor])
 
-  const usageOf = (m: Media): MediaUsageEntry => {
+  const usageOf = (m: T): MediaUsageEntry => {
     // Map keys are `number | string` (the union of Payload id types — pg
     // adapter uses numbers, mongo uses strings). `Media.id` is the same
     // union per payload-types.ts, so no cast is needed.
     const entry = usage?.get(m.id as number | string)
     return entry ?? { pages: [], settings: false }
   }
-  const usageCount = (m: Media) => {
+  const usageCount = (m: T) => {
     const e = usageOf(m)
     return e.pages.length + (e.settings ? 1 : 0)
   }
 
-  const onConfirmDelete = async (m: Media) => {
+  const onConfirmDelete = async (m: T) => {
     const statusId = status.loading(t("deleting"))
     try {
       const res = await fetch(`/api/media/${m.id}`, { method: "DELETE" })

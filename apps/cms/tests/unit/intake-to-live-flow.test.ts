@@ -11,15 +11,20 @@ import { processStoredIntakeSubmission } from "@/lib/intake/processIntakeSubmiss
 
 import { asGenerationRun, asMockDoc } from "../_helpers/cast"
 import { createArgs, relationId, updateArgs } from "../_helpers/payloadApi"
-import { asFindClient } from "../_helpers/payloadFindClient"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import type { Config } from "@/payload-types"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { intakeSubmissionFixture, generationRunFixture, tenantFixture, pageFixture, siteSettingsFixture, publishedSnapshotFixture, orderFixture, agreementAcceptanceFixture, checkoutProfileFixture, paymentAttemptFixture, billingAgreementFixture, accountingDocumentFixture, managedDomainFixture, commerceNotificationFixture, communicationPreferenceFixture, communicationPreferenceEventFixture, userFixture, mediaFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import type { MockDoc, MockWhere } from "../_helpers/mockPayload"
 const mocks = vi.hoisted(() => ({
   getPayload: vi.fn(),
   sendEmail: vi.fn(),
   signInMagicLink: vi.fn(),
 }))
 
-vi.mock("payload", () => ({
+vi.mock("payload", async (importOriginal) => ({
+  ...await importOriginal<typeof import("payload")>(),
   getPayload: mocks.getPayload,
 }))
 
@@ -101,7 +106,8 @@ type CollectionName =
   | "users"
   | "media"
 
-type Store = Record<CollectionName, MockDoc[]>
+type Store = { [C in CollectionName]: Config["collections"][C][] }
+type StoredDocument = Config["collections"][CollectionName]
 
 const richIntake = () => ({
   submittedAt: "2026-07-02T08:00:00.000Z",
@@ -247,30 +253,24 @@ const storedValue = (value: unknown): unknown => {
 
 const matchesWhere = (doc: MockDoc, where: MockWhere | undefined): boolean => {
   if (!where) return true
-  if (where.and) return where.and.every((entry: MockDoc) => matchesWhere(doc, entry))
-  if (where.or) return (where.or as MockWhere[]).some((entry) => matchesWhere(doc, entry))
+  if (where.and && !where.and.every(entry => matchesWhere(doc, entry))) return false
+  if (where.or && !where.or.some(entry => matchesWhere(doc, entry))) return false
   return Object.entries(where).every(([field, condition]) => {
+    if (field === "and" || field === "or") return true
     const value = valueAtPath(doc, field)
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      return sameRelation(value, asMockDoc(condition).equals)
-    }
-    if (condition && typeof condition === "object" && "in" in condition) {
-      return Array.isArray(asMockDoc(condition).in) && (asMockDoc(condition).in as unknown[]).map(String).includes(String(value))
-    }
-    if (condition && typeof condition === "object" && "not_in" in condition) {
-      return Array.isArray(asMockDoc(condition).not_in) &&
-        !(asMockDoc(condition).not_in as unknown[]).map(String).includes(String(value))
-    }
-    if (condition && typeof condition === "object" && "exists" in condition) {
-      return asMockDoc(condition).exists === true
-        ? value != null
-        : value == null
-    }
-    return value === condition
+    if (!condition || typeof condition !== "object") return value === condition
+    if ("equals" in condition) return condition.equals == null ? value == null : sameRelation(value, condition.equals)
+    if ("not_equals" in condition) return condition.not_equals == null ? value != null : value != null && !sameRelation(value, condition.not_equals)
+    if ("in" in condition) return Array.isArray(condition.in) && condition.in.some(entry => sameRelation(value, entry))
+    if ("not_in" in condition) return Array.isArray(condition.not_in) && !condition.not_in.some(entry => sameRelation(value, entry))
+    if ("exists" in condition) return (value != null) === condition.exists
+    if ("less_than_equal" in condition) return value != null && (typeof value === "number" && typeof condition.less_than_equal === "number" ? value <= condition.less_than_equal : String(value) <= String(condition.less_than_equal))
+    if ("greater_than" in condition) return value != null && (typeof value === "number" && typeof condition.greater_than === "number" ? value > condition.greater_than : String(value) > String(condition.greater_than))
+    return false
   })
 }
 
-const createPayloadStub = () => {
+const createPayloadStub = async () => {
   let nextId = 1
   const store: Store = {
     "intake-submissions": [],
@@ -292,49 +292,93 @@ const createPayloadStub = () => {
     users: [],
     media: [],
   }
-  const payload = {
-    auth: vi.fn(async () => ({ user: null })),
-    find: vi.fn(async (args: MockFindArgs) => {
-      const docs = (store[args.collection as CollectionName] ?? []).filter((doc: MockDoc) => matchesWhere(doc, args.where))
-      return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }
-    }),
-    create: vi.fn(async (args: MockCreateArgs) => {
-      const now = new Date().toISOString()
-      const data = args.data
-      const doc = storedValue({ ...data, id: nextId++, createdAt: now, updatedAt: now })
-      const docs = store[args.collection as CollectionName]
-      docs.unshift(doc as MockDoc)
-      return doc
-    }),
-    findByID: vi.fn(async (args: MockFindArgs & { id?: number | string }) => {
-      const doc = (store[args.collection as CollectionName] ?? []).find((entry: MockDoc) => String(entry.id) === String(args.id))
-      if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
-      return doc
-    }),
-    update: vi.fn(async (args: MockUpdateArgs & { where?: MockWhere }) => {
-      const docs = store[args.collection as CollectionName] ?? []
-      if (args.where) {
-        const updated = docs.filter((doc) => matchesWhere(doc, args.where))
-        for (const doc of updated) {
-          Object.assign(doc, args.data, { updatedAt: new Date().toISOString() })
-        }
-        return { docs: updated, totalDocs: updated.length }
-      }
-      const index = docs.findIndex((doc) => String(doc.id) === String(args.id))
-      if (index < 0) throw new Error(`Missing ${args.collection} ${args.id}`)
-      const existing = docs[index]!
-      docs[index] = storedValue({ ...existing, ...args.data, id: existing.id, updatedAt: new Date().toISOString() }) as MockDoc
-      return docs[index]
-    }),
-    jobs: { queue: vi.fn(async () => ({ id: 1 })) },
-    db: {
-      beginTransaction: vi.fn(async () => "tx-domain-registration"),
-      commitTransaction: vi.fn(async () => undefined),
-      rollbackTransaction: vi.fn(async () => undefined),
-    },
-    logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
+  const documents = (collection: string): StoredDocument[] => {
+    switch (collection) {
+      case "intake-submissions": return store["intake-submissions"]
+      case "site-generation-runs": return store["site-generation-runs"]
+      case "tenants": return store["tenants"]
+      case "pages": return store["pages"]
+      case "site-settings": return store["site-settings"]
+      case "published-site-snapshots": return store["published-site-snapshots"]
+      case "orders": return store["orders"]
+      case "agreement-acceptances": return store["agreement-acceptances"]
+      case "checkout-profiles": return store["checkout-profiles"]
+      case "payment-attempts": return store["payment-attempts"]
+      case "billing-agreements": return store["billing-agreements"]
+      case "accounting-documents": return store["accounting-documents"]
+      case "managed-domains": return store["managed-domains"]
+      case "commerce-notification-deliveries": return store["commerce-notification-deliveries"]
+      case "communication-preferences": return store["communication-preferences"]
+      case "communication-preference-events": return store["communication-preference-events"]
+      case "users": return store["users"]
+      case "media": return store["media"]
+
+      default: throw new Error("Unexpected collection " + collection)
+    }
   }
-  return { payload: asPayload(payload), store }
+  const payload = await createInitializedTestPayload()
+  vi.spyOn(payload, "auth").mockResolvedValue({ user: null, permissions: {} })
+  vi.spyOn(payload, "find").mockImplementation(async args => {
+    const docs = documents(args.collection).filter(doc => matchesWhere(asDocRecord(doc), args.where))
+    return paginatedFixture(typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, { totalDocs: docs.length })
+  })
+  vi.spyOn(payload, "create").mockImplementation(async args => {
+    const id = nextId++, now = new Date().toISOString()
+    switch (args.collection) {
+      case "intake-submissions": { const doc = Object.assign(intakeSubmissionFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["intake-submissions"].unshift(doc); return doc }
+      case "site-generation-runs": { const doc = Object.assign(generationRunFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["site-generation-runs"].unshift(doc); return doc }
+      case "tenants": { const doc = Object.assign(tenantFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["tenants"].unshift(doc); return doc }
+      case "pages": { const doc = Object.assign(pageFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["pages"].unshift(doc); return doc }
+      case "site-settings": { const doc = Object.assign(siteSettingsFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["site-settings"].unshift(doc); return doc }
+      case "published-site-snapshots": { const doc = Object.assign(publishedSnapshotFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["published-site-snapshots"].unshift(doc); return doc }
+      case "orders": { const doc = Object.assign(orderFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["orders"].unshift(doc); return doc }
+      case "agreement-acceptances": { const doc = Object.assign(agreementAcceptanceFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["agreement-acceptances"].unshift(doc); return doc }
+      case "checkout-profiles": { const doc = Object.assign(checkoutProfileFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["checkout-profiles"].unshift(doc); return doc }
+      case "payment-attempts": { const doc = Object.assign(paymentAttemptFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["payment-attempts"].unshift(doc); return doc }
+      case "billing-agreements": { const doc = Object.assign(billingAgreementFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["billing-agreements"].unshift(doc); return doc }
+      case "accounting-documents": { const doc = Object.assign(accountingDocumentFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["accounting-documents"].unshift(doc); return doc }
+      case "managed-domains": { const doc = Object.assign(managedDomainFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["managed-domains"].unshift(doc); return doc }
+      case "commerce-notification-deliveries": { const doc = Object.assign(commerceNotificationFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["commerce-notification-deliveries"].unshift(doc); return doc }
+      case "communication-preferences": { const doc = Object.assign(communicationPreferenceFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["communication-preferences"].unshift(doc); return doc }
+      case "communication-preference-events": { const doc = Object.assign(communicationPreferenceEventFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["communication-preference-events"].unshift(doc); return doc }
+      case "users": { const doc = Object.assign(userFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["users"].unshift(doc); return doc }
+      case "media": { const doc = Object.assign(mediaFixture({ id, createdAt: now, updatedAt: now }), storedValue(args.data)); store["media"].unshift(doc); return doc }
+      default: throw new Error("Unexpected create " + args.collection)
+    }
+  })
+  vi.spyOn(payload, "findByID").mockImplementation(async args => {
+    const doc = documents(args.collection).find(entry => String(entry.id) === String(args.id))
+    if (!doc) throw new Error("Missing " + args.collection + " " + args.id)
+    return structuredClone(doc)
+  })
+  vi.spyOn(payload.db, "updateOne").mockImplementation(async ({ collection, where, data, options, returning }) => {
+    if (collection !== "commerce-notification-deliveries" || options?.atomic !== true || returning !== true) throw new Error("Unexpected atomic fixture operation")
+    const delivery = store[collection].find(doc => matchesWhere(asDocRecord(doc), where))
+    if (!delivery) return null
+    Object.assign(delivery, storedValue(data))
+    return structuredClone(delivery)
+  })
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
+    const docs = documents(args.collection)
+    if (args.where) {
+      const updated = docs.filter(doc => matchesWhere(asDocRecord(doc), args.where))
+      for (const doc of updated) Object.assign(doc, args.data, { updatedAt: new Date().toISOString() })
+      return { docs: updated, errors: [], totalDocs: updated.length }
+    }
+    const index = docs.findIndex(doc => String(doc.id) === String(args.id))
+    const existing = docs[index]
+    if (!existing) throw new Error("Missing " + args.collection + " " + args.id)
+    const updated = structuredClone(existing)
+    Object.assign(updated, storedValue(args.data), { updatedAt: new Date().toISOString() })
+    docs[index] = updated
+    return updated
+  }))
+  vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, totalTried: 0, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" })
+  vi.spyOn(payload.db, "beginTransaction").mockResolvedValue("tx-domain-registration")
+  vi.spyOn(payload.db, "commitTransaction").mockResolvedValue(undefined)
+  vi.spyOn(payload.db, "rollbackTransaction").mockResolvedValue(undefined)
+  for (const method of ["warn", "error", "info"] as const) vi.spyOn(payload.logger, method)
+  return { payload, store }
 }
 
 const installProviderFetch = () => {
@@ -351,11 +395,12 @@ const installProviderFetch = () => {
       return new Response(new Uint8Array([0x53, 0x49, 0x41, 0x42]), { status: 200 })
     }
     if (url === "https://api.mollie.com/v2/customers") {
-      return new Response(JSON.stringify({ id: "cst_flow_123", name: "Flow Demo", email: "demo@example.com" }), { status: 201 })
+      return new Response(JSON.stringify({ id: "cst_flow123", name: "Flow Demo", email: "demo@example.com" }), { status: 201 })
     }
     if (url === "https://api.mollie.com/v2/payments") {
       return new Response(JSON.stringify({
-        id: "tr_flow_123",
+        id: "tr_flow123",
+        customerId: "cst_flow123", sequenceType: "first",
         status: "open",
         amount: { currency: "EUR", value: "499.00" },
         metadata: {
@@ -364,7 +409,7 @@ const installProviderFetch = () => {
           customerEmail: "demo@example.com",
           clientSlug: "flow-demo",
           selectedDomain: "flow-live.nl",
-          mollieCustomerId: "cst_flow_123",
+          mollieCustomerId: "cst_flow123",
           sequenceType: "first",
           renewalInterval: "1 month",
         },
@@ -535,7 +580,7 @@ describe("intake-to-live mocked flow", () => {
   })
 
   it("stores intake, generates draft CMS data, records checkout, activates, and requests final handoff", async () => {
-    const { payload, store } = createPayloadStub()
+    const { payload, store } = await createPayloadStub()
     mocks.getPayload.mockResolvedValue(payload)
 
     const stored = await storeIntakeSubmission(payload, richIntake() as PublicIntakeSubmission)
@@ -573,11 +618,14 @@ describe("intake-to-live mocked flow", () => {
       clientApproval: { status: "approved", approvedAt: "2026-07-02T09:00:00.000Z" },
     }, { depth: 0, overrideAccess: true })))
 
+    const tenantId = tenants[0]?.id
+    if (typeof tenantId !== "number" && typeof tenantId !== "string") throw new Error("Expected tenant ID")
+    const numericTenantId = relationId({ id: tenantId })
     const checkoutProfile = await payload.create(createArgs("checkout-profiles", {
       profileKey: `run:${run.id}:checkout-profile:1`,
       profileVersion: 1,
       generationRun: run.id,
-      tenant: tenants[0]!.id,
+      tenant: numericTenantId,
       customerName: "Demo Contact",
       firstName: "Demo",
       lastName: "Contact",
@@ -602,10 +650,10 @@ describe("intake-to-live mocked flow", () => {
     const order = await payload.create(createArgs("orders", {
       orderNumber: "SIAB-FLOW-001",
       generationRun: run.id,
-      tenant: tenants[0]!.id,
+      tenant: numericTenantId,
       orderKind: "initial_subscription",
       state: "accepted",
-      checkoutProfileKey: asMockDoc(checkoutProfile).profileKey,
+      checkoutProfileKey: checkoutProfile.profileKey,
       catalogVersion: "2026-07-26.1",
       packageCode: "siteinabox-monthly",
       billingPeriod: "monthly",
@@ -652,13 +700,17 @@ describe("intake-to-live mocked flow", () => {
       }],
       lineItems: [],
       currency: "EUR",
+      renewalTerms: "Monthly fixture subscription", legalDocuments: [], paymentProvider: "mollie",
       paymentStatus: "pending",
     }, { overrideAccess: true }))
     await payload.create(createArgs("agreement-acceptances", {
       order: order.id,
-      tenant: tenants[0]!.id,
+      tenant: numericTenantId,
       actorEmail: "demo@example.com",
       acceptanceVersion: "platform-terms-2026-07-07",
+      evidenceKey: `flow-terms:${order.id}`, document: 1, documentVersion: CURRENT_INTAKE_TERMS_ACCEPTANCE.documentVersion,
+      contentHash: CURRENT_INTAKE_TERMS_ACCEPTANCE.contentHash, statementVersion: CURRENT_INTAKE_TERMS_ACCEPTANCE.statementVersion, statementText: "I accept the fixture platform terms.",
+      acceptedAt: "2026-07-02T09:00:00.000Z", requestId: "flow-fixture-acceptance",
     }, { overrideAccess: true }))
 
     vi.stubEnv("NODE_ENV", "production")
@@ -672,12 +724,12 @@ describe("intake-to-live mocked flow", () => {
     })
     expect(checkout.checkoutUrl).toBe("https://www.mollie.com/checkout/flow")
 
-    const synchronized = await synchronizeMolliePayment(payload, "tr_flow_123", async () => ({
-      id: "tr_flow_123",
+    const synchronized = await synchronizeMolliePayment(payload, "tr_flow123", async () => ({
+      id: "tr_flow123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
-      customerId: "cst_flow_123",
-      mandateId: "mdt_flow_123",
+      customerId: "cst_flow123",
+      mandateId: "mdt_flow123",
       sequenceType: "first",
       paidAt: "2026-07-02T09:05:00.000Z",
       metadata: {
@@ -690,7 +742,7 @@ describe("intake-to-live mocked flow", () => {
         customerEmail: "demo@example.com",
         clientSlug: "flow-demo",
         selectedDomain: "flow-live.nl",
-        mollieCustomerId: "cst_flow_123",
+        mollieCustomerId: "cst_flow123",
         sequenceType: "first",
         renewalInterval: "1 month",
         orderId: order.id,
@@ -785,10 +837,21 @@ describe("intake-to-live mocked flow", () => {
       status: "queued",
     })
     expect(mocks.signInMagicLink).not.toHaveBeenCalled()
+    mocks.signInMagicLink.mockImplementationOnce(async () => {
+      expect(handoffDelivery).toMatchObject({ status: "processing", attemptCount: 1, retryState: "permanent" })
+      return { ok: true }
+    })
     await expect(deliverCommerceNotification({
       payload,
       deliveryId: handoffDelivery!.id as string | number,
     })).resolves.toBe("sent")
+    expect(handoffDelivery).toMatchObject({ status: "sent", attemptCount: 1, retryState: "none", leaseUntil: null })
+    const originalClaim = vi.mocked(payload.db.updateOne).mock.calls[0]?.[0]
+    if (!originalClaim) throw new Error("Missing atomic handoff claim")
+    await expect(payload.db.updateOne(originalClaim)).resolves.toBeNull()
+    await expect(deliverCommerceNotification({ payload, deliveryId: handoffDelivery!.id })).resolves.toBe("skipped")
+    expect(handoffDelivery).toMatchObject({ status: "sent", attemptCount: 1 })
+    expect(mocks.signInMagicLink).toHaveBeenCalledOnce()
 
     const tenant = tenants[0]!
     const finalRun = runs[0]!

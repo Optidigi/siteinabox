@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import {
   elementPathFromFieldElement,
@@ -25,13 +26,8 @@ describe("elementPathBridge", () => {
   })
 
   it("parses field markers from DOM dataset", () => {
-    const el = {
-      dataset: {
-        siabField: "headline",
-        siabItemIndex: "3",
-        siabSubField: "label",
-      },
-    } as unknown as HTMLElement
+    const el = document.createElement("div")
+    Object.assign(el.dataset, { siabField: "headline", siabItemIndex: "3", siabSubField: "label" })
     expect(elementPathFromFieldElement(4, el)).toEqual({
       blockIndex: 4,
       field: "headline",
@@ -41,7 +37,8 @@ describe("elementPathBridge", () => {
   })
 
   it("omits item/subField when markers are absent", () => {
-    const el = { dataset: { siabField: "cta" } } as unknown as HTMLElement
+    const el = document.createElement("div")
+    el.dataset.siabField = "cta"
     expect(elementPathFromFieldElement(0, el)).toEqual({
       blockIndex: 0,
       field: "cta",
@@ -49,19 +46,16 @@ describe("elementPathBridge", () => {
   })
 
   it("parses nested array-item inspector controls", () => {
-    const nodes = {
-      field: { dataset: { siabInspectorField: "features" } },
-      item: { dataset: { siabInspectorItemIndex: "2" } },
-      subField: { dataset: { siabInspectorSubField: "title" } },
-    }
-    const el = {
-      closest: (selector: string) => {
-        if (selector === "[data-siab-inspector-field]") return nodes.field
-        if (selector === "[data-siab-inspector-item-index]") return nodes.item
-        if (selector === "[data-siab-inspector-sub-field]") return nodes.subField
-        return null
-      },
-    } as unknown as Element
+    const field = document.createElement("div")
+    field.dataset.siabInspectorField = "features"
+    const item = document.createElement("div")
+    item.dataset.siabInspectorItemIndex = "2"
+    const subField = document.createElement("div")
+    subField.dataset.siabInspectorSubField = "title"
+    const el = document.createElement("input")
+    field.append(item)
+    item.append(subField)
+    subField.append(el)
 
     expect(elementPathFromInspectorElement(1, el)).toEqual({
       blockIndex: 1,

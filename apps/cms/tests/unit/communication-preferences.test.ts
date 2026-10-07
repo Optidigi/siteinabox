@@ -1,49 +1,56 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { asMockDoc, cast } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { cast } from "../_helpers/cast"
+import { asDocRecord } from "../_helpers/payloadApi"
+import type { CommunicationPreference, CommunicationPreferenceEvent } from "@/payload-types"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { communicationPreferenceFixture, communicationPreferenceEventFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
 vi.mock("server-only", () => ({}))
 
 import { communicationSubjectKey, mutateCommunicationPreference, recordIntakeMarketingPreference } from "@/lib/legal/communicationPreferences"
 
-const createPayload = (initial?: Record<string, unknown>) => {
-  let preference = initial ?? null
-  const events: Record<string, unknown>[] = []
-  const stubs = {
-    db: { beginTransaction: vi.fn(async () => "tx-1"), commitTransaction: vi.fn(), rollbackTransaction: vi.fn() },
-    find: vi.fn(async ({ collection, where }: MockFindArgs) => {
-      const clause = (where ?? {}) as MockWhere
-      if (collection === "communication-preferences") {
-        const subjectKey = asMockDoc(clause.subjectKey).equals
-        return { docs: preference && preference.subjectKey === subjectKey ? [preference] : [] }
-      }
-      if (clause.eventKey) {
-        const docs = events.filter((event) => event.eventKey === asMockDoc(clause.eventKey).equals)
-        return { docs, totalDocs: docs.length }
-      }
-      const assertedClause = clause.and?.find((entry: MockDoc) => entry.assertedAt)?.assertedAt as { greater_than?: string } | undefined
-      const assertedAfter = assertedClause?.greater_than
-      const docs = assertedAfter ? events.filter((event) => String(asMockDoc(event).assertedAt) > assertedAfter) : []
-      return { docs, totalDocs: docs.length }
-    }),
-    create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
-      if (collection === "communication-preferences") preference = { id: "pref-1", ...data }
-      else events.push({ id: `event-${events.length + 1}`, ...data })
-      return collection === "communication-preferences" ? preference : events.at(-1)
-    }),
-    update: vi.fn(async ({ data }: MockUpdateArgs) => {
-      preference = { ...preference, ...data }
-      return { docs: [preference] }
-    }),
-  }
-  return { payload: Object.assign(asPayload(stubs), stubs), events, getPreference: () => preference }
+const createPayload = async (initial?: Partial<CommunicationPreference>) => {
+  let preference = initial ? communicationPreferenceFixture(initial) : null
+  const events: CommunicationPreferenceEvent[] = []
+  const payload = await createInitializedTestPayload()
+  vi.spyOn(payload.db, "beginTransaction").mockResolvedValue("tx-1")
+  vi.spyOn(payload.db, "commitTransaction").mockResolvedValue(undefined)
+  vi.spyOn(payload.db, "rollbackTransaction").mockResolvedValue(undefined)
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
+    if (collection === "communication-preferences") {
+      const subjectKey = asDocRecord(where?.subjectKey ?? {}).equals
+      return paginatedFixture(preference && preference.subjectKey === subjectKey ? [preference] : [])
+    }
+    if (collection !== "communication-preference-events") throw new Error(`Unexpected collection ${collection}`)
+    if (where?.eventKey) return paginatedFixture(events.filter(event => event.eventKey === asDocRecord(where.eventKey ?? {}).equals))
+    const clause = where?.and?.find(entry => entry.assertedAt)
+    const assertedAfter = asDocRecord(clause?.assertedAt ?? {}).greater_than
+    return paginatedFixture(typeof assertedAfter === "string" ? events.filter(event => String(event.assertedAt) > assertedAfter) : [])
+  })
+  const create = vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
+    if (collection === "communication-preferences") {
+      preference = Object.assign(communicationPreferenceFixture(), data)
+      return preference
+    }
+    if (collection !== "communication-preference-events") throw new Error(`Unexpected collection ${collection}`)
+    const event = Object.assign(communicationPreferenceEventFixture({ id: events.length + 1 }), data)
+    events.push(event)
+    return event
+  })
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
+    if (args.collection !== "communication-preferences" || !preference) throw new Error("Missing preference")
+    Object.assign(preference, args.data)
+    return args.where ? { docs: [preference], errors: [] } : preference
+  }))
+  return { payload, create, events, getPreference: () => preference }
 }
 
 describe("communication preferences", () => {
   beforeEach(() => vi.clearAllMocks())
 
   it("records intake assertion time separately from authoritative server time", async () => {
-    const { payload, events, getPreference } = createPayload()
+    const { payload, events, getPreference } = await createPayload()
     await recordIntakeMarketingPreference({
       payload, intakeId: "intake-1", email: " Client@Example.nl ", now: new Date("2026-07-12T12:00:00.000Z"),
       legal: cast({ marketingConsent: { granted: true, statementVersion: "marketing-v1", recordedAt: "2026-07-11T10:00:00.000Z" } }),
@@ -55,8 +62,8 @@ describe("communication preferences", () => {
 
   it("does not clear hard suppression when marketing is opted in", async () => {
     const email = "client@example.nl"
-    const { payload, getPreference } = createPayload({
-      id: "pref-1", subjectKey: communicationSubjectKey(email), email, marketing: false,
+    const { payload, getPreference } = await createPayload({
+      id: 1, subjectKey: communicationSubjectKey(email), email, marketing: false,
       suppressed: true, suppressionReason: "provider_complaint", statementVersion: "old", updatedAt: "2026-01-01T00:00:00.000Z",
     })
     await mutateCommunicationPreference({
@@ -68,8 +75,8 @@ describe("communication preferences", () => {
   })
 
   it("rolls back preference and evidence together when event creation fails", async () => {
-    const { payload } = createPayload()
-    payload.create.mockImplementationOnce(async ({ data }: MockCreateArgs) => ({ id: "pref-1", ...data }))
+    const { payload, create } = await createPayload()
+    create.mockImplementationOnce(async ({ data }) => Object.assign(communicationPreferenceFixture(), data))
       .mockRejectedValueOnce(new Error("event failed"))
     await expect(mutateCommunicationPreference({
       payload, email: "client@example.nl", mutation: { type: "marketing", enabled: false },
@@ -81,14 +88,14 @@ describe("communication preferences", () => {
 
   it("records but does not apply an older delayed intake decision", async () => {
     const email = "client@example.nl"
-    const { payload, events, getPreference } = createPayload({
-      id: "pref-1", subjectKey: communicationSubjectKey(email), email, marketing: false,
+    const { payload, events, getPreference } = await createPayload({
+      id: 1, subjectKey: communicationSubjectKey(email), email, marketing: false,
       statementVersion: "new", updatedAt: "2026-07-12T12:00:00.000Z",
     })
-    events.push({
-      id: "event-new", eventKey: "intake:new", preference: "pref-1", preferenceType: "marketing",
+    events.push(communicationPreferenceEventFixture({
+      id: 2, eventKey: "intake:new", preference: 1, preferenceType: "marketing",
       action: "opt_out", assertedAt: "2026-07-12T11:00:00.000Z",
-    })
+    }))
     await recordIntakeMarketingPreference({
       payload, intakeId: "old", email, now: new Date("2026-07-12T13:00:00.000Z"),
       legal: cast({ marketingConsent: { granted: true, statementVersion: "old", recordedAt: "2026-07-11T10:00:00.000Z" } }),

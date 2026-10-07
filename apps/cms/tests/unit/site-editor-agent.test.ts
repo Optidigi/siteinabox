@@ -1,3 +1,5 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { pageFixture, paginatedFixture, tenantFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it, vi } from "vitest"
 import { compactBlockForModel, patchSection, removeUnavailableBlocks } from "@/lib/agent/tools"
 import { encodeSiteEditorSse, runExistingSiteTurn, summarizeEditorToolResults } from "@/lib/agent/siteEditorAgent"
@@ -60,18 +62,17 @@ describe("site editor harness", () => {
   })
 
   it("patches heading and body on the selected block without rewriting media", async () => {
-    const payload = {
-      find: vi.fn(async () => ({
-        docs: [{
+    const payload = createTestPayload()
+    const page = pageFixture({
           id: 4,
           slug: "index",
-          blocks: [{ blockType: "hero", variant: "hero-01", heading: "Oud", body: "Oud", image: 12 }],
-        }],
-      })),
-      update: vi.fn(async (args: { data: { blocks: Array<Record<string, unknown>> } }) => args.data),
-    }
+          blocks: [{ blockType: "hero", variant: "hero-01", heading: "Oud", body: "Oud", primaryAction: { label: "Contact", href: "/contact" }, image: 12 }],
+        })
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([page]))
+    vi.spyOn(payload, "update").mockResolvedValue(page)
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, theme: null }))
     await patchSection(
-      { payload: payload as never, tenantId: 7 },
+      { payload, tenantId: 7 },
       { pageSlug: "index", blockIndex: 0, patch: { heading: "Nieuw", body: "Scherper aanbod." } },
     )
     expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({
@@ -90,13 +91,13 @@ describe("site editor harness", () => {
   it("refuses unavailable families on the regex fallback path without writing", async () => {
     const previous = process.env.SITE_GENERATION_PROVIDER
     process.env.SITE_GENERATION_PROVIDER = "mock"
-    const payload = {
-      find: vi.fn(async () => ({ docs: [{ id: 7, slug: "index", blocks: [], chrome: { navbar: { variant: "navbar-01", placement: "sticky" }, footer: { variant: "footer-01" } } }] })),
-      update: vi.fn(),
-      findByID: vi.fn(async () => ({ id: 3, theme: null })),
-    }
+    const payload = createTestPayload()
+    const page = pageFixture({ id: 7, slug: "index", blocks: [] })
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([page]))
+    vi.spyOn(payload, "update").mockResolvedValue(page)
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, theme: null }))
     const result = await runExistingSiteTurn({
-      ctx: { payload: payload as never, tenantId: 3 },
+      ctx: { payload, tenantId: 3 },
       message: "Voeg een FAQ pagina en een portfolio toe.",
       pageSlug: "index",
       facts: heuristicExtractBuilderFacts("Voeg een FAQ pagina en een portfolio toe.", null),
@@ -110,41 +111,39 @@ describe("site editor harness", () => {
   })
 
   it("refuses to patch copy on unavailable families", async () => {
-    const payload = {
-      find: vi.fn(async () => ({
-        docs: [{
+    const payload = createTestPayload()
+    const page = pageFixture({
           id: 4,
           slug: "index",
-          blocks: [{ blockType: "about", variant: "about-01", heading: "Over" }],
-        }],
-      })),
-      update: vi.fn(),
-    }
+          blocks: [{ blockType: "about", heading: "Over", body: "Over ons" }],
+        })
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([page]))
+    vi.spyOn(payload, "update").mockResolvedValue(page)
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, theme: null }))
     await expect(patchSection(
-      { payload: payload as never, tenantId: 7 },
+      { payload, tenantId: 7 },
       { pageSlug: "index", blockIndex: 0, patch: { heading: "Nieuw" } },
     )).rejects.toThrow(/catalog/)
     expect(payload.update).not.toHaveBeenCalled()
   })
 
   it("removes pending unavailable families and keeps catalog sections", async () => {
-    const payload = {
-      find: vi.fn(async () => ({
-        docs: [{
+    const payload = createTestPayload()
+    const page = pageFixture({
           id: 4,
           slug: "index",
           blocks: [
-            { blockType: "hero", variant: "hero-01", heading: "Hero" },
-            { blockType: "about", variant: "about-01", heading: "Over" },
-            { blockType: "services", variant: "services-01", heading: "Diensten" },
-            { blockType: "faq", variant: "faq-01", heading: "FAQ" },
-            { blockType: "cta", variant: "cta-01", heading: "Contact" },
+            { blockType: "hero", variant: "hero-01", heading: "Hero", body: "Fixture", primaryAction: { label: "Contact", href: "/contact" } },
+            { blockType: "about", heading: "Over", body: "Over ons" },
+            { blockType: "services", variant: "services-01", heading: "Diensten", items: [] },
+            { blockType: "faq", heading: "FAQ", items: [] },
+            { blockType: "cta", variant: "cta-01", heading: "Contact", primaryAction: { label: "Contact", href: "/contact" } },
           ],
-        }],
-      })),
-      update: vi.fn(async (args: { data: { blocks: Array<Record<string, unknown>> } }) => args.data),
-    }
-    const result = await removeUnavailableBlocks({ payload: payload as never, tenantId: 7 }, "index")
+        })
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([page]))
+    vi.spyOn(payload, "update").mockResolvedValue(page)
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, theme: null }))
+    const result = await removeUnavailableBlocks({ payload, tenantId: 7 }, "index")
     expect(result).toEqual({ removed: 2, remaining: 3 })
     expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({
       data: {
@@ -159,17 +158,16 @@ describe("site editor harness", () => {
 
   it("no-ops prune when every block is already in the live catalog", async () => {
     const { pruneUnavailableBlocksIfPresent } = await import("@/lib/agent/tools")
-    const payload = {
-      find: vi.fn(async () => ({
-        docs: [{
+    const payload = createTestPayload()
+    const page = pageFixture({
           id: 4,
           slug: "index",
-          blocks: [{ blockType: "hero", variant: "hero-01" }],
-        }],
-      })),
-      update: vi.fn(),
-    }
-    await expect(pruneUnavailableBlocksIfPresent({ payload: payload as never, tenantId: 7 }, "index"))
+          blocks: [{ blockType: "hero", variant: "hero-01", heading: "Hero", body: "Fixture", primaryAction: { label: "Contact", href: "/contact" } }],
+        })
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([page]))
+    vi.spyOn(payload, "update").mockResolvedValue(page)
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, theme: null }))
+    await expect(pruneUnavailableBlocksIfPresent({ payload, tenantId: 7 }, "index"))
       .resolves.toEqual({ removed: 0, remaining: 1 })
     expect(payload.update).not.toHaveBeenCalled()
   })

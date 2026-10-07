@@ -25,9 +25,9 @@ describe("canonicalize-production-tenants ops script", () => {
   })
 
   it("requires an explicit apply flag before mutation mode", () => {
-    const options = parseArgs(["--apply", "--backup-confirmed"], {
+    const options = parseArgs(["--apply", "--backup-confirmed"], { NODE_ENV: "test",
       DATABASE_URI: "postgres://payload:payload@localhost:5432/payload",
-    } as unknown as NodeJS.ProcessEnv)
+    } satisfies NodeJS.ProcessEnv)
 
     expect(options.apply).toBe(true)
     expect(options.backupConfirmed).toBe(true)

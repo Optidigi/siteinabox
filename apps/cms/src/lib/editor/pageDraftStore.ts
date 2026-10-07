@@ -11,6 +11,22 @@ export type PageEditorDraft = {
   }
 }
 
+export function parsePageEditorDraft(value: unknown, key: string): PageEditorDraft | null {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return null
+  if (!("version" in value) || value.version !== 1 || !("key" in value) || value.key !== key
+    || !("savedAt" in value) || typeof value.savedAt !== "number"
+    || !("baselineUpdatedAt" in value) || (value.baselineUpdatedAt !== null && typeof value.baselineUpdatedAt !== "string")
+    || !("formValues" in value) || !("theme" in value)) return null
+  let nav: PageEditorDraft["nav"]
+  if ("nav" in value && value.nav !== undefined) {
+    const raw = value.nav
+    if (raw == null || typeof raw !== "object" || !("inNavbar" in raw) || typeof raw.inNavbar !== "boolean"
+      || !("inFooter" in raw) || typeof raw.inFooter !== "boolean") return null
+    nav = { inNavbar: raw.inNavbar, inFooter: raw.inFooter }
+  }
+  return { version: 1, key, savedAt: value.savedAt, baselineUpdatedAt: value.baselineUpdatedAt, formValues: value.formValues, theme: value.theme, ...(nav ? { nav } : {}) }
+}
+
 const DB_NAME = "siab-editor-drafts"
 const DB_VERSION = 1
 const STORE_NAME = "page-drafts"
@@ -64,8 +80,8 @@ function readLocalStorageDraft(key: string): PageEditorDraft | null {
   const raw = localStorage.getItem(localStorageKey(key))
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as PageEditorDraft
-    return parsed?.version === 1 && parsed.key === key ? parsed : null
+    const parsed: unknown = JSON.parse(raw)
+    return parsePageEditorDraft(parsed, key)
   } catch {
     return null
   }
@@ -83,8 +99,8 @@ function deleteLocalStorageDraft(key: string) {
 
 export async function readPageEditorDraft(key: string): Promise<PageEditorDraft | null> {
   try {
-    const draft = await withStore<PageEditorDraft | undefined>("readonly", (store) => store.get(key))
-    return draft?.version === 1 ? draft : null
+    const draft = await withStore<unknown>("readonly", (store) => store.get(key))
+    return parsePageEditorDraft(draft, key)
   } catch {
     return readLocalStorageDraft(key)
   }

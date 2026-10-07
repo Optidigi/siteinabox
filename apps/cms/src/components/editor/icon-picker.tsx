@@ -28,8 +28,8 @@ const toPascal = (kebab: string): string =>
 export const resolveLucideIcon = (kebab: string | null | undefined): React.ComponentType<{ className?: string }> | null => {
   if (!kebab) return null
   const pascal = toPascal(kebab)
-  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[pascal]
-  return Icon ?? null
+  if (!(pascal in LucideIcons.icons)) return null
+  return LucideIcons.icons[pascal as keyof typeof LucideIcons.icons] ?? null
 }
 
 export interface IconPickerProps {

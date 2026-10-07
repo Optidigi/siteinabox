@@ -31,6 +31,7 @@ import type { RtManifest } from "@/lib/richText/manifest"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
+import { isBlockLabelKey } from "@/i18n/blockLabelKey"
 
 export interface MobileSectionListProps {
   api: Pick<MobileBlocksApi, "blocks" | "reorderBlocks" | "insertBlockAt">
@@ -89,7 +90,7 @@ const SortableSectionCard: React.FC<SortableCardProps> = ({ id, block, index, ma
   )
   const cfg = blockBySlug[block?.blockType]
   const label = resolveBlockLabel(block?.blockType, manifest, (slug) =>
-    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+    isBlockLabelKey(slug) && tLabels.has(slug) ? tLabels(slug) : undefined,
   )
   const preview = cfg?.summary ? cfg.summary(block) : undefined
   const Icon = cfg?.icon

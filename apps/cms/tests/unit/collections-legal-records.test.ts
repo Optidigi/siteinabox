@@ -1,3 +1,6 @@
+import type { Order } from "@/payload-types"
+import { orderFixture } from "../_helpers/generatedDocs"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
 import { describe, expect, it } from "vitest"
 import {
   AgreementAcceptances,
@@ -55,26 +58,26 @@ describe("legal record collections", () => {
     for (const collection of appendOnly) {
       expect(collection.access?.update?.(accessArgs({ req: {} })), collection.slug).toBe(false)
       expect(collection.access?.delete?.(accessArgs({ req: {} })), collection.slug).toBe(false)
-      expect(() => rejectRecordMutation(hookArgsFor(rejectRecordMutation, { operation: "update", data: {}, req: {}, collection: {}, context: {} })), collection.slug).toThrow("immutable")
+      expect(() => { rejectRecordMutation(hookArgsFor(rejectRecordMutation, { operation: "update", data: {}, req: hookRequest({}), collection: hookCollection(collection.slug), context: {} })) }, collection.slug).toThrow("immutable")
     }
   })
 
   it("only permits trusted payment lifecycle changes to frozen orders", () => {
-    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, { operation: "update", data: { paymentStatus: "paid" }, req: { context: {} }, collection: {}, context: {} }))).toThrow("frozen")
+    expect(() => { protectFrozenOrder(hookArgsFor(protectFrozenOrder, { operation: "update", data: { paymentStatus: "paid" }, req: hookRequest({ context: {} }), collection: hookCollection("orders"), context: {} })) }).toThrow("frozen")
     expect(protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { paymentStatus: "paid", paidAt: "2026-07-10T12:00:00.000Z" },
-      req: { context: { legalOrderLifecycleMutation: true } },
-      collection: {},
+      req: hookRequest({ context: { legalOrderLifecycleMutation: true } }),
+      collection: hookCollection("orders"),
       context: { legalOrderLifecycleMutation: true },
     }))).toEqual({ paymentStatus: "paid", paidAt: "2026-07-10T12:00:00.000Z" })
-    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
+    expect(() => { protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { totalGross: 1 },
-      req: { context: { legalOrderLifecycleMutation: true } },
-      collection: {},
+      req: hookRequest({ context: { legalOrderLifecycleMutation: true } }),
+      collection: hookCollection("orders"),
       context: { legalOrderLifecycleMutation: true },
-    }))).toThrow('field "totalGross" is immutable')
+    })) }).toThrow('field "totalGross" is immutable')
     expect(protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: {
@@ -82,23 +85,23 @@ describe("legal record collections", () => {
         state: "fulfillment_pending",
         totalGross: 229.9,
       },
-      originalDoc: {
+      originalDoc: orderFixture({
         orderNumber: "SIAB-1",
         state: "accepted",
         totalGross: 229.9,
-      },
-      req: { context: { legalOrderLifecycleMutation: true } },
-      collection: {},
+      }),
+      req: hookRequest({ context: { legalOrderLifecycleMutation: true } }),
+      collection: hookCollection("orders"),
       context: {},
     }))).toMatchObject({ state: "fulfillment_pending" })
-    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
+    expect(() => { protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { state: "draft" },
-      originalDoc: { state: "fulfilled" },
-      req: { context: { legalOrderLifecycleMutation: true } },
-      collection: {},
+      originalDoc: orderFixture({ state: "fulfilled" }),
+      req: hookRequest({ context: { legalOrderLifecycleMutation: true } }),
+      collection: hookCollection("orders"),
       context: {},
-    }))).toThrow("fulfilled -> draft")
+    })) }).toThrow("fulfilled -> draft")
   })
 
   it("does not permit evidence deletion or frozen order deletion", () => {
@@ -109,7 +112,7 @@ describe("legal record collections", () => {
   })
 
   it("rejects every new supplemental migration order after retirement", () => {
-    expect(() => validateOrderCommercialShape(hookArgsFor(
+    expect(() => { validateOrderCommercialShape(hookArgsFor(
       validateOrderCommercialShape,
       {
         operation: "create",
@@ -120,15 +123,15 @@ describe("legal record collections", () => {
             catalogVersion: "2026-07-26.1",
           },
         },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("orders"),
         context: {},
       },
-    ))).toThrow()
+    )) }).toThrow()
   })
 
   it("enforces the automatic-only current catalog at the collection boundary", () => {
-    const currentRegistration = {
+    const currentRegistration: Partial<Order> = {
       orderKind: "initial_subscription",
       catalogVersion: "2026-07-29.1",
       quoteEvidence: {
@@ -143,12 +146,12 @@ describe("legal record collections", () => {
       {
         operation: "create",
         data: currentRegistration,
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("orders"),
         context: {},
       },
     ))).toEqual(currentRegistration)
-    expect(() => validateOrderCommercialShape(hookArgsFor(
+    expect(() => { validateOrderCommercialShape(hookArgsFor(
       validateOrderCommercialShape,
       {
         operation: "create",
@@ -160,12 +163,12 @@ describe("legal record collections", () => {
             migration: { classification: "assisted_standard" },
           },
         },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("orders"),
         context: {},
       },
-    ))).toThrow("automatic-only")
-    expect(() => validateOrderCommercialShape(hookArgsFor(
+    )) }).toThrow("automatic-only")
+    expect(() => { validateOrderCommercialShape(hookArgsFor(
       validateOrderCommercialShape,
       {
         operation: "create",
@@ -173,10 +176,10 @@ describe("legal record collections", () => {
           ...currentRegistration,
           catalogVersion: "2026-07-26.1",
         },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("orders"),
         context: {},
       },
-    ))).toThrow("current commercial catalog")
+    )) }).toThrow("current commercial catalog")
   })
 })

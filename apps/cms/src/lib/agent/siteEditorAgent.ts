@@ -368,9 +368,9 @@ const resultFromGenerated = async (
   pageSlug: string,
 ): Promise<SiteEditorTurnResult> => {
   const toolResults = [
-    ...(Array.isArray(generated.toolResults) ? generated.toolResults : []),
+    ...(Array.isArray(generated.toolResults) ? generated.toolResults.map((value: unknown) => value) : []),
     ...(Array.isArray(generated.steps)
-      ? generated.steps.flatMap((step) => Array.isArray(step.toolResults) ? step.toolResults : [])
+      ? generated.steps.flatMap((step: { toolResults?: unknown }) => Array.isArray(step.toolResults) ? step.toolResults.map((value: unknown) => value) : [])
       : []),
   ]
   const { applied: wrote, regenerate } = summarizeEditorToolResults(toolResults)

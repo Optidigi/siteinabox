@@ -1,3 +1,8 @@
+import type { PaymentAttempt, BillingAgreement, ManagedDomain, OperationalAlert } from "@/payload-types"
+import { createGeneratedPayloadStore } from "../_helpers/generatedPayloadStore"
+import { createPayloadFixture, type PayloadFixtureMethod } from "../_helpers/payloadFixture"
+import { payloadUpdateFixture, type PayloadUpdateOptions } from "../_helpers/payloadUpdateFixture"
+import { paymentAttemptFixture, billingAgreementFixture, managedDomainFixture, operationalAlertFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -11,18 +16,14 @@ import {
   recoverMissingMolliePaymentReferences,
 } from "@/lib/commerce/reconciliation"
 import {
-  asPayload,
   matchesWhere,
-  type MockCreateArgs,
   type MockDoc,
-  type MockFindArgs,
   type MockUpdateArgs,
-  type MutableMockUpdateArgs,
 } from "../_helpers/mockPayload"
 
 const NOW = new Date("2026-07-28T12:00:00.000Z")
 
-const paymentAttempt = (): MockDoc => ({
+const paymentAttempt = (): PaymentAttempt => paymentAttemptFixture({
   id: 10,
   idempotencyKey: "mollie:first-payment:order:20:v1",
   order: 20,
@@ -40,75 +41,17 @@ const paymentAttempt = (): MockDoc => ({
   createdAt: "2026-07-28T11:00:00.000Z",
 })
 
-const createPayloadStore = (input?: {
-  attempts?: MockDoc[]
-  agreements?: MockDoc[]
-  domains?: MockDoc[]
-}) => {
-  const collections: Record<string, MockDoc[]> = {
-    "payment-attempts": input?.attempts ?? [],
-    "billing-agreements": input?.agreements ?? [],
-    "managed-domains": input?.domains ?? [],
-    "operational-alerts": [],
+const createPayloadStore = async (input?: { attempts?: PaymentAttempt[]; agreements?: BillingAgreement[]; domains?: ManagedDomain[] }) => {
+  const collections: { "payment-attempts": PaymentAttempt[]; "billing-agreements": BillingAgreement[]; "managed-domains": ManagedDomain[]; "operational-alerts": OperationalAlert[] } = {
+    "payment-attempts": input?.attempts ?? [], "billing-agreements": input?.agreements ?? [], "managed-domains": input?.domains ?? [], "operational-alerts": [],
   }
-  let nextId = 100
-  const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
-    const docs = (collections[collection] ?? []).filter((doc) =>
-      matchesWhere(doc, where)
-    )
-    return { docs, totalDocs: docs.length }
-  })
-  const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
-    const doc = { id: nextId++, ...data }
-    ;(collections[collection] ??= []).push(doc)
-    return doc
-  })
-  const update = vi.fn(async ({
-    collection,
-    id,
-    where,
-    data,
-  }: MutableMockUpdateArgs) => {
-    if (where) {
-      const docs = (collections[collection] ?? []).filter((candidate) =>
-        matchesWhere(candidate, where)
-      )
-      for (const doc of docs) Object.assign(doc, data)
-      return { docs, totalDocs: docs.length }
-    }
-    const doc = (collections[collection] ?? []).find(
-      (candidate) => String(candidate.id) === String(id),
-    )
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    Object.assign(doc, data)
-    return doc
-  })
-  const findByID = vi.fn(async ({
-    collection,
-    id,
-  }: {
-    collection: string
-    id: string | number
-  }) => {
-    const doc = (collections[collection] ?? []).find(
-      (candidate) => String(candidate.id) === String(id),
-    )
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    return doc
-  })
-  return {
-    collections,
-    find,
-    findByID,
-    create,
-    update,
-    payload: asPayload({ find, findByID, create, update }),
-  }
+  const store = await createGeneratedPayloadStore({ collections, nextId: 100 })
+  return { ...store, collections }
 }
 
 describe("Phase 11 commerce failure rehearsals", () => {
   it("recovers an indeterminate Mollie customer before retrying creation", async () => {
-    const agreement: MockDoc = {
+    const agreement = billingAgreementFixture({
       id: 40,
       idempotencyKey: "billing-agreement:order:20:v1",
       originatingOrder: 20,
@@ -116,8 +59,8 @@ describe("Phase 11 commerce failure rehearsals", () => {
       provider: "mollie",
       state: "pending_first_payment",
       reconciliationRequired: true,
-    }
-    const store = createPayloadStore({ agreements: [agreement] })
+    })
+    const store = await createPayloadStore({ agreements: [agreement] })
 
     await expect(recoverMissingMollieCustomerReferences(store.payload, {
       providerReadsAllowed: () => true,
@@ -139,7 +82,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("keeps an indeterminate Mollie customer blocked when recovery proves no match", async () => {
-    const agreement: MockDoc = {
+    const agreement = billingAgreementFixture({
       id: 40,
       idempotencyKey: "billing-agreement:order:20:v1",
       originatingOrder: 20,
@@ -148,8 +91,8 @@ describe("Phase 11 commerce failure rehearsals", () => {
       state: "pending_first_payment",
       reconciliationRequired: true,
       failureReason: "A Mollie customer provider write is in progress.",
-    }
-    const store = createPayloadStore({ agreements: [agreement] })
+    })
+    const store = await createPayloadStore({ agreements: [agreement] })
 
     await expect(recoverMissingMollieCustomerReferences(store.payload, {
       providerReadsAllowed: () => true,
@@ -172,7 +115,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("requires critical manual review for ambiguous Mollie customer recovery", async () => {
-    const agreement: MockDoc = {
+    const agreement = billingAgreementFixture({
       id: 40,
       idempotencyKey: "billing-agreement:order:20:v1",
       originatingOrder: 20,
@@ -181,8 +124,8 @@ describe("Phase 11 commerce failure rehearsals", () => {
       state: "pending_first_payment",
       reconciliationRequired: true,
       failureReason: "A Mollie customer provider write is in progress.",
-    }
-    const store = createPayloadStore({ agreements: [agreement] })
+    })
+    const store = await createPayloadStore({ agreements: [agreement] })
     const matchingMetadata = {
       billingAgreementId: 40,
       orderId: 20,
@@ -216,28 +159,28 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("reports an internally owned customer reference and continues later recovery", async () => {
-    const conflicted: MockDoc = {
+    const conflicted = billingAgreementFixture({
       id: 40,
       originatingOrder: 20,
       tenant: 1,
       provider: "mollie",
       state: "pending_first_payment",
       reconciliationRequired: true,
-    }
-    const later: MockDoc = {
+    })
+    const later = billingAgreementFixture({
       ...conflicted,
       id: 41,
       originatingOrder: 21,
       tenant: 2,
-    }
-    const existingOwner: MockDoc = {
+    })
+    const existingOwner = billingAgreementFixture({
       ...conflicted,
       id: 42,
       originatingOrder: 22,
       providerCustomerId: "cst_owned",
       reconciliationRequired: false,
-    }
-    const store = createPayloadStore({
+    })
+    const store = await createPayloadStore({
       agreements: [conflicted, later, existingOwner],
     })
     await expect(recoverMissingMollieCustomerReferences(store.payload, {
@@ -272,7 +215,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
 
   it("recovers a missing webhook/provider reference without creating another payment", async () => {
     const attempt = paymentAttempt()
-    const store = createPayloadStore({ attempts: [attempt] })
+    const store = await createPayloadStore({ attempts: [attempt] })
     const listRecentMolliePayments = vi.fn(async () => [{
       id: "tr_recovered",
       status: "paid",
@@ -306,7 +249,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
 
   it("keeps an indeterminate payment blocked when provider recovery finds zero matches", async () => {
     const attempt = paymentAttempt()
-    const store = createPayloadStore({ attempts: [attempt] })
+    const store = await createPayloadStore({ attempts: [attempt] })
 
     await expect(recoverMissingMolliePaymentReferences(store.payload, {
       providerReadsAllowed: () => true,
@@ -333,7 +276,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
 
   it("halts on duplicate provider matches instead of attaching an arbitrary payment", async () => {
     const attempt = paymentAttempt()
-    const store = createPayloadStore({ attempts: [attempt] })
+    const store = await createPayloadStore({ attempts: [attempt] })
     const matchingPayment = (id: string) => ({
       id,
       status: "open",
@@ -382,15 +325,15 @@ describe("Phase 11 commerce failure rehearsals", () => {
   ])(
     "keeps a current recurring write blocked when related provider %s mismatches",
     async (_label, metadataOverride, paymentOverride) => {
-      const attempt: MockDoc = {
+      const attempt = paymentAttemptFixture({
         ...paymentAttempt(),
         idempotencyKey:
           "mollie:recurring:order:20:authority-v2:attempt-1",
         billingAgreement: 40,
         purpose: "recurring",
         sequenceType: "recurring",
-      }
-      const agreement: MockDoc = {
+      })
+      const agreement = billingAgreementFixture({
         id: 40,
         tenant: 1,
         provider: "mollie",
@@ -401,8 +344,8 @@ describe("Phase 11 commerce failure rehearsals", () => {
         reconciliationRequired: true,
         lastPaymentAttemptAt: attempt.createdAt,
         updatedAt: "2026-07-28T11:00:01.000Z",
-      }
-      const store = createPayloadStore({
+      })
+      const store = await createPayloadStore({
         attempts: [attempt],
         agreements: [agreement],
       })
@@ -458,15 +401,15 @@ describe("Phase 11 commerce failure rehearsals", () => {
   )
 
   it("recovers one current recurring payment only when its complete frozen authority matches", async () => {
-    const attempt: MockDoc = {
+    const attempt = paymentAttemptFixture({
       ...paymentAttempt(),
       idempotencyKey:
         "mollie:recurring:order:20:authority-v2:attempt-1",
       billingAgreement: 40,
       purpose: "recurring",
       sequenceType: "recurring",
-    }
-    const agreement: MockDoc = {
+    })
+    const agreement = billingAgreementFixture({
       id: 40,
       tenant: 1,
       provider: "mollie",
@@ -477,8 +420,8 @@ describe("Phase 11 commerce failure rehearsals", () => {
       reconciliationRequired: true,
       lastPaymentAttemptAt: attempt.createdAt,
       updatedAt: "2026-07-28T11:00:01.000Z",
-    }
-    const store = createPayloadStore({
+    })
+    const store = await createPayloadStore({
       attempts: [attempt],
       agreements: [agreement],
     })
@@ -516,15 +459,15 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("opens a recurring retry only when the provider result is truly absent", async () => {
-    const attempt: MockDoc = {
+    const attempt = paymentAttemptFixture({
       ...paymentAttempt(),
       idempotencyKey:
         "mollie:recurring:order:20:authority-v2:attempt-1",
       billingAgreement: 40,
       purpose: "recurring",
       sequenceType: "recurring",
-    }
-    const agreement: MockDoc = {
+    })
+    const agreement = billingAgreementFixture({
       id: 40,
       tenant: 1,
       provider: "mollie",
@@ -535,8 +478,8 @@ describe("Phase 11 commerce failure rehearsals", () => {
       reconciliationRequired: true,
       lastPaymentAttemptAt: attempt.createdAt,
       updatedAt: "2026-07-28T11:00:01.000Z",
-    }
-    const store = createPayloadStore({
+    })
+    const store = await createPayloadStore({
       attempts: [attempt],
       agreements: [agreement],
     })
@@ -562,12 +505,12 @@ describe("Phase 11 commerce failure rehearsals", () => {
 
   it("reports an internally owned payment reference and continues later recovery", async () => {
     const conflicted = paymentAttempt()
-    const later: MockDoc = {
+    const later = paymentAttemptFixture({
       ...paymentAttempt(),
       id: 11,
       idempotencyKey: "mollie:first-payment:order:21:v1",
       order: 21,
-    }
+    })
     const existingOwner = {
       ...paymentAttempt(),
       id: 12,
@@ -576,7 +519,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
       providerPaymentId: "tr_owned",
       reconciliationRequired: false,
     }
-    const store = createPayloadStore({
+    const store = await createPayloadStore({
       attempts: [conflicted, later, existingOwner],
     })
     const result = await recoverMissingMolliePaymentReferences(store.payload, {
@@ -619,7 +562,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
 
   it("re-reads ownership after a concurrent payment-reference unique race", async () => {
     const attempt = paymentAttempt()
-    const store = createPayloadStore({ attempts: [attempt] })
+    const store = await createPayloadStore({ attempts: [attempt] })
     store.update.mockImplementationOnce(async () => {
       attempt.providerPaymentId = "tr_raced"
       const error = new Error("duplicate key value violates unique constraint") as
@@ -648,7 +591,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
 
   it("fails open to later reconciliation work when Mollie listing is unavailable", async () => {
     const attempt = paymentAttempt()
-    const store = createPayloadStore({ attempts: [attempt] })
+    const store = await createPayloadStore({ attempts: [attempt] })
 
     await expect(recoverMissingMolliePaymentReferences(store.payload, {
       providerReadsAllowed: () => true,
@@ -670,15 +613,15 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("raises low provider-balance and imminent domain-expiry alerts without PII", async () => {
-    const store = createPayloadStore({
-      domains: [{
+    const store = await createPayloadStore({
+      domains: [managedDomainFixture({
         id: 30,
         tenant: 1,
         state: "active",
         custodyStatus: "managed",
         expiresAt: "2026-08-02T12:00:00.000Z",
         renewalIntent: true,
-      }],
+      })],
     })
 
     await expect(reconcileOpenProviderBalanceAlert(store.payload, {
@@ -689,9 +632,9 @@ describe("Phase 11 commerce failure rehearsals", () => {
         reservedAmount: 5,
         currency: "EUR",
       })),
-    }, {
+    }, { NODE_ENV: "test",
       OPENPROVIDER_MIN_BALANCE_EUR: "100",
-    } as unknown as NodeJS.ProcessEnv, NOW.toISOString()))
+    } satisfies NodeJS.ProcessEnv, NOW.toISOString()))
       .resolves.toBe("low")
     await expect(reconcileDomainExpiryAlerts(store.payload, NOW))
       .resolves.toEqual({ examined: 1, alerts: 1 })
@@ -720,7 +663,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("uses zero as the default operational balance alert threshold", async () => {
-    const store = createPayloadStore()
+    const store = await createPayloadStore()
 
     await expect(reconcileOpenProviderBalanceAlert(store.payload, {
       providerReadsAllowed: () => true,
@@ -736,24 +679,18 @@ describe("Phase 11 commerce failure rehearsals", () => {
   })
 
   it("coalesces a concurrent alert-create race on the unique dedupe key", async () => {
-    const alert: MockDoc = {
+    const alert = operationalAlertFixture({
       id: 90,
       dedupeKey: "commerce:payments:stale_mollie_synchronization:10",
       occurrenceCount: 1,
       status: "open",
-    }
+    })
     let findCount = 0
-    const update = vi.fn(async ({ data }: MockUpdateArgs) => ({
-      ...alert,
-      ...data,
-    }))
-    const payload = asPayload({
-      find: vi.fn(async () => {
+    const update = vi.fn(async ({ data }: PayloadUpdateOptions) => Object.assign(alert, data))
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async () => {
         findCount += 1
-        return {
-          docs: findCount === 1 ? [] : [alert],
-          totalDocs: findCount === 1 ? 0 : 1,
-        }
+        return paginatedFixture(findCount === 1 ? [] : [alert])
       }),
       create: vi.fn(async () => {
         const error = new Error(
@@ -762,7 +699,7 @@ describe("Phase 11 commerce failure rehearsals", () => {
         error.code = "23505"
         throw error
       }),
-      update,
+      update: payloadUpdateFixture(update),
     })
 
     await expect(recordCommerceAdminException({

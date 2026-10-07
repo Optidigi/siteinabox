@@ -3,9 +3,12 @@ import {
   canonicalEdgeRequestHost,
   resolveManagedDomainEdgeIdentity,
 } from "@/lib/domains/edgeReadiness"
-import { asPayload } from "../_helpers/mockPayload"
+import type { Config, Tenant } from "@/payload-types"
+import type { CollectionSlug } from "payload"
+import { createPayloadFixture, type PayloadFixtureMethod } from "../_helpers/payloadFixture"
+import { managedDomainFixture, tenantFixture, orderFixture, publishedSnapshotFixture, siteSettingsFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
-const managedDomain = {
+const managedDomain = managedDomainFixture({
   id: 41,
   tenant: 12,
   originatingOrder: 90,
@@ -13,26 +16,23 @@ const managedDomain = {
   state: "registration_pending",
   custodyStatus: "managed",
   cloudflareZoneId: "zone-1",
-}
+})
 
-const payload = (tenantStatus = "preview") => asPayload({
-  find: vi.fn(async ({ collection }: { collection: string }) => ({
-    docs: collection === "managed-domains" ? [managedDomain] : [],
-    totalDocs: collection === "managed-domains" ? 1 : 0,
-  })),
-  findByID: vi.fn(async ({ collection }: { collection: string }) =>
+const payload = (tenantStatus: Tenant["status"] = "provisioning") => createPayloadFixture({
+  find: vi.fn<PayloadFixtureMethod<"find">>(async ({ collection }) => (paginatedFixture<Config["collections"][CollectionSlug]>(collection === "managed-domains" ? [managedDomain] : []))),
+  findByID: vi.fn<PayloadFixtureMethod<"findByID">>(async ({ collection }) =>
     collection === "orders"
-      ? { id: 90, paymentStatus: "paid", state: "fulfillment_pending" }
-      : {
+      ? orderFixture({ id: 90, paymentStatus: "paid", state: "fulfillment_pending" })
+      : tenantFixture({
           id: 12,
           domain: "preview.example.invalid",
           status: tenantStatus,
-  }),
+  })),
 })
 
 const adoptedPayload = (
   options: {
-    domainVerification?: "verified" | "pending"
+    domainVerification?: "verified" | "not_checked"
     snapshotStatus?: "active" | "superseded"
     managedDomainExists?: boolean
     tenantStatus?: "active" | "suspended"
@@ -46,7 +46,7 @@ const adoptedPayload = (
 ) => {
   const domain = options.domain ?? "ami-care.nl"
   const wwwHost = `www.${domain}`
-  const tenant = {
+  const tenant = tenantFixture({
     id: 1,
     domain,
     status: options.tenantStatus ?? "active",
@@ -73,28 +73,24 @@ const adoptedPayload = (
           : null,
     },
     activeSnapshot: 154,
-  }
-  return asPayload({
-    find: vi.fn(async ({
+  })
+  return createPayloadFixture({
+    find: vi.fn<PayloadFixtureMethod<"find">>(async ({
       collection,
       where,
-    }: {
-      collection: string
-      where?: unknown
-    }) => ({
-      docs: collection === "managed-domains"
+    }) => (paginatedFixture<Config["collections"][CollectionSlug]>(collection === "managed-domains"
         ? options.managedDomainExists &&
             !JSON.stringify(where).includes('"state"')
-          ? [{ id: 99, domainNameAscii: tenant.domain }]
+          ? [managedDomainFixture({ id: 99, domainNameAscii: tenant.domain })]
           : []
         : collection === "tenants"
           ? JSON.stringify(where).includes(wwwHost)
             ? options.wwwCanonicalConflict
-              ? [{ id: 2, domain: wwwHost, status: "active" }]
+              ? [tenantFixture({ id: 2, domain: wwwHost, status: "active" })]
               : []
             : [tenant]
           : collection === "site-settings"
-            ? [{
+            ? [siteSettingsFixture({
                 id: 5,
                 tenant: options.foreignWwwAlias ? 2 : tenant.id,
                 aliases: Array.from(
@@ -104,17 +100,16 @@ const adoptedPayload = (
                     host: wwwHost,
                   }),
                 ),
-              }]
-            : [],
-    })),
-    findByID: vi.fn(async ({ collection }: { collection: string }) =>
+              })]
+            : []))),
+    findByID: vi.fn<PayloadFixtureMethod<"findByID">>(async ({ collection }) =>
       collection === "published-site-snapshots"
-        ? {
+        ? publishedSnapshotFixture({
             id: 154,
             tenant: tenant.id,
             domain: tenant.domain,
             status: options.snapshotStatus ?? "active",
-          }
+          })
         : tenant),
   })
 }
@@ -220,7 +215,7 @@ describe("domain-bound edge readiness", () => {
       "renderer",
     )).resolves.toBeNull()
     await expect(resolveManagedDomainEdgeIdentity(
-      adoptedPayload({ domainVerification: "pending" }),
+      adoptedPayload({ domainVerification: "not_checked" }),
       "ami-care.nl",
       "renderer",
     )).resolves.toBeNull()

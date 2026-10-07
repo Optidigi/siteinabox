@@ -1,3 +1,4 @@
+import type { SiteSetting } from "@/payload-types"
 import type { FieldAdminConditionContext, FieldValidateContext } from "@/lib/payloadFieldContext"
 import type { CollectionBeforeValidateHook, CollectionConfig, PayloadRequest } from "payload"
 import { ValidationError } from "payload"
@@ -43,7 +44,7 @@ const isRecord = (val: unknown): val is Record<string, unknown> =>
 const validEmail = (val: unknown) =>
   typeof val === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
 
-export const enforceSiteSettingsCapabilities: CollectionBeforeValidateHook = ({ collection, data, req }) => {
+export const enforceSiteSettingsCapabilities: CollectionBeforeValidateHook<SiteSetting> = ({ collection, data, req }) => {
   const record = data as Record<string, unknown> | undefined
   const maintenance = isRecord(record?.maintenance) ? record.maintenance : null
   const disclosure = isRecord(record?.privacyDisclosure) ? record.privacyDisclosure : null
@@ -89,7 +90,7 @@ export const enforceSiteSettingsCapabilities: CollectionBeforeValidateHook = ({ 
   return data
 }
 
-export const normalizeSiteSettingsAliases: CollectionBeforeValidateHook = ({
+export const normalizeSiteSettingsAliases: CollectionBeforeValidateHook<SiteSetting> = ({
   collection,
   data,
   req,

@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { orderFixture, managedDomainFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { loadCustomerProvisioningStatus } from "@/lib/domains/provisioningStatus"
 
 describe("customer provisioning status", () => {
   it("projects paid registration and registrant action without provider secrets", async () => {
-    const payload = asPayload({
-      find: vi.fn(async ({ collection }) => {
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => {
         if (collection === "orders") {
-          return {
-            docs: [{
+          return paginatedFixture([orderFixture({
               id: 600,
               generationRun: 500,
               orderKind: "initial_subscription",
@@ -17,12 +17,10 @@ describe("customer provisioning status", () => {
               paymentStatus: "paid",
               domain: "clientsite.nl",
               updatedAt: "2026-07-29T12:00:00.000Z",
-            }],
-          }
+            })])
         }
         if (collection === "managed-domains") {
-          return {
-            docs: [{
+          return paginatedFixture([managedDomainFixture({
               id: 700,
               originatingOrder: 600,
               domainNameAscii: "clientsite.nl",
@@ -36,12 +34,10 @@ describe("customer provisioning status", () => {
               customerStatus: "verification_required",
               failureReason: "internal-provider-detail",
               updatedAt: "2026-07-29T12:05:00.000Z",
-            }],
-          }
+            })])
         }
-        return { docs: [] }
-      }),
-    })
+        return paginatedFixture([])
+      })
 
     const status = await loadCustomerProvisioningStatus(payload, {
       generationRunId: 500,
@@ -66,9 +62,8 @@ describe("customer provisioning status", () => {
   })
 
   it("returns no status without exactly one customer-bound initial order", async () => {
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [] })),
-    })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
 
     await expect(loadCustomerProvisioningStatus(payload, {
       generationRunId: 500,
@@ -77,17 +72,16 @@ describe("customer provisioning status", () => {
   })
 
   it("does not project a cancelled order as live fulfilment", async () => {
-    const find = vi.fn(async ({ collection }: { collection: string }) => ({
-      docs: collection === "orders" ? [{
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => paginatedFixture(collection === "orders" ? [orderFixture({
         id: 600,
         state: "cancelled",
         generationRun: 500,
         orderKind: "initial_subscription",
         customerEmail: "customer@example.com",
-      }] : [],
-    }))
+      })] : []))
 
-    await expect(loadCustomerProvisioningStatus(asPayload({ find }), {
+    await expect(loadCustomerProvisioningStatus(payload, {
       generationRunId: 500,
       customerEmail: "customer@example.com",
     })).resolves.toBeNull()

@@ -1,3 +1,8 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
+import { mediaFixture, tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import type { Media as MediaDoc } from "@/payload-types"
+import type { PayloadRequest } from "payload"
 import { describe, it, expect, vi } from "vitest"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -40,7 +45,7 @@ import { cast, errLike, validationErrorData } from "../_helpers/cast"
 // -----------------------------------------------------------------------------
 
 const beforeValidateHooks = Media.hooks?.beforeValidate ?? []
-const beforeOperationHooks = (Media.hooks?.beforeOperation ?? []) as unknown as BeforeOperationHook[]
+const beforeOperationHooks = (Media.hooks?.beforeOperation ?? [])
 const afterReadHooks = Media.hooks?.afterRead ?? []
 
 // Invoke the hook by direct import rather than positional array access.
@@ -50,33 +55,27 @@ const afterReadHooks = Media.hooks?.afterRead ?? []
 // a `req` mock missing `findByID` and surfaced as a misleading "Tenant
 // not found" ValidationError. The S1 case below still verifies the hook
 // is wired into the collection chain so registration regressions trip.
-const ensureUniqueFilenameHook = ensureUniqueTenantFilename as unknown as (args: unknown) => unknown
+const ensureUniqueFilenameHook = ensureUniqueTenantFilename
 
-const makeReq = (findResult: { totalDocs: number; docs?: unknown[] }) => {
-  const find = vi.fn().mockResolvedValue({
-    docs: findResult.docs ?? [],
-    totalDocs: findResult.totalDocs,
-  })
-  return {
-    req: { payload: { find } },
-    find,
-  }
+const makeReq = (findResult: { totalDocs: number; docs?: Partial<MediaDoc>[] }) => {
+  const payload = createTestPayload()
+  const find = vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture((findResult.docs ?? []).map((doc) => mediaFixture(doc)), { totalDocs: findResult.totalDocs }))
+  return { req: hookRequest({ payload }), find }
 }
 
 const callHook = async (opts: {
-  data: unknown
+  data: Partial<MediaDoc> | null
   operation: "create" | "update"
-  originalDoc?: unknown
-  req: unknown
-}) =>
-  ensureUniqueFilenameHook({
-    data: opts.data,
-    operation: opts.operation,
-    originalDoc: opts.originalDoc,
-    req: opts.req,
-    collection: { slug: "media" },
-    context: {},
-  })
+  originalDoc?: Partial<MediaDoc>
+  req: PayloadRequest
+}) => ensureUniqueFilenameHook({
+  data: opts.data,
+  operation: opts.operation,
+  originalDoc: opts.originalDoc ? mediaFixture(opts.originalDoc) : undefined,
+  req: opts.req,
+  collection: hookCollection("media"),
+  context: {},
+})
 
 const expectValidationError = async (p: Promise<unknown>) => {
   let err: unknown = null
@@ -217,7 +216,7 @@ describe("audit-p3 #15 Half A — ensureUniqueTenantFilename pre-empts unique-vi
     // The hook must extract .id rather than passing the object through.
     const { req, find } = makeReq({ totalDocs: 0 })
     await callHook({
-      data: { filename: "logo.png", tenant: { id: 42, slug: "tenant-a" } },
+      data: { filename: "logo.png", tenant: tenantFixture({ id: 42, slug: "tenant-a" }) },
       operation: "create",
       req,
     })
@@ -373,7 +372,7 @@ describe("OBS-17 — media uploads do not leak cross-tenant filename existence t
       doc: {
         id: 10,
         filename: "logo file.png",
-        tenant: { id: 42 },
+        tenant: tenantFixture({ id: 42 }),
         thumbnailURL: "/api/media/file/logo%20file.png",
         url: "/api/media/file/logo%20file.png",
       },

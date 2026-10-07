@@ -238,7 +238,6 @@ export function useNavigationGuard(
     // including it in deps would cause unnecessary listener teardown +
     // re-registration on every parent re-render (PageForm re-renders
     // on every keystroke under RHF default mode).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [when, message])
 
   const confirm = () => {

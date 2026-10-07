@@ -4,7 +4,7 @@ import {
   isPrivilegedPreviewSiteReadyMetadata,
 } from "@/lib/preview/trustedSiteReadyIntent"
 
-const env = { BETTER_AUTH_PREVIEW_SECRET: "preview-test-secret" } as unknown as NodeJS.ProcessEnv
+const env = { NODE_ENV: "test", BETTER_AUTH_PREVIEW_SECRET: "preview-test-secret" } satisfies NodeJS.ProcessEnv
 const now = new Date("2026-07-13T10:00:00.000Z")
 const subject = { email: "customer@example.com", clientSlug: "preview-studio" }
 

@@ -7,11 +7,7 @@ import { cn } from "@siteinabox/ui/lib/utils"
 import { slugify } from "@/lib/slugify"
 import { useTranslations } from "next-intl"
 
-export type PageMetaFormValues = {
-  title: string
-  slug: string
-  status: "draft" | "published"
-}
+export type PageMetaFormValues = import("@/lib/editor/pageEditorCore").PageEditorFormValues
 
 type Props = {
   control: Control<PageMetaFormValues>

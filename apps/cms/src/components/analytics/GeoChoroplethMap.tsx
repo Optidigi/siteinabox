@@ -6,11 +6,18 @@ import countries from "i18n-iso-countries"
 import { feature } from "topojson-client"
 import type { GeoCountryMetric } from "@/lib/analytics/queries"
 
-type WorldFeature = {
-  id?: string | number
-  properties?: { name?: string }
-  type: string
-}
+import { z } from "zod"
+
+const atlasGeometrySchema = z.union([
+  z.object({ type: z.literal("Polygon"), arcs: z.array(z.array(z.number())) }),
+  z.object({ type: z.literal("MultiPolygon"), arcs: z.array(z.array(z.array(z.number()))) }),
+]).and(z.object({ id: z.union([z.string(), z.number()]).optional(), properties: z.object({ name: z.string().optional() }).optional() }))
+const atlas = z.object({
+  type: z.literal("Topology"),
+  arcs: z.array(z.array(z.array(z.number()))),
+  transform: z.object({ scale: z.tuple([z.number(), z.number()]), translate: z.tuple([z.number(), z.number()]) }).optional(),
+  objects: z.object({ countries: z.object({ type: z.literal("GeometryCollection"), geometries: z.array(atlasGeometrySchema) }) }),
+}).parse(countriesAtlas)
 
 const bucketClass = (visitors: number, maxVisitors: number) => {
   if (visitors <= 0 || maxVisitors <= 0) return "fill-muted"
@@ -40,12 +47,7 @@ export function GeoChoroplethMap({
   const maxVisitors = Math.max(...rows.map((row) => row.visitors), 0)
   const projection = geoNaturalEarth1().fitSize([960, 480], { type: "Sphere" })
   const path = geoPath(projection)
-  const countryFeatures = (
-    feature(
-      countriesAtlas as unknown as Parameters<typeof feature>[0],
-      countriesAtlas.objects.countries as unknown as Parameters<typeof feature>[1],
-    ) as { features: WorldFeature[] }
-  ).features
+  const countryFeatures = feature(atlas, atlas.objects.countries).features
 
   return (
     <div className="overflow-hidden rounded-md border border-border bg-muted/20">
@@ -60,7 +62,7 @@ export function GeoChoroplethMap({
             const label = row
               ? `${row.countryName}: ${row.visitors} visitors`
               : String(country.properties?.name ?? "Unknown")
-            const pathData = path(country as Parameters<typeof path>[0])
+            const pathData = path(country)
             if (!pathData) return null
             return (
               <path

@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from "vitest"
 import type { Page, SiteGenerationRun } from "@/payload-types"
 
-import { asMockDoc } from "../_helpers/cast"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import { matchesWhere } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { paginatedFixture } from "../_helpers/generatedDocs"
 
 const createPayloadStub = () => {
   const pages: Page[] = [
-    { id: 100, tenant: 1, slug: "index", title: "Home", status: "draft", blocks: [], createdAt: "", updatedAt: "" } as Page,
-    { id: 101, tenant: 1, slug: "about", title: "About", status: "draft", blocks: [], createdAt: "", updatedAt: "" } as Page,
-    { id: 102, tenant: 1, slug: "stale-retained", title: "Retained", status: "draft", blocks: [], createdAt: "", updatedAt: "" } as Page,
-    { id: 200, tenant: 2, slug: "other", title: "Other tenant", status: "draft", blocks: [], createdAt: "", updatedAt: "" } as Page,
+    { id: 100, tenant: 1, slug: "index", title: "Home", status: "draft", blocks: [], createdAt: "", updatedAt: "" },
+    { id: 101, tenant: 1, slug: "about", title: "About", status: "draft", blocks: [], createdAt: "", updatedAt: "" },
+    { id: 102, tenant: 1, slug: "stale-retained", title: "Retained", status: "draft", blocks: [], createdAt: "", updatedAt: "" },
+    { id: 200, tenant: 2, slug: "other", title: "Other tenant", status: "draft", blocks: [], createdAt: "", updatedAt: "" },
   ]
   const generationRuns: SiteGenerationRun[] = [
     {
@@ -29,21 +30,21 @@ const createPayloadStub = () => {
       applyResult: { ok: true },
       createdAt: "",
       updatedAt: "",
-    } as SiteGenerationRun,
+    },
   ]
-  const stubs = {
-    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+  const payload = createTestPayload()
+  vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
       if (collection !== "site-generation-runs") throw new Error(`Unexpected findByID ${collection}`)
       const run = generationRuns.find((doc) => String(doc.id) === String(id))
       if (!run) throw new Error(`Missing run ${id}`)
       return run
-    }),
-    find: vi.fn(async ({ collection, where }: MockFindArgs) => {
-      if (collection !== "pages") return { docs: [], totalDocs: 0 }
-      const docs = pages.filter((page) => matchesWhere(asMockDoc(page), where))
-      return { docs, totalDocs: docs.length }
-    }),
-    update: vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+    })
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
+      if (collection !== "pages") return paginatedFixture([])
+      const docs = pages.filter((page) => matchesWhere({ ...page }, where))
+      return paginatedFixture(docs)
+    })
+  const update = vi.spyOn(payload, "update").mockImplementation(async ({ collection, id, data }) => {
       if (collection === "pages") {
         const page = pages.find((doc) => String(doc.id) === String(id))
         if (!page) throw new Error(`Missing page ${id}`)
@@ -57,16 +58,14 @@ const createPayloadStub = () => {
         return run
       }
       throw new Error(`Unexpected update ${collection}`)
-    }),
-  }
-  const payload = Object.assign(asPayload(stubs), stubs)
-  return { payload, pages, generationRuns }
+    })
+  return { payload, pages, generationRuns, update }
 }
 
 describe("promoteGenerationRunPages", () => {
   it("bulk promotes approved pages linked to the selected generation run", async () => {
     const { promoteGenerationRunPages } = await import("@/lib/site-generation/promoteGenerationRunPages")
-    const { payload, pages, generationRuns } = createPayloadStub()
+    const { payload, pages, generationRuns, update } = createPayloadStub()
 
     const result = await promoteGenerationRunPages(payload, 500, { promotedBy: 7 })
 
@@ -83,13 +82,13 @@ describe("promoteGenerationRunPages", () => {
         promotedPageIds: ["100", "101"],
       },
     })
-    const pageUpdates = payload.update.mock.calls.filter((call) => (call[0] as MockUpdateArgs).collection === "pages")
-    expect(pageUpdates.every((call) => (call[0] as MockUpdateArgs).context?.skipProjection === true)).toBe(true)
+    const pageUpdates = update.mock.calls.filter((call) => call[0].collection === "pages")
+    expect(pageUpdates.every((call) => call[0].context?.skipProjection === true)).toBe(true)
   })
 
   it("does not promote stale pages retained after a changed generation spec", async () => {
     const { promoteGenerationRunPages } = await import("@/lib/site-generation/promoteGenerationRunPages")
-    const { payload, pages, generationRuns } = createPayloadStub()
+    const { payload, pages, generationRuns, update } = createPayloadStub()
     generationRuns[0]!.pages = [100]
     pages.find((page) => page.id === 102)!.status = "published"
 
@@ -98,15 +97,15 @@ describe("promoteGenerationRunPages", () => {
     expect(result.promotedPageIds.map(String)).toEqual(["100"])
     expect(pages.find((page) => page.id === 101)?.status).toBe("draft")
     expect(pages.find((page) => page.id === 102)?.status).toBe("published")
-    const promotedPageUpdateIds = payload.update.mock.calls
-      .filter((call) => (call[0] as MockUpdateArgs).collection === "pages")
-      .map((call) => String((call[0] as MockUpdateArgs).id))
+    const promotedPageUpdateIds = update.mock.calls
+      .filter((call) => call[0].collection === "pages")
+      .map((call) => String(call[0].id))
     expect(promotedPageUpdateIds).toEqual(["100"])
   })
 
   it("fails when a selected run references a missing linked page", async () => {
     const { promoteGenerationRunPages } = await import("@/lib/site-generation/promoteGenerationRunPages")
-    const { payload, pages, generationRuns } = createPayloadStub()
+    const { payload, pages, generationRuns, update } = createPayloadStub()
     generationRuns[0]!.pages = [100, 999]
 
     await expect(promoteGenerationRunPages(payload, 500)).rejects.toThrow("missing linked pages: 999")

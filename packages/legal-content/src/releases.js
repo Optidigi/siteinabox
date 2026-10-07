@@ -2,6 +2,7 @@
  * Published legal releases are immutable. Add a new file and release entry for
  * every change; never edit a release that has already been deployed.
  */
+/** @type {readonly import("./index.js").LegalRelease[]} */
 export const legalReleases = Object.freeze([
   Object.freeze({
     documentType: 'platform-terms',

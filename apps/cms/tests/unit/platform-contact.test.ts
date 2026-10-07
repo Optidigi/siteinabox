@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@/lib/email/sendEmail", async () => {
-  const actual = await vi.importActual<typeof import("payload")>("@/lib/email/sendEmail")
+  const actual = await vi.importActual<typeof import("@/lib/email/sendEmail")>("@/lib/email/sendEmail")
   return {
     ...actual,
     getPlatformMailSender: () => "noreply@siteinabox.nl",
@@ -13,14 +13,11 @@ vi.mock("@/lib/email/sendEmail", async () => {
   }
 })
 
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
 
 import { sendPlatformContactEmail, validatePlatformContact } from "@/lib/contact/platformContact"
 
-const payload = asPayload({
-  create: vi.fn(),
-  logger: { warn: vi.fn() },
-})
+const payload = createTestPayload()
 
 describe("platform contact mail", () => {
   beforeEach(() => {

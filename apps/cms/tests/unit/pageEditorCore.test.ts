@@ -19,14 +19,15 @@ import {
   selectElementPath,
 } from "@/lib/editor/pageEditorCore"
 import type { PageEditorDraft } from "@/lib/editor/pageDraftStore"
-import type { ThemeTokens } from "@/lib/theme/schema"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
+import { pageFixture } from "../_helpers/generatedDocs"
 
 const hero = (id: string): EditorBlock =>
   ({ id, blockType: "hero", headline: { t: "root", variant: "block", children: [] } }) as EditorBlock
 
 describe("buildPageDraftKey", () => {
   it("encodes tenant, page id, and base href", () => {
-    expect(buildPageDraftKey(12, { id: 34 } as never, "/t/acme/pages")).toBe(
+    expect(buildPageDraftKey(12, pageFixture({ id: 34 }), "/t/acme/pages")).toBe(
       "page:12:34:%2Ft%2Facme%2Fpages",
     )
     expect(buildPageDraftKey("t-1", undefined, "/pages")).toBe("page:t-1:new:%2Fpages")
@@ -54,8 +55,8 @@ describe("isPageDraftStaleAgainstServer", () => {
   })
 })
 describe("dirty derivation", () => {
-  const themeA = { palette: "a" } as unknown as ThemeTokens
-  const themeB = { palette: "b" } as unknown as ThemeTokens
+  const themeA = structuredClone(DEFAULT_THEME_TOKEN_SPEC)
+  const themeB = { ...themeA, shape: { ...themeA.shape, schemeId: "sharp" as const } }
 
   it("detects theme dirty via JSON compare", () => {
     expect(deriveThemeDirty(themeA, themeA)).toBe(false)
@@ -154,7 +155,7 @@ describe("pageEditorDefaultValues", () => {
   })
 
   it("normalizes populated seo.ogImage for editor schema validation", () => {
-    const values = pageEditorDefaultValues({
+    const values = pageEditorDefaultValues(pageFixture({
       id: 1,
       title: "Home",
       slug: "home",
@@ -167,9 +168,11 @@ describe("pageEditorDefaultValues", () => {
           alt: "OG",
           width: 1200,
           height: 630,
+          createdAt: "2026-08-01T00:00:00Z",
+          updatedAt: "2026-08-01T00:00:00Z",
         },
       },
-    } as never)
+    }))
 
     expect(values.seo?.ogImage).toBe(42)
     expect(createPageEditorSchema(t).safeParse(values).success).toBe(true)

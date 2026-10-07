@@ -14,6 +14,12 @@ request to align every workspace to one version.
   separate concerns from ordinary version drift.
 - Do not combine dependency upgrades with behavior refactors, schema changes,
   legal changes, or deployment changes.
+  The approved provider-boundary work has one explicit compatible security
+  exception: Nodemailer `10.0.16` hardens the address parser directly consumed
+  by mail receipt validation. The patch receives separate recipient, SMTP/REST
+  and notification regressions. Required type-checking tooling is owned by that
+  same enforcement change; this exception does not authorize other dependency
+  migrations.
 - Use the installed pnpm version for `pnpm why --recursive PACKAGE`, frozen
   installs, and audit evidence.
 
@@ -31,7 +37,7 @@ request to align every workspace to one version.
 | PostHog | `^1.415.2` in CMS, landing, and renderer | Privacy-sensitive runtime; retain lifecycle and consent checks. |
 | Motion | `^13.1.0` in UI and renderer | Shared runtime aligned after renderer visual and type checks. |
 | TypeScript | exact `6.0.3` in all direct consumers | Keep the compiler reproducible; upgrade only as one reviewed toolchain change. |
-| `@types/node` | CMS-only exact `26.2.0` | Workspace-specific type surface aligned to the Node 26 toolchain. |
+| `@types/node` | root tooling and CMS exact `26.2.0` | Type surface aligned to the Node 26 toolchain. |
 | Playwright | exact `1.62.1` in direct consumers | Retain exact browser/tool alignment. |
 | Zod | `^4.4.3` across apps and packages | Shared contract runtime; preserve lockfile identity. |
 
@@ -69,15 +75,18 @@ no current resolved consumer and are retained as separately reviewable historica
 policy pending their documented removal checks, rather than combined with this
 security patch. DOMPurify, js-yaml, Sharp and Undici receive compatible security
 patches. No peer-major override is used to hide findings. Nodemailer is directly updated
-to exact `10.0.13` after verifying no email-adapter peer constraint, supported
+to exact `10.0.16` after verifying no email-adapter peer constraint, supported
 imports, own types and existing mail tests. Selector-parser remains a reviewed
 build-time finding pending its consumer-contract migration.
 
 ## Release-age policy
 
-`minimumReleaseAge: 1440` remains the default supply-chain delay. No
-release-age exclusions are currently configured; patched versions are resolved
-through the normal policy and explicit compatibility overrides where needed.
+`minimumReleaseAge: 1440` remains the default supply-chain delay. The sole
+release-age exclusion is exact `nodemailer@10.0.16`, reviewed for the shipped
+address-parser hardening described in [the security inventory](dependency-security.md).
+It does not exclude the package's future releases. Remove the exclusion after
+the exact release has passed the age floor and a frozen install proves the
+same graph; other packages continue through the normal policy.
 
 Historical evidence: the 2026-08-12 production audit was clean: `pnpm audit --prod` reports zero
 informational, low, moderate, high, or critical findings. The `sharp` override

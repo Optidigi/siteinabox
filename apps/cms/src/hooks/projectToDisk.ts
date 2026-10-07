@@ -149,16 +149,16 @@ const removeProjectedPage = async (tenantId: string, slug: string) => {
   })
 }
 
-export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+export const projectPageToDisk: CollectionAfterChangeHook<Page> = async ({ doc, previousDoc, req }) => {
   if (shouldSkipProjection(req)) return doc
-  const tenantId = tenantIdOf(doc as TenantScopedDoc)
+  const tenantId = tenantIdOf(doc)
   if (!tenantId) return doc
   const tenantDir = path.join(dataDir(), "tenants", tenantId)
 
   const wasPublished = previousDoc?.status === "published"
   const isPublished = doc.status === "published"
   const slug = String(doc.slug)
-  const oldTenantId = previousDoc ? tenantIdOf(previousDoc as TenantScopedDoc) : undefined
+  const oldTenantId = previousDoc ? tenantIdOf(previousDoc) : undefined
   const oldSlug = String(previousDoc?.slug || slug)
 
   if (isPublished) {
@@ -167,7 +167,7 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
       req.payload.logger.info({ tenantId: oldTenantId, slug: oldSlug }, "[projection] old page projection removed")
     }
     const tenant = await tenantForAnalytics(req.payload, tenantId)
-    const json = pageToJson(doc as Page, analyticsContextForTenant(tenantId, tenant))
+    const json = pageToJson(doc, analyticsContextForTenant(tenantId, tenant))
     await writeAtomic(path.join(tenantDir, "pages", `${slug}.json`), JSON.stringify(json, null, 2))
     await withManifestLock(dataDir(), tenantId, async () => {
       let m = await readManifest(dataDir(), tenantId)
@@ -198,18 +198,18 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
   return doc
 }
 
-export const projectSettingsToDisk: CollectionAfterChangeHook = async ({ doc, req }) => {
+export const projectSettingsToDisk: CollectionAfterChangeHook<SiteSetting> = async ({ doc, req }) => {
   if (shouldSkipProjection(req)) return doc
-  const tenantId = tenantIdOf(doc as TenantScopedDoc)
+  const tenantId = tenantIdOf(doc)
   if (!tenantId) return doc
-  await writeSiteJson(req.payload, tenantId, doc as SiteSetting)
+  await writeSiteJson(req.payload, tenantId, doc)
   req.payload.logger.info({ tenantId }, "[projection] site settings projected")
   return doc
 }
 
-export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
+export const projectMediaToDisk: CollectionAfterChangeHook<Media> = async ({ doc, operation, req }) => {
   if (shouldSkipProjection(req)) return doc
-  const tenantId = tenantIdOf(doc as TenantScopedDoc)
+  const tenantId = tenantIdOf(doc)
   if (!tenantId || doc.filename == null) return doc
   if (!isSafeMediaFilename(doc.filename)) {
     req.payload.logger.warn({ tenantId, filename: doc.filename }, "[projection] unsafe media filename skipped")

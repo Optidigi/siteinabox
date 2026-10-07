@@ -1,3 +1,4 @@
+export {}
 process.env.PAYLOAD_DISABLE_JOBS_AUTORUN = "1"
 
 async function main(): Promise<number> {

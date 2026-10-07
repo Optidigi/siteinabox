@@ -29,6 +29,7 @@ import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePa
 import { findOneDoc } from "@/lib/payloadCollection"
 import {
   numericRelationshipId,
+  relationshipValue,
   relationshipId,
   sameRelationshipId,
 } from "@/lib/relationshipId"
@@ -38,8 +39,8 @@ const TERMINAL_ATTEMPT_STATES = ["failed", "cancelled", "expired", "chargeback"]
 
 const relationIds = (value: unknown): number[] => {
   if (!Array.isArray(value)) return []
-  return value.flatMap((entry) => {
-    const id = numericRelationshipId(entry)
+  return value.flatMap((entry: unknown) => {
+    const id = numericRelationshipId(relationshipValue(entry))
     return id == null ? [] : [id]
   })
 }

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { promises as fs } from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import type { PayloadRequest } from "payload"
+import type { File as PayloadFile } from "payload"
 import { ValidationError } from "payload"
 import { assertSafeMediaFilename, isSafeMediaFilename, resolveMediaPath } from "@/lib/mediaFilename"
 import { ensureUniqueTenantFilename } from "@/hooks/ensureUniqueTenantFilename"
@@ -10,7 +10,7 @@ import { deleteMediaFile } from "@/hooks/deleteFileFromDisk"
 import { projectMediaToDisk } from "@/hooks/projectToDisk"
 
 import { cast } from "../_helpers/cast"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload, createInitializedTestPayload, createTestRequest } from "../_helpers/testPayload"
 
 vi.mock("@/lib/projection/manifest", () => ({
   readManifest: vi.fn(async () => ({ entries: [] })),
@@ -24,17 +24,14 @@ let tmpDir: string
 
 const unsafeFilenames = ["../manifest.json", "../../2/site.json", "nested/file.png", "nested\\file.png", "..", ""]
 
-const reqWithLogger = () => {
-  const stubs = {
-    logger: {
-      info: vi.fn(),
-      warn: vi.fn(),
-    },
-  }
-  return cast<PayloadRequest>({ payload: Object.assign(asPayload(stubs), stubs) })
+const reqWithLogger = async () => {
+  const payload = await createInitializedTestPayload()
+  vi.spyOn(payload.logger, "info")
+  vi.spyOn(payload.logger, "warn")
+  return createTestRequest(payload)
 }
 
-const testFile = (data: string) => cast<File>({
+const testFile = (data: string): PayloadFile => ({
   data: Buffer.from(data),
   name: "file.png",
   mimetype: "image/png",
@@ -85,13 +82,14 @@ describe("media filename traversal guard", () => {
   })
 
   it("blocks unsafe filenames before the per-tenant uniqueness query", async () => {
-    const find = vi.fn().mockResolvedValue({ docs: [], totalDocs: 0 })
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find")
 
     await expect(
       ensureUniqueTenantFilename(cast<Parameters<typeof ensureUniqueTenantFilename>[0]>({
         data: { filename: "../manifest.json", tenant: 1 },
         operation: "create",
-        req: cast<PayloadRequest>({ payload: asPayload({ find }) }),
+        req: await createTestRequest(payload),
       })),
     ).rejects.toBeInstanceOf(ValidationError)
 
@@ -100,14 +98,14 @@ describe("media filename traversal guard", () => {
 
   it.each(unsafeFilenames)("projectMediaToDisk skips unsafe filename %s without writing outside tenant media", async (filename) => {
     await writeSentinels()
-    const req = reqWithLogger()
+    const req = await reqWithLogger()
 
     await projectMediaToDisk(cast<Parameters<typeof projectMediaToDisk>[0]>({
       doc: { id: 10, tenant: 1, filename, updatedAt: "2026-06-03T00:00:00.000Z" },
       operation: "update",
       req: {
         ...req,
-        file: cast<NonNullable<Parameters<typeof projectMediaToDisk>[0]["req"]["file"]>>(testFile("evil")),
+        file: testFile("evil"),
       },
     }))
 
@@ -120,7 +118,7 @@ describe("media filename traversal guard", () => {
 
   it.each(unsafeFilenames)("deleteMediaFile skips unsafe filename %s without deleting outside tenant media", async (filename) => {
     await writeSentinels()
-    const req = reqWithLogger()
+    const req = await reqWithLogger()
 
     await deleteMediaFile(cast<Parameters<typeof deleteMediaFile>[0]>({
       doc: { id: 10, tenant: 1, filename },
@@ -135,14 +133,14 @@ describe("media filename traversal guard", () => {
   })
 
   it("still writes and deletes ordinary tenant media filenames", async () => {
-    const req = reqWithLogger()
+    const req = await reqWithLogger()
 
     await projectMediaToDisk(cast<Parameters<typeof projectMediaToDisk>[0]>({
       doc: { id: 10, tenant: 1, filename: "logo.png", updatedAt: "2026-06-03T00:00:00.000Z" },
       operation: "create",
       req: {
         ...req,
-        file: cast<NonNullable<Parameters<typeof projectMediaToDisk>[0]["req"]["file"]>>(testFile("safe")),
+        file: testFile("safe"),
       },
     }))
 

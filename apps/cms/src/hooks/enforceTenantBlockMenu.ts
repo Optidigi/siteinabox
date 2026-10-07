@@ -1,3 +1,5 @@
+import type { Page } from "@/payload-types"
+import type { RelationshipIdRef } from "@/lib/relationshipId"
 import type { CollectionBeforeValidateHook } from "payload"
 import { ALL_BLOCKS } from "@/blocks/registry"
 
@@ -30,7 +32,8 @@ const extractTenantId = (raw: unknown): string | number | null => {
   return null
 }
 
-export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ data, originalDoc }) => {
+type BlockMenuInput = { tenant?: RelationshipIdRef; blocks?: unknown }
+export const enforceTenantBlockMenu = async <T extends BlockMenuInput | null | undefined>({ data, originalDoc }: Omit<Parameters<CollectionBeforeValidateHook<Page>>[0], "data"> & { data?: T }): Promise<T | undefined> => {
   const tenantId = extractTenantId(
     (data)?.tenant ?? (originalDoc)?.tenant,
   )
@@ -44,7 +47,12 @@ export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ dat
       ? manifest.blocks.map((b) => b.slug)
       : ALL_BLOCKS.map((b) => b.slug),
   )
-  const blocks = ((data)?.blocks ?? []) as { blockType: string }[]
+  const rawBlocks = data?.blocks ?? []
+  if (!Array.isArray(rawBlocks)) throw new Error("Page blocks must be an array.")
+  const blocks = rawBlocks.map((block: unknown) => {
+    if (!block || typeof block !== "object" || !("blockType" in block) || typeof block.blockType !== "string") throw new Error("Page block has no valid blockType.")
+    return { blockType: block.blockType }
+  })
   const violations = blocks
     .map((b, i) => ({ i, slug: b.blockType }))
     .filter((b) => !allowed.has(b.slug))

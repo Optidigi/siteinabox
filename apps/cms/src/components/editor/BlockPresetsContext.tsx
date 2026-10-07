@@ -3,7 +3,7 @@ import * as React from "react"
 import { BLOCKS, resolveAllowedBlocks } from "@/blocks/registry"
 import { sanitizePresetData } from "@/lib/blockPresets/sanitize"
 import { parsePayloadError } from "@/lib/api"
-import type { BlockPreset } from "@/payload-types"
+import { clientPresetListSchema } from "@/components/clientPayload"
 import type { BlockTypeDef, BlockPresetDef } from "@/components/editor/block-type-picker"
 import type { RtManifest } from "@/lib/richText/manifest"
 
@@ -55,15 +55,15 @@ export function BlockPresetsProvider({
         const detail = await parsePayloadError(res)
         throw new Error(detail.message)
       }
-      const json = await res.json()
-      const docs = (json.docs as BlockPreset[]) ?? []
+      const json: unknown = await res.json()
+      const docs = clientPresetListSchema.parse(json).docs
       // Map BlockPreset (Payload type) → BlockPresetDef (registry-portable shape).
       setPresets(docs.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description ?? null,
         blockType: p.blockType,
-        data: (p.data as Record<string, unknown>) ?? {},
+        data: p.data ?? {},
       })))
     } catch (e) {
       setPresetsError(e instanceof Error ? e.message : String(e))

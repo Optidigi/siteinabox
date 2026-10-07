@@ -7,12 +7,11 @@ import {
   requestDomainMigrationRollback,
   startDomainMigrationIncidentRecovery,
 } from "@/lib/domains/migrationOperatorRecovery"
-import {
-  asPayload,
-  type MockDoc,
-  type MockFindArgs,
-  type MockUpdateArgs,
-} from "../_helpers/mockPayload"
+import type { DomainMigration } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { domainMigrationFixture } from "../_helpers/generatedDocs"
+import { matchesWhere } from "../_helpers/mockPayload"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
 
 const NOW = "2026-07-28T10:00:00.000Z"
 const OPERATOR = {
@@ -21,7 +20,7 @@ const OPERATOR = {
   role: "super-admin" as const,
 }
 
-const migrationRecord = (): MockDoc => ({
+const migrationRecord = (): DomainMigration => domainMigrationFixture({
   id: 10,
   idempotencyKey: "domain-migration:order:20:v1",
   originatingOrder: 20,
@@ -44,64 +43,29 @@ const migrationRecord = (): MockDoc => ({
   updatedAt: "2026-07-28T08:00:00.000Z",
 })
 
-const matches = (doc: MockDoc, where: MockFindArgs["where"]): boolean => {
-  if (!where) return true
-  const clauses = Array.isArray(where.and)
-    ? where.and
-    : Object.entries(where).map(([field, value]) => ({ [field]: value }))
-  return clauses.every((clause) => {
-    const [field, condition] = Object.entries(clause as MockDoc)[0] ?? []
-    if (!field || !condition || typeof condition !== "object") return true
-    const expected = (condition as { equals?: unknown }).equals
-    return expected === undefined || String(doc[field]) === String(expected)
-  })
-}
-
 const createStore = () => {
-  const collections: Record<string, MockDoc[]> = {
-    "domain-migrations": [migrationRecord()],
-  }
-  const findByID = vi.fn(async ({
-    collection,
-    id,
-  }: {
-    collection: string
-    id: string | number
-  }) => {
-    const doc = (collections[collection] ?? []).find(
-      (entry) => String(entry.id) === String(id),
-    )
+  const collections = { "domain-migrations": [migrationRecord()] }
+  const payload = createTestPayload()
+  const findByID = vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
+    if (collection !== "domain-migrations") throw new Error(`Unexpected collection ${collection}`)
+    const doc = collections[collection].find(entry => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
     return doc
   })
-  const update = vi.fn(async ({
-    collection,
-    id,
-    where,
-    data,
-  }: MockUpdateArgs & { where?: MockFindArgs["where"] }) => {
-    if (where) {
-      const docs = (collections[collection] ?? []).filter((doc) =>
-        matches(doc, where)
-      )
-      for (const doc of docs) Object.assign(doc, data)
-      return { docs, totalDocs: docs.length }
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
+    if (args.collection !== "domain-migrations") throw new Error(`Unexpected collection ${args.collection}`)
+    if (args.where) {
+      const docs = collections[args.collection].filter(doc => matchesWhere({ ...doc }, args.where))
+      for (const doc of docs) Object.assign(doc, args.data)
+      return { docs, errors: [], totalDocs: docs.length }
     }
-    const doc = (collections[collection] ?? []).find(
-      (entry) => String(entry.id) === String(id),
-    )
-    if (!doc) throw new Error(`Missing ${collection} ${id}`)
-    Object.assign(doc, data)
+    const doc = collections[args.collection].find(entry => String(entry.id) === String(args.id))
+    if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
+    Object.assign(doc, args.data)
     return doc
-  })
-  return {
-    collections,
-    payload: asPayload({
-      findByID,
-      update,
-      jobs: { queue: vi.fn() },
-    }),
-  }
+  }))
+  vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, totalTried: 0, createdAt: NOW, updatedAt: NOW })
+  return { collections, findByID, payload }
 }
 
 const authorizeAndStart = async (store: ReturnType<typeof createStore>) => {
@@ -175,19 +139,15 @@ describe("domain migration operator recovery", () => {
     const store = createStore()
     await authorizeAndStart(store)
 
-    const findByID = store.payload.findByID as unknown as ReturnType<typeof vi.fn>
-    const originalFindByID = findByID.getMockImplementation() as (
-      args: { collection: string; id: string | number },
-    ) => Promise<MockDoc>
+    const findByID = store.findByID
+    const originalFindByID = findByID.getMockImplementation()
+    if (!originalFindByID) throw new Error("Expected store findByID implementation")
     let concurrentReads = 0
     let releaseReads: (() => void) | undefined
     const readsReady = new Promise<void>((resolve) => {
       releaseReads = resolve
     })
-    findByID.mockImplementation(async (args: {
-      collection: string
-      id: string | number
-    }) => {
+    findByID.mockImplementation(async (args) => {
       if (args.collection === "domain-migrations" && concurrentReads < 2) {
         concurrentReads += 1
         const snapshot = structuredClone(

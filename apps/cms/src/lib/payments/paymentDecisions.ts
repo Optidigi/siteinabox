@@ -25,7 +25,7 @@ export function classifyMollieCreationError(
     error instanceof MollieApiError &&
     error.status >= 400 &&
     error.status < 500 &&
-    error.status !== 409
+    ![408, 409, 425, 429].includes(error.status)
   ) {
     return {
       outcome: "deterministic_rejection",

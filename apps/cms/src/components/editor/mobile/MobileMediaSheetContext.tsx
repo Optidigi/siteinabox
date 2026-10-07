@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import type { Media } from "@/payload-types"
+import { clientMediaSchema, type ClientMedia } from "@/components/clientPayload"
 import { MediaGrid } from "@/components/media/MediaGrid"
 import { MediaUploader } from "@/components/media/MediaUploader"
 import { fetchTenantMedia, resolveMediaTenantId } from "@/components/media/clientMedia"
@@ -40,7 +40,7 @@ export type MobileMediaSheetContextValue = {
 
 const MobileMediaSheetContext = React.createContext<MobileMediaSheetContextValue | null>(null)
 
-function adaptMedia(m: Media): MediaItem {
+function adaptMedia(m: ClientMedia): MediaItem {
   return {
     id: m.id,
     url: m.url ?? null,
@@ -67,12 +67,12 @@ export function MobileMediaSheetProvider({ children }: { children: React.ReactNo
           <div className="space-y-4">
             <MediaUploader
               tenantId={tenantId}
-              onUploaded={(m) => onUploaded(adaptMedia(m as Media))}
+              onUploaded={(m) => onUploaded(adaptMedia(m))}
             />
             <MediaGrid
-              items={items as unknown as Media[]}
+              items={items}
               selectable
-              onSelect={(m) => onPick(adaptMedia(m))}
+              onSelect={onPick}
             />
           </div>
         )

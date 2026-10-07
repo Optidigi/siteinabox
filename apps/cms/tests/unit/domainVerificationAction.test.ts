@@ -1,14 +1,13 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, userFixture } from "../_helpers/generatedDocs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { cast } from "../_helpers/cast"
-import type { GateResult } from "@/lib/authGate"
-import type { User } from "@/payload-types"
-import { asPayload, type MockCreateArgs } from "../_helpers/mockPayload"
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }))
 
-vi.mock("payload", () => ({
+vi.mock("payload", async (importOriginal) => ({
+  ...await importOriginal<typeof import("payload")>(),
   getPayload: vi.fn(),
 }))
 
@@ -34,12 +33,13 @@ describe("domain verification action", () => {
   it("requires super-admin access and writes manual verification audit fields", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-06-26T10:00:00.000Z"))
-    const update = vi.fn(async ({ data }: MockCreateArgs) => ({ id: 7, ...data }))
-    vi.mocked(requireRole).mockResolvedValue(cast<GateResult>({
-      user: cast<User>({ id: 42, role: "super-admin", updatedAt: "", createdAt: "", email: "admin@test.local" }),
+    const payload = createTestPayload()
+    const update = vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 7 }))
+    vi.mocked(requireRole).mockResolvedValue({
+      user: userFixture({ id: 42, role: "super-admin", email: "admin@test.local" }),
       ctx: { mode: "super-admin", tenant: null },
-    }))
-    vi.mocked(getPayload).mockResolvedValue(asPayload({ update }))
+    })
+    vi.mocked(getPayload).mockResolvedValue(payload)
     const form = new FormData()
     form.set("status", "verified")
     form.set("notes", "DNS and proxy route checked")
@@ -65,11 +65,11 @@ describe("domain verification action", () => {
   })
 
   it("does not mutate when status is unsupported", async () => {
-    vi.mocked(requireRole).mockResolvedValue(cast<GateResult>({
-      user: cast<User>({ id: 42, role: "super-admin", updatedAt: "", createdAt: "", email: "admin@test.local" }),
+    vi.mocked(requireRole).mockResolvedValue({
+      user: userFixture({ id: 42, role: "super-admin", email: "admin@test.local" }),
       ctx: { mode: "super-admin", tenant: null },
-    }))
-    vi.mocked(getPayload).mockResolvedValue(asPayload({ update: vi.fn() }))
+    })
+    vi.mocked(getPayload).mockResolvedValue(createTestPayload())
     const form = new FormData()
     form.set("status", "dns_automated")
 

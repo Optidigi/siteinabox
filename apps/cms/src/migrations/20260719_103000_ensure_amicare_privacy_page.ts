@@ -6,7 +6,7 @@ type MigrationPage = { id?: string | number; slug?: string | null; blocks?: unkn
 type MigrationTenant = { id: string | number; slug?: string | null; domain?: string | null; siteManifest?: unknown }
 type MigrationSiteSetting = {
   id?: string | number
-  chrome?: { footer?: unknown; banner?: Record<string, unknown> }
+  chrome?: { footer?: unknown; banner?: unknown } | null
   [key: string]: unknown
 }
 type PayloadClient = MigrateUpArgs["payload"]
@@ -145,7 +145,7 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
   const activePages = snapshotPagesFrom(activeSnapshot.snapshot)
   const existingPage = pagesResult.docs.find((page) => page.slug === SLUG) as MigrationPage | undefined
   const existingSnapshotPage = activePages.find((page) => page.slug === SLUG)
-  const existingSettings = settingsResult.docs[0] as unknown as MigrationSiteSetting
+  const existingSettings: MigrationSiteSetting = { ...settingsResult.docs[0] }
   const currentFooter = existingSettings.chrome?.footer
   const currentLegalLinks = legalLinksFromFooter(currentFooter)
   if (existingPage && existingSnapshotPage && currentLegalLinks.some((link) => link.href === `/${SLUG}`)) return
@@ -188,7 +188,7 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
       overrideAccess: true,
       context: { skipProjection: true, source: "amicare-privacy-page-migration" },
     })
-    page = await payload.findByID({ collection: "pages", id: existingPage.id, depth: 0, overrideAccess: true }) as unknown as MigrationPage
+    page = await payload.findByID({ collection: "pages", id: existingPage.id, depth: 0, overrideAccess: true })
   } else {
     page = await createDoc(payload, {
       collection: "pages",
@@ -196,7 +196,7 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
       depth: 0,
       overrideAccess: true,
       context: { skipProjection: true, source: "amicare-privacy-page-migration" },
-    }) as unknown as MigrationPage
+    })
   }
 
   const footer = withPrivacyLink(currentFooter)
@@ -225,7 +225,7 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
     : [...activePages, privacyPage]
   const snapshotSource = asRecord(activeSnapshot.snapshot) ?? {}
   const snapshotManifest = asRecord(snapshotSource.manifest) ?? {}
-  const manifestEntries = Array.isArray(snapshotManifest.entries) ? snapshotManifest.entries : []
+  const manifestEntries: unknown[] = Array.isArray(snapshotManifest.entries) ? snapshotManifest.entries : []
   const snapshotSettings = asRecord(snapshotSource.settings) ?? {}
   const snapshotChrome = asRecord(snapshotSettings.chrome) ?? {}
   const snapshot = {

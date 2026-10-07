@@ -71,7 +71,14 @@ import {
   migrationCheckoutSecretKey,
   persistMigrationCheckoutSecret,
 } from "@/lib/domains/migrationCheckoutSecret"
-import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import type { Config } from "@/payload-types"
+import type { Payload } from "payload"
+import { drizzle } from "@payloadcms/db-postgres/drizzle/node-postgres"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { payloadUpdateFixture, type PayloadUpdateOptions } from "../_helpers/payloadUpdateFixture"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { orderFixture, checkoutProfileFixture, tenantFixture, generationRunFixture, paymentAttemptFixture, domainMigrationFixture, managedDomainFixture, migrationCheckoutSecretFixture, operationalAlertFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import type { MockDoc, MockFindArgs } from "../_helpers/mockPayload"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 9).toString("base64")
 const OLD_NAMESERVERS = ["ns1.legacy.example", "ns2.legacy.example"]
@@ -177,9 +184,12 @@ const sourceRefreshAuthority = (
   }
 }
 
-const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
-  const collections: Record<string, MockDoc[]> = {
-    orders: [{
+const createStore = async (options: { managedDomainEdgeReady?: boolean } = {}) => {
+  type Collection = "orders" | "checkout-profiles" | "tenants" | "site-generation-runs" | "payment-attempts" | "domain-migrations" | "managed-domains" | "migration-checkout-secrets" | "operational-alerts"
+  type Doc = Config["collections"][Collection]
+  const isCollection = (value: string): value is Collection => ["orders","checkout-profiles","tenants","site-generation-runs","payment-attempts","domain-migrations","managed-domains","migration-checkout-secrets","operational-alerts"].includes(value)
+  const collections: Partial<{ [C in Collection]: Config["collections"][C][] }> = {
+    orders: [orderFixture({
       id: 600,
       orderNumber: "SIAB-MIGRATION-600",
       tenant: 1,
@@ -218,8 +228,8 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
       paymentProvider: "mollie",
       providerPaymentId: "tr_paid",
       createdAt: "2026-07-28T07:00:00.000Z",
-    }],
-    "checkout-profiles": [{
+    })],
+    "checkout-profiles": [checkoutProfileFixture({
       id: 800,
       profileKey: "profile-500-v1",
       generationRun: 500,
@@ -229,7 +239,7 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
       contractingPartyName: "Acme Studio",
       intendedCompanyName: null,
       kvkNumber: "12345678",
-      customerName: "Ada Lovelace",
+      customerName: "Ada Lovelace", firstName: "Ada", lastName: "Lovelace", customerPhone: "+31 20 1234567",
       customerEmail: "client@example.com",
       billingAddress: {
         street: "Main Street",
@@ -238,27 +248,19 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
         city: "Amsterdam",
         country: "NL",
       },
-      registrantContact: {
-        firstName: "Ada",
-        lastName: "Lovelace",
-        email: "client@example.com",
-        phoneCountryCode: "+31",
-        phoneAreaCode: "20",
-        phoneSubscriberNumber: "1234567",
-        locale: "nl_NL",
-      },
+
       domainRegistrantSource: "contracting_party",
-      capturedAt: "2026-07-28T07:00:00.000Z",
-    }],
-    tenants: [{
+
+    })],
+    tenants: [tenantFixture({
       id: 1,
       name: "Acme",
       slug: "acme",
-      status: "preview",
+      status: "provisioning",
       domain: "preview.siteinabox.test",
       domainVerification: { status: "not_checked" },
-    }],
-    "site-generation-runs": [{
+    })],
+    "site-generation-runs": [generationRunFixture({
       id: 500,
       tenant: 1,
       status: "preview_ready",
@@ -267,22 +269,26 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
         externalReference: "tr_paid",
         selectedDomain: "example.nl",
       },
-    }],
-    "payment-attempts": [{
+    })],
+    "payment-attempts": [paymentAttemptFixture({
       id: 700,
       order: 600,
       purpose: "first_payment",
       state: "paid",
       providerPaymentId: "tr_paid",
-    }],
+    })],
     "domain-migrations": [],
     "managed-domains": [],
   }
+  const documents = (collection: string): Doc[] => {
+    if (!isCollection(collection)) throw new Error("Unexpected collection " + collection)
+    return collections[collection] ?? []
+  }
   let nextId = 1_000
-  let transactionSnapshot: Record<string, MockDoc[]> | null = null
+  let transactionSnapshot: typeof collections | null = null
   let commitResponseLosses = 0
-  const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
-    const docs = (collections[collection] ?? []).filter((doc) => {
+  const find = vi.fn(async ({ collection, where }: Parameters<Payload["find"]>[0]) => {
+    const docs = documents(collection).filter((doc) => {
       if (!where) return true
       const matchesWhere = (conditionGroup: Record<string, unknown>): boolean =>
         Object.entries(conditionGroup).every(([field, condition]) => {
@@ -299,50 +305,50 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
           }
           if (
             operators.equals !== undefined &&
-            String(doc[field]) !== String(operators.equals)
+            String(asDocRecord(doc)[field]) !== String(operators.equals)
           ) return false
           if (
             operators.in &&
-            !operators.in.some((entry) => String(entry) === String(doc[field]))
+            !operators.in.some((entry) => String(entry) === String(asDocRecord(doc)[field]))
           ) return false
           if (
             operators.less_than_equal !== undefined &&
-            String(doc[field]) > String(operators.less_than_equal)
+            String(asDocRecord(doc)[field]) > String(operators.less_than_equal)
           ) return false
           return true
         })
       return matchesWhere(where as Record<string, unknown>)
     })
-    return { docs, totalDocs: docs.length }
+    return paginatedFixture(docs, { totalDocs: docs.length })
   })
-  const findByID = vi.fn(async ({ collection, id }: { collection: string; id: string | number }) => {
-    const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
+  const findByID = vi.fn(async ({ collection, id }: Parameters<Payload["findByID"]>[0]) => {
+    const doc = documents(collection).find((entry) => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
     return doc
   })
-  const create = vi.fn(async ({ collection, data }: { collection: string; data: Record<string, unknown> }) => {
-    const doc = {
-      id: nextId++,
-      ...data,
-      ...(collection === "managed-domains" && options.managedDomainEdgeReady !== false
-        ? {
-            edgeRoutingStatus: "active",
-            httpsStatus: "verified",
-            adminHttpsStatus: "verified",
-          }
-        : {}),
+  const create = vi.fn(async ({ collection, data }: Parameters<Payload["create"]>[0]) => {
+    const id = nextId++
+    switch (collection) {
+      case "orders": { const doc = orderFixture({ id }); Object.assign(doc, data); (collections["orders"] ??= []).push(doc); return doc }
+      case "checkout-profiles": { const doc = checkoutProfileFixture({ id }); Object.assign(doc, data); (collections["checkout-profiles"] ??= []).push(doc); return doc }
+      case "tenants": { const doc = tenantFixture({ id }); Object.assign(doc, data); (collections["tenants"] ??= []).push(doc); return doc }
+      case "site-generation-runs": { const doc = generationRunFixture({ id }); Object.assign(doc, data); (collections["site-generation-runs"] ??= []).push(doc); return doc }
+      case "payment-attempts": { const doc = paymentAttemptFixture({ id }); Object.assign(doc, data); (collections["payment-attempts"] ??= []).push(doc); return doc }
+      case "domain-migrations": { const doc = domainMigrationFixture({ id }); Object.assign(doc, data); (collections["domain-migrations"] ??= []).push(doc); return doc }
+      case "managed-domains": { const doc = managedDomainFixture({ id }); Object.assign(doc, data, options.managedDomainEdgeReady !== false ? { edgeRoutingStatus: "active", httpsStatus: "verified", adminHttpsStatus: "verified" } : {}); (collections["managed-domains"] ??= []).push(doc); return doc }
+      case "migration-checkout-secrets": { const doc = migrationCheckoutSecretFixture({ id }); Object.assign(doc, data); (collections["migration-checkout-secrets"] ??= []).push(doc); return doc }
+      case "operational-alerts": { const doc = operationalAlertFixture({ id }); Object.assign(doc, data); (collections["operational-alerts"] ??= []).push(doc); return doc }
+      default: throw new Error("Unexpected create " + collection)
     }
-    ;(collections[collection] ??= []).push(doc)
-    return doc
   })
   const update = vi.fn(async ({
     collection,
     id,
     where,
     data,
-  }: MockUpdateArgs & { where?: MockFindArgs["where"] }) => {
+  }: PayloadUpdateOptions) => {
     if (where) {
-      const docs = (collections[collection] ?? []).filter((doc) => {
+      const docs = documents(collection).filter((doc) => {
         const clauses = Array.isArray(where.and)
           ? where.and
           : Object.entries(where).map(([field, value]) => ({ [field]: value }))
@@ -357,19 +363,19 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
           }
           if (
             operators.equals !== undefined &&
-            String(doc[field]) !== String(operators.equals)
+            String(asDocRecord(doc)[field]) !== String(operators.equals)
           ) return false
           if (
             operators.less_than_equal !== undefined &&
-            String(doc[field]) > String(operators.less_than_equal)
+            String(asDocRecord(doc)[field]) > String(operators.less_than_equal)
           ) return false
           return true
         })
       })
       for (const doc of docs) Object.assign(doc, data)
-      return { docs, totalDocs: docs.length }
+      return { docs, errors: [], totalDocs: docs.length }
     }
-    const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
+    const doc = documents(collection).find((entry) => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
     Object.assign(doc, data)
     return doc
@@ -389,34 +395,26 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
   })
   const rollbackTransaction = vi.fn(async () => {
     if (!transactionSnapshot) throw new Error("No test transaction is active.")
-    for (const key of Object.keys(collections)) delete collections[key]
+    for (const key of Object.keys(collections)) if (isCollection(key)) delete collections[key]
     Object.assign(collections, structuredClone(transactionSnapshot))
     transactionSnapshot = null
   })
-  return {
-    collections,
-    payload: asPayload({
-      find,
-      findByID,
-      create,
-      update,
-      db: {
-        beginTransaction,
-        commitTransaction,
-        rollbackTransaction,
-        drizzle: {
-          execute: vi.fn(async () => ({ rows: [{ id: 1_000 }] })),
-        },
-        pool: {
-          connect: vi.fn(async () => ({
-            query: vi.fn(async () => ({ rows: [] })),
-            release: vi.fn(),
-          })),
-        },
-      },
-      jobs: { queue: vi.fn(async () => ({ id: "queued-job" })) },
-      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-    }),
+  const payload = await createInitializedTestPayload()
+  vi.spyOn(payload, "find").mockImplementation(find)
+  vi.spyOn(payload, "findByID").mockImplementation(findByID)
+  vi.spyOn(payload, "create").mockImplementation(create)
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(update))
+  vi.spyOn(payload.db, "beginTransaction").mockImplementation(beginTransaction)
+  vi.spyOn(payload.db, "commitTransaction").mockImplementation(commitTransaction)
+  vi.spyOn(payload.db, "rollbackTransaction").mockImplementation(rollbackTransaction)
+  if (!payload.db.pg) throw new Error("Fixture PostgreSQL driver missing")
+  const pool = new payload.db.pg.Pool(payload.db.poolOptions)
+  payload.db.pool = pool
+  payload.db.drizzle = drizzle({ client: pool, schema: payload.db.schema })
+  vi.spyOn(payload.db.drizzle, "execute").mockResolvedValue({ command: "UPDATE", rowCount: 1, oid: 0, fields: [], rows: [{ id: 1_000 }] })
+  vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, totalTried: 0, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" })
+  for (const method of ["warn", "error", "info"] as const) vi.spyOn(payload.logger, method)
+  return { collections, update, payload,
     beginTransaction,
     commitTransaction,
     rollbackTransaction,
@@ -427,7 +425,7 @@ const createStore = (options: { managedDomainEdgeReady?: boolean } = {}) => {
 }
 
 const preparedMigration = async (
-  store: ReturnType<typeof createStore>,
+  store: Awaited<ReturnType<typeof createStore>>,
   sourceZone: CompleteZoneExport = zoneExport,
 ) => {
   const migration = await createAutomaticDomainMigration(store.payload, 600)
@@ -436,10 +434,10 @@ const preparedMigration = async (
     zoneExport: sourceZone,
     transferCode: "opaque-nl-transfer-code",
     sourceRefreshAuthority: sourceRefreshAuthority(sourceZone),
-    env: {
+    env: { NODE_ENV: "test",
       DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
       CLOUDFLARE_RENDERER_TUNNEL_ID: "11111111-1111-4111-8111-111111111111",
-    } as unknown as NodeJS.ProcessEnv,
+    } satisfies NodeJS.ProcessEnv,
     now: "2026-07-28T08:00:00.000Z",
   })
   expect(store.payload.jobs.queue).toHaveBeenCalledWith({
@@ -690,7 +688,7 @@ const workflowDependencies = (input?: {
     queueDeferredPostPaymentLiveHandoff: vi.fn(async () => "queued" as const),
     ensureTenantPostHogEnrollment: vi.fn(async () => "updated" as const),
     activateManagedDomainEntitlement: vi.fn(async (
-      payload: ReturnType<typeof createStore>["payload"],
+      payload: Awaited<ReturnType<typeof createStore>>["payload"],
       domain: MockDoc,
       now: string,
     ) => payload.update({
@@ -747,7 +745,7 @@ afterEach(() => {
 
 describe("automatic existing-domain migration", () => {
   it("rejects accepted migration orders using legacy quote evidence", async () => {
-    const store = createStore()
+    const store = await createStore()
     const order = store.collections.orders![0]!
     order.quoteEvidence = {
       ...(order.quoteEvidence as Record<string, unknown>),
@@ -759,7 +757,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("derives transfer-confirmation actions from the frozen TLD capability", async () => {
-    const nlStore = createStore()
+    const nlStore = await createStore()
     await createAutomaticDomainMigration(nlStore.payload, 600)
     expect(nlStore.collections["domain-migrations"]![0]).toMatchObject({
       customerActions: {
@@ -787,7 +785,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("reuses the order-keyed migration authority across duplicate fulfillment calls", async () => {
-    const store = createStore()
+    const store = await createStore()
 
     const first = await createAutomaticDomainMigration(store.payload, 600)
     const second = await createAutomaticDomainMigration(store.payload, 600)
@@ -797,7 +795,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("refreshes a current automatic source before persisting or writing providers", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
     }
@@ -871,7 +869,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("turns a changed paid source into resumable reauthorization before provider writes", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
     }
@@ -949,7 +947,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("retains only refresh authority and completes after a six-day provider wait", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
       authority: {
@@ -987,11 +985,11 @@ describe("automatic existing-domain migration", () => {
         },
       },
       now: "2026-07-28T08:00:00.000Z",
-      env: {
+      env: { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
         CLOUDFLARE_RENDERER_TUNNEL_ID:
           "11111111-1111-4111-8111-111111111111",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     })
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -1034,7 +1032,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("persists a registry wait and sends no provider transfer when a fresh lock appears", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
       authority: {
@@ -1072,11 +1070,11 @@ describe("automatic existing-domain migration", () => {
         },
       },
       now: "2026-07-28T08:00:00.000Z",
-      env: {
+      env: { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
         CLOUDFLARE_RENDERER_TUNNEL_ID:
           "11111111-1111-4111-8111-111111111111",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     })
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -1104,7 +1102,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("waits without revoking authority while another OAuth refresh owns the claim", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
       authority: {
@@ -1142,11 +1140,11 @@ describe("automatic existing-domain migration", () => {
         },
       },
       now: "2026-07-28T08:00:00.000Z",
-      env: {
+      env: { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
         CLOUDFLARE_RENDERER_TUNNEL_ID:
           "11111111-1111-4111-8111-111111111111",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     })
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -1181,7 +1179,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("atomically accepts only one replacement source authority", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
       authority: {
@@ -1219,11 +1217,11 @@ describe("automatic existing-domain migration", () => {
         },
       },
       now: "2026-07-28T08:00:00.000Z",
-      env: {
+      env: { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
         CLOUDFLARE_RENDERER_TUNNEL_ID:
           "11111111-1111-4111-8111-111111111111",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     })
     const migration = store.collections["domain-migrations"]![0]!
     Object.assign(migration, {
@@ -1233,9 +1231,9 @@ describe("automatic existing-domain migration", () => {
       updatedAt: "2026-08-03T09:00:00.000Z",
     })
     vi.mocked(store.payload.jobs.queue).mockClear()
-    store.payload.db.drizzle.execute = vi.fn()
-      .mockResolvedValueOnce({ rows: [{ id: migration.id }] })
-      .mockResolvedValueOnce({ rows: [] }) as never
+    vi.spyOn(store.payload.db.drizzle, "execute")
+      .mockResolvedValueOnce({ command: "UPDATE", rowCount: 1, oid: 0, fields: [], rows: [{ id: migration.id }] })
+      .mockResolvedValueOnce({ command: "UPDATE", rowCount: 0, oid: 0, fields: [], rows: [] })
     const replacement = (token: string) =>
       replaceMigrationSourceRefreshAuthority(store.payload, {
         migrationId: migration.id!,
@@ -1250,9 +1248,9 @@ describe("automatic existing-domain migration", () => {
           },
         },
         now: "2026-08-03T09:01:00.000Z",
-        env: {
+        env: { NODE_ENV: "test",
           DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
-        } as unknown as NodeJS.ProcessEnv,
+        } satisfies NodeJS.ProcessEnv,
       })
 
     const results = await Promise.allSettled([
@@ -1267,9 +1265,9 @@ describe("automatic existing-domain migration", () => {
       String(persisted.encryptedSourceRefreshAuthority),
       String(persisted.idempotencyKey),
       "example.nl",
-      {
+      { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     )).toMatchObject({
       credential: {
         token: "winning-customer-cloudflare-token",
@@ -1279,7 +1277,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("clears retained checkout ciphertext on retry after acquisition already succeeded", async () => {
-    const store = createStore()
+    const store = await createStore()
     const now = new Date("2026-07-28T09:00:00.000Z")
     const sourceZoneHash = domainMigrationSourceAuthorityHash(
       normalizeCompleteZone(zoneExport),
@@ -1330,16 +1328,15 @@ describe("automatic existing-domain migration", () => {
       sourceZoneHash,
       now,
     })
-    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
-    const originalUpdate = update.getMockImplementation() as (
-      args: MockUpdateArgs,
-    ) => Promise<unknown>
+    const update = store.update
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Missing update implementation")
     let failConsumption = true
-    update.mockImplementation(async (args: MockUpdateArgs) => {
+    update.mockImplementation(async (args: PayloadUpdateOptions) => {
       if (
         failConsumption &&
         args.collection === "migration-checkout-secrets" &&
-        args.data.state === "consumed"
+        asDocRecord(args.data).state === "consumed"
       ) {
         failConsumption = false
         throw new Error("simulated secret clearing failure")
@@ -1373,19 +1370,17 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("coalesces duplicate workers on the single migration authority", () => {
-    const concurrency = prepareDomainMigrationTask.concurrency as unknown as {
-      exclusive: boolean
-      supersedes: boolean
-      key: (args: { input: { migrationId: string } }) => string
-    }
+    const concurrency = prepareDomainMigrationTask.concurrency
+    if (!concurrency || typeof concurrency === "function") throw new Error("Expected declarative concurrency")
     expect(concurrency).toMatchObject({ exclusive: true, supersedes: true })
     expect(concurrency.key({
+      queue: "default",
       input: { migrationId: "1000" },
     })).toBe("prepare-domain-migration:1000")
   })
 
   it("preserves service records, transfers on old nameservers, cuts over and deletes the code", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
 
@@ -1448,11 +1443,11 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("waits for automatic edge readiness before transfer and resumes from a preview tenant", async () => {
-    const store = createStore({ managedDomainEdgeReady: false })
+    const store = await createStore({ managedDomainEdgeReady: false })
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     expect(store.collections.tenants![0]).toMatchObject({
-      status: "preview",
+      status: "provisioning",
       domain: "preview.siteinabox.test",
     })
 
@@ -1481,7 +1476,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("fails before OpenProvider customer preparation when edge readiness fails and preserves per-surface evidence", async () => {
-    const store = createStore({ managedDomainEdgeReady: false })
+    const store = await createStore({ managedDomainEdgeReady: false })
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
 
@@ -1530,7 +1525,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("alerts after the governed transfer wait window without repeating the registrar write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -1582,7 +1577,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("automates a signed source through safe DS rollover before publication", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store, signedZoneExport)
     const fixture = workflowDependencies({
       sourceParentDsRecords: [sourceDsRecord],
@@ -1654,7 +1649,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers target signing after a prepared checkpoint without repeating the write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     let signingVisible = false
@@ -1694,7 +1689,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers an indeterminate target-signing response through readback without retry", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     let signingVisible = false
@@ -1729,7 +1724,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers target DS publication after a prepared checkpoint without repeating the write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.updateOpenProviderDomainDnssec.mockImplementationOnce(
@@ -1764,7 +1759,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers an indeterminate target DS response through readback without retry", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.updateOpenProviderDomainDnssec.mockRejectedValueOnce(
@@ -1799,7 +1794,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("persists rollback when target DNSSEC remains unverified at the cutover deadline", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.setTargetDsVisible(false)
@@ -1850,7 +1845,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("refreshes signed AXFR authority after a long parent-DS cache wait", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...signedZoneExport,
       authority: {
@@ -1889,11 +1884,11 @@ describe("automatic existing-domain migration", () => {
           tsigSecret: "dGVzdC1hdXRob3JpdHktc2VjcmV0",
         },
       },
-      env: {
+      env: { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
         CLOUDFLARE_RENDERER_TUNNEL_ID:
           "11111111-1111-4111-8111-111111111111",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       now: "2026-07-28T08:00:00.000Z",
     })
     const fixture = workflowDependencies({
@@ -1974,7 +1969,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("removes and waits out target DS before restoring a signed source", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store, signedZoneExport)
     const fixture = workflowDependencies({
       sourceParentDsRecords: [sourceDsRecord],
@@ -2073,7 +2068,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("fails closed when parent DNSSEC state changes after accepted source capture", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.verifyParentDsAbsent.mockResolvedValue({
@@ -2124,7 +2119,7 @@ describe("automatic existing-domain migration", () => {
   it.each(["refunded", "chargeback"] as const)(
     "does not transfer after the captured payment becomes %s",
     async (paymentState) => {
-      const store = createStore()
+      const store = await createStore()
       const migration = await preparedMigration(store)
       store.collections["payment-attempts"]![0]!.state = paymentState
       const fixture = workflowDependencies()
@@ -2147,7 +2142,7 @@ describe("automatic existing-domain migration", () => {
   )
 
   it("does not transfer when payment reversal acquires the order lock first", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     withCommerceOrderLock.mockImplementationOnce(async (
@@ -2172,7 +2167,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("continues transfer when a rejected refund leaves captured funds secured", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     store.collections["payment-attempts"]![0]!.state = "refund_failed"
     const fixture = workflowDependencies()
@@ -2191,7 +2186,7 @@ describe("automatic existing-domain migration", () => {
   it.each(["refund_pending", "refunded", "chargeback"] as const)(
     "preserves custody and source DNS when payment becomes %s after registrar transfer",
     async (paymentState) => {
-      const store = createStore()
+      const store = await createStore()
       const migration = await preparedMigration(store)
       const fixture = workflowDependencies()
       withCommerceOrderLock.mockImplementationOnce(async (
@@ -2201,7 +2196,7 @@ describe("automatic existing-domain migration", () => {
       ) => {
         const result = await operation()
         store.collections["payment-attempts"]![0]!.state = paymentState
-        store.collections.orders![0]!.paymentStatus = paymentState
+        store.collections.orders![0]!.paymentStatus = paymentState === "refund_pending" ? "paid" : paymentState
         return result
       })
 
@@ -2244,7 +2239,7 @@ describe("automatic existing-domain migration", () => {
   )
 
   it("retains uncertain Cloudflare OAuth revocation authority and clears it after confirmed recovery", async () => {
-    const store = createStore()
+    const store = await createStore()
     const automaticZone: CompleteZoneExport = {
       ...zoneExport,
       authority: {
@@ -2369,7 +2364,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("blocks publication without rolling back customer DNS when payment changes after cutover", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.verifyPreservedDnsRecords.mockImplementationOnce(
@@ -2398,7 +2393,7 @@ describe("automatic existing-domain migration", () => {
     expect(fixture.dependencies.publishAndActivateAfterCompletedPayment).not.toHaveBeenCalled()
     expect(fixture.dependencies.activateManagedDomainEntitlement).not.toHaveBeenCalled()
     expect(store.collections.tenants![0]).toMatchObject({
-      status: "preview",
+      status: "provisioning",
       domain: "preview.siteinabox.test",
     })
     expect(store.collections["managed-domains"]![0]).toMatchObject({
@@ -2410,7 +2405,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("rechecks payment after acquiring the publication lock", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     withCommerceOrderLock
@@ -2445,7 +2440,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("prevalidates the generation run before projecting the target tenant domain", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     store.collections.orders![0]!.generationRun = null
     const fixture = workflowDependencies()
@@ -2457,7 +2452,7 @@ describe("automatic existing-domain migration", () => {
     )).resolves.toMatchObject({ status: "waiting" })
 
     expect(store.collections.tenants![0]).toMatchObject({
-      status: "preview",
+      status: "provisioning",
       domain: "preview.siteinabox.test",
     })
     expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
@@ -2468,7 +2463,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("prevalidates generation-run tenant authority before publication", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     store.collections["site-generation-runs"]![0]!.tenant = 2
     const fixture = workflowDependencies()
@@ -2480,7 +2475,7 @@ describe("automatic existing-domain migration", () => {
     )).resolves.toMatchObject({ status: "waiting" })
 
     expect(store.collections.tenants![0]).toMatchObject({
-      status: "preview",
+      status: "provisioning",
       domain: "preview.siteinabox.test",
     })
     expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
@@ -2491,7 +2486,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("rolls back tenant and entitlement projection when snapshot activation fails", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.publishAndActivateAfterCompletedPayment
@@ -2508,7 +2503,7 @@ describe("automatic existing-domain migration", () => {
 
     expect(store.rollbackTransaction).toHaveBeenCalledOnce()
     expect(store.collections.tenants![0]).toMatchObject({
-      status: "preview",
+      status: "provisioning",
       domain: "preview.siteinabox.test",
     })
     expect(store.collections["managed-domains"]![0]).toMatchObject({
@@ -2522,7 +2517,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("defers customer handoff until transactional publication commits", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
 
@@ -2579,7 +2574,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("never starts provider rollback when the publication commit response is lost", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     store.loseNextCommitResponse()
@@ -2625,7 +2620,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("keeps migration and order pending until durable live handoff is queued", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.queueDeferredPostPaymentLiveHandoff
@@ -2669,7 +2664,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("requires source reauthorization when the current source changes", async () => {
-    const store = createStore()
+    const store = await createStore()
     const order = store.collections.orders![0]!
     order.quoteEvidence = {
       ...(order.quoteEvidence as Record<string, unknown>),
@@ -2715,7 +2710,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("returns customer action before Phase 3 when the transfer code expired", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
     Object.assign(stored, {
@@ -2757,7 +2752,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("refreshes durable source authority before provider writes", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
     Object.assign(stored.sourceZoneSnapshot as Record<string, unknown>, {
@@ -2784,7 +2779,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("queues a full refund before registrar transfer when destination DNS capacity is insufficient", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.getCloudflareDnsRecordUsage.mockResolvedValue({
@@ -2820,7 +2815,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("keeps incoming transfer fail-closed without complete TLD DNSSEC evidence", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
 
     await expect(prepareDomainMigration(store.payload, migration.id, {
@@ -2834,7 +2829,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("keeps suspended registrant verification reconcilable and recovers after verification", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({ verificationStatus: "suspended" })
 
@@ -2870,7 +2865,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("rolls back after cutover when registrant verification regresses", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({ authoritativeStatus: "pending" })
 
@@ -2910,7 +2905,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("rolls back immediately when registrant verification regresses after cutover", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({ authoritativeStatus: "pending" })
 
@@ -2942,7 +2937,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("rolls back when registrant verification returns to pending after cutover", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({ authoritativeStatus: "pending" })
 
@@ -2974,7 +2969,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("automatically restores frozen old nameservers after the verification deadline", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const first = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -3013,7 +3008,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("keeps rollback open until old authoritative and preserved DNS verify", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -3050,7 +3045,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("escalates a transferred domain whose registrant differs from the accepted customer", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({ verificationStatus: "pending" })
 
@@ -3083,7 +3078,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("reconciles a prepared cutover under shadow mode without sending a new forward write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -3120,7 +3115,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers a crashed prepared cutover claim with one idempotent nameserver PUT", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -3153,7 +3148,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("executes one queued operator rollback nameserver PUT", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -3184,7 +3179,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("reconciles an indeterminate transfer and never sends a duplicate transfer", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.transferOpenProviderDomain.mockRejectedValue(
@@ -3228,7 +3223,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("preserves recovery evidence across registrar ambiguity and resumes exact reads without a second transfer", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
     const retainedSourceAuthority = stored.encryptedSourceRefreshAuthority
@@ -3315,7 +3310,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("rolls back an indeterminate cutover after its safety deadline", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -3354,7 +3349,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("escalates indeterminate Cloudflare zone creation without repeating the write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.listCloudflareZones.mockResolvedValue([])
@@ -3385,7 +3380,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers an indeterminate Cloudflare zone creation from an exact read without repeating the write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.listCloudflareZones
@@ -3430,7 +3425,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("does not repeat a successful Cloudflare zone write while readback is stale", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.listCloudflareZones.mockResolvedValue([])
@@ -3462,7 +3457,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("treats a prepared Cloudflare zone checkpoint as readback-only after restart", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
     Object.assign(stored, {
@@ -3492,7 +3487,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("stops for manual review when exact Cloudflare zone authority is ambiguous", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.listCloudflareZones.mockResolvedValue([
@@ -3530,7 +3525,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("escalates indeterminate Cloudflare DNS creation without repeating records", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.batchCreateCloudflareMigrationDnsRecords.mockRejectedValue(
@@ -3561,7 +3556,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("does not repeat a successful Cloudflare DNS batch while readback is stale", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.batchCreateCloudflareMigrationDnsRecords.mockResolvedValue()
@@ -3587,7 +3582,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("treats a prepared Cloudflare DNS checkpoint as readback-only after restart", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
     Object.assign(stored, {
@@ -3617,7 +3612,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("fails closed on unexpected existing Cloudflare records before any DNS or registrar write", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.records.push({
@@ -3659,7 +3654,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("escalates indeterminate customer-handle creation without repeating the POST", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -3708,7 +3703,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("does not trust a customer-create response while exact readback is absent", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -3752,7 +3747,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("waits through a crashed customer-create claim lease and retries only after exact absence", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -3783,20 +3778,19 @@ describe("automatic existing-domain migration", () => {
       handle: "OWNER-CLIENT",
       raw: {},
     })
-    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
-    type ConditionalMigrationUpdateArgs = MockUpdateArgs & {
-      where?: MockFindArgs["where"]
-    }
-    const originalUpdate = update.getMockImplementation() as (
-      args: ConditionalMigrationUpdateArgs,
-    ) => Promise<unknown>
+    const update = store.update
+    type ConditionalMigrationUpdateArgs = PayloadUpdateOptions
+    const originalUpdate = update.getMockImplementation()
+    if (!originalUpdate) throw new Error("Missing update implementation")
     let crashAfterClaim = true
     update.mockImplementation(async (args: ConditionalMigrationUpdateArgs) => {
       const result = await originalUpdate(args)
-      const history = Array.isArray(args.data.stateHistory)
-        ? args.data.stateHistory
+      const data = asDocRecord(args.data)
+      const history = Array.isArray(data.stateHistory)
+        ? data.stateHistory
         : []
-      const lastHistory = history.at(-1) as Record<string, unknown> | undefined
+      const rawHistory: unknown = history.at(-1)
+      const lastHistory = rawHistory && typeof rawHistory === "object" ? asDocRecord(rawHistory) : undefined
       if (
         crashAfterClaim &&
         args.collection === "domain-migrations" &&
@@ -3855,7 +3849,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("allows only one concurrent customer-create effect after the optimistic claim", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -3918,7 +3912,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("does not interpret a registrar prepared checkpoint as customer-create authority", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const stored = store.collections["domain-migrations"]![0]!
     Object.assign(stored, {
@@ -3956,7 +3950,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("persists deterministic customer-create rejection as terminal manual review without retry", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -4024,7 +4018,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("conservatively checkpoints a local failure after customer claim as indeterminate", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -4071,7 +4065,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("treats a customer-create provider 503 as indeterminate instead of rejected", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -4125,7 +4119,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("recovers indeterminate customer creation from one exact reference without repeating the POST", async () => {
-    const store = createStore()
+    const store = await createStore()
     Object.assign(store.collections["checkout-profiles"]![0]!, {
       firstName: "Ada",
       lastName: "Lovelace",
@@ -4184,7 +4178,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("stops for manual review when exact customer-reference authority is ambiguous", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.findOpenProviderCustomerByReference.mockRejectedValue(
@@ -4212,7 +4206,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("stops for manual review when exact registrar domain authority is ambiguous", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.findOpenProviderDomain.mockRejectedValue(
@@ -4238,7 +4232,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("escalates an indeterminate rollback after its critical reconciliation window", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -4277,7 +4271,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("deletes a rejected transfer code and waits for customer correction", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.transferOpenProviderDomain.mockRejectedValue(
@@ -4317,9 +4311,9 @@ describe("automatic existing-domain migration", () => {
       migrationId: migration.id,
       expectedUpdatedAt: String(rejected.updatedAt),
       transferCode: "replacement-epp-code",
-      env: {
+      env: { NODE_ENV: "test",
         DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       now: "2026-07-28T09:10:00.000Z",
     })).resolves.toMatchObject({
       state: "ready_to_prepare",
@@ -4336,7 +4330,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("does not blame the customer or delete the code for an unrelated provider 4xx", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.transferOpenProviderDomain.mockRejectedValue(
@@ -4364,7 +4358,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("escalates a crashed prepared transfer claim without repeating the POST", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     Object.assign(store.collections["domain-migrations"]![0]!, {
       state: "preparing",
@@ -4399,7 +4393,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("blocks publication and rolls back when live preserved DNS differs", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies({
       now: "2026-07-28T09:00:00.000Z",
@@ -4427,7 +4421,7 @@ describe("automatic existing-domain migration", () => {
   })
 
   it("does not resubmit a transfer and escalates when provider reads lag past the reconciliation window", async () => {
-    const store = createStore()
+    const store = await createStore()
     const migration = await preparedMigration(store)
     const fixture = workflowDependencies()
     fixture.dependencies.transferOpenProviderDomain.mockResolvedValue({

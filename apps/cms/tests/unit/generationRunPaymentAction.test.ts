@@ -1,14 +1,13 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { generationRunFixture, userFixture } from "../_helpers/generatedDocs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { cast } from "../_helpers/cast"
-import type { GateResult } from "@/lib/authGate"
-import type { User } from "@/payload-types"
-import { asPayload, type MockCreateArgs } from "../_helpers/mockPayload"
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }))
 
-vi.mock("payload", () => ({
+vi.mock("payload", async (importOriginal) => ({
+  ...await importOriginal<typeof import("payload")>(),
   getPayload: vi.fn(),
 }))
 
@@ -31,12 +30,13 @@ describe("generation run payment action", () => {
   })
 
   it("requires super-admin access before recording completed payment", async () => {
-    const update = vi.fn(async ({ data }: MockCreateArgs) => ({ id: 500, ...data }))
-    vi.mocked(requireRole).mockResolvedValue(cast<GateResult>({
-      user: cast<User>({ id: 42, role: "super-admin", updatedAt: "", createdAt: "", email: "admin@test.local" }),
+    const payload = createTestPayload()
+    const update = vi.spyOn(payload, "update").mockResolvedValue(generationRunFixture({ id: 500 }))
+    vi.mocked(requireRole).mockResolvedValue({
+      user: userFixture({ id: 42, role: "super-admin", email: "admin@test.local" }),
       ctx: { mode: "super-admin", tenant: null },
-    }))
-    vi.mocked(getPayload).mockResolvedValue(asPayload({ update }))
+    })
+    vi.mocked(getPayload).mockResolvedValue(payload)
 
     const form = new FormData()
     form.set("provider", "invoice")
@@ -66,7 +66,7 @@ describe("generation run payment action", () => {
 
   it("does not mutate payment when the super-admin gate rejects", async () => {
     vi.mocked(requireRole).mockRejectedValue(new Error("forbidden"))
-    vi.mocked(getPayload).mockResolvedValue(asPayload({ update: vi.fn() }))
+    vi.mocked(getPayload).mockResolvedValue(createTestPayload())
 
     await expect(recordGenerationRunPaymentAction(500, "waived", new FormData())).rejects.toThrow("forbidden")
 

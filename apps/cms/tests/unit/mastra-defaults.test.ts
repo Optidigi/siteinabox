@@ -53,7 +53,7 @@ describe("coerceSitegenModelJson", () => {
     expect(coerced.footer).toEqual({ variant: "footer-01" })
     expect(coerced.pages[0]?.sections.map((section) => section.blockType)).toEqual(["hero"])
     expect(coerced.pages[0]?.sections[0]).not.toHaveProperty("id")
-    expect((coerced.pages[0]?.sections[0] as unknown as { primaryAction: { href: string } }).primaryAction.href).toBe("#contact")
+    expect(coerced.pages[0]?.sections[0]).toMatchObject({ primaryAction: { href: "#contact" } })
   })
 
   it("fills Luna shape noise so SitegenOutputSchema can parse", () => {

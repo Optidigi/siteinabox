@@ -1,3 +1,4 @@
+import { generationRunFixture, tenantFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -22,10 +23,8 @@ import type {
   PaymentAttempt,
   SiteGenerationRun,
 } from "@/payload-types"
-import {
-  createMutablePayloadStore,
-  type MockDoc,
-} from "../_helpers/mockPayload"
+import { type MockDoc } from "../_helpers/mockPayload"
+import { createGeneratedPayloadStore, type GeneratedFixtureCollections } from "../_helpers/generatedPayloadStore"
 
 const NOW = "2026-07-30T10:00:00.000Z"
 
@@ -153,7 +152,7 @@ const managedDomain = (): ManagedDomain => ({
   updatedAt: NOW,
 } as ManagedDomain)
 
-const run = (): SiteGenerationRun => ({
+const run = (): SiteGenerationRun => generationRunFixture({
   id: 500,
   tenant: 1,
   status: "preview_ready",
@@ -161,26 +160,22 @@ const run = (): SiteGenerationRun => ({
     status: "registration_requested",
     domain: "example.nl",
   },
-} as unknown as SiteGenerationRun)
+})
 
-const fixture = () => {
-  const currentOrder = order()
-  const currentRun = run()
-  const currentDomain = managedDomain()
-  const collections: Record<string, MockDoc[]> = {
-    orders: [currentOrder as unknown as MockDoc],
-    "payment-attempts": [attempt() as unknown as MockDoc],
-    "checkout-profiles": [profile() as unknown as MockDoc],
-    "managed-domains": [currentDomain as unknown as MockDoc],
-    tenants: [{
-      id: 1,
-      status: "preview",
-      domain: "preview.siteinabox.test",
-    }],
-    "site-generation-runs": [currentRun as unknown as MockDoc],
+const fixture = async () => {
+  const currentOrder = { ...order() }
+  const currentRun = { ...run() }
+  const currentDomain = { ...managedDomain() }
+  const collections: GeneratedFixtureCollections = {
+    orders: [currentOrder],
+    "payment-attempts": [{ ...attempt() }],
+    "checkout-profiles": [{ ...profile() }],
+    "managed-domains": [currentDomain],
+    tenants: [tenantFixture({ id: 1, status: "provisioning", domain: "preview.siteinabox.test" })],
+    "site-generation-runs": [currentRun],
     "operational-alerts": [],
   }
-  const store = createMutablePayloadStore({ collections })
+  const store = await createGeneratedPayloadStore({ collections })
   return {
     ...store,
     order: currentOrder,
@@ -245,7 +240,7 @@ const zonePhaseDependencies = (
 
 describe("new-domain provider authority", () => {
   it("stops before every write when exact registrar-domain lookup is ambiguous", async () => {
-    const store = fixture()
+    const store = await fixture()
     const login = vi.fn(async () => "token")
     const availability = vi.fn(async () => available)
     const createCustomer = vi.fn()
@@ -294,7 +289,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("stops after absent-domain reads but before writes on ambiguous customer authority", async () => {
-    const store = fixture()
+    const store = await fixture()
     const findDomain = vi.fn(async () => null)
     const availability = vi.fn(async () => available)
     const createCustomer = vi.fn()
@@ -333,7 +328,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("does not create a customer when exact-reference search is incomplete", async () => {
-    const store = fixture()
+    const store = await fixture()
     const createCustomer = vi.fn()
     const createZone = vi.fn()
     const register = vi.fn()
@@ -362,7 +357,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("accepts exact customer authority but stops before writes on ambiguous zones", async () => {
-    const store = fixture()
+    const store = await fixture()
     const createCustomer = vi.fn()
     const createZone = vi.fn()
     const register = vi.fn()
@@ -413,7 +408,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("recovers an indeterminate customer creation by exact reference without a second POST", async () => {
-    const store = fixture()
+    const store = await fixture()
     let customerLookupCount = 0
     const createCustomer = vi.fn(async () => {
       throw new OpenProviderIndeterminateWriteError(
@@ -487,7 +482,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("requires exact customer readback after a usable create response", async () => {
-    const store = fixture()
+    const store = await fixture()
     let customerVisible = false
     const createCustomer = vi.fn(async () => {
       expect(store.collections["managed-domains"]?.[0]).toMatchObject({
@@ -551,7 +546,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("persists uncertainty when customer readback fails after a usable response", async () => {
-    const store = fixture()
+    const store = await fixture()
     let lookupCount = 0
     const createCustomer = vi.fn(async () => ({
       handle: "UNTRUSTED-RESPONSE",
@@ -593,7 +588,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps a successful customer write prepared until exact readback appears", async () => {
-    const store = fixture()
+    const store = await fixture()
     let customerVisible = false
     const createCustomer = vi.fn(async () => ({
       handle: "OWNER-CLIENT",
@@ -667,7 +662,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("sends concurrent lease-expired checkpoints to manual review without retry", async () => {
-    const store = fixture()
+    const store = await fixture()
     let now = NOW
     const createCustomer = vi.fn(async () => {
       throw new Error("local uncertainty after dispatch")
@@ -742,7 +737,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("terminally rejects a deterministic customer write after exact absence", async () => {
-    const store = fixture()
+    const store = await fixture()
     const createCustomer = vi.fn(async () => {
       throw new OpenProviderApiError(
         "OpenProvider customer handle creation",
@@ -783,7 +778,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps HTTP 503 customer writes indeterminate after exact absence", async () => {
-    const store = fixture()
+    const store = await fixture()
     const createCustomer = vi.fn(async () => {
       throw new OpenProviderApiError(
         "OpenProvider customer handle creation",
@@ -814,7 +809,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps HTTP 429 customer writes indeterminate after exact absence", async () => {
-    const store = fixture()
+    const store = await fixture()
     const createCustomer = vi.fn(async () => {
       throw new OpenProviderApiError(
         "OpenProvider customer handle creation",
@@ -845,7 +840,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("lets concurrent workers dispatch one customer create after shared absence", async () => {
-    const store = fixture()
+    const store = await fixture()
     let customerVisible = false
     let initialLookups = 0
     let releaseInitialLookups!: () => void
@@ -918,7 +913,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("lets concurrent workers dispatch one Cloudflare zone create", async () => {
-    const store = fixture()
+    const store = await fixture()
     let zoneVisible = false
     let initialLookups = 0
     let releaseInitialLookups!: () => void
@@ -964,7 +959,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("recovers a lost Cloudflare success response from exact readback", async () => {
-    const store = fixture()
+    const store = await fixture()
     let zoneVisible = false
     const listZones = vi.fn(async () => zoneVisible ? [authoritativeZone] : [])
     const createZone = vi.fn(async () => {
@@ -991,7 +986,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps a usable Cloudflare response prepared when exact readback is absent", async () => {
-    const store = fixture()
+    const store = await fixture()
     const listZones = vi.fn(async () => [])
     const createZone = vi.fn(async () => authoritativeZone)
     const register = vi.fn(async () => {
@@ -1023,7 +1018,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("persists Cloudflare uncertainty when authoritative readback errors", async () => {
-    const store = fixture()
+    const store = await fixture()
     let lookupCount = 0
     const listZones = vi.fn(async () => {
       lookupCount += 1
@@ -1051,7 +1046,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("persists an indeterminate Cloudflare write after exact absence", async () => {
-    const store = fixture()
+    const store = await fixture()
     const listZones = vi.fn(async () => [])
     const createZone = vi.fn(async () => {
       throw new CloudflareApiError("zone creation", 503)
@@ -1076,7 +1071,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("stops when Cloudflare readback becomes ambiguous after create", async () => {
-    const store = fixture()
+    const store = await fixture()
     let lookupCount = 0
     const listZones = vi.fn(async () => {
       lookupCount += 1
@@ -1105,7 +1100,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("persists deterministic Cloudflare rejection after exact absence", async () => {
-    const store = fixture()
+    const store = await fixture()
     const listZones = vi.fn(async () => [])
     const createZone = vi.fn(async () => {
       throw new CloudflareApiError("zone creation", 403)
@@ -1139,7 +1134,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("recovers an indeterminate registration on restart from exact owner readback without a second POST", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     let domainLookupCount = 0
     const register = vi.fn(async () => {
@@ -1214,7 +1209,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps a successful registration response prepared until exact restart readback", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     let domainLookupCount = 0
     const register = vi.fn(async () => ({
@@ -1271,7 +1266,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps a successful registration indeterminate when authoritative readback errors", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     let domainLookupCount = 0
     const register = vi.fn(async () => ({
@@ -1330,7 +1325,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("terminally classifies a deterministic registration rejection after absence readback", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     const register = vi.fn(async () => {
       throw new OpenProviderApiError(
@@ -1382,7 +1377,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("keeps a deterministic registration rejection indeterminate when absence readback fails", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     let domainLookupCount = 0
     const register = vi.fn(async () => {
@@ -1426,7 +1421,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("rejects exact registrar readback under a different customer owner", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     const register = vi.fn()
 
@@ -1464,7 +1459,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("alerts and blocks DNS effects when registrar verification is suspended", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
 
     await expect(provisionPaidDomainOrder(store.payload, store.run, {
@@ -1510,7 +1505,7 @@ describe("new-domain provider authority", () => {
   })
 
   it("does not block activation when public edge is ready even if leftover admin HTTPS is pending", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     store.domain.edgeRoutingStatus = "active"
     store.domain.httpsStatus = "verified"
@@ -1556,12 +1551,12 @@ describe("new-domain provider authority", () => {
     })
     expect(store.collections.tenants?.[0]).toMatchObject({
       domain: "example.nl",
-      status: "preview",
+      status: "provisioning",
     })
   })
 
   it("accepts one exact registrar domain without customer, zone, or registrar writes", async () => {
-    const store = fixture()
+    const store = await fixture()
     store.domain.providerCustomerHandle = "OWNER-CLIENT"
     const createCustomer = vi.fn()
     const createZone = vi.fn()
@@ -1634,9 +1629,9 @@ describe("managed-domain entitlement activation authority", () => {
       ...staleReady,
       authoritativeDnsStatus: "pending" as const,
     }
-    const store = createMutablePayloadStore({
+    const store = await createGeneratedPayloadStore({
       collections: {
-        "managed-domains": [current as unknown as MockDoc],
+        "managed-domains": [current],
       },
     })
 
@@ -1653,10 +1648,10 @@ describe("managed-domain entitlement activation authority", () => {
   })
 
   it("fails closed when readiness regresses during the activation claim", async () => {
-    const current = readyDomain()
-    const store = createMutablePayloadStore({
+    const current = { ...readyDomain() }
+    const store = await createGeneratedPayloadStore({
       collections: {
-        "managed-domains": [current as unknown as MockDoc],
+        "managed-domains": [current],
       },
       hooks: {
         beforeUpdate: (args, collections) => {
@@ -1684,10 +1679,10 @@ describe("managed-domain entitlement activation authority", () => {
   })
 
   it("activates through one conditional authority claim and replays idempotently", async () => {
-    const current = readyDomain()
-    const store = createMutablePayloadStore({
+    const current = { ...readyDomain() }
+    const store = await createGeneratedPayloadStore({
       collections: {
-        "managed-domains": [current as unknown as MockDoc],
+        "managed-domains": [current],
       },
     })
 

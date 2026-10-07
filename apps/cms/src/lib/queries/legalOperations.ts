@@ -318,6 +318,7 @@ export async function getLegalOperationsOverview(
 
 const mapResult = <T, U>(result: PaginatedDocs<T>, mapper: (item: T) => U): PayloadFindResult<U> => ({
   docs: result.docs.map(mapper),
+  pagingCounter: result.pagingCounter,
   totalDocs: result.totalDocs,
   totalPages: result.totalPages,
   page: result.page ?? 1,

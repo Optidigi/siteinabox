@@ -1,3 +1,4 @@
+import { accessArgs } from "../_helpers/accessArgs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { MigrationCheckoutSecrets } from "@/collections/MigrationCheckoutSecrets"
@@ -17,7 +18,11 @@ import {
 } from "@/lib/domains/migrationSecrets"
 import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
 import { normalizeCompleteZone } from "@siteinabox/contracts/domain-migration"
-import { asPayload } from "../_helpers/mockPayload"
+import type { MigrationCheckoutSecret } from "@/payload-types"
+import { matchesWhere } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { migrationCheckoutSecretFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64")
 const zone = {
@@ -36,74 +41,25 @@ const zone = {
 }
 
 const buildStore = () => {
-  let record: Record<string, unknown> | null = null
-  const find = vi.fn(async () => ({
-    docs: record ? [record] : [],
-    totalDocs: record ? 1 : 0,
+  let record: MigrationCheckoutSecret | null = null
+  const payload = createTestPayload()
+  const find = vi.spyOn(payload, "find").mockImplementation(async () => paginatedFixture(record ? [record] : []))
+  const create = vi.spyOn(payload, "create").mockImplementation(async args => {
+    if (args.collection !== "migration-checkout-secrets") throw new Error(`Unexpected collection ${args.collection}`)
+    const created = migrationCheckoutSecretFixture()
+    Object.assign(created, args.data)
+    record = created
+    return created
+  })
+  const update = vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
+    if (args.collection !== "migration-checkout-secrets") throw new Error(`Unexpected collection ${args.collection}`)
+    if (args.where && (!record || !matchesWhere({ ...record }, args.where))) return { docs: [], errors: [], totalDocs: 0 }
+    if (!record) throw new Error("Missing secret")
+    Object.assign(record, args.data)
+    return args.where ? { docs: [record], errors: [], totalDocs: 1 } : record
   }))
-  const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
-    record = { id: 1, ...data }
-    return record
-  })
-  const conditionMatches = (
-    current: Record<string, unknown>,
-    condition: Record<string, unknown>,
-  ): boolean =>
-    Object.entries(condition).every(([field, value]) => {
-      if (field === "and" && Array.isArray(value)) {
-        return value.every((clause) =>
-          conditionMatches(current, clause as Record<string, unknown>),
-        )
-      }
-      if (!value || typeof value !== "object") return true
-      const operators = value as {
-        equals?: unknown
-        less_than_equal?: unknown
-        in?: unknown[]
-      }
-      if (
-        operators.equals !== undefined &&
-        String(current[field]) !== String(operators.equals)
-      ) return false
-      if (
-        operators.less_than_equal !== undefined &&
-        String(current[field]) > String(operators.less_than_equal)
-      ) return false
-      if (
-        operators.in &&
-        !operators.in.some((entry) => String(entry) === String(current[field]))
-      ) return false
-      return true
-    })
-  const update = vi.fn(async ({
-    data,
-    where,
-  }: {
-    data: Record<string, unknown>
-    where?: Record<string, unknown>
-  }) => {
-    if (where) {
-      if (!record || !conditionMatches(record, where)) {
-        return { docs: [], totalDocs: 0 }
-      }
-      record = { ...record, ...data }
-      return { docs: [record], totalDocs: 1 }
-    }
-    record = { ...record, ...data }
-    return record
-  })
-  return {
-    payload: asPayload({ find, create, update }),
-    find,
-    create,
-    update,
-    read: () => record,
-    replace: (next: Record<string, unknown>) => {
-      record = next
-    },
-  }
+  return { payload, find, create, update, read: () => record, replace: (next: MigrationCheckoutSecret) => { record = next } }
 }
-
 const cloudflareRefreshCredential = (token = "customer-cloudflare-token-value") => ({
   kind: "cloudflare_api_token" as const,
   token,
@@ -278,10 +234,10 @@ describe("migration checkout secret lifecycle", () => {
   })
 
   it("denies every direct collection operation", () => {
-    expect(MigrationCheckoutSecrets.access?.create?.({} as never)).toBe(false)
-    expect(MigrationCheckoutSecrets.access?.read?.({} as never)).toBe(false)
-    expect(MigrationCheckoutSecrets.access?.update?.({} as never)).toBe(false)
-    expect(MigrationCheckoutSecrets.access?.delete?.({} as never)).toBe(false)
+    expect(MigrationCheckoutSecrets.access?.create?.(accessArgs({}))).toBe(false)
+    expect(MigrationCheckoutSecrets.access?.read?.(accessArgs({}))).toBe(false)
+    expect(MigrationCheckoutSecrets.access?.update?.(accessArgs({}))).toBe(false)
+    expect(MigrationCheckoutSecrets.access?.delete?.(accessArgs({}))).toBe(false)
   })
 
   it("does not let a stale expiry claim overwrite a concurrently consumed secret", async () => {
@@ -320,12 +276,9 @@ describe("migration checkout secret lifecycle", () => {
     const current = store.read()
     if (!current) throw new Error("Expected an attached secret.")
     const staleSnapshot = structuredClone(current)
-    store.find.mockResolvedValueOnce({
-      docs: [staleSnapshot],
-      totalDocs: 1,
-    })
+    store.find.mockResolvedValueOnce(paginatedFixture([staleSnapshot]))
     store.replace({
-      ...store.read(),
+      ...current,
       state: "consumed",
       encryptedInput: null,
       consumedAt: "2026-08-01T00:00:00.000Z",
@@ -362,19 +315,22 @@ describe("migration checkout secret lifecycle", () => {
     const envelopeB = sealCheckoutMigrationInput(input)
     expect(envelopeA).not.toBe(envelopeB)
 
-    let record: Record<string, unknown> | null = null
+    let record: MigrationCheckoutSecret | null = null
+    const payload = createTestPayload()
     let findCalls = 0
-    const find = vi.fn(async () => {
+    const find = vi.spyOn(payload, "find").mockImplementation(async () => {
       findCalls += 1
-      if (findCalls <= 2) return { docs: [], totalDocs: 0 }
-      return { docs: record ? [record] : [], totalDocs: record ? 1 : 0 }
+      if (findCalls <= 2) return paginatedFixture([])
+      return paginatedFixture(record ? [record] : [])
     })
-    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+    const create = vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
+      if (collection !== "migration-checkout-secrets") throw new Error(`Unexpected collection ${collection}`)
       if (record) throw new Error("duplicate key value violates unique constraint")
-      record = { id: 1, ...data }
-      return record
+      const created = migrationCheckoutSecretFixture()
+      Object.assign(created, data)
+      record = created
+      return created
     })
-    const payload = asPayload({ find, create })
     const persist = (encryptedInput: string) =>
       persistMigrationCheckoutSecret(payload, {
         generationRunId: 500,
@@ -409,19 +365,22 @@ describe("migration checkout secret lifecycle", () => {
       transferCode: "same-secret-epp",
       transferAuthorizationAccepted: true,
     })
-    let record: Record<string, unknown> | null = null
+    let record: MigrationCheckoutSecret | null = null
+    const payload = createTestPayload()
     let findCalls = 0
-    const find = vi.fn(async () => {
+    const find = vi.spyOn(payload, "find").mockImplementation(async () => {
       findCalls += 1
-      if (findCalls <= 2) return { docs: [], totalDocs: 0 }
-      return { docs: record ? [record] : [], totalDocs: record ? 1 : 0 }
+      if (findCalls <= 2) return paginatedFixture([])
+      return paginatedFixture(record ? [record] : [])
     })
-    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+    const create = vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
+      if (collection !== "migration-checkout-secrets") throw new Error(`Unexpected collection ${collection}`)
       if (record) throw new Error("duplicate key value violates unique constraint")
-      record = { id: 1, ...data }
-      return record
+      const created = migrationCheckoutSecretFixture()
+      Object.assign(created, data)
+      record = created
+      return created
     })
-    const payload = asPayload({ find, create })
     const persist = (encryptedInput: string) =>
       persistMigrationCheckoutSecret(payload, {
         generationRunId: 500,

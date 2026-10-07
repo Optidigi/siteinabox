@@ -52,7 +52,7 @@ export type PublishSiteOptions = {
   publishedBy?: string | number | null
   activationReason?: string | null
   deferLiveHandoff?: boolean
-  req?: PayloadRequest
+  req?: Partial<PayloadRequest>
 }
 
 export type ActivateSnapshotOptions = {
@@ -62,7 +62,7 @@ export type ActivateSnapshotOptions = {
   activationReason?: string | null
   rollback?: boolean
   deferLiveHandoff?: boolean
-  req?: PayloadRequest
+  req?: Partial<PayloadRequest>
 }
 
 import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
@@ -176,7 +176,7 @@ export function canActivatePublishedSnapshot(
   return { ok: true }
 }
 
-async function getTenant(payload: Payload, tenantId: string | number, req?: PayloadRequest): Promise<Tenant> {
+async function getTenant(payload: Payload, tenantId: string | number, req?: Partial<PayloadRequest>): Promise<Tenant> {
   return payload.findByID({
     collection: "tenants",
     id: tenantId,
@@ -186,7 +186,7 @@ async function getTenant(payload: Payload, tenantId: string | number, req?: Payl
   }) as Promise<Tenant>
 }
 
-async function getGenerationRun(payload: Payload, generationRunId: string | number | null | undefined, req?: PayloadRequest): Promise<SiteGenerationRun | null> {
+async function getGenerationRun(payload: Payload, generationRunId: string | number | null | undefined, req?: Partial<PayloadRequest>): Promise<SiteGenerationRun | null> {
   if (generationRunId == null) return null
   return payload.findByID({
     collection: "site-generation-runs",
@@ -197,7 +197,7 @@ async function getGenerationRun(payload: Payload, generationRunId: string | numb
   }) as Promise<SiteGenerationRun>
 }
 
-async function latestApprovedRunForTenant(payload: Payload, tenantId: string | number, req?: PayloadRequest): Promise<SiteGenerationRun | null> {
+async function latestApprovedRunForTenant(payload: Payload, tenantId: string | number, req?: Partial<PayloadRequest>): Promise<SiteGenerationRun | null> {
   const result = await payload.find({
     collection: "site-generation-runs",
     where: { tenant: { equals: tenantId } },
@@ -218,7 +218,7 @@ async function pagesForSnapshot(
   tenantId: string | number,
   run: SiteGenerationRun | null,
   options: { includeAllPublishedPages?: boolean } = {},
-  req?: PayloadRequest,
+  req?: Partial<PayloadRequest>,
 ): Promise<Page[]> {
   const runPageIds = Array.isArray(run?.pages)
     ? run.pages.map((page) => relationshipId(page)).filter(Boolean)
@@ -244,7 +244,7 @@ async function pagesForSnapshot(
   return pages.filter((page) => allowed.has(String(page.id)))
 }
 
-async function nextSnapshotVersion(payload: Payload, tenantId: string | number, req?: PayloadRequest): Promise<number> {
+async function nextSnapshotVersion(payload: Payload, tenantId: string | number, req?: Partial<PayloadRequest>): Promise<number> {
   const result = await payload.find({
     collection: "published-site-snapshots",
     where: { tenant: { equals: tenantId } },
@@ -261,7 +261,7 @@ async function nextSnapshotVersion(payload: Payload, tenantId: string | number, 
 export async function prunePublishedSnapshotsForTenant(
   payload: Payload,
   tenantId: string | number,
-  options: { keepSnapshotId?: string | number | null; limit?: number; req?: PayloadRequest } = {},
+  options: { keepSnapshotId?: string | number | null; limit?: number; req?: Partial<PayloadRequest> } = {},
 ): Promise<{ deleted: number; kept: number }> {
   const limit = options.limit ?? PUBLISHED_SNAPSHOT_RETENTION_LIMIT
   if (!Number.isInteger(limit) || limit < 1) {
@@ -361,7 +361,7 @@ export async function buildPublishedSiteSnapshot(
   payload: Payload,
   tenantId: string | number,
   run: SiteGenerationRun | null,
-  options: { includeAllPublishedPages?: boolean; req?: PayloadRequest } = {},
+  options: { includeAllPublishedPages?: boolean; req?: Partial<PayloadRequest> } = {},
 ): Promise<PublishedSiteSnapshot> {
   const tenant = await getTenant(payload, tenantId, options.req)
   if (tenant.status === "archived" || tenant.status === "suspended") {
@@ -530,6 +530,7 @@ export async function publishSiteSnapshot(
     includeAllPublishedPages: options.includeAllPublishedPages,
     req: options.req,
   })
+  if (!snapshot.publishedAt) throw new Error("Published snapshot timestamp is missing.")
   const hash = snapshotHash(snapshot)
   const snapshotDoc = await payload.create({
     collection: "published-site-snapshots",
@@ -541,11 +542,11 @@ export async function publishSiteSnapshot(
       status: "drafted",
       domain: snapshot.domain,
       snapshotHash: hash,
-      snapshot,
+      snapshot: { ...snapshot },
       publishedAt: snapshot.publishedAt,
       publishedBy: options.publishedBy != null ? Number(options.publishedBy) : undefined,
       activationReason: options.activationReason ?? undefined,
-    } as unknown as PublishedSiteSnapshotDoc,
+    },
     depth: 0,
     overrideAccess: true,
     ...payloadRequestArgs(options.req),
@@ -697,7 +698,7 @@ async function tenantForHost(payload: Payload, host: string): Promise<TenantHost
     collection: "site-settings",
     where: {
       "aliases.host": { equals: host },
-    } as unknown as Where,
+    },
     pagination: false,
     depth: 0,
     overrideAccess: true,

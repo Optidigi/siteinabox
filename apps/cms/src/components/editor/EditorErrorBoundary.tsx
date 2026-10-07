@@ -33,7 +33,6 @@ class EditorErrorBoundaryInner extends React.Component<Props & { copy: BoundaryC
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // eslint-disable-next-line no-console
     console.error("[editor] surface error:", error, info)
   }
 

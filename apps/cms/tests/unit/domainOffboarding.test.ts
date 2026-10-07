@@ -14,15 +14,13 @@ import {
   openMigrationSecret,
   sealMigrationSecret,
 } from "@/lib/domains/migrationSecrets"
-import {
-  asPayload,
-  type MockDoc,
-  type MockUpdateArgs,
-} from "../_helpers/mockPayload"
+import type { ManagedDomain } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { managedDomainFixture, orderFixture } from "../_helpers/generatedDocs"
 
-const ENCRYPTION_ENV = {
+const ENCRYPTION_ENV = { NODE_ENV: "test",
   DOMAIN_MIGRATION_ENCRYPTION_KEY: Buffer.alloc(32, 11).toString("base64"),
-} as unknown as NodeJS.ProcessEnv
+} satisfies NodeJS.ProcessEnv
 const ACTOR = {
   email: "customer@example.com",
   tenantId: 1,
@@ -43,8 +41,8 @@ const EVIDENCE = {
   preservationMode: "retain_existing_dns_and_mail" as const,
 }
 
-const createStore = (domainOverrides: MockDoc = {}) => {
-  const domain: MockDoc = {
+const createStore = (domainOverrides: Partial<ManagedDomain> = {}) => {
+  const domain = managedDomainFixture({
     id: 10,
     domainNameAscii: "example.nl",
     tld: "nl",
@@ -72,33 +70,25 @@ const createStore = (domainOverrides: MockDoc = {}) => {
     transferOutProviderMissingCount: 0,
     stateHistory: [],
     ...domainOverrides,
-  }
-  const order: MockDoc = {
+  })
+  const order = orderFixture({
     id: 20,
     tenant: 1,
     domain: "example.nl",
     customerEmail: "customer@example.com",
-  }
-  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+  })
+  const payload = createTestPayload()
+  const update = vi.spyOn(payload, "update").mockImplementation(async ({ collection, id, data }) => {
     if (collection !== "managed-domains" || String(id) !== "10") {
       throw new Error(`Unexpected update ${collection} ${id}`)
     }
     Object.assign(domain, data)
     return domain
   })
-  const payload = asPayload({
-    findByID: vi.fn(async ({
-      collection,
-      id,
-    }: {
-      collection: string
-      id: string | number
-    }) => {
-      if (collection === "managed-domains" && String(id) === "10") return domain
-      if (collection === "orders" && String(id) === "20") return order
-      throw new Error(`Missing ${collection} ${id}`)
-    }),
-    update,
+  vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
+    if (collection === "managed-domains" && String(id) === "10") return domain
+    if (collection === "orders" && String(id) === "20") return order
+    throw new Error(`Missing ${collection} ${id}`)
   })
   return { domain, order, payload, update }
 }

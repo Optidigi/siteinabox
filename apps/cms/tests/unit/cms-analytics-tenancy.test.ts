@@ -1,3 +1,4 @@
+import { userFixture, tenantFixture } from "../_helpers/generatedDocs"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/headers", () => ({
@@ -17,15 +18,15 @@ describe("CMS analytics tenancy", () => {
   it("attributes a super-admin managed route to the server-resolved tenant group", async () => {
     process.env.POSTHOG_PROJECT_TOKEN = "phc_test"
     process.env.POSTHOG_HOST = "https://eu.posthog.com"
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response)
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }))
 
     await captureCmsUsageEvent({
       event: "cms_route_viewed",
-      user: { id: 3, role: "super-admin" } as never,
-      ctx: { mode: "super-admin", tenant: null } as never,
+      user: userFixture({ id: 3, role: "super-admin" }),
+      ctx: { mode: "super-admin", tenant: null },
       surface: "/sites/[slug]/pages",
       properties: { cms_route: "/sites/[slug]/pages" },
-      managedTenant: { id: 7, name: "Amicare", slug: "amicare", domain: "ami-care.nl" } as never,
+      managedTenant: tenantFixture({ id: 7, name: "Amicare", slug: "amicare", domain: "ami-care.nl" }),
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(2)

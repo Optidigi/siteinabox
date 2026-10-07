@@ -8,7 +8,9 @@ import { buildCheckoutQuote } from "@/lib/checkout/checkoutQuote"
 import type { CheckoutProfile } from "@/payload-types"
 
 import { asGenerationRun, asTenant, cast } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockWhere } from "../_helpers/mockPayload"
+import type { Config } from "@/payload-types"
+import { createGeneratedPayloadStore } from "../_helpers/generatedPayloadStore"
+import { siteSettingsFixture, legalDocumentFixture } from "../_helpers/generatedDocs"
 
 const completeRegistrant = {
   companyName: "Demo B.V.",
@@ -28,16 +30,16 @@ const completeRegistrant = {
   locale: "nl_NL",
 }
 
-const createPayload = () => {
-  let id = 100
-  const stores: Record<string, Array<Record<string, unknown>>> = {
-    "site-settings": [{ id: 1, tenant: 10, siteName: "Demo", updatedAt: "2026-07-10T10:00:00.000Z" }],
+const createPayload = async () => {
+  type Collection = "site-settings" | "site-review-revisions" | "site-approvals" | "orders" | "agreement-acceptances" | "legal-documents"
+  const stores: { [C in Collection]: Config["collections"][C][] } = {
+    "site-settings": [siteSettingsFixture({ id: 1, tenant: 10, siteName: "Demo", updatedAt: "2026-07-10T10:00:00.000Z" })],
     "site-review-revisions": [],
     "site-approvals": [],
     orders: [],
     "agreement-acceptances": [],
     "legal-documents": [
-      {
+      legalDocumentFixture({
         id: 20,
         documentType: "platform-terms",
         locale: "nl",
@@ -46,8 +48,8 @@ const createPayload = () => {
         contentHash: "sha256:terms",
         publishedAt: "2026-07-07T00:00:00.000Z",
         effectiveAt: "2026-07-07T00:00:00.000Z",
-      },
-      {
+      }),
+      legalDocumentFixture({
         id: 21,
         documentType: "platform-privacy",
         locale: "nl",
@@ -56,50 +58,16 @@ const createPayload = () => {
         contentHash: "sha256:privacy",
         publishedAt: "2026-07-07T00:00:00.000Z",
         effectiveAt: "2026-07-07T00:00:00.000Z",
-      },
+      }),
     ],
   }
-  const matches = (doc: MockDoc, where: MockWhere | undefined): boolean => {
-    const clauses = where?.and ?? Object.entries(where ?? {}).map(([key, value]) => ({ [key]: value }))
-    return clauses.every((clause: MockDoc) => {
-      const [field, condition] = Object.entries(clause)[0] as [string, Record<string, unknown>]
-      if (condition?.equals !== undefined) return String(doc[field]) === String(condition.equals)
-      if (condition?.less_than_equal !== undefined) return new Date(String(doc[field])) <= new Date(String(condition.less_than_equal))
-      return true
-    })
-  }
-  const find = vi.fn(async ({ collection, where, sort }: MockFindArgs & { sort?: string }) => {
-    let docs = (stores[collection] ?? []).filter((doc) => matches(doc, where))
-    if (sort === "-effectiveAt") docs = docs.sort((a, b) => new Date(String(b.effectiveAt)).valueOf() - new Date(String(a.effectiveAt)).valueOf())
-    return { docs }
-  })
-  const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
-    const uniqueField = collection === "orders"
-      ? "orderNumber"
-      : collection === "agreement-acceptances"
-        ? "evidenceKey"
-        : null
-    if (
-      uniqueField &&
-      (stores[collection] ?? []).some(
-        (doc) => String(doc[uniqueField]) === String(data[uniqueField]),
-      )
-    ) {
-      throw new Error(`duplicate ${collection}.${uniqueField}`)
-    }
-    const doc = { id: id++, ...data }
-    stores[collection] ??= []
-    stores[collection].push(doc)
-    return doc
-  })
-  const findByID = vi.fn(async ({ collection, id: requestedId }: MockFindArgs & { id: number | string }) =>
-    (stores[collection] ?? []).find((doc) => String(doc.id) === String(requestedId)))
-  return { payload: asPayload({ find, create, findByID }), stores }
+  const { payload } = await createGeneratedPayloadStore({ collections: stores, nextId: 100, unique: [{ collection: "orders", fields: ["orderNumber"] }, { collection: "agreement-acceptances", fields: ["evidenceKey"] }] })
+  return { payload, stores }
 }
 
 describe("checkout legal evidence", () => {
   it("freezes review, approval, order, documents, and terms acceptance idempotently", async () => {
-    const { payload, stores } = createPayload()
+    const { payload, stores } = await createPayload()
     const run = asGenerationRun({ id: 30, specHash: "spec", updatedAt: "2026-07-10T10:00:00.000Z" })
     const tenant = asTenant({ id: 10, name: "Demo", theme: { primary: "#000" }, siteManifest: { version: 1 } })
     const pages = cast<Parameters<typeof createSiteApprovalEvidence>[0]["pages"]>([
@@ -224,7 +192,7 @@ describe("checkout legal evidence", () => {
   })
 
   it("rejects reuse when immutable approval, registrant, or commercial evidence changes", async () => {
-    const { payload, stores } = createPayload()
+    const { payload, stores } = await createPayload()
     const run = asGenerationRun({ id: 31, specHash: "spec", updatedAt: "draft-31" })
     const tenant = asTenant({ id: 10, name: "Demo" })
     const approval = await createSiteApprovalEvidence({
@@ -307,7 +275,7 @@ describe("checkout legal evidence", () => {
   })
 
   it("rejects a forged assisted charge before creating current-catalog evidence", async () => {
-    const { payload, stores } = createPayload()
+    const { payload, stores } = await createPayload()
     const run = asGenerationRun({ id: 32, specHash: "spec", updatedAt: "draft-32" })
     const tenant = asTenant({ id: 10, name: "Demo" })
     const approval = await createSiteApprovalEvidence({

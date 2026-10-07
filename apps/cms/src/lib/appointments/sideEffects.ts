@@ -1,45 +1,10 @@
 import "server-only"
 
-import type { Payload, PayloadRequest, Where } from "payload"
+import type { Payload, PayloadRequest, Where, RequiredDataFromCollectionSlug } from "payload"
 import { APPOINTMENT_NOTIFICATION_TEMPLATE_VERSION } from "@/lib/email/templates/appointments"
 
-type AppointmentSideEffectRecord = {
-  id: string | number
-  [key: string]: unknown
-}
-
-type AppointmentSideEffectPayload = {
-  find(args: {
-    collection: string
-    where: Where
-    limit: number
-    page?: number
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-  }): Promise<{ docs: AppointmentSideEffectRecord[]; hasNextPage?: boolean }>
-  create(args: {
-    collection: string
-    data: Record<string, unknown>
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-    context?: Record<string, unknown>
-  }): Promise<AppointmentSideEffectRecord>
-  update(args: {
-    collection: string
-    id?: string | number
-    where?: Where
-    data: Record<string, unknown>
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-    context?: Record<string, unknown>
-  }): Promise<AppointmentSideEffectRecord | { docs: AppointmentSideEffectRecord[] }>
-}
-
-const sideEffectPayload = (payload: Payload): AppointmentSideEffectPayload =>
-  payload as unknown as AppointmentSideEffectPayload
+type AppointmentSideEffectPayload = Pick<Payload, "find" | "create" | "update">
+type SideEffectCollection = "appointment-notification-deliveries" | "appointment-calendar-events"
 
 export type AppointmentSideEffectKind = "confirmation" | "cancelled" | "rescheduled"
 
@@ -57,16 +22,16 @@ const notificationKey = (
 const eventKey = (appointmentId: string | number, connectionId: string | number) =>
   `appointment:${appointmentId}:calendar:${connectionId}`
 
-const createIfMissing = async (
+const createIfMissing = async <TCollection extends SideEffectCollection>(
   payload: AppointmentSideEffectPayload,
   input: {
-    collection: string
+    collection: TCollection
     where: Where
-    data: Record<string, unknown>
+    data: RequiredDataFromCollectionSlug<NoInfer<TCollection>>
     req?: Partial<PayloadRequest>
     context?: Record<string, unknown>
   },
-): Promise<AppointmentSideEffectRecord> => {
+) => {
   const existing = await payload.find({ collection: input.collection, where: input.where, limit: 1, depth: 0, overrideAccess: true, ...(input.req ? { req: input.req } : {}) })
   if (existing.docs[0]) return existing.docs[0]
   try {
@@ -93,7 +58,7 @@ const createIfMissing = async (
  * appointment itself.
  */
 export async function ensureAppointmentSideEffects(input: {
-  payload: Payload
+  payload: AppointmentSideEffectPayload
   appointmentId: string | number
   tenantId: string | number
   eventVersion: number
@@ -102,7 +67,7 @@ export async function ensureAppointmentSideEffects(input: {
   now?: Date
   req?: Partial<PayloadRequest>
 }): Promise<void> {
-  const payload = sideEffectPayload(input.payload)
+  const payload: AppointmentSideEffectPayload = input.payload
   const now = (input.now ?? new Date()).toISOString()
   if (input.kind) {
     // A newer appointment version supersedes queued, failed, or leased mail.
@@ -169,16 +134,16 @@ export async function ensureAppointmentSideEffects(input: {
       for (const subscription of subscriptions.docs) {
         const email = typeof subscription.email === "string" ? subscription.email.trim().toLowerCase() : ""
         const user = subscription.user && typeof subscription.user === "object" && !Array.isArray(subscription.user)
-          ? subscription.user as { email?: unknown; tenants?: unknown }
+          ? subscription.user
           : null
         const memberEmail = typeof user?.email === "string" ? user.email.trim().toLowerCase() : ""
         const memberships = Array.isArray(user?.tenants) ? user.tenants : []
         const belongsToTenant = memberships.some((membership) => {
           if (!membership || typeof membership !== "object" || Array.isArray(membership)) return false
-          const memberTenant = (membership as { tenant?: unknown }).tenant
+          const memberTenant = membership.tenant
           if (typeof memberTenant === "number" || typeof memberTenant === "string") return String(memberTenant) === String(input.tenantId)
           if (!memberTenant || typeof memberTenant !== "object" || Array.isArray(memberTenant)) return false
-          const memberTenantId = (memberTenant as { id?: unknown }).id
+          const memberTenantId = memberTenant.id
           return typeof memberTenantId === "number" || typeof memberTenantId === "string"
             ? String(memberTenantId) === String(input.tenantId)
             : false
@@ -252,7 +217,7 @@ export async function ensureAppointmentSideEffects(input: {
         nextAttemptAt: now,
         leaseUntil: null,
         lastError: null,
-      }
+      } satisfies RequiredDataFromCollectionSlug<"appointment-calendar-events">
       if (existing.docs[0]) {
         await payload.update({
           collection: "appointment-calendar-events",
@@ -261,7 +226,8 @@ export async function ensureAppointmentSideEffects(input: {
             eventVersion: input.eventVersion,
             status: "queued",
             operation,
-            attemptCount: 0,
+            // Keep same-version attempts monotonic so a requeue cannot recreate an old lease.
+            ...(existing.docs[0].eventVersion === input.eventVersion ? {} : { attemptCount: 0 }),
             nextAttemptAt: now,
             leaseUntil: null,
             lastError: null,

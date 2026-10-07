@@ -1,3 +1,4 @@
+import { AppointmentLeaseLostError, claimLegalNotificationDelivery, transitionLegalNotificationDelivery } from "@/lib/appointments/atomicClaims"
 import type { Payload } from "payload"
 import type { LegalDocument, LegalNotificationDelivery, LegalRequirement, Tenant } from "@/payload-types"
 import { MailSendError, asMailLogPayload, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
@@ -7,10 +8,7 @@ import { redactOperationalMessage } from "@/lib/security/redactOperationalMessag
 import { asRecord } from "@/lib/record"
 import { platformCmsOrigin } from "@/lib/hostToTenant"
 
-type RequirementDoc = LegalRequirement & {
-  tenant?: Tenant | number | null
-  document?: LegalDocument | number | null
-}
+type RequirementDoc = LegalRequirement
 const ACTIVE_STATUSES = ["pending", "notified", "failed"]
 const REACCEPT_ACTIONS = ["mandatory_reaccept", "reaccept_on_next_transaction"]
 const NOTICE_AND_USE_ACTION = "notice_and_continued_use"
@@ -20,8 +18,8 @@ const REMINDER_LEAD_MS = 7 * 24 * 60 * 60_000
 const RETRY_DELAYS_MS = [60 * 60_000, 6 * 60 * 60_000, 24 * 60 * 60_000]
 const PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SIAB_SITE_URL ?? "https://www.siteinabox.nl"
 
-const relation = <T extends object>(value: unknown): T | null =>
-  value && typeof value === "object" ? value as T : null
+const relation = <T extends object>(value: T | number | null | undefined): T | null =>
+  value && typeof value === "object" ? value : null
 const tenantAdminUrl = (_tenant: Tenant) => platformCmsOrigin()
 const documentUrl = (document: LegalDocument) => document.documentType === "platform-terms"
   ? `${PUBLIC_SITE_URL}/juridisch/algemene-voorwaarden/${document.documentVersion}`
@@ -97,37 +95,12 @@ async function ensureDelivery(payload: Payload, requirement: RequirementDoc, now
 }
 
 const canAttempt = (delivery: LegalNotificationDelivery, now: Date) => {
+  if (delivery.retryState === "permanent") return false
   if (delivery.status === "sent" || delivery.status === "cancelled") return false
   if (delivery.status === "processing" && delivery.leaseUntil && new Date(delivery.leaseUntil) > now) return false
   return !delivery.nextAttemptAt || new Date(delivery.nextAttemptAt) <= now
 }
 
-async function claimDelivery(payload: Payload, delivery: LegalNotificationDelivery, now: Date, attemptCount: number) {
-  const claimed = await payload.update({
-    collection: "legal-notification-deliveries",
-    where: {
-      and: [
-        { id: { equals: delivery.id } },
-        {
-          or: [
-            { and: [{ status: { in: ["queued", "failed"] } }, { nextAttemptAt: { less_than_equal: now.toISOString() } }] },
-            { and: [{ status: { equals: "processing" } }, { leaseUntil: { less_than_equal: now.toISOString() } }] },
-          ],
-        },
-      ],
-    },
-    data: {
-      status: "processing",
-      attemptCount,
-      lastAttemptAt: now.toISOString(),
-      leaseUntil: new Date(now.getTime() + LEASE_MS).toISOString(),
-      lastError: null,
-    },
-    depth: 0,
-    overrideAccess: true,
-  })
-  return Array.isArray(claimed?.docs) ? claimed.docs[0] : null
-}
 
 async function markRequirementNotified(payload: Payload, requirement: RequirementDoc, sentAt: string) {
   const objectionDeadlineAt = requirement.action === NOTICE_AND_USE_ACTION
@@ -173,7 +146,7 @@ async function loadActionableRequirements(payload: Payload) {
       depth: 2,
       overrideAccess: true,
     })
-    docs.push(...result.docs as RequirementDoc[])
+    docs.push(...result.docs)
     if (!result.hasNextPage && result.docs.length < pageSize) break
   }
   return docs
@@ -221,8 +194,7 @@ export async function processLegalRequirementNotifications(input: {
       skipped += 1
       continue
     }
-    const attemptCount = Number(delivery.attemptCount ?? 0) + 1
-    const claimed = await claimDelivery(input.payload, delivery, now, attemptCount)
+    const claimed = await claimLegalNotificationDelivery(input.payload, delivery, now, LEASE_MS)
     if (!claimed) {
       skipped += 1
       continue
@@ -235,13 +207,7 @@ export async function processLegalRequirementNotifications(input: {
       overrideAccess: true,
     })
     if (!currentRequirement.status || !ACTIVE_STATUSES.includes(currentRequirement.status) || !currentRequirement.action || !NOTIFIABLE_ACTIONS.includes(currentRequirement.action)) {
-      await input.payload.update({
-        collection: "legal-notification-deliveries",
-        id: delivery.id,
-        data: { status: "cancelled", leaseUntil: null, lastError: null },
-        depth: 0,
-        overrideAccess: true,
-      })
+      await transitionLegalNotificationDelivery(input.payload, claimed, { status: "cancelled", leaseUntil: null, lastError: null })
       skipped += 1
       continue
     }
@@ -273,70 +239,45 @@ export async function processLegalRequirementNotifications(input: {
           kind,
         })
 
+    await transitionLegalNotificationDelivery(input.payload, claimed, { retryState: "permanent" })
+    let result: Awaited<ReturnType<typeof sendEmail>>
     try {
-      const result = await sendEmail({
-        to: String(requirement.subjectEmail),
-        from: getPlatformMailSender(),
-        replyTo: "info@siteinabox.nl",
-        subject: message.subject,
-        html: message.html,
-        text: message.text,
-        intent: "legal.reacceptance",
-        tenant: tenant.id,
-        payload: asMailLogPayload(input.payload),
+      result = await sendEmail({
+        to: String(requirement.subjectEmail), from: getPlatformMailSender(), replyTo: "info@siteinabox.nl",
+        subject: message.subject, html: message.html, text: message.text, intent: "legal.reacceptance",
+        tenant: tenant.id, payload: asMailLogPayload(input.payload),
       })
-      const sentAt = now.toISOString()
-      const marked = await input.payload.update({
-        collection: "legal-notification-deliveries",
-        where: {
-          and: [
-            { id: { equals: delivery.id } },
-            { status: { equals: "processing" } },
-          ],
-        },
-        data: {
-          status: "sent",
-          sentAt,
-          leaseUntil: null,
-          nextAttemptAt: sentAt,
-          provider: result.provider,
-          providerMessageId: result.providerMessageId ?? null,
-          retryState: "none",
-        },
-        depth: 0,
-        overrideAccess: true,
-      })
-      if (Array.isArray(marked?.docs) && marked.docs.length > 0) {
-        await markRequirementNotified(input.payload, requirement, sentAt)
-      }
-      sent += 1
     } catch (error) {
       const normalized = error instanceof MailSendError ? error.normalized : null
-      const permanent = normalized?.retryState === "permanent"
-      const message = redactOperationalMessage(normalized?.providerErrorMessage ?? (error instanceof Error ? error.message : "Unknown email delivery error"))
-      await input.payload.update({
-        collection: "legal-notification-deliveries",
-        id: delivery.id,
-        data: {
-          status: "failed",
-          leaseUntil: null,
-          nextAttemptAt: permanent ? new Date("9999-12-31T00:00:00.000Z").toISOString() : retryAt(now, attemptCount),
-          provider: normalized?.provider,
-          retryState: normalized?.retryState ?? "retryable",
-          lastError: message,
-        },
-        depth: 0,
-        overrideAccess: true,
+      const definitiveRejection = normalized && normalized.providerErrorCode !== "E_PROVIDER_WRITE_INDETERMINATE"
+      const retryable = claimed.attemptCount <= RETRY_DELAYS_MS.length && definitiveRejection && normalized.retryState === "retryable"
+      const errorMessage = redactOperationalMessage(normalized?.providerErrorMessage ?? (error instanceof Error ? error.message : "Unknown email delivery error"))
+      await transitionLegalNotificationDelivery(input.payload, claimed, {
+        status: "failed", leaseUntil: null,
+        nextAttemptAt: retryable ? retryAt(now, claimed.attemptCount) : "9999-12-31T00:00:00.000Z",
+        provider: normalized?.provider, retryState: retryable ? "retryable" : "permanent", lastError: errorMessage,
       })
-      await input.payload.update({
-        collection: "legal-requirements",
-        id: requirement.id,
-        data: { status: "failed", lastError: message },
-        depth: 0,
-        overrideAccess: true,
-      })
+      await input.payload.update({ collection: "legal-requirements", id: requirement.id, data: { status: "failed", lastError: errorMessage }, depth: 0, overrideAccess: true })
       failed += 1
+      continue
     }
+    // Provider acceptance is verified. Database errors remain uncertainty, never a new send attempt.
+    const sentAt = now.toISOString()
+    try {
+      await transitionLegalNotificationDelivery(input.payload, claimed, {
+        status: "sent", sentAt, leaseUntil: null, nextAttemptAt: sentAt,
+        provider: result.provider, providerMessageId: result.providerMessageId ?? null, retryState: "none",
+      })
+    } catch (error) {
+      if (error instanceof AppointmentLeaseLostError) {
+        const latestRequirement = await input.payload.findByID({ collection: "legal-requirements", id: requirement.id, depth: 0, overrideAccess: true })
+        if (!ACTIVE_STATUSES.includes(latestRequirement.status)) { skipped += 1; continue }
+      }
+      throw error
+    }
+    await markRequirementNotified(input.payload, requirement, sentAt)
+    sent += 1
+
   }
   return { examined: requirements.length, sent, failed, skipped }
 }

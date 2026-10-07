@@ -4,7 +4,7 @@ import { expectAccessField } from "../_helpers/payloadFields"
 
 import { asBeforeOperationHook, callBeforeOpHook, type BeforeOperationHook } from "../_helpers/hookFixtures"
 import { cast, errLike } from "../_helpers/cast"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit AMENDMENT AMD-3 (T2 secondary) — `ApiKeyManager` UI silently no-ops
 // for non-super-admin (regression introduced by AMD-2 commit f6957af).
 //
@@ -58,7 +58,7 @@ import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFi
 // Server-side hook extraction
 // -----------------------------------------------------------------------------
 
-const beforeOperationHooks = (Users.hooks?.beforeOperation ?? []) as unknown as BeforeOperationHook[]
+const beforeOperationHooks = (Users.hooks?.beforeOperation ?? [])
 // AMD-3 fix adds the FIRST (and currently ONLY) beforeOperation hook on Users.
 // If a future change appends more hooks, this index assumption needs revisiting
 // — guarded by the structural canary S1 below.

@@ -1,3 +1,6 @@
+import { migrationSourceAuthorizationFixture } from "../_helpers/generatedDocs"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
+import { userFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -5,7 +8,7 @@ import {
   protectMigrationSourceAuthorization,
   validateMigrationSourceAuthorization,
 } from "@/collections/MigrationSourceAuthorizations"
-import { accessArgs } from "../_helpers/accessArgs"
+import { accessArgs, fieldAccessArgs } from "../_helpers/accessArgs"
 import { hookArgsFor } from "../_helpers/hookFixtures"
 
 describe("migration source authorization collection", () => {
@@ -17,73 +20,73 @@ describe("migration source authorization collection", () => {
       MigrationSourceAuthorizations.access?.delete,
     ]) {
       expect(access?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       }))).toBe(false)
     }
     const encrypted = MigrationSourceAuthorizations.fields.find(
       (field) => "name" in field && field.name === "encryptedAuthority",
     )
     expect(encrypted && "access" in encrypted
-      ? encrypted.access?.read?.(accessArgs({ req: {} }))
+      ? encrypted.access?.read?.(fieldAccessArgs({ req: {} }))
       : undefined).toBe(false)
     expect(MigrationSourceAuthorizations.admin?.hidden).toBe(true)
   })
 
   it("requires protected authority while live and clears it at terminal state", () => {
-    expect(() => validateMigrationSourceAuthorization(hookArgsFor(
+    expect(() => { validateMigrationSourceAuthorization(hookArgsFor(
       validateMigrationSourceAuthorization,
       {
         operation: "create",
         data: { state: "pending", encryptedAuthority: null },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
-    ))).toThrow("requires protected PKCE state")
-    expect(() => validateMigrationSourceAuthorization(hookArgsFor(
+    )) }).toThrow("requires protected PKCE state")
+    expect(() => { validateMigrationSourceAuthorization(hookArgsFor(
       validateMigrationSourceAuthorization,
       {
         operation: "update",
         data: { state: "revoked", encryptedAuthority: "sealed" },
-        originalDoc: { state: "authorized", encryptedAuthority: "sealed" },
-        req: {},
-        collection: {},
+        originalDoc: migrationSourceAuthorizationFixture({ state: "authorized", encryptedAuthority: "sealed" }),
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
-    ))).toThrow("cannot retain credentials")
+    )) }).toThrow("cannot retain credentials")
     expect(validateMigrationSourceAuthorization(hookArgsFor(
       validateMigrationSourceAuthorization,
       {
         operation: "update",
         data: { state: "revoked", encryptedAuthority: null },
-        originalDoc: { state: "authorized", encryptedAuthority: "sealed" },
-        req: {},
-        collection: {},
+        originalDoc: migrationSourceAuthorizationFixture({ state: "authorized", encryptedAuthority: "sealed" }),
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
     ))).toMatchObject({ state: "revoked", encryptedAuthority: null })
   })
 
   it("rejects lifecycle mutation without the reviewed internal context", () => {
-    expect(() => protectMigrationSourceAuthorization(hookArgsFor(
+    expect(() => { protectMigrationSourceAuthorization(hookArgsFor(
       protectMigrationSourceAuthorization,
       {
         operation: "update",
         data: { state: "revoked", encryptedAuthority: null },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
-    ))).toThrow("reviewed OAuth lifecycle")
-    expect(() => protectMigrationSourceAuthorization(hookArgsFor(
+    )) }).toThrow("reviewed OAuth lifecycle")
+    expect(() => { protectMigrationSourceAuthorization(hookArgsFor(
       protectMigrationSourceAuthorization,
       {
         operation: "update",
         data: { domainNameAscii: "other.example" },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: { migrationSourceAuthorizationLifecycle: true },
       },
-    ))).toThrow("immutable")
+    )) }).toThrow("immutable")
   })
 })

@@ -1,5 +1,6 @@
 import crypto from "node:crypto"
-import { getPayload, type CollectionSlug } from "payload"
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
+import { getPayload, type CollectionSlug, type DataFromCollectionSlug, type Where } from "payload"
 import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import config from "@/payload.config"
 import type { LegalDocument, Tenant, User } from "@/payload-types"
@@ -20,12 +21,12 @@ if (databaseUrl.pathname.replace(/^\//, "") !== "payload_test") {
 
 const payload = await getPayload({ config })
 
-const findOne = async <T>(collection: CollectionSlug, where: Record<string, unknown>, depth = 0) => {
+const findOne = async <C extends CollectionSlug>(collection: C, where: Where, depth = 0): Promise<DataFromCollectionSlug<C> | undefined> => {
   const result = await payload.find({ collection, where, limit: 1, depth, overrideAccess: true })
-  return result.docs[0] as T | undefined
+  return result.docs[0]
 }
 
-let tenant = await findOne<Tenant>("tenants", { slug: { equals: TENANT_SLUG } })
+let tenant = await findOne("tenants", { slug: { equals: TENANT_SLUG } })
 if (!tenant) {
   tenant = await payload.create({
     collection: "tenants",
@@ -44,7 +45,7 @@ if (!tenant) {
 }
 
 const upsertUser = async (email: string, password: string, role: "owner" | "editor", name: string) => {
-  const existing = await findOne<User>("users", { email: { equals: email } })
+  const existing = await findOne("users", { email: { equals: email } })
   const data = { email, password, name, role, tenants: [{ tenant: tenant!.id }] }
   if (!existing) {
     return payload.create({ collection: "users", data, depth: 0, overrideAccess: true })
@@ -66,19 +67,14 @@ const settings = await findOne("site-settings", { tenant: { equals: tenant.id } 
 if (!settings) {
   await payload.create({
     collection: "site-settings",
-    data: {
-      tenant: tenant.id,
-      siteName: "Legal Visual Test",
-      siteUrl: `https://${TENANT_DOMAIN}`,
-      contactEmail: OWNER_EMAIL,
-    },
+    data: { ...createSiteSettingsData(tenant.id, "Legal Visual Test", `https://${TENANT_DOMAIN}`), contactEmail: OWNER_EMAIL },
     depth: 0,
     overrideAccess: true,
   })
 }
 
 const release = getCurrentLegalDocument("platform-terms", "nl", new Date())
-let terms = await findOne<LegalDocument>("legal-documents", { releaseKey: { equals: `${release.documentType}:${release.locale}:${release.documentVersion}` } })
+let terms = await findOne("legal-documents", { releaseKey: { equals: `${release.documentType}:${release.locale}:${release.documentVersion}` } })
 if (!terms) {
   terms = await payload.create({
     collection: "legal-documents",

@@ -1,6 +1,6 @@
 import "server-only"
 import type { Payload } from "payload"
-import type { Tenant } from "@/payload-types"
+import type { Tenant, Form } from "@/payload-types"
 import { analyticsEnvironment } from "./config"
 import { captureAnalyticsEvent, identifyPostHogTenantGroup } from "./posthogClient"
 import type { AnalyticsBaseProperties } from "./events"
@@ -26,7 +26,7 @@ const safePathFromUrl = (raw: unknown): string | null => {
 }
 
 export const captureAcceptedFormAnalytics = async (args: {
-  doc: Record<string, unknown>
+  doc: Partial<Pick<Form, "id" | "tenant" | "pageUrl" | "formName" | "email" | "data">>
   payload: Payload
   logger?: { warn?: (input: unknown, message?: string) => void }
 }): Promise<void> => {

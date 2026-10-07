@@ -108,7 +108,7 @@ export type IframeEditorMessageValidationResult =
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const idSchema = z.string().trim().min(1)
 const revisionSchema = z.number().int().nonnegative()
-const fieldPathSchema = z.array(idSchema).min(1) as unknown as z.ZodType<IframeEditorFieldPath>
+const fieldPathSchema = z.tuple([idSchema]).rest(idSchema)
 
 const baseMessageShape = {
   protocol: z.literal(IFRAME_EDITOR_PROTOCOL_NAME),

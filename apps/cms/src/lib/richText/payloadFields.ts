@@ -1,10 +1,10 @@
 import type { JSONField } from "payload"
 
 export type RichTextEditorKind = "richTextInline" | "richTextBlock"
-type JsonAdmin = NonNullable<JSONField["admin"]>
+type JsonAdmin = NonNullable<JSONField["admin"]> & { editor: RichTextEditorKind }
 
 const jsonAdmin = (editor: RichTextEditorKind, description: string): JsonAdmin =>
-  ({ editor, description }) as unknown as JsonAdmin
+  ({ editor, description })
 
 /** Payload JSON fields for settings-owned structured RtRoot documents. */
 export const richInlineField = (name: string, description: string): JSONField => ({

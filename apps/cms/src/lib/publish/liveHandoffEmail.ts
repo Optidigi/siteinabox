@@ -1,6 +1,7 @@
 import "server-only"
 
 import crypto from "node:crypto"
+import { MailSendError } from "@/lib/email/sendEmail"
 import type { Payload } from "payload"
 import type {
   BillingAgreement,
@@ -276,6 +277,7 @@ export async function sendLiveHandoffEmailAfterActivation(
     snapshotDoc: Pick<PublishedSiteSnapshotDoc, "id" | "status" | "domain" | "snapshot">
     rollback?: boolean
     retry?: boolean
+    propagateMailErrors?: boolean
   },
 ): Promise<"sent" | "skipped" | "failed"> {
   if (
@@ -347,6 +349,15 @@ export async function sendLiveHandoffEmailAfterActivation(
     })
     return "sent"
   } catch (error) {
+    if (error instanceof MailSendError) {
+      if (input.propagateMailErrors) throw error
+      await recordLiveHandoffException(payload, {
+        code: "live_handoff_mail_failed",
+        message: "Activated site handoff mail failed; provider acceptance requires review before another send.",
+        tenantId: input.tenant.id,
+        snapshotId: input.snapshotDoc.id,
+      })
+    }
     payload.logger.warn({
       tenant: input.tenant.id,
       generationRun: input.run.id,
@@ -489,5 +500,6 @@ export async function retryLiveHandoffForBillingAgreement(
     run,
     snapshotDoc,
     retry: true,
+    propagateMailErrors: true,
   })
 }

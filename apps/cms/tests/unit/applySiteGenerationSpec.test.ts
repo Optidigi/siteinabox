@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import { applySiteGenerationSpec, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
-import { asPayload, matchesWhere, type MockDoc } from "../_helpers/mockPayload"
+import { matchesWhere } from "../_helpers/mockPayload"
+import type { Config } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, pageFixture, mediaFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 
 const fixtureSpec = (): SiteGenerationSpec => ({
   schemaVersion: 1,
@@ -69,25 +73,46 @@ const fixtureSpec = (): SiteGenerationSpec => ({
 type Collection = "tenants" | "pages" | "site-settings" | "media"
 
 const payloadStub = () => {
-  const store: Record<Collection, MockDoc[]> = { tenants: [], pages: [], "site-settings": [], media: [] }
+  const store: { [C in Collection]: Config["collections"][C][] } = { tenants: [], pages: [], "site-settings": [], media: [] }
   let nextId = 1
-  const payload = {
-    find: async ({ collection, where }: { collection: Collection; where?: Record<string, unknown> }) => ({
-      docs: store[collection].filter((doc) => matchesWhere(doc, where)),
-    }),
-    create: async ({ collection, data }: { collection: Collection; data: Record<string, unknown> }) => {
-      const doc = { ...data, id: nextId++ }
-      store[collection].push(doc)
+  const payload = createTestPayload()
+  const assertCollection = (collection: string): collection is Collection => ["tenants", "pages", "site-settings", "media"].includes(collection)
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
+    if (!assertCollection(collection)) throw new Error(`Unexpected collection ${collection}`)
+    return paginatedFixture<Config["collections"][Collection]>(store[collection].filter(doc => matchesWhere({ ...doc }, where)))
+  })
+  vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
+    const id = nextId++
+    if (collection === "tenants") {
+      const doc = Object.assign(tenantFixture({ id }), data)
+      store.tenants.push(doc)
       return doc
-    },
-    update: async ({ collection, id, data }: { collection: Collection; id: string | number; data: Record<string, unknown> }) => {
-      const index = store[collection].findIndex((doc) => String(doc.id) === String(id))
-      if (index < 0) throw new Error(`Missing ${collection} ${id}`)
-      store[collection][index] = { ...store[collection][index], ...data, id: store[collection][index]?.id }
-      return store[collection][index]
-    },
-  }
-  return { payload: asPayload(payload), store }
+    }
+    if (collection === "pages") {
+      const doc = Object.assign(pageFixture({ id }), data)
+      store.pages.push(doc)
+      return doc
+    }
+    if (collection === "site-settings") {
+      const doc = Object.assign({ ...createSiteSettingsData(1, "Fixture", "https://fixture.example"), id, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" }, data)
+      store["site-settings"].push(doc)
+      return doc
+    }
+    if (collection === "media") {
+      const doc = Object.assign(mediaFixture({ id }), data)
+      store.media.push(doc)
+      return doc
+    }
+    throw new Error(`Unexpected collection ${collection}`)
+  })
+  vi.spyOn(payload, "update").mockImplementation(async ({ collection, id, data }) => {
+    if (!assertCollection(collection)) throw new Error(`Unexpected collection ${collection}`)
+    const doc = store[collection].find(entry => String(entry.id) === String(id))
+    if (!doc) throw new Error(`Missing ${collection} ${id}`)
+    Object.assign(doc, data)
+    return doc
+  })
+  return { payload, store }
 }
 
 describe("owned Sitegen application", () => {
@@ -122,7 +147,7 @@ describe("owned Sitegen application", () => {
 
   it("retires unspecified published pages only in explicit replacement mode", async () => {
     const { payload, store } = payloadStub()
-    store.pages.push({ id: 90, tenant: 1, slug: "legacy-page", title: "Legacy page", status: "published" })
+    store.pages.push(pageFixture({ id: 90, tenant: 1, slug: "legacy-page", title: "Legacy page", status: "published" }))
 
     const result = await applySiteGenerationSpec(payload, fixtureSpec(), { retireUnspecifiedPages: true })
 
@@ -135,20 +160,20 @@ describe("owned Sitegen application", () => {
 
   it("pins replacement apply to the grant tenant and refuses another tenant's slug", async () => {
     const { payload, store } = payloadStub()
-    store.tenants.push({
+    store.tenants.push(tenantFixture({
       id: 1,
       name: "Mine",
       slug: "mine",
       domain: "mine.test",
       status: "provisioning",
-    })
-    store.tenants.push({
+    }))
+    store.tenants.push(tenantFixture({
       id: 2,
       name: "Other",
       slug: "fixture-care",
       domain: "fixture-care.test",
       status: "provisioning",
-    })
+    }))
 
     await expect(applySiteGenerationSpec(payload, fixtureSpec(), { pinTenantId: 1 })).rejects.toThrow(/another tenant/)
     expect(store.tenants).toHaveLength(2)
@@ -157,13 +182,13 @@ describe("owned Sitegen application", () => {
 
   it("updates the pinned tenant when the spec slug is free", async () => {
     const { payload, store } = payloadStub()
-    store.tenants.push({
+    store.tenants.push(tenantFixture({
       id: 4,
       name: "Mine",
       slug: "mine",
       domain: "mine.test",
       status: "provisioning",
-    })
+    }))
 
     const result = await applySiteGenerationSpec(payload, fixtureSpec(), { pinTenantId: 4 })
     expect(result.ok).toBe(true)
@@ -173,11 +198,9 @@ describe("owned Sitegen application", () => {
   })
 
   it("rejects legacy fields and unsupported sections before writes", () => {
-    const invalid = fixtureSpec() as unknown as Record<string, unknown>
-    const pages = invalid.pages as Array<Record<string, unknown>>
-    const firstPage = pages[0]!
-    firstPage.blocks = [{ blockType: "hero", legacyVariant: "legacy.hero", heading: "x" }]
-    expect(validateSiteGenerationSpecForCms(invalid as unknown as SiteGenerationSpec)).toMatchObject({ valid: false })
+    const spec = fixtureSpec()
+    const invalid = { ...spec, pages: [{ ...spec.pages[0], blocks: [{ blockType: "hero", legacyVariant: "legacy.hero", heading: "x" }] }] }
+    expect(validateSiteGenerationSpecForCms(invalid)).toMatchObject({ valid: false })
   })
 
   it("rejects canonical appointment sections when intake did not request the capability", () => {

@@ -1,12 +1,11 @@
-import type { Page } from "@/payload-types"
 import type { pageToJson } from "@/lib/projection/pageToJson"
 
 export type JsonBlock = Record<string, unknown>
 export type PageJson = ReturnType<typeof pageToJson>
 
-/** Construct partial page docs for pageToJson without `any`. */
-export function asPageSource(value: Record<string, unknown>): Page {
-  return value as unknown as Page
+/** The projector explicitly accepts raw record sources as well as generated pages. */
+export function asPageSource(value: Record<string, unknown>): Parameters<typeof pageToJson>[0] {
+  return value
 }
 
 export function jsonBlocks(json: PageJson): JsonBlock[] {

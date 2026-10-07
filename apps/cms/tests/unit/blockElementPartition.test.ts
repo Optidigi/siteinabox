@@ -36,9 +36,9 @@ describe("partitionBlockElementSpecs", () => {
 describe("resolveBlockLabel", () => {
   it("prefers manifest label over slug", () => {
     expect(resolveBlockLabel("services", {
-      version: 1,
+      version: 1, inlineMarks: {}, blockTypes: { paragraph: true },
       blocks: [{ slug: "services", label: "Diensten" }],
-    } as never)).toBe("Diensten")
+    })).toBe("Diensten")
   })
 
   it("uses locale fallback then title-cases slug", () => {

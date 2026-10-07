@@ -16,7 +16,7 @@ const validManifest = {
 describe("Tenant.siteManifest", () => {
   it("accepts a valid manifest on create", async () => {
     const ts = Date.now()
-    const t = await payload.create(createArgs("tenants", {
+    const t = await payload.create(createArgs("tenants", { status: "provisioning",
       name: "Test Manifest Tenant",
       slug: `test-manifest-tenant-${ts}`,
       domain: `manifest-${ts}.test`,
@@ -26,7 +26,7 @@ describe("Tenant.siteManifest", () => {
   })
 
   it("rejects an invalid manifest (missing paragraph)", async () => {
-    await expect(payload.create(createArgs("tenants", {
+    await expect(payload.create(createArgs("tenants", { status: "provisioning",
       name: "Bad", slug: `bad-${Date.now()}`, domain: `bad-${Date.now()}.test`,
       siteManifest: { version: 1, inlineMarks: {}, blockTypes: {} },
     }, { overrideAccess: true }))).rejects.toThrow()

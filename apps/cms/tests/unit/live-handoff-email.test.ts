@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { asGenerationRun, asMockDoc, asPublishedSnapshot, asTenant } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import type { Tenant, SiteGenerationRun, PublishedSiteSnapshot, IntakeSubmission, User } from "@/payload-types"
+import type { MockDoc } from "../_helpers/mockPayload"
+import { createInitializedTestPayload, createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, generationRunFixture, publishedSnapshotFixture, intakeSubmissionFixture, userFixture, agreementAcceptanceFixture, operationalAlertFixture, paginatedFixture } from "../_helpers/generatedDocs"
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   signInMagicLink: vi.fn(),
@@ -24,10 +27,11 @@ vi.mock("@/lib/betterAuth", () => ({
   },
 }))
 
+import { MailSendError } from "@/lib/email/sendEmail"
 import { activatePublishedSnapshot } from "@/lib/publish/siteSnapshots"
 import { sendLiveHandoffEmailAfterActivation } from "@/lib/publish/liveHandoffEmail"
 
-const approvedPaidRun = {
+const approvedPaidRun = generationRunFixture({
   id: 500,
   intakeSubmission: 700,
   tenant: 1,
@@ -38,9 +42,9 @@ const approvedPaidRun = {
   },
   clientApproval: { status: "approved" },
   payment: { status: "completed" },
-}
+})
 
-const verifiedTenant = {
+const verifiedTenant = tenantFixture({
   id: 1,
   domain: "clientsite.nl",
   status: "provisioning",
@@ -52,9 +56,9 @@ const verifiedTenant = {
     sendingDomain: "mail.clientsite.nl",
     senderEmail: "noreply@mail.clientsite.nl",
   },
-}
+})
 
-const draftedSnapshot = {
+const draftedSnapshot = publishedSnapshotFixture({
   id: 10,
   tenant: verifiedTenant.id,
   domain: verifiedTenant.domain,
@@ -63,76 +67,69 @@ const draftedSnapshot = {
   snapshot: {
     siteUrl: "https://clientsite.nl",
   },
-}
+})
 
-const createActivationPayload = (input?: {
-  tenant?: MockDoc
-  run?: MockDoc | null
-  snapshot?: MockDoc
-  intake?: MockDoc
-  users?: MockDoc[]
+const createActivationPayload = async (input?: {
+  tenant?: Partial<Tenant>; run?: Partial<SiteGenerationRun> | null; snapshot?: Partial<PublishedSiteSnapshot>; intake?: Partial<IntakeSubmission>; users?: Partial<User>[]
 }) => {
-  const tenant: MockDoc = { ...(input?.tenant ?? verifiedTenant) }
-  const run: MockDoc | null = input?.run === null ? null : { ...(input?.run ?? approvedPaidRun) }
-  const snapshot: MockDoc = { ...(input?.snapshot ?? draftedSnapshot) }
-  const intake: MockDoc = input?.intake ?? {
-    id: 700,
-    contactEmail: "intake@example.com",
-    normalized: { contact: { email: "normalized-intake@example.com" } },
-  }
-  const users: MockDoc[] = [...(input?.users ?? [])]
-  const acceptances: MockDoc[] = [{ id: 880, tenant: tenant.id, actorEmail: "customer@example.com" }]
+  const tenant = tenantFixture(input?.tenant ?? verifiedTenant)
+  const run = input?.run === null ? null : generationRunFixture(input?.run ?? approvedPaidRun)
+  const snapshot = publishedSnapshotFixture(input?.snapshot ?? draftedSnapshot)
+  const intake = intakeSubmissionFixture(input?.intake ?? { id: 700, contactEmail: "intake@example.com", normalized: { contact: { email: "normalized-intake@example.com" } } })
+  const users = (input?.users ?? []).map(user => userFixture(user))
+  const acceptances = [agreementAcceptanceFixture({ id: 880, tenant: tenant.id, actorEmail: "customer@example.com" })]
+  const alerts: ReturnType<typeof operationalAlertFixture>[] = []
   const updates: MockDoc[] = []
-  const payload = {
-    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
-      if (collection === "published-site-snapshots" && String(id) === String(snapshot.id)) return snapshot
-      if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
-      if (collection === "site-generation-runs" && run && String(id) === String(run.id)) return run
-      if (collection === "intake-submissions" && String(id) === String(intake.id)) return intake
-      throw new Error(`Missing ${collection} ${id}`)
-    }),
-    find: vi.fn(async ({ collection, where }: MockFindArgs = { collection: "" }) => {
-      if (collection === "users") {
-        const email = asMockDoc(asMockDoc(where).email).equals
-        return { docs: users.filter((user) => user.email === email) }
-      }
-      if (collection === "agreement-acceptances") {
-        const clauses = (asMockDoc(where).and as MockDoc[]) ?? []
-        const tenantId = asMockDoc(clauses.find((clause) => clause.tenant)?.tenant).equals
-        const actorEmail = asMockDoc(clauses.find((clause) => clause.actorEmail)?.actorEmail).equals
-        return { docs: acceptances.filter((item) => String(item.tenant) === String(tenantId) && item.actorEmail === actorEmail) }
-      }
-      return { docs: [] }
-    }),
-    create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
-      if (collection === "users") {
-        const created = { id: users.length + 100, ...data }
-        users.push(created)
-        return created
-      }
-      return { id: 900, ...data }
-    }),
-    update: vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
-      updates.push({ collection, data })
-      if (collection === "tenants") {
-        Object.assign(tenant, data)
-        return tenant
-      }
-      if (collection === "published-site-snapshots") {
-        Object.assign(snapshot, data)
-        return snapshot
-      }
-      if (collection === "users") {
-        const user = users.find((candidate: MockDoc) => String(candidate.id) === String(id))
-        if (!user) throw new Error(`Missing user ${id}`)
-        Object.assign(user, data)
-        return user
-      }
-      return { ...data }
-    }),
-    logger: { warn: vi.fn(), error: vi.fn() },
-  }
-  return { payload: asPayload(payload), tenant, run, snapshot, updates, users }
+  const payload = createTestPayload()
+  payload.logger = (await createInitializedTestPayload()).logger
+  vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
+    if (collection === "published-site-snapshots" && String(id) === String(snapshot.id)) return snapshot
+    if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
+    if (collection === "site-generation-runs" && run && String(id) === String(run.id)) return run
+    if (collection === "intake-submissions" && String(id) === String(intake.id)) return intake
+    throw new Error("Missing " + collection + " " + id)
+  })
+  const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
+    if (collection === "operational-alerts") return paginatedFixture(alerts.filter(alert => alert.dedupeKey === asMockDoc(where?.dedupeKey).equals))
+    if (collection === "users") {
+      const email = asMockDoc(asMockDoc(where).email).equals
+      return paginatedFixture(users.filter(user => user.email === email))
+    }
+    if (collection === "agreement-acceptances") {
+      const clauses = Array.isArray(where?.and) ? where.and : []
+      const tenantId = asMockDoc(clauses.find(clause => clause.tenant)?.tenant).equals
+      const actorEmail = asMockDoc(clauses.find(clause => clause.actorEmail)?.actorEmail).equals
+      return paginatedFixture(acceptances.filter(item => String(item.tenant) === String(tenantId) && item.actorEmail === actorEmail))
+    }
+    return paginatedFixture([])
+  })
+  vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
+    if (collection === "operational-alerts") {
+      const alert = operationalAlertFixture({ id: alerts.length + 900 })
+      Object.assign(alert, data)
+      alerts.push(alert)
+      return alert
+    }
+    if (collection !== "users") throw new Error("Unexpected create " + collection)
+    const created = userFixture({ id: users.length + 100 })
+    Object.assign(created, data)
+    users.push(created)
+    return created
+  })
+  vi.spyOn(payload, "update").mockImplementation(async ({ collection, id, data }) => {
+    updates.push({ collection, data })
+    if (collection === "tenants") return Object.assign(tenant, data)
+    if (collection === "published-site-snapshots") return Object.assign(snapshot, data)
+    if (collection === "users") {
+      const user = users.find(candidate => String(candidate.id) === String(id))
+      if (!user) throw new Error("Missing user " + id)
+      return Object.assign(user, data)
+    }
+    throw new Error("Unexpected update " + collection)
+  })
+  vi.spyOn(payload.logger, "warn")
+  vi.spyOn(payload.logger, "error")
+  return { payload, find, tenant, run, snapshot, updates, users, alerts }
 }
 
 describe("CMS live handoff email", () => {
@@ -143,7 +140,7 @@ describe("CMS live handoff email", () => {
   })
 
   it("ensures customer CMS access and requests one live handoff magic-login email after generated-site activation", async () => {
-    const { payload, users } = createActivationPayload()
+    const { payload, users } = await createActivationPayload()
 
     await expect(activatePublishedSnapshot(payload, {
       snapshotId: 10,
@@ -191,7 +188,7 @@ describe("CMS live handoff email", () => {
   })
 
   it("reuses an existing tenant user and promotes it to owner before handoff", async () => {
-    const { payload, users, tenant, snapshot, run } = createActivationPayload({
+    const { payload, users, tenant, snapshot, run } = await createActivationPayload({
       users: [{
         id: 77,
         email: "customer@example.com",
@@ -223,7 +220,7 @@ describe("CMS live handoff email", () => {
   })
 
   it("skips live handoff when a generated run has no customer recipient", async () => {
-    const { payload, tenant, snapshot } = createActivationPayload({
+    const { payload, tenant, snapshot } = await createActivationPayload({
       run: {
         ...approvedPaidRun,
         normalizedIntake: { contact: {} },
@@ -249,7 +246,7 @@ describe("CMS live handoff email", () => {
   })
 
   it("keeps activation non-blocking after requesting the live handoff magic-login email", async () => {
-    const { payload, tenant, snapshot } = createActivationPayload()
+    const { payload, tenant, snapshot } = await createActivationPayload()
 
     await expect(activatePublishedSnapshot(payload, {
       snapshotId: 10,
@@ -267,7 +264,7 @@ describe("CMS live handoff email", () => {
   })
 
   it("does not send normal live handoff for rollback, current-state activation, or reactivation", async () => {
-    const rollback = createActivationPayload()
+    const rollback = await createActivationPayload()
     await expect(activatePublishedSnapshot(rollback.payload, {
       snapshotId: 10,
       rollback: true,
@@ -275,7 +272,7 @@ describe("CMS live handoff email", () => {
       activationReason: "manual rollback",
     })).resolves.toMatchObject({ status: "active" })
 
-    const currentState = createActivationPayload({
+    const currentState = await createActivationPayload({
       run: null,
       snapshot: {
         ...draftedSnapshot,
@@ -287,7 +284,7 @@ describe("CMS live handoff email", () => {
       manualActivation: true,
     })).resolves.toMatchObject({ status: "active" })
 
-    const reactivation = createActivationPayload({
+    const reactivation = await createActivationPayload({
       snapshot: {
         ...draftedSnapshot,
         status: "superseded",
@@ -303,7 +300,7 @@ describe("CMS live handoff email", () => {
   })
 
   it("does not send final handoff when the CMS access magic link cannot be created", async () => {
-    const { payload, tenant, snapshot, run } = createActivationPayload()
+    const { payload, tenant, snapshot, run } = await createActivationPayload()
     mocks.signInMagicLink.mockRejectedValue(new Error("auth down"))
 
     await expect(sendLiveHandoffEmailAfterActivation(payload, {
@@ -321,13 +318,28 @@ describe("CMS live handoff email", () => {
     }), "[publish] live handoff email failed after activation")
   })
 
+  it("keeps an activated snapshot successful when direct handoff mail is uncertain", async () => {
+    const { payload, tenant, snapshot, alerts } = await createActivationPayload()
+    mocks.signInMagicLink.mockRejectedValueOnce(new MailSendError({ provider: "test", providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", providerErrorMessage: "response lost", retryState: "permanent" }))
+    await expect(activatePublishedSnapshot(payload, { snapshotId: snapshot.id, manualActivation: true })).resolves.toMatchObject({ status: "active" })
+    expect(tenant.status).toBe("active")
+    expect(snapshot.status).toBe("active")
+    expect(alerts).toEqual([expect.objectContaining({ status: "open", tenant: tenant.id, dedupeKey: `commerce:domains:live_handoff_mail_failed:${snapshot.id}` })])
+    expect(payload.logger.warn).toHaveBeenCalledWith(expect.objectContaining({ tenant: tenant.id }), "[publish] live handoff email failed after activation")
+    expect(mocks.signInMagicLink).toHaveBeenCalledOnce()
+  })
+
+  it("preserves uncertain mail acceptance from magic-link dispatch", async () => {
+    const { payload, tenant, snapshot, run } = await createActivationPayload()
+    const error = new MailSendError({ provider: "test", providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", providerErrorMessage: "response lost", retryState: "permanent" })
+    mocks.signInMagicLink.mockRejectedValueOnce(error)
+    await expect(sendLiveHandoffEmailAfterActivation(payload, { tenant, run, snapshotDoc: snapshot, propagateMailErrors: true })).rejects.toBe(error)
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
   it("does not create CMS access without initial terms acceptance evidence", async () => {
-    const { payload, tenant, snapshot, run } = createActivationPayload()
-    vi.mocked(payload.find as unknown as ReturnType<typeof vi.fn>).mockImplementation(async ({ collection }: MockFindArgs) => {
-      if (collection === "agreement-acceptances") return { docs: [] }
-      if (collection === "users") return { docs: [] }
-      return { docs: [] }
-    })
+    const { payload, find, tenant, snapshot, run } = await createActivationPayload()
+    find.mockImplementation(async () => paginatedFixture([]))
 
     await expect(sendLiveHandoffEmailAfterActivation(payload, {
       tenant: asTenant(tenant),

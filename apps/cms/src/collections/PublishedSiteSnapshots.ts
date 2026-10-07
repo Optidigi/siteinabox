@@ -1,3 +1,4 @@
+import { asRecord } from "@/lib/record"
 import type { CollectionBeforeChangeHook, CollectionBeforeValidateHook, CollectionConfig } from "payload"
 import type { PublishedSiteSnapshot } from "@/payload-types"
 import { adminText } from "@/lib/payloadAdminI18n"
@@ -49,9 +50,9 @@ const normalizeSnapshotTheme = (snapshot: unknown): unknown => {
   }
 }
 
-type SnapshotHookArgs = Parameters<CollectionBeforeChangeHook>[0]
+type SnapshotHookArgs = Parameters<CollectionBeforeChangeHook<PublishedSiteSnapshot>>[0]
 
-export const protectImmutableSnapshot: CollectionBeforeChangeHook = (args) => {
+export const protectImmutableSnapshot: CollectionBeforeChangeHook<PublishedSiteSnapshot> = (args) => {
   if (args.operation !== "update") return args.data
   if (!isInternalLifecycleMutation(args)) {
     throw new Error("Published site snapshots are immutable. Use the publish activation flow for lifecycle changes.")
@@ -60,7 +61,7 @@ export const protectImmutableSnapshot: CollectionBeforeChangeHook = (args) => {
   const changedFields = Object.keys(args.data ?? {})
   const immutableField = changedFields.find((field) =>
     !allowedLifecycleUpdateFields.has(field) &&
-    !immutableFieldIsUnchanged(field, args.data?.[field], args.originalDoc as Record<string, unknown> | undefined),
+    !immutableFieldIsUnchanged(field, asRecord(args.data)?.[field], args.originalDoc as Record<string, unknown> | undefined),
   )
   if (immutableField) {
     throw new Error(`Published site snapshot field "${immutableField}" is immutable after creation.`)
@@ -96,7 +97,7 @@ export const PublishedSiteSnapshots: CollectionConfig = {
           throw new Error(`Published site snapshot failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
         }
         return { ...data, snapshot: parsed.data }
-      }) satisfies CollectionBeforeValidateHook,
+      }) satisfies CollectionBeforeValidateHook<PublishedSiteSnapshot>,
     ],
     beforeChange: [protectImmutableSnapshot],
   },

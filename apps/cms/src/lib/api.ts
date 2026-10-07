@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 /**
  * Best-effort extraction of the most actionable error from a Payload v3 REST
  * response. Used by client-side forms to surface field-specific validation
@@ -17,9 +19,13 @@ export async function parsePayloadError(
   const txt = await res.text().catch(() => "")
   if (!txt) return { message: `HTTP ${res.status}` }
   try {
-    const json = JSON.parse(txt)
-    const top = Array.isArray(json?.errors) ? json.errors[0] : null
-    const inner = Array.isArray(top?.data?.errors) ? top.data.errors[0] : null
+    const raw: unknown = JSON.parse(txt)
+    const parsed = z.object({ errors: z.array(z.object({
+      message: z.string().optional(),
+      data: z.object({ errors: z.array(z.object({ path: z.string(), message: z.string() })).optional() }).optional(),
+    })).optional() }).safeParse(raw)
+    const top = parsed.success ? parsed.data.errors?.[0] : undefined
+    const inner = top?.data?.errors?.[0]
     if (inner?.path && inner?.message) {
       return { field: String(inner.path), message: String(inner.message) }
     }

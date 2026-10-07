@@ -151,7 +151,7 @@ const mollieAmount = (minor: number, currency: string): MollieAmount => {
 }
 
 const stateHistory = (
-  current: unknown,
+  current: PaymentAttempt["stateHistory"],
   state: PaymentAttemptState,
   at: string,
   providerStatus?: string | null,
@@ -161,7 +161,7 @@ const stateHistory = (
 ]
 
 const agreementHistory = (
-  current: unknown,
+  current: BillingAgreement["stateHistory"],
   state: BillingAgreement["state"],
   at: string,
   reason?: string,

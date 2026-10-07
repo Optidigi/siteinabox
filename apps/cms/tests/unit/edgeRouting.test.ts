@@ -4,7 +4,8 @@ import { CloudflareDnsRecordConflictError } from "@/lib/domains/cloudflare"
 import type { CloudflareDnsRecordRequest } from "@/lib/domains/cloudflare"
 import { reconcileCommerceEdgeRouting } from "@/lib/domains/edgeRouting"
 import { CloudflareTunnelApiError } from "@/lib/domains/cloudflareTunnels"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { managedDomainFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
 const domain = {
   id: 41,
@@ -35,21 +36,14 @@ const tunnel = (kind: "renderer" | "cms") => ({
 })
 
 const setup = () => {
-  const stored: Omit<typeof domain, "cloudflareDnsRecordIds"> & {
-    cloudflareDnsRecordIds: string[]
-  } = {
-    ...domain,
-    cloudflareDnsRecordIds: [],
-  }
-  const update = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+  const stored = managedDomainFixture({ ...domain, state: "active", custodyStatus: "managed", edgeRoutingStatus: "pending", httpsStatus: "pending", adminHttpsStatus: "pending" })
+  const payload = createTestPayload()
+  const update = vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
     Object.assign(stored, data)
     return { ...stored }
   })
-  const payload = asPayload({
-    find: vi.fn(async () => ({ docs: [{ ...stored }], totalDocs: 1 })),
-    findByID: vi.fn(),
-    update,
-  })
+  vi.spyOn(payload, "find").mockImplementation(async () => paginatedFixture([{ ...stored }]))
+  vi.spyOn(payload, "findByID")
   const records = [
     {
       type: "CNAME" as const,

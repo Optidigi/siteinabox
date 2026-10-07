@@ -1,63 +1,8 @@
-import type { Payload, PayloadRequest, Where } from "payload"
+import type { Payload } from "payload"
 
-export type AppointmentSystemRecord = {
-  id: string | number
-  [key: string]: unknown
-}
+export type AppointmentSystemPayload = Pick<Payload, "find" | "findByID" | "create" | "update" | "delete">
 
-export type AppointmentSystemPayload = {
-  find(args: {
-    collection: string
-    where?: Where
-    limit: number
-    page?: number
-    sort?: string
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-  }): Promise<{
-    docs: AppointmentSystemRecord[]
-    totalDocs?: number
-    hasNextPage?: boolean
-  }>
-  findByID(args: {
-    collection: string
-    id: string | number
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-  }): Promise<AppointmentSystemRecord>
-  create(args: {
-    collection: string
-    data: Record<string, unknown>
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-    context?: Record<string, unknown>
-  }): Promise<AppointmentSystemRecord>
-  update(args: {
-    collection: string
-    id: string | number
-    where?: Where
-    data: Record<string, unknown>
-    depth: number
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-    user?: unknown
-    context?: Record<string, unknown>
-  }): Promise<AppointmentSystemRecord>
-  delete(args: {
-    collection: string
-    id?: string | number
-    where?: Where
-    overrideAccess: true
-    req?: Partial<PayloadRequest>
-    context?: Record<string, unknown>
-  }): Promise<unknown>
-}
-
-export const asAppointmentSystemPayload = (payload: Payload): AppointmentSystemPayload =>
-  payload as unknown as AppointmentSystemPayload
+export const asAppointmentSystemPayload = (payload: AppointmentSystemPayload): AppointmentSystemPayload => payload
 
 export const relationId = (value: unknown): string | null => {
   if (typeof value === "string" || typeof value === "number") return String(value)

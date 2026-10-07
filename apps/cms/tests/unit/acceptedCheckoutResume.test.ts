@@ -11,7 +11,16 @@ import {
 import {
   GTLD_TRANSFER_ELIGIBILITY_DECLARATION_VERSION,
 } from "@siteinabox/contracts/tld-capabilities"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { orderFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import type { Order } from "@/payload-types"
+import type { Payload } from "payload"
+
+const acceptedPayload = (find: (...args: Parameters<Payload["find"]>) => ReturnType<Payload["find"]>): Payload => {
+  const payload = createTestPayload()
+  vi.spyOn(payload, "find").mockImplementation(find)
+  return payload
+}
 
 const mocks = vi.hoisted(() => ({
   attachMigrationCheckoutSecret: vi.fn(async () => ({
@@ -125,15 +134,15 @@ const acceptedOrder = (selectedDomain = "example.nl") => {
             : {}),
         },
       },
-    },
+    } satisfies Partial<Order>,
   }
 }
 
 describe("accepted checkout resume", () => {
   it("reissues only the exact nonvolatile accepted authority after a payment return", async () => {
     const { order, quote } = acceptedOrder()
-    const find = vi.fn(async () => ({ docs: [order], totalDocs: 1 }))
-    const resume = await loadAcceptedCheckoutResume(asPayload({ find }), {
+    const find = vi.fn(async () => paginatedFixture([orderFixture(order)]))
+    const resume = await loadAcceptedCheckoutResume(acceptedPayload(find), {
       generationRunId: 500,
       customerEmail: " Customer@Example.com ",
       signingSecret: "resume-secret",
@@ -183,12 +192,12 @@ describe("accepted checkout resume", () => {
 
   it("reconstructs durable gTLD acceptance after the migration secret was consumed", async () => {
     const { order } = acceptedOrder("example.com")
-    const find = vi.fn(async () => ({ docs: [order], totalDocs: 1 }))
+    const find = vi.fn(async () => paginatedFixture([orderFixture(order)]))
     mocks.openAttachedMigrationCheckoutSecret.mockRejectedValueOnce(
       new Error("Migration checkout secret was already consumed."),
     )
 
-    const resume = await loadAcceptedCheckoutResume(asPayload({ find }), {
+    const resume = await loadAcceptedCheckoutResume(acceptedPayload(find), {
       generationRunId: 500,
       customerEmail: "customer@example.com",
       signingSecret: "resume-secret",
@@ -216,9 +225,9 @@ describe("accepted checkout resume", () => {
   it("fails closed when stored commercial evidence no longer reconciles", async () => {
     const { order } = acceptedOrder()
     order.quoteEvidence.grossPayableNowMinor += 1
-    const find = vi.fn(async () => ({ docs: [order], totalDocs: 1 }))
+    const find = vi.fn(async () => paginatedFixture([orderFixture(order)]))
 
-    await expect(loadAcceptedCheckoutResume(asPayload({ find }), {
+    await expect(loadAcceptedCheckoutResume(acceptedPayload(find), {
       generationRunId: 500,
       customerEmail: "customer@example.com",
       signingSecret: "resume-secret",
@@ -230,9 +239,7 @@ describe("accepted checkout resume", () => {
     const missing = acceptedOrder().order
     delete (missing.quoteEvidence as Record<string, unknown>)
       .transferRenewalEffect
-    await expect(loadAcceptedCheckoutResume(asPayload({
-      find: vi.fn(async () => ({ docs: [missing], totalDocs: 1 })),
-    }), {
+    await expect(loadAcceptedCheckoutResume(acceptedPayload(vi.fn(async () => paginatedFixture([orderFixture(missing)]))), {
       generationRunId: 500,
       customerEmail: "customer@example.com",
       signingSecret: "resume-secret",
@@ -242,9 +249,7 @@ describe("accepted checkout resume", () => {
     const mismatched = acceptedOrder().order
     mismatched.quoteEvidence.tldCapability.transferRenewalEffect =
       "extends_one_year"
-    await expect(loadAcceptedCheckoutResume(asPayload({
-      find: vi.fn(async () => ({ docs: [mismatched], totalDocs: 1 })),
-    }), {
+    await expect(loadAcceptedCheckoutResume(acceptedPayload(vi.fn(async () => paginatedFixture([orderFixture(mismatched)]))), {
       generationRunId: 500,
       customerEmail: "customer@example.com",
       signingSecret: "resume-secret",
@@ -254,12 +259,12 @@ describe("accepted checkout resume", () => {
 
   it("returns the frozen order with a safe recollection gate after secret expiry", async () => {
     const { order } = acceptedOrder()
-    const find = vi.fn(async () => ({ docs: [order], totalDocs: 1 }))
+    const find = vi.fn(async () => paginatedFixture([orderFixture(order)]))
     mocks.openAttachedMigrationCheckoutSecret.mockRejectedValueOnce(
       new Error("Migration checkout secret is not active for this order."),
     )
 
-    await expect(loadAcceptedCheckoutResume(asPayload({ find }), {
+    await expect(loadAcceptedCheckoutResume(acceptedPayload(find), {
       generationRunId: 500,
       customerEmail: "customer@example.com",
       signingSecret: "resume-secret",

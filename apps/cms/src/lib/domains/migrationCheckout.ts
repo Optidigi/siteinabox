@@ -20,12 +20,12 @@ import {
 import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
 import {
   sealCheckoutMigrationInput,
+  automaticRefreshCredentialValid,
   type CheckoutMigrationInput,
 } from "@/lib/domains/migrationSecrets"
 import { normalizeDomain } from "@/lib/domains/normalize"
 import {
   sourceAuthorityMechanism,
-  type AcquiredMigrationSource,
 } from "@/lib/domains/migrationSources/types"
 import { validateSignedDnssecEvidence } from "@/lib/domains/migrationSources/dnssecEvidence"
 import { verifyParentDsAbsent } from "@/lib/domains/verification"
@@ -477,7 +477,7 @@ export function assessExistingDomainMigrationInput(input: {
   gtldTransferEligibilityAccepted?: boolean
   publicEvidence: ExistingDomainPublicEvidence
   acceptedCapabilityVersion?: string
-  acquiredSource?: AcquiredMigrationSource
+  acquiredSource?: unknown
   env?: NodeJS.ProcessEnv
   now?: Date
 }, dependencies: {
@@ -695,11 +695,16 @@ export function assessExistingDomainMigrationInput(input: {
     }
   }
   const sourceZoneHash = domainMigrationSourceAuthorityHash(sourceZone)
-  if (input.acquiredSource) {
+  const acquiredSource = input.acquiredSource
+  if (acquiredSource) {
     if (
-      input.acquiredSource.zone !== input.zoneExport ||
+      typeof acquiredSource !== "object" || Array.isArray(acquiredSource) ||
+      !("mechanism" in acquiredSource) || !("zone" in acquiredSource) || !("refreshCredential" in acquiredSource) ||
+      (acquiredSource.mechanism !== "cloudflare_api_v1" && acquiredSource.mechanism !== "authorized_axfr_v1") ||
+      !automaticRefreshCredentialValid(acquiredSource.mechanism, acquiredSource.refreshCredential) ||
+      acquiredSource.zone !== input.zoneExport ||
       sourceZone.authority.mechanism !==
-        sourceAuthorityMechanism(input.acquiredSource.mechanism)
+        sourceAuthorityMechanism(acquiredSource.mechanism)
     ) {
       return {
         readiness: "unsupported",
@@ -718,10 +723,10 @@ export function assessExistingDomainMigrationInput(input: {
       generationRunId: String(input.generationRunId),
       domain: normalizedDomain.domain,
       classification: "automatic",
-      sourceMechanism: input.acquiredSource.mechanism,
+      sourceMechanism: acquiredSource.mechanism,
       sourceZoneHash,
-      sourceZone: input.acquiredSource.zone,
-      sourceRefreshCredential: input.acquiredSource.refreshCredential,
+      sourceZone: input.zoneExport,
+      sourceRefreshCredential: acquiredSource.refreshCredential,
       transferCode: input.transferCode,
       transferAuthorizationAccepted: true,
       gtldTransferEligibilityAccepted:

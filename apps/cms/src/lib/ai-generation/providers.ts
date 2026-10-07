@@ -104,7 +104,7 @@ const sectionSchema = (
   required: [...required],
   properties: {
     ...baseSectionProperties,
-    blockType: Array.isArray(blockType)
+    blockType: typeof blockType !== "string"
       ? { type: "string", enum: [...blockType] }
       : { type: "string", const: blockType },
     ...properties,

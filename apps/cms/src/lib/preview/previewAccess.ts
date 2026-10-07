@@ -2,7 +2,7 @@ import "server-only"
 import { getPayload, type Payload } from "payload"
 import config from "@/payload.config"
 import type { Page, PreviewAccessGrant, SiteGenerationRun, Tenant } from "@/payload-types"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { relationshipValue, relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { slugify } from "@/lib/slugify"
 
 export const DEFAULT_PREVIEW_GRANT_TTL_DAYS = 14
@@ -44,13 +44,13 @@ export const previewClientSlugFromDomain = (domain: string | null | undefined, f
 
 const relationIds = (items: unknown): string[] =>
   Array.isArray(items)
-    ? items.map((item) => relationshipId(item)).filter((id): id is string => Boolean(id))
+    ? items.map((item: unknown) => relationshipId(relationshipValue(item))).filter((id): id is string => Boolean(id))
     : []
 
 const payloadRelationIds = (items: unknown): number[] =>
   Array.isArray(items)
     ? items
-      .map((item) => {
+      .map((item: unknown) => {
         const id = item && typeof item === "object" && "id" in item
           ? (item as { id?: string | number | null }).id
           : item

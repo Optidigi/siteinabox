@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { captureAcceptedFormAnalytics } from "@/lib/analytics/acceptedForm"
 
-import { asPayload } from "../_helpers/mockPayload"
+import { tenantFixture } from "../_helpers/generatedDocs"
+import { createTestPayload } from "../_helpers/testPayload"
 
 const ORIGINAL_ENV = { ...process.env }
 
@@ -17,7 +18,7 @@ describe("captureAcceptedFormAnalytics", () => {
 
     await captureAcceptedFormAnalytics({
       doc: { id: 1, tenant: 7, formName: "Contact", pageUrl: "https://ami-care.nl/contact" },
-      payload: asPayload({ findByID: vi.fn() }),
+      payload: createTestPayload(),
     })
 
     expect(fetchMock).not.toHaveBeenCalled()
@@ -26,10 +27,12 @@ describe("captureAcceptedFormAnalytics", () => {
   it("emits accepted-form and conversion events without submitted PII", async () => {
     process.env.POSTHOG_PROJECT_TOKEN = "phc_test"
     process.env.POSTHOG_HOST = "https://eu.posthog.com"
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-    } as Response)
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }))
 
+    const payload = createTestPayload()
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({
+      id: 7, name: "Amicare", slug: "amicare", domain: "ami-care.nl", siteManifest: { version: 1 },
+    }))
     await captureAcceptedFormAnalytics({
       doc: {
         id: 42,
@@ -39,15 +42,7 @@ describe("captureAcceptedFormAnalytics", () => {
         email: "person@example.com",
         data: { message: "private" },
       },
-      payload: asPayload({
-        findByID: vi.fn().mockResolvedValue({
-          id: 7,
-          name: "Amicare",
-          slug: "amicare",
-          domain: "ami-care.nl",
-          siteManifest: { version: 1 },
-        }),
-      }),
+      payload,
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(3)

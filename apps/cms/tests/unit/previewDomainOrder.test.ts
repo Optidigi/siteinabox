@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { SiteGenerationRun } from "@/payload-types"
 
 import { cast } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { generationRunFixture } from "../_helpers/generatedDocs"
 vi.mock("@/lib/domains/openprovider", () => ({
   checkOpenProviderDomainAvailability: vi.fn(),
   checkOpenProviderDomainsAvailability: vi.fn(),
@@ -44,16 +45,15 @@ describe("preview domain order", () => {
   })
 
   it("returns unavailable primary domain results without waiting for alternatives", async () => {
-    const run = {
+    const run = generationRunFixture({
       id: 123,
       domainOrder: null,
-    }
-    const payload = {
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
+    })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
         Object.assign(run, data)
         return { ...run }
-      }),
-    }
+      })
 
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "unavailable",
@@ -66,8 +66,8 @@ describe("preview domain order", () => {
     vi.mocked(checkOpenProviderDomainsAvailability).mockImplementation(async () => new Promise(() => {}))
 
     const result = await checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
-      cast<SiteGenerationRun>(run),
+      payload,
+      run,
       "acme.nl",
       null,
       { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
@@ -92,16 +92,15 @@ describe("preview domain order", () => {
   })
 
   it("uses provider evidence without requiring a global fixed checkout amount", async () => {
-    const run = {
+    const run = generationRunFixture({
       id: 124,
       domainOrder: null,
-    }
-    const payload = {
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
+    })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
         Object.assign(run, data)
         return { ...run }
-      }),
-    }
+      })
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
       domain: "acme.nl",
@@ -112,8 +111,8 @@ describe("preview domain order", () => {
     })
 
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
-      cast<SiteGenerationRun>(run),
+      payload,
+      run,
       "acme.nl",
       null,
       { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
@@ -321,13 +320,12 @@ describe("preview domain order", () => {
   })
 
   it("marks available domains above the included cap as unavailable when there is no fixed surcharge", async () => {
-    const run = { id: 123, domainOrder: null }
-    const payload = {
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
+    const run = generationRunFixture({ id: 123, domainOrder: null })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
         Object.assign(run, data)
         return { ...run }
-      }),
-    }
+      })
 
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
@@ -339,8 +337,8 @@ describe("preview domain order", () => {
     })
 
     const result = await checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
-      cast<SiteGenerationRun>(run),
+      payload,
+      run,
       "levelweb.nl",
       null,
       { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
@@ -365,13 +363,12 @@ describe("preview domain order", () => {
   })
 
   it("can return primary check results without recording domain order state", async () => {
-    const run = { id: 123, domainOrder: null }
-    const payload = {
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
+    const run = generationRunFixture({ id: 123, domainOrder: null })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
         Object.assign(run, data)
         return { ...run }
-      }),
-    }
+      })
 
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
@@ -383,8 +380,8 @@ describe("preview domain order", () => {
     })
 
     const result = await checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
-      cast<SiteGenerationRun>(run),
+      payload,
+      run,
       "readonly.nl",
       null,
       {
@@ -403,7 +400,7 @@ describe("preview domain order", () => {
   })
 
   it("checks normalized checkout candidates in one non-persistent batch and restores candidate order", async () => {
-    const run = { id: 123, domainOrder: null }
+    const run = generationRunFixture({ id: 123, domainOrder: null })
     vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
       {
         status: "available",
@@ -424,7 +421,7 @@ describe("preview domain order", () => {
     ])
 
     await expect(checkPreviewDomainOrders(
-      cast<SiteGenerationRun>(run),
+      run,
       ["Acme.NL", "acme.com", "acme.nl"],
       null,
       {
@@ -455,7 +452,7 @@ describe("preview domain order", () => {
   })
 
   it("marks invalid discovery candidates as unavailable without skipping valid candidates", async () => {
-    const run = { id: 123, domainOrder: null }
+    const run = generationRunFixture({ id: 123, domainOrder: null })
     vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
       {
         status: "unavailable",
@@ -476,7 +473,7 @@ describe("preview domain order", () => {
     ])
 
     await expect(checkPreviewDomainOrders(
-      cast<SiteGenerationRun>(run),
+      run,
       ["acme.invalid", "acme.nl", "acme.com"],
       null,
       {
@@ -511,7 +508,7 @@ describe("preview domain order", () => {
   })
 
   it("preserves candidate order while short-circuiting invalid discovery entries", async () => {
-    const run = { id: 123, domainOrder: null }
+    const run = generationRunFixture({ id: 123, domainOrder: null })
     vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
       {
         status: "available",
@@ -532,7 +529,7 @@ describe("preview domain order", () => {
     ])
 
     await expect(checkPreviewDomainOrders(
-      cast<SiteGenerationRun>(run),
+      run,
       ["acme.nl", "-bad.tld", "acme.com"],
       null,
       {
@@ -550,7 +547,7 @@ describe("preview domain order", () => {
   })
 
   it("classifies unsupported-label discovery candidates without affecting valid candidates", async () => {
-    const run = { id: 123, domainOrder: null }
+    const run = generationRunFixture({ id: 123, domainOrder: null })
     vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([{
       status: "available",
       domain: "acme.nl",
@@ -561,7 +558,7 @@ describe("preview domain order", () => {
     }])
 
     await expect(checkPreviewDomainOrders(
-      cast<SiteGenerationRun>(run),
+      run,
       ["a.org", "acme.nl"],
       null,
       {
@@ -604,12 +601,13 @@ describe("preview domain order", () => {
   })
 
   it("throws typed validation failures for direct selected-domain checks with meaningful messages", async () => {
-    const run = { id: 123, domainOrder: null }
-    const payload = { update: vi.fn() }
+    const run = generationRunFixture({ id: 123, domainOrder: null })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update")
 
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
-      cast<SiteGenerationRun>(run),
+      payload,
+      run,
       "acme.invalid",
       null,
       {
@@ -618,7 +616,7 @@ describe("preview domain order", () => {
       },
     )).rejects.toThrow("TLD .invalid is not enabled for checkout.")
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
+      payload,
       cast<SiteGenerationRun>({ ...run }),
       "a.org",
       null,
@@ -628,7 +626,7 @@ describe("preview domain order", () => {
       },
     )).rejects.toThrow("Domain label is not supported for .org.")
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
+      payload,
       cast<SiteGenerationRun>({ ...run }),
       "-bad.name",
       null,
@@ -658,13 +656,12 @@ describe("preview domain order", () => {
   })
 
   it("checks an explicitly entered non-recommended TLD through OpenProvider without adding it to suggestions", async () => {
-    const run = { id: 123, domainOrder: null }
-    const payload = {
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
+    const run = generationRunFixture({ id: 123, domainOrder: null })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
         Object.assign(run, data)
         return { ...run }
-      }),
-    }
+      })
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
       domain: "acme.ai",
@@ -675,8 +672,8 @@ describe("preview domain order", () => {
     })
 
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload(payload),
-      cast<SiteGenerationRun>(run),
+      payload,
+      run,
       "acme.ai",
       null,
       {
@@ -696,7 +693,7 @@ describe("preview domain order", () => {
   })
 
   it("checks an explicitly entered qualified TLD through OpenProvider with its EUR quote", async () => {
-    const run = { id: 123, domainOrder: null }
+    const run = generationRunFixture({ id: 123, domainOrder: null })
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
       domain: "acme.com",
@@ -707,8 +704,8 @@ describe("preview domain order", () => {
     })
 
     await expect(checkAndRecordPreviewDomainOrder(
-      asPayload({ update: vi.fn() }),
-      cast<SiteGenerationRun>(run),
+      createTestPayload(),
+      run,
       "Acme.Com",
       null,
       {
@@ -745,7 +742,7 @@ describe("preview domain order", () => {
       phoneSubscriberNumber: "1234567",
       locale: "nl_NL",
     }
-    const run = {
+    const run = generationRunFixture({
       id: 123,
       domainOrder: createDomainOrderState({
         status: "ready_to_register",
@@ -756,13 +753,12 @@ describe("preview domain order", () => {
         maxOfferPrice: { amount: "25.00", currency: "EUR" },
         now: "2026-06-30T10:00:00.000Z",
       }),
-    }
-    const payload = {
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
+    })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "update").mockImplementation(async ({ data }) => {
         Object.assign(run, data)
         return { ...run }
-      }),
-    }
+      })
     vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
       status: "available",
       domain: "levelweb.nl",
@@ -772,7 +768,7 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    await expect(requireReadyPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "levelweb.nl", registrant))
+    await expect(requireReadyPreviewDomainOrder(payload, run, "levelweb.nl", registrant))
       .rejects.toThrow("checkoutDomainUnavailable")
 
     expect(payload.update).toHaveBeenCalledTimes(1)

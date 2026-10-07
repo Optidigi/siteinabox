@@ -1,4 +1,7 @@
 import "server-only"
+import { z } from "zod"
+import { migrationDnsRecordSchema } from "@siteinabox/contracts/domain-migration"
+import { requestProviderJson } from "@/lib/providers/http"
 import {
   type NormalizedMigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
@@ -93,10 +96,30 @@ export type CloudflareDnssecResult = {
 }
 
 type FetchLike = typeof fetch
+const providerFetch = (options?: CloudflareOptions): typeof fetch => async (input, init = {}) => {
+  const url = new URL(String(input))
+  if (url.protocol !== "https:" || url.username || url.password || url.hash) throw new Error("Provider request URL is invalid.")
+  const response = await requestProviderJson(url.toString(), init, {
+    operation: "Cloudflare request",
+    timeoutMs: options?.timeoutMs ?? 10_000,
+    maxBodyBytes: 512 * 1024,
+    readAttempts: 2,
+    signal: options?.signal,
+    fetchImpl: options?.fetchImpl,
+  })
+  if (response.ok && typeof readObject(response.body).success !== "boolean") throw new Error("Cloudflare response envelope is invalid.")
+  if (response.ok && readObject(response.body).success === true && (init.method ?? "GET") !== "GET") {
+    resultObject(response.body)
+  }
+  return Response.json(response.body ?? null, { status: response.status })
+}
+
 
 type CloudflareOptions = {
   env?: NodeJS.ProcessEnv
   fetchImpl?: FetchLike
+  timeoutMs?: number
+  signal?: AbortSignal
 }
 
 const DEFAULT_API_BASE = "https://api.cloudflare.com/client/v4"
@@ -149,6 +172,10 @@ export class CloudflareDnsRecordConflictError extends Error {
   }
 }
 
+const assertProviderId = (id: string): void => {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(id)) throw new Error("Cloudflare identifier is invalid.")
+}
+
 const cleanEnv = (value: string | undefined): string | null => {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
@@ -156,8 +183,6 @@ const cleanEnv = (value: string | undefined): string | null => {
 
 const apiBase = (env: NodeJS.ProcessEnv): string =>
   (cleanEnv(env.CLOUDFLARE_API_BASE_URL) ?? DEFAULT_API_BASE).replace(/\/+$/, "")
-
-const fetcher = (options?: CloudflareOptions): FetchLike => options?.fetchImpl ?? globalThis.fetch
 
 const readObject = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
@@ -168,11 +193,16 @@ const json = async (response: Response): Promise<unknown> => {
   return JSON.parse(text) as unknown
 }
 
-const resultObject = (value: unknown): Record<string, unknown> => readObject(readObject(value).result)
+const resultObject = (value: unknown): Record<string, unknown> => {
+  const result = readObject(value).result
+  if (!result || typeof result !== "object" || Array.isArray(result)) throw new Error("Cloudflare response result is invalid.")
+  return readObject(result)
+}
 
 const resultArray = (value: unknown): Record<string, unknown>[] => {
   const result = readObject(value).result
-  return Array.isArray(result) ? result.map(readObject) : []
+  if (!Array.isArray(result) || result.some((entry) => !entry || typeof entry !== "object" || Array.isArray(entry))) throw new Error("Cloudflare response list is invalid.")
+  return result.map(readObject)
 }
 
 export function requireCloudflareConfig(env: NodeJS.ProcessEnv = process.env): { token: string; accountId: string } {
@@ -190,7 +220,7 @@ const headers = (token: string): Record<string, string> => ({
 
 const assertCloudflareOk = (operation: string, response: Response, payload: unknown) => {
   if (!response.ok) throw new CloudflareApiError(operation, response.status)
-  if (readObject(payload).success === false) throw new CloudflareApiError(operation, response.status)
+  if (readObject(payload).success !== true) throw new CloudflareApiError(operation, response.status)
 }
 
 const readCloudflareWritePayload = async (
@@ -223,7 +253,9 @@ const parseCloudflareZone = (
       (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
     )
     : []
-  if (!id || !name || nameServers.length === 0) return null
+  if (!id || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(id) || !name || nameServers.length === 0 || nameServers.length !== (Array.isArray(result.name_servers) ? result.name_servers.length : 0)) return null
+  if (fallbackName && name.toLowerCase().replace(/\.$/, "") !== fallbackName) return null
+  try { splitDomain(name) } catch { return null }
   const rawStatus = typeof result.status === "string" ? result.status : "unknown"
   const status = ["initializing", "pending", "active", "moved"].includes(rawStatus)
     ? rawStatus as CloudflareZoneResult["status"]
@@ -235,7 +267,11 @@ const parseEmailSendingSubdomain = (
   value: unknown,
   fallbackName?: string | null,
 ): CloudflareEmailSendingSubdomainResult => {
-  const result = readObject(value)
+  const schema = z.object({ tag: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/), name: z.string().trim().min(1).max(255).optional(), enabled: z.boolean(), dkim_selector: z.string().trim().min(1).max(255).nullish(), return_path_domain: z.string().trim().min(1).max(255).nullish() }).passthrough()
+  const parsed = schema.safeParse(value)
+  if (!parsed.success) throw new Error("Cloudflare Email Sending response is invalid.")
+  const result = parsed.data
+  if (fallbackName && result.name != null && result.name.toLowerCase() !== fallbackName.toLowerCase()) throw new Error("Cloudflare Email Sending response identity is invalid.")
   const id = typeof result.tag === "string" && result.tag.trim().length > 0 ? result.tag : null
   const name = typeof result.name === "string" && result.name.trim().length > 0 ? result.name : fallbackName
   if (!id) throw new Error("Cloudflare Email Sending subdomain response did not include a subdomain id.")
@@ -260,7 +296,7 @@ export async function createCloudflareZone(domainInput: string, options?: Cloudf
   const domain = splitDomain(domainInput)
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/zones`, {
+    response = await providerFetch(options)(`${apiBase(env)}/zones`, {
       method: "POST",
       headers: headers(token),
       body: JSON.stringify({
@@ -274,7 +310,10 @@ export async function createCloudflareZone(domainInput: string, options?: Cloudf
   }
   const payload = await readCloudflareWritePayload("Cloudflare zone creation", response)
   assertCloudflareOk("Cloudflare zone creation", response, payload)
-  const result = parseCloudflareZone(resultObject(payload), domain.domain)
+  const zoneResult = resultObject(payload)
+  const account = readObject(zoneResult.account)
+  if (account.id != null && account.id !== accountId) throw new CloudflareIndeterminateWriteError("Cloudflare zone creation")
+  const result = parseCloudflareZone(zoneResult, domain.domain)
   if (!result) {
     throw new CloudflareIndeterminateWriteError("Cloudflare zone creation")
   }
@@ -294,15 +333,17 @@ export async function listCloudflareZones(
     match: "all",
     per_page: "5",
   })
-  const response = await fetcher(options)(`${apiBase(env)}/zones?${query.toString()}`, {
+  const response = await providerFetch(options)(`${apiBase(env)}/zones?${query.toString()}`, {
     method: "GET",
     headers: headers(token),
   })
   const payload = await json(response)
   assertCloudflareOk("Cloudflare zone list", response, payload)
-  return resultArray(payload)
-    .map((entry) => parseCloudflareZone(entry))
-    .filter((entry): entry is CloudflareZoneResult => entry?.name.toLowerCase() === domain.domain)
+  const zones = resultArray(payload).map((entry) => parseCloudflareZone(entry))
+  if (zones.some((entry) => entry == null || entry.name.toLowerCase().replace(/\.$/, "") !== domain.domain)) throw new Error("Cloudflare zone lookup identity is invalid.")
+  const info = readObject(readObject(payload).result_info)
+  if ((info.total_count != null && info.total_count !== zones.length) || (info.total_pages != null && (!Number.isSafeInteger(info.total_pages) || Number(info.total_pages) > 1 || Number(info.total_pages) < 1))) throw new Error("Cloudflare zone lookup is incomplete.")
+  return zones.filter((entry): entry is CloudflareZoneResult => entry !== null)
 }
 
 export async function createOrReuseCloudflareZone(
@@ -393,11 +434,12 @@ export async function createCloudflareDnsRecord(
   record: CloudflareDnsRecordRequest,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnsRecordResult> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records`, {
+    response = await providerFetch(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records`, {
       method: "POST",
       headers: headers(token),
       body: JSON.stringify(record),
@@ -407,37 +449,41 @@ export async function createCloudflareDnsRecord(
   }
   const payload = await readCloudflareWritePayload("Cloudflare DNS record creation", response)
   assertCloudflareOk("Cloudflare DNS record creation", response, payload)
-  const result = resultObject(payload)
-  const id = typeof result.id === "string" ? result.id : null
-  if (!id) {
-    throw new CloudflareIndeterminateWriteError("Cloudflare DNS record creation")
+  return verifiedDnsWriteResult("Cloudflare DNS record creation", payload, record)
+}
+
+const dnsWriteResultSchema = z.object({
+  id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/),
+  type: z.enum(["A", "CNAME"]), name: z.string().min(1).max(255),
+  content: z.string().min(1).max(4096), proxied: z.boolean(),
+})
+
+function verifiedDnsWriteResult(action: string, payload: unknown, requested: CloudflareDnsRecordRequest, recordId?: string): CloudflareDnsRecordResult {
+  const result = dnsWriteResultSchema.safeParse(resultObject(payload))
+  if (!result.success || (recordId !== undefined && result.data.id !== recordId) || result.data.name !== requested.name || result.data.type !== requested.type || result.data.content !== requested.content || result.data.proxied !== requested.proxied) {
+    throw new CloudflareIndeterminateWriteError(action)
   }
-  return {
-    id,
-    type: record.type,
-    name: typeof result.name === "string" ? result.name : record.name,
-    content: typeof result.content === "string" ? result.content : record.content,
-    proxied: typeof result.proxied === "boolean" ? result.proxied : record.proxied,
-    raw: payload,
-  }
+  return { ...result.data, raw: payload }
 }
 
 export async function listCloudflareDnsRecords(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnsRecordResult[]> {
+  assertProviderId(zoneId)
+  options = { ...options, signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000) }
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   const records: Record<string, unknown>[] = []
   let page = 1
   let expectedTotalPages: number | null = null
   let expectedTotalCount: number | null = null
-  const maximumPages = 10_000
+  const maximumPages = 100
   while (true) {
     if (page > maximumPages) {
       throw new Error("Cloudflare DNS record pagination exceeded its safety bound.")
     }
-    const response = await fetcher(options)(
+    const response = await providerFetch(options)(
       `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500&page=${page}`,
       { method: "GET", headers: headers(token) },
     )
@@ -445,7 +491,9 @@ export async function listCloudflareDnsRecords(
     assertCloudflareOk("Cloudflare DNS record list", response, payload)
     const pageRecords = resultArray(payload)
     records.push(...pageRecords)
+    if (records.length > 10_000) throw new Error("Cloudflare DNS record inventory is too large.")
     const resultInfo = readObject(readObject(payload).result_info)
+    if (["page", "per_page", "total_pages", "total_count", "count"].some((key) => resultInfo[key] != null && !Number.isSafeInteger(resultInfo[key]))) throw new Error("Cloudflare DNS pagination metadata is invalid.")
     const responsePage = Number.isSafeInteger(resultInfo.page)
       ? Number(resultInfo.page)
       : null
@@ -492,6 +540,8 @@ export async function listCloudflareDnsRecords(
     if (!more) break
     page += 1
   }
+  const recordIds = records.map((record) => record.id).filter((id): id is string => typeof id === "string")
+  if (new Set(recordIds).size !== recordIds.length) throw new Error("Cloudflare DNS record pagination repeated an identity.")
   if (expectedTotalCount != null && records.length !== expectedTotalCount) {
     throw new Error("Cloudflare DNS record pagination returned an incomplete result.")
   }
@@ -504,13 +554,14 @@ export async function listCloudflareDnsRecords(
         : null
     const name = typeof result.name === "string" ? result.name : null
     const content = typeof result.content === "string" ? result.content : null
-    if (!type || !name || !content) return []
+    if (!type) return []
+    if (!name || !content || typeof result.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(result.id) || typeof result.proxied !== "boolean") throw new Error("Cloudflare address record is invalid.")
     return [{
-      id: typeof result.id === "string" ? result.id : null,
+      id: result.id,
       type,
       name,
       content,
-      proxied: result.proxied === true,
+      proxied: result.proxied,
       raw: result,
     }]
   })
@@ -522,6 +573,7 @@ export async function assertCloudflareEdgeDnsRecordsReconciliable(
   ownedRecordIds: string[],
   options?: CloudflareOptions,
 ): Promise<CloudflareEdgeDnsPreflight> {
+  assertProviderId(zoneId)
   const existing = await listCloudflareDnsRecords(zoneId, options)
   const unownedMatchingRecordIds: string[] = []
   for (const requested of records) {
@@ -561,6 +613,7 @@ export async function createOrReuseCloudflareDnsRecord(
   record: CloudflareDnsRecordRequest,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnsRecordResult> {
+  assertProviderId(zoneId)
   const existing = (await listCloudflareDnsRecords(zoneId, options))
     .find((candidate) => sameCloudflareRecord(candidate, record))
   if (existing) return existing
@@ -584,11 +637,13 @@ async function updateCloudflareDnsRecord(
   record: CloudflareDnsRecordRequest,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnsRecordResult> {
+  assertProviderId(zoneId)
+  assertProviderId(recordId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   let response: Response
   try {
-    response = await fetcher(options)(
+    response = await providerFetch(options)(
       `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/${encodeURIComponent(recordId)}`,
       {
         method: "PUT",
@@ -601,16 +656,7 @@ async function updateCloudflareDnsRecord(
   }
   const payload = await readCloudflareWritePayload("Cloudflare DNS record update", response)
   assertCloudflareOk("Cloudflare DNS record update", response, payload)
-  const result = resultObject(payload)
-  const id = typeof result.id === "string" ? result.id : recordId
-  return {
-    id,
-    type: result.type === "A" || result.type === "CNAME" ? result.type : record.type,
-    name: typeof result.name === "string" ? result.name : record.name,
-    content: typeof result.content === "string" ? result.content : record.content,
-    proxied: typeof result.proxied === "boolean" ? result.proxied : record.proxied,
-    raw: payload,
-  }
+  return verifiedDnsWriteResult("Cloudflare DNS record update", payload, record, recordId)
 }
 
 export async function reconcileOwnedCloudflareDnsRecord(
@@ -619,6 +665,7 @@ export async function reconcileOwnedCloudflareDnsRecord(
   ownedRecordIds: string[],
   options?: CloudflareOptions,
 ): Promise<CloudflareOwnedDnsReconciliationResult> {
+  assertProviderId(zoneId)
   const normalizedName = record.name.toLowerCase().replace(/\.$/, "")
   const readCandidates = async () => (await listCloudflareDnsRecords(zoneId, options))
     .filter((candidate) =>
@@ -741,8 +788,14 @@ const parseMigrationDnsRecord = (
   const name = typeof value.name === "string" ? canonicalDnsName(value.name) : null
   const ttl = typeof value.ttl === "number" && Number.isSafeInteger(value.ttl)
     ? value.ttl
-    : 1
-  const proxied = value.proxied === true
+    : null
+  if (ttl == null || ttl < 1 || ttl > 86_400 || typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value.id)) return null
+  const proxyable = type === "A" || type === "AAAA" || type === "CNAME"
+  // Only address-resolution records can be proxied. An omitted address proxy
+  // state is unknown; other supported types are always DNS-only by contract.
+  // https://developers.cloudflare.com/dns/proxy-status/
+  if (proxyable ? typeof value.proxied !== "boolean" : value.proxied !== undefined && value.proxied !== false) return null
+  const proxied = proxyable && value.proxied === true
   const semanticTtl = proxied && ttl === 1 ? 300 : ttl
   if (!name) return null
   if (type === "MX") {
@@ -750,7 +803,7 @@ const parseMigrationDnsRecord = (
     const target = typeof value.content === "string" ? canonicalDnsName(value.content) : null
     if (priority == null || !target) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: { type, name, ttl: semanticTtl, priority, target, proxied },
       raw: value,
     }
@@ -768,7 +821,7 @@ const parseMigrationDnsRecord = (
     const caaValue = typeof data.value === "string" ? data.value : match?.[3]
     if (flags == null || !tag || !caaValue) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -799,7 +852,7 @@ const parseMigrationDnsRecord = (
       !target
     ) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -845,7 +898,7 @@ const parseMigrationDnsRecord = (
       !validAssociationData
     ) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -872,7 +925,7 @@ const parseMigrationDnsRecord = (
       ? canonicalDnsName(content)
       : content
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -890,13 +943,15 @@ export async function listCloudflareMigrationDnsRecords(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareMigrationDnsRecordResult[]> {
+  assertProviderId(zoneId)
+  options = { ...options, signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000) }
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   const rawRecords: Record<string, unknown>[] = []
   let expectedTotalCount: number | null = null
   let expectedTotalPages: number | null = null
   for (let page = 1; ; page += 1) {
-    const response = await fetcher(options)(
+    const response = await providerFetch(options)(
       `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500&page=${page}`,
       { method: "GET", headers: headers(token) },
     )
@@ -912,7 +967,7 @@ export async function listCloudflareMigrationDnsRecords(
       Number(totalCount) < 0 ||
       !Number.isSafeInteger(totalPages) ||
       Number(totalPages) < 1 ||
-      Number(totalPages) > 1_000 ||
+      Number(totalPages) > 100 ||
       returnedPage !== page
     ) {
       throw new Error("Cloudflare migration DNS record list has invalid pagination metadata.")
@@ -927,12 +982,16 @@ export async function listCloudflareMigrationDnsRecords(
       throw new Error("Cloudflare migration DNS record pagination changed during capture.")
     }
     rawRecords.push(...resultArray(payload))
+    if (rawRecords.length > 10_000) throw new Error("Cloudflare migration DNS inventory is too large.")
     if (page === expectedTotalPages) break
   }
+  const recordIds = rawRecords.map((record) => record.id).filter((id): id is string => typeof id === "string")
+  if (new Set(recordIds).size !== recordIds.length) throw new Error("Cloudflare migration DNS pagination repeated an identity.")
   if (rawRecords.length !== expectedTotalCount) {
     throw new Error("Cloudflare migration DNS record list is incomplete.")
   }
-  const parsed = rawRecords.map(parseMigrationDnsRecord)
+  const parsed = rawRecords.map(parseMigrationDnsRecord).map((entry) =>
+    entry && migrationDnsRecordSchema.safeParse(entry.record).success ? entry : null)
   if (parsed.some((entry) => entry === null)) {
     throw new Error("Cloudflare contains a DNS record unsupported by automatic migration.")
   }
@@ -945,9 +1004,10 @@ export async function getCloudflareDnsRecordUsage(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnsRecordUsage> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token, accountId } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/usage`,
     { method: "GET", headers: headers(token) },
   )
@@ -963,7 +1023,7 @@ export async function getCloudflareDnsRecordUsage(
     throw new Error("Cloudflare DNS record usage response is invalid.")
   }
   if (recordQuota === null) {
-    const accountResponse = await fetcher(options)(
+    const accountResponse = await providerFetch(options)(
       `${apiBase(env)}/accounts/${encodeURIComponent(accountId)}/dns_records/usage`,
       { method: "GET", headers: headers(token) },
     )
@@ -1015,12 +1075,13 @@ export async function batchCreateCloudflareMigrationDnsRecords(
   records: readonly NormalizedMigrationDnsRecord[],
   options?: CloudflareOptions,
 ): Promise<void> {
+  assertProviderId(zoneId)
   if (records.length === 0) return
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   let response: Response
   try {
-    response = await fetcher(options)(
+    response = await providerFetch(options)(
       `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records/batch`,
       {
         method: "POST",
@@ -1044,16 +1105,17 @@ export async function getCloudflareSslVerification(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareSslVerificationResult> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/ssl/verification`,
     { method: "GET", headers: headers(token) },
   )
   const payload = await json(response)
   assertCloudflareOk("Cloudflare SSL verification", response, payload)
-  const result = readObject(payload).result
-  const entries = Array.isArray(result) ? result.map(readObject) : []
+  const entries = resultArray(payload)
+  if (entries.some((entry) => typeof entry.certificate_status !== "string" || !entry.certificate_status.trim())) throw new Error("Cloudflare certificate status is invalid.")
   const statuses = entries
     .map((entry) => entry.certificate_status)
     .filter((status): status is string => typeof status === "string" && status.trim().length > 0)
@@ -1081,9 +1143,11 @@ export async function getCloudflareHostnameCertificate(
   hostname: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareHostnameCertificateResult> {
+  assertProviderId(zoneId)
+  options = { ...options, signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000) }
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const settingsResponse = await fetcher(options)(
+  const settingsResponse = await providerFetch(options)(
     `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/ssl/universal/settings`,
     { method: "GET", headers: headers(token) },
   )
@@ -1094,12 +1158,12 @@ export async function getCloudflareHostnameCertificate(
   let page = 1
   let expectedTotalPages: number | null = null
   let expectedTotalCount: number | null = null
-  const maximumPages = 10_000
+  const maximumPages = 100
   while (true) {
     if (page > maximumPages) {
       throw new Error("Cloudflare certificate pagination exceeded its safety bound.")
     }
-    const packsResponse = await fetcher(options)(
+    const packsResponse = await providerFetch(options)(
       `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/ssl/certificate_packs?status=all&deploy=production&per_page=50&page=${page}`,
       { method: "GET", headers: headers(token) },
     )
@@ -1108,7 +1172,9 @@ export async function getCloudflareHostnameCertificate(
     packPayloads.push(packsPayload)
     const pagePacks = resultArray(packsPayload)
     packs.push(...pagePacks)
+    if (packs.length > 5_000) throw new Error("Cloudflare certificate inventory is too large.")
     const resultInfo = readObject(readObject(packsPayload).result_info)
+    if (["page", "per_page", "total_pages", "total_count", "count"].some((key) => resultInfo[key] != null && !Number.isSafeInteger(resultInfo[key]))) throw new Error("Cloudflare certificate pagination metadata is invalid.")
     const responsePage = Number.isSafeInteger(resultInfo.page)
       ? Number(resultInfo.page)
       : null
@@ -1156,7 +1222,10 @@ export async function getCloudflareHostnameCertificate(
   if (expectedTotalCount != null && packs.length !== expectedTotalCount) {
     throw new Error("Cloudflare certificate pagination returned an incomplete result.")
   }
-  const universalSslEnabled = resultObject(settingsPayload).enabled === true
+  const sslSettings = resultObject(settingsPayload)
+  if (typeof sslSettings.enabled !== "boolean") throw new Error("Cloudflare SSL settings are invalid.")
+  if (packs.some((pack) => !Array.isArray(pack.hosts) || pack.hosts.some((host) => typeof host !== "string") || typeof pack.status !== "string")) throw new Error("Cloudflare certificate pack is invalid.")
+  const universalSslEnabled = sslSettings.enabled
   const matchingPacks = packs.filter((pack) => {
     const hosts = Array.isArray(pack.hosts)
       ? pack.hosts.filter((entry): entry is string => typeof entry === "string")
@@ -1183,9 +1252,10 @@ export async function getCloudflareDnssec(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnssecResult> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dnssec`,
     { method: "GET", headers: headers(token) },
   )
@@ -1198,11 +1268,12 @@ export async function enableCloudflareDnssec(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareDnssecResult> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   let response: Response
   try {
-    response = await fetcher(options)(
+    response = await providerFetch(options)(
       `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dnssec`,
       {
         method: "PATCH",
@@ -1218,16 +1289,21 @@ export async function enableCloudflareDnssec(
     response,
   )
   assertCloudflareOk("Cloudflare DNSSEC enablement", response, payload)
-  return { ...parseCloudflareDnssec(resultObject(payload)), raw: payload }
+  try {
+    return { ...parseCloudflareDnssec(resultObject(payload)), raw: payload }
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare DNSSEC enablement", error)
+  }
 }
 
 export async function listCloudflareEmailSendingSubdomains(
   zoneId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareEmailSendingSubdomainResult[]> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains`, {
+  const response = await providerFetch(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains`, {
     method: "GET",
     headers: headers(token),
   })
@@ -1241,9 +1317,11 @@ export async function getCloudflareEmailSendingSubdomain(
   subdomainId: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareEmailSendingSubdomainResult> {
+  assertProviderId(zoneId)
+  assertProviderId(subdomainId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains/${encodeURIComponent(subdomainId)}`,
     {
       method: "GET",
@@ -1252,7 +1330,9 @@ export async function getCloudflareEmailSendingSubdomain(
   )
   const payload = await json(response)
   assertCloudflareOk("Cloudflare Email Sending subdomain get", response, payload)
-  return parseEmailSendingSubdomain(resultObject(payload))
+  const result = parseEmailSendingSubdomain(resultObject(payload))
+  if (result.id !== subdomainId) throw new Error("Cloudflare Email Sending response identity is invalid.")
+  return result
 }
 
 export async function createCloudflareEmailSendingSubdomain(
@@ -1260,12 +1340,13 @@ export async function createCloudflareEmailSendingSubdomain(
   name: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareEmailSendingSubdomainResult> {
+  assertProviderId(zoneId)
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   const subdomainName = splitDomain(name).domain
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains`, {
+    response = await providerFetch(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains`, {
       method: "POST",
       headers: headers(token),
       body: JSON.stringify({ name: subdomainName }),
@@ -1296,6 +1377,7 @@ export async function createOrReuseCloudflareEmailSendingSubdomain(
   name: string,
   options?: CloudflareOptions,
 ): Promise<CloudflareEmailSendingSubdomainResult> {
+  assertProviderId(zoneId)
   const subdomainName = splitDomain(name).domain
   const existing = (await listCloudflareEmailSendingSubdomains(zoneId, options))
     .find((subdomain) => subdomain.name.toLowerCase() === subdomainName)

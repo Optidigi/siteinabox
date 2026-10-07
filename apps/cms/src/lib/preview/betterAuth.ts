@@ -30,7 +30,6 @@ if (!authSecret) {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __siabPreviewBetterAuthPool: Pool | undefined
 }
 

@@ -1,17 +1,19 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { loadCustomerBillingAgreement } from "@/lib/billing/customerBillingAgreement"
-import { asPayload } from "../_helpers/mockPayload"
+import type { Order, BillingAgreement } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { orderFixture, billingAgreementFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
-const order = {
+const order = orderFixture({
   id: 40,
   generationRun: 9,
   tenant: 12,
   orderKind: "initial_subscription",
   customerEmail: "owner@example.test",
-}
+})
 
-const agreement = {
+const agreement = billingAgreementFixture({
   id: 50,
   originatingOrder: 40,
   tenant: 12,
@@ -20,16 +22,17 @@ const agreement = {
   currentPeriodEndsAt: "2027-07-30T10:00:00.000Z",
   cancelAt: null,
   updatedAt: "2026-07-30T10:00:00.000Z",
-}
-
-const payloadFor = (
-  orders: unknown[],
-  agreements: unknown[],
-) => asPayload({
-  find: vi.fn(async ({ collection }: { collection: string }) => ({
-    docs: collection === "orders" ? orders : agreements,
-  })),
 })
+
+const payloadFor = (orders: Order[], agreements: BillingAgreement[]) => {
+  const payload = createTestPayload()
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => {
+    if (collection === "orders") return paginatedFixture(orders)
+    if (collection === "billing-agreements") return paginatedFixture(agreements)
+    throw new Error(`Unexpected collection ${collection}`)
+  })
+  return payload
+}
 
 describe("customer checkout billing authority", () => {
   it("returns only the agreement bound to run, tenant, order, and customer", async () => {

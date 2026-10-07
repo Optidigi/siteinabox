@@ -256,8 +256,8 @@ const extractClientIp = (req: NextRequest): string => {
   }
   // NextRequest exposes `ip` in the edge runtime when a trusted proxy is
   // configured; fall back to it where present, else "unknown".
-  const ip = (req as unknown as { ip?: string }).ip
-  if (ip) return ip
+  const ip = "ip" in req ? req.ip : undefined
+  if (typeof ip === "string" && ip) return ip
   return "unknown"
 }
 
@@ -305,7 +305,7 @@ const parseFormTarget = async (req: NextRequest, hostTenant: string): Promise<Fo
 
   try {
     if (contentType.includes("application/json")) {
-      const body = await req.clone().json()
+      const body: unknown = await req.clone().json()
       if (!body || typeof body !== "object" || Array.isArray(body)) return null
       return formTargetFromRecord(body as Record<string, unknown>, hostTenant)
     }

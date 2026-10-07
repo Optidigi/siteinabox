@@ -1,4 +1,5 @@
 "use client"
+import { clientCountSchema } from "@/components/clientPayload"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -33,7 +34,7 @@ async function fetchTenantCounts(tenantId: number | string): Promise<Counts> {
   // we don't need to add one.
   const where = encodeURIComponent(JSON.stringify({ tenant: { equals: tenantId } }))
   const fetchOne = (collection: string) =>
-    fetch(`/api/${collection}/count?where=${where}`).then((r) => r.json()).then((j) => j.totalDocs ?? 0)
+    fetch(`/api/${collection}/count?where=${where}`).then((r) => r.json()).then((j: unknown) => clientCountSchema.parse(j).totalDocs)
   const [pages, media, forms, siteSettings] = await Promise.all([
     fetchOne("pages"),
     fetchOne("media"),

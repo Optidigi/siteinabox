@@ -1,3 +1,4 @@
+import type { Tenant } from "@/payload-types"
 import type { CollectionBeforeValidateHook } from "payload"
 import { ValidationError } from "payload"
 import { relationshipId } from "@/lib/relationshipId"
@@ -22,7 +23,7 @@ import { relationshipId } from "@/lib/relationshipId"
  * the multi-tenant plugin's tenant field handles the missing case
  * separately.
  */
-export const validateTenantExists: CollectionBeforeValidateHook = async ({
+export const validateTenantExists: CollectionBeforeValidateHook<{ id: number | string; tenant?: Tenant | number | null }> = async ({
   collection,
   data,
   operation,

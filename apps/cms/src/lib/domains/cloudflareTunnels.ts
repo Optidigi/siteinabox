@@ -1,12 +1,29 @@
 import "server-only"
+import { requestProviderJson } from "@/lib/providers/http"
 
 import { normalizePublicDomainHost } from "@siteinabox/contracts/renderer-routing"
 
 type FetchLike = typeof fetch
+const providerFetch = (options?: CloudflareTunnelOptions): typeof fetch => async (input, init = {}) => {
+  const url = new URL(String(input))
+  if (url.protocol !== "https:" || url.username || url.password || url.hash) throw new Error("Provider request URL is invalid.")
+  const response = await requestProviderJson(url.toString(), init, {
+    operation: "Cloudflare Tunnel request",
+    timeoutMs: options?.timeoutMs ?? 10_000,
+    maxBodyBytes: 512 * 1024,
+    readAttempts: 2,
+    signal: options?.signal,
+    fetchImpl: options?.fetchImpl,
+  })
+  return Response.json(response.body ?? null, { status: response.status })
+}
+
 
 type CloudflareTunnelOptions = {
   env?: NodeJS.ProcessEnv
   fetchImpl?: FetchLike
+  timeoutMs?: number
+  signal?: AbortSignal
 }
 
 export type CloudflareTunnelKind = "renderer" | "cms"
@@ -105,7 +122,7 @@ const requireSuccess = (
   response: Response,
   payload: unknown,
 ): Record<string, unknown> => {
-  if (!response.ok || readObject(payload).success === false) {
+  if (!response.ok || readObject(payload).success !== true) {
     throw new CloudflareTunnelApiError(operation, response.status)
   }
   return readObject(payload)
@@ -203,7 +220,7 @@ export async function getCloudflareTunnel(
 ): Promise<CloudflareTunnelResult> {
   const { env, token, accountId } = config(options)
   const id = tunnelIdFor(kind, env)
-  const response = await (options?.fetchImpl ?? globalThis.fetch)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/accounts/${encodeURIComponent(accountId)}/cfd_tunnel/${encodeURIComponent(id)}`,
     { method: "GET", headers: requestHeaders(token) },
   )
@@ -269,13 +286,15 @@ async function getTunnelConfiguration(
 ): Promise<{ ingress: CloudflareTunnelIngressRule[]; version: number | null }> {
   const { env, token, accountId } = config(options)
   const id = tunnelIdFor(kind, env)
-  const response = await (options?.fetchImpl ?? globalThis.fetch)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/accounts/${encodeURIComponent(accountId)}/cfd_tunnel/${encodeURIComponent(id)}/configurations`,
     { method: "GET", headers: requestHeaders(token) },
   )
   const payload = await responsePayload(response)
   const envelope = requireSuccess(`Cloudflare ${kind} Tunnel configuration read`, response, payload)
   const result = readObject(envelope.result)
+  if (!result.config || typeof result.config !== "object" || Array.isArray(result.config) || !Array.isArray(readObject(result.config).ingress)) throw new Error("Cloudflare Tunnel configuration response is invalid.")
+  if (result.version != null && (!Number.isSafeInteger(result.version) || Number(result.version) < 0)) throw new Error("Cloudflare Tunnel configuration version is invalid.")
   const remoteConfig = readObject(result.config)
   const parsed = parseIngress(remoteConfig.ingress)
   const warpRouting = readObject(remoteConfig["warp-routing"])
@@ -301,7 +320,7 @@ async function putTunnelConfiguration(
 ): Promise<void> {
   const { env, token, accountId } = config(options)
   const id = tunnelIdFor(kind, env)
-  const response = await (options?.fetchImpl ?? globalThis.fetch)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/accounts/${encodeURIComponent(accountId)}/cfd_tunnel/${encodeURIComponent(id)}/configurations`,
     {
       method: "PUT",
@@ -319,13 +338,13 @@ async function tunnelHasConnections(
 ): Promise<boolean> {
   const { env, token, accountId } = config(options)
   const id = tunnelIdFor(kind, env)
-  const response = await (options?.fetchImpl ?? globalThis.fetch)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/accounts/${encodeURIComponent(accountId)}/cfd_tunnel/${encodeURIComponent(id)}/connections`,
     { method: "GET", headers: requestHeaders(token) },
   )
   const payload = await responsePayload(response)
   const envelope = requireSuccess(`Cloudflare ${kind} Tunnel connections read`, response, payload)
-  if (!Array.isArray(envelope.result)) return false
+  if (!Array.isArray(envelope.result)) throw new Error("Cloudflare Tunnel connections response is invalid.")
   return envelope.result.some((client) => {
     const conns = readObject(client).conns
     return Array.isArray(conns) && conns.some((connection) => {

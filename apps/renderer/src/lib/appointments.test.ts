@@ -53,9 +53,12 @@ test("rejects oversized public bodies and validates proxied responses", async ()
 })
 
 test("fails closed when the public request body cannot be read", async () => {
-  const request = {
-    headers: new Headers({ "content-type": "application/json" }),
-    text: async () => { throw new Error("body stream failed") },
-  } as unknown as Request
+  const init = {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: new ReadableStream({ start(controller) { controller.error(new Error("body stream failed")) } }),
+    duplex: "half",
+  }
+  const request = new Request("https://fixture.example/api/appointments", init)
   assert.equal(await readPublicAppointmentBody(request), null)
 })

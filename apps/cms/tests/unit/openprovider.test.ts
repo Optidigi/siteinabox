@@ -8,6 +8,7 @@ import {
   createOpenProviderCustomerHandle,
   findOpenProviderCustomerByReference,
   findOpenProviderDomain,
+  getOpenProviderDomainAuthCode,
   getOpenProviderDomainRenewalPrice,
   getOpenProviderDomainTransferPrice,
   loginOpenProvider,
@@ -49,7 +50,8 @@ describe("Openprovider timestamps", () => {
   })
 })
 
-const env = {
+const env: NodeJS.ProcessEnv = {
+  NODE_ENV: "test",
   OPENPROVIDER_API_BASE_URL: "https://openprovider.test/v1beta",
   OPENPROVIDER_USERNAME: "user",
   OPENPROVIDER_PASSWORD: "pass",
@@ -58,7 +60,7 @@ const env = {
   OPENPROVIDER_TECH_HANDLE: "TECH",
   OPENPROVIDER_BILLING_HANDLE: "BILLING",
   OPENPROVIDER_NS_GROUP: "siab-default",
-} as unknown as NodeJS.ProcessEnv
+}
 
 describe("OpenProvider adapter", () => {
   const registrant = {
@@ -85,6 +87,8 @@ describe("OpenProvider adapter", () => {
     await expect(loginOpenProvider({ env, fetchImpl: fetchMock as typeof fetch })).resolves.toBe("token-123")
 
     expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/auth/login", {
+      redirect: "error",
+      signal: expect.any(AbortSignal),
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -722,7 +726,7 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_USERNAME: "alternate-user",
       OPENPROVIDER_PASSWORD: "alternate-pass",
-    } as unknown as NodeJS.ProcessEnv
+    }
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith("/auth/login")) {
@@ -902,7 +906,7 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "",
-    } as unknown as NodeJS.ProcessEnv, {
+    }, {
       acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
 
@@ -923,7 +927,7 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "ns1.example.nl, ns2.example.nl",
-    } as unknown as NodeJS.ProcessEnv, {
+    }, {
       acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toMatchObject({
       name_servers: [{ name: "ns1.example.nl" }, { name: "ns2.example.nl" }],
@@ -1007,7 +1011,7 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "",
-    } as unknown as NodeJS.ProcessEnv, {
+    }, {
       authCode: "opaque-nl-token",
       acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
@@ -1071,7 +1075,7 @@ describe("OpenProvider adapter", () => {
     })).resolves.toMatchObject({
       id: 42,
       domain: "example.nl",
-      status: "registered",
+      status: "unknown",
     })
 
     expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains", expect.objectContaining({
@@ -1540,4 +1544,62 @@ describe("OpenProvider adapter", () => {
       fetchImpl: timeout as typeof fetch,
     })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
   })
+})
+
+
+describe("Openprovider malformed authority boundaries", () => {
+  it.each([{ data: {} }, { data: { results: [{}] } }, { code: 1, data: { results: [] } }])("never interprets malformed lookup as absence", async (body) => {
+    await expect(findOpenProviderDomain("example.nl", { env, token: "test-token", fetchImpl: vi.fn(async () => Response.json(body)) })).rejects.toThrow()
+  })
+  it("rejects a wrong mutation identity as indeterminate", async () => {
+    await expect(setOpenProviderDomainAutorenew(123, "off", { env, token: "test-token", fetchImpl: vi.fn(async () => Response.json({ data: { id: 456, status: "ACT" } })) })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
+  })
+  it("bounds a stalled portfolio read and forwards cancellation", async () => {
+    vi.useRealTimers()
+    await expect(findOpenProviderDomain("example.nl", { env, token: "test-token", timeoutMs: 20, fetchImpl: vi.fn(() => new Promise<Response>(() => {})) })).rejects.toThrow()
+  })
+})
+
+
+describe("Openprovider bounded operation seams", () => {
+  it("does not retry an authcode GET which can trigger registry email", async () => {
+    vi.useRealTimers()
+    const fetchImpl = vi.fn(async () => new Response("gateway", { status: 503 }))
+    await expect(getOpenProviderDomainAuthCode(123, { env, token: "test-token", fetchImpl })).rejects.toBeInstanceOf(OpenProviderApiError)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+  it("retries a pure portfolio read within its deadline", async () => {
+    vi.useRealTimers()
+    const fetchImpl = vi.fn().mockResolvedValueOnce(new Response("gateway", { status: 503 })).mockResolvedValueOnce(Response.json({ data: { results: [] } }))
+    await expect(findOpenProviderDomain("example.nl", { env, token: "test-token", fetchImpl })).resolves.toBeNull()
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+  it("rejects cancellation before sending and oversized read bodies", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fetchImpl = vi.fn(async () => Response.json({ data: { results: [] } }))
+    await expect(findOpenProviderDomain("example.nl", { env, token: "test-token", signal: controller.signal, fetchImpl })).rejects.toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+    await expect(findOpenProviderDomain("example.nl", { env, token: "test-token", fetchImpl: vi.fn(async () => new Response(" ".repeat(600_000))) })).rejects.toThrow("body_limit")
+  })
+  it("rejects wrong quote currency and invalid portfolio identifiers", async () => {
+    await expect(getOpenProviderDomainTransferPrice("example.nl", { env, token: "test-token", fetchImpl: vi.fn(async () => Response.json({ data: { price: { reseller: { price: "12.00", currency: "USD" } } } })) })).rejects.toThrow()
+    await expect(findOpenProviderDomain("example.nl", { env, token: "test-token", fetchImpl: vi.fn(async () => Response.json({ data: { results: [{ id: 0, domain: { name: "example", extension: "nl" }, status: "ACT" }] } })) })).rejects.toThrow()
+  })
+})
+
+
+it("retains an explicit unknown registration state and never retries malformed success", async () => {
+  const options = { env, token: "test-token", acceptedCapabilityVersion: "tld-nl-2026-07-28.1" }
+  const future = vi.fn(async () => Response.json({ data: { id: 42, status: "FUTURE_STATE" } }))
+  await expect(registerOpenProviderDomain("example.nl", { ...options, fetchImpl: future })).resolves.toMatchObject({ status: "unknown" })
+  const malformed = vi.fn(async () => Response.json({ data: [] }))
+  await expect(registerOpenProviderDomain("example.nl", { ...options, fetchImpl: malformed })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
+  expect(malformed).toHaveBeenCalledTimes(1)
+})
+
+
+it("does not substitute public product money for a malformed reseller quote", async () => {
+  const fetchImpl = vi.fn(async () => Response.json({ data: { results: [{ domain: "example.nl", status: "free", price: { reseller: { price: "12.00", currency: "USD" }, product: { price: "10.00", currency: "EUR" } } }] } }))
+  await expect(checkOpenProviderDomainAvailability("example.nl", { env, token: "test-token", fetchImpl })).resolves.toMatchObject({ price: null })
 })

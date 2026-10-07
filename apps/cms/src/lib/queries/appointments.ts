@@ -6,8 +6,9 @@ import config from "@/payload.config"
 import type { Appointment } from "@/payload-types"
 import {
   normalisePagination,
+  normaliseFindResult,
   type PayloadFindResult,
-  type PayloadLikeFindClient,
+  type PayloadFindClient,
 } from "./paginate"
 
 export interface ListAppointmentsOpts {
@@ -20,9 +21,9 @@ export interface ListAppointmentsOpts {
 export async function listAppointmentsPaginated(
   tenantId: number | string,
   opts?: ListAppointmentsOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"appointments">,
 ): Promise<PayloadFindResult<Appointment>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
   const where: Where = { tenant: { equals: tenantId } }
   if (opts?.status) where.status = { equals: opts.status }
@@ -34,12 +35,12 @@ export async function listAppointmentsPaginated(
       { visitorPhone: { like: query } },
     ]
   }
-  return client.find<Appointment>({
+  return client.find({
     collection: "appointments",
     overrideAccess: true,
     where,
     sort: "startAt",
     page,
     limit,
-  })
+  }).then(normaliseFindResult)
 }

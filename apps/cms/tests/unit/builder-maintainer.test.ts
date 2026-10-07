@@ -1,3 +1,5 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { userFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it, vi } from "vitest"
 import { interpretMaintainerIntent } from "@/lib/agent/interpretMaintainer"
 import { applyMaintainerTurn } from "@/lib/agent/runMaintainerTurn"
@@ -27,15 +29,17 @@ describe("maintainer intent", () => {
   })
 
   it("does not write site-settings for editors", async () => {
-    const payload = { find: vi.fn(), update: vi.fn() }
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find")
+    vi.spyOn(payload, "update")
     const facts = heuristicExtractBuilderFacts("Ik ben kapper in Tilburg en doe knippen.", null)
     const result = await applyMaintainerTurn({
-      payload: payload as never,
+      payload,
       tenantId: 7,
       message: "Bezoekers kunnen een afspraak maken.",
       facts,
       role: "editor",
-      user: { id: 2, role: "editor" } as never,
+      user: userFixture({ id: 2, role: "editor" }),
     })
     expect(result.applied).toBe(false)
     expect(result.text).toMatch(/eigenaar/i)

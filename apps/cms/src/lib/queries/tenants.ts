@@ -5,8 +5,9 @@ import config from "@/payload.config"
 import type { Tenant } from "@/payload-types"
 import {
   normalisePagination,
+  normaliseFindResult,
   type PayloadFindResult,
-  type PayloadLikeFindClient,
+  type PayloadFindClient,
 } from "./paginate"
 
 export interface ListTenantsOpts {
@@ -25,9 +26,9 @@ export interface ListTenantsOpts {
  */
 export async function listTenantsPaginated(
   opts?: ListTenantsOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"tenants">,
 ): Promise<PayloadFindResult<Tenant>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
   const where: Where = {}
   const q = opts?.q?.trim()
@@ -38,14 +39,14 @@ export async function listTenantsPaginated(
       { domain: { like: q } },
     ]
   }
-  return client.find<Tenant>({
+  return client.find({
     collection: "tenants",
     overrideAccess: true,
     where,
     sort: "-updatedAt",
     page,
     limit,
-  })
+  }).then(normaliseFindResult)
 }
 
 /**

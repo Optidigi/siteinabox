@@ -1,4 +1,5 @@
 import "server-only"
+import { requestProviderJson } from "@/lib/providers/http"
 
 import {
   completeZoneExportSchema,
@@ -22,6 +23,7 @@ type CloudflareSourceOptions = {
   apiBaseUrl?: string
   now?: () => Date
   requestTimeoutMs?: number
+  signal?: AbortSignal
 }
 
 const readObject = (value: unknown): Record<string, unknown> =>
@@ -39,7 +41,7 @@ const readPayload = async (response: Response): Promise<Record<string, unknown>>
   } catch {
     throw new Error(`Cloudflare source read failed with HTTP ${response.status}.`)
   }
-  if (!response.ok || payload.success === false) {
+  if (!response.ok || payload.success !== true) {
     throw new Error(`Cloudflare source read failed with HTTP ${response.status}.`)
   }
   return payload
@@ -65,6 +67,11 @@ const readRequest = (
 const canonical = (value: string): string =>
   value.trim().toLowerCase().replace(/\.$/, "")
 
+const text = (value: unknown): string => {
+  if (typeof value !== "string") throw new Error("Cloudflare source record text is invalid.")
+  return value
+}
+
 const integer = (
   value: unknown,
   field: string,
@@ -84,7 +91,13 @@ const recordFromCloudflare = (
   const name = typeof value.name === "string" ? canonical(value.name) : ""
   const ttlValue = value.ttl === 1 ? 300 : value.ttl
   const ttl = integer(ttlValue, "record TTL", 86_400)
-  const proxied = value.proxied === true
+  const proxyable = type === "A" || type === "AAAA" || type === "CNAME"
+  // Address proxy evidence must be explicit. Other supported record types
+  // are always DNS-only: https://developers.cloudflare.com/dns/proxy-status/
+  if (proxyable ? typeof value.proxied !== "boolean" : value.proxied !== undefined && value.proxied !== false) {
+    throw new Error("Cloudflare source proxy state is invalid.")
+  }
+  const proxied = proxyable && value.proxied === true
   if (!name || (name !== domain && !name.endsWith(`.${domain}`))) {
     throw new Error("Cloudflare source record owner is outside the selected zone.")
   }
@@ -93,7 +106,7 @@ const recordFromCloudflare = (
       type,
       name,
       ttl,
-      content: String(value.content ?? ""),
+      content: text(value.content ?? ""),
       proxied,
     }
   }
@@ -103,12 +116,12 @@ const recordFromCloudflare = (
       type,
       name,
       ttl,
-      content: canonical(String(value.content ?? "")),
+      content: canonical(text(value.content ?? "")),
       proxied,
     }
   }
   if (type === "TXT") {
-    return { type, name, ttl, content: String(value.content ?? ""), proxied }
+    return { type, name, ttl, content: text(value.content ?? ""), proxied }
   }
   const data = readObject(value.data)
   if (type === "MX") {
@@ -117,7 +130,7 @@ const recordFromCloudflare = (
       name,
       ttl,
       priority: integer(value.priority ?? data.priority, "MX priority"),
-      target: canonical(String(data.target ?? value.content ?? "")),
+      target: canonical(text(data.target ?? value.content ?? "")),
       proxied,
     }
   }
@@ -127,8 +140,8 @@ const recordFromCloudflare = (
       name,
       ttl,
       flags: integer(data.flags ?? 0, "CAA flags", 255),
-      tag: String(data.tag ?? ""),
-      value: String(data.value ?? ""),
+      tag: text(data.tag ?? ""),
+      value: text(data.value ?? ""),
       proxied,
     }
   }
@@ -140,7 +153,7 @@ const recordFromCloudflare = (
       priority: integer(data.priority, "SRV priority"),
       weight: integer(data.weight, "SRV weight"),
       port: integer(data.port, "SRV port"),
-      target: canonical(String(data.target ?? "")),
+      target: canonical(text(data.target ?? "")),
       proxied,
     }
   }
@@ -160,7 +173,7 @@ const recordFromCloudflare = (
         "TLSA matching type",
         2,
       ),
-      certificateAssociationData: String(
+      certificateAssociationData: text(
         data.certificate ?? data.certificate_association_data ?? "",
       ),
       proxied,
@@ -175,7 +188,19 @@ const capture = async (
   publicEvidence: MigrationSourcePublicEvidence,
   options?: CloudflareSourceOptions,
 ): Promise<{ zoneId: string; zone: CompleteZoneExport }> => {
-  const fetchImpl = options?.fetchImpl ?? globalThis.fetch
+  const fetchImpl: typeof fetch = async (url, init = {}) => {
+    const endpoint = new URL(String(url))
+    if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password || endpoint.hash) throw new Error("Cloudflare source URL is invalid.")
+    const response = await requestProviderJson(endpoint.toString(), init, {
+      operation: "Cloudflare source read",
+      timeoutMs: options?.requestTimeoutMs ?? 5_000,
+      maxBodyBytes: 512 * 1024,
+      readAttempts: 2,
+      signal: options?.signal,
+      fetchImpl: options?.fetchImpl,
+    })
+    return Response.json(response.body ?? null, { status: response.status })
+  }
   const zonesResponse = await fetchImpl(
     `${apiBase(options)}/zones?${new URLSearchParams({
       name: domain,
@@ -200,7 +225,7 @@ const capture = async (
       .filter((entry): entry is string => typeof entry === "string")
       .map(canonical)
     : []
-  if (!zoneId || nameservers.length < 2) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(zoneId) || nameservers.length < 2 || !Array.isArray(sourceZone.name_servers) || nameservers.length !== sourceZone.name_servers.length || nameservers.length > 13 || sourceZone.status !== "active") {
     throw new Error("Cloudflare source zone metadata is incomplete.")
   }
   const publicNameservers = [...new Set(
@@ -234,7 +259,7 @@ const capture = async (
       Number(info.total_count) < 0 ||
       Number(info.total_count) > 500 ||
       Number(info.total_pages) < 1 ||
-      Number(info.total_pages) > 1_000 ||
+      Number(info.total_pages) > 2 ||
       info.page !== page
     ) {
       throw new Error("Cloudflare source pagination metadata is invalid.")
@@ -251,6 +276,7 @@ const capture = async (
     if (!Array.isArray(payload.result)) {
       throw new Error("Cloudflare source record response is incomplete.")
     }
+    if (payload.result.length > 500 || rawRecords.length + payload.result.length > 500) throw new Error("Cloudflare source capture is too large.")
     rawRecords.push(...payload.result.map(readObject))
     if (page === expectedPages) break
   }
@@ -263,6 +289,7 @@ const capture = async (
   )
   const dnssecPayload = await readPayload(dnssecResponse)
   const dnssec = parseCloudflareDnssec(dnssecPayload.result)
+  if (dnssec.status === "unknown" || dnssec.status === "pending") throw new Error("Cloudflare source DNSSEC authority is incomplete.")
   const signed = dnssec.status === "active"
   const ds = dnssec.ds ? [dnssec.ds] : []
   const dnsKeys = signed &&
@@ -319,8 +346,9 @@ export async function acquireCloudflareSource(input: {
     authoritativeNameservers: [],
     dnssecDsPresent: false,
   }
-  const first = await capture(domain, token, publicEvidence, input.options)
-  const second = await capture(domain, token, publicEvidence, input.options)
+  const options = { ...input.options, signal: input.options?.signal ? AbortSignal.any([input.options.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000) }
+  const first = await capture(domain, token, publicEvidence, options)
+  const second = await capture(domain, token, publicEvidence, options)
   if (
     first.zoneId !== second.zoneId ||
     domainMigrationSourceAuthorityHash(normalizeCompleteZone(first.zone)) !==

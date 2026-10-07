@@ -9,6 +9,7 @@
       "environment-check",
       "workflow-actions-check",
       "packages-typecheck",
+      "packages-typed-boundaries",
       "static-deployment-parity",
       "workflow-path-matrix"
     ],
@@ -21,6 +22,7 @@
       "environment-check",
       "workflow-actions-check",
       "packages-typecheck",
+      "packages-typed-boundaries",
       "static-deployment-parity",
       "workflow-path-matrix",
       "contracts-test",
@@ -31,6 +33,7 @@
       "cms-generate-importmap",
       "cms-payload-contract",
       "cms-typecheck",
+      "cms-typed-boundaries",
       "cms-responsive",
       "cms-ui-boundary",
       "cms-ui-composition",
@@ -40,12 +43,14 @@
       "cms-test",
       "cms-checkout-browser",
       "landing-check",
+      "landing-typed-boundaries",
       "site-build",
       "site-test",
       "landing-analytics-browser",
       "landing-ui",
       "renderer-deploy-contract",
       "renderer-typecheck",
+      "renderer-typed-boundaries",
       "renderer-test",
       "renderer-build",
       "renderer-analytics-browser",
@@ -93,7 +98,8 @@
       "owner": "repository",
       "ciJob": "package-quality",
       "prerequisites": [
-        "pnpm install --frozen-lockfile"
+        "pnpm install --frozen-lockfile",
+        "owning CMS compiler configuration and installed Astro compiler"
       ],
       "risk": "low"
     },
@@ -675,6 +681,65 @@
         "Docker Engine",
         "isolated image and database resources",
         "no provider credentials"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "packages-typed-boundaries",
+      "command": "pnpm type-safety:packages",
+      "run": [
+        "pnpm",
+        "type-safety:packages"
+      ],
+      "owner": "packages and shipped JavaScript",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-typed-boundaries",
+      "command": "pnpm type-safety:cms",
+      "run": [
+        "pnpm",
+        "type-safety:cms"
+      ],
+      "owner": "apps/cms runtime and operational TypeScript",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "owning Payload type and import-map generators"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "landing-typed-boundaries",
+      "command": "pnpm type-safety:landing",
+      "run": [
+        "pnpm",
+        "type-safety:landing"
+      ],
+      "owner": "apps/landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "owning Astro check and generated content declarations"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "renderer-typed-boundaries",
+      "command": "pnpm type-safety:renderer",
+      "run": [
+        "pnpm",
+        "type-safety:renderer"
+      ],
+      "owner": "apps/renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "owning Astro typecheck and generated content declarations"
       ],
       "risk": "high"
     }

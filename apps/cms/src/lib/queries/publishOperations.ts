@@ -46,7 +46,7 @@ export async function getSnapshotLifecycleForGenerationRun(run: SiteGenerationRu
       id: tenantId,
       depth: 0,
       overrideAccess: true,
-    }) as Tenant
+    })
   } catch {
     tenant = null
   }
@@ -87,7 +87,7 @@ export async function getSnapshotLifecycleForGenerationRun(run: SiteGenerationRu
       : Promise.resolve({ docs: [] }),
   ])
 
-  const pageDocs = pageResult.docs as Page[]
+  const pageDocs = pageResult.docs
   const linkedPages = pageDocs.map((page) => ({
     id: String(page.id),
     title: pageLabel(page),
@@ -96,7 +96,7 @@ export async function getSnapshotLifecycleForGenerationRun(run: SiteGenerationRu
   }))
   const publishedPageIds = new Set(pageDocs.filter((page) => page.status === "published").map((page) => String(page.id)))
   const missingPublishedPages = pageIds.filter((id) => !publishedPageIds.has(id))
-  const snapshots = snapshotResult.docs as PublishedSiteSnapshot[]
+  const snapshots = snapshotResult.docs
   const activeSnapshotId = relationId(tenant.activeSnapshot)
     ?? snapshots.find((snapshot) => snapshot.status === "active")?.id?.toString()
     ?? null

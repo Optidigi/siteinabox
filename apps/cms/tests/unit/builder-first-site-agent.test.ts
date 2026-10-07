@@ -1,3 +1,4 @@
+import { createTestPayload } from "../_helpers/testPayload"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CONTACT_CHOICES, defaultBuilderMessages } from "@/lib/builder/thread"
 
@@ -32,7 +33,7 @@ describe("runFirstSiteTurn", () => {
     })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
     const result = await runFirstSiteTurn({
-      payload: {} as never,
+      payload: createTestPayload(),
       message: "Ik ben kapper in Tilburg en doe knippen, kleur en baard. Bezoekers kunnen een afspraak maken.",
       previous: null,
       contact: { name: "Anna", email: "anna@example.com", phone: "0612345678" },
@@ -51,7 +52,7 @@ describe("runFirstSiteTurn", () => {
     })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
     const result = await runFirstSiteTurn({
-      payload: {} as never,
+      payload: createTestPayload(),
       message: "Ik ben kapper in Tilburg en doe knippen, kleur en baard.",
       previous: null,
       contact: { name: "Anna", email: "anna@example.com", phone: "0612345678" },
@@ -67,7 +68,7 @@ describe("runFirstSiteTurn", () => {
     })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
     const result = await runFirstSiteTurn({
-      payload: {} as never,
+      payload: createTestPayload(),
       message: "ik ben speciaal",
       previous: null,
       contact: { name: "Ada", email: "ada@example.com", phone: "" },
@@ -81,7 +82,7 @@ describe("runFirstSiteTurn", () => {
     generateMock.mockResolvedValue({ text: "" })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
     const result = await runFirstSiteTurn({
-      payload: {} as never,
+      payload: createTestPayload(),
       message: "Heel Nederland, handjobs en blowjobs",
       previous: null,
       recentMessages: [{

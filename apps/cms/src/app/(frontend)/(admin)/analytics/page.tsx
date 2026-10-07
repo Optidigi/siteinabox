@@ -1,3 +1,4 @@
+import { translationText } from "@/lib/i18n/translationText"
 import { BarChart3 } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { AnalyticsPageContent } from "@/components/analytics/AnalyticsPageContent"
@@ -346,7 +347,7 @@ export default async function AnalyticsPage({
             performanceOverview: t("performanceOverview"),
             overallScore: t("overallScore"),
             scoreUnavailable: t("scoreUnavailable"),
-            measuredFromVisitors: t.raw("measuredFromVisitors"),
+            measuredFromVisitors: translationText(t.raw("measuredFromVisitors")),
             lowSampleNotice: t("lowSampleNotice"),
             variantRanking: t("variantRanking"),
             variantRankingDescription: t("variantRankingDescription"),
@@ -537,7 +538,7 @@ export default async function AnalyticsPage({
           performanceOverview: t("performanceOverview"),
           overallScore: t("overallScore"),
           scoreUnavailable: t("scoreUnavailable"),
-          measuredFromVisitors: t.raw("measuredFromVisitors"),
+          measuredFromVisitors: translationText(t.raw("measuredFromVisitors")),
           lowSampleNotice: t("lowSampleNotice"),
           variantRanking: t("variantRanking"),
           variantRankingDescription: t("variantRankingDescription"),

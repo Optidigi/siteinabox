@@ -38,7 +38,7 @@ describe("commerce records on migrated PostgreSQL", () => {
   it("persists independent records while legacy Order projections remain readable", async () => {
     const intake = remember("intake-submissions", await payload.create(createArgs(
       "intake-submissions",
-      {
+      { status: "submitted",
         businessName: "Phase 2 fixture",
         source: "integration-test",
         idempotencyKey: `phase2-intake-${suffix}`,
@@ -215,7 +215,7 @@ describe("commerce records on migrated PostgreSQL", () => {
     expect(legacyRead.checkoutProfileKey).toBeNull()
 
     const concurrentAttempts = await Promise.allSettled([
-      payload.create(createArgs("payment-attempts", {
+      payload.create(createArgs("payment-attempts", { attemptNumber: 1,
         idempotencyKey: `payment-${suffix}`,
         order: order.id,
         state: "pending_provider",
@@ -230,7 +230,7 @@ describe("commerce records on migrated PostgreSQL", () => {
         reconciliationRequired: false,
         createdAt: "2026-07-26T12:02:00.000Z",
       }, { overrideAccess: true })),
-      payload.create(createArgs("payment-attempts", {
+      payload.create(createArgs("payment-attempts", { attemptNumber: 1,
         idempotencyKey: `payment-${suffix}`,
         order: order.id,
         state: "pending_provider",
@@ -256,7 +256,7 @@ describe("commerce records on migrated PostgreSQL", () => {
       "payment-attempts",
       fulfilledAttempt.value as PaymentAttempt,
     )
-    await expect(payload.create(createArgs("payment-attempts", {
+    await expect(payload.create(createArgs("payment-attempts", { attemptNumber: 1,
       idempotencyKey: `payment-provider-duplicate-${suffix}`,
       order: order.id,
       state: "pending_provider",
@@ -298,7 +298,7 @@ describe("commerce records on migrated PostgreSQL", () => {
 
     const agreement = remember("billing-agreements", await payload.create(createArgs(
       "billing-agreements",
-      {
+      { serviceSuspensionStatus: "none",
         idempotencyKey: `agreement-${suffix}`,
         originatingOrder: order.id,
         checkoutProfile: profile.id,
@@ -375,7 +375,7 @@ describe("commerce records on migrated PostgreSQL", () => {
     ))).rejects.toThrow()
     const domain = remember("managed-domains", await payload.create(createArgs(
       "managed-domains",
-      {
+      { custodyStatus: "managed", providerRegistrationState: "not_started", edgeRoutingStatus: "pending", adminHttpsStatus: "pending", registrantVerificationStatus: "not_checked", authoritativeDnsStatus: "pending", httpsStatus: "pending", entitlementStatus: "pending", customerStatus: "provisioning", providerAutorenew: "unknown", transferOutCodeDeliveryStatus: "not_requested", transferOutProviderMissingCount: 0,
         domainNameAscii: `phase2-${suffix}.nl`,
         tld: "nl",
         provisioningIdempotencyKey: `provision-${suffix}`,
@@ -394,7 +394,7 @@ describe("commerce records on migrated PostgreSQL", () => {
     )))
     await expect(payload.create(createArgs(
       "managed-domains",
-      {
+      { custodyStatus: "managed", providerRegistrationState: "not_started", edgeRoutingStatus: "pending", adminHttpsStatus: "pending", registrantVerificationStatus: "not_checked", authoritativeDnsStatus: "pending", httpsStatus: "pending", entitlementStatus: "pending", customerStatus: "provisioning", providerAutorenew: "unknown", transferOutCodeDeliveryStatus: "not_requested", transferOutProviderMissingCount: 0,
         domainNameAscii: `PHASE2-${suffix}.NL.`,
         tld: "nl",
         provisioningIdempotencyKey: `provision-alias-${suffix}`,
@@ -413,7 +413,7 @@ describe("commerce records on migrated PostgreSQL", () => {
     ))).rejects.toThrow()
     const cycle = remember("domain-renewal-cycles", await payload.create(createArgs(
       "domain-renewal-cycles",
-      {
+      { providerRenewalMode: "provider_autorenew", providerAutorenew: "unknown", providerWriteState: "not_required",
         idempotencyKey: `renewal-${suffix}`,
         managedDomain: domain.id,
         billingAgreement: agreement.id,
@@ -447,7 +447,7 @@ describe("commerce records on migrated PostgreSQL", () => {
     )))
     await expect(payload.create(createArgs(
       "domain-renewal-cycles",
-      {
+      { providerRenewalMode: "provider_autorenew", providerAutorenew: "unknown", providerWriteState: "not_required",
         idempotencyKey: `renewal-duplicate-${suffix}`,
         managedDomain: domain.id,
         billingAgreement: agreement.id,

@@ -1,3 +1,7 @@
+import { domainMigrationFixture } from "../_helpers/generatedDocs"
+import { hookRequest, hookCollection } from "../_helpers/hookFixtures"
+import { fieldAccessArgs } from "../_helpers/accessArgs"
+import type { DomainMigration } from "@/payload-types"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -10,19 +14,19 @@ type BeforeChangeArgs = Parameters<typeof protectDomainMigration>[0]
 type BeforeValidateArgs = Parameters<typeof validateDomainMigration>[0]
 
 const updateArgs = (input: {
-  data: Record<string, unknown>
-  originalDoc?: Record<string, unknown>
-  context?: Record<string, unknown>
+  data: Partial<DomainMigration>
+  originalDoc?: Partial<DomainMigration>
+  context?: BeforeChangeArgs["context"]
 }): BeforeChangeArgs => ({
-  operation: "update",
-  data: input.data,
-  originalDoc: input.originalDoc ?? {
-    state: "awaiting_customer",
-    sourceZoneHash: "frozen-hash",
-  },
-  context: input.context,
-  req: { context: input.context },
-} as unknown as BeforeChangeArgs)
+  operation: "update", data: input.data,
+  originalDoc: domainMigrationFixture(input.originalDoc ?? { state: "awaiting_customer", sourceZoneHash: "frozen-hash" }),
+  context: input.context ?? {}, req: hookRequest({ context: input.context ?? {} }),
+  collection: hookCollection("domain-migrations"),
+})
+
+const validateArgs = (input: { data: Partial<DomainMigration> }): BeforeValidateArgs => ({
+  ...input, operation: "create", context: {}, req: hookRequest(), collection: hookCollection("domain-migrations"),
+})
 
 describe("domain migration collection constraints", () => {
   it("allows lifecycle writes only through the reviewed context and state graph", () => {
@@ -55,49 +59,49 @@ describe("domain migration collection constraints", () => {
   })
 
   it("supports assisted standard, rejects accepted complex, and deletes terminal secrets", () => {
-    expect(validateDomainMigration({
+    expect(validateDomainMigration(validateArgs({
       data: { acceptedClassification: "assisted_standard" },
-    } as unknown as BeforeValidateArgs)).toMatchObject({
+    }))).toMatchObject({
       acceptedClassification: "assisted_standard",
     })
-    expect(() => validateDomainMigration({
+    expect(() => validateDomainMigration(validateArgs({
       data: { acceptedClassification: "complex" },
-    } as unknown as BeforeValidateArgs)).toThrow("custom quote")
-    expect(() => validateDomainMigration({
+    }))).toThrow("custom quote")
+    expect(() => validateDomainMigration(validateArgs({
       data: { state: "completed", encryptedTransferCode: "ciphertext" },
-    } as unknown as BeforeValidateArgs)).toThrow("delete encrypted credentials")
+    }))).toThrow("delete encrypted credentials")
     for (const state of [
       "completed",
       "rolled_back",
       "failed",
       "custom_quote_required",
-    ]) {
-      expect(() => validateDomainMigration({
+    ] as const) {
+      expect(() => validateDomainMigration(validateArgs({
         data: {
           state,
           encryptedSourceRefreshAuthority: "ciphertext",
         },
-      } as unknown as BeforeValidateArgs)).toThrow(
+      }))).toThrow(
         "delete encrypted credentials",
       )
     }
   })
 
   it("enforces paid/non-billable authorization and immutable operator audit fields", () => {
-    expect(() => validateDomainMigration({
+    expect(() => validateDomainMigration(validateArgs({
       data: {
         operatorWorkAuthorizationState: "awaiting_payment",
         operatorWorkStartedAt: "2026-07-28T10:00:00.000Z",
       },
-    } as unknown as BeforeValidateArgs)).toThrow("cannot start")
-    expect(() => validateDomainMigration({
+    }))).toThrow("cannot start")
+    expect(() => validateDomainMigration(validateArgs({
       data: {
         operatorWorkCause: "siteinabox_incident_recovery",
         operatorWorkAuthorizationState: "paid_authorized",
         operatorWorkAuthorizationOrder: 1,
         operatorWorkAuthorizationPaymentAttempt: 2,
       },
-    } as unknown as BeforeValidateArgs)).toThrow("cannot use billable")
+    }))).toThrow("cannot use billable")
     expect(() => protectDomainMigration(updateArgs({
       originalDoc: {
         state: "paused_supplemental_order",
@@ -115,7 +119,7 @@ describe("domain migration collection constraints", () => {
     if (!field || !("access" in field) || !field.access?.read) {
       throw new Error("Encrypted transfer code field access is missing.")
     }
-    expect(field.access.read({} as never)).toBe(false)
+    expect(field.access.read(fieldAccessArgs({}))).toBe(false)
     const sourceField = DomainMigrations.fields.find(
       (candidate) =>
         "name" in candidate &&
@@ -124,6 +128,6 @@ describe("domain migration collection constraints", () => {
     if (!sourceField || !("access" in sourceField) || !sourceField.access?.read) {
       throw new Error("Encrypted source refresh field access is missing.")
     }
-    expect(sourceField.access.read({} as never)).toBe(false)
+    expect(sourceField.access.read(fieldAccessArgs({}))).toBe(false)
   })
 })

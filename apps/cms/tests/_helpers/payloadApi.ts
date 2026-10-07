@@ -1,21 +1,16 @@
-import type { Payload } from "payload"
-import type { CollectionSlug, DataFromCollectionSlug } from "payload"
+import type { Payload, CollectionSlug, RequiredDataFromCollectionSlug } from "payload"
+declare const payload: Payload
+type UpdateOptions<C extends CollectionSlug> = Parameters<typeof payload.update<C, never>>[0]
 
-export function createArgs<C extends CollectionSlug>(
-  collection: C,
-  data: Record<string, unknown>,
-  extra: Omit<Parameters<Payload["create"]>[0], "collection" | "data"> = {},
-): Parameters<Payload["create"]>[0] {
-  return { collection, data: data as unknown as DataFromCollectionSlug<C>, ...extra } as Parameters<Payload["create"]>[0]
+type CreateExtra = Pick<Parameters<Payload["create"]>[0], "depth" | "overrideAccess" | "context" | "req" | "user">
+type UpdateExtra<C extends CollectionSlug> = Omit<UpdateOptions<C>, "collection" | "id" | "data" | "where" | "draft">
+
+export function createArgs<C extends CollectionSlug>(collection: C, data: RequiredDataFromCollectionSlug<NoInfer<C>>, extra: CreateExtra = {}) {
+  return { collection, data, ...extra }
 }
 
-export function updateArgs<C extends CollectionSlug>(
-  collection: C,
-  id: string | number,
-  data: Record<string, unknown>,
-  extra: Omit<Parameters<Payload["update"]>[0], "collection" | "id" | "data"> = {},
-): Parameters<Payload["update"]>[0] {
-  return { collection, id, data: data as unknown as Partial<DataFromCollectionSlug<C>>, ...extra } as Parameters<Payload["update"]>[0]
+export function updateArgs<C extends CollectionSlug>(collection: C, id: string | number, data: UpdateOptions<NoInfer<C>>["data"], extra: UpdateExtra<C> = {}) {
+  return { collection, id, data, ...extra }
 }
 
 export function relationId(doc: { id: string | number }): number {
@@ -23,13 +18,10 @@ export function relationId(doc: { id: string | number }): number {
 }
 
 export function asDocRecord<T extends object>(value: T): Record<string, unknown> {
-  return value as unknown as Record<string, unknown>
-}
-
-export function createArgsLoose<C extends CollectionSlug>(
-  collection: C,
-  data: Record<string, unknown>,
-  extra: Omit<Parameters<Payload["create"]>[0], "collection" | "data"> = {},
-): Parameters<Payload["create"]>[0] {
-  return createArgs(collection, data, extra)
+  const record: Record<string, unknown> = {}
+  for (const key of Object.keys(value)) {
+    const field: unknown = Reflect.get(value, key)
+    record[key] = field
+  }
+  return record
 }

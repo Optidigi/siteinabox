@@ -4,8 +4,9 @@ import config from "@/payload.config"
 import type { Media } from "@/payload-types"
 import {
   normalisePagination,
+  normaliseFindResult,
   type PayloadFindResult,
-  type PayloadLikeFindClient,
+  type PayloadFindClient,
 } from "./paginate"
 
 // Audit-p2 #13 (T10/T8) — see ./pages.ts for the rationale.
@@ -18,18 +19,18 @@ export interface ListMediaOpts {
 export async function listMediaPaginated(
   tenantId: number | string,
   opts?: ListMediaOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"media">,
 ): Promise<PayloadFindResult<Media>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
-  return client.find<Media>({
+  return client.find({
     collection: "media",
     overrideAccess: true,
     where: { tenant: { equals: tenantId } },
     sort: "-updatedAt",
     page,
     limit,
-  })
+  }).then(normaliseFindResult)
 }
 
 export async function deleteMedia(id: number | string) {

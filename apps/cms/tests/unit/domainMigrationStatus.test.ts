@@ -1,26 +1,24 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
-import { asPayload, type MockFindArgs } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { orderFixture, domainMigrationFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
 describe("customer migration status projection", () => {
   it("binds the lookup to run and customer and returns only redacted action state", async () => {
-    const find = vi.fn(async (input: MockFindArgs) => {
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async (input) => {
       if (input.collection === "orders") {
-        return {
-          docs: [{
+        return paginatedFixture([orderFixture({
             id: 90,
             generationRun: 500,
             tenant: 1,
             orderKind: "initial_subscription",
             customerEmail: "customer@example.com",
-          }],
-          totalDocs: 1,
-        }
+          })])
       }
       if (input.collection === "domain-migrations") {
-        return {
-          docs: [{
+        return paginatedFixture([domainMigrationFixture({
             id: 100,
             originatingOrder: 90,
             domainNameAscii: "ami-care.nl",
@@ -44,13 +42,11 @@ describe("customer migration status projection", () => {
             sourceZoneSnapshot: { records: ["must-not-leak"] },
             providerTransferId: "must-not-leak",
             updatedAt: "2026-07-28T10:00:00.000Z",
-          }],
-          totalDocs: 1,
-        }
+          })])
       }
       throw new Error(`Unexpected collection ${input.collection}`)
     })
-    const result = await loadCustomerMigrationStatus(asPayload({ find }), {
+    const result = await loadCustomerMigrationStatus(payload, {
       generationRunId: 500,
       customerEmail: " Customer@Example.com ",
     })
@@ -71,6 +67,7 @@ describe("customer migration status projection", () => {
       domain: "ami-care.nl",
       state: "awaiting_provider",
       classification: "automatic",
+      sourceMechanism: "validated_provider_export_v1",
       operatorAuthorization: "not_required",
       actions: [
         {
@@ -92,11 +89,9 @@ describe("customer migration status projection", () => {
   })
 
   it("does not return an ambiguous or customer-mismatched order", async () => {
-    const find = vi.fn(async () => ({
-      docs: [],
-      totalDocs: 0,
-    }))
-    await expect(loadCustomerMigrationStatus(asPayload({ find }), {
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+    await expect(loadCustomerMigrationStatus(payload, {
       generationRunId: 500,
       customerEmail: "",
     })).resolves.toBeNull()
@@ -104,18 +99,16 @@ describe("customer migration status projection", () => {
   })
 
   it("does not project a cancelled order as live migration work", async () => {
-    const find = vi.fn(async ({ collection }: MockFindArgs) => ({
-      docs: collection === "orders" ? [{
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => paginatedFixture(collection === "orders" ? [orderFixture({
         id: 90,
         state: "cancelled",
         generationRun: 500,
         orderKind: "initial_subscription",
         customerEmail: "customer@example.com",
-      }] : [],
-      totalDocs: 1,
-    }))
+      })] : []))
 
-    await expect(loadCustomerMigrationStatus(asPayload({ find }), {
+    await expect(loadCustomerMigrationStatus(payload, {
       generationRunId: 500,
       customerEmail: "customer@example.com",
     })).resolves.toBeNull()
@@ -123,7 +116,7 @@ describe("customer migration status projection", () => {
   })
 
   it("exposes the governed registrant-email confirmation deadline", async () => {
-    const order = {
+    const order = orderFixture({
       id: 600,
       generationRun: 500,
       tenant: 1,
@@ -135,8 +128,8 @@ describe("customer migration status projection", () => {
           capabilityVersion: "tld-com-2026-07-29.3",
         },
       },
-    }
-    const migration = {
+    })
+    const migration = domainMigrationFixture({
       id: 700,
       originatingOrder: 600,
       managedDomain: null,
@@ -155,16 +148,12 @@ describe("customer migration status projection", () => {
       },
       transferRequestedAt: "2026-07-28T08:00:00.000Z",
       updatedAt: "2026-07-28T08:00:00.000Z",
-    }
-    const payload = asPayload({
-      find: vi.fn(async ({ collection }: { collection: string }) => ({
-        docs: collection === "orders"
-          ? [order]
-          : collection === "domain-migrations"
-            ? [migration]
-            : [],
-      })),
-      findByID: vi.fn(),
+    })
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => {
+      if (collection === "orders") return paginatedFixture([order])
+      if (collection === "domain-migrations") return paginatedFixture([migration])
+      throw new Error(`Unexpected collection ${collection}`)
     })
 
     await expect(loadCustomerMigrationStatus(payload, {

@@ -9,7 +9,7 @@ import { isHeroBlockType } from "@siteinabox/contracts"
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 type Json = { [key: string]: JsonValue }
-type PageSource = Json | Page
+type PageSource = Record<string, unknown> | Page
 
 export type PageAnalyticsProjectionContext = {
   tenantId?: string | number | null
@@ -209,8 +209,8 @@ export function pageToJson(
     }))
 
   return {
-    title: doc.title,
-    slug: doc.slug,
+    title: projectField(doc.title),
+    slug: projectField(doc.slug),
     analytics: {
       schemaVersion: 1,
       tenantId: analyticsContext.tenantId != null ? String(analyticsContext.tenantId) : null,
@@ -226,6 +226,6 @@ export function pageToJson(
     },
     blocks,
     ...(doc.seo ? { seo: projectField(doc.seo) } : {}),
-    updatedAt: doc.updatedAt
+    updatedAt: projectField(doc.updatedAt)
   }
 }

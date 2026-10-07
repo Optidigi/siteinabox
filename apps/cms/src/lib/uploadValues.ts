@@ -79,7 +79,7 @@ const normalizeObjectByFields = (
     }
 
     if (field.type === "array" && Array.isArray(current)) {
-      write(field.name, current.map((item) => (
+      write(field.name, current.map((item: unknown) => (
         isRecord(item) ? normalizeObjectByFields(item, field.fields) : item
       )))
       continue
@@ -96,7 +96,7 @@ const normalizeObjectByFields = (
 export const normalizePageBlockUploadIds = (blocks: unknown): unknown => {
   if (!Array.isArray(blocks)) return blocks
 
-  return blocks.map((block) => {
+  return blocks.map((block: unknown) => {
     if (!isRecord(block)) return block
     const blockType = typeof block.blockType === "string" ? block.blockType : undefined
     const schema = blockType ? blockBySlug[blockType] : undefined

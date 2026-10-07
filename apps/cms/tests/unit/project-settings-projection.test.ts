@@ -21,7 +21,9 @@ vi.mock("@/lib/projection/manifest", () => ({
 }))
 
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
-import { asPayload } from "../_helpers/mockPayload"
+import type { Media } from "@/payload-types"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, mediaFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { cast } from "../_helpers/cast"
 
 describe("projectSettingsToDisk", () => {
@@ -38,10 +40,11 @@ describe("projectSettingsToDisk", () => {
   })
 
   it("projects the fresh hook doc and populates media-backed logos without reloading stale settings", async () => {
-    const findByID = vi.fn().mockImplementation(async ({ collection, id }) => {
+    const payload = await createInitializedTestPayload()
+    const findByID = vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
         if (collection === "tenants") {
           expect(id).toBe("7")
-          return {
+          return tenantFixture({
             id: 7,
             slug: "amicare",
             domain: "ami-care.nl",
@@ -66,25 +69,19 @@ describe("projectSettingsToDisk", () => {
                 conversionGoals: { acceptedForms: true, contactClicks: ["phone"] },
               },
             },
-          }
+          })
         }
         expect(collection).toBe("media")
-        const mediaById: Record<string, unknown> = {
-          11: { id: 11, filename: "brand.png", url: "/media/brand.png", alt: "Brand" },
-          12: { id: 12, filename: "header.png", url: "/media/header.png", alt: "Header" },
-          13: { id: 13, filename: "footer.png", url: "/media/footer.png", alt: "Footer" },
+        const mediaById: Record<string, Media> = {
+          11: mediaFixture({ id: 11, filename: "brand.png", url: "/media/brand.png", alt: "Brand" }),
+          12: mediaFixture({ id: 12, filename: "header.png", url: "/media/header.png", alt: "Header" }),
+          13: mediaFixture({ id: 13, filename: "footer.png", url: "/media/footer.png", alt: "Footer" }),
         }
-        return mediaById[String(id)]
+        const media = mediaById[String(id)]
+        if (!media) throw new Error(`Unexpected media ${id}`)
+        return media
       })
-    const payload = Object.assign(asPayload({
-      find: vi.fn().mockResolvedValue({ docs: [] }),
-      findByID,
-      logger: { info: vi.fn() },
-    }), {
-      find: vi.fn().mockResolvedValue({ docs: [] }),
-      findByID,
-      logger: { info: vi.fn() },
-    })
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
 
     await projectSettingsToDisk(cast<Parameters<typeof projectSettingsToDisk>[0]>({
       doc: {

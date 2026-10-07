@@ -1,3 +1,4 @@
+import type { Page } from "@/payload-types"
 import type { CollectionBeforeValidateHook } from "payload"
 import { ValidationError } from "payload"
 
@@ -22,12 +23,12 @@ const extractTenantId = (t: unknown): string | number | undefined => {
   return t as string | number
 }
 
-export const ensureUniqueTenantSlug: CollectionBeforeValidateHook = async ({
+export const ensureUniqueTenantSlug = async <T extends Partial<Page> | null | undefined>({
   data,
   operation,
   originalDoc,
   req,
-}) => {
+}: Omit<Parameters<CollectionBeforeValidateHook<Page>>[0], "data"> & { data?: T }): Promise<T | undefined> => {
   if (!data) return data
 
   const slug = data.slug ?? originalDoc?.slug

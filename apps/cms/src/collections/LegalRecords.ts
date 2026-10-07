@@ -1,3 +1,5 @@
+import { asRecord } from "@/lib/record"
+import type { Order } from "@/payload-types"
 import type {
   CollectionBeforeChangeHook,
   CollectionBeforeValidateHook,
@@ -40,7 +42,7 @@ const appendOnlyAccess = {
   delete: () => false,
 }
 
-export const rejectRecordMutation: CollectionBeforeChangeHook = ({ data, operation }) => {
+export const rejectRecordMutation: CollectionBeforeChangeHook<{ id: number | string }> = ({ data, operation }) => {
   if (operation === "update") throw new Error("This legal evidence record is immutable after creation.")
   return data
 }
@@ -190,7 +192,7 @@ const immutableOrderFieldIsUnchanged = (
   }
   return stableStringify(nextValue) === stableStringify(originalValue)
 }
-export const protectFrozenOrder: CollectionBeforeChangeHook = ({
+export const protectFrozenOrder: CollectionBeforeChangeHook<Order> = ({
   data,
   operation,
   originalDoc,
@@ -218,7 +220,7 @@ export const protectFrozenOrder: CollectionBeforeChangeHook = ({
       !allowedOrderLifecycleFields.has(field) &&
       !immutableOrderFieldIsUnchanged(
         field,
-        data?.[field],
+        asRecord(data)?.[field],
         originalDoc as Record<string, unknown> | undefined,
       ),
   )
@@ -226,7 +228,7 @@ export const protectFrozenOrder: CollectionBeforeChangeHook = ({
   return data
 }
 
-export const validateOrderCommercialShape: CollectionBeforeValidateHook = ({
+export const validateOrderCommercialShape: CollectionBeforeValidateHook<Order> = ({
   data,
   operation,
 }) => {

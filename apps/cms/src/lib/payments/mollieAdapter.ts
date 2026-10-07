@@ -1,4 +1,7 @@
 import "server-only"
+import { z } from "zod"
+import { ProviderBoundaryError, requestProviderJson, type ProviderJsonResponse } from "@/lib/providers/http"
+import { assertMollieId, mollieAmountSchema, parseMollieCustomer, parseMollieCustomerList, parseMolliePayment, parseMolliePaymentList, parseMollieMandate, parseMollieRefund, parseMollieMethods } from "./mollieResponse"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 
 export type MollieAmount = {
@@ -19,6 +22,7 @@ export type MolliePayment = {
   id: string
   status: MolliePaymentStatus | string
   amount?: MollieAmount
+  amountChargedBack?: MollieAmount
   amountRefunded?: MollieAmount
   amountRemaining?: MollieAmount
   customerId?: string | null
@@ -123,6 +127,7 @@ const MOLLIE_API_BASE = "https://api.mollie.com/v2"
 type MollieReadOptions = {
   env?: NodeJS.ProcessEnv
   fetchImpl?: typeof fetch
+  signal?: AbortSignal
 }
 
 export class MollieApiError extends Error {
@@ -164,14 +169,41 @@ export function mollieDomainProvisioningEnabled(env = process.env): boolean {
   return commerceProviderWritesAllowed(env)
 }
 
-const mollieFetcher = (options?: MollieReadOptions): typeof fetch =>
-  options?.fetchImpl ?? globalThis.fetch
+async function mollieRequest(url: string, init: RequestInit, options?: MollieReadOptions): Promise<ProviderJsonResponse> {
+  return requestProviderJson(url, init, {
+    operation: "Mollie API", timeoutMs: 15_000, maxBodyBytes: 1_048_576,
+    readAttempts: 2, fetchImpl: options?.fetchImpl, signal: options?.signal,
+  })
+}
 
-export async function inspectMollieProfileCapabilities(
-  options?: MollieReadOptions,
+// One operation budget spans every page, capability read and read retry.
+const withMollieReadBudget = async <T>(options: MollieReadOptions | undefined, work: (bounded: MollieReadOptions) => Promise<T>): Promise<T> => {
+  const controller = new AbortController()
+  const cancel = () => controller.abort(new ProviderBoundaryError("Mollie API", "cancelled"))
+  if (options?.signal?.aborted) cancel()
+  options?.signal?.addEventListener("abort", cancel, { once: true })
+  const timer = setTimeout(() => controller.abort(new ProviderBoundaryError("Mollie API", "timeout")), 30_000)
+  try {
+    controller.signal.throwIfAborted()
+    return await work({ ...options, signal: controller.signal })
+  } catch (error) {
+    if (controller.signal.aborted) throw controller.signal.reason
+    throw error
+  } finally {
+    clearTimeout(timer)
+    options?.signal?.removeEventListener("abort", cancel)
+  }
+}
+
+export async function inspectMollieProfileCapabilities(options?: MollieReadOptions): Promise<void> {
+  return withMollieReadBudget(options, inspectMollieProfileCapabilitiesRead)
+}
+
+async function inspectMollieProfileCapabilitiesRead(
+  options: MollieReadOptions,
 ): Promise<void> {
   const env = options?.env ?? process.env
-  const request = mollieFetcher(options)
+  const request = (url: string, init: RequestInit) => mollieRequest(url, init, options)
   const headers = {
     Authorization: `Bearer ${requireMollieApiKey(env)}`,
     Accept: "application/json",
@@ -186,7 +218,7 @@ export async function inspectMollieProfileCapabilities(
       profileResponse.status,
     )
   }
-  const profile = await profileResponse.json() as unknown
+  const profile = profileResponse.body
   if (
     !profile ||
     typeof profile !== "object" ||
@@ -211,24 +243,7 @@ export async function inspectMollieProfileCapabilities(
         methodsResponse.status,
       )
     }
-    const methodsPayload = await methodsResponse.json() as unknown
-    const embedded = methodsPayload &&
-        typeof methodsPayload === "object" &&
-        !Array.isArray(methodsPayload) &&
-        "_embedded" in methodsPayload &&
-        methodsPayload._embedded &&
-        typeof methodsPayload._embedded === "object" &&
-        !Array.isArray(methodsPayload._embedded)
-      ? methodsPayload._embedded
-      : null
-    const methods = embedded && "methods" in embedded
-      ? embedded.methods
-      : null
-    if (!Array.isArray(methods) || methods.length === 0) {
-      throw new Error(
-        `Mollie has no enabled ${sequenceType} payment method.`,
-      )
-    }
+    parseMollieMethods(methodsResponse.body)
   }
 }
 
@@ -239,7 +254,7 @@ export function publicCmsOrigin(env = process.env): string {
 }
 
 export async function createMollieCustomer(input: CreateMollieCustomerInput): Promise<MollieCustomer> {
-  const response = await fetch(`${MOLLIE_API_BASE}/customers`, {
+  const response = await mollieRequest(`${MOLLIE_API_BASE}/customers`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${requireMollieApiKey()}`,
@@ -255,11 +270,15 @@ export async function createMollieCustomer(input: CreateMollieCustomerInput): Pr
   if (!response.ok) {
     throw new MollieApiError("Mollie customer creation", response.status, await readMollieErrorBody(response))
   }
-  return await response.json() as MollieCustomer
+  return parseMollieCustomer(response.body)
 }
 
-export async function listRecentMollieCustomers(
-  limit = 250,
+export async function listRecentMollieCustomers(limit = 250, options?: MollieReadOptions): Promise<MollieCustomer[]> {
+  return withMollieReadBudget(options, bounded => listRecentMollieCustomersRead(limit, bounded))
+}
+
+async function listRecentMollieCustomersRead(
+  limit: number, options: MollieReadOptions,
 ): Promise<MollieCustomer[]> {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) {
     throw new Error("Mollie customer-list limit must be between 1 and 250.")
@@ -269,16 +288,16 @@ export async function listRecentMollieCustomers(
   const visited = new Set<string>()
   const customers: MollieCustomer[] = []
   while (nextUrl) {
-    if (visited.size >= 1_000 || visited.has(nextUrl)) {
+    if (visited.size >= 20 || visited.has(nextUrl)) {
       throw new Error("Mollie customer-list pagination did not terminate safely.")
     }
     visited.add(nextUrl)
-    const response = await fetch(nextUrl, {
+    const response = await mollieRequest(nextUrl, {
       headers: {
-        Authorization: `Bearer ${requireMollieApiKey()}`,
+        Authorization: `Bearer ${requireMollieApiKey(options.env ?? process.env)}`,
         Accept: "application/json",
       },
-    })
+    }, options)
     if (!response.ok) {
       throw new MollieApiError(
         "Mollie customer listing",
@@ -286,7 +305,7 @@ export async function listRecentMollieCustomers(
         await readMollieErrorBody(response),
       )
     }
-    const result = await response.json() as MollieCustomerList
+    const result = parseMollieCustomerList(response.body)
     if (Array.isArray(result._embedded?.customers)) {
       customers.push(...result._embedded.customers)
     }
@@ -298,7 +317,7 @@ export async function listRecentMollieCustomers(
     const parsed = new URL(candidate)
     if (
       parsed.origin !== "https://api.mollie.com" ||
-      parsed.pathname !== "/v2/customers"
+      parsed.pathname !== "/v2/customers" || parsed.username || parsed.password || parsed.hash
     ) {
       throw new Error("Mollie customer-list pagination returned an untrusted next URL.")
     }
@@ -308,7 +327,10 @@ export async function listRecentMollieCustomers(
 }
 
 export async function createMolliePayment(input: CreateMolliePaymentInput): Promise<MolliePayment> {
-  const response = await fetch(`${MOLLIE_API_BASE}/payments`, {
+  mollieAmountSchema.parse(input.amount)
+  if (input.customerId) assertMollieId(input.customerId, "cst")
+  if (input.mandateId) assertMollieId(input.mandateId, "mdt")
+  const response = await mollieRequest(`${MOLLIE_API_BASE}/payments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${requireMollieApiKey()}`,
@@ -329,11 +351,17 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
   if (!response.ok) {
     throw new MollieApiError("Mollie payment creation", response.status, await readMollieErrorBody(response))
   }
-  return await response.json() as MolliePayment
+  const payment = parseMolliePayment(response.body)
+  if (payment.amount?.currency !== input.amount.currency || payment.amount.value !== input.amount.value ||
+      (input.customerId && payment.customerId !== input.customerId) ||
+      (input.mandateId && payment.mandateId !== input.mandateId) ||
+      (input.sequenceType && payment.sequenceType !== input.sequenceType)) throw new Error("Mollie payment creation identity or amount mismatch.")
+  return payment
 }
 
 export async function retrieveMolliePayment(paymentId: string): Promise<MolliePayment> {
-  const response = await fetch(
+  assertMollieId(paymentId, "tr")
+  const response = await mollieRequest(
     `${MOLLIE_API_BASE}/payments/${encodeURIComponent(paymentId)}?embed=refunds,chargebacks`,
     {
     headers: {
@@ -345,11 +373,15 @@ export async function retrieveMolliePayment(paymentId: string): Promise<MolliePa
   if (!response.ok) {
     throw new MollieApiError("Mollie payment lookup", response.status, await readMollieErrorBody(response))
   }
-  return await response.json() as MolliePayment
+  return parseMolliePayment(response.body, paymentId)
 }
 
-export async function listRecentMolliePayments(
-  limit = 250,
+export async function listRecentMolliePayments(limit = 250, options?: MollieReadOptions): Promise<MolliePayment[]> {
+  return withMollieReadBudget(options, bounded => listRecentMolliePaymentsRead(limit, bounded))
+}
+
+async function listRecentMolliePaymentsRead(
+  limit: number, options: MollieReadOptions,
 ): Promise<MolliePayment[]> {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) {
     throw new Error("Mollie payment-list limit must be between 1 and 250.")
@@ -362,16 +394,16 @@ export async function listRecentMolliePayments(
   const visited = new Set<string>()
   const payments: MolliePayment[] = []
   while (nextUrl) {
-    if (visited.size >= 1_000 || visited.has(nextUrl)) {
+    if (visited.size >= 20 || visited.has(nextUrl)) {
       throw new Error("Mollie payment-list pagination did not terminate safely.")
     }
     visited.add(nextUrl)
-    const response = await fetch(nextUrl, {
+    const response = await mollieRequest(nextUrl, {
       headers: {
-        Authorization: `Bearer ${requireMollieApiKey()}`,
+        Authorization: `Bearer ${requireMollieApiKey(options.env ?? process.env)}`,
         Accept: "application/json",
       },
-    })
+    }, options)
     if (!response.ok) {
       throw new MollieApiError(
         "Mollie payment listing",
@@ -379,7 +411,7 @@ export async function listRecentMolliePayments(
         await readMollieErrorBody(response),
       )
     }
-    const result = await response.json() as MolliePaymentList
+    const result = parseMolliePaymentList(response.body)
     if (Array.isArray(result._embedded?.payments)) {
       payments.push(...result._embedded.payments)
     }
@@ -391,7 +423,7 @@ export async function listRecentMolliePayments(
     const parsed = new URL(candidate)
     if (
       parsed.origin !== "https://api.mollie.com" ||
-      parsed.pathname !== "/v2/payments"
+      parsed.pathname !== "/v2/payments" || parsed.username || parsed.password || parsed.hash
     ) {
       throw new Error("Mollie payment-list pagination returned an untrusted next URL.")
     }
@@ -404,7 +436,9 @@ export async function retrieveMollieMandate(
   customerId: string,
   mandateId: string,
 ): Promise<MollieMandate> {
-  const response = await fetch(
+  assertMollieId(customerId, "cst")
+  assertMollieId(mandateId, "mdt")
+  const response = await mollieRequest(
     `${MOLLIE_API_BASE}/customers/${encodeURIComponent(customerId)}/mandates/${encodeURIComponent(mandateId)}`,
     {
       headers: {
@@ -416,11 +450,13 @@ export async function retrieveMollieMandate(
   if (!response.ok) {
     throw new MollieApiError("Mollie mandate lookup", response.status, await readMollieErrorBody(response))
   }
-  return await response.json() as MollieMandate
+  return parseMollieMandate(response.body, mandateId)
 }
 
 export async function createMollieRefund(input: CreateMollieRefundInput): Promise<MollieRefund> {
-  const response = await fetch(
+  assertMollieId(input.paymentId, "tr")
+  mollieAmountSchema.parse(input.amount)
+  const response = await mollieRequest(
     `${MOLLIE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/refunds`,
     {
       method: "POST",
@@ -439,16 +475,14 @@ export async function createMollieRefund(input: CreateMollieRefundInput): Promis
   if (!response.ok) {
     throw new MollieApiError("Mollie refund creation", response.status, await readMollieErrorBody(response))
   }
-  return await response.json() as MollieRefund
+  const refund = parseMollieRefund(response.body)
+  if (refund.amount.currency !== input.amount.currency || refund.amount.value !== input.amount.value) throw new Error("Mollie refund amount mismatch.")
+  return refund
 }
 
-async function readMollieErrorBody(response: Response): Promise<{ title?: unknown; detail?: unknown } | undefined> {
-  try {
-    const body = await response.json()
-    return body && typeof body === "object" && !Array.isArray(body)
-      ? body as { title?: unknown; detail?: unknown }
-      : undefined
-  } catch {
-    return undefined
-  }
+async function readMollieErrorBody(response: ProviderJsonResponse): Promise<undefined> {
+  const result = z.object({ status: z.number().int(), title: z.string(), detail: z.string().optional() }).safeParse(response.body)
+  if (!result.success || result.data.status !== response.status) throw new Error("Mollie API returned an invalid error response.")
+  // The HTTP status is diagnostic; provider prose may contain credentials or personal data.
+  return undefined
 }

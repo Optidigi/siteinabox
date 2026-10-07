@@ -2,15 +2,15 @@
 // harness. Idempotent — if the email exists, password is reset to the
 // declared value.
 import "dotenv/config"
-import { getPayload } from "payload"
+import { getPayload, type RequiredDataFromCollectionSlug } from "payload"
 import config from "@/payload.config"
 import type { User } from "@/payload-types"
 
 const EMAIL = "admin@local.test"
 const PASSWORD = "LocalTest!1234"
 
-type UserCreateData = Extract<Parameters<Awaited<ReturnType<typeof getPayload>>["create"]>[0], { collection: "users" }>["data"]
-type UserUpdateData = Extract<Parameters<Awaited<ReturnType<typeof getPayload>>["update"]>[0], { collection: "users" }>["data"]
+type UserCreateData = RequiredDataFromCollectionSlug<"users">
+type UserUpdateData = Partial<UserCreateData>
 
 const main = async () => {
   const payload = await getPayload({ config })

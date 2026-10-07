@@ -10,51 +10,49 @@ import {
 } from "@/lib/legal/customerRequirements"
 
 import { asMockDoc, asRequirementDoc } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import type { AgreementAcceptance, LegalRequirement } from "@/payload-types"
+import { createPayloadFixture, type PayloadFixtureMethod } from "../_helpers/payloadFixture"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { matchesWhere, type MockDoc } from "../_helpers/mockPayload"
+import { agreementAcceptanceFixture, legalDocumentFixture, legalRequirementFixture, paginatedFixture, tenantFixture } from "../_helpers/generatedDocs"
 const createPayload = () => {
   let id = 100
-  const document = {
-    id: 10,
-    documentType: "platform-terms",
-    documentVersion: "2026-08-01.1",
-    acceptanceVersion: "2026-08-01",
-    contentHash: "sha256:terms",
-    changeSummary: "De betalingsvoorwaarden zijn aangepast.",
-    effectiveAt: "2026-08-01T00:00:00.000Z",
-  }
-  const requirements: MockDoc[] = [
-    { id: 1, requirementKey: "owner-1", tenant: 7, subjectEmail: "owner@example.nl", document, action: "mandatory_reaccept", status: "pending", enforceAt: "2026-08-01T00:00:00.000Z" },
-    { id: 2, requirementKey: "owner-2", tenant: 7, subjectEmail: "other@example.nl", document, action: "mandatory_reaccept", status: "notified", enforceAt: "2026-08-01T00:00:00.000Z" },
+  const document = legalDocumentFixture({ id: 10, documentType: "platform-terms", documentVersion: "2026-08-01.1", acceptanceVersion: "2026-08-01", contentHash: "sha256:terms", changeSummary: "De betalingsvoorwaarden zijn aangepast.", effectiveAt: "2026-08-01T00:00:00.000Z" })
+  const requirements: LegalRequirement[] = [
+    legalRequirementFixture({ id: 1, requirementKey: "owner-1", tenant: 7, subjectEmail: "owner@example.nl", document, action: "mandatory_reaccept", status: "pending", enforceAt: "2026-08-01T00:00:00.000Z" }),
+    legalRequirementFixture({ id: 2, requirementKey: "owner-2", tenant: 7, subjectEmail: "other@example.nl", document, action: "mandatory_reaccept", status: "notified", enforceAt: "2026-08-01T00:00:00.000Z" }),
   ]
-  const acceptances: MockDoc[] = []
-  const matches = (doc: MockDoc, where: MockWhere | undefined): boolean => {
-    const clauses = where?.and ?? Object.entries(where ?? {}).map(([key, value]) => ({ [key]: value }))
-    return clauses.every((clause: MockDoc) => {
-      const [field, condition] = Object.entries(clause)[0] as [string, Record<string, unknown>]
-      const value = field === "document" && doc.document && typeof doc.document === "object"
-        ? asMockDoc(doc.document).id
-        : doc[field]
-      if (condition.equals !== undefined) return String(value) === String(condition.equals)
-      if (condition.in) return (condition.in as unknown[]).includes(value)
-      return true
-    })
-  }
-  const find = vi.fn(async ({ collection, where }: MockFindArgs) => ({
-    docs: (collection === "legal-requirements" ? requirements : acceptances).filter((doc) => matches(doc, where)),
-  }))
-  const findByID = vi.fn(async ({ id: requested }: { id: number | string }) => requirements.find((item) => String(item.id) === String(requested)))
-  const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
-    const record = { id: id++, ...data }
-    if (collection === "agreement-acceptances") acceptances.push(record)
-    return record
+  const acceptances: AgreementAcceptance[] = []
+  const requirementRecord = (doc: LegalRequirement) => ({ ...asDocRecord(doc), document: typeof doc.document === "object" ? doc.document.id : doc.document })
+  const payload = createPayloadFixture({
+    find: vi.fn<PayloadFixtureMethod<"find">>(async ({ collection, where }) => {
+      if (collection === "legal-requirements") return paginatedFixture(requirements.filter(doc => matchesWhere(requirementRecord(doc), where)))
+      if (collection === "legal-notification-deliveries") return paginatedFixture([])
+      if (collection === "agreement-acceptances") return paginatedFixture(acceptances.filter(doc => matchesWhere(asDocRecord(doc), where)))
+      throw new Error("Unexpected collection " + collection)
+    }),
+    findByID: vi.fn<PayloadFixtureMethod<"findByID">>(async ({ id: requested }) => {
+      const record = requirements.find(item => String(item.id) === String(requested))
+      if (!record) throw new Error("Missing requirement " + requested)
+      return record
+    }),
+    create: vi.fn<PayloadFixtureMethod<"create">>(async ({ collection, data }) => {
+      if (collection !== "agreement-acceptances") throw new Error("Unexpected collection " + collection)
+      const record = agreementAcceptanceFixture({ id: id++ })
+      Object.assign(record, data)
+      acceptances.push(record)
+      return record
+    }),
+    update: payloadUpdateFixture(async args => {
+      if ("where" in args) throw new Error("Expected ID update")
+      const record = requirements.find(item => String(item.id) === String(args.id))
+      if (!record) throw new Error("Missing requirement " + args.id)
+      Object.assign(record, args.data)
+      return record
+    }),
   })
-  const update = vi.fn(async ({ id: requested, data }: MockUpdateArgs) => {
-    const record = requirements.find((item) => String(item.id) === String(requested))
-    if (!record) throw new Error(`Missing requirement ${requested}`)
-    Object.assign(record, data)
-    return record
-  })
-  return { payload: asPayload({ find, findByID, create, update }), requirements, acceptances, document }
+  return { payload, requirements, acceptances, document }
 }
 
 describe("customer legal requirements", () => {
@@ -78,7 +76,7 @@ describe("customer legal requirements", () => {
 
   it("preserves numeric relationship IDs when recording acceptance evidence", async () => {
     const { payload, requirements, document, acceptances } = createPayload()
-    requirements[0]!.tenant = { id: 7 }
+    requirements[0]!.tenant = tenantFixture({ id: 7 })
     requirements[0]!.document = { ...document, id: 10 }
     await acceptCustomerLegalRequirement({
       payload,
@@ -144,17 +142,17 @@ describe("customer legal requirements", () => {
   })
 
   it("records qualifying use without satisfying before the objection deadline", async () => {
-    const requirement: MockDoc = {
+    const requirement = legalRequirementFixture({
       id: 30,
       tenant: 7,
       action: "notice_and_continued_use",
       status: "notified",
       noticeDeliveredAt: "2026-07-01T00:00:00.000Z",
       objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
-    }
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [requirement] })),
-      update: vi.fn(async ({ data }: MockUpdateArgs) => Object.assign(requirement, data)),
+    })
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async () => (paginatedFixture([requirement]))),
+      update: payloadUpdateFixture(async ({ data }) => Object.assign(requirement, data)),
     })
 
     await recordQualifyingContinuedUse({
@@ -198,23 +196,24 @@ describe("customer legal requirements", () => {
   })
 
   it("resolves only delivered, unobjectioned qualifying use after the deadline", async () => {
-    const eligible: MockDoc = {
+    const eligible = legalRequirementFixture({
       id: 30,
       action: "notice_and_continued_use",
       status: "notified",
       noticeDeliveredAt: "2026-07-01T00:00:00.000Z",
       qualifyingUseAt: "2026-07-15T00:00:00.000Z",
       objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
-    }
+    })
     const failedDelivery = { ...eligible, id: 31, noticeDeliveredAt: null }
     const objected = { ...eligible, id: 32, objectedAt: "2026-07-20T00:00:00.000Z" }
     const updated: Array<string | number> = []
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [eligible, failedDelivery, objected] })),
-      update: vi.fn(async ({ id, data }: MockUpdateArgs) => {
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async () => (paginatedFixture([eligible, failedDelivery, objected]))),
+      update: payloadUpdateFixture(async ({ id, data }) => {
+        if (id === undefined) throw new Error("Expected ID update")
         updated.push(id)
         const row = [eligible, failedDelivery, objected].find((item) => item.id === id)
-        return Object.assign(row ?? {}, data)
+        return Object.assign(row!, data)
       }),
     })
 
@@ -229,10 +228,10 @@ describe("customer legal requirements", () => {
   })
 
   it("records an objection as terminal evidence", async () => {
-    const requirement: MockDoc = { id: 30, tenant: 7, action: "notice_and_continued_use", status: "notified" }
-    const payload = asPayload({
-      findByID: vi.fn(async () => requirement),
-      update: vi.fn(async ({ data }: MockUpdateArgs) => Object.assign(requirement, data)),
+    const requirement = legalRequirementFixture({ id: 30, tenant: 7, action: "notice_and_continued_use", status: "notified" })
+    const payload = createPayloadFixture({
+      findByID: vi.fn<PayloadFixtureMethod<"findByID">>(async () => requirement),
+      update: payloadUpdateFixture(async ({ data }) => Object.assign(requirement, data)),
     })
 
     await objectToNoticeAndContinuedUse({

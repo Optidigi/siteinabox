@@ -48,7 +48,7 @@ const ensureNestedArrayItemIds = (
   for (const [parentField, childFields] of Object.entries(nested)) {
     const parentValue = block[parentField]
     if (!Array.isArray(parentValue)) continue
-    block[parentField] = parentValue.map((parentItem) => {
+    block[parentField] = parentValue.map((parentItem: unknown) => {
       if (!parentItem || typeof parentItem !== "object" || Array.isArray(parentItem)) return parentItem
       const parentCopy = { ...(parentItem as Record<string, unknown>) }
       ensureItemId(parentCopy, remint)

@@ -1,9 +1,10 @@
+import { pageFixture } from "../../_helpers/generatedDocs"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { enforceTenantBlockMenu } from "@/hooks/enforceTenantBlockMenu"
 import * as loadManifest from "@/lib/richText/loadManifest"
 import type { RtManifest } from "@/lib/richText/manifest"
 
-import { hookArgsFor } from "../../_helpers/hookFixtures"
+import { hookArgsFor, hookCollection, hookRequest } from "../../_helpers/hookFixtures"
 
 const baseManifest: RtManifest = {
   version: 1,
@@ -11,8 +12,8 @@ const baseManifest: RtManifest = {
   blockTypes: { paragraph: true, heading: { levels: [2, 3] } },
 }
 
-const hookArgs = (partial: Record<string, unknown>) =>
-  hookArgsFor(enforceTenantBlockMenu, { operation: "create", req: {}, collection: {}, context: {}, ...partial })
+const hookArgs = (partial: Pick<Parameters<typeof enforceTenantBlockMenu>[0], "data" | "originalDoc">) =>
+  hookArgsFor(enforceTenantBlockMenu, { operation: "create", req: hookRequest(), collection: hookCollection("pages"), context: {}, ...partial })
 
 describe("enforceTenantBlockMenu", () => {
   beforeEach(() => vi.restoreAllMocks())
@@ -90,7 +91,7 @@ describe("enforceTenantBlockMenu", () => {
   it("falls back to originalDoc.tenant when data.tenant is missing", async () => {
     const spy = vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = { blocks: [{ blockType: "hero" }] }
-    await enforceTenantBlockMenu(hookArgs({ data, originalDoc: { tenant: 13 } }))
+    await enforceTenantBlockMenu(hookArgs({ data, originalDoc: pageFixture({ tenant: 13 }) }))
     expect(spy).toHaveBeenCalledWith(13)
   })
 })

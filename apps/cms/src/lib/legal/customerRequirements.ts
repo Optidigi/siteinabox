@@ -33,7 +33,7 @@ const noticeAndUseAction = "notice_and_continued_use"
 
 const documentRecord = (requirement: LegalRequirement): RequirementDocument | null => {
   const document = requirement.document
-  return document && typeof document === "object" ? document as unknown as RequirementDocument : null
+  return document && typeof document === "object" ? document : null
 }
 
 const relationshipValue = (value: unknown): string | number | null => {
@@ -391,7 +391,7 @@ export async function recordQualifyingContinuedUse(input: {
   occurredAt?: Date
   evidenceType: string
   evidenceId: string
-  req?: PayloadRequest
+  req?: Partial<PayloadRequest>
 }) {
   const request = input.req ? { req: input.req } : {}
   const occurredAt = (input.occurredAt ?? new Date()).toISOString()

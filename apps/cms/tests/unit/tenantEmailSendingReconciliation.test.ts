@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { reconcileTenantEmailSending } from "@/lib/tenants/emailSendingRefresh"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
-const tenant = {
+const tenant = tenantFixture({
   id: 12,
   domain: "client.nl",
   status: "active",
@@ -16,21 +17,20 @@ const tenant = {
     senderEmail: "noreply@mail.client.nl",
     cloudflareZoneId: "zone-12",
   },
-}
+})
 
 const payloadStub = () => {
-  const update = vi.fn(async ({ collection, data }: {
-    collection: string
-    data: Record<string, unknown>
-  }) => collection === "tenants" ? { ...tenant, ...data } : data)
-  const payload = {
-    find: vi.fn(async ({ collection }: { collection: string }) => ({
-      docs: collection === "tenants" ? [tenant] : [],
-    })),
-    update,
-    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => data),
-  }
-  return { payload: asPayload(payload), update, create: payload.create }
+  const payload = createTestPayload()
+  const update = vi.spyOn(payload, "update").mockResolvedValue(tenant)
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => {
+    if (collection === "tenants") return paginatedFixture([tenant])
+    if (collection === "operational-alerts") return paginatedFixture([])
+    throw new Error(`Unexpected collection ${collection}`)
+  })
+  const create = vi.spyOn(payload, "create").mockResolvedValue({
+    id: 1, severity: "warning", status: "open", source: "domains", dedupeKey: "fixture", message: "Fixture alert", occurrenceCount: 1, firstSeenAt: "2026-07-30T10:00:00.000Z", lastSeenAt: "2026-07-30T10:00:00.000Z", createdAt: "2026-07-30T10:00:00.000Z", updatedAt: "2026-07-30T10:00:00.000Z",
+  })
+  return { payload, update, create }
 }
 
 describe("optional tenant-branded email reconciliation", () => {
@@ -93,10 +93,10 @@ describe("optional tenant-branded email reconciliation", () => {
     const tenantUpdate = update.mock.calls.find(
       ([input]) => input.collection === "tenants",
     )?.[0]
-    expect(tenantUpdate?.data.emailSending).toMatchObject({
+    expect(tenantUpdate?.data).toMatchObject({ emailSending: {
       status: "failed",
       cloudflareZoneId: "zone-12",
-    })
+    } })
     expect(JSON.stringify(tenantUpdate)).not.toContain("secret")
     expect(JSON.stringify(tenantUpdate)).not.toContain("customer@example.test")
     expect(create).toHaveBeenCalledWith(expect.objectContaining({

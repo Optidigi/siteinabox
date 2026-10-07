@@ -1,7 +1,10 @@
 import { createTransport } from "nodemailer"
+import addressparser from "nodemailer/lib/addressparser"
 import type { SendMailOptions, Transporter } from "nodemailer"
 import type { Payload, Where } from "payload"
 import type { MailLog } from "@/payload-types"
+import { z } from "zod"
+import { requestProviderJson } from "@/lib/providers/http"
 import { recordMailFailureAlert } from "@/lib/email/alerts"
 import { findCommunicationPreference } from "@/lib/legal/communicationPreferences"
 import { legalStatements } from "@/lib/legal/statements"
@@ -90,6 +93,7 @@ export type MailProviderSendInput = {
   text?: string
   replyTo?: string
   headers?: Record<string, string>
+  signal?: AbortSignal
 }
 
 export type MailProviderSuccess = {
@@ -110,12 +114,12 @@ export type MailTransportProvider = {
   send(input: MailProviderSendInput): Promise<MailProviderSuccess>
 }
 
-export type MailLogPayload = Pick<Payload, "create" | "logger"> & Partial<Pick<Payload, "find" | "update">>
+export type MailLogPayload = Pick<Payload, "create"> & Partial<Pick<Payload, "find" | "update" | "logger">>
 
 export function asMailLogPayload(
   payload: Pick<Payload, "create"> & Partial<Pick<Payload, "find" | "update" | "logger">>,
 ): MailLogPayload {
-  return payload as MailLogPayload
+  return payload
 }
 
 export type SendEmailDeps = {
@@ -210,43 +214,41 @@ export function createCloudflareRestProvider(config: { accountId: string; token:
   return {
     provider: "cloudflare-rest",
     async send(input) {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), getMailSendTimeoutMs())
       try {
-        const response = await fetch(`${CLOUDFLARE_API_BASE}/accounts/${config.accountId}/email/sending/send`, {
+        const response = await requestProviderJson(`${CLOUDFLARE_API_BASE}/accounts/${config.accountId}/email/sending/send`, {
           method: "POST",
           headers: {
             authorization: `Bearer ${config.token}`,
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            from: input.from,
-            to: input.to,
-            subject: input.subject,
-            html: input.html,
+            from: input.from, to: input.to, subject: input.subject, html: input.html,
             ...(input.text ? { text: input.text } : {}),
             ...(input.replyTo ? { reply_to: input.replyTo } : {}),
             ...(input.headers ? { headers: input.headers } : {}),
           }),
-          signal: controller.signal,
-        })
-        const body = await response.json().catch(() => null) as CloudflareRestResponse | null
-        if (!response.ok || body?.success !== true) {
-          throw cloudflareRestError(response.status, body)
+        }, { operation: "Cloudflare mail send", timeoutMs: getMailSendTimeoutMs(), maxBodyBytes: 65_536, signal: input.signal })
+        const parsed = cloudflareReceiptSchema.safeParse(response.body)
+        if (!response.ok) {
+          // Only a documented rejection is safe to retry: a lost/ambiguous receipt
+          // cannot establish that the provider did not accept this message.
+          if (!parsed.success || parsed.data.success !== false || response.status === 408 || response.status >= 500) {
+            throw indeterminateMailWrite()
+          }
+          throw cloudflareRestError(response.status, parsed.data)
         }
-        const disposition = validateCloudflareRestDisposition(input.to, body)
-        return {
-          provider: "cloudflare-rest",
-          ...(disposition.messageId ? { providerMessageId: disposition.messageId } : {}),
-        }
-      } finally {
-        clearTimeout(timeout)
+        if (!parsed.success || parsed.data.success !== true) throw indeterminateMailWrite()
+        const disposition = validateCloudflareRestDisposition(input.to, parsed.data)
+        return { provider: "cloudflare-rest", ...(disposition.messageId ? { providerMessageId: disposition.messageId } : {}) }
+      } catch (error) {
+        if (error instanceof Error && "code" in error) throw error
+        throw indeterminateMailWrite()
       }
     },
   }
 }
 
-export function createNodemailerProvider(transport: Pick<Transporter, "sendMail">): MailTransportProvider {
+export function createNodemailerProvider(transport: Pick<Transporter<unknown>, "sendMail"> & Partial<Pick<Transporter<unknown>, "close">>): MailTransportProvider {
   return {
     provider: "cloudflare-smtp",
     async send(input) {
@@ -260,26 +262,41 @@ export function createNodemailerProvider(transport: Pick<Transporter, "sendMail"
       if (input.replyTo) message.replyTo = input.replyTo
       if (input.headers) message.headers = input.headers
 
-      const info = await transport.sendMail(message)
-      return normalizeProviderResponse(info)
+      const cancel = () => transport.close?.()
+      input.signal?.throwIfAborted()
+      input.signal?.addEventListener("abort", cancel, { once: true })
+      try {
+        const info: unknown = await transport.sendMail(message)
+        return normalizeProviderResponse(info, input.to)
+      } catch (error) {
+        if (input.signal?.aborted) throw indeterminateMailWrite()
+        if (error instanceof Error && "code" in error && ["ETIMEDOUT", "ECONNRESET", "EPROTOCOL"].includes(String(error.code))) throw indeterminateMailWrite()
+        throw error
+      } finally {
+        input.signal?.removeEventListener("abort", cancel)
+      }
     },
   }
 }
 
-type CloudflareRestResponse = {
-  success?: boolean
-  errors?: Array<{ code?: number; message?: string }>
-  result?: {
-    delivered?: string[]
-    message_id?: string
-    permanent_bounces?: string[]
-    queued?: string[]
-  }
+const recipientArray = z.array(z.string().trim().min(1).max(512)).max(1000)
+const cloudflareReceiptSchema = z.object({
+  success: z.boolean(),
+  errors: z.array(z.object({ code: z.number().int().optional() })).max(100).optional(),
+  result: z.object({
+    message_id: z.string().trim().min(1).max(998).optional(),
+    delivered: recipientArray.optional(), queued: recipientArray.optional(), permanent_bounces: recipientArray.optional(),
+  }).optional(),
+})
+type CloudflareRestResponse = z.infer<typeof cloudflareReceiptSchema>
+
+function indeterminateMailWrite() {
+  return cloudflareDispositionError("E_PROVIDER_WRITE_INDETERMINATE", "Mail provider acceptance is unknown; reconcile before resending")
 }
 
 function cloudflareRestError(status: number, body: CloudflareRestResponse | null) {
   const firstError = body?.errors?.[0]
-  const message = firstError?.message || `Cloudflare Email REST API failed with HTTP ${status}`
+  const message = `Cloudflare Email REST API rejected the request with HTTP ${status}`
   return Object.assign(new Error(message), {
     code: firstError?.code != null ? String(firstError.code) : String(status),
     responseCode: status,
@@ -308,10 +325,11 @@ function validateCloudflareRestDisposition(
 
   if (requested.size === 0 || !result || (!messageId && !hasDispositionArrays)) {
     throw cloudflareDispositionError(
-      "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
+      "E_PROVIDER_WRITE_INDETERMINATE",
       "Cloudflare Email REST API returned incomplete delivery evidence",
     )
   }
+  if (bouncedRequested.length > 0 && [...requested].some((recipient) => accepted.has(recipient))) throw indeterminateMailWrite()
   if (bouncedRequested.length > 0) {
     throw cloudflareDispositionError(
       "E_CLOUDFLARE_PERMANENT_BOUNCE",
@@ -328,7 +346,7 @@ function validateCloudflareRestDisposition(
     return { messageId: undefined }
   }
   throw cloudflareDispositionError(
-    "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
+    "E_PROVIDER_WRITE_INDETERMINATE",
     "Cloudflare Email REST API did not account for every requested recipient",
     undefined,
     messageId,
@@ -365,13 +383,26 @@ function cloudflareDispositionError(
   })
 }
 
-export function normalizeProviderResponse(info: unknown): MailProviderSuccess {
-  const maybeInfo = info && typeof info === "object" ? info as { messageId?: unknown } : {}
-  const messageId = typeof maybeInfo.messageId === "string" ? maybeInfo.messageId : undefined
-  return {
-    provider: "cloudflare-smtp",
-    ...(messageId ? { providerMessageId: messageId } : {}),
+const smtpReceiptSchema = z.object({
+  messageId: z.string().trim().min(1).max(998),
+  accepted: recipientArray,
+  rejected: recipientArray,
+})
+
+export function normalizeProviderResponse(info: unknown, recipients: string | string[]): MailProviderSuccess {
+  const parsed = smtpReceiptSchema.safeParse(info)
+  if (!parsed.success) throw indeterminateMailWrite()
+  const requested = normalizeEmailSet((Array.isArray(recipients) ? recipients : [recipients])
+    .flatMap((value) => addressparser(value, { flatten: true }).map((address) => address.address)))
+  const accepted = normalizeEmailSet(parsed.data.accepted)
+  const rejected = normalizeEmailSet(parsed.data.rejected)
+  if (requested.size === 0 || [...requested].some((recipient) => !accepted.has(recipient) || rejected.has(recipient))) {
+    if (accepted.size === 0 && [...requested].every((recipient) => rejected.has(recipient))) {
+      throw cloudflareDispositionError("E_SMTP_RECIPIENT_REJECTED", "SMTP rejected every requested recipient", 550, parsed.data.messageId)
+    }
+    throw indeterminateMailWrite()
   }
+  return { provider: "cloudflare-smtp", providerMessageId: parsed.data.messageId }
 }
 
 export function normalizeProviderError(error: unknown, provider = "cloudflare-smtp"): MailProviderError {
@@ -421,6 +452,7 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
     await enforceMailPolicy(opts, category, from, now)
     const provider = deps.provider ?? createCloudflareEmailProvider()
     providerName = provider.provider
+    const controller = new AbortController()
     const result = await withTimeout(provider.send({
       from,
       to: opts.to,
@@ -429,7 +461,8 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
       text: opts.text,
       replyTo: opts.replyTo,
       headers: buildMailHeaders(opts.listUnsubscribe),
-    }), sendTimeoutMs, provider.provider)
+      signal: controller.signal,
+    }), sendTimeoutMs, controller)
     const timestamp = now().toISOString()
     await logMailDelivery(opts.payload, {
       flow: intent,
@@ -516,8 +549,8 @@ async function enforceMailPolicy(opts: SendEmailOptions, category: MailCategory,
       throw new MailPolicyBlockedError("missing_subscription", "Tenant operational email requires one subscribed recipient")
     }
     const recipient = normalizePolicyEmail(opts.to)
-    const payload = opts.payload as unknown as Payload
-    const subscriptions = await payload.find({
+    const find = opts.payload.find.bind(opts.payload)
+    const subscriptions = await find({
       collection: "tenant-notification-subscriptions",
       where: { and: [
         { tenant: { equals: formatTenantRef(opts.tenant) } },
@@ -546,7 +579,7 @@ async function enforceMailPolicy(opts: SendEmailOptions, category: MailCategory,
     if (needsPreference) throw new MailPolicyBlockedError("preference_blocked", "Optional email requires an effective recipient preference")
     return
   }
-  const preference = await findCommunicationPreference(opts.payload as unknown as Payload, opts.preferenceSubject)
+  const preference = await findCommunicationPreference({ find: opts.payload.find.bind(opts.payload) }, opts.preferenceSubject)
   if (preference?.suppressed === true) {
     throw new MailPolicyBlockedError("suppressed", "Recipient is suppressed")
   }
@@ -591,14 +624,12 @@ function normalizePolicyEmail(value: string | undefined) {
   return value?.trim().toLowerCase() ?? ""
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, provider: string): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, controller: AbortController): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
-      const error = Object.assign(
-        new Error(`${provider} send timed out after ${timeoutMs}ms`),
-        { code: "ETIMEDOUT" },
-      )
+      const error = indeterminateMailWrite()
+      controller.abort(error)
       reject(error)
     }, timeoutMs)
   })
@@ -658,6 +689,7 @@ function classifyRetryState({
   code?: string
   message: string
 }): MailRetryState {
+  if (code === "E_PROVIDER_WRITE_INDETERMINATE") return "permanent"
   if (message.includes("E_SENDER_NOT_VERIFIED") || message.includes("E_SENDER_DOMAIN_NOT_AVAILABLE")) {
     return "permanent"
   }

@@ -1,8 +1,7 @@
-import type { Access, Where } from "payload"
-import type { User } from "@/payload-types"
+import type { Access, AccessResult } from "payload"
 
-export const canManageUsers: Access = ({ req }) => {
-  const u = req.user as User | null
+export const canManageUsers: Access<unknown> = ({ req }): AccessResult => {
+  const u = req.user
   if (!u) return false
   if (u.role === "super-admin") return true
   if (u.role === "owner") {
@@ -14,7 +13,7 @@ export const canManageUsers: Access = ({ req }) => {
     if (tenantId == null) return false
     // Filter users whose `tenants[].tenant` includes this tenantId. Payload's
     // query syntax supports dot-paths into array fields.
-    return { "tenants.tenant": { equals: tenantId } } as unknown as Where
+    return { "tenants.tenant": { equals: tenantId } }
   }
-  return { id: { equals: u.id } } as Where
+  return { id: { equals: u.id } }
 }

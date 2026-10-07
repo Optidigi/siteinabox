@@ -4,64 +4,63 @@ import {
   parseRendererAliasArgs,
   type RendererAliasOptions,
 } from "../../scripts/ensure-renderer-domain-alias"
-import { asPayload } from "../_helpers/mockPayload"
+import type { Tenant } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, siteSettingsFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { asDocRecord } from "../_helpers/payloadApi"
 
 type TestInput = {
   tenantDomain?: string
-  tenantStatus?: string
+  tenantStatus?: Tenant["status"]
   aliases?: Array<{ host: string; id?: string }>
   otherTenantDomain?: string
   otherAliases?: Array<{ host: string }>
 }
 
 const setup = (input: TestInput = {}) => {
-  const tenant = {
+  const tenant = tenantFixture({
     id: 10,
     domain: input.tenantDomain ?? "ami-care.nl",
     status: input.tenantStatus ?? "active",
-  }
-  const settings = {
+  })
+  const settings = siteSettingsFixture({
     id: 20,
     tenant: tenant.id,
     siteName: "Ami Care",
     siteUrl: "https://ami-care.nl",
     aliases: input.aliases ?? [],
-  }
+  })
   const otherTenant = input.otherTenantDomain
-    ? { id: 11, domain: input.otherTenantDomain, status: "active" }
+    ? tenantFixture({ id: 11, domain: input.otherTenantDomain, status: "active" })
     : null
-  const otherSettings = {
+  const otherSettings = siteSettingsFixture({
     id: 21,
     tenant: 11,
     siteName: "Other",
     siteUrl: "https://other.test",
     aliases: input.otherAliases ?? [],
-  }
+  })
 
-  const payload = {
-    find: vi.fn(async (args: { collection: string; where?: unknown }) => {
-      if (args.collection === "tenants") {
-        const expected = (
-          args.where as { domain?: { equals?: string } } | undefined
-        )?.domain?.equals
-        return {
-          docs: [tenant, otherTenant].filter(
-            (candidate) => candidate?.domain === expected,
-          ),
-        }
-      }
-      if (args.collection === "site-settings" && args.where) return { docs: [settings] }
-      if (args.collection === "site-settings") return { docs: [settings, otherSettings] }
-      return { docs: [] }
-    }),
-    update: vi.fn(async (args: { data: { aliases: Array<{ host: string }> } }) => {
-      settings.aliases = args.data.aliases
-      return settings
-    }),
-  }
+  const payload = createTestPayload()
+  const find = vi.spyOn(payload, "find").mockImplementation(async args => {
+    if (args.collection === "tenants") {
+      const expected = asDocRecord(args.where?.domain ?? {}).equals
+      return paginatedFixture([tenant, otherTenant].filter((candidate): candidate is Tenant => candidate !== null && candidate.domain === expected))
+    }
+    if (args.collection === "site-settings") return paginatedFixture(args.where ? [settings] : [settings, otherSettings])
+    throw new Error(`Unexpected collection ${args.collection}`)
+  })
+  const update = vi.spyOn(payload, "update").mockImplementation(async args => {
+    if (args.collection !== "site-settings" || !("aliases" in args.data) || !Array.isArray(args.data.aliases)) throw new Error("Expected alias update")
+    settings.aliases = args.data.aliases.map(entry => {
+      if (!entry || typeof entry.host !== "string") throw new Error("Expected alias host")
+      return { host: entry.host, ...(typeof entry.id === "string" ? { id: entry.id } : {}) }
+    })
+    return settings
+  })
   const resolver = vi.fn(async (_payload, host: string) => {
     const isCanonical = host === tenant.domain
-    const isAlias = settings.aliases.some((entry) => entry.host === host)
+    const isAlias = (settings.aliases ?? []).some((entry) => entry.host === host)
     if (!isCanonical && !isAlias) return null
     return {
       tenant: { id: tenant.id, slug: "ami-care", domain: tenant.domain, status: "active" },
@@ -69,7 +68,7 @@ const setup = (input: TestInput = {}) => {
         version: 1 as const,
         requestedHost: host,
         canonicalHost: tenant.domain,
-        activeHosts: [tenant.domain, ...settings.aliases.map(({ host: alias }) => alias)],
+        activeHosts: [tenant.domain, ...(settings.aliases ?? []).map(({ host: alias }) => alias)],
       },
       snapshot: {},
       snapshotId: 30,
@@ -77,8 +76,8 @@ const setup = (input: TestInput = {}) => {
   })
 
   return {
-    payload: asPayload(payload),
-    payloadMock: payload,
+    payload,
+    payloadMock: { find, update },
     resolver,
     settings,
   }

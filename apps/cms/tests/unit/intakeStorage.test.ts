@@ -3,7 +3,9 @@ import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 
 import { asMockDoc } from "../_helpers/cast"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import type { Config } from "@/payload-types"
+import { createGeneratedPayloadStore } from "../_helpers/generatedPayloadStore"
+import type { MockDoc } from "../_helpers/mockPayload"
 
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
@@ -20,39 +22,14 @@ vi.mock("@/lib/email/sendEmail", async () => {
 
 import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
 
-const createPayloadStub = () => {
-  let nextId = 1
-  type CollectionSlug = "intake-submissions" | "site-generation-runs" | "communication-preferences" | "communication-preference-events"
-  const store: Record<CollectionSlug, MockDoc[]> = {
-    "intake-submissions": [],
-    "site-generation-runs": [],
-    "communication-preferences": [],
-    "communication-preference-events": [],
+const createPayloadStub = async () => {
+  type Collection = "intake-submissions" | "site-generation-runs" | "communication-preferences" | "communication-preference-events"
+  const store: { [C in Collection]: Config["collections"][C][] } = {
+    "intake-submissions": [], "site-generation-runs": [], "communication-preferences": [], "communication-preference-events": [],
   }
-  const stubs = {
-    db: {
-      beginTransaction: async () => "tx-intake",
-      commitTransaction: async () => undefined,
-      rollbackTransaction: async () => undefined,
-    },
-    find: async (args: MockFindArgs) => {
-      const docs = store[args.collection as CollectionSlug].filter((doc) => matchesWhere(doc, args.where))
-      return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }
-    },
-    create: async (args: MockCreateArgs) => {
-      const doc = { ...args.data, id: nextId++ }
-      store[args.collection as CollectionSlug].push(doc)
-      return doc
-    },
-    update: async (args: MockUpdateArgs) => {
-      const doc = store[args.collection as CollectionSlug].find((entry) => String(entry.id) === String(args.id))
-      if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
-      Object.assign(doc, args.data)
-      return doc
-    },
-    logger: { warn: vi.fn() },
-  }
-  return { payload: Object.assign(asPayload(stubs), stubs), store }
+  const { payload } = await createGeneratedPayloadStore({ collections: store, nextId: 1 })
+  vi.spyOn(payload.logger, "warn")
+  return { payload, store }
 }
 
 const rawIntake = (): PublicIntakeSubmission => ({
@@ -159,7 +136,7 @@ describe("storeIntakeSubmission", () => {
   })
 
   it("stores raw and normalized public intake without creating a generation run", async () => {
-    const { payload, store } = createPayloadStub()
+    const { payload, store } = await createPayloadStub()
 
     const result = await storeIntakeSubmission(payload, rawIntake())
 
@@ -210,7 +187,7 @@ describe("storeIntakeSubmission", () => {
   })
 
   it("reuses the staged intake record for the same raw and normalized body", async () => {
-    const { payload, store } = createPayloadStub()
+    const { payload, store } = await createPayloadStub()
 
     const first = await storeIntakeSubmission(payload, rawIntake())
     const second = await storeIntakeSubmission(payload, rawIntake())
@@ -224,7 +201,7 @@ describe("storeIntakeSubmission", () => {
   })
 
   it("keeps intake storage non-blocking when internal notification fails", async () => {
-    const { payload, store } = createPayloadStub()
+    const { payload, store } = await createPayloadStub()
     mocks.sendEmail.mockRejectedValueOnce(new Error("smtp down"))
 
     const result = await storeIntakeSubmission(payload, rawIntake())

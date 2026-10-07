@@ -9,26 +9,26 @@ const tenant = {
 
 describe("PostHog tenant enrollment", () => {
   it("derives both public and CMS URLs only for verified production domains", () => {
-    expect(tenantAnalyticsAppUrls(tenant as never)).toEqual([
+    expect(tenantAnalyticsAppUrls(tenant)).toEqual([
       "https://ami-care.nl",
       "https://admin.siteinabox.nl",
     ])
-    expect(tenantAnalyticsAppUrls({ ...tenant, domain: "demo.localhost" } as never)).toEqual([])
-    expect(tenantAnalyticsAppUrls({ ...tenant, domainVerification: { status: "failed" } } as never)).toEqual([])
+    expect(tenantAnalyticsAppUrls({ ...tenant, domain: "demo.localhost" })).toEqual([])
+    expect(tenantAnalyticsAppUrls({ ...tenant, domainVerification: { status: "failed" } })).toEqual([])
   })
 
   it("merges new tenant URLs without deleting existing project URLs", async () => {
-    const fetchImpl = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ app_urls: ["https://siteinabox.nl"] }) })
-      .mockResolvedValueOnce({ ok: true })
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ app_urls: ["https://siteinabox.nl"] }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
 
-    await expect(ensureTenantPostHogEnrollment(tenant as never, {
+    await expect(ensureTenantPostHogEnrollment(tenant, {
       env: {
         POSTHOG_HOST: "https://eu.posthog.com/",
         POSTHOG_PROJECT_ID: "123",
         POSTHOG_PERSONAL_API_KEY: "test-only-key",
       },
-      fetchImpl: fetchImpl as never,
+      fetchImpl: fetchImpl,
     })).resolves.toBe("updated")
 
     expect(fetchImpl).toHaveBeenCalledTimes(2)
@@ -39,17 +39,14 @@ describe("PostHog tenant enrollment", () => {
   })
 
   it("is fail-closed without credentials and idempotent when URLs already exist", async () => {
-    const absentFetch = vi.fn()
-    await expect(ensureTenantPostHogEnrollment(tenant as never, { env: {}, fetchImpl: absentFetch as never })).resolves.toBe("skipped")
+    const absentFetch = vi.fn<typeof fetch>()
+    await expect(ensureTenantPostHogEnrollment(tenant, { env: {}, fetchImpl: absentFetch })).resolves.toBe("skipped")
     expect(absentFetch).not.toHaveBeenCalled()
 
-    const fetchImpl = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ app_urls: ["https://ami-care.nl", "https://admin.siteinabox.nl"] }),
-    })
-    await expect(ensureTenantPostHogEnrollment(tenant as never, {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ app_urls: ["https://ami-care.nl", "https://admin.siteinabox.nl"] }))
+    await expect(ensureTenantPostHogEnrollment(tenant, {
       env: { POSTHOG_PROJECT_ID: "123", POSTHOG_PERSONAL_API_KEY: "test-only-key" },
-      fetchImpl: fetchImpl as never,
+      fetchImpl: fetchImpl,
     })).resolves.toBe("unchanged")
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })

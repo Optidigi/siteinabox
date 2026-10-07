@@ -99,7 +99,9 @@ const providerReferenceOwner = async (
     overrideAccess: true,
   })
   const owner = result.docs.find(
-    (doc) => (doc as unknown as Record<string, unknown>)[field] === providerReference,
+    (doc) => "providerCustomerId" in doc && field === "providerCustomerId"
+      ? doc.providerCustomerId === providerReference
+      : "providerPaymentId" in doc && field === "providerPaymentId" && doc.providerPaymentId === providerReference,
   )
   return owner?.id ?? null
 }

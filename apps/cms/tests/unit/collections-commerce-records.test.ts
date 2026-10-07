@@ -1,3 +1,8 @@
+import type { ManagedDomain } from "@/payload-types"
+import { validRenewalCycle } from "../_helpers/commerceBuilders"
+import { managedDomainFixture, paymentAttemptFixture, billingAgreementFixture, commerceNotificationFixture, accountingDocumentFixture } from "../_helpers/generatedDocs"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
+import { userFixture } from "../_helpers/generatedDocs"
 import {
   billingAgreementStates,
   domainRenewalCycleStates,
@@ -30,7 +35,7 @@ import {
 import { Orders, protectFrozenOrder } from "@/collections/LegalRecords"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 
-import { accessArgs } from "../_helpers/accessArgs"
+import { accessArgs, fieldAccessArgs } from "../_helpers/accessArgs"
 import { hookArgsFor } from "../_helpers/hookFixtures"
 import {
   expectNamedField,
@@ -78,16 +83,16 @@ describe("Phase 2 commerce record schemas", () => {
   it("keeps commerce PII and financial records super-admin readable and forbids direct mutation", () => {
     for (const collection of commerceCollections) {
       expect(collection.access?.read?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       })), collection.slug).toBe(true)
       expect(collection.access?.read?.(accessArgs({
-        req: { user: { role: "owner" } },
+        req: { user: userFixture({ role: "owner" }) },
       })), collection.slug).toBe(false)
       expect(collection.access?.update?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       })), collection.slug).toBe(false)
       expect(collection.access?.delete?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       })), collection.slug).toBe(false)
     }
   })
@@ -202,16 +207,16 @@ describe("Phase 2 commerce record schemas", () => {
     }
     expect(expectNamedField(PaymentAttempts.fields, "attemptNumber")).toBeDefined()
     expect(CommerceNotificationDeliveries.hooks?.beforeChange).toContain(protectCommerceNotification)
-    expect(() => validateDomainRenewalCycle(hookArgsFor(validateDomainRenewalCycle, {
+    expect(() => { validateDomainRenewalCycle(hookArgsFor(validateDomainRenewalCycle, {
       operation: "create",
       data: {
         providerRenewalMode: "explicit_renew",
         providerAutorenew: "on",
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("domain-renewal-cycles"),
       context: {},
-    }))).toThrow("requires provider autorenew to be off")
+    })) }).toThrow("requires provider autorenew to be off")
   })
 
   it("uses the Phase 1 state contracts without collapsing lifecycle state", () => {
@@ -250,8 +255,8 @@ describe("Phase 2 commerce record schemas", () => {
         kvkNumber: "12345678",
         domainRegistrantSource: "contracting_party",
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("checkout-profiles"),
       context: {},
     }))).toMatchObject({ partyType: "registered_business" })
 
@@ -263,12 +268,12 @@ describe("Phase 2 commerce record schemas", () => {
         contractingPartyKind: "natural_person",
         domainRegistrantSource: "contracting_party",
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("checkout-profiles"),
       context: {},
     }))).toMatchObject({ partyType: "business_in_formation" })
 
-    expect(() => validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
+    expect(() => { validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
       operation: "create",
       data: {
         partyType: "business_in_formation",
@@ -276,11 +281,11 @@ describe("Phase 2 commerce record schemas", () => {
         contractingPartyKind: "natural_person",
         domainRegistrantSource: "contracting_party",
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("checkout-profiles"),
       context: {},
-    }))).toThrow("contracting-party")
-    expect(() => validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
+    })) }).toThrow("contracting-party")
+    expect(() => { validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
       operation: "create",
       data: {
         partyType: "registered_business",
@@ -288,19 +293,19 @@ describe("Phase 2 commerce record schemas", () => {
         contractingPartyKind: "natural_person",
         domainRegistrantSource: "contracting_party",
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("checkout-profiles"),
       context: {},
-    }))).toThrow("contracting-party")
+    })) }).toThrow("contracting-party")
 
-    expect(() => rejectCheckoutProfileMutation(hookArgsFor(rejectCheckoutProfileMutation, {
+    expect(() => { rejectCheckoutProfileMutation(hookArgsFor(rejectCheckoutProfileMutation, {
       operation: "update",
       data: { customerEmail: "changed@example.test" },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("checkout-profiles"),
       context: {},
-    }))).toThrow("immutable")
-    expect(() => validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
+    })) }).toThrow("immutable")
+    expect(() => { validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
       operation: "create",
       data: {
         profileVersion: 2,
@@ -312,30 +317,30 @@ describe("Phase 2 commerce record schemas", () => {
         actorEmail: "owner@example.test",
         sourceRequestId: "req-2",
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("checkout-profiles"),
       context: {},
-    }))).toThrow("superseded profile")
+    })) }).toThrow("superseded profile")
   })
 
   it("canonicalizes managed-domain identity before database uniqueness is applied", () => {
     expect(normalizeManagedDomain(hookArgsFor(normalizeManagedDomain, {
       operation: "create",
       data: { domainNameAscii: "BÜCHER.Example.NL.", tld: "NL" },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("managed-domains"),
       context: {},
     }))).toMatchObject({
       domainNameAscii: "xn--bcher-kva.example.nl",
       tld: "nl",
     })
-    expect(() => normalizeManagedDomain(hookArgsFor(normalizeManagedDomain, {
+    expect(() => { normalizeManagedDomain(hookArgsFor(normalizeManagedDomain, {
       operation: "create",
       data: { domainNameAscii: "example.nl", tld: "com" },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("managed-domains"),
       context: {},
-    }))).toThrow("TLD must match")
+    })) }).toThrow("TLD must match")
   })
 
   it("keeps offboarding custody audited and transfer secrets hidden", () => {
@@ -350,20 +355,20 @@ describe("Phase 2 commerce record schemas", () => {
       "encryptedTransferOutCode",
     )
     expect(secret).toMatchObject({ type: "textarea" })
-    expect("access" in secret && secret.access?.read?.({} as never)).toBe(false)
-    expect(() => validateManagedDomainCustody(
+    expect("access" in secret && secret.access?.read?.(fieldAccessArgs({}))).toBe(false)
+    expect(() => { validateManagedDomainCustody(
       hookArgsFor(validateManagedDomainCustody, {
         operation: "update",
         data: {
           domainNameAscii: "example.nl",
           custodyStatus: "transfer_code_ready",
         },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("managed-domains"),
         context: {},
       }),
-    )).toThrow("immutable customer and continuity evidence")
-    const registrantDelivery = {
+    ) }).toThrow("immutable customer and continuity evidence")
+    const registrantDelivery: Partial<ManagedDomain> = {
       domainNameAscii: "example.be",
       custodyStatus: "transfer_code_ready",
       offboardingRequestedAt: "2026-07-28T10:00:00.000Z",
@@ -391,36 +396,36 @@ describe("Phase 2 commerce record schemas", () => {
       hookArgsFor(validateManagedDomainCustody, {
         operation: "update",
         data: registrantDelivery,
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("managed-domains"),
         context: {},
       }),
     )).toMatchObject(registrantDelivery)
-    expect(() => validateManagedDomainCustody(
+    expect(() => { validateManagedDomainCustody(
       hookArgsFor(validateManagedDomainCustody, {
         operation: "update",
         data: {
           ...registrantDelivery,
           transferOutCodeDeliveryStatus: "provider_returned",
         },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("managed-domains"),
         context: {},
       }),
-    )).toThrow("requires an encrypted auth code")
-    expect(() => protectManagedDomain(hookArgsFor(protectManagedDomain, {
+    ) }).toThrow("requires an encrypted auth code")
+    expect(() => { protectManagedDomain(hookArgsFor(protectManagedDomain, {
       operation: "update",
       data: { custodyStatus: "managed" },
-      originalDoc: {
+      originalDoc: managedDomainFixture({
         state: "active",
         custodyStatus: "transferred_out",
-      },
-      req: { context: { managedDomainLifecycleMutation: true } },
-      collection: {},
+      }),
+      req: hookRequest({ context: { managedDomainLifecycleMutation: true } }),
+      collection: hookCollection("managed-domains"),
       context: {},
-    }))).toThrow("Invalid managed-domain custody transition")
+    })) }).toThrow("Invalid managed-domain custody transition")
 
-    expect(() => validateManagedDomainCustody(
+    expect(() => { validateManagedDomainCustody(
       hookArgsFor(validateManagedDomainCustody, {
         operation: "update",
         data: {
@@ -444,24 +449,24 @@ describe("Phase 2 commerce record schemas", () => {
           transferOutCustomerConfirmedAt: "2026-07-28T10:01:00.000Z",
           encryptedTransferOutCode: null,
         },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("managed-domains"),
         context: {},
       }),
-    )).toThrow("two time-separated provider observations")
+    ) }).toThrow("two time-separated provider observations")
 
-    expect(() => protectManagedDomain(hookArgsFor(protectManagedDomain, {
+    expect(() => { protectManagedDomain(hookArgsFor(protectManagedDomain, {
       operation: "update",
       data: { transferOutConfirmedAt: "2026-07-28T11:00:00.000Z" },
-      originalDoc: {
+      originalDoc: managedDomainFixture({
         state: "active",
         custodyStatus: "transferred_out",
         transferOutConfirmedAt: "2026-07-28T10:30:00.000Z",
-      },
-      req: { context: { managedDomainLifecycleMutation: true } },
-      collection: {},
+      }),
+      req: hookRequest({ context: { managedDomainLifecycleMutation: true } }),
+      collection: hookCollection("managed-domains"),
       context: {},
-    }))).toThrow("terminal transfer field")
+    })) }).toThrow("terminal transfer field")
   })
 
   it("requires integer non-negative minor currency amounts", () => {
@@ -480,49 +485,54 @@ describe("Phase 2 commerce record schemas", () => {
   })
 
   it("allows only reviewed lifecycle fields through collection-specific system contexts", () => {
-    expect(() => protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
+    expect(() => { protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",
       data: { state: "paid" },
-      req: { context: {} },
-      collection: {},
+      req: hookRequest({ context: {} }),
+      collection: hookCollection("payment-attempts"),
       context: {},
-    }))).toThrow("payment-attempt lifecycle")
+    })) }).toThrow("payment-attempt lifecycle")
     expect(protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",
       data: { state: "paid", paidAt: "2026-07-26T12:00:00.000Z" },
-      originalDoc: { state: "pending_provider" },
-      req: { context: { paymentAttemptLifecycleMutation: true } },
-      collection: {},
+      originalDoc: paymentAttemptFixture({ state: "pending_provider" }),
+      req: hookRequest({ context: { paymentAttemptLifecycleMutation: true } }),
+      collection: hookCollection("payment-attempts"),
       context: {},
     }))).toMatchObject({ state: "paid" })
-    expect(() => protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
+    expect(() => { protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",
       data: { grossAmountMinor: 1 },
-      originalDoc: { state: "created", grossAmountMinor: 2_299 },
-      req: { context: { paymentAttemptLifecycleMutation: true } },
-      collection: {},
+      originalDoc: paymentAttemptFixture({ state: "created", grossAmountMinor: 2_299 }),
+      req: hookRequest({ context: { paymentAttemptLifecycleMutation: true } }),
+      collection: hookCollection("payment-attempts"),
       context: {},
-    }))).toThrow('field "grossAmountMinor" is immutable')
+    })) }).toThrow('field "grossAmountMinor" is immutable')
 
-    for (const [hook, contextKey, currentState, nextState] of [
-      [protectBillingAgreement, "billingAgreementLifecycleMutation", "active", "past_due"],
-      [protectManagedDomain, "managedDomainLifecycleMutation", "active", "manual_review"],
-      [
-        protectDomainRenewalCycle,
-        "domainRenewalCycleLifecycleMutation",
-        "provider_requested",
-        "manual_review",
-      ],
-    ] as const) {
-      expect(hook(hookArgsFor(hook, {
-        operation: "update",
-        data: { state: nextState },
-        originalDoc: { state: currentState },
-        req: { context: { [contextKey]: true } },
-        collection: {},
-        context: {},
-      }))).toMatchObject({ state: nextState })
-    }
+    expect(protectBillingAgreement(hookArgsFor(protectBillingAgreement, {
+      operation: "update",
+      data: { state: "past_due" },
+      originalDoc: billingAgreementFixture({ state: "active" }),
+      req: hookRequest({ context: { billingAgreementLifecycleMutation: true } }),
+      collection: hookCollection("billing-agreements"),
+      context: {},
+    }))).toMatchObject({ state: "past_due" })
+    expect(protectManagedDomain(hookArgsFor(protectManagedDomain, {
+      operation: "update",
+      data: { state: "manual_review" },
+      originalDoc: managedDomainFixture({ state: "active" }),
+      req: hookRequest({ context: { managedDomainLifecycleMutation: true } }),
+      collection: hookCollection("managed-domains"),
+      context: {},
+    }))).toMatchObject({ state: "manual_review" })
+    expect(protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
+      operation: "update",
+      data: { state: "manual_review" },
+      originalDoc: validRenewalCycle({ state: "provider_requested" }),
+      req: hookRequest({ context: { domainRenewalCycleLifecycleMutation: true } }),
+      collection: hookCollection("domain-renewal-cycles"),
+      context: {},
+    }))).toMatchObject({ state: "manual_review" })
 
     for (const [currentState, nextState] of [
       ["scheduled", "payment_committed"],
@@ -535,9 +545,9 @@ describe("Phase 2 commerce record schemas", () => {
       expect(protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
         operation: "update",
         data: { state: nextState },
-        originalDoc: { state: currentState },
-        req: { context: { domainRenewalCycleLifecycleMutation: true } },
-        collection: {},
+        originalDoc: validRenewalCycle({ state: currentState }),
+        req: hookRequest({ context: { domainRenewalCycleLifecycleMutation: true } }),
+        collection: hookCollection("domain-renewal-cycles"),
         context: {},
       }))).toMatchObject({ state: nextState })
     }
@@ -545,9 +555,9 @@ describe("Phase 2 commerce record schemas", () => {
     expect(protectCommerceNotification(hookArgsFor(protectCommerceNotification, {
       operation: "update",
       data: { status: "cancelled" },
-      originalDoc: { status: "processing" },
-      req: { context: { commerceNotificationLifecycleMutation: true } },
-      collection: {},
+      originalDoc: commerceNotificationFixture({ status: "processing" }),
+      req: hookRequest({ context: { commerceNotificationLifecycleMutation: true } }),
+      collection: hookCollection("commerce-notification-deliveries"),
       context: {},
     }))).toMatchObject({ status: "cancelled" })
 
@@ -558,68 +568,68 @@ describe("Phase 2 commerce record schemas", () => {
         providerOperationId: "re_test",
         issuedAt: "2026-07-26T12:00:00.000Z",
       },
-      originalDoc: { state: "pending_provider" },
-      req: { context: { accountingDocumentLifecycleMutation: true } },
-      collection: {},
+      originalDoc: accountingDocumentFixture({ state: "pending_provider" }),
+      req: hookRequest({ context: { accountingDocumentLifecycleMutation: true } }),
+      collection: hookCollection("accounting-documents"),
       context: {},
     }))).toMatchObject({ state: "issued", providerOperationId: "re_test" })
-    expect(() => protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
+    expect(() => { protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
       operation: "update",
       data: { grossAmountMinor: 1 },
-      originalDoc: { state: "pending_provider", grossAmountMinor: 2_299 },
-      req: { context: { accountingDocumentLifecycleMutation: true } },
-      collection: {},
+      originalDoc: accountingDocumentFixture({ state: "pending_provider", grossAmountMinor: 2_299 }),
+      req: hookRequest({ context: { accountingDocumentLifecycleMutation: true } }),
+      collection: hookCollection("accounting-documents"),
       context: {},
-    }))).toThrow('field "grossAmountMinor" is immutable')
-    expect(() => protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
+    })) }).toThrow('field "grossAmountMinor" is immutable')
+    expect(() => { protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
       operation: "update",
       data: { providerOperationId: "re_replaced" },
-      originalDoc: {
+      originalDoc: accountingDocumentFixture({
         state: "issued",
         providerOperationId: "re_original",
         issuedAt: "2026-07-26T12:00:00.000Z",
-      },
-      req: { context: { accountingDocumentLifecycleMutation: true } },
-      collection: {},
+      }),
+      req: hookRequest({ context: { accountingDocumentLifecycleMutation: true } }),
+      collection: hookCollection("accounting-documents"),
       context: {},
-    }))).toThrow('field "providerOperationId" is immutable')
-    expect(() => protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
+    })) }).toThrow('field "providerOperationId" is immutable')
+    expect(() => { protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
       operation: "update",
       data: { pricingEvidence: { providerOperationPriceNetMinor: 1 } },
-      originalDoc: {
+      originalDoc: validRenewalCycle({
         state: "payment_required",
         pricingEvidence: { providerOperationPriceNetMinor: 800 },
-      },
-      req: { context: { domainRenewalCycleLifecycleMutation: true } },
-      collection: {},
+      }),
+      req: hookRequest({ context: { domainRenewalCycleLifecycleMutation: true } }),
+      collection: hookCollection("domain-renewal-cycles"),
       context: {},
-    }))).toThrow('field "pricingEvidence" is immutable')
+    })) }).toThrow('field "pricingEvidence" is immutable')
     expect(protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
       operation: "update",
       data: {
         state: "payment_required",
         pricingEvidence: { providerOperationPriceNetMinor: 1_200 },
       },
-      originalDoc: {
+      originalDoc: validRenewalCycle({
         state: "scheduled",
         pricingEvidence: { providerOperationPriceNetMinor: 800 },
-      },
-      req: { context: { domainRenewalCycleLifecycleMutation: true } },
-      collection: {},
+      }),
+      req: hookRequest({ context: { domainRenewalCycleLifecycleMutation: true } }),
+      collection: hookCollection("domain-renewal-cycles"),
       context: {},
     }))).toMatchObject({
       state: "payment_required",
       pricingEvidence: { providerOperationPriceNetMinor: 1_200 },
     })
 
-    expect(() => protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
+    expect(() => { protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",
       data: { state: "created" },
-      originalDoc: { state: "paid" },
-      req: { context: { paymentAttemptLifecycleMutation: true } },
-      collection: {},
+      originalDoc: paymentAttemptFixture({ state: "paid" }),
+      req: hookRequest({ context: { paymentAttemptLifecycleMutation: true } }),
+      collection: hookCollection("payment-attempts"),
       context: {},
-    }))).toThrow("paid -> created")
+    })) }).toThrow("paid -> created")
   })
 
   it("extends Orders while retaining legacy order and generation-run read projections", () => {
@@ -659,16 +669,16 @@ describe("Phase 2 commerce record schemas", () => {
     expect(protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { state: "fulfillment_pending" },
-      req: { context: { legalOrderLifecycleMutation: true } },
-      collection: {},
+      req: hookRequest({ context: { legalOrderLifecycleMutation: true } }),
+      collection: hookCollection("orders"),
       context: {},
     }))).toMatchObject({ state: "fulfillment_pending" })
-    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
+    expect(() => { protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { catalogVersion: "changed" },
-      req: { context: { legalOrderLifecycleMutation: true } },
-      collection: {},
+      req: hookRequest({ context: { legalOrderLifecycleMutation: true } }),
+      collection: hookCollection("orders"),
       context: {},
-    }))).toThrow('field "catalogVersion" is immutable')
+    })) }).toThrow('field "catalogVersion" is immutable')
   })
 })

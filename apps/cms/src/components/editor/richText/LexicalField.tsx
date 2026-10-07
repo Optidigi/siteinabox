@@ -52,7 +52,6 @@ export const LexicalField: React.FC<LexicalFieldProps> = ({ value, onChange, man
     theme: buildEditorTheme(),
     editorState: JSON.stringify(rtToLexicalJson(initialValue, manifest)),
     onError: (e: Error) => { throw e },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [variant])
   // Note: initialValue is captured at first mount only. Lexical owns the state thereafter.
 

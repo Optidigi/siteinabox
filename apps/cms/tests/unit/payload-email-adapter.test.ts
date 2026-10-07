@@ -10,7 +10,7 @@ vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
   }
 })
 
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
 import { payloadEmailAdapter, htmlToPlainText } from "@/lib/email/payloadEmailAdapter"
 
 describe("Payload Cloudflare email adapter", () => {
@@ -18,7 +18,7 @@ describe("Payload Cloudflare email adapter", () => {
 
   it("delegates lazily to the shared auth.password_reset transport with text and logging", async () => {
     mocks.sendEmail.mockResolvedValue({ provider: "cloudflare-rest" })
-    const payload = asPayload({ create: vi.fn(), logger: { warn: vi.fn() } })
+    const payload = createTestPayload()
     const adapter = payloadEmailAdapter({ payload })
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
@@ -43,7 +43,7 @@ describe("Payload Cloudflare email adapter", () => {
   })
 
   it("preserves recipient addresses in Nodemailer's nested input lists", async () => {
-    const payload = asPayload({ create: vi.fn(), logger: { warn: vi.fn() } })
+    const payload = createTestPayload()
     await payloadEmailAdapter({ payload }).sendEmail({
       to: ["first@example.nl", [{ name: "Second", address: "second@example.nl" }]],
       subject: "Fixture", html: "<p>Fixture</p>",
@@ -52,7 +52,7 @@ describe("Payload Cloudflare email adapter", () => {
   })
 
   it("rejects an address-less input before calling the transport", async () => {
-    const payload = asPayload({ create: vi.fn(), logger: { warn: vi.fn() } })
+    const payload = createTestPayload()
     await expect(payloadEmailAdapter({ payload }).sendEmail({
       to: { name: "Missing address" }, subject: "Fixture", html: "<p>Fixture</p>",
     })).rejects.toThrow("recipient address")

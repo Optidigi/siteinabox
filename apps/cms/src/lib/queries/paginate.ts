@@ -17,32 +17,24 @@
 export const DEFAULT_PAGE_SIZE = 50 as const
 export const MAX_PAGE_SIZE = 250 as const
 
-import type { Where } from "payload"
+import type { CollectionSlug, DataFromCollectionSlug, FindOptions, PaginatedDocs } from "payload"
 
-export interface PayloadFindArgs {
-  collection: string
-  where?: Where
-  sort?: string
-  depth?: number
-  overrideAccess?: boolean
-  page?: number
-  limit?: number
+// A deliberately narrow Local API surface: no select/draft transforms, and
+// the collection slug determines the document type through generated Payload types.
+export type PayloadFindArgs<C extends CollectionSlug = CollectionSlug> = Pick<
+  FindOptions<C, never>,
+  "collection" | "where" | "sort" | "depth" | "overrideAccess" | "page" | "limit" | "user" | "req"
+>
+
+export type PayloadFindResult<T> = PaginatedDocs<T> & { page: number }
+
+/** List UI always receives a page number, even when Payload omits its optional field. */
+export function normaliseFindResult<T>(result: PaginatedDocs<T>): PayloadFindResult<T> {
+  return { ...result, page: result.page ?? 1 }
 }
 
-export interface PayloadFindResult<T = unknown> {
-  docs: T[]
-  totalDocs: number
-  totalPages: number
-  page: number
-  limit: number
-  hasNextPage: boolean
-  hasPrevPage: boolean
-  nextPage: number | null
-  prevPage: number | null
-}
-
-export interface PayloadLikeFindClient {
-  find<T = unknown>(args: PayloadFindArgs): Promise<PayloadFindResult<T>>
+export interface PayloadFindClient<C extends CollectionSlug = CollectionSlug> {
+  find<S extends C>(args: PayloadFindArgs<S>): Promise<PaginatedDocs<DataFromCollectionSlug<S>>>
 }
 
 export interface NormalisedPagination {
@@ -75,7 +67,7 @@ export function normalisePagination(opts?: { page?: number; pageSize?: number })
   return { page, limit }
 }
 
-export interface FindAllPaginatedArgs extends Omit<PayloadFindArgs, "page" | "limit"> {
+export type FindAllPaginatedArgs<C extends CollectionSlug> = Omit<PayloadFindArgs<C>, "page" | "limit"> & {
   /**
    * Per-page batch size during the walk. Defaults to
    * {@link DEFAULT_PAGE_SIZE}; capped at {@link MAX_PAGE_SIZE}. Higher
@@ -92,38 +84,43 @@ export interface FindAllPaginatedArgs extends Omit<PayloadFindArgs, "page" | "li
 
 /**
  * Walk every page of a Payload find query, returning the merged doc
- * list. Loops `page` from 1 until `hasNextPage === false` (or until
- * `maxPages` as a runaway guard).
+ * list. Loops `page` from 1 until `hasNextPage === false` (or rejects when
+ * the `maxPages` runaway guard is exhausted).
  *
  * The `where`, `sort`, `depth`, and `overrideAccess` are forwarded to
  * each underlying find call unchanged — tenant scope, sort order, and
  * access posture are preserved across the walk.
  */
-export async function findAllPaginated<T = unknown>(
-  payload: PayloadLikeFindClient,
-  args: FindAllPaginatedArgs,
-): Promise<T[]> {
+export async function findAllPaginated<C extends CollectionSlug>(
+  payload: PayloadFindClient<NoInfer<C>>,
+  args: FindAllPaginatedArgs<C>,
+): Promise<DataFromCollectionSlug<C>[]> {
   const limit =
     typeof args.pageSize === "number" && Number.isFinite(args.pageSize) && args.pageSize >= 1
       ? Math.min(Math.floor(args.pageSize), MAX_PAGE_SIZE)
       : DEFAULT_PAGE_SIZE
   const maxPages = args.maxPages ?? 1000
+  if (!Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 1000) {
+    throw new RangeError("Pagination page budget must be an integer between 1 and 1000")
+  }
 
-  const out: T[] = []
+  const out: DataFromCollectionSlug<C>[] = []
   let page = 1
   while (page <= maxPages) {
-    const res = await payload.find<T>({
+    const res = await payload.find({
       collection: args.collection,
       where: args.where,
       sort: args.sort,
       depth: args.depth,
       overrideAccess: args.overrideAccess,
+      user: args.user as unknown,
+      req: args.req,
       page,
       limit,
     })
-    if (Array.isArray(res.docs)) out.push(...res.docs)
-    if (!res.hasNextPage) return out
+    out.push(...res.docs)
+    if (res.hasNextPage === false) return out
     page += 1
   }
-  return out
+  throw new Error("Pagination walk exhausted before all documents were read")
 }

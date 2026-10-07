@@ -84,7 +84,8 @@ const referrerType = () => {
 
 const sanitizeSemanticProperties = (properties: object) => {
   const sanitized: Record<string, LandingEventValue> = {};
-  for (const [key, value] of Object.entries(properties)) {
+  for (const [key, rawValue] of Object.entries(properties)) {
+    const value: unknown = rawValue;
     if (!semanticPropertyKeys.has(key)) continue;
     if (value === null || typeof value === 'boolean' || typeof value === 'number') {
       sanitized[key] = value;
@@ -234,7 +235,6 @@ export const createLandingAnalyticsRuntime = (
     googleAnalyticsStarted = true;
     analyticsWindow.dataLayer = analyticsWindow.dataLayer ?? [];
     function gtag(this: void) {
-      // eslint-disable-next-line prefer-rest-params -- Google's gtag.js contract requires Arguments rows.
       analyticsWindow.dataLayer!.push(arguments);
     }
     analyticsWindow.gtag = analyticsWindow.gtag ?? gtag;
