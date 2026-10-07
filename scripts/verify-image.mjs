@@ -20,12 +20,11 @@ function docker(args, capture = false) {
   return execFileSync("docker", args, { encoding: "utf8", stdio: capture ? "pipe" : "inherit" })
 }
 
-async function health(url, validate) {
+async function health(probe) {
   const deadline = Date.now() + 120000
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(5000) })
-      if (response.ok && await validate(response)) return
+      if (await probe()) return
     } catch { /* Retry only within the bounded disposable-start window. */ }
     await setTimeout(2000)
   }
@@ -58,19 +57,27 @@ try {
       await setTimeout(1000)
     }
     if (!ready) throw new Error("Disposable image-smoke database did not start")
-    docker(["run", "--detach", "--name", container, "--network", network, "--publish", "127.0.0.1::3000",
+    docker(["run", "--detach", "--name", container, "--network", network,
       "--tmpfs", "/tmp/siab-data:mode=1777", "--env", "DATABASE_URI=postgres://payload:verification-only@postgres:5432/payload_test",
       "--env", "PAYLOAD_SECRET=verification-only-synthetic-secret", "--env", "DATA_DIR=/tmp/siab-data",
       "--env", "PAYLOAD_DISABLE_JOBS_AUTORUN=1", "--env", "SITE_GENERATION_PROVIDER=mock", image])
-    const port = docker(["port", container, "3000/tcp"], true).trim()
-    await health("http://" + port + "/api/health", async (response) => {
-      const result = await response.json()
+    // Probe the actual server inside its isolated network; internal-only
+    // networks need no host publication to prove the packaged health contract.
+    await health(async () => {
+      const probe = spawnSync("docker", ["exec", container, "node", "--input-type=module", "--eval",
+        'const response = await fetch("http://127.0.0.1:3000/api/health", { signal: AbortSignal.timeout(5000) }); if (!response.ok) process.exit(1); console.log(await response.text());'],
+        { encoding: "utf8", timeout: 10000 })
+      if (probe.error || probe.status !== 0) return false
+      const result = JSON.parse(probe.stdout)
       return result.status === "ok" && result.db === "connected" && result.dataDir === "writable" && result.revision === revision
     })
   } else {
     docker(["run", "--detach", "--name", container, "--publish", "127.0.0.1::80", image])
     const port = docker(["port", container, "80/tcp"], true).trim()
-    await health("http://" + port + "/", async (response) => (await response.text()).includes("<html"))
+    await health(async () => {
+      const response = await fetch("http://" + port + "/", { signal: AbortSignal.timeout(5000) })
+      return response.ok && (await response.text()).includes("<html")
+    })
   }
   await mkdir("artifacts", { recursive: true })
   await writeFile("artifacts/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,
