@@ -10,7 +10,12 @@ import {
 import { applyTenantAnalyticsConsentPolicy } from "@/lib/publish/siteSnapshots"
 
 import { asLegalDocumentDoc, asLegalRelease, asMockDoc, cast } from "../_helpers/cast"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs } from "../_helpers/mockPayload"
+import type { LegalDocument as StoredLegalDocument, LegalPublicationEvent, LegalRequirement } from "@/payload-types"
+import { createPayloadFixture, type PayloadFixtureMethod } from "../_helpers/payloadFixture"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { matchesWhere, type MockDoc } from "../_helpers/mockPayload"
+import { legalDocumentFixture, legalPublicationEventFixture, legalRequirementFixture, paginatedFixture, tenantFixture, userFixture } from "../_helpers/generatedDocs"
 import type { LegalCustomerAction, LegalDocument } from "@siteinabox/legal-content"
 const release = (customerAction: LegalCustomerAction, consentAction = "none", effectiveAt = "2026-08-01T00:00:00.000Z"): LegalDocument =>
   cast<LegalDocument>({
@@ -35,33 +40,25 @@ const release = (customerAction: LegalCustomerAction, consentAction = "none", ef
 
 const payloadStub = () => {
   let id = 1
-  const stores: Record<string, MockDoc[]> = {
-    "legal-documents": [],
-    "legal-publication-events": [],
-  }
-  const find = vi.fn(async ({ collection, where, sort }: MockFindArgs & { sort?: string }) => {
-    let docs = [...(stores[collection] ?? [])]
-    const whereRecord = (where ?? {}) as Record<string, unknown>
-    const clauses = Array.isArray(whereRecord.and)
-      ? whereRecord.and as Record<string, unknown>[]
-      : Object.entries(whereRecord).map(([field, condition]) => ({ [field]: condition }))
-    for (const clause of clauses) {
-      const [field, condition] = Object.entries(clause)[0] as [string, Record<string, unknown>]
-      if (condition.equals !== undefined) docs = docs.filter((doc) => doc[field] === condition.equals)
-      if (condition.less_than_equal !== undefined) {
-        docs = docs.filter((doc) => new Date(String(doc[field])) <= new Date(String(condition.less_than_equal)))
+  const stores: { "legal-documents": StoredLegalDocument[]; "legal-publication-events": LegalPublicationEvent[] } = { "legal-documents": [], "legal-publication-events": [] }
+  const payload = createPayloadFixture({
+    find: vi.fn<PayloadFixtureMethod<"find">>(async ({ collection, where, sort }) => {
+      const filter = (doc: StoredLegalDocument | LegalPublicationEvent) => matchesWhere(asDocRecord(doc), where)
+      if (collection === "legal-documents") {
+        const docs = stores[collection].filter(filter)
+        if (sort === "-effectiveAt") docs.sort((a,b) => new Date(b.effectiveAt).valueOf() - new Date(a.effectiveAt).valueOf())
+        return paginatedFixture(docs)
       }
-    }
-    if (sort === "-effectiveAt") docs.sort((a, b) => new Date(String(b.effectiveAt)).valueOf() - new Date(String(a.effectiveAt)).valueOf())
-    return { docs }
+      if (collection === "legal-publication-events") return paginatedFixture(stores[collection].filter(filter))
+      throw new Error("Unexpected collection " + collection)
+    }),
+    create: vi.fn<PayloadFixtureMethod<"create">>(async ({ collection, data }) => {
+      if (collection === "legal-documents") { const doc = legalDocumentFixture({ id: id++ }); Object.assign(doc, data); stores[collection].push(doc); return doc }
+      if (collection === "legal-publication-events") { const doc = legalPublicationEventFixture({ id: id++ }); Object.assign(doc, data); stores[collection].push(doc); return doc }
+      throw new Error("Unexpected collection " + collection)
+    }),
   })
-  const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
-    const doc = { id: id++, ...data }
-    stores[collection] ??= []
-    stores[collection].push(doc)
-    return doc
-  })
-  return { payload: asPayload({ find, create }), stores }
+  return { payload, stores }
 }
 
 describe("legal document synchronization", () => {
@@ -69,8 +66,8 @@ describe("legal document synchronization", () => {
     const { payload, stores } = payloadStub()
     const now = new Date("2026-07-10T12:00:00.000Z")
 
-    await syncLegalDocuments({ payload: asPayload(payload), now, sourceCommit: "abc1234" })
-    await syncLegalDocuments({ payload: asPayload(payload), now, sourceCommit: "abc1234" })
+    await syncLegalDocuments({ payload: payload, now, sourceCommit: "abc1234" })
+    await syncLegalDocuments({ payload: payload, now, sourceCommit: "abc1234" })
 
     expect(stores["legal-documents"]!).toHaveLength(3)
     expect(stores["legal-publication-events"]!).toHaveLength(6)
@@ -82,17 +79,17 @@ describe("legal document synchronization", () => {
 
   it("refuses a content mismatch for an existing release key", async () => {
     const { payload, stores } = payloadStub()
-    await syncLegalDocuments({ payload: asPayload(payload), now: new Date("2026-07-10T12:00:00.000Z") })
+    await syncLegalDocuments({ payload: payload, now: new Date("2026-07-10T12:00:00.000Z") })
     stores["legal-documents"]![0]!.content = "changed"
 
-    await expect(syncLegalDocuments({ payload: asPayload(payload) })).rejects.toThrow("Immutable legal release mismatch")
+    await expect(syncLegalDocuments({ payload: payload })).rejects.toThrow("Immutable legal release mismatch")
   })
 
   it("resolves the effective document from registered releases", async () => {
     const { payload } = payloadStub()
-    await syncLegalDocuments({ payload: asPayload(payload), now: new Date("2026-07-10T12:00:00.000Z") })
+    await syncLegalDocuments({ payload: payload, now: new Date("2026-07-10T12:00:00.000Z") })
 
-    const current = await getCurrentLegalDocumentRecord(asPayload(payload), "platform-terms", "nl", new Date("2026-07-10T12:00:00.000Z"))
+    const current = await getCurrentLegalDocumentRecord(payload, "platform-terms", "nl", new Date("2026-07-10T12:00:00.000Z"))
     expect(current?.documentVersion).toBe("2026-07-07.1")
   })
 
@@ -114,7 +111,7 @@ describe("legal document synchronization", () => {
   })
 
   it.each(["none", "publish_notice"] as const)("does not create customer requirements for %s", async (action) => {
-    const payload = asPayload({ find: vi.fn(), create: vi.fn() })
+    const payload = createPayloadFixture({ find: vi.fn(), create: vi.fn() })
 
     await expect(ensureLegalRequirementsForRelease(payload, asLegalDocumentDoc({ id: 10 }), asLegalRelease(release(action)))).resolves.toEqual([])
     expect(payload.find).not.toHaveBeenCalled()
@@ -126,13 +123,14 @@ describe("legal document synchronization", () => {
     ["reaccept_on_next_transaction", "2026-08-01T00:00:00.000Z"],
     ["mandatory_reaccept", "2026-08-01T00:00:00.000Z"],
   ] as const)("materializes %s as an actionable owner requirement", async (action, enforceAt) => {
-    const created: MockDoc[] = []
-    const payload = asPayload({
-      find: vi.fn(async ({ collection }: MockFindArgs) => collection === "users"
-        ? { docs: [{ id: 9, email: "owner@example.test", tenants: [{ tenant: 7 }] }], hasNextPage: false }
-        : { docs: [] }),
-      create: vi.fn(async ({ data }: MockCreateArgs) => {
-        const row: MockDoc = { id: 20, ...data }
+    const created: LegalRequirement[] = []
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async ({ collection }) => collection === "users"
+        ? paginatedFixture([userFixture({ id: 9, email: "owner@example.test", tenants: [{ tenant: 7 }] })])
+        : paginatedFixture([])),
+      create: vi.fn<PayloadFixtureMethod<"create">>(async ({ data }) => {
+        const row = legalRequirementFixture({ id: 20 })
+        Object.assign(row, data)
         created.push(row)
         return row
       }),
@@ -152,13 +150,14 @@ describe("legal document synchronization", () => {
   })
 
   it("materializes deemed acceptance with an objection deadline but no enforcement deadline", async () => {
-    const created: MockDoc[] = []
-    const payload = asPayload({
-      find: vi.fn(async ({ collection }: MockFindArgs) => collection === "users"
-        ? { docs: [{ id: 9, email: "owner@example.test", tenants: [{ tenant: 7 }] }], hasNextPage: false }
-        : { docs: [] }),
-      create: vi.fn(async ({ data }: MockCreateArgs) => {
-        const row: MockDoc = { id: 20, ...data }
+    const created: LegalRequirement[] = []
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async ({ collection }) => collection === "users"
+        ? paginatedFixture([userFixture({ id: 9, email: "owner@example.test", tenants: [{ tenant: 7 }] })])
+        : paginatedFixture([])),
+      create: vi.fn<PayloadFixtureMethod<"create">>(async ({ data }) => {
+        const row = legalRequirementFixture({ id: 20 })
+        Object.assign(row, data)
         created.push(row)
         return row
       }),
@@ -174,17 +173,17 @@ describe("legal document synchronization", () => {
   })
 
   it("renews configured analytics consent once when the scoped release becomes effective", async () => {
-    const tenant: MockDoc = {
+    const tenant = tenantFixture({
       id: 7,
       siteManifest: {
         version: 1,
         analyticsConsent: { enabled: true, provider: "posthog", consentVersion: "old" },
       },
-    }
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [tenant], hasNextPage: false })),
-      update: vi.fn(async ({ data }: MockCreateArgs) => {
-        tenant.siteManifest = data.siteManifest
+    })
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async () => (paginatedFixture([tenant]))),
+      update: payloadUpdateFixture(async ({ data }) => {
+        Object.assign(tenant, data)
         return tenant
       }),
     })
@@ -200,8 +199,8 @@ describe("legal document synchronization", () => {
   })
 
   it("does not renew analytics consent before effectiveness or for marketing-only renewal", async () => {
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [{ id: 7, siteManifest: { analyticsConsent: { enabled: true } } }], hasNextPage: false })),
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async () => (paginatedFixture([tenantFixture({ id: 7, siteManifest: { analyticsConsent: { enabled: true } } })]))),
       update: vi.fn(),
     })
 
@@ -216,7 +215,7 @@ describe("legal document synchronization", () => {
   })
 
   it("keeps landing-only analytics renewal out of tenant manifests", async () => {
-    const payload = asPayload({ find: vi.fn(), update: vi.fn() })
+    const payload = createPayloadFixture({ find: vi.fn(), update: vi.fn() })
     const landingRelease = asLegalRelease(release("publish_notice", "renew_analytics"))
     ;(landingRelease.change as MockDoc).audience = "siteinabox_visitors"
 

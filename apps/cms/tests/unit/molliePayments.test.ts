@@ -1,8 +1,16 @@
-import { asMockDoc, asNextRequest, cast } from "../_helpers/cast"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import type { MolliePayment } from "@/lib/payments/mollieAdapter"
+import { createTaskRunner } from "../_helpers/taskRunner"
+import { NextRequest } from "next/server"
+import type { AccountingDocument, BillingAgreement, CommerceNotificationDelivery, ManagedDomain, PaymentAttempt, PublishedSiteSnapshot, SiteGenerationRun } from "@/payload-types"
+import { asDocRecord } from "../_helpers/payloadApi"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { payloadUpdateFixture, type PayloadUpdateOptions } from "../_helpers/payloadUpdateFixture"
+import { accountingDocumentFixture, agreementAcceptanceFixture, billingAgreementFixture, checkoutProfileFixture, commerceNotificationFixture, generationRunFixture, managedDomainFixture, orderFixture, pageFixture, paginatedFixture, paymentAttemptFixture, publishedSnapshotFixture, siteSettingsFixture, tenantFixture } from "../_helpers/generatedDocs"
+import { matchesWhere } from "../_helpers/mockPayload"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("payload", () => ({
+vi.mock("payload", async (importOriginal) => ({
+  ...await importOriginal<typeof import("payload")>(),
   getPayload: vi.fn(),
 }))
 
@@ -123,8 +131,19 @@ const enableSandboxCommerceRelease = () => {
   vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://sandbox.cloudflare.test/client/v4")
 }
 
-const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
-  const tenant = {
+const recordValue = (value: unknown): Record<string, unknown> => value !== null && typeof value === "object" ? asDocRecord(value) : {}
+const requiredFixtureAmount = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Missing numeric financial fixture amount")
+  return value
+}
+type FixtureOverrides = Partial<SiteGenerationRun> & {
+  cancelBeforeRecurringClaim?: boolean
+  cancelBeforeBillingSyncClaim?: boolean
+  recoverBeforeChargebackTenantMutation?: boolean
+}
+const createPayloadStub = async (overrides: FixtureOverrides = {}) => {
+  const payload = await createInitializedTestPayload()
+  const tenant = tenantFixture({
     id: 1,
     name: "Acme Studio",
     slug: "acme-studio",
@@ -132,8 +151,8 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     status: "provisioning",
     createdAt: "2026-06-26T10:00:00.000Z",
     updatedAt: "2026-06-26T10:00:00.000Z",
-  }
-  const run = {
+  })
+  const run = generationRunFixture({
     id: 500,
     intakeSubmission: 400,
     status: "preview_ready",
@@ -153,8 +172,8 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     createdAt: "2026-06-26T10:00:00.000Z",
     updatedAt: "2026-06-26T10:00:00.000Z",
     ...overrides,
-  }
-  const page = {
+  })
+  const page = pageFixture({
     id: 100,
     tenant: 1,
     title: "Home",
@@ -170,16 +189,16 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       image: null,
     }],
     updatedAt: "2026-06-26T10:00:00.000Z",
-  }
-  const settings = {
+  })
+  const settings = siteSettingsFixture({
     id: 300,
     tenant: 1,
     siteName: "Acme Studio",
     siteUrl: "https://clientsite.nl",
     language: "nl",
     updatedAt: "2026-06-26T10:00:00.000Z",
-  }
-  const orderDomain = (overrides.domainOrder as { domain?: string } | undefined)?.domain ?? tenant.domain
+  })
+  const orderDomain = typeof recordValue(overrides.domainOrder).domain === "string" ? String(recordValue(overrides.domainOrder).domain) : tenant.domain
   const orderTld = orderDomain.split(".").at(-1)
   const intendedTlds = new Set([
     "nl",
@@ -196,13 +215,13 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   const tldCapabilityVersion = orderTld && intendedTlds.has(orderTld)
     ? `tld-${orderTld}-2026-07-29.1`
     : null
-  const providerPrice = Number((overrides.domainOrder as { providerPriceAmount?: string } | undefined)?.providerPriceAmount ?? "10.00")
+  const providerPrice = Number(recordValue(overrides.domainOrder).providerPriceAmount ?? "10.00")
   const grossAmountMinor = providerPrice > 10
     ? 49_900 + Math.round((providerPrice - 10) * 100)
     : 49_900
   const netAmountMinor = Math.round(grossAmountMinor / 1.21)
   const vatAmountMinor = grossAmountMinor - netAmountMinor
-  const profile = {
+  const profile = checkoutProfileFixture({
     id: 800,
     profileKey: "run:500:checkout-profile:1",
     profileVersion: 1,
@@ -228,8 +247,8 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       phoneSubscriberNumber: "1234567",
     },
     createdAt: "2026-07-26T10:00:00.000Z",
-  }
-  const order = {
+  })
+  const order = orderFixture({
     id: 600,
     orderNumber: "SIAB-500-TEST",
     generationRun: 500,
@@ -270,17 +289,17 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     lineItems: [],
     currency: "EUR",
     paymentStatus: "pending",
-  }
-  const acceptance = { id: 700, tenant: 1, actorEmail: "client@example.com", order: 600, acceptanceVersion: "platform-terms-2026-07-07" }
-  const snapshots: MockDoc[] = []
-  const billingAgreements: MockDoc[] = []
-  const paymentAttempts: MockDoc[] = []
-  const accountingDocuments: MockDoc[] = []
-  const managedDomains: MockDoc[] = []
-  const commerceNotifications: MockDoc[] = []
-  const projection = overrides.payment as Record<string, unknown> | undefined
-  if (projection?.externalReference) {
-    const agreement = {
+  })
+  const acceptance = agreementAcceptanceFixture({ id: 700, tenant: 1, actorEmail: "client@example.com", order: 600, acceptanceVersion: "platform-terms-2026-07-07" })
+  const snapshots: PublishedSiteSnapshot[] = []
+  const billingAgreements: BillingAgreement[] = []
+  const paymentAttempts: PaymentAttempt[] = []
+  const accountingDocuments: AccountingDocument[] = []
+  const managedDomains: ManagedDomain[] = []
+  const commerceNotifications: CommerceNotificationDelivery[] = []
+  const projection = recordValue(overrides.payment)
+  if (typeof projection.externalReference === "string" && projection.externalReference) {
+    const agreement = billingAgreementFixture({
       id: 900,
       idempotencyKey: "mollie:billing-agreement:order:600:v1",
       originatingOrder: 600,
@@ -288,8 +307,8 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       tenant: 1,
       state: projection.status === "completed" ? "active" : "mandate_pending",
       provider: "mollie",
-      providerCustomerId: projection.mollieCustomerId ?? "cst_test_123",
-      providerMandateId: projection.status === "completed" ? "mdt_test_123" : null,
+      providerCustomerId: typeof projection.mollieCustomerId === "string" ? projection.mollieCustomerId : "cst_test123",
+      providerMandateId: projection.status === "completed" ? "mdt_test123" : null,
       catalogVersion: "2026-07-26.1",
       packageCode: "siteinabox-monthly",
       billingPeriod: "monthly",
@@ -299,9 +318,9 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       reconciliationRequired: false,
       createdAt: "2026-07-26T10:00:00.000Z",
       updatedAt: "2026-07-26T10:00:00.000Z",
-    }
+    })
     billingAgreements.push(agreement)
-    paymentAttempts.push({
+    paymentAttempts.push(paymentAttemptFixture({
       id: 901,
       idempotencyKey: "mollie:first-payment:order:600:v1",
       order: 600,
@@ -313,27 +332,25 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       sequenceType: "first",
       provider: "mollie",
       providerPaymentId: projection.externalReference,
-      providerStatus: projection.providerStatus ?? "open",
-      checkoutUrl: projection.checkoutUrl,
+      providerStatus: typeof projection.providerStatus === "string" ? projection.providerStatus : "open",
+      checkoutUrl: typeof projection.checkoutUrl === "string" ? projection.checkoutUrl : undefined,
       currency: "EUR",
       netAmountMinor,
       vatAmountMinor,
       grossAmountMinor,
       reconciliationRequired: false,
       createdAt: "2026-07-26T10:00:00.000Z",
-    })
+    }))
   }
   let cancellationRacePending = overrides.cancelBeforeRecurringClaim === true
   let paymentSyncCancellationRacePending =
     overrides.cancelBeforeBillingSyncClaim === true
   let chargebackRecoveryRacePending =
     overrides.recoverBeforeChargebackTenantMutation === true
-  const update = vi.fn(async ({
-    collection,
-    id,
-    where,
-    data,
-  }: MockUpdateArgs & { where?: MockWhere }) => {
+  const update = vi.fn(async (args: PayloadUpdateOptions) => {
+    const { collection, data } = args
+    const id = "id" in args ? args.id : undefined
+    const where = "where" in args ? args.where : undefined
     if (collection === "billing-agreements" && where) {
       if (cancellationRacePending && "lastPaymentAttemptAt" in data) {
         cancellationRacePending = false
@@ -367,7 +384,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         }
       }
       const docs = billingAgreements.filter((agreement) =>
-        matchesWhere(agreement, where)
+        matchesWhere(asDocRecord(agreement), where)
       )
       for (const agreement of docs) {
         Object.assign(agreement, data)
@@ -375,19 +392,21 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
           new Date(String(agreement.updatedAt)).getTime() + 1,
         ).toISOString()
       }
-      return { docs, totalDocs: docs.length }
+      return { docs, errors: [], totalDocs: docs.length }
     }
-    if (collection === "site-generation-runs") Object.assign(run, data)
-    if (collection === "tenants") Object.assign(tenant, data)
-    if (collection === "site-settings") {
-      Object.assign(settings, data)
-      return { ...settings }
+    for (const [slug, doc] of [
+      ["site-generation-runs", run], ["tenants", tenant], ["site-settings", settings],
+    ] as const) {
+      if (collection !== slug) continue
+      const docs = where && !matchesWhere(asDocRecord(doc), where) ? [] : [doc]
+      for (const entry of docs) Object.assign(entry, data)
+      return where ? { docs, errors: [], totalDocs: docs.length } : { ...doc }
     }
     if (collection === "orders") {
       if (where) {
-        const docs = matchesWhere(order, where) ? [order] : []
+        const docs = matchesWhere(asDocRecord(order), where) ? [order] : []
         for (const entry of docs) Object.assign(entry, data)
-        return { docs, totalDocs: docs.length }
+        return { docs, errors: [], totalDocs: docs.length }
       }
       Object.assign(order, data)
       return { ...order }
@@ -406,9 +425,9 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["commerce-notification-deliveries", commerceNotifications],
       ] as const) {
         if (collection !== slug) continue
-        const matched = docs.filter((entry) => matchesWhere(entry, where))
+        const matched = docs.filter((entry) => matchesWhere(asDocRecord(entry), where))
         for (const entry of matched) Object.assign(entry, data)
-        return { docs: matched, totalDocs: matched.length }
+        return { docs: matched, errors: [], totalDocs: matched.length }
       }
     }
     for (const [slug, docs] of [
@@ -424,11 +443,9 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       Object.assign(doc, data)
       return { ...doc }
     }
-    if (collection === "tenants") return { ...tenant }
-    return { ...run }
+    throw new Error(`Unexpected update ${collection}`)
   })
-  const payload = {
-    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+  const findByID = vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
       if (collection === "site-generation-runs" && String(id) === "500") return run
       if (collection === "tenants" && String(id) === "1") {
         if (
@@ -469,48 +486,46 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         if (snapshot) return snapshot
       }
       throw new Error(`Missing ${collection} ${id}`)
-    }),
-    find: vi.fn(async ({ collection, where }: MockFindArgs) => {
+    })
+  const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
       if (collection === "orders") {
-        return { docs: matchesWhere(order, where) ? [order] : [] }
+        return paginatedFixture(matchesWhere(asDocRecord(order), where) ? [order] : [])
       }
       if (collection === "published-site-snapshots") {
         if (where?.and) {
-          return { docs: snapshots.filter((snapshot) => matchesWhere(snapshot, where)) }
+          return paginatedFixture(snapshots.filter((snapshot) => matchesWhere(asDocRecord(snapshot), where)))
         }
-        const clause = (where ?? {}) as MockWhere
-        const sourceRun = asMockDoc(clause.sourceGenerationRun)?.equals
+        const clause = where ?? {}
+        const sourceRun = recordValue(clause.sourceGenerationRun)?.equals
         if (sourceRun != null) {
-          return { docs: snapshots.filter((snapshot) => String(snapshot.sourceGenerationRun) === String(sourceRun)) }
+          return paginatedFixture(snapshots.filter((snapshot) => String(snapshot.sourceGenerationRun) === String(sourceRun)))
         }
-        const tenantId = asMockDoc(clause.tenant)?.equals
+        const tenantId = recordValue(clause.tenant)?.equals
         if (tenantId != null) {
-          return { docs: snapshots.filter((snapshot) => String(snapshot.tenant) === String(tenantId)) }
+          return paginatedFixture(snapshots.filter((snapshot) => String(snapshot.tenant) === String(tenantId)))
         }
-        return { docs: snapshots }
+        return paginatedFixture(snapshots)
       }
-      if (collection === "pages") return { docs: [page] }
-      if (collection === "site-settings") return { docs: [settings] }
+      if (collection === "pages") return paginatedFixture([page])
+      if (collection === "site-settings") return paginatedFixture([settings])
       if (collection === "agreement-acceptances") {
-        const orderEquals = asMockDoc((where as MockWhere)?.order)?.equals
+        const orderEquals = recordValue(where?.order)?.equals
         if (orderEquals != null) {
-          return { docs: String(acceptance.order) === String(orderEquals) ? [acceptance] : [] }
+          return paginatedFixture(String(acceptance.order) === String(orderEquals) ? [acceptance] : [])
         }
-        const clauses = (where as MockWhere)?.and
-        if (!clauses) return { docs: [acceptance] }
-        const tenantId = asMockDoc(clauses.find((clause) => clause.tenant)?.tenant)?.equals
-        const actorEmail = asMockDoc(clauses.find((clause) => clause.actorEmail)?.actorEmail)?.equals
+        const clauses = where?.and
+        if (!clauses) return paginatedFixture([acceptance])
+        const tenantId = recordValue(clauses.find((clause) => clause.tenant)?.tenant)?.equals
+        const actorEmail = recordValue(clauses.find((clause) => clause.actorEmail)?.actorEmail)?.equals
         if (tenantId != null && actorEmail != null) {
-          return {
-            docs: String(acceptance.tenant) === String(tenantId) && acceptance.actorEmail === actorEmail
+          return paginatedFixture(String(acceptance.tenant) === String(tenantId) && acceptance.actorEmail === actorEmail
               ? [acceptance]
-              : [],
-          }
+              : [])
         }
-        return { docs: [acceptance] }
+        return paginatedFixture([acceptance])
       }
       if (collection === "checkout-profiles") {
-        return { docs: matchesWhere(profile, where) ? [profile] : [] }
+        return paginatedFixture(matchesWhere(asDocRecord(profile), where) ? [profile] : [])
       }
       for (const [slug, docs] of [
         ["payment-attempts", paymentAttempts],
@@ -520,73 +535,67 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["commerce-notification-deliveries", commerceNotifications],
       ] as const) {
         if (collection === slug) {
-          return { docs: docs.filter((doc) => matchesWhere(doc, where)) }
+          return paginatedFixture(docs.filter((doc) => matchesWhere(asDocRecord(doc), where)))
         }
       }
-      return { docs: [] }
-    }),
-    create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
+      return paginatedFixture([])
+    })
+  const create = vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
       if (collection === "published-site-snapshots") {
-        const snapshot = { id: snapshots.length + 10, ...data }
+        const snapshot = Object.assign(publishedSnapshotFixture({ id: snapshots.length + 10 }), data)
         snapshots.unshift(snapshot)
         return snapshot
       }
       if (collection === "site-settings") return settings
-      for (const [slug, docs, base] of [
-        ["payment-attempts", paymentAttempts, 1_000],
-        ["billing-agreements", billingAgreements, 1_100],
-        ["accounting-documents", accountingDocuments, 1_200],
-        ["managed-domains", managedDomains, 1_300],
-        ["commerce-notification-deliveries", commerceNotifications, 1_400],
+      const dataFields = asDocRecord(data)
+      const uniqueKey = typeof dataFields.idempotencyKey === "string"
+        ? "idempotencyKey" : typeof dataFields.evidenceKey === "string" ? "evidenceKey" : null
+      for (const [slug, docs] of [
+        ["payment-attempts", paymentAttempts], ["billing-agreements", billingAgreements],
+        ["accounting-documents", accountingDocuments], ["managed-domains", managedDomains],
+        ["commerce-notification-deliveries", commerceNotifications],
       ] as const) {
-        if (collection !== slug) continue
-        const uniqueKey = typeof data.idempotencyKey === "string"
-          ? "idempotencyKey"
-          : typeof data.evidenceKey === "string" ? "evidenceKey" : null
-        if (
-          uniqueKey &&
-          docs.some((doc) => doc[uniqueKey] === data[uniqueKey])
-        ) {
+        if (collection === slug && uniqueKey && docs.some(doc => asDocRecord(doc)[uniqueKey] === dataFields[uniqueKey])) {
           throw new Error(`duplicate key value violates ${collection}.${uniqueKey}`)
         }
-        const doc = {
-          id: base + docs.length,
-          ...data,
-          ...(collection === "billing-agreements" ||
-            collection === "payment-attempts"
-            ? { updatedAt: data.createdAt }
-            : {}),
-          ...(collection === "managed-domains"
-            ? {
-                edgeRoutingStatus: "active",
-                httpsStatus: "verified",
-                adminHttpsStatus: "verified",
-              }
-            : {}),
+      }
+      switch (collection) {
+        case "payment-attempts": {
+          const doc = Object.assign(paymentAttemptFixture({ id: 1_000 + paymentAttempts.length }), data, { updatedAt: data.createdAt ?? "2026-07-26T10:00:00.000Z" })
+          paymentAttempts.push(doc); return doc
         }
-        docs.push(doc)
-        return doc
+        case "billing-agreements": {
+          const doc = Object.assign(billingAgreementFixture({ id: 1_100 + billingAgreements.length }), data, { updatedAt: data.createdAt ?? "2026-07-26T10:00:00.000Z" })
+          billingAgreements.push(doc); return doc
+        }
+        case "accounting-documents": {
+          const doc = Object.assign(accountingDocumentFixture({ id: 1_200 + accountingDocuments.length }), data)
+          accountingDocuments.push(doc); return doc
+        }
+        case "managed-domains": {
+          const doc = Object.assign(managedDomainFixture({ id: 1_300 + managedDomains.length }), data, {
+            edgeRoutingStatus: "active" as const, httpsStatus: "verified" as const, adminHttpsStatus: "verified" as const,
+          })
+          managedDomains.push(doc); return doc
+        }
+        case "commerce-notification-deliveries": {
+          const doc = Object.assign(commerceNotificationFixture({ id: 1_400 + commerceNotifications.length }), data)
+          commerceNotifications.push(doc); return doc
+        }
       }
       throw new Error(`Unexpected create ${collection}`)
-    }),
-    jobs: { queue: vi.fn(async () => ({ id: 1 })) },
-    db: {
-      beginTransaction: vi.fn(async () => "tx-domain-registration"),
-      commitTransaction: vi.fn(async () => undefined),
-      rollbackTransaction: vi.fn(async () => undefined),
-      pool: {
-        connect: vi.fn(async () => ({
-          query: vi.fn(async () => ({ rows: [] })),
-          release: vi.fn(),
-        })),
-      },
-    },
-    logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-    update,
-  }
-  vi.mocked(getPayload).mockResolvedValue(asPayload(payload))
+    })
+  const queue = vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, createdAt: "2026-08-01T00:00:00Z", updatedAt: "2026-08-01T00:00:00Z" })
+  vi.spyOn(payload.db, "beginTransaction").mockResolvedValue("tx-domain-registration")
+  vi.spyOn(payload.db, "commitTransaction").mockResolvedValue(undefined)
+  vi.spyOn(payload.db, "rollbackTransaction").mockResolvedValue(undefined)
+  vi.spyOn(payload.logger, "warn")
+  vi.spyOn(payload.logger, "error")
+  vi.spyOn(payload.logger, "info")
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(update))
+  vi.mocked(getPayload).mockResolvedValue(payload)
   return {
-    payload: asPayload(payload),
+    payload,
     run,
     tenant,
     settings,
@@ -598,12 +607,12 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     accountingDocuments,
     managedDomains,
     commerceNotifications,
-    queue: payload.jobs.queue,
+    queue,
   }
 }
 
 const configureRecoverableSubscription = (
-  fixture: ReturnType<typeof createPayloadStub>,
+  fixture: Awaited<ReturnType<typeof createPayloadStub>>,
 ) => {
   Object.assign(fixture.order, {
     state: "accepted",
@@ -614,7 +623,7 @@ const configureRecoverableSubscription = (
   })
   Object.assign(fixture.billingAgreements[0]!, {
     state: "suspended",
-    providerCustomerId: "cst_test_123",
+    providerCustomerId: "cst_test123",
     serviceSuspensionStatus: "billing_suspended",
     currentPeriodStartsAt: "2026-08-01T10:00:00.000Z",
     currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
@@ -645,10 +654,10 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/customers") {
-        return new Response(JSON.stringify({ id: "cst_test_123", name: "Acme Studio", email: "client@example.com" }), { status: 201 })
+        return new Response(JSON.stringify({ id: "cst_test123", name: "Acme Studio", email: "client@example.com" }), { status: 201 })
       }
-      return new Response(JSON.stringify({
-        id: "tr_test_123",
+      return new Response(JSON.stringify({ customerId: "cst_test123", sequenceType: "first",
+        id: "tr_test123",
         status: "open",
         amount: { currency: "EUR", value: "499.00" },
         metadata: {
@@ -665,7 +674,7 @@ describe("Mollie payment flow", () => {
 
   it("creates approved-run checkout with run, tenant, customer, and idempotency metadata", async () => {
     enableSandboxCommerceRelease()
-    const { payload, update, billingAgreements } = createPayloadStub()
+    const { payload, update, billingAgreements } = await createPayloadStub()
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/customers") {
         expect(billingAgreements[0]).not.toHaveProperty("providerCustomerId")
@@ -674,13 +683,13 @@ describe("Mollie payment flow", () => {
           failureReason: "A Mollie customer provider write is in progress.",
         })
         return new Response(JSON.stringify({
-          id: "cst_test_123",
+          id: "cst_test123",
           name: "Acme Studio",
           email: "client@example.com",
         }), { status: 201 })
       }
-      return new Response(JSON.stringify({
-        id: "tr_test_123",
+      return new Response(JSON.stringify({ customerId: "cst_test123", sequenceType: "first",
+        id: "tr_test123",
         status: "open",
         amount: { currency: "EUR", value: "499.00" },
         _links: {
@@ -700,7 +709,7 @@ describe("Mollie payment flow", () => {
     expect(result.checkoutUrl).toBe("https://www.mollie.com/checkout/test")
     expect(result.reused).toBe(false)
     expect(billingAgreements[0]).toMatchObject({
-      providerCustomerId: "cst_test_123",
+      providerCustomerId: "cst_test123",
       reconciliationRequired: false,
       failureReason: null,
     })
@@ -722,7 +731,7 @@ describe("Mollie payment flow", () => {
     expect(JSON.parse(String(request.body))).toMatchObject({
       amount: { currency: "EUR", value: "499.00" },
       sequenceType: "first",
-      customerId: "cst_test_123",
+      customerId: "cst_test123",
       redirectUrl: "https://admin.siteinabox.nl/acme/checkout?payment=return",
       webhookUrl: "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       metadata: {
@@ -733,7 +742,7 @@ describe("Mollie payment flow", () => {
         clientSlug: "acme",
         selectedDomain: "acme.test",
       idempotencyKey: "mollie:first-payment:order:600:authority-v3:attempt-1",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
         sequenceType: "first",
         purpose: "first_payment",
       },
@@ -745,10 +754,10 @@ describe("Mollie payment flow", () => {
         payment: expect.objectContaining({
           status: "pending_provider",
           provider: "mollie",
-          externalReference: "tr_test_123",
+          externalReference: "tr_test123",
           customerEmail: "client@example.com",
           checkoutUrl: "https://www.mollie.com/checkout/test",
-          mollieCustomerId: "cst_test_123",
+          mollieCustomerId: "cst_test123",
           mollieSequenceType: "first",
           renewalInterval: "1 month",
         }),
@@ -762,7 +771,7 @@ describe("Mollie payment flow", () => {
       payload,
       paymentAttempts,
       update,
-    } = createPayloadStub()
+    } = await createPayloadStub()
     const originalUpdate = update.getMockImplementation()
     if (!originalUpdate) throw new Error("Expected Payload update implementation.")
     let failProjection = true
@@ -770,7 +779,7 @@ describe("Mollie payment flow", () => {
       if (
         failProjection &&
         args.collection === "site-generation-runs" &&
-        args.data?.payment
+        recordValue(args.data).payment
       ) {
         failProjection = false
         throw new Error("simulated local payment projection failure")
@@ -789,7 +798,7 @@ describe("Mollie payment flow", () => {
     expect(paymentAttempts).toHaveLength(1)
     expect(paymentAttempts[0]).toMatchObject({
       state: "pending_provider",
-      providerPaymentId: "tr_test_123",
+      providerPaymentId: "tr_test123",
       checkoutUrl: "https://www.mollie.com/checkout/test",
       reconciliationRequired: true,
       failureCode: "provider_write_indeterminate",
@@ -805,7 +814,7 @@ describe("Mollie payment flow", () => {
         reused: true,
         checkoutUrl: "https://www.mollie.com/checkout/test",
         paymentAttempt: {
-          providerPaymentId: "tr_test_123",
+          providerPaymentId: "tr_test123",
           reconciliationRequired: true,
         },
       })
@@ -814,7 +823,7 @@ describe("Mollie payment flow", () => {
 
   it("persists an indeterminate customer write and never dispatches it again", async () => {
     enableSandboxCommerceRelease()
-    const { payload, billingAgreements } = createPayloadStub()
+    const { payload, billingAgreements } = await createPayloadStub()
     const providerWrite = vi.fn(async (url: string) => {
       expect(url).toBe("https://api.mollie.com/v2/customers")
       expect(billingAgreements[0]).toMatchObject({
@@ -832,11 +841,11 @@ describe("Mollie payment flow", () => {
     }
 
     await expect(createMollieCheckoutForGenerationRun(payload, input))
-      .rejects.toThrow("connection closed")
+      .rejects.toThrow("provider transport")
     expect(providerWrite).toHaveBeenCalledTimes(1)
     expect(billingAgreements[0]).toMatchObject({
       reconciliationRequired: true,
-      failureReason: "connection closed after customer acceptance",
+      failureReason: "Mollie API: provider transport.",
     })
     expect(billingAgreements[0]).not.toHaveProperty("providerCustomerId")
 
@@ -851,10 +860,10 @@ describe("Mollie payment flow", () => {
       payload,
       billingAgreements,
       paymentAttempts,
-    } = createPayloadStub()
+    } = await createPayloadStub()
     const rejectedWrite = vi.fn(async (url: string) => {
       expect(url).toBe("https://api.mollie.com/v2/customers")
-      return new Response(JSON.stringify({
+      return new Response(JSON.stringify({ status: 422, title: "Fixture provider rejection",
         detail: "Customer data was rejected.",
       }), { status: 422 })
     })
@@ -888,13 +897,13 @@ describe("Mollie payment flow", () => {
 
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/customers") {
-        return new Response(JSON.stringify({ id: "cst_after_rejection" }), {
+        return new Response(JSON.stringify({ id: "cst_afterrejection" }), {
           status: 201,
         })
       }
       expect(url).toBe("https://api.mollie.com/v2/payments")
-      return new Response(JSON.stringify({
-        id: "tr_after_customer_rejection",
+      return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_afterrejection", sequenceType: "first",
+        id: "tr_aftercustomerrejection",
         status: "open",
         _links: {
           checkout: {
@@ -909,7 +918,7 @@ describe("Mollie payment flow", () => {
         reused: false,
         paymentAttempt: {
           attemptNumber: 2,
-          providerPaymentId: "tr_after_customer_rejection",
+          providerPaymentId: "tr_aftercustomerrejection",
         },
       })
     expect(paymentAttempts).toHaveLength(2)
@@ -922,7 +931,7 @@ describe("Mollie payment flow", () => {
       payload,
       billingAgreements,
       paymentAttempts,
-    } = createPayloadStub()
+    } = await createPayloadStub()
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new TypeError("connection closed after customer acceptance")
     }))
@@ -934,12 +943,12 @@ describe("Mollie payment flow", () => {
     }
 
     await expect(createMollieCheckoutForGenerationRun(payload, input))
-      .rejects.toThrow("connection closed")
+      .rejects.toThrow("provider transport")
     const agreement = billingAgreements[0]!
     await expect(recoverMissingMollieCustomerReferences(payload, {
       providerReadsAllowed: () => true,
       listRecentMollieCustomers: vi.fn(async () => [{
-        id: "cst_recovered_after_timeout",
+        id: "cst_recoveredaftertimeout",
         metadata: {
           billingAgreementId: agreement.id,
           orderId: 600,
@@ -948,15 +957,15 @@ describe("Mollie payment flow", () => {
       }]),
     })).resolves.toEqual({ examined: 1, recovered: 1 })
     expect(agreement).toMatchObject({
-      providerCustomerId: "cst_recovered_after_timeout",
+      providerCustomerId: "cst_recoveredaftertimeout",
       reconciliationRequired: false,
       failureReason: null,
     })
 
     const providerWrite = vi.fn(async (url: string) => {
       expect(url).toBe("https://api.mollie.com/v2/payments")
-      return new Response(JSON.stringify({
-        id: "tr_after_customer_recovery",
+      return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_recoveredaftertimeout", sequenceType: "first",
+        id: "tr_aftercustomerrecovery",
         status: "open",
         _links: {
           checkout: {
@@ -980,7 +989,7 @@ describe("Mollie payment flow", () => {
         "mollie:first-payment:order:600:authority-v3:attempt-1",
       attemptNumber: 1,
       state: "pending_provider",
-      providerPaymentId: "tr_after_customer_recovery",
+      providerPaymentId: "tr_aftercustomerrecovery",
       reconciliationRequired: false,
     })
     expect(paymentAttempts[0]?.stateHistory).toContainEqual(
@@ -998,7 +1007,7 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       update,
-    } = createPayloadStub()
+    } = await createPayloadStub()
     const originalUpdate = update.getMockImplementation()
     if (!originalUpdate) throw new Error("Expected Payload update implementation.")
     let customerBound!: () => void
@@ -1013,7 +1022,7 @@ describe("Mollie payment flow", () => {
       const result = await originalUpdate(args)
       if (
         args.collection === "billing-agreements" &&
-        typeof args.data?.providerCustomerId === "string"
+        typeof recordValue(args.data).providerCustomerId === "string"
       ) {
         customerBound()
         await releaseOriginalPromise
@@ -1023,12 +1032,12 @@ describe("Mollie payment flow", () => {
     const providerWrite = vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/customers") {
         return new Response(JSON.stringify({
-          id: "cst_confirmed_race",
+          id: "cst_confirmedrace",
         }), { status: 201 })
       }
       expect(url).toBe("https://api.mollie.com/v2/payments")
-      return new Response(JSON.stringify({
-        id: "tr_confirmed_race",
+      return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_confirmedrace", sequenceType: "first",
+        id: "tr_confirmedrace",
         status: "open",
         _links: {
           checkout: { href: "https://www.mollie.com/checkout/confirmed-race" },
@@ -1046,7 +1055,7 @@ describe("Mollie payment flow", () => {
     const originalWorker = createMollieCheckoutForGenerationRun(payload, input)
     await customerBoundPromise
     expect(billingAgreements[0]).toMatchObject({
-      providerCustomerId: "cst_confirmed_race",
+      providerCustomerId: "cst_confirmedrace",
       reconciliationRequired: false,
     })
     const resumedWorker = createMollieCheckoutForGenerationRun(payload, input)
@@ -1069,7 +1078,7 @@ describe("Mollie payment flow", () => {
     expect(paymentAttempts).toHaveLength(1)
     expect(paymentAttempts[0]).toMatchObject({
       state: "pending_provider",
-      providerPaymentId: "tr_confirmed_race",
+      providerPaymentId: "tr_confirmedrace",
       reconciliationRequired: false,
     })
   })
@@ -1080,7 +1089,7 @@ describe("Mollie payment flow", () => {
       payload,
       billingAgreements,
       paymentAttempts,
-    } = createPayloadStub()
+    } = await createPayloadStub()
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new TypeError("connection closed after customer acceptance")
     }))
@@ -1092,12 +1101,12 @@ describe("Mollie payment flow", () => {
     }
 
     await expect(createMollieCheckoutForGenerationRun(payload, input))
-      .rejects.toThrow("connection closed")
+      .rejects.toThrow("provider transport")
     const agreement = billingAgreements[0]!
     await recoverMissingMollieCustomerReferences(payload, {
       providerReadsAllowed: () => true,
       listRecentMollieCustomers: vi.fn(async () => [{
-        id: "cst_recovered_before_restart",
+        id: "cst_recoveredbeforerestart",
         metadata: {
           billingAgreementId: agreement.id,
           orderId: 600,
@@ -1111,7 +1120,7 @@ describe("Mollie payment flow", () => {
     vi.stubGlobal("fetch", providerWrite)
 
     await expect(createMollieCheckoutForGenerationRun(payload, input))
-      .rejects.toThrow("connection closed after payment acceptance")
+      .rejects.toThrow("provider transport")
     expect(paymentAttempts[0]).toMatchObject({
       state: "pending_provider",
       reconciliationRequired: true,
@@ -1138,7 +1147,7 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       accountingDocuments,
       queue,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       domainOrder: { domain: "clientsite.nl" },
     })
     Object.assign(tenant, { status: "active" })
@@ -1156,7 +1165,7 @@ describe("Mollie payment flow", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "https://api.mollie.com/v2/customers") {
         return new Response(JSON.stringify({
-          id: "cst_response_lost",
+          id: "cst_responselost",
           name: "Acme Studio",
           email: "client@example.com",
         }), { status: 201 })
@@ -1170,7 +1179,7 @@ describe("Mollie payment flow", () => {
           metadata: Record<string, unknown>
         }
         providerPayment = {
-          id: "tr_committed_response_lost",
+          id: "tr_committedresponselost",
           status: "paid",
           amount: body.amount,
           customerId: body.customerId,
@@ -1181,7 +1190,7 @@ describe("Mollie payment flow", () => {
         }
         throw new TypeError("connection closed after payment acceptance")
       }
-      if (url.startsWith("https://api.mollie.com/v2/payments/tr_committed_response_lost")) {
+      if (url.startsWith("https://api.mollie.com/v2/payments/tr_committedresponselost")) {
         if (!providerPayment) throw new Error("Provider payment was not committed.")
         return new Response(JSON.stringify(providerPayment), { status: 200 })
       }
@@ -1195,7 +1204,7 @@ describe("Mollie payment flow", () => {
     }
 
     await expect(createMollieCheckoutForGenerationRun(payload, input))
-      .rejects.toThrow("connection closed after payment acceptance")
+      .rejects.toThrow("provider transport")
     expect(paymentPostCount).toBe(1)
     expect(paymentAttempts).toHaveLength(1)
     const attempt = paymentAttempts[0]!
@@ -1216,31 +1225,22 @@ describe("Mollie payment flow", () => {
       listRecentMolliePayments,
     }, new Date(Date.now() + 3 * 60_000))).resolves.toEqual({
       examined: 1,
-      recoveredPaymentIds: ["tr_committed_response_lost"],
+      recoveredPaymentIds: ["tr_committedresponselost"],
     })
     expect(listRecentMolliePayments).toHaveBeenCalledTimes(1)
     expect(attempt).toMatchObject({
-      providerPaymentId: "tr_committed_response_lost",
+      providerPaymentId: "tr_committedresponselost",
       reconciliationRequired: true,
     })
 
-    await queueMolliePaymentSync(payload, "tr_committed_response_lost")
+    await queueMolliePaymentSync(payload, "tr_committedresponselost")
     expect(queue).toHaveBeenCalledWith(expect.objectContaining({
       task: "sync-mollie-payment",
-      input: { paymentId: "tr_committed_response_lost" },
+      input: { paymentId: "tr_committedresponselost" },
     }))
-    const syncHandler = syncMolliePaymentTask.handler as unknown as (
-      args: { input: { paymentId: string }; req: { payload: typeof payload } }
-    ) => Promise<{
-      output: {
-        status: string
-        paymentAttemptId: string
-        orderId: string
-        fulfillmentQueued: boolean
-      }
-    }>
+    const syncHandler = createTaskRunner(syncMolliePaymentTask)
     await expect(syncHandler({
-      input: { paymentId: "tr_committed_response_lost" },
+      input: { paymentId: "tr_committedresponselost" },
       req: { payload },
     })).resolves.toMatchObject({
       output: {
@@ -1252,31 +1252,24 @@ describe("Mollie payment flow", () => {
     })
     expect(attempt).toMatchObject({
       state: "paid",
-      providerPaymentId: "tr_committed_response_lost",
+      providerPaymentId: "tr_committedresponselost",
       reconciliationRequired: false,
     })
     expect(order).toMatchObject({
       state: "fulfillment_pending",
       paymentStatus: "paid",
-      providerPaymentId: "tr_committed_response_lost",
+      providerPaymentId: "tr_committedresponselost",
     })
     expect(accountingDocuments.filter((document) =>
       document.documentType === "invoice",
     )).toHaveLength(1)
 
-    const fulfillmentJob = (queue.mock.calls as unknown as Array<[
-      { task: string; input?: { orderId?: string; paymentAttemptId?: string } },
-    ]>).find(([job]) => job.task === "fulfill-order")?.[0]
+    const fulfillmentJob = queue.mock.calls.find(([job]) => job.task === "fulfill-order")?.[0]
     if (!fulfillmentJob?.input?.orderId || !fulfillmentJob.input.paymentAttemptId) {
       throw new Error("Expected synchronization to queue fulfillment.")
     }
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "shadow")
-    const fulfillmentHandler = fulfillOrderTask.handler as unknown as (
-      args: {
-        input: { orderId: string; paymentAttemptId: string }
-        req: { payload: typeof payload }
-      }
-    ) => Promise<{ output: { status: string; orderId: string } }>
+    const fulfillmentHandler = createTaskRunner(fulfillOrderTask)
     const fulfillmentResult = await fulfillmentHandler({
       input: {
         orderId: fulfillmentJob.input.orderId,
@@ -1291,7 +1284,7 @@ describe("Mollie payment flow", () => {
     expect(paymentPostCount).toBe(1)
     expect(vi.mocked(fetch).mock.calls.filter(([url, init]) =>
       String(url).startsWith(
-        "https://api.mollie.com/v2/payments/tr_committed_response_lost",
+        "https://api.mollie.com/v2/payments/tr_committedresponselost",
       ) && init?.method !== "POST"
     )).toHaveLength(1)
   })
@@ -1302,14 +1295,15 @@ describe("Mollie payment flow", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/customers") {
         return new Response(JSON.stringify({
-          id: "cst_test_123",
+          id: "cst_test123",
           name: "Acme Studio",
           email: "client@example.com",
         }), { status: 201 })
       }
       paymentNumber += 1
       return new Response(JSON.stringify({
-        id: `tr_retry_${paymentNumber}`,
+        id: `tr_retry${paymentNumber}`,
+        customerId: "cst_test123", sequenceType: "first",
         status: "open",
         amount: { currency: "EUR", value: "499.00" },
         metadata: { orderId: 600 },
@@ -1320,7 +1314,7 @@ describe("Mollie payment flow", () => {
         },
       }), { status: 201 })
     }))
-    const fixture = createPayloadStub()
+    const fixture = await createPayloadStub()
     await createMollieCheckoutForGenerationRun(fixture.payload, {
       runId: 500,
       orderId: 600,
@@ -1334,13 +1328,13 @@ describe("Mollie payment flow", () => {
     })
     Object.assign(fixture.order, {
       paymentStatus: "cancelled",
-      providerPaymentId: "tr_retry_1",
+      providerPaymentId: "tr_retry1",
     })
     Object.assign(fixture.run, {
       payment: {
         status: "cancelled",
         provider: "mollie",
-        externalReference: "tr_retry_1",
+        externalReference: "tr_retry1",
       },
     })
 
@@ -1369,7 +1363,12 @@ describe("Mollie payment flow", () => {
 
   it("adds the selected domain extra fee to the first Mollie payment amount", async () => {
     enableSandboxCommerceRelease()
-    const { payload } = createPayloadStub({
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/customers")
+      ? Response.json({ id: "cst_test123", name: "Acme Studio", email: "client@example.com" }, { status: 201 })
+      : Response.json({ id: "tr_test123", status: "open", amount: { currency: "EUR", value: "501.50" },
+          customerId: "cst_test123", sequenceType: "first",
+          _links: { checkout: { href: "https://www.mollie.com/checkout/test" } } }, { status: 201 })))
+    const { payload } = await createPayloadStub({
       domainOrder: {
         status: "ready_to_register",
         domain: "acme.nl",
@@ -1401,7 +1400,7 @@ describe("Mollie payment flow", () => {
       order,
       billingAgreements,
       paymentAttempts,
-    } = createPayloadStub()
+    } = await createPayloadStub()
     Object.assign(order, {
       orderKind: "initial_subscription",
       catalogVersion: "2026-07-29.1",
@@ -1430,7 +1429,7 @@ describe("Mollie payment flow", () => {
 
   it("rejects a retired migration source before current-catalog provider work", async () => {
     enableSandboxCommerceRelease()
-    const { payload, order, billingAgreements, paymentAttempts } = createPayloadStub()
+    const { payload, order, billingAgreements, paymentAttempts } = await createPayloadStub()
     Object.assign(order, {
       orderKind: "initial_subscription",
       catalogVersion: "2026-07-29.1",
@@ -1457,7 +1456,7 @@ describe("Mollie payment flow", () => {
 
   it("allows only one provider payment write when first-payment schedulers race", async () => {
     enableSandboxCommerceRelease()
-    const { payload, paymentAttempts, billingAgreements } = createPayloadStub()
+    const { payload, paymentAttempts, billingAgreements } = await createPayloadStub()
 
     const results = await Promise.allSettled([
       createMollieCheckoutForGenerationRun(payload, {
@@ -1484,11 +1483,11 @@ describe("Mollie payment flow", () => {
   })
 
   it("reuses an existing matching pending Mollie checkout", async () => {
-    const { payload, update } = createPayloadStub({
+    const { payload, update } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_test_123",
+        externalReference: "tr_test123",
         checkoutUrl: "https://www.mollie.com/checkout/test",
         customerEmail: "client@example.com",
         clientSlug: "acme",
@@ -1507,7 +1506,7 @@ describe("Mollie payment flow", () => {
   })
 
   it("blocks checkout before preview approval", async () => {
-    const { payload } = createPayloadStub({ clientApproval: { status: "pending" } })
+    const { payload } = await createPayloadStub({ clientApproval: { status: "pending" } })
 
     await expect(createMollieCheckoutForGenerationRun(payload, {
       runId: 500,
@@ -1528,12 +1527,12 @@ describe("Mollie payment flow", () => {
     expectedState,
     expectedProjectionStatus,
   ) => {
-    const { payload, run, update } = createPayloadStub({
-      payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_test_123" },
+    const { payload, run, update } = await createPayloadStub({
+      payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_test123" },
     })
 
-    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
-      id: "tr_test_123",
+    const result = await synchronizeMolliePayment(payload, "tr_test123", async () => ({
+      id: "tr_test123",
       status: mollieStatus,
       amount: { currency: "EUR", value: "499.00" },
       metadata: {
@@ -1549,7 +1548,7 @@ describe("Mollie payment flow", () => {
     expect(run.payment).toMatchObject({
       status: expectedProjectionStatus,
       provider: "mollie",
-      externalReference: "tr_test_123",
+      externalReference: "tr_test123",
       providerStatus: mollieStatus,
     })
     expect(update).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "tenants" }))
@@ -1558,10 +1557,10 @@ describe("Mollie payment flow", () => {
   })
 
   it("ignores an order-only provider payment instead of synthesizing a payment attempt", async () => {
-    const { payload } = createPayloadStub()
+    const { payload } = await createPayloadStub()
 
-    await expect(synchronizeMolliePayment(payload, "tr_order_only", async () => ({
-      id: "tr_order_only",
+    await expect(synchronizeMolliePayment(payload, "tr_orderonly", async () => ({
+      id: "tr_orderonly",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
       metadata: { orderId: 600 },
@@ -1570,18 +1569,18 @@ describe("Mollie payment flow", () => {
   })
 
   it("reports duplicate webhook delivery while keeping the operation idempotent", async () => {
-    const { payload } = createPayloadStub({
+    const { payload } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_test_123",
+        externalReference: "tr_test123",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
 
-    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
-      id: "tr_test_123",
+    const result = await synchronizeMolliePayment(payload, "tr_test123", async () => ({
+      id: "tr_test123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
       metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
@@ -1593,19 +1592,19 @@ describe("Mollie payment flow", () => {
 
   it("creates application-owned recurring payments against a valid Mollie mandate", async () => {
     enableSandboxCommerceRelease()
-    const { payload, billingAgreements, paymentAttempts } = createPayloadStub({
+    const { payload, billingAgreements, paymentAttempts } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_123",
+        externalReference: "tr_first123",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "valid",
           method: "directdebit",
         }), { status: 200 })
@@ -1613,20 +1612,20 @@ describe("Mollie payment flow", () => {
       if (url === "https://api.mollie.com/v2/payments") {
         const body = JSON.parse(String(init?.body))
         expect(body).toMatchObject({
-          customerId: "cst_test_123",
-          mandateId: "mdt_test_123",
+          customerId: "cst_test123",
+          mandateId: "mdt_test123",
           sequenceType: "recurring",
           webhookUrl: "https://admin.siteinabox.nl/api/payments/mollie/webhook",
           metadata: {
             billingAgreementId: billingAgreements[0]?.id,
-            mandateId: "mdt_test_123",
+            mandateId: "mdt_test123",
             sequenceType: "recurring",
             orderId: 600,
           },
         })
         expect(body).not.toHaveProperty("redirectUrl")
-        return new Response(JSON.stringify({
-          id: "tr_recurring_123",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", mandateId: "mdt_test123", sequenceType: "recurring",
+          id: "tr_recurring123",
           status: "pending",
         }), { status: 201 })
       }
@@ -1651,7 +1650,7 @@ describe("Mollie payment flow", () => {
       state: "pending_provider",
       purpose: "recurring",
       sequenceType: "recurring",
-      providerPaymentId: "tr_recurring_123",
+      providerPaymentId: "tr_recurring123",
     })
     expect(paymentAttempts).toHaveLength(2)
     expect(vi.mocked(fetch).mock.calls.some(([url]) =>
@@ -1661,13 +1660,13 @@ describe("Mollie payment flow", () => {
 
   it("allows only one provider write when recurring-payment schedulers race", async () => {
     enableSandboxCommerceRelease()
-    const { payload, billingAgreements, paymentAttempts, order } = createPayloadStub({
+    const { payload, billingAgreements, paymentAttempts, order } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_before_race",
+        externalReference: "tr_firstbeforerace",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -1676,15 +1675,15 @@ describe("Mollie payment flow", () => {
       orderKind: "subscription_renewal",
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "valid",
         }), { status: 200 })
       }
       if (url === "https://api.mollie.com/v2/payments") {
-        return new Response(JSON.stringify({
-          id: "tr_recurring_race",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", mandateId: "mdt_test123", sequenceType: "recurring",
+          id: "tr_recurringrace",
           status: "pending",
         }), { status: 201 })
       }
@@ -1717,14 +1716,14 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       cancelBeforeRecurringClaim: true,
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_before_cancel",
+        externalReference: "tr_firstbeforecancel",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -1735,9 +1734,9 @@ describe("Mollie payment flow", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "valid",
         }), { status: 200 })
       }
@@ -1768,13 +1767,13 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_before_claim_crash",
+        externalReference: "tr_firstbeforeclaimcrash",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     const attempt = paymentAttempts[0]!
@@ -1824,15 +1823,15 @@ describe("Mollie payment flow", () => {
     })
 
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "valid",
         }), { status: 200 })
       }
       if (url === "https://api.mollie.com/v2/payments") {
-        return new Response(JSON.stringify({
-          id: "tr_recurring_after_reconciliation",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", mandateId: "mdt_test123", sequenceType: "recurring",
+          id: "tr_recurringafterreconciliation",
           status: "pending",
         }), { status: 201 })
       }
@@ -1852,7 +1851,7 @@ describe("Mollie payment flow", () => {
     expect(retries.filter((result) => result.status === "rejected"))
       .toHaveLength(1)
     expect(attempt).toMatchObject({
-      providerPaymentId: "tr_recurring_after_reconciliation",
+      providerPaymentId: "tr_recurringafterreconciliation",
       reconciliationRequired: false,
     })
     expect(vi.mocked(fetch).mock.calls.filter(([url]) =>
@@ -1867,13 +1866,13 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_before_rejection",
+        externalReference: "tr_firstbeforerejection",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -1883,21 +1882,21 @@ describe("Mollie payment flow", () => {
     })
     let paymentWrites = 0
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "valid",
         }), { status: 200 })
       }
       if (url === "https://api.mollie.com/v2/payments") {
         paymentWrites += 1
         if (paymentWrites === 1) {
-          return new Response(JSON.stringify({
+          return new Response(JSON.stringify({ status: 422, title: "Fixture provider rejection",
             detail: "The recurring payment was rejected.",
           }), { status: 422 })
         }
-        return new Response(JSON.stringify({
-          id: "tr_recurring_after_rejection",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", mandateId: "mdt_test123", sequenceType: "recurring",
+          id: "tr_recurringafterrejection",
           status: "pending",
         }), { status: 201 })
       }
@@ -1926,7 +1925,7 @@ describe("Mollie payment flow", () => {
       attemptNumber: 2,
     })).resolves.toMatchObject({
       paymentAttempt: expect.objectContaining({
-        providerPaymentId: "tr_recurring_after_rejection",
+        providerPaymentId: "tr_recurringafterrejection",
       }),
     })
     expect(paymentWrites).toBe(2)
@@ -1939,13 +1938,13 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_before_revocation",
+        externalReference: "tr_firstbeforerevocation",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -1956,9 +1955,9 @@ describe("Mollie payment flow", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "invalid",
         }), { status: 200 })
       }
@@ -1996,13 +1995,13 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       order,
       tenant,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_first_before_recovery",
+        externalReference: "tr_firstbeforerecovery",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -2013,16 +2012,16 @@ describe("Mollie payment flow", () => {
       servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "invalid",
         }), { status: 200 })
       }
       if (url === "https://api.mollie.com/v2/payments") {
         const body = JSON.parse(String(init?.body))
         expect(body).toMatchObject({
-          customerId: "cst_test_123",
+          customerId: "cst_test123",
           sequenceType: "first",
           redirectUrl: "https://admin.siteinabox.nl/settings?billing=return#billing",
           metadata: {
@@ -2033,8 +2032,8 @@ describe("Mollie payment flow", () => {
           },
         })
         expect(body).not.toHaveProperty("mandateId")
-        return new Response(JSON.stringify({
-          id: "tr_mandate_recovery",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", sequenceType: "first",
+          id: "tr_mandaterecovery",
           status: "open",
           _links: {
             checkout: { href: "https://www.mollie.com/checkout/recover" },
@@ -2074,17 +2073,17 @@ describe("Mollie payment flow", () => {
       purpose: "recurring",
       sequenceType: "first",
       state: "pending_provider",
-      providerPaymentId: "tr_mandate_recovery",
+      providerPaymentId: "tr_mandaterecovery",
     })
 
     await synchronizeMolliePayment(
       payload,
-      "tr_mandate_recovery",
+      "tr_mandaterecovery",
       async () => ({
-        id: "tr_mandate_recovery",
+        id: "tr_mandaterecovery",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         mandateId: "mdt_replacement",
         sequenceType: "first",
         paidAt: "2026-08-15T10:05:00.000Z",
@@ -2094,7 +2093,7 @@ describe("Mollie payment flow", () => {
           orderId: 600,
           purpose: "recurring",
           sequenceType: "first",
-          mollieCustomerId: "cst_test_123",
+          mollieCustomerId: "cst_test123",
         },
         _embedded: { refunds: [], chargebacks: [] },
       }),
@@ -2124,13 +2123,13 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_initial_authority",
+        externalReference: "tr_initialauthority",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -2142,7 +2141,7 @@ describe("Mollie payment flow", () => {
       reconciliationRequired: true,
       failureReason: "Provider state is unresolved.",
     })
-    paymentAttempts.push({
+    paymentAttempts.push(paymentAttemptFixture({
       id: 999,
       order: 600,
       billingAgreement: billingAgreements[0]?.id,
@@ -2153,12 +2152,12 @@ describe("Mollie payment flow", () => {
       sequenceType: "recurring",
       provider: "mollie",
       currency: "EUR",
-      netAmountMinor: order.subtotalNetMinor,
-      vatAmountMinor: order.vatAmountMinor,
-      grossAmountMinor: order.totalGrossMinor,
+      netAmountMinor: requiredFixtureAmount(order.subtotalNetMinor),
+      vatAmountMinor: requiredFixtureAmount(order.vatAmountMinor),
+      grossAmountMinor: requiredFixtureAmount(order.totalGrossMinor),
       reconciliationRequired: false,
       createdAt: "2026-08-15T10:00:00.000Z",
-    })
+    }))
 
     await expect(createMandateRecoveryMolliePayment(payload, {
       billingAgreementId: String(billingAgreements[0]?.id),
@@ -2174,13 +2173,13 @@ describe("Mollie payment flow", () => {
 
   it("coalesces concurrent mandate-recovery submissions into one Mollie POST", async () => {
     enableSandboxCommerceRelease()
-    const fixture = createPayloadStub({
+    const fixture = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_cycle",
+        externalReference: "tr_failedcycle",
         providerStatus: "failed",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     configureRecoverableSubscription(fixture)
@@ -2190,8 +2189,8 @@ describe("Mollie payment flow", () => {
     })
     vi.stubGlobal("fetch", vi.fn(async () => {
       await providerGate
-      return new Response(JSON.stringify({
-        id: "tr_single_recovery",
+      return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", sequenceType: "first",
+        id: "tr_singlerecovery",
         status: "open",
         _links: {
           checkout: { href: "https://www.mollie.com/checkout/single-recovery" },
@@ -2223,19 +2222,19 @@ describe("Mollie payment flow", () => {
 
   it("blocks recurring collection until mandate recovery is authoritatively synchronized", async () => {
     enableSandboxCommerceRelease()
-    const fixture = createPayloadStub({
+    const fixture = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_before_recovery_race",
+        externalReference: "tr_failedbeforerecoveryrace",
         providerStatus: "failed",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     configureRecoverableSubscription(fixture)
     Object.assign(fixture.billingAgreements[0]!, {
       state: "past_due",
-      providerMandateId: "mdt_test_123",
+      providerMandateId: "mdt_test123",
       renewalIntent: true,
     })
     let releaseProvider!: () => void
@@ -2245,8 +2244,8 @@ describe("Mollie payment flow", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/payments") {
         await providerGate
-        return new Response(JSON.stringify({
-          id: "tr_recovery_won",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", sequenceType: "first",
+          id: "tr_recoverywon",
           status: "open",
           _links: {
             checkout: { href: "https://www.mollie.com/checkout/recovery-won" },
@@ -2293,12 +2292,12 @@ describe("Mollie payment flow", () => {
     })
     await synchronizeMolliePayment(
       fixture.payload,
-      "tr_recovery_won",
+      "tr_recoverywon",
       async () => ({
-        id: "tr_recovery_won",
+        id: "tr_recoverywon",
         status: "open",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         metadata: {
           paymentAttemptId: recoveryResult.paymentAttempt.id,
@@ -2306,7 +2305,7 @@ describe("Mollie payment flow", () => {
           orderId: 600,
           purpose: "recurring",
           sequenceType: "first",
-          mollieCustomerId: "cst_test_123",
+          mollieCustomerId: "cst_test123",
         },
       }),
     )
@@ -2322,13 +2321,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       fixture.payload,
-      "tr_recovery_won",
+      "tr_recoverywon",
       async () => ({
-        id: "tr_recovery_won",
+        id: "tr_recoverywon",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_replacement_after_race",
+        customerId: "cst_test123",
+        mandateId: "mdt_replacementafterrace",
         sequenceType: "first",
         paidAt: "2026-08-15T10:05:00.000Z",
         metadata: {
@@ -2337,14 +2336,14 @@ describe("Mollie payment flow", () => {
           orderId: 600,
           purpose: "recurring",
           sequenceType: "first",
-          mollieCustomerId: "cst_test_123",
+          mollieCustomerId: "cst_test123",
         },
         _embedded: { refunds: [], chargebacks: [] },
       }),
     )
     expect(fixture.billingAgreements[0]).toMatchObject({
       state: "active",
-      providerMandateId: "mdt_replacement_after_race",
+      providerMandateId: "mdt_replacementafterrace",
       reconciliationRequired: false,
       failureReason: null,
     })
@@ -2352,19 +2351,19 @@ describe("Mollie payment flow", () => {
 
   it("blocks mandate recovery until recurring collection is authoritatively synchronized", async () => {
     enableSandboxCommerceRelease()
-    const fixture = createPayloadStub({
+    const fixture = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_before_collection_race",
+        externalReference: "tr_failedbeforecollectionrace",
         providerStatus: "failed",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     configureRecoverableSubscription(fixture)
     Object.assign(fixture.billingAgreements[0]!, {
       state: "past_due",
-      providerMandateId: "mdt_test_123",
+      providerMandateId: "mdt_test123",
       renewalIntent: true,
     })
     let releaseProvider!: () => void
@@ -2372,16 +2371,16 @@ describe("Mollie payment flow", () => {
       releaseProvider = resolve
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+      if (url.includes("/customers/cst_test123/mandates/mdt_test123")) {
         return new Response(JSON.stringify({
-          id: "mdt_test_123",
+          id: "mdt_test123",
           status: "valid",
         }), { status: 200 })
       }
       if (url === "https://api.mollie.com/v2/payments") {
         await providerGate
-        return new Response(JSON.stringify({
-          id: "tr_collection_won",
+        return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", mandateId: "mdt_test123", sequenceType: "recurring",
+          id: "tr_collectionwon",
           status: "pending",
         }), { status: 201 })
       }
@@ -2411,7 +2410,7 @@ describe("Mollie payment flow", () => {
     const recurringResult = await recurring
     expect(recurringResult).toMatchObject({
       paymentAttempt: expect.objectContaining({
-        providerPaymentId: "tr_collection_won",
+        providerPaymentId: "tr_collectionwon",
       }),
     })
     expect(fixture.billingAgreements[0]).toMatchObject({
@@ -2424,11 +2423,11 @@ describe("Mollie payment flow", () => {
     })).rejects.toThrow("not available")
 
     const recurringProviderPayment = (status: "pending" | "failed") => ({
-      id: "tr_collection_won",
+      id: "tr_collectionwon",
       status,
       amount: { currency: "EUR", value: "499.00" },
-      customerId: "cst_test_123",
-      mandateId: "mdt_test_123",
+      customerId: "cst_test123",
+      mandateId: "mdt_test123",
       sequenceType: "recurring" as const,
       metadata: {
         paymentAttemptId: recurringResult.paymentAttempt.id,
@@ -2437,13 +2436,13 @@ describe("Mollie payment flow", () => {
         idempotencyKey: recurringResult.paymentAttempt.idempotencyKey,
         purpose: "domain_renewal",
         sequenceType: "recurring",
-        mollieCustomerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        mollieCustomerId: "cst_test123",
+        mandateId: "mdt_test123",
       },
     })
     await synchronizeMolliePayment(
       fixture.payload,
-      "tr_collection_won",
+      "tr_collectionwon",
       async () => recurringProviderPayment("pending"),
     )
     expect(fixture.billingAgreements[0]).toMatchObject({
@@ -2452,7 +2451,7 @@ describe("Mollie payment flow", () => {
     })
     await synchronizeMolliePayment(
       fixture.payload,
-      "tr_collection_won",
+      "tr_collectionwon",
       async () => recurringProviderPayment("failed"),
     )
     expect(fixture.billingAgreements[0]).toMatchObject({
@@ -2464,17 +2463,17 @@ describe("Mollie payment flow", () => {
 
   it("does not reuse a pending recovery checkout from an older obligation", async () => {
     enableSandboxCommerceRelease()
-    const fixture = createPayloadStub({
+    const fixture = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_newer_failed_cycle",
+        externalReference: "tr_newerfailedcycle",
         providerStatus: "failed",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     configureRecoverableSubscription(fixture)
-    fixture.paymentAttempts.push({
+    fixture.paymentAttempts.push(paymentAttemptFixture({
       ...fixture.paymentAttempts[0],
       id: 899,
       order: 599,
@@ -2483,14 +2482,14 @@ describe("Mollie payment flow", () => {
       state: "pending_provider",
       purpose: "recurring",
       sequenceType: "first",
-      providerPaymentId: "tr_old_recovery",
+      providerPaymentId: "tr_oldrecovery",
       checkoutUrl: "https://www.mollie.com/checkout/old-obligation",
       reconciliationRequired: false,
       createdAt: "2026-07-15T09:50:00.000Z",
-    })
+    }))
     vi.stubGlobal("fetch", vi.fn(async () =>
-      new Response(JSON.stringify({
-        id: "tr_current_recovery",
+      new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", sequenceType: "first",
+        id: "tr_currentrecovery",
         status: "open",
         _links: {
           checkout: { href: "https://www.mollie.com/checkout/current-obligation" },
@@ -2512,18 +2511,18 @@ describe("Mollie payment flow", () => {
 
   it("releases the mandate-recovery agreement claim after deterministic rejection", async () => {
     enableSandboxCommerceRelease()
-    const fixture = createPayloadStub({
+    const fixture = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_before_recovery_rejection",
+        externalReference: "tr_failedbeforerecoveryrejection",
         providerStatus: "failed",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     configureRecoverableSubscription(fixture)
     vi.stubGlobal("fetch", vi.fn(async () =>
-      new Response(JSON.stringify({
+      new Response(JSON.stringify({ status: 422, title: "Fixture provider rejection",
         detail: "The mandate-recovery payment was rejected.",
       }), { status: 422 })
     ))
@@ -2547,13 +2546,13 @@ describe("Mollie payment flow", () => {
 
   it("reconciles an absent recovery payment before one concurrency-safe retry", async () => {
     enableSandboxCommerceRelease()
-    const fixture = createPayloadStub({
+    const fixture = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_before_timeout",
+        externalReference: "tr_failedbeforetimeout",
         providerStatus: "failed",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     configureRecoverableSubscription(fixture)
@@ -2567,7 +2566,7 @@ describe("Mollie payment flow", () => {
 
     await expect(
       createMandateRecoveryMolliePayment(fixture.payload, input),
-    ).rejects.toThrow("connection closed")
+    ).rejects.toThrow("provider transport")
     await expect(
       createMandateRecoveryMolliePayment(fixture.payload, input),
     ).rejects.toThrow("already claimed")
@@ -2608,8 +2607,8 @@ describe("Mollie payment flow", () => {
     })
     vi.stubGlobal("fetch", vi.fn(async () => {
       await providerGate
-      return new Response(JSON.stringify({
-        id: "tr_recovered_after_absence",
+      return new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" }, customerId: "cst_test123", sequenceType: "first",
+        id: "tr_recoveredafterabsence",
         status: "open",
         _links: {
           checkout: {
@@ -2646,13 +2645,13 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       paymentAttempts,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_late_committed",
+        externalReference: "tr_latecommitted",
         providerStatus: "pending",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -2665,7 +2664,7 @@ describe("Mollie payment flow", () => {
       purpose: "recurring",
       sequenceType: "recurring",
       state: "pending_provider",
-      providerPaymentId: "tr_late_committed",
+      providerPaymentId: "tr_latecommitted",
       providerStatus: "pending",
     })
     Object.assign(billingAgreements[0]!, {
@@ -2678,12 +2677,12 @@ describe("Mollie payment flow", () => {
       currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
     })
 
-    await synchronizeMolliePayment(payload, "tr_late_committed", async () => ({
-      id: "tr_late_committed",
+    await synchronizeMolliePayment(payload, "tr_latecommitted", async () => ({
+      id: "tr_latecommitted",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
-      customerId: "cst_test_123",
-      mandateId: "mdt_test_123",
+      customerId: "cst_test123",
+      mandateId: "mdt_test123",
       sequenceType: "recurring",
       paidAt: "2026-08-01T10:00:01.000Z",
       metadata: {
@@ -2692,8 +2691,8 @@ describe("Mollie payment flow", () => {
         orderId: 600,
         purpose: "recurring",
         sequenceType: "recurring",
-        mollieCustomerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        mollieCustomerId: "cst_test123",
+        mandateId: "mdt_test123",
       },
       _embedded: { refunds: [], chargebacks: [] },
     }))
@@ -2714,16 +2713,16 @@ describe("Mollie payment flow", () => {
       accountingDocuments,
       billingAgreements,
       managedDomains,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_123",
+        externalReference: "tr_refund123",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
-    managedDomains.push({
+    managedDomains.push(managedDomainFixture({
       id: 1_301,
       tenant: 1,
       state: "active",
@@ -2732,12 +2731,12 @@ describe("Mollie payment flow", () => {
       entitlementStatus: "active",
       authoritativeDnsStatus: "verified",
       cloudflareDnsRecordIds: ["mx", "dkim", "website"],
-    })
+    }))
     const custodyBeforeRefund = structuredClone(managedDomains[0])
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      expect(url).toBe("https://api.mollie.com/v2/payments/tr_refund_123/refunds")
+      expect(url).toBe("https://api.mollie.com/v2/payments/tr_refund123/refunds")
       return new Response(JSON.stringify({
-        id: "re_test_123",
+        id: "re_test123",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
       }), { status: 201 })
@@ -2748,7 +2747,7 @@ describe("Mollie payment flow", () => {
       scenario: "unfulfillable_before_provider_commit",
     })
     expect(requested).toMatchObject({
-      providerRefundId: "re_test_123",
+      providerRefundId: "re_test123",
       reused: false,
       document: {
         documentType: "credit_note",
@@ -2762,7 +2761,7 @@ describe("Mollie payment flow", () => {
     })
     const whilePending = await processBillingAgreement({
       payload,
-      agreement: cast(billingAgreements[0]),
+      agreement: billingAgreements[0]!,
       now: new Date("2026-08-26T12:00:00.000Z"),
       providerWritesAllowed: () => true,
     })
@@ -2773,13 +2772,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_refund_123",
+      "tr_refund123",
       async () => ({
-        id: "tr_refund_123",
+        id: "tr_refund123",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt: "2026-07-26T12:00:00.000Z",
         metadata: {
@@ -2795,11 +2794,11 @@ describe("Mollie payment flow", () => {
     })
 
     const providerPayment = {
-      id: "tr_refund_123",
+      id: "tr_refund123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
-      customerId: "cst_test_123",
-      mandateId: "mdt_test_123",
+      customerId: "cst_test123",
+      mandateId: "mdt_test123",
       sequenceType: "first",
       paidAt: "2026-07-26T12:00:00.000Z",
       metadata: {
@@ -2808,7 +2807,7 @@ describe("Mollie payment flow", () => {
       },
       _embedded: {
         refunds: [{
-          id: "re_test_123",
+          id: "re_test123",
           status: "refunded",
           amount: { currency: "EUR", value: "499.00" },
           createdAt: "2026-07-26T12:05:00.000Z",
@@ -2818,12 +2817,12 @@ describe("Mollie payment flow", () => {
     }
     const first = await synchronizeMolliePayment(
       payload,
-      "tr_refund_123",
+      "tr_refund123",
       async () => providerPayment,
     )
     const duplicate = await synchronizeMolliePayment(
       payload,
-      "tr_refund_123",
+      "tr_refund123",
       async () => providerPayment,
     )
 
@@ -2838,7 +2837,7 @@ describe("Mollie payment flow", () => {
     })
     const afterRefund = await processBillingAgreement({
       payload,
-      agreement: cast(billingAgreements[0]),
+      agreement: billingAgreements[0]!,
       now: new Date("2026-08-26T12:00:00.000Z"),
       providerWritesAllowed: () => true,
     })
@@ -2855,7 +2854,7 @@ describe("Mollie payment flow", () => {
       document.documentType === "credit_note",
     )).toMatchObject({
       state: "issued",
-      providerOperationId: "re_test_123",
+      providerOperationId: "re_test123",
       grossAmountMinor: 49_900,
     })
   })
@@ -2866,13 +2865,13 @@ describe("Mollie payment flow", () => {
       payload,
       paymentAttempts,
       accountingDocuments,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_indeterminate",
+        externalReference: "tr_refundindeterminate",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     vi.stubGlobal("fetch", vi.fn(async () => {
@@ -2882,7 +2881,7 @@ describe("Mollie payment flow", () => {
     await expect(requestMollieRefund(payload, {
       paymentAttemptId: String(paymentAttempts[0]?.id),
       scenario: "unfulfillable_before_provider_commit",
-    })).rejects.toThrow("connection closed")
+    })).rejects.toThrow("provider transport")
 
     const pendingDocument = accountingDocuments.find((document) =>
       document.documentType === "credit_note",
@@ -2895,13 +2894,13 @@ describe("Mollie payment flow", () => {
 
     const result = await synchronizeMolliePayment(
       payload,
-      "tr_refund_indeterminate",
+      "tr_refundindeterminate",
       async () => ({
-        id: "tr_refund_indeterminate",
+        id: "tr_refundindeterminate",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt: "2026-07-26T12:00:00.000Z",
         metadata: {
@@ -2910,7 +2909,7 @@ describe("Mollie payment flow", () => {
         },
         _embedded: {
           refunds: [{
-            id: "re_discovered_after_timeout",
+            id: "re_discoveredaftertimeout",
             status: "refunded",
             amount: { currency: "EUR", value: "499.00" },
             createdAt: "2026-07-26T12:05:00.000Z",
@@ -2926,7 +2925,7 @@ describe("Mollie payment flow", () => {
     expect(pendingDocument).toMatchObject({
       state: "issued",
       reconciliationRequired: false,
-      providerOperationId: "re_discovered_after_timeout",
+      providerOperationId: "re_discoveredaftertimeout",
     })
   })
 
@@ -2938,17 +2937,17 @@ describe("Mollie payment flow", () => {
       accountingDocuments,
       managedDomains,
       tenant,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_chargeback_123",
+        externalReference: "tr_chargeback123",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     tenant.status = "active"
-    managedDomains.push({
+    managedDomains.push(managedDomainFixture({
       id: 1_300,
       tenant: 1,
       state: "active",
@@ -2956,16 +2955,16 @@ describe("Mollie payment flow", () => {
       entitlementStatus: "active",
       authoritativeDnsStatus: "verified",
       cloudflareDnsRecordIds: ["mx", "dkim", "website"],
-    })
+    }))
     const chargeback = await synchronizeMolliePayment(
       payload,
-      "tr_chargeback_123",
+      "tr_chargeback123",
       async () => ({
-        id: "tr_chargeback_123",
+        id: "tr_chargeback123",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt: "2026-07-26T12:00:00.000Z",
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
@@ -2981,9 +2980,9 @@ describe("Mollie payment flow", () => {
     )
     const stale = await synchronizeMolliePayment(
       payload,
-      "tr_chargeback_123",
+      "tr_chargeback123",
       async () => ({
-        id: "tr_chargeback_123",
+        id: "tr_chargeback123",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
@@ -3025,27 +3024,27 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       tenant,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       recoverBeforeChargebackTenantMutation: true,
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_chargeback_recovery_race",
+        externalReference: "tr_chargebackrecoveryrace",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     tenant.status = "active"
 
     await synchronizeMolliePayment(
       payload,
-      "tr_chargeback_recovery_race",
+      "tr_chargebackrecoveryrace",
       async () => ({
-        id: "tr_chargeback_recovery_race",
+        id: "tr_chargebackrecoveryrace",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt: "2026-07-26T12:00:00.000Z",
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
@@ -3072,31 +3071,31 @@ describe("Mollie payment flow", () => {
   })
 
   it("requires reconciliation before crediting cumulative refunds and chargebacks above capture", async () => {
-    const { payload, paymentAttempts, accountingDocuments } = createPayloadStub({
+    const { payload, paymentAttempts, accountingDocuments } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_combined_reversal",
+        externalReference: "tr_combinedreversal",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
 
     const result = await synchronizeMolliePayment(
       payload,
-      "tr_combined_reversal",
+      "tr_combinedreversal",
       async () => ({
-        id: "tr_combined_reversal",
+        id: "tr_combinedreversal",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt: "2026-07-26T12:00:00.000Z",
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
         _embedded: {
           refunds: [{
-            id: "re_combined_reversal",
+            id: "re_combinedreversal",
             status: "refunded",
             amount: { currency: "EUR", value: "499.00" },
             createdAt: "2026-07-27T11:00:00.000Z",
@@ -3129,13 +3128,13 @@ describe("Mollie payment flow", () => {
       order,
       billingAgreements,
       paymentAttempts,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_old_attempt",
+        externalReference: "tr_oldattempt",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     const oldAttempt = paymentAttempts[0]!
@@ -3143,27 +3142,27 @@ describe("Mollie payment flow", () => {
       state: "pending_provider",
       providerStatus: "open",
     })
-    paymentAttempts.push({
+    paymentAttempts.push(paymentAttemptFixture({
       ...oldAttempt,
       id: 902,
       idempotencyKey: "mollie:first-payment:order:600:authority-v3:attempt-2",
       attemptNumber: 2,
       state: "paid",
-      providerPaymentId: "tr_new_attempt",
+      providerPaymentId: "tr_newattempt",
       providerStatus: "paid",
       paidAt: "2026-07-27T10:00:00.000Z",
-    })
+    }))
     Object.assign(order, {
       state: "fulfilled",
       paymentStatus: "paid",
-      providerPaymentId: "tr_new_attempt",
+      providerPaymentId: "tr_newattempt",
       paidAt: "2026-07-27T10:00:00.000Z",
     })
     Object.assign(run, {
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_new_attempt",
+        externalReference: "tr_newattempt",
         providerStatus: "paid",
       },
     })
@@ -3175,12 +3174,12 @@ describe("Mollie payment flow", () => {
 
     const result = await synchronizeMolliePayment(
       payload,
-      "tr_old_attempt",
+      "tr_oldattempt",
       async () => ({
-        id: "tr_old_attempt",
+        id: "tr_oldattempt",
         status: "failed",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         metadata: { paymentAttemptId: oldAttempt.id, orderId: 600 },
       }),
@@ -3190,11 +3189,11 @@ describe("Mollie payment flow", () => {
     expect(order).toMatchObject({
       state: "fulfilled",
       paymentStatus: "paid",
-      providerPaymentId: "tr_new_attempt",
+      providerPaymentId: "tr_newattempt",
     })
     expect(run.payment).toMatchObject({
       status: "completed",
-      externalReference: "tr_new_attempt",
+      externalReference: "tr_newattempt",
     })
     expect(billingAgreements[0]).toMatchObject({
       state: "active",
@@ -3223,13 +3222,13 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: `tr_first_${billingPeriod}`,
+        externalReference: `tr_first${billingPeriod}`,
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, { billingPeriod })
@@ -3237,13 +3236,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      `tr_first_${billingPeriod}`,
+      `tr_first${billingPeriod}`,
       async () => ({
-        id: `tr_first_${billingPeriod}`,
+        id: `tr_first${billingPeriod}`,
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt,
         metadata: {
@@ -3268,13 +3267,13 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_recurring_cancel_race",
+        externalReference: "tr_recurringcancelrace",
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -3300,13 +3299,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_recurring_cancel_race",
+      "tr_recurringcancelrace",
       async () => ({
-        id: "tr_recurring_cancel_race",
+        id: "tr_recurringcancelrace",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "recurring",
         paidAt: "2026-08-01T10:00:01.000Z",
         metadata: {
@@ -3331,14 +3330,14 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       cancelBeforeBillingSyncClaim: true,
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_paid_webhook_cancel_race",
+        externalReference: "tr_paidwebhookcancelrace",
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -3363,13 +3362,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_paid_webhook_cancel_race",
+      "tr_paidwebhookcancelrace",
       async () => ({
-        id: "tr_paid_webhook_cancel_race",
+        id: "tr_paidwebhookcancelrace",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "recurring",
         paidAt: "2026-08-01T10:00:01.000Z",
         metadata: {
@@ -3396,13 +3395,13 @@ describe("Mollie payment flow", () => {
         paymentAttempts,
         billingAgreements,
         order,
-      } = createPayloadStub({
+      } = await createPayloadStub({
         payment: {
           status: "completed",
           provider: "mollie",
-          externalReference: `tr_cancel_${providerStatus}`,
+          externalReference: `tr_cancel${providerStatus}`,
           providerStatus: "open",
-          mollieCustomerId: "cst_test_123",
+          mollieCustomerId: "cst_test123",
         },
       })
       Object.assign(order, {
@@ -3428,13 +3427,13 @@ describe("Mollie payment flow", () => {
 
       await synchronizeMolliePayment(
         payload,
-        `tr_cancel_${providerStatus}`,
+        `tr_cancel${providerStatus}`,
         async () => ({
-          id: `tr_cancel_${providerStatus}`,
+          id: `tr_cancel${providerStatus}`,
           status: providerStatus,
           amount: { currency: "EUR", value: "499.00" },
-          customerId: "cst_test_123",
-          mandateId: "mdt_test_123",
+          customerId: "cst_test123",
+          mandateId: "mdt_test123",
           sequenceType: "recurring",
           metadata: {
             paymentAttemptId: paymentAttempts[0]?.id,
@@ -3459,13 +3458,13 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_cancel_chargeback",
+        externalReference: "tr_cancelchargeback",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -3491,13 +3490,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_cancel_chargeback",
+      "tr_cancelchargeback",
       async () => ({
-        id: "tr_cancel_chargeback",
+        id: "tr_cancelchargeback",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "recurring",
         paidAt: "2026-08-01T10:00:00.000Z",
         metadata: {
@@ -3517,15 +3516,15 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_cancel_chargeback",
+      "tr_cancelchargeback",
       async () => ({
-        id: "tr_cancel_chargeback",
+        id: "tr_cancelchargeback",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
         amountRefunded: { currency: "EUR", value: "0.00" },
         amountChargedBack: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "recurring",
         metadata: {
           paymentAttemptId: paymentAttempts[0]?.id,
@@ -3558,13 +3557,13 @@ describe("Mollie payment flow", () => {
       billingAgreements,
       order,
       tenant,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_recurring_restore",
+        externalReference: "tr_recurringrestore",
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -3595,13 +3594,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_recurring_restore",
+      "tr_recurringrestore",
       async () => ({
-        id: "tr_recurring_restore",
+        id: "tr_recurringrestore",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "recurring",
         paidAt: "2026-08-16T10:00:00.000Z",
         metadata: {
@@ -3630,20 +3629,20 @@ describe("Mollie payment flow", () => {
   })
 
   it("marks a provider amount mismatch for reconciliation without satisfying the order", async () => {
-    const { payload, paymentAttempts, order } = createPayloadStub({
+    const { payload, paymentAttempts, order } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_amount_mismatch",
+        externalReference: "tr_amountmismatch",
         providerStatus: "open",
       },
     })
 
     await expect(synchronizeMolliePayment(
       payload,
-      "tr_amount_mismatch",
+      "tr_amountmismatch",
       async () => ({
-        id: "tr_amount_mismatch",
+        id: "tr_amountmismatch",
         status: "paid",
         amount: { currency: "EUR", value: "498.00" },
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
@@ -3659,20 +3658,20 @@ describe("Mollie payment flow", () => {
   })
 
   it("marks a provider currency mismatch for reconciliation without satisfying the order", async () => {
-    const { payload, paymentAttempts, order, queue } = createPayloadStub({
+    const { payload, paymentAttempts, order, queue } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_currency_mismatch",
+        externalReference: "tr_currencymismatch",
         providerStatus: "open",
       },
     })
 
     await expect(synchronizeMolliePayment(
       payload,
-      "tr_currency_mismatch",
+      "tr_currencymismatch",
       async () => ({
-        id: "tr_currency_mismatch",
+        id: "tr_currencymismatch",
         status: "paid",
         amount: { currency: "USD", value: "499.00" },
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
@@ -3689,20 +3688,20 @@ describe("Mollie payment flow", () => {
   })
 
   it("requires provider amount evidence before satisfying the order", async () => {
-    const { payload, paymentAttempts, order } = createPayloadStub({
+    const { payload, paymentAttempts, order } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_amount_missing",
+        externalReference: "tr_amountmissing",
         providerStatus: "open",
       },
     })
 
     await expect(synchronizeMolliePayment(
       payload,
-      "tr_amount_missing",
+      "tr_amountmissing",
       async () => ({
-        id: "tr_amount_missing",
+        id: "tr_amountmissing",
         status: "paid",
         metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
       }),
@@ -3720,7 +3719,7 @@ describe("Mollie payment flow", () => {
     {
       label: "order",
       payment: {
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first" as const,
         metadata: { orderId: 601 },
       },
@@ -3736,26 +3735,26 @@ describe("Mollie payment flow", () => {
     {
       label: "sequence",
       payment: {
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "recurring" as const,
         metadata: { orderId: 600 },
       },
     },
   ])("blocks a mismatched Mollie $label authority before state advancement", async ({ payment }) => {
-    const { payload, paymentAttempts, order } = createPayloadStub({
+    const { payload, paymentAttempts, order } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_authority_mismatch",
+        externalReference: "tr_authoritymismatch",
         providerStatus: "open",
       },
     })
 
     await expect(synchronizeMolliePayment(
       payload,
-      "tr_authority_mismatch",
+      "tr_authoritymismatch",
       async () => ({
-        id: "tr_authority_mismatch",
+        id: "tr_authoritymismatch",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
         ...payment,
@@ -3784,11 +3783,11 @@ describe("Mollie payment flow", () => {
   ] as const)(
     "requires %s authority on newly created Mollie payments",
     async (missing) => {
-      const { payload, paymentAttempts, billingAgreements, order } = createPayloadStub({
+      const { payload, paymentAttempts, billingAgreements, order } = await createPayloadStub({
         payment: {
           status: "pending_provider",
           provider: "mollie",
-          externalReference: `tr_missing_${missing}`,
+          externalReference: `tr_missing${missing}`,
           providerStatus: "open",
         },
       })
@@ -3797,11 +3796,11 @@ describe("Mollie payment flow", () => {
       Object.assign(attempt, {
         idempotencyKey: "mollie:first-payment:order:600:authority-v3:attempt-1",
       })
-      const payment: Record<string, unknown> = {
-        id: `tr_missing_${missing}`,
+      const payment: MolliePayment = {
+        id: `tr_missing${missing}`,
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: agreement.providerCustomerId,
+        customerId: String(agreement.providerCustomerId),
         sequenceType: "first",
         metadata: {
           paymentAttemptId: attempt.id,
@@ -3824,7 +3823,7 @@ describe("Mollie payment flow", () => {
       await expect(synchronizeMolliePayment(
         payload,
         String(payment.id),
-        async () => payment as never,
+        async () => payment,
       )).rejects.toThrow("does not match")
 
       expect(attempt).toMatchObject({
@@ -3837,11 +3836,11 @@ describe("Mollie payment flow", () => {
   )
 
   it("requires the recurring payment mandate to match its billing agreement", async () => {
-    const { payload, paymentAttempts, billingAgreements } = createPayloadStub({
+    const { payload, paymentAttempts, billingAgreements } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_mandate_mismatch",
+        externalReference: "tr_mandatemismatch",
         providerStatus: "open",
       },
     })
@@ -3856,9 +3855,9 @@ describe("Mollie payment flow", () => {
 
     await expect(synchronizeMolliePayment(
       payload,
-      "tr_mandate_mismatch",
+      "tr_mandatemismatch",
       async () => ({
-        id: "tr_mandate_mismatch",
+        id: "tr_mandatemismatch",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
         customerId: agreement.providerCustomerId as string,
@@ -3888,16 +3887,16 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       accountingDocuments,
       billingAgreements,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_rejected",
+        externalReference: "tr_refundrejected",
         providerStatus: "paid",
       },
     })
     vi.stubGlobal("fetch", vi.fn(async () =>
-      new Response(JSON.stringify({ detail: "Refund is not permitted." }), { status: 422 }),
+      new Response(JSON.stringify({ status: 422, title: "Fixture provider rejection", detail: "Refund is not permitted." }), { status: 422 }),
     ))
 
     const input = {
@@ -3927,11 +3926,11 @@ describe("Mollie payment flow", () => {
       payload,
       paymentAttempts,
       billingAgreements,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_release_blocked",
+        externalReference: "tr_refundreleaseblocked",
         providerStatus: "paid",
       },
     })
@@ -3957,11 +3956,11 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       update,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_local_transition_failure",
+        externalReference: "tr_refundlocaltransitionfailure",
         providerStatus: "paid",
       },
     })
@@ -3972,7 +3971,7 @@ describe("Mollie payment flow", () => {
       if (
         failAttemptTransition &&
         args.collection === "payment-attempts" &&
-        args.data?.state === "refund_pending"
+        recordValue(args.data).state === "refund_pending"
       ) {
         failAttemptTransition = false
         throw new Error("simulated local attempt transition failure")
@@ -3981,7 +3980,7 @@ describe("Mollie payment flow", () => {
     })
     const providerWrite = vi.fn(async () =>
       new Response(JSON.stringify({
-        id: "re_after_local_retry",
+        id: "re_afterlocalretry",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
       }), { status: 201 })
@@ -4002,7 +4001,7 @@ describe("Mollie payment flow", () => {
     })
 
     await expect(requestMollieRefund(payload, input)).resolves.toMatchObject({
-      providerRefundId: "re_after_local_retry",
+      providerRefundId: "re_afterlocalretry",
       reused: false,
     })
     expect(providerWrite).toHaveBeenCalledTimes(1)
@@ -4010,17 +4009,17 @@ describe("Mollie payment flow", () => {
 
   it("blocks a second automatic refund scenario while one refund is unresolved", async () => {
     enableSandboxCommerceRelease()
-    const { payload, paymentAttempts, accountingDocuments } = createPayloadStub({
+    const { payload, paymentAttempts, accountingDocuments } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_single_flight",
+        externalReference: "tr_refundsingleflight",
         providerStatus: "paid",
       },
     })
     vi.stubGlobal("fetch", vi.fn(async () =>
       new Response(JSON.stringify({
-        id: "re_single_flight",
+        id: "re_singleflight",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
       }), { status: 201 }),
@@ -4029,7 +4028,7 @@ describe("Mollie payment flow", () => {
     await expect(requestMollieRefund(payload, {
       paymentAttemptId: String(paymentAttempts[0]?.id),
       scenario: "unfulfillable_before_provider_commit",
-    })).resolves.toMatchObject({ providerRefundId: "re_single_flight" })
+    })).resolves.toMatchObject({ providerRefundId: "re_singleflight" })
     await expect(requestMollieRefund(payload, {
       paymentAttemptId: String(paymentAttempts[0]?.id),
       scenario: "duplicate_payment",
@@ -4048,16 +4047,16 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       accountingDocuments,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_503",
+        externalReference: "tr_refund503",
         providerStatus: "paid",
       },
     })
     vi.stubGlobal("fetch", vi.fn(async () =>
-      new Response(JSON.stringify({
+      new Response(JSON.stringify({ status: 503, title: "Fixture provider rejection",
         detail: "Service unavailable after request handling.",
       }), { status: 503 })
     ))
@@ -4101,16 +4100,16 @@ describe("Mollie payment flow", () => {
     {
       label: "HTTP 409",
       response: () => Promise.resolve(
-        new Response(JSON.stringify({ detail: "Conflict." }), { status: 409 }),
+        new Response(JSON.stringify({ status: 409, title: "Fixture provider rejection", detail: "Conflict." }), { status: 409 }),
       ),
     },
   ])("blocks a second refund write after an indeterminate $label", async ({ response }) => {
     enableSandboxCommerceRelease()
-    const { payload, paymentAttempts, billingAgreements } = createPayloadStub({
+    const { payload, paymentAttempts, billingAgreements } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_indeterminate_write",
+        externalReference: "tr_refundindeterminatewrite",
         providerStatus: "paid",
       },
     })
@@ -4138,13 +4137,13 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       accountingDocuments,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_sync_race",
+        externalReference: "tr_refundsyncrace",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     let refundWriteStarted!: () => void
@@ -4157,12 +4156,12 @@ describe("Mollie payment flow", () => {
     })
     const providerWrite = vi.fn(async (url: string) => {
       expect(url).toBe(
-        "https://api.mollie.com/v2/payments/tr_refund_sync_race/refunds",
+        "https://api.mollie.com/v2/payments/tr_refundsyncrace/refunds",
       )
       refundWriteStarted()
       await releaseRefundPromise
       return new Response(JSON.stringify({
-        id: "re_refund_sync_race",
+        id: "re_refundsyncrace",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
       }), { status: 201 })
@@ -4176,12 +4175,12 @@ describe("Mollie payment flow", () => {
     await refundWriteStartedPromise
     const synchronized = await synchronizeMolliePayment(
       payload,
-      "tr_refund_sync_race",
+      "tr_refundsyncrace",
       async () => ({
-        id: "tr_refund_sync_race",
+        id: "tr_refundsyncrace",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         paidAt: "2026-07-26T12:00:00.000Z",
         metadata: {
@@ -4201,21 +4200,21 @@ describe("Mollie payment flow", () => {
 
     releaseRefund()
     await expect(refund).resolves.toMatchObject({
-      providerRefundId: "re_refund_sync_race",
+      providerRefundId: "re_refundsyncrace",
       reused: false,
     })
 
     expect(providerWrite).toHaveBeenCalledTimes(1)
     expect(paymentAttempts[0]).toMatchObject({
       state: "refund_pending",
-      providerRefundIds: ["re_refund_sync_race"],
+      providerRefundIds: ["re_refundsyncrace"],
       reconciliationRequired: false,
     })
     expect(accountingDocuments.find((document) =>
       document.documentType === "credit_note"
     )).toMatchObject({
       state: "pending_provider",
-      providerOperationId: "re_refund_sync_race",
+      providerOperationId: "re_refundsyncrace",
       reconciliationRequired: false,
     })
   })
@@ -4227,13 +4226,13 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       order,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_collection_race",
+        externalReference: "tr_refundcollectionrace",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     Object.assign(order, {
@@ -4250,12 +4249,12 @@ describe("Mollie payment flow", () => {
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       expect(url).toBe(
-        "https://api.mollie.com/v2/payments/tr_refund_collection_race/refunds",
+        "https://api.mollie.com/v2/payments/tr_refundcollectionrace/refunds",
       )
       refundWriteStarted()
       await refundReleasePromise
       return new Response(JSON.stringify({
-        id: "re_collection_race",
+        id: "re_collectionrace",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
       }), { status: 201 })
@@ -4272,7 +4271,7 @@ describe("Mollie payment flow", () => {
     })).rejects.toThrow("active customer mandate")
     releaseRefund()
     await expect(refund).resolves.toMatchObject({
-      providerRefundId: "re_collection_race",
+      providerRefundId: "re_collectionrace",
     })
 
     expect(fetch).toHaveBeenCalledTimes(1)
@@ -4283,11 +4282,11 @@ describe("Mollie payment flow", () => {
   })
 
   it("does not automate refund scenarios that the decision matrix assigns to review", async () => {
-    const { payload, paymentAttempts, accountingDocuments } = createPayloadStub({
+    const { payload, paymentAttempts, accountingDocuments } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_manual_review",
+        externalReference: "tr_manualreview",
         providerStatus: "paid",
       },
     })
@@ -4310,9 +4309,9 @@ describe("Mollie payment flow", () => {
       throw new Error("Expected object concurrency configuration.")
     }
     expect(concurrency.key({
-      input: { paymentId: "tr_test_123" },
+      input: { paymentId: "tr_test123" },
       queue: "default",
-    })).toBe("mollie-payment:tr_test_123")
+    })).toBe("mollie-payment:tr_test123")
   })
 
   it("queues one fulfillment and one invoice when duplicate sync workers are scheduled together", async () => {
@@ -4321,21 +4320,21 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       accountingDocuments,
       queue,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_serialized_workers",
+        externalReference: "tr_serializedworkers",
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     vi.stubGlobal("fetch", vi.fn(async () =>
       new Response(JSON.stringify({
-        id: "tr_serialized_workers",
+        id: "tr_serializedworkers",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         paidAt: "2026-07-28T10:00:00.000Z",
         metadata: {
@@ -4345,14 +4344,12 @@ describe("Mollie payment flow", () => {
         _embedded: { refunds: [], chargebacks: [] },
       }), { status: 200 }),
     ))
-    const handler = syncMolliePaymentTask.handler as unknown as (
-      args: { input: { paymentId: string }; req: { payload: typeof payload } }
-    ) => Promise<{ output: { fulfillmentQueued: boolean } }>
+    const handler = createTaskRunner(syncMolliePaymentTask)
     let exclusiveLane: Promise<unknown> = Promise.resolve()
     const runWorker = () => {
       const result = exclusiveLane.then(() =>
         handler({
-          input: { paymentId: "tr_serialized_workers" },
+          input: { paymentId: "tr_serializedworkers" },
           req: { payload },
         }),
       )
@@ -4363,9 +4360,7 @@ describe("Mollie payment flow", () => {
     const results = await Promise.all([runWorker(), runWorker()])
 
     expect(results.map((result) => result.output.fulfillmentQueued)).toEqual([true, false])
-    const queuedJobs = queue.mock.calls as unknown as Array<[
-      { task: string; input?: Record<string, unknown> },
-    ]>
+    const queuedJobs = queue.mock.calls
     const fulfillmentQueues = queuedJobs.filter(
       ([entry]) => entry.task === "fulfill-order",
     )
@@ -4388,24 +4383,24 @@ describe("Mollie payment flow", () => {
       order,
       paymentAttempts,
       queue,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_refunded_before_sync",
+        externalReference: "tr_refundedbeforesync",
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
 
     const result = await synchronizeMolliePayment(
       payload,
-      "tr_refunded_before_sync",
+      "tr_refundedbeforesync",
       async () => ({
-        id: "tr_refunded_before_sync",
+        id: "tr_refundedbeforesync",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         paidAt: "2026-07-28T10:00:00.000Z",
         metadata: {
@@ -4414,7 +4409,7 @@ describe("Mollie payment flow", () => {
         },
         _embedded: {
           refunds: [{
-            id: "re_before_first_sync",
+            id: "re_beforefirstsync",
             status: "refunded",
             amount: { currency: "EUR", value: "499.00" },
             createdAt: "2026-07-28T10:01:00.000Z",
@@ -4441,7 +4436,7 @@ describe("Mollie payment flow", () => {
     {
       expectedState: "refund_pending",
       refunds: [{
-        id: "re_adjusted_before_fulfillment",
+        id: "re_adjustedbeforefulfillment",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
         createdAt: "2026-07-28T10:01:00.000Z",
@@ -4451,7 +4446,7 @@ describe("Mollie payment flow", () => {
     {
       expectedState: "refunded",
       refunds: [{
-        id: "re_adjusted_before_fulfillment",
+        id: "re_adjustedbeforefulfillment",
         status: "refunded",
         amount: { currency: "EUR", value: "499.00" },
         createdAt: "2026-07-28T10:01:00.000Z",
@@ -4474,23 +4469,23 @@ describe("Mollie payment flow", () => {
         payload,
         order,
         paymentAttempts,
-      } = createPayloadStub({
+      } = await createPayloadStub({
         payment: {
           status: "pending_provider",
           provider: "mollie",
-          externalReference: "tr_adjusted_before_fulfillment",
+          externalReference: "tr_adjustedbeforefulfillment",
           providerStatus: "open",
-          mollieCustomerId: "cst_test_123",
+          mollieCustomerId: "cst_test123",
         },
       })
       const providerPayment = (adjustments: {
         refunds: typeof refunds
         chargebacks: typeof chargebacks
       }) => ({
-        id: "tr_adjusted_before_fulfillment",
+        id: "tr_adjustedbeforefulfillment",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         paidAt: "2026-07-28T10:00:00.000Z",
         metadata: {
@@ -4502,7 +4497,7 @@ describe("Mollie payment flow", () => {
 
       const paid = await synchronizeMolliePayment(
         payload,
-        "tr_adjusted_before_fulfillment",
+        "tr_adjustedbeforefulfillment",
         async () => providerPayment({ refunds: [], chargebacks: [] }),
       )
       expect(paid.fulfillmentRequired).toBe(true)
@@ -4510,7 +4505,7 @@ describe("Mollie payment flow", () => {
 
       const adjusted = await synchronizeMolliePayment(
         payload,
-        "tr_adjusted_before_fulfillment",
+        "tr_adjustedbeforefulfillment",
         async () => providerPayment({ refunds, chargebacks }),
       )
       expect(adjusted).toMatchObject({
@@ -4527,11 +4522,11 @@ describe("Mollie payment flow", () => {
       run,
       order,
       paymentAttempts,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_adjusted_before_commit",
+        externalReference: "tr_adjustedbeforecommit",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -4549,8 +4544,8 @@ describe("Mollie payment flow", () => {
     Object.assign(paymentAttempts[0]!, { state: "refunded" })
     const loginOpenProvider = vi.fn(async () => "should-not-run")
 
-    await expect(provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    await expect(provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: String(paymentAttempts[0]!.id),
       selectedDomain: "clientsite.nl",
       dependencies: { loginOpenProvider },
@@ -4564,13 +4559,13 @@ describe("Mollie payment flow", () => {
       run,
       order,
       paymentAttempts,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_race_before_registrar_commit",
+        externalReference: "tr_racebeforeregistrarcommit",
         selectedDomain: "clientsite.nl",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
       domainOrder: {
         status: "ready_to_register",
@@ -4583,7 +4578,7 @@ describe("Mollie payment flow", () => {
     Object.assign(order, {
       state: "fulfillment_pending",
       paymentStatus: "paid",
-      providerPaymentId: "tr_race_before_registrar_commit",
+      providerPaymentId: "tr_racebeforeregistrarcommit",
     })
     let releaseTransaction!: () => void
     let signalTransaction!: () => void
@@ -4599,8 +4594,8 @@ describe("Mollie payment flow", () => {
       return "tx-race"
     })
     const registerOpenProviderDomain = vi.fn()
-    const provision = provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    const provision = provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: String(paymentAttempts[0]!.id),
       selectedDomain: "clientsite.nl",
       dependencies: {
@@ -4635,12 +4630,12 @@ describe("Mollie payment flow", () => {
     await transactionReached
     const adjusted = await synchronizeMolliePayment(
       payload,
-      "tr_race_before_registrar_commit",
+      "tr_racebeforeregistrarcommit",
       async () => ({
-        id: "tr_race_before_registrar_commit",
+        id: "tr_racebeforeregistrarcommit",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
+        customerId: "cst_test123",
         sequenceType: "first",
         paidAt: "2026-07-28T09:59:00.000Z",
         metadata: {
@@ -4649,7 +4644,7 @@ describe("Mollie payment flow", () => {
         },
         _embedded: {
           refunds: [{
-            id: "re_race_before_registrar_commit",
+            id: "re_racebeforeregistrarcommit",
             status: "refunded",
             amount: { currency: "EUR", value: "499.00" },
             createdAt: "2026-07-28T10:00:01.000Z",
@@ -4677,11 +4672,11 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       managedDomains,
       snapshots,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_chargeback_after_commit",
+        externalReference: "tr_chargebackaftercommit",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -4697,7 +4692,7 @@ describe("Mollie payment flow", () => {
       paymentStatus: "chargeback",
     })
     Object.assign(paymentAttempts[0]!, { state: "chargeback" })
-    managedDomains.push({
+    managedDomains.push(managedDomainFixture({
       id: 1_300,
       domainNameAscii: "clientsite.nl",
       tld: "nl",
@@ -4728,7 +4723,7 @@ describe("Mollie payment flow", () => {
       reconciliationRequired: false,
       createdAt: "2026-07-28T10:00:00.000Z",
       updatedAt: "2026-07-28T10:00:00.000Z",
-    })
+    }))
 
     await expect(fulfillPaidOrder(payload, {
       orderId: order.id,
@@ -4750,11 +4745,11 @@ describe("Mollie payment flow", () => {
       order,
       paymentAttempts,
       update,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_refund_after_fulfillment",
+        externalReference: "tr_failedrefundafterfulfillment",
       },
     })
     Object.assign(order, {
@@ -4781,11 +4776,11 @@ describe("Mollie payment flow", () => {
       order,
       paymentAttempts,
       managedDomains,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_refund_during_finalization",
+        externalReference: "tr_failedrefundduringfinalization",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -4799,7 +4794,7 @@ describe("Mollie payment flow", () => {
     Object.assign(order, {
       state: "fulfillment_pending",
       paymentStatus: "paid",
-      providerPaymentId: "tr_failed_refund_during_finalization",
+      providerPaymentId: "tr_failedrefundduringfinalization",
     })
     Object.assign(paymentAttempts[0]!, { state: "refund_failed" })
     Object.assign(tenant, {
@@ -4813,7 +4808,7 @@ describe("Mollie payment flow", () => {
         senderEmail: "noreply@mail.clientsite.nl",
       },
     })
-    managedDomains.push({
+    managedDomains.push(managedDomainFixture({
       id: 1_300,
       domainNameAscii: "clientsite.nl",
       tld: "nl",
@@ -4844,7 +4839,7 @@ describe("Mollie payment flow", () => {
       reconciliationRequired: false,
       createdAt: "2026-07-28T10:00:00.000Z",
       updatedAt: "2026-07-28T10:00:00.000Z",
-    })
+    }))
 
     await expect(fulfillPaidOrder(payload, {
       orderId: order.id,
@@ -4864,11 +4859,11 @@ describe("Mollie payment flow", () => {
       run,
       order,
       paymentAttempts,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_failed_refund_exception",
+        externalReference: "tr_failedrefundexception",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -4882,13 +4877,13 @@ describe("Mollie payment flow", () => {
     Object.assign(order, {
       state: "exception",
       paymentStatus: "paid",
-      providerPaymentId: "tr_failed_refund_exception",
+      providerPaymentId: "tr_failedrefundexception",
     })
     Object.assign(paymentAttempts[0]!, { state: "refund_failed" })
     const registerOpenProviderDomain = vi.fn()
 
-    await expect(provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    await expect(provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: String(paymentAttempts[0]!.id),
       selectedDomain: "clientsite.nl",
       dependencies: { registerOpenProviderDomain },
@@ -4905,13 +4900,13 @@ describe("Mollie payment flow", () => {
       accountingDocuments,
       order,
       queue,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_duplicate_capture",
+        externalReference: "tr_duplicatecapture",
         providerStatus: "open",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     const duplicateAttempt = paymentAttempts[0]!
@@ -4919,32 +4914,32 @@ describe("Mollie payment flow", () => {
       idempotencyKey:
         "mollie:first-payment:order:600:authority-v3:attempt-1",
       state: "pending_provider",
-      providerPaymentId: "tr_duplicate_capture",
+      providerPaymentId: "tr_duplicatecapture",
       providerStatus: "open",
     })
-    paymentAttempts.push({
+    paymentAttempts.push(paymentAttemptFixture({
       ...duplicateAttempt,
       id: 902,
       attemptNumber: 2,
       idempotencyKey:
         "mollie:first-payment:order:600:authority-v3:attempt-2",
       state: "paid",
-      providerPaymentId: "tr_authoritative_capture",
+      providerPaymentId: "tr_authoritativecapture",
       providerStatus: "paid",
       paidAt: "2026-07-28T09:55:00.000Z",
-    })
+    }))
     Object.assign(order, {
       state: "fulfilled",
       paymentStatus: "paid",
-      providerPaymentId: "tr_authoritative_capture",
+      providerPaymentId: "tr_authoritativecapture",
       paidAt: "2026-07-28T09:55:00.000Z",
     })
-    const providerPayment = {
-      id: "tr_duplicate_capture",
+    const providerPayment: MolliePayment = {
+      id: "tr_duplicatecapture",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
-      customerId: "cst_test_123",
-      mandateId: "mdt_test_123",
+      customerId: "cst_test123",
+      mandateId: "mdt_test123",
       sequenceType: "first",
       paidAt: "2026-07-28T10:00:00.000Z",
       metadata: {
@@ -4952,29 +4947,29 @@ describe("Mollie payment flow", () => {
         billingAgreementId: billingAgreements[0]?.id,
         orderId: order.id,
         idempotencyKey: duplicateAttempt.idempotencyKey,
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
         sequenceType: "first",
         purpose: "first_payment",
       },
       _embedded: { refunds: [], chargebacks: [] },
-    } as const
+    }
 
     queue.mockRejectedValueOnce(new Error("temporary queue outage"))
     await expect(synchronizeMolliePayment(
       payload,
       providerPayment.id,
-      async () => providerPayment as never,
+      async () => providerPayment,
     )).rejects.toThrow("temporary queue outage")
 
     const first = await synchronizeMolliePayment(
       payload,
       providerPayment.id,
-      async () => providerPayment as never,
+      async () => providerPayment,
     )
     const repeated = await synchronizeMolliePayment(
       payload,
       providerPayment.id,
-      async () => providerPayment as never,
+      async () => providerPayment,
     )
 
     expect(first).toMatchObject({
@@ -4987,7 +4982,7 @@ describe("Mollie payment flow", () => {
     })
     expect(order).toMatchObject({
       state: "fulfilled",
-      providerPaymentId: "tr_authoritative_capture",
+      providerPaymentId: "tr_authoritativecapture",
     })
     expect(accountingDocuments.filter((document) =>
       document.documentType === "invoice"
@@ -5019,7 +5014,7 @@ describe("Mollie payment flow", () => {
 
     vi.stubGlobal("fetch", vi.fn(async () =>
       new Response(JSON.stringify({
-        id: "re_duplicate_capture",
+        id: "re_duplicatecapture",
         status: "pending",
         amount: { currency: "EUR", value: "499.00" },
       }), { status: 201 })
@@ -5029,11 +5024,11 @@ describe("Mollie payment flow", () => {
       scenario: "duplicate_payment" as const,
     }
     await expect(requestMollieRefund(payload, refundInput)).resolves.toMatchObject({
-      providerRefundId: "re_duplicate_capture",
+      providerRefundId: "re_duplicatecapture",
       reused: false,
     })
     await expect(requestMollieRefund(payload, refundInput)).resolves.toMatchObject({
-      providerRefundId: "re_duplicate_capture",
+      providerRefundId: "re_duplicatecapture",
       reused: true,
     })
     expect(fetch).toHaveBeenCalledTimes(1)
@@ -5051,7 +5046,7 @@ describe("Mollie payment flow", () => {
         netAmountMinor: 0,
         vatAmountMinor: 0,
         grossAmountMinor: duplicateAttempt.grossAmountMinor,
-        providerOperationId: "re_duplicate_capture",
+        providerOperationId: "re_duplicatecapture",
       }),
     ])
     const saleInvoiceGross = accountingDocuments
@@ -5073,13 +5068,13 @@ describe("Mollie payment flow", () => {
       payload,
       paymentAttempts,
       billingAgreements,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_historical_coverage",
+        externalReference: "tr_historicalcoverage",
         providerStatus: "paid",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
     })
     const attempt = paymentAttempts[0]!
@@ -5097,13 +5092,13 @@ describe("Mollie payment flow", () => {
 
     await synchronizeMolliePayment(
       payload,
-      "tr_historical_coverage",
+      "tr_historicalcoverage",
       async () => ({
-        id: "tr_historical_coverage",
+        id: "tr_historicalcoverage",
         status: "paid",
         amount: { currency: "EUR", value: "499.00" },
-        customerId: "cst_test_123",
-        mandateId: "mdt_test_123",
+        customerId: "cst_test123",
+        mandateId: "mdt_test123",
         sequenceType: "first",
         paidAt: "2026-06-01T10:00:00.000Z",
         metadata: {
@@ -5115,7 +5110,7 @@ describe("Mollie payment flow", () => {
         },
         _embedded: {
           refunds: [{
-            id: "re_historical_coverage",
+            id: "re_historicalcoverage",
             status: "refunded",
             amount: { currency: "EUR", value: "499.00" },
             createdAt: "2026-07-28T10:00:00.000Z",
@@ -5170,11 +5165,11 @@ describe("Mollie payment flow", () => {
   })
 
   it("completes a test-mode paid checkout without creating a subscription or provisioning a domain", async () => {
-    const { payload, run, tenant } = createPayloadStub({
+    const { payload, run, tenant } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_test_123",
+        externalReference: "tr_test123",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -5189,8 +5184,8 @@ describe("Mollie payment flow", () => {
       throw new Error(`Unexpected provider fetch ${url}`)
     }))
 
-    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
-      id: "tr_test_123",
+    const result = await synchronizeMolliePayment(payload, "tr_test123", async () => ({
+      id: "tr_test123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
       metadata: {
@@ -5200,7 +5195,7 @@ describe("Mollie payment flow", () => {
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "clientsite.nl",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
         sequenceType: "first",
       },
     }))
@@ -5237,11 +5232,11 @@ describe("Mollie payment flow", () => {
   })
 
   it("fails closed for .be fulfillment without frozen capability evidence", async () => {
-    const { payload, run, order } = createPayloadStub({
+    const { payload, run, order } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_paid_missing_capability",
+        externalReference: "tr_paidmissingcapability",
       },
       domainOrder: {
         status: "ready_to_register",
@@ -5257,8 +5252,8 @@ describe("Mollie payment flow", () => {
       paymentStatus: "paid",
     })
 
-    await expect(provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    await expect(provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: 901,
       selectedDomain: "clientsite.be",
     })).rejects.toThrow("frozen TLD capability evidence")
@@ -5266,11 +5261,11 @@ describe("Mollie payment flow", () => {
   })
 
   it("terminally rejects an unsafe historical TLD order without provider writes", async () => {
-    const { payload, run, order, update, managedDomains } = createPayloadStub({
+    const { payload, run, order, update, managedDomains } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_paid_unsafe_tld",
+        externalReference: "tr_paidunsafetld",
       },
       domainOrder: {
         status: "ready_to_register",
@@ -5285,7 +5280,7 @@ describe("Mollie payment flow", () => {
       paymentStatus: "paid",
     })
     const input = {
-      order: cast(order) as Parameters<typeof provisionPaidDomainOrder>[2]["order"],
+      order: order,
       paymentAttemptId: 901,
       selectedDomain: "clientsite.de",
       dependencies: {
@@ -5293,12 +5288,12 @@ describe("Mollie payment flow", () => {
       },
     }
 
-    await expect(provisionPaidDomainOrder(payload, cast(run), input))
+    await expect(provisionPaidDomainOrder(payload, run, input))
       .resolves.toMatchObject({ status: "unfulfillable" })
     const lifecycleUpdatesAfterFirst = update.mock.calls.filter(
       ([args]) => args.collection === "managed-domains",
     ).length
-    await expect(provisionPaidDomainOrder(payload, cast(run), input))
+    await expect(provisionPaidDomainOrder(payload, run, input))
       .resolves.toMatchObject({
         status: "unfulfillable",
         message: expect.stringContaining("terminal manual review"),
@@ -5352,11 +5347,11 @@ describe("Mollie payment flow", () => {
       snapshots,
       managedDomains,
       commerceNotifications,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_test_123",
+        externalReference: "tr_test123",
         selectedDomain,
       },
       domainOrder: {
@@ -5489,8 +5484,8 @@ describe("Mollie payment flow", () => {
       throw new Error(`Unexpected fetch ${url}`)
     }))
 
-    const result = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
-      id: "tr_test_123",
+    const result = await synchronizeMolliePayment(payload, "tr_test123", async () => ({
+      id: "tr_test123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
       metadata: {
@@ -5500,7 +5495,7 @@ describe("Mollie payment flow", () => {
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain,
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
         sequenceType: "first",
       },
     }))
@@ -5520,7 +5515,7 @@ describe("Mollie payment flow", () => {
     expect(run.payment).toMatchObject({
       status: "completed",
       selectedDomain,
-      mollieCustomerId: "cst_test_123",
+      mollieCustomerId: "cst_test123",
     })
     expect(run.domainOrder).toMatchObject({
       status: "registered",
@@ -5618,13 +5613,13 @@ describe("Mollie payment flow", () => {
       managedDomains,
       commerceNotifications,
       queue,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_paid_verification_pending",
+        externalReference: "tr_paidverificationpending",
         selectedDomain: "clientsite.nl",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
       },
       domainOrder: {
         status: "ready_to_register",
@@ -5637,7 +5632,7 @@ describe("Mollie payment flow", () => {
     Object.assign(order, {
       state: "fulfillment_pending",
       paymentStatus: "paid",
-      providerPaymentId: "tr_paid_verification_pending",
+      providerPaymentId: "tr_paidverificationpending",
     })
     const providerDomain = {
       id: 9001,
@@ -5691,8 +5686,8 @@ describe("Mollie payment flow", () => {
       })),
     }
 
-    await expect(provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    await expect(provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: 901,
       selectedDomain: "clientsite.nl",
       dependencies,
@@ -5724,11 +5719,11 @@ describe("Mollie payment flow", () => {
     enableProductionCommerceRelease()
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
-    const { payload, managedDomains, queue } = createPayloadStub({
+    const { payload, managedDomains, queue } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_test_123",
+        externalReference: "tr_test123",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -5753,8 +5748,8 @@ describe("Mollie payment flow", () => {
       }
       throw new Error(`Unexpected provider fetch ${url}`)
     }))
-    const synchronized = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
-      id: "tr_test_123",
+    const synchronized = await synchronizeMolliePayment(payload, "tr_test123", async () => ({
+      id: "tr_test123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
       metadata: {
@@ -5764,7 +5759,7 @@ describe("Mollie payment flow", () => {
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "clientsite.nl",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
         sequenceType: "first",
       },
     }))
@@ -5797,11 +5792,11 @@ describe("Mollie payment flow", () => {
   })
 
   it("adopts a delayed Cloudflare zone after an indeterminate create without a duplicate write", async () => {
-    const { payload, run, order, managedDomains } = createPayloadStub({
+    const { payload, run, order, managedDomains } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_paid_indeterminate_zone",
+        externalReference: "tr_paidindeterminatezone",
       },
       domainOrder: {
         status: "ready_to_register",
@@ -5814,7 +5809,7 @@ describe("Mollie payment flow", () => {
     Object.assign(order, {
       state: "fulfillment_pending",
       paymentStatus: "paid",
-      providerPaymentId: "tr_paid_indeterminate_zone",
+      providerPaymentId: "tr_paidindeterminatezone",
     })
     const zone = {
       id: "zone_123",
@@ -5858,8 +5853,8 @@ describe("Mollie payment flow", () => {
       registerOpenProviderDomain: registerDomain,
     }
 
-    await expect(provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    await expect(provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: 901,
       selectedDomain: "clientsite.nl",
       dependencies,
@@ -5867,8 +5862,8 @@ describe("Mollie payment flow", () => {
       status: "waiting",
       message: expect.stringContaining("awaiting reconciliation"),
     })
-    await expect(provisionPaidDomainOrder(payload, cast(run), {
-      order: cast(order),
+    await expect(provisionPaidDomainOrder(payload, run, {
+      order: order,
       paymentAttemptId: 901,
       selectedDomain: "clientsite.nl",
       dependencies,
@@ -5906,11 +5901,11 @@ describe("Mollie payment flow", () => {
       "CLOUDFLARE_CMS_TUNNEL_ID",
       "22222222-2222-4222-8222-222222222222",
     )
-    const { payload, managedDomains } = createPayloadStub({
+    const { payload, managedDomains } = await createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
-        externalReference: "tr_test_123",
+        externalReference: "tr_test123",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -5979,8 +5974,8 @@ describe("Mollie payment flow", () => {
       }
       throw new Error(`Unexpected provider fetch ${url}`)
     }))
-    const synchronized = await synchronizeMolliePayment(payload, "tr_test_123", async () => ({
-      id: "tr_test_123",
+    const synchronized = await synchronizeMolliePayment(payload, "tr_test123", async () => ({
+      id: "tr_test123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
       metadata: {
@@ -5990,7 +5985,7 @@ describe("Mollie payment flow", () => {
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "clientsite.nl",
-        mollieCustomerId: "cst_test_123",
+        mollieCustomerId: "cst_test123",
         sequenceType: "first",
       },
     }))
@@ -6019,7 +6014,7 @@ describe("Mollie payment flow", () => {
   it("blocks a domain-provisioning retry without an order-bound paid attempt", async () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     enableProductionCommerceRelease()
-    const { payload, run, order } = createPayloadStub({
+    const { payload, run, order } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
@@ -6065,11 +6060,11 @@ describe("Mollie payment flow", () => {
       payload,
       order,
       paymentAttempts,
-    } = createPayloadStub({
+    } = await createPayloadStub({
       payment: {
         status: "completed",
         provider: "mollie",
-        externalReference: "tr_refund_pending",
+        externalReference: "tr_refundpending",
         selectedDomain: "clientsite.nl",
       },
       domainOrder: {
@@ -6103,58 +6098,58 @@ describe("Mollie payment flow", () => {
   })
 
   it("accepts the unsigned classic form webhook and rejects malformed content", async () => {
-    const invalidBodyResponse = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const invalidBodyResponse = await mollieWebhookPOST(new NextRequest("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: "not-an-id=1",
-    })))
+    }))
     expect(invalidBodyResponse.status).toBe(400)
 
-    const raw = "id=tr_test_123"
-    const { payload } = createPayloadStub({
-      payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_test_123" },
+    const raw = "id=tr_test123"
+    const { payload } = await createPayloadStub({
+      payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_test123" },
     })
     vi.mocked(getPayload).mockResolvedValue(payload)
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      id: "tr_test_123",
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" },
+      id: "tr_test123",
       status: "paid",
       metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }), { status: 200 })))
 
-    const okResponse = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const okResponse = await mollieWebhookPOST(new NextRequest("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: raw,
-    })))
+    }))
     expect(okResponse.status).toBe(200)
     expect(await okResponse.json()).toEqual({ ok: true })
-    const wrongContentType = await mollieWebhookPOST(asNextRequest(new Request(
+    const wrongContentType = await mollieWebhookPOST(new NextRequest(
       "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: "tr_test_123" }),
+        body: JSON.stringify({ id: "tr_test123" }),
       },
-    )))
+    ))
     expect(wrongContentType.status).toBe(415)
   })
 
   it("queues unknown webhook ids without provider lookup or internal-state disclosure", async () => {
-    const { payload, update, queue } = createPayloadStub({
+    const { payload, update, queue } = await createPayloadStub({
       payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_expected" },
     })
     vi.mocked(getPayload).mockResolvedValue(payload)
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ amount: { currency: "EUR", value: "499.00" },
       id: "tr_unknown",
       status: "paid",
       metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }), { status: 200 })))
 
-    const response = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const response = await mollieWebhookPOST(new NextRequest("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: "id=tr_unknown",
-    })))
+    }))
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true })
@@ -6169,15 +6164,15 @@ describe("Mollie payment flow", () => {
   })
 
   it("returns after enqueueing and never performs a Mollie lookup in the route", async () => {
-    const { payload, update, queue } = createPayloadStub()
+    const { payload, update, queue } = await createPayloadStub()
     vi.mocked(getPayload).mockResolvedValue(payload)
     vi.stubGlobal("fetch", vi.fn(async () => new Response("Not found", { status: 404 })))
 
-    const response = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const response = await mollieWebhookPOST(new NextRequest("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: "id=tr_missing",
-    })))
+    }))
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true })
@@ -6187,9 +6182,9 @@ describe("Mollie payment flow", () => {
   })
 
   it("rejects an oversized webhook body before queueing work", async () => {
-    const { payload, queue } = createPayloadStub()
+    const { payload, queue } = await createPayloadStub()
     vi.mocked(getPayload).mockResolvedValue(payload)
-    const response = await mollieWebhookPOST(asNextRequest(new Request(
+    const response = await mollieWebhookPOST(new NextRequest(
       "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       {
         method: "POST",
@@ -6199,23 +6194,21 @@ describe("Mollie payment flow", () => {
         },
         body: `id=tr_test&padding=${"a".repeat(5_000)}`,
       },
-    )))
+    ))
 
     expect(response.status).toBe(413)
     expect(queue).not.toHaveBeenCalled()
   })
 
   it("acknowledges an obsolete Mollie 404 without a task retry", async () => {
-    const { payload } = createPayloadStub()
+    const { payload } = await createPayloadStub()
     vi.stubGlobal("fetch", vi.fn(async () =>
-      new Response(JSON.stringify({
+      new Response(JSON.stringify({ status: 404,
         title: "Not Found",
         detail: "The payment does not exist.",
       }), { status: 404 })
     ))
-    const handler = syncMolliePaymentTask.handler as unknown as (
-      args: { input: { paymentId: string }; req: { payload: typeof payload } }
-    ) => Promise<{ output: { status: string; fulfillmentQueued: boolean } }>
+    const handler = createTaskRunner(syncMolliePaymentTask)
 
     await expect(handler({
       input: { paymentId: "tr_obsolete" },

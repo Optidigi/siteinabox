@@ -1,3 +1,4 @@
+/** @param {string} value */
 export function safeDecodeURIComponent(value) {
   try {
     return decodeURIComponent(value)
@@ -6,6 +7,7 @@ export function safeDecodeURIComponent(value) {
   }
 }
 
+/** @param {string} pathname */
 export function pathnameToSlug(pathname) {
   const cleanPath = pathname.split(/[?#]/, 1)[0] ?? "/"
   const withoutSlashes = cleanPath.replace(/^\/+|\/+$/g, "")

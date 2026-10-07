@@ -36,11 +36,24 @@
     "site-renderer:typecheck": "pnpm --dir packages/site-renderer typecheck",
     "site:build": "pnpm landing:build",
     "site:test": "pnpm landing:test",
-    "type-safety:check": "node --test scripts/check-type-safety.test.mjs && node scripts/check-type-safety.mjs",
-    "type-safety:test": "node --test scripts/check-type-safety.test.mjs",
+    "type-safety:check": "node --test scripts/check-type-safety.test.mjs scripts/check-astro-type-boundaries.test.mjs scripts/check-operational-type-coverage.test.mjs && node scripts/check-type-safety.mjs",
+    "type-safety:test": "node --test scripts/check-type-safety.test.mjs scripts/check-astro-type-boundaries.test.mjs scripts/check-operational-type-coverage.test.mjs",
     "ui:typecheck": "pnpm --dir packages/ui typecheck",
     "dependency:check": "node --test scripts/check-dependency-security.test.mjs && node scripts/check-dependency-security.mjs",
     "dependency:release": "node scripts/check-dependency-security.mjs --release",
-    "image:verify": "node scripts/verify-image.mjs"
+    "image:verify": "node scripts/verify-image.mjs",
+    "type-safety:packages": "tsc --project tsconfig.javascript.json && eslint \"packages/*/src/**/*.{ts,tsx,js}\" apps/renderer/src/lib/analytics-config.js apps/renderer/src/lib/pathname.js \"scripts/type-safety/*.mjs\" --max-warnings 0",
+    "type-safety:cms": "eslint \"apps/cms/src/**/*.{ts,tsx}\" \"apps/cms/scripts/**/*.ts\" --max-warnings 0",
+    "type-safety:landing": "eslint apps/landing/src --max-warnings 0",
+    "type-safety:renderer": "eslint apps/renderer/src --max-warnings 0"
+  },
+  "devDependencies": {
+    "@types/node": "26.2.0",
+    "@typescript-eslint/eslint-plugin": "8.71.1",
+    "@typescript-eslint/parser": "8.71.1",
+    "astro-eslint-parser": "3.2.0",
+    "eslint": "10.12.0",
+    "eslint-plugin-astro": "3.2.1",
+    "typescript": "6.0.3"
   }
 }

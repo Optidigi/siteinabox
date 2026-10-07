@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "strict": true,
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023",
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "packages/legal-content/src/*.js",
+    "apps/renderer/src/lib/analytics-config.js",
+    "apps/renderer/src/lib/pathname.js",
+    "scripts/type-safety/*.mjs"
+  ]
+}

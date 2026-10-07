@@ -4,6 +4,7 @@ import type { PayloadRequest } from "payload"
 import type { SiteSetting } from "@/payload-types"
 import config from "@/payload.config"
 import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
+import { createSiteSettingsData } from "./siteSettingsDefaults"
 
 // Audit finding #11 (P2, T8) — find-then-create race resolution.
 //
@@ -58,7 +59,7 @@ const isUniqueViolation = (err: unknown): boolean => {
 
 export async function getOrCreateSiteSettings(
   tenantId: number | string,
-  options: { payload?: Awaited<ReturnType<typeof getPayload>>; req?: PayloadRequest } = {},
+  options: { payload?: Awaited<ReturnType<typeof getPayload>>; req?: Partial<PayloadRequest> } = {},
 ): Promise<SiteSetting> {
   const payload = options.payload ?? await getPayload({ config })
   const request = payloadRequestArgs(options.req)
@@ -74,7 +75,7 @@ export async function getOrCreateSiteSettings(
     return await payload.create({
       collection: "site-settings",
       overrideAccess: true,
-      data: { tenant: Number(tenantId), siteName: "Untitled", siteUrl: "https://example.com" } as SiteSetting,
+      data: createSiteSettingsData(tenantId, "Untitled", "https://example.com"),
       ...request,
     })
   } catch (err) {

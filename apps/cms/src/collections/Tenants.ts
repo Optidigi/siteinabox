@@ -1,3 +1,4 @@
+import type { Tenant } from "@/payload-types"
 import type { CollectionBeforeChangeHook, CollectionConfig, PayloadRequest } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { relationshipId, type RelationshipIdRef } from "@/lib/relationshipId"
@@ -73,7 +74,7 @@ const billingSuspendedAtUnchanged = (
   originalValue: unknown,
 ): boolean => (nextValue ?? null) === (originalValue ?? null)
 
-export const protectBillingSuspensionMetadata: CollectionBeforeChangeHook = ({
+export const protectBillingSuspensionMetadata: CollectionBeforeChangeHook<Tenant> = ({
   data,
   operation,
   originalDoc,
@@ -146,7 +147,7 @@ const normalizedTenantDomain = (value: unknown): string =>
     ? value.trim().toLowerCase().replace(/\.$/, "")
     : ""
 
-export const protectPreCommerceRoutingAdoption: CollectionBeforeChangeHook = ({
+export const protectPreCommerceRoutingAdoption: CollectionBeforeChangeHook<Tenant> = ({
   data,
   operation,
   originalDoc,

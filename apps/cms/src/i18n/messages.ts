@@ -6,7 +6,7 @@ const loaders = {
   nl: () => import("@/locales/nl.json").then((mod) => mod.default),
 } satisfies Record<Locale, () => Promise<IntlMessages>>
 
-export async function loadMessages(locale: Locale): Promise<IntlMessages> {
+export async function loadMessages(locale: Locale) {
   const messages = await loaders[locale]()
   return {
     ...messages,
@@ -14,5 +14,5 @@ export async function loadMessages(locale: Locale): Promise<IntlMessages> {
       ...messages.generationOperations,
       workflowText: sanitizeWorkflowTextMessages(messages.generationOperations.workflowText),
     },
-  } as unknown as IntlMessages
+  }
 }

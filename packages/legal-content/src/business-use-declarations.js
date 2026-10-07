@@ -15,6 +15,7 @@ export const businessUseDeclarations = Object.freeze([
 
 export const currentBusinessUseDeclaration = businessUseDeclarations[0]
 
+/** @param {string} [version] */
 export function getBusinessUseDeclaration(version = BUSINESS_USE_DECLARATION_VERSION) {
   const declaration = businessUseDeclarations.find((entry) => entry.version === version)
   if (!declaration) throw new Error(`Unknown business-use declaration: ${version}`)

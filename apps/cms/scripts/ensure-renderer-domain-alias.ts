@@ -1,4 +1,4 @@
-import Module from "node:module"
+import { enableServerOnlyForOperations } from "./serverOnlyForOperations"
 import { pathToFileURL } from "node:url"
 import type { Payload } from "payload"
 import type { SiteSetting, Tenant } from "@/payload-types"
@@ -27,18 +27,7 @@ type SnapshotResolver = (
 ) => Promise<{ tenant: { id: DocumentId } } | null>
 
 const loadSnapshotResolver = async (): Promise<SnapshotResolver> => {
-  const loader = Module as unknown as {
-    _load?: (request: string, parent: unknown, isMain: boolean) => unknown
-    _siabServerOnlyShimInstalled?: boolean
-  }
-  if (!loader._siabServerOnlyShimInstalled && loader._load) {
-    const originalLoad = loader._load
-    loader._load = (request, parent, isMain) => {
-      if (request === "server-only" || request.includes("/node_modules/server-only/")) return {}
-      return originalLoad(request, parent, isMain)
-    }
-    loader._siabServerOnlyShimInstalled = true
-  }
+  enableServerOnlyForOperations()
   return (await import("@/lib/publish/siteSnapshots")).resolvePublishedSnapshotByHost
 }
 

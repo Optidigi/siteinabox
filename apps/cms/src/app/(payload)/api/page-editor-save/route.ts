@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const { user } = await payload.auth({ headers: request.headers }).catch(() => ({ user: null }))
   if (!user) return NextResponse.json({ message: "Forbidden" }, { status: 403 })
 
-  const body = await request.json().catch(() => null)
+  const body: unknown = await request.json().catch(() => null)
   const parsed = parsePageEditorSaveRequest(body)
   if (!parsed.success) {
     return NextResponse.json({ message: parsed.message }, { status: 400 })

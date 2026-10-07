@@ -32,13 +32,15 @@ especially changed field restrictions, API-key visibility and polymorphic joins.
 React and React DOM remain exact `19.2.8`; GraphQL remains `16.14.0`,
 TypeScript remains `6.0.3`, and the existing Vite `8.2.1` resolution is retained.
 Vitest and its owned family receive the `4.1.11` security patch. Nodemailer
-receives exact `10.0.13`, the smallest published patch closing the reviewed publisher advisories,
+receives exact `10.0.16`, retaining the reviewed advisory fixes and the newer
+address-parser hardening in patches 10.0.14–10.0.16,
 including four September 30 notices omitted by the current audit database.
 The actual graph has one direct CMS consumer and no installed email-adapter peer
 constraint. The publisher supports the existing main and `lib/mailer` imports;
 its own types replace `@types/nodemailer`. The Payload adapter flattens nested
 recipient lists and rejects missing addresses before transport to accommodate
-the new address types. SMTP options and the REST provider boundary are unchanged.
+the new address types. The provider boundary separately validates receipts and bounds SMTP/REST delivery
+time, cancellation and response sizes.
 Focused regression tests, existing mail tests and the CMS typecheck verify this
 security-driven major update. Node stays on the selected Node 26 toolchain.
 The 1,440-minute release-age policy and native build allowlist remain separate
@@ -76,7 +78,7 @@ when source usage, platform, transport or build-input boundaries change.
 
 | Package | Current disposition | Release consequence |
 | --- | --- | --- |
-| Nodemailer `10.0.13` | The five intermediate-audit findings and four later publisher notices are fixed; the latter cover DKIM unfolding, SMTP reply/EHLO parsing and angle-address comments. The SMTP fallback remains a shipped runtime consumer. | All reviewed current publisher Nodemailer advisories are fixed. Its exact major compatibility change must retain mail tests and the framework typecheck. |
+| Nodemailer `10.0.16` | The five intermediate-audit findings and four later publisher notices are fixed; the latter cover DKIM unfolding, SMTP reply/EHLO parsing and angle-address comments. The SMTP fallback remains a shipped runtime consumer. | All reviewed current publisher Nodemailer advisories are fixed. Its exact major compatibility change must retain mail tests and the framework typecheck. |
 | Braces `3.0.3` | Sass `1.77.4` → Chokidar `3.6.0` → Braces expands repository watch patterns during compilation. No request-controlled watch patterns or runtime Sass compilation are used. Artifact absence is not claimed. The reported `3.0.4` floor is unpublished; the reviewed advisory identifies no fixed version. | Build-only triage is retained while inputs are reviewed repository content. A dynamic build/compiler path or published fix requires renewed review. |
 | PostCSS selector parser `6.0.10` | The landing Tailwind typography plugin parses repository selectors at build time. The `7.1.6` fix crosses the current `6.x` consumer contract. | Defer that contract migration; untrusted stylesheet builds require renewed review. |
 
@@ -137,3 +139,10 @@ acceptance of that update. This is an explicit publication constraint, not a
 claim that 26.10.0 is the newest Node release. Review the [official distribution
 index](https://nodejs.org/dist/index.json). No npm release-age exception or
 unofficial Node image is introduced.
+
+The exact `nodemailer@10.0.16` resolution has a narrowly scoped release-age
+exception because the shipped code directly consumes its hardened address parser.
+The general 24-hour age floor remains in place. Review the
+[publisher hardening notes](https://github.com/nodemailer/nodemailer/releases/tag/v10.0.14)
+and [current parser correction](https://github.com/nodemailer/nodemailer/releases/tag/v10.0.16)
+when changing that exception. No additional major-version migration is involved.

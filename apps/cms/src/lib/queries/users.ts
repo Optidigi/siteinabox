@@ -5,8 +5,9 @@ import type { Where } from "payload"
 import type { User } from "@/payload-types"
 import {
   normalisePagination,
+  normaliseFindResult,
   type PayloadFindResult,
-  type PayloadLikeFindClient,
+  type PayloadFindClient,
 } from "./paginate"
 
 export interface ListUsersOpts {
@@ -30,20 +31,20 @@ export interface ListUsersOpts {
  */
 export async function listUsersPaginated(
   opts?: ListUsersOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"users">,
 ): Promise<PayloadFindResult<User>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
   const where: Where = {}
   if (opts?.tenantId != null) where["tenants.tenant"] = { equals: opts.tenantId }
   const q = opts?.q?.trim()
   if (q) where.or = [{ name: { like: q } }, { email: { like: q } }]
-  return client.find<User>({
+  return client.find({
     collection: "users",
     overrideAccess: true,
     where,
     sort: "-createdAt",
     page,
     limit,
-  })
+  }).then(normaliseFindResult)
 }

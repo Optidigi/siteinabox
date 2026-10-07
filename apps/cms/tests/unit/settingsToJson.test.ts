@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import type { SettingsContract } from "@/lib/settingsContract"
 
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 const fullSettingsContract: SettingsContract = {
   general: {
     description: true,

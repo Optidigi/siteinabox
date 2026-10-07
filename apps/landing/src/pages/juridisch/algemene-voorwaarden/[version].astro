@@ -1,4 +1,5 @@
 ---
+import type { InferGetStaticPropsType } from 'astro';
 import LegalDocumentPage from '../../../components/legal/LegalDocumentPage.astro';
 import { getLegalReleases } from '../../../lib/legal';
 
@@ -8,6 +9,8 @@ export function getStaticPaths() {
     props: { document },
   }));
 }
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 
 const { document } = Astro.props;
 ---

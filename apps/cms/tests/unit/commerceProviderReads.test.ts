@@ -42,9 +42,9 @@ describe("Phase 11 provider read contracts", () => {
     const options = {
       token: "test-token",
       fetchImpl,
-      env: {
+      env: { NODE_ENV: "test",
         OPENPROVIDER_API_BASE_URL: "https://openprovider.sandbox.test/v1beta",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     }
 
     await expect(getOpenProviderDomainAuthCode("9001", options))
@@ -66,9 +66,9 @@ describe("Phase 11 provider read contracts", () => {
     await expect(getOpenProviderDomainAuthCode("9002", {
       token: "test-token",
       fetchImpl,
-      env: {
+      env: { NODE_ENV: "test",
         OPENPROVIDER_API_BASE_URL: "https://openprovider.sandbox.test/v1beta",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     })).resolves.toEqual({ delivery: "registrant_email" })
   })
 
@@ -76,13 +76,13 @@ describe("Phase 11 provider read contracts", () => {
     vi.stubEnv("MOLLIE_API_KEY", "test_key")
     const fetchImpl = vi.fn(async () => Response.json({
       _embedded: {
-        payments: [{ id: "tr_1", status: "paid" }],
+        payments: [{ id: "tr_1", status: "paid", amount: { currency: "EUR", value: "499.00" } }],
       },
     }))
     vi.stubGlobal("fetch", fetchImpl)
 
     await expect(listRecentMolliePayments(250)).resolves.toEqual([
-      { id: "tr_1", status: "paid" },
+      { id: "tr_1", status: "paid", amount: { currency: "EUR", value: "499.00" } },
     ])
     expect(fetchImpl).toHaveBeenCalledWith(
       "https://api.mollie.com/v2/payments?limit=250&sort=desc",
@@ -116,10 +116,10 @@ describe("Phase 11 provider read contracts", () => {
     })
 
     await expect(inspectMollieProfileCapabilities({
-      env: {
+      env: { NODE_ENV: "test",
         MOLLIE_API_KEY: "live_fixture",
-      } as unknown as NodeJS.ProcessEnv,
-      fetchImpl: fetchImpl as typeof fetch,
+      } satisfies NodeJS.ProcessEnv,
+      fetchImpl,
     })).resolves.toBeUndefined()
     expect(fetchImpl).toHaveBeenCalledTimes(3)
     expect(fetchImpl.mock.calls.every(([, init]) => init?.method === "GET"))
@@ -130,7 +130,7 @@ describe("Phase 11 provider read contracts", () => {
     vi.stubEnv("MOLLIE_API_KEY", "test_key")
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(Response.json({
-        _embedded: { payments: [{ id: "tr_2", status: "open" }] },
+        _embedded: { payments: [{ id: "tr_2", status: "open", amount: { currency: "EUR", value: "499.00" } }] },
         _links: {
           next: {
             href: "https://api.mollie.com/v2/payments?limit=250&from=tr_2",
@@ -138,13 +138,13 @@ describe("Phase 11 provider read contracts", () => {
         },
       }))
       .mockResolvedValueOnce(Response.json({
-        _embedded: { payments: [{ id: "tr_1", status: "paid" }] },
+        _embedded: { payments: [{ id: "tr_1", status: "paid", amount: { currency: "EUR", value: "499.00" } }] },
       }))
     vi.stubGlobal("fetch", fetchImpl)
 
     await expect(listRecentMolliePayments(250)).resolves.toEqual([
-      { id: "tr_2", status: "open" },
-      { id: "tr_1", status: "paid" },
+      { id: "tr_2", status: "open", amount: { currency: "EUR", value: "499.00" } },
+      { id: "tr_1", status: "paid", amount: { currency: "EUR", value: "499.00" } },
     ])
 
     fetchImpl.mockReset()

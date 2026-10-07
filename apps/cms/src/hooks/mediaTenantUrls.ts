@@ -1,3 +1,4 @@
+import type { Media } from "@/payload-types"
 import type { CollectionAfterReadHook, CollectionBeforeOperationHook } from "payload"
 
 const tenantIdOf = (tenant: unknown): string | undefined => {
@@ -12,7 +13,7 @@ const tenantIdOf = (tenant: unknown): string | undefined => {
 const mediaUrl = (tenantId: string, filename: string) =>
   `/api/tenant-media/${encodeURIComponent(tenantId)}/${encodeURIComponent(filename)}`
 
-export const rewriteTenantMediaUrl: CollectionAfterReadHook = ({ doc }) => {
+export const rewriteTenantMediaUrl: CollectionAfterReadHook<Media> = ({ doc }) => {
   const tenantId = tenantIdOf(doc.tenant)
   const filename = typeof doc.filename === "string" ? doc.filename : undefined
   if (!tenantId || !filename) return doc
@@ -28,7 +29,7 @@ export const rewriteTenantMediaUrl: CollectionAfterReadHook = ({ doc }) => {
   }
 }
 
-export const forceTenantMediaUploadFilename: CollectionBeforeOperationHook = ({ args, operation }) => {
+export const forceTenantMediaUploadFilename: CollectionBeforeOperationHook<"media"> = ({ args, operation }) => {
   if ((operation === "create" || operation === "update" || operation === "updateByID") && (args).req?.file) {
     return {
       ...(args),

@@ -169,7 +169,7 @@ export type AutomaticCheckoutMigrationInput = {
 
 export type CheckoutMigrationInput = AutomaticCheckoutMigrationInput
 
-const automaticRefreshCredentialValid = (
+export const automaticRefreshCredentialValid = (
   sourceMechanism: AutomaticCheckoutMigrationInput["sourceMechanism"],
   value: unknown,
 ): value is AutomaticSourceRefreshCredential => {

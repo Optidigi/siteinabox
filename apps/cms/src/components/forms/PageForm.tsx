@@ -185,9 +185,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     router.refresh()
   }
 
-  const pageMetaControl = form.control as unknown as import("react-hook-form").Control<PageMetaFormValues>
-  const pageMetaSetValue = form.setValue as unknown as import("react-hook-form").UseFormSetValue<PageMetaFormValues>
-  const pageMetaGetValues = form.getValues as unknown as import("react-hook-form").UseFormGetValues<PageMetaFormValues>
+  const pageMetaControl = form.control
+  const pageMetaSetValue = form.setValue
+  const pageMetaGetValues = form.getValues
   const pageTitle = form.watch("title") || initial?.title || ""
 
   // Danger zone shown from page settings in the inspector/mobile shell.
@@ -381,7 +381,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         blocks: watchedBlocks,
         seo: watchedSeo,
         updatedAt: initial?.updatedAt,
-      } as unknown as Page,
+      },
       iframeAnalyticsContext,
       { preserveBlockIds: true },
     ) as ContractPage),

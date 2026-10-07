@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { copyFile, mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { Payload, Where } from "payload"
+import type { CollectionSlug, DataFromCollectionSlug, Payload, RequiredDataFromCollectionSlug, Where } from "payload"
 import {
   BlockSchema,
   SITE_BLOCK_SLUGS,
@@ -26,6 +26,7 @@ import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
 import { materializeTenantPrivacyDisclosure } from "@/lib/legal/tenantPrivacyPage"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 import { approvedPublicAnalyticsConsent } from "@/lib/analytics/config"
 
 type ApplyOperation = "created" | "updated"
@@ -112,10 +113,10 @@ const clonePlain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 export const canonicalizeSiteGenerationSpecForCms = (spec: CmsSiteGenerationSpec): CmsSiteGenerationSpec => clonePlain(spec)
 
 export const validateSiteGenerationSpecForCms = (
-  spec: CmsSiteGenerationSpec,
+  spec: unknown,
   options: SiteGenerationValidationOptions = {},
 ): SiteGenerationValidationResult => {
-  const candidate = spec as unknown
+  const candidate = spec
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
     return { valid: false, issues: [issue("invalid_spec_shape", "SiteGenerationSpec must be an object.")] }
   }
@@ -331,11 +332,11 @@ const normalizeMediaFields = (value: unknown, mediaIds?: MediaIdMap, key?: strin
 }
 
 const sourceIdRows = (value: unknown): unknown =>
-  Array.isArray(value) ? value.map((sourceId) => ({ sourceId })) : value
+  Array.isArray(value) ? value.map((sourceId: unknown) => ({ sourceId })) : value
 
 const normalizeWorkMediaRows = (projects: unknown, mediaIds?: MediaIdMap): unknown => {
   if (!Array.isArray(projects)) return projects
-  return projects.map((project) => {
+  return projects.map((project: unknown) => {
     if (!project || typeof project !== "object" || Array.isArray(project)) return project
     const record = project as Record<string, unknown>
     const media = Array.isArray(record.media)
@@ -351,7 +352,7 @@ const normalizeContactForm = (form: unknown): unknown => {
   if (!form || typeof form !== "object" || Array.isArray(form)) return form
   const record = form as Record<string, unknown>
   const fields = Array.isArray(record.fields)
-    ? record.fields.map((field) => {
+    ? record.fields.map((field: unknown) => {
       if (!field || typeof field !== "object" || Array.isArray(field)) return field
       return { ...(field as Record<string, unknown>) }
     })
@@ -373,13 +374,13 @@ const normalizeBlock = (block: GeneratedPageSpec["blocks"][number], mediaIds?: M
   if (normalized.blockType === "pricing") {
     normalized.pricingSourceIds = sourceIdRows(normalized.pricingSourceIds)
     if (Array.isArray(normalized.offers)) {
-      normalized.offers = normalized.offers.map((offer) => {
+      normalized.offers = normalized.offers.map((offer: unknown) => {
         if (!offer || typeof offer !== "object" || Array.isArray(offer)) return offer
         const record = offer as Record<string, unknown>
         return {
           ...record,
           features: Array.isArray(record.features)
-            ? record.features.map((value) => ({ value }))
+            ? record.features.map((value: unknown) => ({ value }))
             : record.features,
         }
       })
@@ -388,7 +389,7 @@ const normalizeBlock = (block: GeneratedPageSpec["blocks"][number], mediaIds?: M
   if (normalized.blockType === "work") normalized.projects = normalizeWorkMediaRows(normalized.projects, mediaIds)
   if (normalized.blockType === "contact") normalized.form = normalizeContactForm(normalized.form)
   if (normalized.blockType === "contact" && Array.isArray(normalized.serviceArea)) {
-    normalized.serviceArea = normalized.serviceArea.map((value) => ({ value }))
+    normalized.serviceArea = normalized.serviceArea.map((value: unknown) => ({ value }))
   }
   return omitNullish(normalized) as Record<string, unknown>
 }
@@ -472,9 +473,9 @@ const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSit
   }) as Partial<SiteSetting>
 }
 
-const findOne = async <T>(payload: Payload, collection: "tenants" | "pages" | "site-settings" | "media", where: Where): Promise<T | undefined> => {
+const findOne = async <C extends CollectionSlug>(payload: Payload, collection: C, where: Where): Promise<DataFromCollectionSlug<C> | undefined> => {
   const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true })
-  return found.docs[0] as T | undefined
+  return found.docs[0]
 }
 
 type PreparedMediaAsset = SiteGenerationMediaAsset
@@ -521,7 +522,7 @@ const prepareMediaAssets = async (assets: readonly SiteGenerationMediaAsset[] | 
 const upsertMediaAssets = async (payload: Payload, tenantId: string | number, assets: readonly PreparedMediaAsset[]): Promise<MediaIdMap> => {
   const mediaIds: MediaIdMap = new Map()
   for (const asset of assets) {
-    const existing = await findOne<Media>(payload, "media", {
+    const existing = await findOne(payload, "media", {
       and: [{ tenant: { equals: tenantId } }, { filename: { equals: asset.filename } }],
     })
     const data = {
@@ -533,7 +534,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
       ? await payload.update({
         collection: "media",
         id: existing.id,
-        data: data as unknown as Partial<Media>,
+        data,
         filePath: asset.filePath,
         overwriteExistingFiles: true,
         depth: 0,
@@ -542,14 +543,14 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
       })
       : await payload.create({
         collection: "media",
-        data: data as unknown as Media,
+        data,
         filePath: asset.filePath,
         overwriteExistingFiles: true,
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
       })
-    const id = (document as Media).id
+    const id = document.id
     mediaIds.set(asset.key, id)
     mediaIds.set(asset.filename, id)
   }
@@ -563,11 +564,11 @@ const upsertTenant = async (
   theme: ThemeTokens | null,
   pinTenantId?: string | number,
 ) => {
-  const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } })
-  const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } })
+  const bySlug = await findOne(payload, "tenants", { slug: { equals: spec.tenant.slug } })
+  const byDomain = await findOne(payload, "tenants", { domain: { equals: spec.tenant.domain } })
   if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
   if (pinTenantId != null) {
-    const pinned = await findOne<Tenant>(payload, "tenants", { id: { equals: pinTenantId } })
+    const pinned = await findOne(payload, "tenants", { id: { equals: pinTenantId } })
     if (!pinned) throw new Error(`Pinned tenant ${pinTenantId} was not found.`)
     if (bySlug && String(bySlug.id) !== String(pinTenantId)) {
       throw new Error(`Generation spec slug "${spec.tenant.slug}" belongs to another tenant.`)
@@ -588,12 +589,13 @@ const upsertPages = async (payload: Payload, tenantId: string | number, pages: G
   const results: Array<{ doc: ExistingPage; operation: ApplyOperation }> = []
   for (const page of pages) {
     const data = normalizePageData(tenantId, page, mediaIds)
-    const existing = await findOne<Page>(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] })
+    const existing = await findOne(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] })
     if (existing) {
       const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
       results.push({ doc: updated as ExistingPage, operation: "updated" })
     } else {
-      const created = await payload.create({ collection: "pages", data: data as unknown as Page, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      const createData: RequiredDataFromCollectionSlug<"pages"> = { ...data, title: page.title, slug: page.slug, status: "draft" }
+      const created = await payload.create({ collection: "pages", data: createData, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
       results.push({ doc: created as ExistingPage, operation: "created" })
     }
   }
@@ -602,9 +604,11 @@ const upsertPages = async (payload: Payload, tenantId: string | number, pages: G
 
 const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap) => {
   const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
-  const existing = await findOne<SiteSetting>(payload, "site-settings", { tenant: { equals: tenantId } })
+  const existing = await findOne(payload, "site-settings", { tenant: { equals: tenantId } })
   if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
-  return { doc: await payload.create({ collection: "site-settings", data: data as unknown as SiteSetting, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  const defaults = createSiteSettingsData(tenantId, settings.siteName, settings.siteUrl)
+  const createData: RequiredDataFromCollectionSlug<"site-settings"> = { ...defaults, ...data, tenant: defaults.tenant, siteName: defaults.siteName, siteUrl: defaults.siteUrl, appointments: data.appointments ?? defaults.appointments, consent: data.consent ?? defaults.consent }
+  return { doc: await payload.create({ collection: "site-settings", data: createData, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
 }
 
 const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>): Promise<RetainedPage[]> => {

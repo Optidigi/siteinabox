@@ -191,7 +191,7 @@ export function EditorFrameRuntime({
         }
         // Full envelope failed (often one of page/settings). Apply each part that
         // still parses so live canvas preview is not stuck on theme-only updates.
-        const raw = event.data
+        const raw: unknown = event.data
         if (
           raw
           && typeof raw === "object"

@@ -141,7 +141,7 @@ const PIE_COLORS = [
 export function DeviceDonutChart({ data }: { data: DeviceMetric[] }) {
   const t = useTranslations("adminAnalytics")
   const chartConfig = useMemo<ChartConfig>(() => {
-    const entries = data.map((row, index) => [
+    const entries = data.map((row, index): [string, ChartConfig[string]] => [
       row.deviceType,
       { label: row.deviceType, color: PIE_COLORS[index % PIE_COLORS.length] },
     ])

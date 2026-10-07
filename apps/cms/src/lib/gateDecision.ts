@@ -1,5 +1,5 @@
 import type { SiabContext } from "@/lib/context"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { relationshipId, sameRelationshipId, type RelationshipIdRef } from "@/lib/relationshipId"
 import type { User } from "@/payload-types"
 
 export type GateDecision =
@@ -17,7 +17,9 @@ export type GateDecision =
  *   tenant ctx,      user.tenants[0].tenant !== ctx.tenant.id     -> cross-tenant
  *   otherwise                                                     -> allow
  */
-export const evaluateGate = (user: User | null, ctx: SiabContext): GateDecision => {
+type GateUser = Pick<User, "role"> & { tenants?: Array<{ tenant: RelationshipIdRef }> | null }
+
+export const evaluateGate = (user: GateUser | null, ctx: SiabContext): GateDecision => {
   if (!user) return { allow: false, reason: "no-user" }
 
   if (ctx.mode === "super-admin") {

@@ -1,5 +1,6 @@
 "use client"
 import { useTranslations } from "next-intl"
+import { isBlockLabelKey } from "@/i18n/blockLabelKey"
 import * as React from "react"
 import {
   DndContext,
@@ -437,7 +438,7 @@ const BlockListRow: React.FC<{
 
   const cfg = blockBySlug[block.blockType]
   const label = resolveBlockLabel(block.blockType, manifest, (slug) =>
-    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+    isBlockLabelKey(slug) && tLabels.has(slug) ? tLabels(slug) : undefined,
   )
   const summary = cfg?.summary ? cfg.summary(block as Record<string, unknown>) : undefined
   const Icon = cfg?.icon
@@ -532,7 +533,7 @@ const BlockListRowGhost: React.FC<{ block: EditorBlock | undefined; manifest: Rt
   if (!block) return null
   const cfg = blockBySlug[block.blockType]
   const label = resolveBlockLabel(block.blockType, manifest, (slug) =>
-    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+    isBlockLabelKey(slug) && tLabels.has(slug) ? tLabels(slug) : undefined,
   )
   const summary = cfg?.summary ? cfg.summary(block as Record<string, unknown>) : undefined
   const Icon = cfg?.icon
@@ -567,7 +568,7 @@ const BlockFormState: React.FC<{
   const tLabels = useTranslations("editor.blockLabels")
   const cfg = blockBySlug[block.blockType]
   const label = resolveBlockLabel(block.blockType, manifest, (slug) =>
-    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+    isBlockLabelKey(slug) && tLabels.has(slug) ? tLabels(slug) : undefined,
   )
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const backButton = (

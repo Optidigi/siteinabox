@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
 
 describe("commerce order advisory lock", () => {
   it("fails closed when the dedicated lock pool cannot provide a client", async () => {
@@ -13,7 +13,7 @@ describe("commerce order advisory lock", () => {
     }
 
     await expect(withCommerceOrderLock(
-      asPayload({}),
+      createTestPayload(),
       41,
       async () => "must not run",
       pool,
@@ -26,9 +26,7 @@ describe("commerce order advisory lock", () => {
     const query = vi.fn()
       .mockResolvedValueOnce({ rows: [{ acquired: true }] })
       .mockRejectedValueOnce(unlockError)
-    const payload = asPayload({
-      db: {},
-    })
+    const payload = createTestPayload()
     const pool = {
       connect: vi.fn(async () => ({ query, release })),
     }

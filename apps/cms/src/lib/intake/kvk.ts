@@ -287,7 +287,7 @@ export async function searchKvk(query: string): Promise<KvkServiceResult<KvkSear
       apikey: apiKey,
     },
   })
-  const responseBody = await response.json().catch(() => null)
+  const responseBody: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
     const errorData = kvkErrorResponseSchema.safeParse(responseBody)
@@ -314,7 +314,7 @@ export async function getKvkProfile(kvkNumber: string): Promise<KvkServiceResult
       apikey: apiKey,
     },
   })
-  const responseBody = await response.json().catch(() => null)
+  const responseBody: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
     return { ok: false, status: 502, data: { error: "Bedrijfsgegevens ophalen lukt nu niet." } }

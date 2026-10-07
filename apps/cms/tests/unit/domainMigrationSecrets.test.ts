@@ -5,9 +5,9 @@ import {
   sealMigrationSecret,
 } from "@/lib/domains/migrationSecrets"
 
-const env = {
+const env = { NODE_ENV: "test",
   DOMAIN_MIGRATION_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
-} as unknown as NodeJS.ProcessEnv
+} satisfies NodeJS.ProcessEnv
 
 describe("domain migration secret envelope", () => {
   it("encrypts transfer codes with migration-bound authenticated encryption", () => {
@@ -21,8 +21,8 @@ describe("domain migration secret envelope", () => {
   it("fails closed without an independent 256-bit key", () => {
     expect(() => sealMigrationSecret("code", "migration:42", {} as NodeJS.ProcessEnv))
       .toThrow("DOMAIN_MIGRATION_ENCRYPTION_KEY")
-    expect(() => sealMigrationSecret("code", "migration:42", {
+    expect(() => sealMigrationSecret("code", "migration:42", { NODE_ENV: "test",
       DOMAIN_MIGRATION_ENCRYPTION_KEY: Buffer.alloc(16).toString("base64"),
-    } as unknown as NodeJS.ProcessEnv)).toThrow("32 bytes")
+    } satisfies NodeJS.ProcessEnv)).toThrow("32 bytes")
   })
 })

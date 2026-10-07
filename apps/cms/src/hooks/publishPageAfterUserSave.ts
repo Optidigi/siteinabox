@@ -1,3 +1,4 @@
+import type { Page } from "@/payload-types"
 import type { CollectionAfterChangeHook } from "payload"
 import { hasPayloadSessionCookie } from "@/access/authSignals"
 import { relationshipId } from "@/lib/relationshipId"
@@ -8,7 +9,7 @@ import { DEFER_PAGE_AUTO_PUBLISH_HEADER } from "@/lib/publish/pageEditorSaveCont
  * save-and-publish client flow. Current tabs defer this hook until their
  * related theme/navigation/chrome writes finish, then publish explicitly.
  */
-export const publishPageAfterUserSave: CollectionAfterChangeHook = async ({ doc, req }) => {
+export const publishPageAfterUserSave: CollectionAfterChangeHook<Page> = async ({ doc, req }) => {
   if (!req.user || doc.status !== "published") return doc
   // This fallback is only for an interactive editor session. Local API and
   // API-key clients own their publication lifecycle explicitly.

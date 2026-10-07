@@ -1,3 +1,4 @@
+import { userFixture } from "../_helpers/generatedDocs"
 import {
   billingAgreementStates,
   domainRenewalCycleStates,
@@ -30,7 +31,7 @@ import {
 import { Orders, protectFrozenOrder } from "@/collections/LegalRecords"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 
-import { accessArgs } from "../_helpers/accessArgs"
+import { accessArgs, fieldAccessArgs } from "../_helpers/accessArgs"
 import { hookArgsFor } from "../_helpers/hookFixtures"
 import {
   expectNamedField,
@@ -78,16 +79,16 @@ describe("Phase 2 commerce record schemas", () => {
   it("keeps commerce PII and financial records super-admin readable and forbids direct mutation", () => {
     for (const collection of commerceCollections) {
       expect(collection.access?.read?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       })), collection.slug).toBe(true)
       expect(collection.access?.read?.(accessArgs({
-        req: { user: { role: "owner" } },
+        req: { user: userFixture({ role: "owner" }) },
       })), collection.slug).toBe(false)
       expect(collection.access?.update?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       })), collection.slug).toBe(false)
       expect(collection.access?.delete?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       })), collection.slug).toBe(false)
     }
   })
@@ -350,7 +351,7 @@ describe("Phase 2 commerce record schemas", () => {
       "encryptedTransferOutCode",
     )
     expect(secret).toMatchObject({ type: "textarea" })
-    expect("access" in secret && secret.access?.read?.({} as never)).toBe(false)
+    expect("access" in secret && secret.access?.read?.(fieldAccessArgs({}))).toBe(false)
     expect(() => validateManagedDomainCustody(
       hookArgsFor(validateManagedDomainCustody, {
         operation: "update",
@@ -504,25 +505,30 @@ describe("Phase 2 commerce record schemas", () => {
       context: {},
     }))).toThrow('field "grossAmountMinor" is immutable')
 
-    for (const [hook, contextKey, currentState, nextState] of [
-      [protectBillingAgreement, "billingAgreementLifecycleMutation", "active", "past_due"],
-      [protectManagedDomain, "managedDomainLifecycleMutation", "active", "manual_review"],
-      [
-        protectDomainRenewalCycle,
-        "domainRenewalCycleLifecycleMutation",
-        "provider_requested",
-        "manual_review",
-      ],
-    ] as const) {
-      expect(hook(hookArgsFor(hook, {
-        operation: "update",
-        data: { state: nextState },
-        originalDoc: { state: currentState },
-        req: { context: { [contextKey]: true } },
-        collection: {},
-        context: {},
-      }))).toMatchObject({ state: nextState })
-    }
+    expect(protectBillingAgreement(hookArgsFor(protectBillingAgreement, {
+      operation: "update",
+      data: { state: "past_due" },
+      originalDoc: { state: "active" },
+      req: { context: { billingAgreementLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({ state: "past_due" })
+    expect(protectManagedDomain(hookArgsFor(protectManagedDomain, {
+      operation: "update",
+      data: { state: "manual_review" },
+      originalDoc: { state: "active" },
+      req: { context: { managedDomainLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({ state: "manual_review" })
+    expect(protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
+      operation: "update",
+      data: { state: "manual_review" },
+      originalDoc: { state: "provider_requested" },
+      req: { context: { domainRenewalCycleLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({ state: "manual_review" })
 
     for (const [currentState, nextState] of [
       ["scheduled", "payment_committed"],

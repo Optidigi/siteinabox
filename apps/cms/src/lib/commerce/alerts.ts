@@ -30,7 +30,7 @@ export function sanitizeCommerceAlertMetadata(
   return Object.fromEntries(
     Object.entries(metadata)
       .filter(([key]) => !SENSITIVE_METADATA_KEY.test(key))
-      .map(([key, value]) => {
+      .map(([key, value]): [string, unknown] => {
         if (typeof value === "string") {
           return [key, value.replace(EMAIL_VALUE, "[redacted-email]").slice(0, 500)]
         }

@@ -4,7 +4,7 @@ import { expectAccessField } from "../_helpers/payloadFields"
 import { cast } from "../_helpers/cast"
 import type { FieldAccessArgs } from "../_helpers/payloadFields"
 
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit AMENDMENT AMD-1 (T2 secondary) — Owner cannot invite team members.
 //
 // Background: P0 batch-1 commit cb00e47 wired `isSuperAdminField` onto

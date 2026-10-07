@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { MailTransportProvider, MailLogPayload } from "@/lib/email/sendEmail"
-import { asMailLogPayload } from "@/lib/email/sendEmail"
-import { cast } from "../_helpers/cast"
+import type { MailTransportProvider } from "@/lib/email/sendEmail"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { paginatedFixture } from "../_helpers/generatedDocs"
+import type { MailLog, OperationalAlert } from "@/payload-types"
 
 const mocks = vi.hoisted(() => ({
   sendMail: vi.fn(),
@@ -33,10 +34,8 @@ describe("sendEmail", () => {
     delete process.env.CLOUDFLARE_EMAIL_API_TOKEN
     globalThis.fetch = mocks.fetch
     mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail })
-    mocks.sendMail.mockResolvedValue({ messageId: "test-message" })
-    mocks.fetch.mockResolvedValue({
-      ok: true,
-      json: vi.fn(async () => ({
+    mocks.sendMail.mockImplementation(async (message: { to: string | string[] }) => ({ messageId: "test-message", accepted: Array.isArray(message.to) ? message.to : [message.to], rejected: [] }))
+    mocks.fetch.mockResolvedValue(Response.json({
         success: true,
         errors: [],
         messages: [],
@@ -46,8 +45,7 @@ describe("sendEmail", () => {
           permanent_bounces: [],
           message_id: "cf-message-123",
         },
-      })),
-    })
+      }))
   })
 
   afterEach(() => {
@@ -105,7 +103,7 @@ describe("sendEmail", () => {
   })
 
   it("logs and alerts provider setup failures when Payload logging is available", async () => {
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -181,7 +179,7 @@ describe("sendEmail", () => {
     process.env.CLOUDFLARE_API_TOKEN = "dns-only-token"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
     process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN = "cf-smtp-token"
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await sendEmail({
@@ -231,9 +229,7 @@ describe("sendEmail", () => {
   it("accepts queued REST recipients and persists the provider message ID", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
-    mocks.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn(async () => ({
+    mocks.fetch.mockResolvedValueOnce(Response.json({
         success: true,
         result: {
           delivered: [],
@@ -241,9 +237,8 @@ describe("sendEmail", () => {
           permanent_bounces: [],
           message_id: "cf-queued-123",
         },
-      })),
-    })
-    const payload = mockPayload()
+      }))
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -268,9 +263,7 @@ describe("sendEmail", () => {
   it("records a REST permanent bounce as a permanent failure", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
-    mocks.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn(async () => ({
+    mocks.fetch.mockResolvedValueOnce(Response.json({
         success: true,
         result: {
           delivered: [],
@@ -278,9 +271,8 @@ describe("sendEmail", () => {
           permanent_bounces: ["customer@example.com"],
           message_id: "cf-bounce-123",
         },
-      })),
-    })
-    const payload = mockPayload()
+      }))
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -320,11 +312,8 @@ describe("sendEmail", () => {
   ])("fails closed for a REST $name", async ({ result, error }) => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
-    mocks.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn(async () => ({ success: true, result })),
-    })
-    const payload = mockPayload()
+    mocks.fetch.mockResolvedValueOnce(Response.json({ success: true, result }))
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -338,8 +327,8 @@ describe("sendEmail", () => {
       collection: "mail-logs",
       data: expect.objectContaining({
         status: "failed",
-        providerErrorCode: "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
-        retryState: "none",
+        providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE",
+        retryState: "permanent",
       }),
     }))
   })
@@ -347,9 +336,7 @@ describe("sendEmail", () => {
   it("accepts Cloudflare async acceptance when disposition lists are empty", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
-    mocks.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn(async () => ({
+    mocks.fetch.mockResolvedValueOnce(Response.json({
         success: true,
         result: {
           delivered: [],
@@ -357,9 +344,8 @@ describe("sendEmail", () => {
           permanent_bounces: [],
           message_id: "<cf-async-123@siteinabox.nl>",
         },
-      })),
-    })
-    const payload = mockPayload()
+      }))
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -386,17 +372,14 @@ describe("sendEmail", () => {
   it("accepts documented REST responses that omit message_id when every recipient is delivered", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
-    mocks.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn(async () => ({
+    mocks.fetch.mockResolvedValueOnce(Response.json({
         success: true,
         result: {
           delivered: ["customer@example.com"],
           queued: [],
           permanent_bounces: [],
         },
-      })),
-    })
+      }))
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -413,9 +396,7 @@ describe("sendEmail", () => {
   it("raises an immediate commerce alert for a REST permanent bounce", async () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "cf-email-api-token"
-    mocks.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn(async () => ({
+    mocks.fetch.mockResolvedValueOnce(Response.json({
         success: true,
         result: {
           delivered: [],
@@ -423,9 +404,8 @@ describe("sendEmail", () => {
           permanent_bounces: ["customer@example.com"],
           message_id: "cf-commerce-bounce",
         },
-      })),
-    })
-    const payload = mockPayload()
+      }))
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -474,7 +454,7 @@ describe("sendEmail", () => {
   it("bounds Cloudflare SMTP send duration", async () => {
     vi.useFakeTimers()
     process.env.SIAB_MAIL_SEND_TIMEOUT_MS = "1000"
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const provider: MailTransportProvider = {
       provider: "cloudflare-smtp",
       send: vi.fn(async () => new Promise<never>(() => undefined)),
@@ -493,8 +473,8 @@ describe("sendEmail", () => {
     })
     const expectation = expect(result).rejects.toMatchObject({
       normalized: {
-        providerErrorCode: "ETIMEDOUT",
-        retryState: "retryable",
+        providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE",
+        retryState: "permanent",
       },
     })
     await vi.advanceTimersByTimeAsync(1_000)
@@ -506,8 +486,8 @@ describe("sendEmail", () => {
       data: expect.objectContaining({
         flow: "auth.magic_link",
         status: "failed",
-        providerErrorCode: "ETIMEDOUT",
-        retryState: "retryable",
+        providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE",
+        retryState: "permanent",
         failedAt: "2026-07-01T12:02:00.000Z",
       }),
     })
@@ -516,7 +496,7 @@ describe("sendEmail", () => {
   it("uses the platform sender by default and logs metadata only", async () => {
     const now = new Date("2026-07-01T12:00:00.000Z")
     const provider = mockProvider({ providerMessageId: "provider-123" })
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await sendEmail({
@@ -538,6 +518,7 @@ describe("sendEmail", () => {
       text: undefined,
       replyTo: undefined,
       headers: undefined,
+      signal: expect.any(AbortSignal),
     })
     expect(payload.create).toHaveBeenCalledWith({
       collection: "mail-logs",
@@ -554,16 +535,16 @@ describe("sendEmail", () => {
         sentAt: "2026-07-01T12:00:00.000Z",
       },
     })
-    const createMock = payload.create as unknown as ReturnType<typeof vi.fn>
+    const createMock = payload.create
     expect(createMock.mock.calls.length).toBeGreaterThan(0)
-    const loggedData = cast<{ data: Record<string, unknown> }>(createMock.mock.calls[0]![0]).data
+    const loggedData = createMock.mock.calls[0]?.[0].data
     expect(JSON.stringify(loggedData)).not.toContain("Magic link")
     expect(JSON.stringify(loggedData)).not.toContain("Secret login body")
   })
 
   it("honors explicit sender and reply-to for future tenant flows", async () => {
     const provider = mockProvider({ providerMessageId: "tenant-message" })
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await sendEmail({
@@ -579,6 +560,7 @@ describe("sendEmail", () => {
 
     expect(provider.send).toHaveBeenCalledWith({
       from: "noreply@mail.tenant.example",
+      signal: expect.any(AbortSignal),
       replyTo: "visitor@example.com",
       to: "owner@example.com",
       subject: "New form submission",
@@ -604,7 +586,7 @@ describe("sendEmail", () => {
       response: "550 5.7.1 Sender denied",
     })
     const provider = mockProvider(undefined, error)
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -668,6 +650,17 @@ describe("sendEmail", () => {
     }
   })
 
+  it("matches SMTP receipts against parsed quoted names, groups and escaped comments", async () => {
+    const { normalizeProviderResponse } = await import("@/lib/email/sendEmail")
+    const recipients = 'Team: "Customer [name]" <customer@example.com>, owner@example.com (Owner \\(team\\));'
+    const receipt = { messageId: "smtp-parser-fixture", accepted: ["customer@example.com", "owner@example.com"], rejected: [] }
+    expect(normalizeProviderResponse(receipt, recipients)).toMatchObject({ providerMessageId: "smtp-parser-fixture" })
+    expect(() => normalizeProviderResponse({ ...receipt, accepted: ["customer@example.com"] }, recipients))
+      .toThrow("Mail provider acceptance is unknown; reconcile before resending")
+    expect(() => normalizeProviderResponse(receipt, '"Display name only"'))
+      .toThrow("Mail provider acceptance is unknown; reconcile before resending")
+  })
+
   it("keeps SMTP retry semantics distinct from HTTP status semantics", async () => {
     const { normalizeProviderError } = await import("@/lib/email/sendEmail")
 
@@ -685,7 +678,7 @@ describe("sendEmail", () => {
       response: "550 5.7.1 Sender denied",
     })
     const provider = mockProvider(undefined, error)
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -743,7 +736,7 @@ describe("sendEmail", () => {
         lastSeenAt: "2026-07-01T12:10:00.000Z",
       }),
     })
-    const createCalls = payload.create.mock.calls as unknown as Array<[Record<string, unknown>]>
+    const createCalls = payload.create.mock.calls
     const alertCreate = createCalls.find(
       ([call]) => call.collection === "operational-alerts",
     )
@@ -763,7 +756,7 @@ describe("sendEmail", () => {
       response: "421 temporary failure",
     })
     const provider = mockProvider(undefined, error)
-    const payload = mockPayload({ totalDocs: 3 })
+    const payload = await mockPayload({ totalDocs: 3 })
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await expect(sendEmail({
@@ -852,14 +845,15 @@ describe("sendEmail", () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account"
     process.env.CLOUDFLARE_EMAIL_API_TOKEN = "email-api-token"
     await sendEmail({ to: "customer@example.com", subject: "Mail", html: "<p>Mail</p>", listUnsubscribe: links })
-    const request = cast<{ body: string }>(mocks.fetch.mock.calls.at(-1)?.[1])
+    const request: unknown = mocks.fetch.mock.calls.at(-1)?.[1]
+    if (!request || typeof request !== "object" || !("body" in request) || typeof request.body !== "string") throw new Error("Expected JSON mail request.")
     expect(JSON.parse(request.body).headers).toMatchObject({
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     })
   })
 
   it("fails closed before provider delivery when marketing consent is absent", async () => {
-    const payload = mockPayload()
+    const payload = await mockPayload()
     const provider = mockProvider()
     const { sendEmail, MailPolicyBlockedError } = await import("@/lib/email/sendEmail")
     await expect(sendEmail({
@@ -915,17 +909,22 @@ function mockProvider(result?: { providerMessageId?: string }, error?: unknown):
   }
 }
 
-function mockPayload(options: { totalDocs?: number } = {}) {
-  const stubs = {
-    create: vi.fn(async () => ({})),
-    find: vi.fn(async (args: { collection: string }) => {
-      if (args.collection === "operational-alerts" && options.totalDocs != null) {
-        return { docs: [{ id: 123, occurrenceCount: 2 }], totalDocs: 1 }
-      }
-      return { docs: [], totalDocs: options.totalDocs ?? 1 }
-    }),
-    update: vi.fn(async () => ({})),
-    logger: { warn: vi.fn(), error: vi.fn() },
-  }
-  return Object.assign(asMailLogPayload(cast(stubs)), stubs)
+async function mockPayload(options: { totalDocs?: number } = {}) {
+  const payload = await createInitializedTestPayload()
+  const timestamp = "2026-07-01T00:00:00.000Z"
+  const alert: OperationalAlert = { id: 123, severity: "error", status: "open", source: "mail", dedupeKey: "fixture", message: "Fixture", occurrenceCount: 2, firstSeenAt: timestamp, lastSeenAt: timestamp, createdAt: timestamp, updatedAt: timestamp }
+  const mail: MailLog = { id: 1, flow: "platform.operational", category: "transactional", sender: "sender@example.com", recipient: "recipient@example.com", status: "sent", provider: "fixture", retryState: "none", createdAt: timestamp, updatedAt: timestamp }
+  const create = vi.spyOn(payload, "create").mockImplementation(async (args) => {
+    if (args.collection === "mail-logs") return mail
+    if (args.collection === "operational-alerts") return alert
+    throw new Error("Unexpected mail fixture collection.")
+  })
+  const find = vi.spyOn(payload, "find").mockImplementation(async (args) => {
+    if (args.collection === "operational-alerts" && options.totalDocs != null) return paginatedFixture([alert])
+    return paginatedFixture([], { totalDocs: options.totalDocs ?? 1 })
+  })
+  const update = vi.spyOn(payload, "update").mockResolvedValue(alert)
+  const warn = vi.spyOn(payload.logger, "warn").mockImplementation(() => undefined)
+  const error = vi.spyOn(payload.logger, "error").mockImplementation(() => undefined)
+  return Object.assign(payload, { create, find, update, logger: Object.assign(payload.logger, { warn, error }) })
 }

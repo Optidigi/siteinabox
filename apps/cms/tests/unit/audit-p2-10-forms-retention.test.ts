@@ -1,3 +1,4 @@
+import { userFixture } from "../_helpers/generatedDocs"
 import { describe, it, expect, vi } from "vitest"
 import { Forms } from "@/collections/Forms"
 import { expectAccessField, fieldValidator } from "../_helpers/payloadFields"
@@ -9,8 +10,7 @@ import {
 } from "@/lib/jobs/purgeStaleForms"
 
 import { asMockDoc } from "../_helpers/cast"
-import { asFindClient } from "../_helpers/payloadFindClient"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit finding #10 (P2, T11) — Forms GDPR retention gap.
 //
 // Forms collection accumulates submissions with PII (`email`, `name`,
@@ -248,17 +248,17 @@ describe("audit-p2 #10 — re-arm guards", () => {
   it("R2 — Forms.access.create is still the layer-2 bogus-auth gate (P1 #5 sub-fix 1)", () => {
     const create = Forms.access?.create
     expect(typeof create).toBe("function")
-    expect(create!(accessArgs({ req: { user: { role: "super-admin" } } }))).toBe(true)
+    expect(create!(accessArgs({ req: { user: userFixture({ role: "super-admin" }) } }))).toBe(true)
     expect(create!(accessArgs({ req: { user: null, headers: new Headers() } }))).toBe(true)
   })
 
   it("R3 — Forms.access.delete still admits owner + super-admin only", () => {
     const del = Forms.access?.delete
     expect(typeof del).toBe("function")
-    expect(del!(accessArgs({ req: { user: { role: "super-admin" } } }))).toBe(true)
-    expect(del!(accessArgs({ req: { user: { role: "owner" } } }))).toBe(true)
-    expect(del!(accessArgs({ req: { user: { role: "editor" } } }))).toBe(false)
-    expect(del!(accessArgs({ req: { user: { role: "viewer" } } }))).toBe(false)
+    expect(del!(accessArgs({ req: { user: userFixture({ role: "super-admin" }) } }))).toBe(true)
+    expect(del!(accessArgs({ req: { user: userFixture({ role: "owner" }) } }))).toBe(true)
+    expect(del!(accessArgs({ req: { user: userFixture({ role: "editor" }) } }))).toBe(false)
+    expect(del!(accessArgs({ req: { user: userFixture({ role: "viewer" }) } }))).toBe(false)
     expect(del!(accessArgs({ req: { user: null } }))).toBeFalsy()
   })
 

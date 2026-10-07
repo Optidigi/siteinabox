@@ -1,4 +1,6 @@
 "use client"
+import { clientTenantListSchema, clientCreatedIdSchema } from "@/components/clientPayload"
+import { asRecord } from "@/lib/record"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -30,7 +32,7 @@ const createSchema = (t: (key: string) => string) => createBaseSchema(t).refine(
   { path: ["tenantId"], message: t("siteRequired") }
 )
 
-type Tenant = { id: number | string; name: string; slug: string }
+type Tenant = { id: number | string; name?: string | null; slug?: string | null }
 
 export function CreateUserForm() {
   const t = useTranslations("users")
@@ -45,9 +47,10 @@ export function CreateUserForm() {
   const router = useRouter()
 
   const schema = createSchema(t)
-  type FormValues = z.infer<ReturnType<typeof createBaseSchema>>
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema) as unknown as import("react-hook-form").Resolver<FormValues>,
+  type FormValues = z.output<typeof schema>
+  type FormInput = z.input<typeof schema>
+  const form = useForm<FormInput, unknown, FormValues>({
+    resolver: zodResolver(schema),
     defaultValues: { email: "", name: "", password: "", role: "editor", tenantId: "", enableAPIKey: false }
   })
 
@@ -58,7 +61,8 @@ export function CreateUserForm() {
   useEffect(() => {
     if (!open) return
     fetch("/api/tenants?limit=200&sort=name").then((r) => r.json()).then((j) => {
-      setTenants((j.docs ?? []).map((t: { id: string | number; name?: string | null; slug?: string | null }) => ({ id: t.id, name: t.name, slug: t.slug })))
+      const body: unknown = j
+      setTenants(clientTenantListSchema.parse(body).docs)
     }).catch(() => {})
   }, [open])
 
@@ -102,8 +106,8 @@ export function CreateUserForm() {
         }
         return
       }
-      const createJson = await createRes.json()
-      const newId = createJson?.doc?.id ?? createJson?.id
+      const createJson: unknown = await createRes.json()
+      const newId = clientCreatedIdSchema.parse(asRecord(createJson)?.doc ?? createJson).id
 
       if (v.enableAPIKey && newId != null) {
         // Step 2: PATCH the new user with a generated API key.

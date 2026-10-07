@@ -21,6 +21,18 @@ and workflow YAML remain the executable authorities.
   Docker/workflow declarations, local-development documentation, and matrix
   structure.
 
+Typed boundary checks belong to the existing required jobs: `package-quality`
+checks shared packages, the six shipped JavaScript modules and parser MJS with
+strict JavaScript compilation; `cms-quality` checks runtime and operational
+TypeScript after Payload generation; `site` and `renderer` check typed source and
+Astro client bodies after the owning Astro checks generate content declarations.
+The syntax gate's required fixtures prove prohibited-syntax coverage, real Astro
+compiler failure, unsafe frontmatter/template/client values, inline and emitted
+bootstrap compiler errors, visible client configuration errors, and operational
+TypeScript inclusion. These checks add no new required job names. The source
+inventory and single reviewed adapter typing exception are described in
+[engineering type safety](engineering.md#type-safety).
+
 Hosted workflow YAML remains responsible for setup and service lifecycle. The
 matrix is the command inventory, not permission to make external provider
 writes or use production credentials. External review checkouts are outside the

@@ -1,8 +1,9 @@
-import type { CollectionConfig, JSONFieldValidation, Where } from "payload"
+import type { Form } from "@/payload-types"
+import type { CollectionAfterChangeHook, CollectionConfig, JSONFieldValidation, Payload } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
-import { sendEmail, asMailLogPayload, type MailLogPayload } from "@/lib/email/sendEmail"
+import { sendEmail, asMailLogPayload } from "@/lib/email/sendEmail"
 import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
@@ -67,25 +68,7 @@ const firstStringFromRecord = (value: unknown, keys: string[]) => {
   return null
 }
 
-type FormNotificationPayload = {
-  find(args: {
-    collection: "site-settings" | "tenant-notification-subscriptions"
-    where: Where
-    limit: number
-    depth: number
-    overrideAccess: true
-  }): Promise<{ docs: unknown[] }>
-  findByID(args: {
-    collection: "tenants"
-    id: string | number
-    depth: 0
-    overrideAccess: true
-  }): Promise<unknown>
-  logger?: {
-    warn?: (message: string | Record<string, unknown>, meta?: Record<string, unknown>) => void
-  }
-  create?: MailLogPayload["create"]
-}
+type FormNotificationPayload = Pick<Payload, "find" | "findByID" | "create" | "logger">
 
 type FormNotificationDoc = {
   id?: string | number
@@ -107,10 +90,10 @@ export async function notifyTenantOfFormSubmission({
 }) {
   const tenantId = relationshipId(doc.tenant as Parameters<typeof relationshipId>[0])
   if (tenantId == null) {
-    payload.logger?.warn?.("[forms] tenant notification skipped", {
+    payload.logger?.warn?.({
       reason: "missing_tenant",
       formId: doc.id,
-    })
+    }, "[forms] tenant notification skipped")
     return
   }
 
@@ -132,26 +115,23 @@ export async function notifyTenantOfFormSubmission({
     ])
     const recipients = Array.from(new Set(subscriptionResult.docs
       .map((subscription) => {
-        const record = subscription as { email?: unknown; user?: unknown }
-        const member = record.user && typeof record.user === "object" ? record.user as { email?: unknown; tenants?: Array<{ tenant?: unknown }> } : null
-        const memberTenant = relationshipId(member?.tenants?.[0]?.tenant as Parameters<typeof relationshipId>[0])
+        const member = subscription.user && typeof subscription.user === "object" ? subscription.user : null
+        const memberTenant = relationshipId(member?.tenants?.[0]?.tenant)
         const currentEmail = safeEmail(member?.email)
-        const routedEmail = safeEmail(record.email)
+        const routedEmail = safeEmail(subscription.email)
         return memberTenant === String(tenantId) && currentEmail === routedEmail ? currentEmail : null
       })
       .filter((email): email is string => Boolean(email))))
     if (recipients.length === 0) {
-      payload.logger?.warn?.("[forms] tenant notification skipped", {
+      payload.logger?.warn?.({
         reason: "missing_subscription",
         tenantId,
         formId: doc.id,
-      })
+      }, "[forms] tenant notification skipped")
       return
     }
 
-    const sender = resolveVerifiedTenantSender(
-      tenant as Parameters<typeof resolveVerifiedTenantSender>[0],
-    )
+    const sender = resolveVerifiedTenantSender(tenant)
     const senderEmail = sender?.senderEmail ?? getPlatformMailSender()
 
     const message = tenantFormNotificationTemplate(doc)
@@ -167,23 +147,23 @@ export async function notifyTenantOfFormSubmission({
         tenantSubscriptionCategory: "formSubmissions",
         preferenceSubject: recipient,
         tenant: tenantId,
-        payload: asMailLogPayload(payload as unknown as MailLogPayload),
+        payload: asMailLogPayload(payload),
       })))
     const failures = deliveries.filter((delivery) => delivery.status === "rejected")
     if (failures.length > 0) {
-      payload.logger?.warn?.("[forms] tenant notification delivery partially failed", {
+      payload.logger?.warn?.({
         tenantId,
         formId: doc.id,
         failed: failures.length,
         attempted: deliveries.length,
-      })
+      }, "[forms] tenant notification delivery partially failed")
     }
   } catch (error) {
-    payload.logger?.warn?.("[forms] tenant notification failed", {
+    payload.logger?.warn?.({
       tenantId,
       formId: doc.id,
       error: error instanceof Error ? error.message : "Unknown form notification error",
-    })
+    }, "[forms] tenant notification failed")
   }
 }
 
@@ -274,7 +254,7 @@ export const Forms: CollectionConfig = {
     // tenant case into a clean 400 ValidationError with path:"tenant".
     beforeValidate: [validateTenantExists],
     afterChange: [
-      async ({ doc, operation, req }) => {
+      async ({ doc, operation, req }: Parameters<CollectionAfterChangeHook<Form>>[0]) => {
         if (operation === "create") {
           const { captureAcceptedFormAnalytics } = await import("@/lib/analytics/acceptedForm")
           await captureAcceptedFormAnalytics({ doc, payload: req.payload, logger: req.payload.logger })

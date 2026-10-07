@@ -8,6 +8,9 @@ export type LegalCustomerAction =
   | 'reaccept_on_next_transaction'
   | 'mandatory_reaccept'
 
+export type LegalChangeCategory = 'editorial' | 'non_material_clarification' | 'administrative' | 'service_operational' | 'subprocessor_change' | 'privacy_transparency' | 'privacy_material' | 'contract_material' | 'customer_adverse' | 'consent_scope_change'
+export type LegalConsentAction = 'none' | 'renew_analytics' | 'renew_marketing' | 'renew_all_optional'
+
 export interface LegalRelease {
   documentType: LegalDocumentType
   locale: string
@@ -21,11 +24,11 @@ export interface LegalRelease {
   effectiveAt: string
   contentHash: `sha256:${string}`
   change: {
-    category: string
+    category: LegalChangeCategory
     summary: string
     rationale: string
     customerAction: LegalCustomerAction
-    consentAction: string
+    consentAction: LegalConsentAction
     audience: string
     noticeDays?: number
   }

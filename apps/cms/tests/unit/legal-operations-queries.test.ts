@@ -1,3 +1,6 @@
+import type { LegalDocument, LegalRequirement, LegalNotificationDelivery } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { paginatedFixture, tenantFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it, vi } from "vitest"
 import {
   getLegalAttentionItems,
@@ -7,10 +10,11 @@ import {
 
 const NOW = new Date("2026-07-11T12:00:00.000Z")
 
-const tenant = { id: 7, name: "Voorbeeld BV", slug: "voorbeeld" }
-const document = {
+const tenant = tenantFixture({ id: 7, name: "Voorbeeld BV", slug: "voorbeeld" })
+const document: LegalDocument = {
+  releaseKey: "fixture", locale: "nl", content: "Fixture terms", contentHash: "fixture", sourceCommit: "fixture", publishedAt: "2026-07-01T00:00:00.000Z", changeCategory: "contract_material", changeRationale: "Fixture", customerAction: "mandatory_reaccept", consentAction: "none", createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
   id: 11,
-  documentType: "terms",
+  documentType: "platform-terms",
   documentVersion: "2026-07-01",
   changeSummary: "De afspraken over betaling zijn verduidelijkt.",
   effectiveAt: "2026-07-01T00:00:00.000Z",
@@ -22,6 +26,7 @@ const records = {
   "legal-requirements": [
     {
       id: 21,
+      createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
       requirementKey: "upcoming",
       tenant,
       subjectEmail: "owner@voorbeeld.nl",
@@ -32,6 +37,7 @@ const records = {
     },
     {
       id: 22,
+      createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
       requirementKey: "overdue",
       tenant,
       subjectEmail: "owner@voorbeeld.nl",
@@ -42,6 +48,7 @@ const records = {
     },
     {
       id: 23,
+      createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
       requirementKey: "done",
       tenant,
       subjectEmail: "owner@voorbeeld.nl",
@@ -54,6 +61,7 @@ const records = {
   "legal-notification-deliveries": [
     {
       id: 31,
+      templateVersion: "v1", createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
       notificationKey: "retryable",
       requirement: 21,
       tenant,
@@ -68,6 +76,7 @@ const records = {
     },
     {
       id: 32,
+      templateVersion: "v1", createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
       notificationKey: "permanent",
       requirement: 22,
       tenant,
@@ -82,32 +91,32 @@ const records = {
     },
   ],
   "agreement-acceptances": [],
-} as const
+} satisfies { "legal-documents": LegalDocument[]; "legal-publication-events": []; "legal-requirements": LegalRequirement[]; "legal-notification-deliveries": LegalNotificationDelivery[]; "agreement-acceptances": [] }
 
-const payload = {
-  find: vi.fn(async ({ collection, where }: { collection: keyof typeof records; where?: unknown }) => {
+const payload = createTestPayload()
+vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
+    if (!(collection in records)) throw new Error(`Unexpected collection ${collection}`)
+    const entries = collection === "legal-documents" ? records["legal-documents"] : collection === "legal-requirements" ? records["legal-requirements"] : collection === "legal-notification-deliveries" ? records["legal-notification-deliveries"] : []
     const filter = JSON.stringify(where)
     const docs = collection === "legal-documents" && filter.includes("greater_than")
       ? []
       : collection === "legal-requirements" && filter.includes('"pending","notified","failed"')
         ? records[collection].filter((item) => item.status !== "satisfied")
-        : [...records[collection]]
-    return { docs, totalDocs: docs.length, hasNextPage: false }
-  }),
-  count: vi.fn(async ({ collection, where }: { collection: keyof typeof records; where?: unknown }) => {
+        : [...entries]
+    return paginatedFixture(docs)
+  })
+vi.spyOn(payload, "count").mockImplementation(async ({ collection, where }) => {
     const filter = JSON.stringify(where)
     if (collection === "legal-documents") return { totalDocs: 1 }
     if (collection === "legal-notification-deliveries") return { totalDocs: 2 }
     if (collection === "legal-requirements" && filter.includes("less_than_equal")) return { totalDocs: 1 }
     if (collection === "legal-requirements") return { totalDocs: 2 }
     return { totalDocs: 0 }
-  }),
-  findByID: vi.fn(),
-}
+  })
 
 describe("legal operations queries", () => {
   it("returns the agreed overview metrics and excludes satisfied requirements", async () => {
-    const overview = await getLegalOperationsOverview(payload as never, { now: NOW })
+    const overview = await getLegalOperationsOverview(payload, { now: NOW })
     const metrics = Object.fromEntries(overview.metrics.map((metric) => [metric.key, metric.value]))
 
     expect(metrics).toEqual({
@@ -120,7 +129,7 @@ describe("legal operations queries", () => {
   })
 
   it("orders attention by operational urgency instead of source order", async () => {
-    const rows = await getLegalAttentionItems(payload as never, { now: NOW })
+    const rows = await getLegalAttentionItems(payload, { now: NOW })
 
     expect(rows.map((row) => [row.kind, row.title])).toEqual([
       ["delivery", "Definitieve verzendfout"],
@@ -142,7 +151,7 @@ describe("legal operations queries", () => {
   })
 
   it("distinguishes permanent from retryable delivery failures without exposing the address", async () => {
-    const rows = await getLegalAttentionItems(payload as never, { now: NOW })
+    const rows = await getLegalAttentionItems(payload, { now: NOW })
     const deliveryRows = rows.filter((row) => row.kind === "delivery")
 
     expect(deliveryRows).toHaveLength(2)

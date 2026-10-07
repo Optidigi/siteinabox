@@ -1,3 +1,4 @@
+import { userFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -5,7 +6,7 @@ import {
   protectMigrationSourceAuthorization,
   validateMigrationSourceAuthorization,
 } from "@/collections/MigrationSourceAuthorizations"
-import { accessArgs } from "../_helpers/accessArgs"
+import { accessArgs, fieldAccessArgs } from "../_helpers/accessArgs"
 import { hookArgsFor } from "../_helpers/hookFixtures"
 
 describe("migration source authorization collection", () => {
@@ -17,14 +18,14 @@ describe("migration source authorization collection", () => {
       MigrationSourceAuthorizations.access?.delete,
     ]) {
       expect(access?.(accessArgs({
-        req: { user: { role: "super-admin" } },
+        req: { user: userFixture({ role: "super-admin" }) },
       }))).toBe(false)
     }
     const encrypted = MigrationSourceAuthorizations.fields.find(
       (field) => "name" in field && field.name === "encryptedAuthority",
     )
     expect(encrypted && "access" in encrypted
-      ? encrypted.access?.read?.(accessArgs({ req: {} }))
+      ? encrypted.access?.read?.(fieldAccessArgs({ req: {} }))
       : undefined).toBe(false)
     expect(MigrationSourceAuthorizations.admin?.hidden).toBe(true)
   })

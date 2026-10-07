@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { buildUserDataExport, emailUserDataExport } from "@/lib/privacy/userDataExport"
 import { sendEmail } from "@/lib/email/sendEmail"
-import { asPayload, type MockFindByIdArgs } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { userFixture, tenantFixture, pageFixture, mediaFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 
 vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/email/sendEmail")>()
@@ -11,41 +13,40 @@ vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
   }
 })
 
-const user = {
+const user = userFixture({
   id: 10,
   email: "owner@example.com",
   name: "Owner",
   role: "owner",
   language: "nl",
-  editorMode: "sidebar",
-  tenants: [{ tenant: { id: 7 } }],
-}
+  tenants: [{ tenant: tenantFixture({ id: 7 }) }],
+})
 
 function payloadStub() {
-  return {
-    findByID: vi.fn(async ({ collection }: MockFindByIdArgs) => {
+  const payload = createTestPayload()
+  vi.spyOn(payload, "findByID").mockImplementation(async ({ collection }) => {
       if (collection === "users") {
         return {
           ...user,
           hash: "secret",
           salt: "secret",
-          sessions: [{ id: "sid" }],
+          sessions: [{ id: "sid", createdAt: "2026-08-01T00:00:00.000Z", expiresAt: "2026-09-01T00:00:00.000Z" }],
           apiKey: "secret",
           apiKeyIndex: "secret",
         }
       }
       if (collection === "tenants") {
-        return { id: 7, name: "Amicare", slug: "amicare", domain: "ami-care.nl", status: "active" }
+        return tenantFixture({ id: 7, name: "Amicare", slug: "amicare", domain: "ami-care.nl", status: "active" })
       }
       throw new Error(`unexpected collection ${collection}`)
-    }),
-    find: vi.fn(async ({ collection }) => {
-      if (collection === "site-settings") return { docs: [{ id: 20, siteName: "Amicare" }] }
-      if (collection === "pages") return { docs: [{ id: 30, title: "Home", slug: "home", status: "published" }] }
-      if (collection === "media") return { docs: [{ id: 40, filename: "logo.png", alt: "Logo" }] }
-      if (collection === "forms") return { docs: [{ id: 50, formName: "Contact" }] }
-      if (collection === "appointments") return { docs: [{
-        id: 60,
+    })
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => {
+      if (collection === "site-settings") return paginatedFixture([{ ...createSiteSettingsData(7, "Amicare", "https://ami-care.nl"), id: 20, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" }])
+      if (collection === "pages") return paginatedFixture([pageFixture({ id: 30, title: "Home", slug: "home", status: "published" })])
+      if (collection === "media") return paginatedFixture([mediaFixture({ id: 40, filename: "logo.png", alt: "Logo" })])
+      if (collection === "forms") return paginatedFixture([{ id: 50, formName: "Contact", data: {}, status: "new", createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" }])
+      if (collection === "appointments") return paginatedFixture([{
+        id: 60, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z",
         status: "confirmed",
         startAt: "2026-09-07T09:00:00.000Z",
         endAt: "2026-09-07T09:30:00.000Z",
@@ -60,10 +61,10 @@ function payloadStub() {
         eventVersion: 1,
         managementTokenDigest: "must-not-export",
         encryptedManagementToken: "must-not-export",
-      }] }
+      }])
       throw new Error(`unexpected collection ${collection}`)
-    }),
-  }
+    })
+  return payload
 }
 
 describe("user data export", () => {
@@ -72,7 +73,7 @@ describe("user data export", () => {
   })
 
   it("builds a sanitized account export with scoped site summaries", async () => {
-    const exportData = await buildUserDataExport(asPayload(payloadStub()), user)
+    const exportData = await buildUserDataExport(payloadStub(), user)
 
     expect(exportData.user).toMatchObject({
       id: 10,
@@ -95,7 +96,7 @@ describe("user data export", () => {
   })
 
   it("emails the export to the requesting user", async () => {
-    const payload = asPayload(payloadStub())
+    const payload = payloadStub()
     await emailUserDataExport(payload, user)
 
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({

@@ -1,3 +1,8 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
+import { pageFixture, tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import type { Page } from "@/payload-types"
+import type { PayloadRequest } from "payload"
 import { describe, it, expect, vi } from "vitest"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -7,7 +12,7 @@ import * as migration from "@/migrations/20260509_pages_tenant_slug_unique"
 import { ensureUniqueTenantSlug } from "@/hooks/ensureUniqueTenantSlug"
 
 import { asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 import { cast, errLike, validationErrorData } from "../_helpers/cast"
 // Audit finding #8 (P1, T8) — Pages: missing (tenant_id, slug) unique index.
 //
@@ -39,7 +44,7 @@ import { cast, errLike, validationErrorData } from "../_helpers/cast"
 // Half A — application-level pre-emptive duplicate check
 // -----------------------------------------------------------------------------
 
-const beforeValidateHooks = (Pages.hooks?.beforeValidate ?? []) as unknown as BeforeValidateHook[]
+const beforeValidateHooks = (Pages.hooks?.beforeValidate ?? [])
 
 // Invoke the hook by direct import rather than positional array access.
 // The original `beforeValidateHooks[0]` access silently broke when
@@ -48,30 +53,27 @@ const beforeValidateHooks = (Pages.hooks?.beforeValidate ?? []) as unknown as Be
 // a `req` mock missing `findByID` and surfaced as a misleading "Tenant
 // not found" ValidationError. The S1 case below still verifies the hook
 // is wired into the collection chain so registration regressions trip.
-const ensureUniqueSlugHook = ensureUniqueTenantSlug as unknown as (args: unknown) => unknown
+const ensureUniqueSlugHook = ensureUniqueTenantSlug
 
-const makeReq = (findResult: { totalDocs: number; docs?: unknown[] }) => {
-  const find = vi.fn().mockResolvedValue({ docs: findResult.docs ?? [], totalDocs: findResult.totalDocs })
-  return {
-    req: { payload: { find } },
-    find,
-  }
+const makeReq = (findResult: { totalDocs: number; docs?: Partial<Page>[] }) => {
+  const payload = createTestPayload()
+  const find = vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture((findResult.docs ?? []).map((doc) => pageFixture(doc)), { totalDocs: findResult.totalDocs }))
+  return { req: hookRequest({ payload }), find }
 }
 
 const callHook = async (opts: {
-  data: unknown
+  data: Partial<Page> | null
   operation: "create" | "update"
-  originalDoc?: unknown
-  req: unknown
-}) =>
-  ensureUniqueSlugHook({
-    data: opts.data,
-    operation: opts.operation,
-    originalDoc: opts.originalDoc,
-    req: opts.req,
-    collection: { slug: "pages" },
-    context: {},
-  })
+  originalDoc?: Partial<Page>
+  req: PayloadRequest
+}) => ensureUniqueSlugHook({
+  data: opts.data,
+  operation: opts.operation,
+  originalDoc: opts.originalDoc ? pageFixture(opts.originalDoc) : undefined,
+  req: opts.req,
+  collection: hookCollection("pages"),
+  context: {},
+})
 
 const expectValidationError = async (p: Promise<unknown>) => {
   let err: unknown = null
@@ -99,7 +101,7 @@ describe("audit-p1 #8 Half A — ensureUniqueTenantSlug pre-empts unique-violati
 
   it("Case 1 — create page with unique (tenant, slug) → succeeds (positive control)", async () => {
     const { req, find } = makeReq({ totalDocs: 0 })
-    const data = { title: "Home", slug: "home", tenant: 42, status: "draft" }
+    const data: Partial<Page> = { title: "Home", slug: "home", tenant: 42, status: "draft" }
     const result = await callHook({ data, operation: "create", req })
     expect(result).toEqual(data)
     // Must have queried for an existing duplicate.
@@ -132,7 +134,7 @@ describe("audit-p1 #8 Half A — ensureUniqueTenantSlug pre-empts unique-violati
     // We simulate the find returning 0 for the queried (tenant=99, slug=home)
     // because no existing page matches tenant=99.
     const { req, find } = makeReq({ totalDocs: 0 })
-    const data = { title: "Home", slug: "home", tenant: 99, status: "draft" }
+    const data: Partial<Page> = { title: "Home", slug: "home", tenant: 99, status: "draft" }
     const result = await callHook({ data, operation: "create", req })
     expect(result).toEqual(data)
     const where = JSON.stringify(find.mock.calls[0]![0].where)
@@ -225,7 +227,7 @@ describe("audit-p1 #8 Half A — ensureUniqueTenantSlug pre-empts unique-violati
     // The hook must extract .id rather than passing the object through to find().
     const { req, find } = makeReq({ totalDocs: 0 })
     await callHook({
-      data: { title: "Home", slug: "home", tenant: { id: 42, slug: "tenant-a" } },
+      data: { title: "Home", slug: "home", tenant: tenantFixture({ id: 42, slug: "tenant-a" }) },
       operation: "create",
       req,
     })

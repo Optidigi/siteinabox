@@ -1,3 +1,4 @@
+import { generationRunFixture } from "../_helpers/generatedDocs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -29,10 +30,11 @@ describe("preview domain discovery", () => {
   it("derives a bounded primary batch on the server and returns no checkout state", async () => {
     const { searchPreviewDomains } = await import("@/lib/domains/previewDomainSearch")
     const signal = new AbortController().signal
-    const response = await searchPreviewDomains({ run: { id: 1 } as never, query: "acme", mode: "primary", signal })
+    const run = generationRunFixture({ id: 1 })
+    const response = await searchPreviewDomains({ run, query: "acme", mode: "primary", signal })
 
     expect(mocks.check).toHaveBeenCalledWith(
-      { id: 1 }, ["acme.nl", "acme.com", "acme.info", "acme.org", "acme.eu"], null,
+      run, ["acme.nl", "acme.com", "acme.info", "acme.org", "acme.eu"], null,
       { allowUnconfiguredTldCapability: false, requireProductionCapability: false, signal },
     )
     expect(response).toEqual({

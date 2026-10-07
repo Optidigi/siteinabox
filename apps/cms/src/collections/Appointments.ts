@@ -1,3 +1,4 @@
+import type { Appointment } from "@/payload-types"
 import type { CollectionBeforeChangeHook, CollectionBeforeValidateHook, CollectionConfig } from "payload"
 import { ValidationError } from "payload"
 import { AppointmentSources, AppointmentStatuses } from "@siteinabox/contracts"
@@ -5,7 +6,7 @@ import { canRead } from "@/access/roleHelpers"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 
-const validateAppointmentTimes: CollectionBeforeValidateHook = ({ collection, data, req }) => {
+const validateAppointmentTimes: CollectionBeforeValidateHook<Appointment> = ({ collection, data, req }) => {
   const record = data as Record<string, unknown> | undefined
   const startAt = typeof record?.startAt === "string" || record?.startAt instanceof Date
     ? new Date(record.startAt)
@@ -27,7 +28,7 @@ const validateAppointmentTimes: CollectionBeforeValidateHook = ({ collection, da
   return data
 }
 
-const protectAppointmentLifecycle: CollectionBeforeChangeHook = ({ data, operation, req, context }) => {
+const protectAppointmentLifecycle: CollectionBeforeChangeHook<Appointment> = ({ data, operation, req, context }) => {
   if (operation !== "update" || req.context?.appointmentLifecycleMutation === true || context?.appointmentLifecycleMutation === true) return data
   const mutableAttempt = Object.keys(data ?? {}).find((field) =>
     ["status", "startAt", "endAt", "eventVersion", "managementTokenDigest", "managementTokenExpiresAt", "encryptedManagementToken"].includes(field),

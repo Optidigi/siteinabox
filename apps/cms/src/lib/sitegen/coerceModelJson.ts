@@ -178,7 +178,7 @@ export const coerceSitegenModelJson = (value: unknown): unknown => {
   const navbar = isRecord(stripped.navbar) ? stripped.navbar : {}
   const footer = isRecord(stripped.footer) ? stripped.footer : {}
   const rawPages = Array.isArray(stripped.pages) ? stripped.pages : []
-  const pages = rawPages.map((page) => {
+  const pages = rawPages.map((page: unknown) => {
     if (!isRecord(page)) return page
     const sections = Array.isArray(page.sections)
       ? page.sections.map(coerceSection).filter((section): section is Record<string, unknown> => section != null)

@@ -1,3 +1,4 @@
+import { userFixture } from "../_helpers/generatedDocs"
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest"
 import { NextRequest } from "next/server"
 import { proxy as middleware, __resetRateLimitersForTests } from "@/proxy"
@@ -14,8 +15,7 @@ import { errLike } from "../_helpers/cast"
 import { accessArgs } from "../_helpers/accessArgs"
 import { argsFor } from "../_helpers/argsFor"
 import { asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
-import { asFindClient } from "../_helpers/payloadFindClient"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit finding #5 (P1, T4) — Public form-submit/contact + forgot-password
 // unrate-limited; Forms.data has no size cap. This batch lands BOTH sub-
 // fixes (audit's suggested-fix items 1 + 2; item 3 hCaptcha is deferred
@@ -707,17 +707,16 @@ describe("audit-p1 #5 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 #1-#3 / P1 #
 const formsCreateAccess = Forms.access?.create as (args: ReturnType<typeof accessArgs>) => boolean
 
 const reqShape = (opts: {
-  user?: unknown
+  user?: ReturnType<typeof userFixture> | null
   authorization?: string
   cookie?: string
 }) => {
-  const headers = new Map<string, string>()
+  const headers = new Headers()
   if (opts.authorization !== undefined) headers.set("authorization", opts.authorization)
   if (opts.cookie !== undefined) headers.set("cookie", opts.cookie)
   return {
     user: opts.user ?? null,
-    headers: { get: (k: string) => headers.get(k.toLowerCase()) ?? null },
-    t: (k: string) => k,
+    headers,
   }
 }
 
@@ -732,7 +731,7 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Forms.access.create rejects bogus-au
     // adding new restrictions on legitimate authed paths.
     expect(
       formsCreateAccess(accessArgs({
-        req: reqShape({ user: { id: "u1", role: "editor" }, authorization: "users API-Key real" }),
+        req: reqShape({ user: userFixture({ id: 1, role: "editor" }), authorization: "users API-Key real" }),
       }))
     ).toBe(true)
   })
@@ -811,7 +810,7 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Users.hooks.beforeOperation forgot-p
   it("L-Users-2: forgotPassword + authed super-admin (apiKey-validated, req.user set) -> does NOT throw (machine-client invariant)", async () => {
     let threw = false
     try {
-      await callForgotHook(reqShape({ user: { id: "sa1", role: "super-admin" }, authorization: "users API-Key real" }))
+      await callForgotHook(reqShape({ user: userFixture({ id: 1, role: "super-admin" }), authorization: "users API-Key real" }))
     } catch {
       threw = true
     }
@@ -856,7 +855,7 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Users.hooks.beforeOperation forgot-p
 })
 
 describe("OBS-5 — forgot-password target-email limiter after Payload auth", () => {
-  const callTargetLimiter = (email: string, user: unknown = { id: "editor1", role: "editor" }) =>
+  const callTargetLimiter = (email: string, user: ReturnType<typeof userFixture> | null = userFixture({ id: 2, role: "editor" })) =>
     rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
       args: { data: { email } },
       operation: "forgotPassword",
@@ -888,12 +887,12 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
   })
 
   it("keeps different target emails isolated so API-key invite bursts can continue", async () => {
-    await callTargetLimiter("a@example.com", { id: "sa1", role: "super-admin" })
-    await callTargetLimiter("a@example.com", { id: "sa1", role: "super-admin" })
-    await callTargetLimiter("a@example.com", { id: "sa1", role: "super-admin" })
+    await callTargetLimiter("a@example.com", userFixture({ id: 1, role: "super-admin" }))
+    await callTargetLimiter("a@example.com", userFixture({ id: 1, role: "super-admin" }))
+    await callTargetLimiter("a@example.com", userFixture({ id: 1, role: "super-admin" }))
 
     await expect(
-      callTargetLimiter("b@example.com", { id: "sa1", role: "super-admin" }),
+      callTargetLimiter("b@example.com", userFixture({ id: 1, role: "super-admin" })),
     ).resolves.toBeTruthy()
   })
 
@@ -902,7 +901,7 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
       rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
         args: { data: { email: "victim@example.com" } },
         operation: "create",
-        req: reqShape({ user: { id: "editor1", role: "editor" } }),
+        req: reqShape({ user: userFixture({ id: 2, role: "editor" }) }),
       })),
     ).resolves.toBeTruthy()
 
@@ -910,7 +909,7 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
       rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
         args: { data: {} },
         operation: "forgotPassword",
-        req: reqShape({ user: { id: "editor1", role: "editor" } }),
+        req: reqShape({ user: userFixture({ id: 2, role: "editor" }) }),
       })),
     ).resolves.toBeTruthy()
   })

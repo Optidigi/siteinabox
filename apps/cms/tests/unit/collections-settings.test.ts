@@ -1,3 +1,4 @@
+import { hookRequest, hookCollection } from "../_helpers/hookFixtures"
 import { describe, expect, it } from "vitest"
 import type { Field } from "payload"
 import {
@@ -83,33 +84,35 @@ describe("SiteSettings collection config", () => {
 
   it("normalizes alias hosts and rejects duplicates", async () => {
     const normalized = await normalizeSiteSettingsAliases({
-      collection: { slug: "site-settings" },
+      collection: hookCollection("site-settings"), context: {}, operation: "create",
       data: { aliases: [{ host: " WWW.Example.NL.:443 " }] },
-      req: { i18n: { language: "en" } },
-    } as never)
+      req: hookRequest(),
+    })
     expect(normalized?.aliases).toEqual([{ host: "www.example.nl" }])
 
     expect(() => normalizeSiteSettingsAliases({
-      collection: { slug: "site-settings" },
+      collection: hookCollection("site-settings"), context: {}, operation: "create",
       data: { aliases: [{ host: "www.example.nl" }, { host: "WWW.EXAMPLE.NL." }] },
-      req: { i18n: { language: "en" } },
-    } as never)).toThrow()
+      req: hookRequest(),
+    })).toThrow()
   })
 
   it("requires a message when maintenance mode is enabled", async () => {
     expect(() => enforceSiteSettingsCapabilities({
-      collection: SiteSettings,
+      collection: hookCollection("site-settings"),
+      context: {}, operation: "create",
       data: { maintenance: { enabled: true, message: "" } },
       originalDoc: undefined,
-      req: { i18n: { language: "en" } },
-    } as never)).toThrow()
+      req: hookRequest(),
+    })).toThrow()
 
     expect(enforceSiteSettingsCapabilities({
-      collection: SiteSettings,
+      collection: hookCollection("site-settings"),
+      context: {}, operation: "create",
       data: { maintenance: { enabled: true, message: "Back soon" } },
       originalDoc: undefined,
-      req: { i18n: { language: "en" } },
-    } as never)).toBeTruthy()
+      req: hookRequest(),
+    })).toBeTruthy()
   })
 
   it("keeps legal disclosure as a settings-owned structured document", () => {
@@ -123,7 +126,8 @@ describe("SiteSettings collection config", () => {
 
   it("requires factual controller data only when a legal document is enabled", () => {
     expect(() => enforceSiteSettingsCapabilities({
-      collection: SiteSettings,
+      collection: hookCollection("site-settings"),
+      context: {}, operation: "create",
       data: {
         privacyDisclosure: {
           enabled: true,
@@ -134,14 +138,15 @@ describe("SiteSettings collection config", () => {
         },
       },
       originalDoc: undefined,
-      req: { i18n: { language: "en" } },
-    } as never)).toThrow()
+      req: hookRequest(),
+    })).toThrow()
 
     expect(enforceSiteSettingsCapabilities({
-      collection: SiteSettings,
+      collection: hookCollection("site-settings"),
+      context: {}, operation: "create",
       data: { privacyDisclosure: { enabled: false, mode: "template" } },
       originalDoc: undefined,
-      req: { i18n: { language: "en" } },
-    } as never)).toBeTruthy()
+      req: hookRequest(),
+    })).toBeTruthy()
   })
 })

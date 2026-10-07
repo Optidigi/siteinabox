@@ -113,7 +113,8 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
     // guaranteed it parses + matches manifestSchema, so JSON.parse is safe
     // here. Empty → null (clears the manifest).
     const manifestRaw = values.siteManifest.trim()
-    const payload = { ...values, siteManifest: manifestRaw ? JSON.parse(manifestRaw) : null }
+    const manifest: unknown = manifestRaw ? JSON.parse(manifestRaw) : null
+    const payload = { ...values, siteManifest: manifest }
     const res = await fetch(`/api/tenants/${tenant.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },

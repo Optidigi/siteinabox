@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest"
-import type { SiteSetting } from "@/payload-types"
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 import { getTestPayload } from "./_helpers"
 
 let payload: Awaited<ReturnType<typeof getTestPayload>>
@@ -29,11 +29,7 @@ describe("appointment module migration", () => {
     try {
       const settings = await payload.create({
         collection: "site-settings",
-        data: {
-          tenant: tenant.id,
-          siteName: "Appointment migration fixture",
-          siteUrl: "https://appointment-migration.test",
-        } as unknown as SiteSetting,
+        data: createSiteSettingsData(tenant.id, "Appointment migration fixture", "https://appointment-migration.test"),
         draft: false,
         overrideAccess: true,
       })

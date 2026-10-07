@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "crypto"
-import type { Access, ArrayFieldValidation, CollectionBeforeDeleteHook, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess, PayloadRequest, Where } from "payload"
+import type { Access, ArrayFieldValidation, CollectionAfterReadHook, CollectionBeforeDeleteHook, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess, PayloadRequest } from "payload"
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
@@ -68,7 +68,7 @@ const isTenantRole = (role: unknown): role is "owner" | "editor" | "viewer" =>
 // move a user into another tenant. Row-level update access already scopes the
 // target row to the owner's tenant; this field gate constrains the incoming
 // role/tenant values that field-level access would otherwise strip.
-const canOwnerUpdateRoleTenantField: FieldAccess = ({ data, doc, req }) => {
+const canOwnerUpdateRoleTenantField: FieldAccess<User> = ({ data, doc, req }) => {
   if (req.user?.role === "super-admin") return true
   if (req.user?.role !== "owner") return false
 
@@ -103,7 +103,7 @@ const canOwnerUpdateRoleTenantField: FieldAccess = ({ data, doc, req }) => {
 // AMD-1 (T2 secondary): closes the functional regression introduced by P0
 // commit cb00e47 (which wired isSuperAdminField on role/tenants create) while
 // preserving every closed P0/P1 vector.
-const canCreateUserField: FieldAccess = ({ req, data }) => {
+const canCreateUserField: FieldAccess<User> = ({ req, data }) => {
   // A) super-admin shortcut
   if (req.user?.role === "super-admin") return true
 
@@ -166,7 +166,7 @@ const canCreateUserField: FieldAccess = ({ req, data }) => {
 // use `in` checks rather than truthiness, so any non-super-admin caller who
 // names one of the three keys gets a 403 regardless of value.
 const apiKeyFieldNames = ["apiKey", "enableAPIKey", "apiKeyIndex"] as const
-const rejectNonSuperAdminApiKeyWrites: CollectionBeforeOperationHook = ({ args, operation, req }) => {
+const rejectNonSuperAdminApiKeyWrites: CollectionBeforeOperationHook<"users"> = ({ args, operation, req }) => {
   if (operation !== "update") return args
   if (req.user?.role === "super-admin") return args
   const data = args?.data
@@ -186,7 +186,7 @@ const rejectNonSuperAdminApiKeyWrites: CollectionBeforeOperationHook = ({ args, 
 // addresses. This hook detects: forgotPassword + req.user==null + auth
 // signal present → bypass attempt → 403. See src/access/authSignals.ts
 // for the polarity-invariant note.
-const rejectBogusAuthForgotPassword: CollectionBeforeOperationHook = ({ args, operation, req }) => {
+const rejectBogusAuthForgotPassword: CollectionBeforeOperationHook<"users"> = ({ args, operation, req }) => {
   if (operation !== "forgotPassword") return args
   if (req.user) return args
   if (hasUnvalidatedAuthSignal(req)) throw new Forbidden(req.t)
@@ -252,7 +252,7 @@ const rejectBogusAuthForgotPassword: CollectionBeforeOperationHook = ({ args, op
 // brand-new with no prior credentials to hijack), and bootstrap. None
 // of those reach the credential-write hook.
 const credentialFieldNames = ["password", "email"] as const
-const rejectNonSuperAdminCredentialWrites: CollectionBeforeOperationHook = ({ args, context, operation, req }) => {
+const rejectNonSuperAdminCredentialWrites: CollectionBeforeOperationHook<"users"> = ({ args, context, operation, req }) => {
   if (operation !== "update") return args
   if (req.user?.role === "super-admin") return args
   if ((context as { allowSelfPasswordChange?: boolean })?.allowSelfPasswordChange === true) return args
@@ -272,7 +272,7 @@ export const canDeleteUsers: Access = ({ req }) => {
 
   const tenantId = ownerTenantIdOf(user)
   if (tenantId == null) return false
-  return { "tenants.tenant": { equals: tenantId } } as unknown as Where
+  return { "tenants.tenant": { equals: tenantId } }
 }
 
 export const preventUnsafeUserDelete: CollectionBeforeDeleteHook = async ({ context, id, req }) => {
@@ -359,17 +359,17 @@ export const preventUnsafeUserDelete: CollectionBeforeDeleteHook = async ({ cont
 // `login` operation. Login passes credentials but does not include
 // `password` in the data being persisted; only resetPassword and update
 // pass through beforeValidate with password material.
-const clearSessionsOnPasswordChange: CollectionBeforeValidateHook = ({ data, operation, originalDoc }) => {
+const clearSessionsOnPasswordChange: CollectionBeforeValidateHook<User> = ({ data, operation, originalDoc }) => {
   if (operation !== "update") return data
   if (!data || typeof data !== "object") return data
-  const d = data as Record<string, unknown>
+  const d = data
   const passwordRotation = typeof d.password === "string"
   const resetPasswordRotation =
-    typeof d.hash === "string" && d.hash !== (originalDoc as Record<string, unknown> | undefined)?.hash
+    typeof d.hash === "string" && d.hash !== originalDoc?.hash
   if (!passwordRotation && !resetPasswordRotation) return data
   // Mutate in place (covers resetPassword's pass-by-reference path) AND
   // return (covers the regular update pipeline that uses the return value).
-  ;(d as Record<string, unknown>).sessions = []
+  ;d.sessions = []
   return data
 }
 
@@ -472,7 +472,7 @@ export const Users: CollectionConfig = {
     // surface), so stripping from the public response shape doesn't
     // break login or session rotation.
     afterRead: [
-      ({ doc, req }) => {
+      ({ doc, req }: Parameters<CollectionAfterReadHook<User>>[0]) => {
         // `req.payloadAPI` is "REST" / "GraphQL" / "local" — Payload sets
         // this on every request handled by its operation pipeline. Local-
         // API callers (the JWT strategy's session lookup, our own
@@ -482,7 +482,7 @@ export const Users: CollectionConfig = {
         const api = (req as { payloadAPI?: string } | undefined)?.payloadAPI
         if (api === "local") return doc
         if (doc && typeof doc === "object" && "sessions" in doc) {
-          delete (doc as Record<string, unknown>).sessions
+          delete doc.sessions
         }
         return doc
       }
@@ -522,7 +522,7 @@ export const Users: CollectionConfig = {
     // Operator workflow: deploy with BOOTSTRAP_TOKEN set, run the seed curl
     // ONCE, then unset BOOTSTRAP_TOKEN and redeploy. Documented in
     // .env.example and docs/runbooks/deployment.md.
-    create: async ({ req, data }) => {
+    create: (async ({ req, data }) => {
       if (req.user?.role === "super-admin") return true
 
       // OBS-9 belt-and-braces tenant-scoping check for owner-create-user.
@@ -558,7 +558,7 @@ export const Users: CollectionConfig = {
       if (data?.role !== "super-admin") return false
       const { totalDocs } = await req.payload.count({ collection: "users", overrideAccess: true })
       return totalDocs === 0
-    },
+    }) satisfies Access<Partial<User>>,
     read: canManageUsers,
     update: canManageUsers,
     delete: canDeleteUsers

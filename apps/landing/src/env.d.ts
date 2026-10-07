@@ -6,3 +6,7 @@ declare module "lottie-web/build/player/lottie_light.min.js" {
   const lottie: LottiePlayer
   export default lottie
 }
+
+interface ImportMetaEnv {
+  readonly PUBLIC_TURNSTILE_SITE_KEY?: string
+}

@@ -1,3 +1,4 @@
+import { translationText } from "@/lib/i18n/translationText"
 import { getTranslations } from "next-intl/server"
 import { AnalyticsPageContent } from "@/components/analytics/AnalyticsPageContent"
 import { TenantPill } from "@/components/layout/TenantPill"
@@ -185,7 +186,7 @@ export default async function TenantAnalyticsPage({
           performanceOverview: t("performanceOverview"),
           overallScore: t("overallScore"),
           scoreUnavailable: t("scoreUnavailable"),
-          measuredFromVisitors: t.raw("measuredFromVisitors"),
+          measuredFromVisitors: translationText(t.raw("measuredFromVisitors")),
           lowSampleNotice: t("lowSampleNotice"),
           variantRanking: t("variantRanking"),
           variantRankingDescription: t("variantRankingDescription"),

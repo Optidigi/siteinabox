@@ -33,6 +33,10 @@ overrides:
 
 minimumReleaseAge: 1440
 
+# Reviewed address-parser hardening; exact patch only, not the whole package.
+minimumReleaseAgeExclude:
+  - "nodemailer@10.0.16"
+
 allowBuilds:
   "@parcel/watcher": true
   "@swc/core": true

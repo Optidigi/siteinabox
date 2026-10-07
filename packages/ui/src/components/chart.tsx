@@ -136,19 +136,20 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+}: Omit<RechartsPrimitive.TooltipProps<TooltipValueType, TooltipNameType>, "formatter"> & { active?: boolean } &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
     indicator?: "line" | "dot" | "dashed"
     nameKey?: string
     labelKey?: string
+    formatter?: (value: TooltipValueType, name: TooltipNameType, item: RechartsPrimitive.TooltipPayloadEntry<TooltipValueType, TooltipNameType>, index: number, data: unknown) => React.ReactNode
   } & Omit<
     RechartsPrimitive.DefaultTooltipContentProps<
       TooltipValueType,
       TooltipNameType
     >,
-    "accessibilityLayer"
+    "accessibilityLayer" | "formatter"
   >) {
   const { config } = useChart()
 
@@ -208,7 +209,9 @@ function ChartTooltipContent({
           .map((item, index) => {
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color ?? item.payload?.fill ?? item.color
+            const itemData: unknown = item.payload
+            const fill = itemData != null && typeof itemData === "object" && "fill" in itemData && typeof itemData.fill === "string" ? itemData.fill : undefined
+            const indicatorColor = color ?? fill ?? item.color
 
             return (
               <div
@@ -219,7 +222,7 @@ function ChartTooltipContent({
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item, index, itemData)
                 ) : (
                   <>
                     {itemConfig?.icon ? (

@@ -15,9 +15,14 @@ import {
   workflowSummaryForIntakeSubmission,
 } from "@/lib/queries/generationOperations"
 
-import { asGenerationRun, cast } from "../_helpers/cast"
-import { asFindClient } from "../_helpers/payloadFindClient"
-import { asPayload, type MockFindArgs } from "../_helpers/mockPayload"
+import { createFindClient } from "../_helpers/payloadFindClient"
+import type { IntakeSubmission, SiteGenerationRun, Tenant } from "@/payload-types"
+import type { PaginatedDocs } from "payload"
+import type { PayloadFindArgs } from "@/lib/queries/paginate"
+const tenantFixture = (patch: Partial<Tenant>): Tenant => ({
+  id: 1, name: "Fixture site", slug: "fixture", domain: "fixture.example", status: "provisioning",
+  createdAt: "2026-07-14T10:00:00Z", updatedAt: "2026-07-14T10:00:00Z", ...patch,
+})
 const root = process.cwd()
 const read = (path: string) => readFileSync(join(root, path), "utf8")
 
@@ -80,23 +85,23 @@ describe("generation operations UI helpers", () => {
   })
 
   it("queries runs and intake submissions with the same pagination and filter", async () => {
-    const calls: MockFindArgs[] = []
-    const client = asFindClient({
-      async find(args: MockFindArgs) {
-        calls.push(args)
-        return {
-          docs: [],
-          totalDocs: 0,
-          totalPages: 1,
-          page: args.page,
-          limit: args.limit,
-          hasNextPage: false,
-          hasPrevPage: false,
-          nextPage: null,
-          prevPage: null,
-        }
-      },
-    })
+    const calls: PayloadFindArgs[] = []
+    const find = async (args: PayloadFindArgs) => {
+      calls.push(args)
+      return {
+        docs: [],
+        totalDocs: 0,
+        totalPages: 1,
+        page: args.page ?? 1,
+        limit: args.limit ?? 50,
+        hasNextPage: false,
+        hasPrevPage: false,
+        nextPage: null,
+        prevPage: null,
+        pagingCounter: 1,
+      }
+    }
+    const client = createFindClient({ "site-generation-runs": find, "intake-submissions": find })
 
     await listGenerationOperations({ page: 3, pageSize: 20, filter: "preview-ready", q: "" }, client)
 
@@ -205,7 +210,7 @@ describe("generation operations UI helpers", () => {
       status: "preview_ready",
       clientApproval: { status: "approved" },
       payment: { status: "completed" },
-      tenant: cast({ domainVerification: { status: "not_checked" } }),
+      tenant: tenantFixture({ domainVerification: { status: "not_checked" } }),
     })).toMatchObject({
       state: "Checkout completed",
       label: "Provisioning",
@@ -215,7 +220,7 @@ describe("generation operations UI helpers", () => {
       status: "preview_ready",
       clientApproval: { status: "approved" },
       payment: { status: "completed" },
-      tenant: cast({ domainVerification: { status: "verified" } }),
+      tenant: tenantFixture({ domainVerification: { status: "verified" } }),
     })).toMatchObject({
       state: "Checkout completed",
       label: "Activating",
@@ -223,7 +228,7 @@ describe("generation operations UI helpers", () => {
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
-      tenant: cast({ activeSnapshot: 42 }),
+      tenant: tenantFixture({ activeSnapshot: 42 }),
     })).toMatchObject({
       state: "Live",
       label: "Live",
@@ -463,17 +468,26 @@ describe("generation operations route access", () => {
 })
 
 describe("operations overview and registers", () => {
-  const result = (docs: unknown[]) => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 250, hasNextPage: false, hasPrevPage: false, nextPage: null, prevPage: null })
+  const timestamp = "2026-07-14T10:00:00Z"
+  const tenant = tenantFixture
+  const run = (patch: Partial<SiteGenerationRun>): SiteGenerationRun => ({
+    id: 1, intakeSubmission: 1, status: "draft_ready", idempotencyKey: "fixture-run",
+    normalizedIntake: null, normalizedIntakeHash: "fixture", provider: "fixture", model: "fixture",
+    promptVersion: "v1", generationInputHash: "fixture", createdAt: timestamp, updatedAt: timestamp, ...patch,
+  })
+  const intake = (patch: Partial<IntakeSubmission>): IntakeSubmission => ({
+    id: 1, businessName: "Fixture intake", source: "fixture", status: "failed", idempotencyKey: "fixture-intake",
+    raw: null, createdAt: timestamp, updatedAt: timestamp, ...patch,
+  })
+  const result = <T,>(docs: T[]): PaginatedDocs<T> => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 250, hasNextPage: false, hasPrevPage: false, nextPage: null, prevPage: null, pagingCounter: 1 })
 
   it("computes overview metrics from the complete active data set", async () => {
-    const client = asFindClient({
-      async find(args: MockFindArgs) {
-        if (args.collection === "site-generation-runs") return result([
-          { id: 1, status: "draft_ready", updatedAt: "2026-07-14T10:00:00Z", tenant: { name: "Preview site" } },
-          { id: 2, status: "failed", updatedAt: "2026-07-14T11:00:00Z", tenant: { name: "Broken site" } },
-        ])
-        return result([{ id: 3, status: "failed", businessName: "Broken intake", updatedAt: "2026-07-14T12:00:00Z" }])
-      },
+    const client = createFindClient({
+      "site-generation-runs": async () => result([
+        run({ id: 1, status: "draft_ready", updatedAt: "2026-07-14T10:00:00Z", tenant: tenant({ name: "Preview site" }) }),
+        run({ id: 2, status: "failed", updatedAt: "2026-07-14T11:00:00Z", tenant: tenant({ name: "Broken site" }) }),
+      ]),
+      "intake-submissions": async () => result([intake({ id: 3, status: "failed", businessName: "Broken intake", updatedAt: "2026-07-14T12:00:00Z" })]),
     })
     const overview = await getGenerationOperationsOverview(client)
     expect(overview.metrics.map((metric) => [metric.key, metric.value])).toEqual([
@@ -483,11 +497,11 @@ describe("operations overview and registers", () => {
   })
 
   it("filters site runs by derived workflow state before paginating", async () => {
-    const client = asFindClient({ async find() { return result([
-      { id: 1, status: "preview_ready", tenant: { activeSnapshot: 5 } },
-      { id: 2, status: "failed", tenant: { name: "Broken" } },
-      { id: 3, status: "draft_ready", tenant: { name: "Preview" } },
-    ]) } })
+    const client = createFindClient({ "site-generation-runs": async () => result([
+      run({ id: 1, status: "preview_ready", tenant: tenant({ activeSnapshot: 5 }) }),
+      run({ id: 2, status: "failed", tenant: tenant({ name: "Broken" }) }),
+      run({ id: 3, status: "draft_ready", tenant: tenant({ name: "Preview" }) }),
+    ]), "intake-submissions": async () => result([]) })
     const runs = await listOperationRuns({ filter: "needs-attention", page: 1, pageSize: 1 }, client)
     expect(runs.totalDocs).toBe(1)
     expect(runs.docs[0]?.id).toBe(2)

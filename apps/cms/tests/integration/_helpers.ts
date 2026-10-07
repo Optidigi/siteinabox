@@ -1,6 +1,9 @@
 import { getPayload, type Payload } from "payload"
 import config from "@/payload.config"
 import { migrations } from "@/migrations"
+import type { postgresAdapter } from "@payloadcms/db-postgres"
+
+const postgresMigrations = migrations satisfies NonNullable<Parameters<typeof postgresAdapter>[0]["prodMigrations"]>
 
 let cachedPayload: Payload | null = null
 
@@ -29,12 +32,14 @@ export async function getTestPayload(): Promise<Payload> {
   // treated as runtime exports. The application/runtime bundle instead uses
   // this generated static migration index, so exercise that same path here.
   type DropDatabaseArgs = Parameters<typeof payload.db.dropDatabase>[0]
-  type MigrateArgs = NonNullable<Parameters<typeof payload.db.migrate>[0]>
   await payload.db.dropDatabase({
     adapter: payload.db as DropDatabaseArgs["adapter"],
   })
   await payload.db.migrate({
-    migrations: migrations as unknown as MigrateArgs["migrations"],
+    // Payload 3.90.1 erases migrate callback args to unknown; the installed
+    // Postgres contract is checked above. Keep its original transaction callbacks.
+    // @ts-expect-error Upstream DatabaseAdapter Migration callback variance.
+    migrations: postgresMigrations,
   })
   cachedPayload = payload
   return cachedPayload

@@ -1,4 +1,7 @@
+import { resolve4, resolve6 } from "node:dns/promises"
 import { describe, expect, it, vi } from "vitest"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import {
   buildAutomaticMigrationTargetZone,
   normalizeCompleteZone,
@@ -190,10 +193,15 @@ describe("complete migration source acquisition", () => {
       `${BIND_ZONE}\n$INCLUDE secrets.zone`,
       "example.nl",
     )).toThrow("unsupported external directives")
+    const validator = { run: promisify(execFile) }
+    vi.spyOn(validator, "run").mockResolvedValue({ stdout: BIND_ZONE, stderr: "" })
     await expect(acquireValidatedProviderExport({
       domain: "example.nl",
       provider: "example-provider",
       bindText: BIND_ZONE,
+      // Exercise authority comparison after a successful validator seam.
+      // Native named-checkzone coverage is a separate environment prerequisite.
+      validationOptions: { execFileImpl: validator.run },
       publicEvidence: {
         ...publicEvidence,
         authoritativeNameservers: ["ns1.changed.example", "ns2.changed.example"],
@@ -404,41 +412,44 @@ describe("complete migration source acquisition", () => {
       },
     })).rejects.toBeInstanceOf(MigrationSourceAuthorizationError)
 
+    const dns = { resolve4, resolve6 }
+    vi.spyOn(dns, "resolve4").mockResolvedValue(["8.8.8.8"])
+    vi.spyOn(dns, "resolve6").mockResolvedValue([])
+    const executor = { run: promisify(execFile) }
     const transferFailure = Object.assign(new Error("dig failed"), {
       stdout: "; Transfer failed.",
       stderr: "",
     })
+    vi.spyOn(executor, "run").mockRejectedValue(transferFailure)
     await expect(acquireAuthorizedAxfr({
       domain: "example.nl",
       nameserver: "ns1.provider.example",
       publicEvidence,
-      options: {
-        resolve4Impl: vi.fn(async () => ["8.8.8.8"]) as never,
-        resolve6Impl: vi.fn(async () => []) as never,
-        execFileImpl: vi.fn(async () => {
-          throw transferFailure
-        }) as never,
-      },
+      options: { resolve4Impl: dns.resolve4, resolve6Impl: dns.resolve6, execFileImpl: executor.run },
     })).rejects.toBeInstanceOf(MigrationSourceAuthorizationError)
   })
 
   it("rejects AXFR through private or non-authoritative endpoints before dig", async () => {
-    const execFileImpl = vi.fn()
+    const executor = { run: promisify(execFile) }
+    const execFileImpl = vi.spyOn(executor, "run")
+    const dns = { resolve4, resolve6 }
+    vi.spyOn(dns, "resolve4").mockResolvedValue(["127.0.0.1"])
+    vi.spyOn(dns, "resolve6").mockResolvedValue([])
     await expect(acquireAuthorizedAxfr({
       domain: "example.nl",
       nameserver: "ns1.provider.example",
       publicEvidence,
       options: {
-        resolve4Impl: vi.fn(async () => ["127.0.0.1"]) as never,
-        resolve6Impl: vi.fn(async () => []) as never,
-        execFileImpl: execFileImpl as never,
+        resolve4Impl: dns.resolve4,
+        resolve6Impl: dns.resolve6,
+        execFileImpl: executor.run,
       },
     })).rejects.toThrow("public")
     await expect(acquireAuthorizedAxfr({
       domain: "example.nl",
       nameserver: "attacker.example",
       publicEvidence,
-      options: { execFileImpl: execFileImpl as never },
+      options: { execFileImpl: executor.run },
     })).rejects.toThrow("current authoritative")
     expect(execFileImpl).not.toHaveBeenCalled()
   })
@@ -453,7 +464,11 @@ describe("complete migration source acquisition", () => {
     "fd00::1",
     "2001:db8::1",
   ])("rejects special-use AXFR endpoint %s before dig", async (address) => {
-    const execFileImpl = vi.fn()
+    const executor = { run: promisify(execFile) }
+    const execFileImpl = vi.spyOn(executor, "run")
+    const dns = { resolve4, resolve6 }
+    vi.spyOn(dns, "resolve4").mockResolvedValue(["127.0.0.1"])
+    vi.spyOn(dns, "resolve6").mockResolvedValue([])
     await expect(acquireAuthorizedAxfr({
       domain: "example.nl",
       nameserver: address,
@@ -461,7 +476,7 @@ describe("complete migration source acquisition", () => {
         ...publicEvidence,
         authoritativeNameservers: [address, "ns2.provider.example"],
       },
-      options: { execFileImpl: execFileImpl as never },
+      options: { execFileImpl: executor.run },
     })).rejects.toThrow("public")
     expect(execFileImpl).not.toHaveBeenCalled()
   })
@@ -593,9 +608,7 @@ describe("complete migration source acquisition", () => {
       dnssecDsTtl: 7200,
     }
     const inspectChanged = vi.fn(async () => changedEvidence)
-    const acquireChanged = vi.fn(async (request: {
-      publicEvidence?: typeof changedEvidence
-    }) => ({
+    const acquireChanged = vi.fn<typeof acquireCloudflareSource>(async () => ({
       mechanism: "cloudflare_api_v1" as const,
       refreshCredential: input.sourceRefreshCredential,
       zone: {
@@ -610,14 +623,14 @@ describe("complete migration source acquisition", () => {
 
     await expect(refreshAutomaticMigrationSource(input, {
       inspectPublicEvidence: inspectChanged,
-      acquireCloudflareSource: acquireChanged as never,
+      acquireCloudflareSource: acquireChanged,
     })).rejects.toBeInstanceOf(MigrationSourceChangedError)
     expect(acquireChanged).toHaveBeenCalledWith(expect.objectContaining({
       publicEvidence: changedEvidence,
     }))
     await expect(refreshAutomaticMigrationSource(input, {
       inspectPublicEvidence: inspectChanged,
-      acquireCloudflareSource: acquireChanged as never,
+      acquireCloudflareSource: acquireChanged,
     }, "stable_content_after_dnssec_transition")).rejects.toBeInstanceOf(
       MigrationSourceDnssecTransitionPendingError,
     )
@@ -633,7 +646,7 @@ describe("complete migration source acquisition", () => {
       },
     }, {
       inspectPublicEvidence: inspectChanged,
-      acquireAuthorizedAxfr: acquireAxfr as never,
+      acquireAuthorizedAxfr: acquireAxfr,
     }, "stable_content_after_dnssec_transition")).rejects.toBeInstanceOf(
       MigrationSourceDnssecTransitionPendingError,
     )
@@ -659,7 +672,37 @@ describe("complete migration source acquisition", () => {
             parentDsTtl: null,
           },
         },
-      })) as never,
+      })),
     }, "stable_content_after_dnssec_transition")).resolves.toBeDefined()
   })
+})
+
+
+describe("Cloudflare source bounded authority seams", () => {
+  it("rejects absent success and oversized response bodies", async () => {
+    for (const body of [JSON.stringify({ result: [] }), " ".repeat(600_000)]) {
+      const fetchImpl = vi.fn(async () => new Response(body))
+      await expect(acquireCloudflareSource({ domain: "example.nl", token: "test-source-token", options: { fetchImpl } })).rejects.toThrow()
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    }
+  })
+  it("cancels source capture before acquiring authority", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fetchImpl = vi.fn(async () => Response.json({ success: true, result: [] }))
+    await expect(acquireCloudflareSource({ domain: "example.nl", token: "test-source-token", options: { fetchImpl, signal: controller.signal } })).rejects.toThrow("cancelled")
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})
+
+
+it("rejects non-text source content and unknown DNSSEC instead of fabricating unsigned authority", async () => {
+  for (const invalid of ["record", "dnssec"]) {
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      if (String(url).includes("/dns_records?")) return Response.json({ success: true, result: [{ type: "TXT", name: "example.nl", content: invalid === "record" ? 42 : "valid text", ttl: 300, proxied: false }], result_info: { page: 1, total_pages: 1, total_count: 1 } })
+      if (String(url).endsWith("/dnssec")) return Response.json({ success: true, result: { status: invalid === "dnssec" ? "future_state" : "disabled" } })
+      return Response.json({ success: true, result: [{ id: "zone-1", name: "example.nl", status: "active", name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"] }] })
+    })
+    await expect(acquireCloudflareSource({ domain: "example.nl", token: "test-source-token", publicEvidence: { authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"], dnssecDsPresent: false }, options: { fetchImpl } })).rejects.toThrow()
+  }
 })

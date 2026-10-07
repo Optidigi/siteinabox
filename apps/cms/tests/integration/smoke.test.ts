@@ -1,3 +1,4 @@
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { describe, it, expect, beforeAll, beforeEach } from "vitest"
 import type { Payload } from "payload"
@@ -67,6 +68,7 @@ describe("CMS integration smoke", () => {
     }, { overrideAccess: true }))
 
     const settings = await payload.create(createArgs("site-settings", {
+      ...createSiteSettingsData(relationId(tenant), "Smoke Studio", `https://${domain}`),
       tenant: relationId(tenant),
         siteName: "Smoke Studio",
         siteUrl: `https://${domain}`,
@@ -81,6 +83,7 @@ describe("CMS integration smoke", () => {
             cta: { label: "Contact", href: "#contact" },
           },
           footer: {
+            variant: "footer-01",
             tagline: "Structured content, renderer-owned layout.",
           },
         },

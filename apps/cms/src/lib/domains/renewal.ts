@@ -46,7 +46,7 @@ import {
 } from "@/lib/domains/openprovider"
 import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePayments"
 import { findOneDoc } from "@/lib/payloadCollection"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { relationshipValue, relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
 const DAY_MS = 24 * 60 * 60_000
 export const PROVIDER_RENEWAL_ADVANCE_GRACE_MS = DAY_MS
@@ -100,8 +100,8 @@ const numericRelationshipId = (
 
 const relationIds = (value: unknown): number[] => {
   if (!Array.isArray(value)) return []
-  return value.flatMap((entry) => {
-    const id = numericRelationshipId(entry)
+  return value.flatMap((entry: unknown) => {
+    const id = numericRelationshipId(relationshipValue(entry))
     return id == null ? [] : [id]
   })
 }

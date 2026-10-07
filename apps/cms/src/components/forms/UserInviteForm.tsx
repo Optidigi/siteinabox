@@ -69,7 +69,6 @@ export function UserInviteForm({
       if (!res.ok) {
         // Distinguish field-level error from generic; surface inline if
         // the server returned a path. Today inviteUser returns { ok, error?, field? } shape.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const r = res
         if (r.code === "delivery_failed" && r.userCreated) {
           status.error(t("inviteDeliveryFailedCreated"))

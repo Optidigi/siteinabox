@@ -55,6 +55,8 @@ jobs:
           pnpm workflow:actions:check
       - name: Shared package type checks
         run: pnpm packages:typecheck
+      - name: Shared and shipped JavaScript typed boundaries
+        run: pnpm type-safety:packages
       - name: Contract and renderer tests
         run: |
           pnpm --dir packages/contracts test
@@ -85,8 +87,10 @@ jobs:
           DATABASE_URI: postgres://placeholder@placeholder/placeholder
       - name: Payload dependency contract
         run: pnpm --dir apps/cms payload:contract
-      - name: Type check
+      - name: Type check runtime and operational TypeScript
         run: pnpm --dir apps/cms typecheck
+      - name: CMS runtime and operational typed boundaries
+        run: pnpm type-safety:cms
       - name: Responsive canvas contract
         run: pnpm --dir apps/cms check:responsive
       - name: Frontend boundary contract
@@ -157,6 +161,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm --dir apps/landing check
+      - run: pnpm type-safety:landing
       - run: pnpm landing:build
       - run: pnpm landing:test
       - name: Install site browser-test browser
@@ -189,6 +194,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm renderer:deploy-contract
       - run: pnpm renderer:typecheck
+      - run: pnpm type-safety:renderer
       - run: pnpm renderer:test
       - run: pnpm renderer:build
       - name: Install renderer browser

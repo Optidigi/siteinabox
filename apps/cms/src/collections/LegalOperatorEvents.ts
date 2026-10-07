@@ -1,8 +1,9 @@
+import type { LegalOperatorEvent } from "@/payload-types"
 import type { CollectionBeforeChangeHook, CollectionConfig } from "payload"
 import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 
-const rejectMutation: CollectionBeforeChangeHook = ({ data, operation }) => {
+const rejectMutation: CollectionBeforeChangeHook<LegalOperatorEvent> = ({ data, operation }) => {
   if (operation === "update") throw new Error("Legal operator events are immutable.")
   return data
 }

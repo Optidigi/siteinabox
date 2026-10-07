@@ -1,3 +1,4 @@
+import type { MigrationCheckoutSecret } from "@/payload-types"
 import type {
   CollectionBeforeChangeHook,
   CollectionBeforeValidateHook,
@@ -5,12 +6,12 @@ import type {
 } from "payload"
 
 const lifecycleContext = (
-  args: Parameters<CollectionBeforeChangeHook>[0],
+  args: Parameters<CollectionBeforeChangeHook<MigrationCheckoutSecret>>[0],
 ): boolean =>
   args.req?.context?.migrationCheckoutSecretLifecycle === true ||
   args.context?.migrationCheckoutSecretLifecycle === true
 
-const protectMigrationCheckoutSecret: CollectionBeforeChangeHook = (args) => {
+const protectMigrationCheckoutSecret: CollectionBeforeChangeHook<MigrationCheckoutSecret> = (args) => {
   if (args.operation !== "update") return args.data
   if (!lifecycleContext(args)) {
     throw new Error(
@@ -33,7 +34,7 @@ const protectMigrationCheckoutSecret: CollectionBeforeChangeHook = (args) => {
   return args.data
 }
 
-const validateMigrationCheckoutSecret: CollectionBeforeValidateHook = ({
+const validateMigrationCheckoutSecret: CollectionBeforeValidateHook<MigrationCheckoutSecret> = ({
   data,
   originalDoc,
 }) => {

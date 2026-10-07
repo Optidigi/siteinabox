@@ -1,4 +1,5 @@
 "use client"
+import { asRecord } from "@/lib/record"
 import { useEffect, useState } from "react"
 import { Card, CardContent } from "@siteinabox/ui/components/card"
 import { Button } from "@siteinabox/ui/components/button"
@@ -44,11 +45,12 @@ export function OnboardingChecklist({ storageKey, steps, seed = {}, onCopied }: 
     try {
       const raw = window.localStorage.getItem(storageKey)
       if (!raw) return
-      const parsed = JSON.parse(raw)
+      const parsed: unknown = JSON.parse(raw)
       if (parsed && typeof parsed === "object") {
         // seed entries are non-overridable — they're true by virtue of
         // upstream state existing. Persisted values fill the rest.
-        setDone({ ...seed, ...parsed })
+        const persisted = Object.fromEntries(Object.entries(asRecord(parsed) ?? {}).filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"))
+        setDone({ ...seed, ...persisted })
       }
     } catch {
       // Quota / corrupt JSON — ignore; keep the seed.

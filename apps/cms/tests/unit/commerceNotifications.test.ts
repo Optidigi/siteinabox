@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { asPayload, type MockDoc } from "../_helpers/mockPayload"
+import type { CommerceNotificationDelivery, DomainRenewalCycle } from "@/payload-types"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
+import { commerceNotificationFixture, tenantFixture, managedDomainFixture, billingAgreementFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { validRenewalCycle } from "../_helpers/commerceBuilders"
+import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
+import { matchesWhere } from "../_helpers/mockPayload"
+import { asDocRecord } from "../_helpers/payloadApi"
 
 const mailMocks = vi.hoisted(() => {
   class MockMailSendError extends Error {
@@ -24,10 +30,11 @@ import {
 } from "@/lib/commerce/notifications"
 import { sendEmail } from "@/lib/email/sendEmail"
 
-const createPayload = (cycle: MockDoc = {}) => {
-  const deliveries: MockDoc[] = []
-  const tenant = { id: 1, name: "Acme Studio" }
-  const renewedCycle = {
+const createPayload = async (cycle: Partial<DomainRenewalCycle> = {}) => {
+  const payload = await createInitializedTestPayload()
+  const deliveries: CommerceNotificationDelivery[] = []
+  const tenant = tenantFixture({ id: 1, name: "Acme Studio" })
+  const renewedCycle = validRenewalCycle({
     id: 20,
     managedDomain: 30,
     state: "renewed",
@@ -47,84 +54,51 @@ const createPayload = (cycle: MockDoc = {}) => {
     providerBalanceCurrency: "EUR",
     providerBalanceCheckedAt: "2027-07-19T00:00:00.000Z",
     ...cycle,
-  }
-  const managedDomain = { id: 30, domainNameAscii: "example.nl" }
-  const billingAgreement = { id: 900, originatingOrder: 600 }
-  let nextId = 10
-  const find = vi.fn(async ({ collection, where }: {
-    collection: string
-    where?: Record<string, { equals?: unknown }>
-  }) => {
-    if (collection === "managed-domains") return { docs: [managedDomain] }
-    if (collection !== "commerce-notification-deliveries") return { docs: [] }
-    const key = where?.notificationKey?.equals
-    return {
-      docs: key == null
-        ? deliveries
-        : deliveries.filter((entry) => entry.notificationKey === key),
-    }
   })
-  const create = vi.fn(async ({ collection, data }: {
-    collection: string
-    data: Record<string, unknown>
-  }) => {
+  const managedDomain = managedDomainFixture({ id: 30, domainNameAscii: "example.nl" })
+  const billingAgreement = billingAgreementFixture({ id: 900, originatingOrder: 600 })
+  let nextId = 10
+  vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
+    if (collection === "managed-domains") return paginatedFixture([managedDomain])
+    if (collection !== "commerce-notification-deliveries") return paginatedFixture([])
+    return paginatedFixture(deliveries.filter(entry => matchesWhere(asDocRecord(entry), where)))
+  })
+  const create = vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
     if (collection !== "commerce-notification-deliveries") throw new Error("unexpected create")
-    const duplicate = deliveries.find((entry) => entry.notificationKey === data.notificationKey)
-    if (duplicate) throw new Error("unique violation")
-    const delivery = { id: nextId++, ...data }
+    const key = asDocRecord(data).notificationKey
+    if (deliveries.some(entry => entry.notificationKey === key)) throw new Error("unique violation")
+    const delivery = commerceNotificationFixture({ id: nextId++ })
+    Object.assign(delivery, data)
     deliveries.push(delivery)
     return delivery
   })
-  const findByID = vi.fn(async ({ collection, id }: {
-    collection: string
-    id: string | number
-  }) => {
+  vi.spyOn(payload, "findByID").mockImplementation(async ({ collection, id }) => {
     if (collection === "tenants") return tenant
     if (collection === "domain-renewal-cycles") return renewedCycle
     if (collection === "billing-agreements") return billingAgreement
     if (collection === "managed-domains") return managedDomain
     if (collection === "commerce-notification-deliveries") {
-      const delivery = deliveries.find((entry) => String(entry.id) === String(id))
+      const delivery = deliveries.find(entry => String(entry.id) === String(id))
       if (!delivery) throw new Error("missing delivery")
       return delivery
     }
-    throw new Error(`unexpected find ${collection}`)
+    throw new Error("unexpected find " + collection)
   })
-  const update = vi.fn(async (args: {
-    collection: string
-    id?: string | number
-    where?: Record<string, unknown>
-    data: Record<string, unknown>
-  }) => {
+  vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
     if (args.collection !== "commerce-notification-deliveries") throw new Error("unexpected update")
     if (args.id != null) {
-      const delivery = deliveries.find((entry) => String(entry.id) === String(args.id))
+      const delivery = deliveries.find(entry => String(entry.id) === String(args.id))
       if (!delivery) throw new Error("missing delivery")
       Object.assign(delivery, args.data)
       return delivery
     }
-    const delivery = deliveries.find((entry) =>
-      String(entry.id) === String(
-        ((args.where?.and as Array<Record<string, { equals?: unknown }>> | undefined)?.[0]?.id?.equals),
-      ))
-    if (!delivery || !["queued", "failed", "processing"].includes(String(delivery.status))) {
-      return { docs: [] }
-    }
-    Object.assign(delivery, args.data)
-    return { docs: [delivery] }
-  })
-  return {
-    deliveries,
-    create,
-    payload: asPayload({
-      find,
-      findByID,
-      create,
-      update,
-      jobs: { queue: vi.fn() },
-      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-    }),
-  }
+    const docs = deliveries.filter(entry => matchesWhere(asDocRecord(entry), args.where) && ["queued", "failed", "processing"].includes(entry.status))
+    for (const delivery of docs) Object.assign(delivery, args.data)
+    return { docs, errors: [], totalDocs: docs.length }
+  }))
+  vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, totalTried: 0, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" })
+  for (const method of ["warn", "error", "info"] as const) vi.spyOn(payload.logger, method)
+  return { deliveries, create, payload }
 }
 
 beforeEach(() => {
@@ -137,7 +111,7 @@ afterEach(() => vi.useRealTimers())
 
 describe("commerce notification delivery evidence", () => {
   it("deduplicates the same governed reminder key under retries", async () => {
-    const store = createPayload()
+    const store = await createPayload()
     const input = {
       payload: store.payload,
       kind: "payment_overdue_7d" as const,
@@ -158,7 +132,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("keeps one delivery for a stable business event when provider timing changes", async () => {
-    const store = createPayload()
+    const store = await createPayload()
     const base = {
       payload: store.payload,
       kind: "domain_verification_required" as const,
@@ -185,7 +159,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("claims once, sends transactionally, and skips duplicate workers after success", async () => {
-    const store = createPayload()
+    const store = await createPayload()
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "cancellation_scheduled",
@@ -215,7 +189,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("delivers the durable first-payment confirmation", async () => {
-    const store = createPayload()
+    const store = await createPayload()
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "payment_received",
@@ -239,7 +213,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("persists a retry lease after a transient mail failure", async () => {
-    const store = createPayload()
+    const store = await createPayload()
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "payment_failed_0d",
@@ -264,7 +238,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("cancels an obsolete warning after the renewal date already advanced", async () => {
-    const store = createPayload()
+    const store = await createPayload()
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "domain_renewal_7d",
@@ -285,7 +259,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("cancels an already queued warning when renewal intent was cancelled before commitment", async () => {
-    const store = createPayload({ state: "cancelled", renewalIntentSnapshot: false })
+    const store = await createPayload({ state: "cancelled", renewalIntentSnapshot: false })
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "domain_renewal_admin_7d",
@@ -306,7 +280,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("renders the persisted actionable price evidence in the 60-day notice", async () => {
-    const store = createPayload({ state: "payment_committed" })
+    const store = await createPayload({ state: "payment_committed" })
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "domain_renewal_60d",
@@ -330,7 +304,7 @@ describe("commerce notification delivery evidence", () => {
   })
 
   it("renders the persisted provider balance and execution evidence in the admin dossier", async () => {
-    const store = createPayload({ state: "payment_committed" })
+    const store = await createPayload({ state: "payment_committed" })
     const delivery = await ensureCommerceNotification({
       payload: store.payload,
       kind: "domain_renewal_admin_7d",

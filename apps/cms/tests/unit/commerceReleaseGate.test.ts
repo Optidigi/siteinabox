@@ -1,3 +1,4 @@
+import { createTaskRunner } from "../_helpers/taskRunner"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const { prepareDomainMigration } = vi.hoisted(() => ({
@@ -19,10 +20,13 @@ import {
   requireCommerceProviderWritesAllowed,
 } from "@/lib/commerce/releaseGate"
 import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTask"
-import { asPayload } from "../_helpers/mockPayload"
+import type { CollectionSlug } from "payload"
+import type { Config } from "@/payload-types"
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, domainMigrationFixture, publishedSnapshotFixture, siteSettingsFixture, orderFixture, operationalAlertFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
-const taskPayload = asPayload({
-  findByID: vi.fn(async () => ({
+const taskPayload = createTestPayload()
+  vi.spyOn(taskPayload, "findByID").mockImplementation(async () => domainMigrationFixture({
     id: 10,
     cloudflareZoneState: "not_started",
     providerTransferState: "not_started",
@@ -30,8 +34,7 @@ const taskPayload = asPayload({
     rollbackWriteState: "not_started",
     dnssecPhase: "source_unsigned",
     dnssecWriteState: "not_started",
-  })),
-})
+  }))
 
 const adoptedEdgeInventoryPayload = (
   options: {
@@ -47,7 +50,7 @@ const adoptedEdgeInventoryPayload = (
     adoptionState?: "adopted" | "not_adopted" | "revoked"
   } = {},
 ) => {
-  const tenant = {
+  const tenant = tenantFixture({
     id: 1,
     status: "active",
     domain: "ami-care.nl",
@@ -72,36 +75,27 @@ const adoptedEdgeInventoryPayload = (
           : null,
     },
     activeSnapshot: options.activeSnapshot === false ? null : 154,
-  }
-  return asPayload({
-    find: vi.fn(async ({
+  })
+  const payload = createTestPayload()
+  vi.spyOn(payload, "find").mockImplementation(async ({
       collection,
       where,
-    }: {
-      collection: string
-      where?: unknown
     }) => {
       if (collection === "tenants") {
         const serializedWhere = JSON.stringify(where)
         const domainLookup = serializedWhere.includes('"domain"')
         const wwwLookup = serializedWhere.includes("www.ami-care.nl")
-        return {
-          docs: wwwLookup
+        return paginatedFixture<Config["collections"][CollectionSlug]>(wwwLookup
             ? options.wwwCanonicalConflict
-              ? [{ id: 2, status: "active", domain: "www.ami-care.nl" }]
+              ? [tenantFixture({ id: 2, status: "active", domain: "www.ami-care.nl" })]
               : []
             : domainLookup && options.duplicateTenant
               ? [tenant, { ...tenant, id: 2 }]
-              : [tenant],
-          totalDocs: wwwLookup
-            ? options.wwwCanonicalConflict ? 1 : 0
-            : domainLookup && options.duplicateTenant ? 2 : 1,
-        }
+              : [tenant])
       }
       if (collection === "site-settings") {
         const count = options.wwwSettingsCount ?? 1
-        return {
-          docs: Array.from({ length: count }, (_, index) => ({
+        return paginatedFixture<Config["collections"][CollectionSlug]>(Array.from({ length: count }, (_, index) => (siteSettingsFixture({
             id: index + 1,
             tenant: options.foreignWwwAlias ? 2 : tenant.id,
             aliases: Array.from(
@@ -111,19 +105,17 @@ const adoptedEdgeInventoryPayload = (
                 host: "www.ami-care.nl",
               }),
             ),
-          })),
-          totalDocs: count,
-        }
+          }))))
       }
-      return { docs: [], totalDocs: 0 }
-    }),
-    findByID: vi.fn(async () => ({
+      return paginatedFixture<Config["collections"][CollectionSlug]>([])
+    })
+  vi.spyOn(payload, "findByID").mockImplementation(async () => publishedSnapshotFixture({
       id: 154,
       tenant: options.snapshotTenant ?? tenant.id,
       domain: options.snapshotDomain ?? tenant.domain,
       status: options.snapshotStatus ?? "active",
-    })),
-  })
+    }))
+  return payload
 }
 
 describe("staged commerce release runtime gate", () => {
@@ -135,16 +127,16 @@ describe("staged commerce release runtime gate", () => {
       providerWritesAllowed: false,
       blockers: ["commerce_release_disabled"],
     })
-    expect(commerceReleaseGate({
+    expect(commerceReleaseGate({ NODE_ENV: "test",
       COMMERCE_RELEASE_STAGE: "shadow",
-    } as unknown as NodeJS.ProcessEnv)).toEqual({
+    } satisfies NodeJS.ProcessEnv)).toEqual({
       providerReadsAllowed: true,
       providerWritesAllowed: false,
       blockers: ["commerce_release_shadow_read_only"],
     })
     expect(() => requireCommerceProviderWritesAllowed(
       "Mollie payment creation",
-      { COMMERCE_RELEASE_STAGE: "shadow" } as unknown as NodeJS.ProcessEnv,
+      { NODE_ENV: "test", COMMERCE_RELEASE_STAGE: "shadow" } satisfies NodeJS.ProcessEnv,
     )).toThrow("commerce_release_shadow_read_only")
   })
 
@@ -163,7 +155,7 @@ describe("staged commerce release runtime gate", () => {
       CLOUDFLARE_ACCOUNT_ID: "account",
       DOMAIN_MIGRATION_ENCRYPTION_KEY:
         Buffer.alloc(32, 1).toString("base64"),
-    } as unknown as NodeJS.ProcessEnv
+    } satisfies NodeJS.ProcessEnv
 
     expect(commerceReleaseGate(edgeBootstrapEnv)).toMatchObject({
       providerWritesAllowed: false,
@@ -187,12 +179,7 @@ describe("staged commerce release runtime gate", () => {
 
   it("blocks uncommitted migration writes before provider modules execute", async () => {
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "disabled")
-    const migrationHandler = prepareDomainMigrationTask.handler as unknown as (
-      input: {
-        input: { migrationId: string }
-        req: { payload: typeof taskPayload }
-      },
-    ) => Promise<{ output: { status: string } }>
+    const migrationHandler = createTaskRunner(prepareDomainMigrationTask)
     await expect(migrationHandler({
       input: { migrationId: "10" },
       req: { payload: taskPayload },
@@ -203,19 +190,13 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("continues reconciliation and rollback after a cutover write has started", async () => {
-    const safetyPayload = asPayload({
-      findByID: vi.fn(async () => ({
+    const safetyPayload = createTestPayload()
+  vi.spyOn(safetyPayload, "findByID").mockImplementation(async () => domainMigrationFixture({
         id: 11,
         cutoverWriteState: "confirmed",
         rollbackWriteState: "not_started",
-      })),
-    })
-    const migrationHandler = prepareDomainMigrationTask.handler as unknown as (
-      input: {
-        input: { migrationId: string }
-        req: { payload: typeof safetyPayload }
-      },
-    ) => Promise<{ output: { status: string } }>
+      }))
+    const migrationHandler = createTaskRunner(prepareDomainMigrationTask)
     await expect(migrationHandler({
       input: { migrationId: "11" },
       req: { payload: safetyPayload },
@@ -230,15 +211,11 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks production preflight on an open critical commerce alert", async () => {
-    const readinessPayload = asPayload({
-      find: vi.fn(async ({ collection }: { collection: string }) =>
+    const readinessPayload = createTestPayload()
+  vi.spyOn(readinessPayload, "find").mockImplementation(async ({ collection }) =>
         collection === "operational-alerts"
-          ? {
-              docs: [{ id: 1, severity: "critical", status: "open" }],
-              totalDocs: 1,
-            }
-          : { docs: [], totalDocs: 0 }),
-    })
+          ? paginatedFixture<Config["collections"][CollectionSlug]>([operationalAlertFixture({ id: 1, severity: "critical", status: "open" })])
+          : paginatedFixture<Config["collections"][CollectionSlug]>([]))
     const blockers = await commerceProductionReadinessBlockers(
       readinessPayload,
       {
@@ -255,7 +232,7 @@ describe("staged commerce release runtime gate", () => {
         CLOUDFLARE_ACCOUNT_ID: "account",
         DOMAIN_MIGRATION_ENCRYPTION_KEY:
           Buffer.alloc(32, 1).toString("base64"),
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     )
     expect(blockers).toEqual([
       "production_has_open_critical_commerce_alerts",
@@ -263,19 +240,15 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks production while a resumable order has legacy checkout quote evidence", async () => {
-    const readinessPayload = asPayload({
-      find: vi.fn(async ({ collection }: { collection: string }) =>
+    const readinessPayload = createTestPayload()
+  vi.spyOn(readinessPayload, "find").mockImplementation(async ({ collection }) =>
         collection === "orders"
-          ? {
-              docs: [{
+          ? paginatedFixture<Config["collections"][CollectionSlug]>([orderFixture({
                 id: 41,
                 state: "fulfillment_pending",
                 quoteEvidence: { schemaVersion: 3 },
-              }],
-              totalDocs: 1,
-            }
-          : { docs: [], totalDocs: 0 }),
-    })
+              })])
+          : paginatedFixture<Config["collections"][CollectionSlug]>([]))
     const blockers = await commerceProductionReadinessBlockers(
       readinessPayload,
       {
@@ -292,7 +265,7 @@ describe("staged commerce release runtime gate", () => {
         CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
         DOMAIN_MIGRATION_ENCRYPTION_KEY:
           Buffer.alloc(32, 1).toString("base64"),
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     )
     expect(blockers).toContain(
       "pending_order_uses_legacy_checkout_quote_evidence",
@@ -300,9 +273,8 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks production readiness when Cloudflare source OAuth is incomplete", async () => {
-    const readinessPayload = asPayload({
-      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
-    })
+    const readinessPayload = createTestPayload()
+  vi.spyOn(readinessPayload, "find").mockImplementation(async () => (paginatedFixture<Config["collections"][CollectionSlug]>([])))
     const blockers = await commerceProductionReadinessBlockers(
       readinessPayload,
       {
@@ -321,7 +293,7 @@ describe("staged commerce release runtime gate", () => {
         CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
         DOMAIN_MIGRATION_ENCRYPTION_KEY:
           Buffer.alloc(32, 1).toString("base64"),
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     )
     expect(blockers).toEqual([
       "cloudflare_source_oauth_configuration_incomplete",
@@ -329,9 +301,8 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks an advertised migration route without a complete source", async () => {
-    const readinessPayload = asPayload({
-      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
-    })
+    const readinessPayload = createTestPayload()
+  vi.spyOn(readinessPayload, "find").mockImplementation(async () => (paginatedFixture<Config["collections"][CollectionSlug]>([])))
     const blockers = await commerceProductionReadinessBlockers(
       readinessPayload,
       {
@@ -349,7 +320,7 @@ describe("staged commerce release runtime gate", () => {
         CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
         DOMAIN_MIGRATION_ENCRYPTION_KEY:
           Buffer.alloc(32, 1).toString("base64"),
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
     )
     expect(blockers).toEqual([
       "existing_domain_migration_has_no_complete_source",
@@ -357,19 +328,15 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks deployment inventory when a live tenant has no managed domain", async () => {
-    const readinessPayload = asPayload({
-      find: vi.fn(async ({ collection }: { collection: string }) =>
+    const readinessPayload = createTestPayload()
+  vi.spyOn(readinessPayload, "find").mockImplementation(async ({ collection }) =>
         collection === "tenants"
-          ? {
-              docs: [{
+          ? paginatedFixture<Config["collections"][CollectionSlug]>([tenantFixture({
                 id: 12,
                 status: "active",
                 domain: "ami-care.nl",
-              }],
-              totalDocs: 1,
-            }
-          : { docs: [], totalDocs: 0 }),
-    })
+              })])
+          : paginatedFixture<Config["collections"][CollectionSlug]>([]))
     await expect(commerceEdgeInventoryBlockers(readinessPayload)).resolves.toEqual([
       "active_tenant_managed_domain_inventory_invalid:12",
     ])
@@ -422,23 +389,16 @@ describe("staged commerce release runtime gate", () => {
   })
 
   it("blocks scoped edge bootstrap on invalid inventory or critical commerce alerts", async () => {
-    const bootstrapPayload = asPayload({
-      find: vi.fn(async ({ collection }: { collection: string }) => {
+    const bootstrapPayload = createTestPayload()
+  vi.spyOn(bootstrapPayload, "find").mockImplementation(async ({ collection }) => {
         if (collection === "tenants") {
-          return {
-            docs: [{ id: 12, status: "active", domain: "ami-care.nl" }],
-            totalDocs: 1,
-          }
+          return paginatedFixture<Config["collections"][CollectionSlug]>([tenantFixture({ id: 12, status: "active", domain: "ami-care.nl" })])
         }
         if (collection === "operational-alerts") {
-          return {
-            docs: [{ id: 99, severity: "critical", status: "open" }],
-            totalDocs: 1,
-          }
+          return paginatedFixture<Config["collections"][CollectionSlug]>([operationalAlertFixture({ id: 99, severity: "critical", status: "open" })])
         }
-        return { docs: [], totalDocs: 0 }
-      }),
-    })
+        return paginatedFixture<Config["collections"][CollectionSlug]>([])
+      })
 
     await expect(commerceEdgeBootstrapBlockers(bootstrapPayload)).resolves.toEqual([
       "active_tenant_managed_domain_inventory_invalid:12",

@@ -15,7 +15,7 @@ export type PublishCurrentTenantStateOptions = {
   tenantId: string | number
   user: PublishCurrentStateUser
   reason?: string | null
-  req?: PayloadRequest
+  req?: Partial<PayloadRequest>
 }
 
 const userTenantIds = (user: PublishCurrentStateUser): Set<string> =>

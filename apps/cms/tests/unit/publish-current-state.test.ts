@@ -19,16 +19,15 @@ import {
   canPublishCurrentTenantState,
   publishCurrentTenantState,
 } from "@/lib/publish/currentState"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
-const payload = (tenant: { id: number; slug: string; domain: string }) =>
-  Object.assign(asPayload({
-    findByID: vi.fn(async () => tenant),
-    find: vi.fn(async () => ({ docs: [] })),
-  }), {
-    findByID: vi.fn(async () => tenant),
-    find: vi.fn(async () => ({ docs: [] })),
-  })
+const payload = (tenant: { id: number; slug: string; domain: string }) => {
+  const payload = createTestPayload()
+  vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture(tenant))
+  vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+  return payload
+}
 
 describe("publish current tenant state", () => {
   beforeEach(() => {

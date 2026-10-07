@@ -33,6 +33,10 @@ const payment = (input: Partial<MolliePayment> = {}): MolliePayment => ({
 })
 
 describe("payment decisions", () => {
+  it.each([408, 409, 425, 429, 500, 503])("keeps HTTP %i writes indeterminate until provider reconciliation", (status) => {
+    expect(classifyMollieCreationError(new MollieApiError("create", status)).outcome).toBe("indeterminate")
+    expect(classifyMollieRefundError(new MollieApiError("refund", status)).outcome).toBe("indeterminate")
+  })
   it("maps provider and shared projection states without side effects", () => {
     expect([
       "paid",

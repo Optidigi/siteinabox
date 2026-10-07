@@ -1,3 +1,4 @@
+import type { AppointmentCalendarConnection, AppointmentCalendarEvent, AppointmentNotificationDelivery } from "@/payload-types"
 import type { CollectionBeforeChangeHook, CollectionConfig } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
@@ -11,11 +12,11 @@ const systemAccess = {
 
 const options = (values: readonly string[]) => values.map(adminEnumOption)
 
-const lifecycleEnabled = (args: Parameters<CollectionBeforeChangeHook>[0], key: string): boolean =>
+const lifecycleEnabled = (args: Parameters<CollectionBeforeChangeHook<{ id: number | string }>>[0], key: string): boolean =>
   args.req?.context?.[key] === true || args.context?.[key] === true
 
-const protectFields = (
-  args: Parameters<CollectionBeforeChangeHook>[0],
+const protectFields = <T extends { id: number | string }>(
+  args: Parameters<CollectionBeforeChangeHook<T>>[0],
   key: string,
   label: string,
   allowed: ReadonlySet<string>,
@@ -26,25 +27,25 @@ const protectFields = (
   return args.data
 }
 
-const protectAppointmentNotification: CollectionBeforeChangeHook = (args) => protectFields(
+const protectAppointmentNotification: CollectionBeforeChangeHook<AppointmentNotificationDelivery> = (args) => protectFields(
   args,
   "appointmentNotificationLifecycleMutation",
   "Appointment notification",
   new Set(["status", "attemptCount", "nextAttemptAt", "leaseUntil", "lastAttemptAt", "sentAt", "provider", "providerMessageId", "retryState", "lastError"]),
 )
 
-const protectCalendarConnection: CollectionBeforeChangeHook = (args) => protectFields(
+const protectCalendarConnection: CollectionBeforeChangeHook<AppointmentCalendarConnection> = (args) => protectFields(
   args,
   "appointmentCalendarLifecycleMutation",
   "Appointment calendar connection",
   new Set(["status", "encryptedAccessToken", "encryptedRefreshToken", "accessTokenExpiresAt", "accountEmail", "calendarId", "calendarName", "scopes", "lastSyncedAt", "lastError"]),
 )
 
-const protectCalendarEvent: CollectionBeforeChangeHook = (args) => protectFields(
+const protectCalendarEvent: CollectionBeforeChangeHook<AppointmentCalendarEvent> = (args) => protectFields(
   args,
   "appointmentCalendarLifecycleMutation",
   "Appointment calendar event",
-  new Set(["eventVersion", "providerEventId", "status", "operation", "attemptCount", "nextAttemptAt", "leaseUntil", "lastAttemptAt", "syncedAt", "lastError"]),
+  new Set(["eventVersion", "providerEventId", "providerCreateUncertain", "status", "operation", "attemptCount", "nextAttemptAt", "leaseUntil", "lastAttemptAt", "syncedAt", "lastError"]),
 )
 
 export const AppointmentNotificationDeliveries: CollectionConfig = {
@@ -147,6 +148,7 @@ export const AppointmentCalendarEvents: CollectionConfig = {
     { name: "connection", type: "relationship", relationTo: "appointment-calendar-connections", required: true, index: true },
     { name: "eventVersion", type: "number", required: true, defaultValue: 1, min: 1, index: true },
     { name: "providerEventId", type: "text", index: true },
+    { name: "providerCreateUncertain", type: "checkbox", defaultValue: false, admin: { description: adminText("A provider create may have committed; reconcile before replay or cancellation.", "Een agenda-afspraak kan bij de provider zijn aangemaakt; eerst verifiëren vóór herhalen of annuleren.") } },
     { name: "status", type: "select", required: true, defaultValue: "queued", options: options(["queued", "processing", "synced", "failed", "cancelled"]), index: true },
     { name: "operation", type: "select", required: true, defaultValue: "upsert", options: options(["upsert", "delete"]), index: true },
     { name: "attemptCount", type: "number", required: true, defaultValue: 0, min: 0 },

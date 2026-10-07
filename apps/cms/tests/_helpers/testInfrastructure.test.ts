@@ -14,7 +14,8 @@ import {
   validPaymentAttempt,
   validRenewalCycle,
 } from "./commerceBuilders"
-import { createMutablePayloadStore } from "./mockPayload"
+import { createGeneratedPayloadStore } from "./generatedPayloadStore"
+import { createArgs } from "./payloadApi"
 import {
   createCloudflareMockRouter,
   createMollieMockRouter,
@@ -58,15 +59,15 @@ describe("commerce test builders", () => {
 
 describe("mutable Payload store", () => {
   it("supports conditional and optimistic updates", async () => {
-    const store = createMutablePayloadStore({
+    const store = await createGeneratedPayloadStore({
       collections: {
-        orders: [{ id: 1, state: "accepted", version: 2 }],
+        orders: [validOrder({ id: 1, state: "accepted", contractingPartyProfileVersion: 2 })],
       },
     })
 
     await expect(store.update({
       collection: "orders",
-      where: { state: { equals: "paid" } },
+      where: { paymentStatus: { equals: "paid" } },
       data: { state: "fulfilled" },
     })).resolves.toMatchObject({ totalDocs: 0 })
 
@@ -74,37 +75,31 @@ describe("mutable Payload store", () => {
       collection: "orders",
       id: 1,
       optimistic: { equals: 1 },
-      data: { state: "paid" },
+      data: { paymentStatus: "paid" },
     })).rejects.toThrow("Optimistic update conflict")
 
     await expect(store.update({
       collection: "orders",
       id: 1,
       optimistic: { equals: 2 },
-      data: { state: "paid" },
-    })).resolves.toMatchObject({ state: "paid", version: 3 })
+      data: { paymentStatus: "paid" },
+    })).resolves.toMatchObject({ paymentStatus: "paid", contractingPartyProfileVersion: 3 })
   })
 
   it("rolls back explicit transactions and injects one-shot races", async () => {
-    const store = createMutablePayloadStore({
-      collections: { orders: [{ id: 1, state: "accepted" }] },
+    const store = await createGeneratedPayloadStore({
+      collections: { orders: [validOrder({ id: 1, state: "accepted" })] },
     })
     store.injectCreateFailureOnce(new Error("injected unique race"))
 
-    await expect(store.create({
-      collection: "orders",
-      data: { state: "accepted" },
-    })).rejects.toThrow("injected unique race")
-    await expect(store.create({
-      collection: "orders",
-      data: { state: "accepted" },
-    })).resolves.toMatchObject({ id: 1_000 })
+    await expect(store.create(createArgs("orders", validOrder({ id: 1000, state: "accepted" })))).rejects.toThrow("injected unique race")
+    await expect(store.create(createArgs("orders", validOrder({ id: 1000, state: "accepted" })))).resolves.toMatchObject({ id: 1_000 })
 
     await expect(store.transaction(async () => {
       await store.update({
         collection: "orders",
         id: 1,
-        data: { state: "paid" },
+        data: { paymentStatus: "paid" },
       })
       throw new Error("restart")
     })).rejects.toThrow("restart")
@@ -177,9 +172,9 @@ describe("stateful provider routers", () => {
     }
     openProvider.state.domains.set(domain.id, domain)
     const options = {
-      env: {
+      env: { NODE_ENV: "test",
         OPENPROVIDER_API_BASE_URL: "https://api.openprovider.test/v1beta",
-      } as unknown as NodeJS.ProcessEnv,
+      } satisfies NodeJS.ProcessEnv,
       fetchImpl: openProvider.fetch,
       token: "mock-token",
     }

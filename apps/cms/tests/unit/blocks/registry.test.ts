@@ -1,6 +1,11 @@
+import { hookRequest } from "../../_helpers/hookFixtures"
 import { describe, expect, it, vi } from "vitest"
 import { BACKGROUND_MODE_IDS, SITE_BLOCK_SLUGS } from "@siteinabox/contracts"
 import { ALL_BLOCKS, BLOCKS, resolveAllowedBlocks } from "@/blocks/registry"
+
+const validationOptions = (siblingData: Record<string, unknown>) => ({
+  blockData: {}, data: {}, path: [], preferences: { fields: {} }, req: hookRequest(), siblingData,
+})
 
 describe("first-party block registry", () => {
   it("exposes exactly the canonical Payload block slugs", () => {
@@ -64,29 +69,31 @@ describe("first-party block registry", () => {
     expect(highlights && "validate" in highlights && typeof highlights.validate).toBe("function")
     expect(serviceHighlights && "validate" in serviceHighlights && typeof serviceHighlights.validate).toBe("function")
 
-    const imageValidate = image && "validate" in image && image.validate
-    const highlightsValidate = highlights && "validate" in highlights && highlights.validate
-    const serviceHighlightsValidate = serviceHighlights && "validate" in serviceHighlights && serviceHighlights.validate
+    if (image?.type !== "upload" || image.hasMany === true || typeof image.relationTo !== "string" || highlights?.type !== "array" || serviceHighlights?.type !== "array") throw new Error("Expected hero upload and array fields")
+    const imageValidate = image.validate
+    const highlightsValidate = highlights.validate
+    const serviceHighlightsValidate = serviceHighlights.validate
     if (typeof imageValidate !== "function" || typeof highlightsValidate !== "function" || typeof serviceHighlightsValidate !== "function") throw new Error("Expected guarded hero fields")
 
-    expect(imageValidate(undefined, { siblingData: { variant: "hero-05" } } as never)).not.toBe(true)
-    expect(imageValidate(undefined, { siblingData: { variant: "hero-01", backgroundMode: "image" } } as never)).not.toBe(true)
-    expect(imageValidate(12, { siblingData: { variant: "hero-05" } } as never)).toBe(true)
-    expect(highlightsValidate([{ title: "Only", body: "One" }], { siblingData: { variant: "hero-01" } } as never)).not.toBe(true)
-    expect(highlightsValidate([{ title: "Value", body: "Useful" }], { siblingData: { variant: "hero-05" } } as never)).not.toBe(true)
-    expect(serviceHighlightsValidate(undefined, { siblingData: { variant: "hero-02" } } as never)).not.toBe(true)
-    expect(serviceHighlightsValidate([{}, {}], { siblingData: { variant: "hero-02" } } as never)).toBe(true)
-    expect(serviceHighlightsValidate([{}], { siblingData: { variant: "hero-01" } } as never)).not.toBe(true)
+    expect(imageValidate(undefined, { ...image, ...validationOptions({ siblingData: { variant: "hero-05" } }.siblingData) })).not.toBe(true)
+    expect(imageValidate(undefined, { ...image, ...validationOptions({ siblingData: { variant: "hero-01", backgroundMode: "image" } }.siblingData) })).not.toBe(true)
+    expect(imageValidate(12, { ...image, ...validationOptions({ siblingData: { variant: "hero-05" } }.siblingData) })).toBe(true)
+    expect(highlightsValidate([{ title: "Only", body: "One" }], { ...highlights, ...validationOptions({ siblingData: { variant: "hero-01" } }.siblingData) })).not.toBe(true)
+    expect(highlightsValidate([{ title: "Value", body: "Useful" }], { ...highlights, ...validationOptions({ siblingData: { variant: "hero-05" } }.siblingData) })).not.toBe(true)
+    expect(serviceHighlightsValidate(undefined, { ...serviceHighlights, ...validationOptions({ siblingData: { variant: "hero-02" } }.siblingData) })).not.toBe(true)
+    expect(serviceHighlightsValidate([{}, {}], { ...serviceHighlights, ...validationOptions({ siblingData: { variant: "hero-02" } }.siblingData) })).toBe(true)
+    expect(serviceHighlightsValidate([{}], { ...serviceHighlights, ...validationOptions({ siblingData: { variant: "hero-01" } }.siblingData) })).not.toBe(true)
   })
 
   it("requires a media relationship when a CTA explicitly selects image background", () => {
     const cta = ALL_BLOCKS.find((block) => block.slug === "cta")
     const image = cta?.fields.find((field) => "name" in field && field.name === "image")
     expect(image && "validate" in image && typeof image.validate).toBe("function")
-    const imageValidate = image && "validate" in image && image.validate
+    if (image?.type !== "upload" || image.hasMany === true || typeof image.relationTo !== "string") throw new Error("Expected hero upload field")
+    const imageValidate = image.validate
     if (typeof imageValidate !== "function") throw new Error("Expected guarded CTA image field")
-    expect(imageValidate(undefined, { siblingData: { backgroundMode: "image" } } as never)).not.toBe(true)
-    expect(imageValidate(12, { siblingData: { backgroundMode: "image" } } as never)).toBe(true)
-    expect(imageValidate(undefined, { siblingData: { backgroundMode: "none" } } as never)).toBe(true)
+    expect(imageValidate(undefined, { ...image, ...validationOptions({ siblingData: { backgroundMode: "image" } }.siblingData) })).not.toBe(true)
+    expect(imageValidate(12, { ...image, ...validationOptions({ siblingData: { backgroundMode: "image" } }.siblingData) })).toBe(true)
+    expect(imageValidate(undefined, { ...image, ...validationOptions({ siblingData: { backgroundMode: "none" } }.siblingData) })).toBe(true)
   })
 })

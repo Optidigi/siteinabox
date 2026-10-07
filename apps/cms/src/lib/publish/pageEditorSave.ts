@@ -44,7 +44,7 @@ export class PageSaveConflictError extends Error {
   }
 }
 
-const payloadReq = (req: PageEditorTransactionReq): PayloadRequest => req as unknown as PayloadRequest
+const payloadReq = (req: PageEditorTransactionReq): Partial<PayloadRequest> => ({ ...req, user: { ...req.user, collection: "users" } })
 
 export const userCanEditTenantPages = (user: User, tenantId: string): boolean => {
   if (user.role === "super-admin") return true

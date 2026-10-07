@@ -16,7 +16,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 async function parseBody(req: NextRequest): Promise<Record<string, unknown> | null> {
   const contentType = req.headers.get("content-type")?.toLowerCase() ?? ""
   if (contentType.includes("application/json")) {
-    const body = await req.json()
+    const body: unknown = await req.json()
     return isRecord(body) ? body : null
   }
   if (

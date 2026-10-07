@@ -1,3 +1,4 @@
+import type { Media } from "@/payload-types"
 import type { CollectionBeforeValidateHook } from "payload"
 import { ValidationError } from "payload"
 import { assertSafeMediaFilename } from "@/lib/mediaFilename"
@@ -23,12 +24,12 @@ const extractTenantId = (t: unknown): string | number | undefined => {
   return t as string | number
 }
 
-export const ensureUniqueTenantFilename: CollectionBeforeValidateHook = async ({
+export const ensureUniqueTenantFilename = async <T extends Partial<Media> | null | undefined>({
   data,
   operation,
   originalDoc,
   req,
-}) => {
+}: Omit<Parameters<CollectionBeforeValidateHook<Media>>[0], "data"> & { data?: T }): Promise<T | undefined> => {
   if (!data) return data
 
   const filename = data.filename ?? originalDoc?.filename

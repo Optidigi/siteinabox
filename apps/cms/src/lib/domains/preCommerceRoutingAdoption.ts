@@ -82,7 +82,7 @@ export async function resolvePreCommerceRoutingAdoption(
     collection: "site-settings",
     where: {
       "aliases.host": { equals: wwwHost },
-    } as unknown as Where,
+    },
     limit: 2,
     pagination: false,
     depth: 0,

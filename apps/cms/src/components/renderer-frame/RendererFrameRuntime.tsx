@@ -164,7 +164,7 @@ export function RendererFrameRuntime({
       if (!parsed.ok) {
         // Apply each snapshot part that still parses so preview is not stuck
         // when only one of page/settings fails the full envelope.
-        const raw = event.data
+        const raw: unknown = event.data
         if (
           raw
           && typeof raw === "object"

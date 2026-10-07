@@ -1,3 +1,5 @@
+import { createTestPayload } from "../_helpers/testPayload"
+import { tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { BuilderChatRequestSchema, runBuilderTurn } from "@/lib/builder/runBuilderTurn"
 import { allowPreviewMagicLinkWithoutGrant } from "@/lib/builder/magicLinkPolicy"
@@ -38,7 +40,7 @@ describe("runBuilderTurn", () => {
       contactPhone: "0612345678",
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.clientSlug).toBe("tilburg-kapper")
     expect(result).not.toHaveProperty("previewToken")
@@ -58,7 +60,7 @@ describe("runBuilderTurn", () => {
       contactEmail: "anna@example.com",
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.status).toBe("needs_brief")
     expect(result.text).toMatch(/contact|optie|WhatsApp|bellen|afspraak|formulier/i)
@@ -94,7 +96,7 @@ describe("runBuilderTurn", () => {
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
       previousFacts: previous,
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.clientSlug).toBe("tilburg-kapper")
     expect(processStoredIntakeSubmission).toHaveBeenCalled()
@@ -129,7 +131,7 @@ describe("runBuilderTurn", () => {
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
       previousFacts: previous,
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.clientSlug).toBeUndefined()
     expect(result.text).toMatch(/homepage/i)
@@ -139,10 +141,9 @@ describe("runBuilderTurn", () => {
   it("reuses an existing preview site instead of provisioning again", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = {
-      find: vi.fn(async () => ({ docs: [{ id: 3, slug: "tilburg-kapper" }] })),
-      update: vi.fn(),
-    }
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([tenantFixture({ id: 3, slug: "tilburg-kapper" })]))
+    vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     const parsed = BuilderChatRequestSchema.parse({
       message: "Ik ben kapper in Tilburg en doe knippen, kleur en baard.",
       contactName: "Anna",
@@ -150,7 +151,7 @@ describe("runBuilderTurn", () => {
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
       existingClientSlug: "tilburg-kapper",
     })
-    const result = await runBuilderTurn(payload as never, parsed)
+    const result = await runBuilderTurn(payload, parsed)
     expect(result.ok).toBe(true)
     expect(result.status).toBe("maintaining")
     expect(result.clientSlug).toBe("tilburg-kapper")
@@ -160,10 +161,9 @@ describe("runBuilderTurn", () => {
   it("applies theme patches on an existing site without asking for a new brief", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = {
-      find: vi.fn(async () => ({ docs: [{ id: 3, slug: "tilburg-kapper" }] })),
-      update: vi.fn(async ({ id }: { id: string | number }) => ({ id, slug: "tilburg-kapper" })),
-    }
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([tenantFixture({ id: 3, slug: "tilburg-kapper" })]))
+    vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     const parsed = BuilderChatRequestSchema.parse({
       message: "Maak het thema groen en donker.",
       contactName: "Anna",
@@ -171,7 +171,7 @@ describe("runBuilderTurn", () => {
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
       existingClientSlug: "tilburg-kapper",
     })
-    const result = await runBuilderTurn(payload as never, parsed)
+    const result = await runBuilderTurn(payload, parsed)
     expect(result.ok).toBe(true)
     expect(result.status).toBe("maintaining")
     expect(result.text).toMatch(/thema/i)
@@ -182,12 +182,9 @@ describe("runBuilderTurn", () => {
   it("refuses maintainer writes when the existing tenant is missing", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = {
-      find: vi.fn(async () => ({ docs: [] })),
-      findByID: vi.fn(async () => {
-        throw new Error("not found")
-      }),
-    }
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+    vi.spyOn(payload, "findByID").mockRejectedValue(new Error("not found"))
     const parsed = BuilderChatRequestSchema.parse({
       message: "Ik ben kapper in Tilburg en doe knippen, kleur en baard.",
       contactName: "Anna",
@@ -196,7 +193,7 @@ describe("runBuilderTurn", () => {
       existingClientSlug: "tilburg-kapper",
       existingTenantId: 3,
     })
-    const result = await runBuilderTurn(payload as never, parsed)
+    const result = await runBuilderTurn(payload, parsed)
     expect(result.ok).toBe(false)
     expect(result.error).toBe("tenant_not_found")
     expect(processStoredIntakeSubmission).not.toHaveBeenCalled()
@@ -205,10 +202,9 @@ describe("runBuilderTurn", () => {
   it("regenerates on the same tenant when asked to start over", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = {
-      find: vi.fn(async () => ({ docs: [{ id: 3, slug: "tilburg-kapper" }] })),
-      update: vi.fn(),
-    }
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([tenantFixture({ id: 3, slug: "tilburg-kapper" })]))
+    vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     const parsed = BuilderChatRequestSchema.parse({
       message: "begin opnieuw alsjeblieft",
       contactName: "Anna",
@@ -233,7 +229,7 @@ describe("runBuilderTurn", () => {
         appearanceMode: "light",
       },
     })
-    const result = await runBuilderTurn(payload as never, parsed)
+    const result = await runBuilderTurn(payload, parsed)
     expect(result.ok).toBe(true)
     expect(processStoredIntakeSubmission).toHaveBeenCalledWith(
       payload,
@@ -253,7 +249,7 @@ describe("runBuilderTurn", () => {
       contactEmail: "anna@example.com",
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.status).toBe("needs_brief")
     expect(result.clientSlug).toBeUndefined()
@@ -267,7 +263,7 @@ describe("runBuilderTurn", () => {
       contactEmail: "anna@example.com",
       legal: { businessUseAccepted: false, termsAccepted: true, marketingOptIn: false },
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(false)
     expect(result.error).toBe("legal_required")
   })
@@ -301,7 +297,7 @@ describe("runBuilderTurn", () => {
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
       previousFacts: previous,
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.clientSlug).toBe("tilburg-kapper")
     expect(result.text).toMatch(/homepage|catalogus|FAQ|portfolio/i)
@@ -318,7 +314,7 @@ describe("runBuilderTurn", () => {
       contactEmail: "anna@example.com",
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.status).toBe("unavailable")
     expect(result.text).toMatch(/catalogus/i)
@@ -335,7 +331,7 @@ describe("runBuilderTurn", () => {
       contactEmail: "anna@example.com",
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.clientSlug).toBe("tilburg-kapper")
     expect(result.text).toMatch(/FAQ|catalogus/i)
@@ -371,7 +367,7 @@ describe("runBuilderTurn", () => {
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
       previousFacts: previous,
     })
-    const result = await runBuilderTurn({} as never, parsed)
+    const result = await runBuilderTurn(createTestPayload(), parsed)
     expect(result.ok).toBe(true)
     expect(result.status).toBe("unavailable")
     expect(result.clientSlug).toBeUndefined()

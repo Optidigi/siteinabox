@@ -36,7 +36,7 @@ const findTenantSettings = async (ctx: AgentWriteContext): Promise<SiteSetting |
     depth: 0,
     ...collectionWrite(ctx),
   })
-  return found.docs[0] as SiteSetting | undefined
+  return found.docs[0]
 }
 
 const findPageBySlug = async (ctx: AgentWriteContext, pageSlug: string): Promise<Page | undefined> => {
@@ -52,7 +52,7 @@ const findPageBySlug = async (ctx: AgentWriteContext, pageSlug: string): Promise
     depth: 0,
     ...collectionWrite(ctx),
   })
-  return found.docs[0] as Page | undefined
+  return found.docs[0]
 }
 
 export const defaultEnabledAppointments = (): AppointmentScheduleSettings => ({
@@ -178,7 +178,7 @@ export const replaceSection = async (
   const index = preferred >= 0 ? preferred : 0
   const current = blocks[index]
   if (!current || typeof current !== "object") throw new Error("Selected block is missing.")
-  const record = current as unknown as Record<string, unknown>
+  const record: Record<string, unknown> = { ...current }
   blocks[index] = {
     ...record,
     blockType,
@@ -219,18 +219,6 @@ export const loadTenantBySlug = async (payload: Payload, slug: string): Promise<
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
-
-const BLOCK_PATCH_KEYS = [
-  "heading",
-  "body",
-  "intro",
-  "primaryAction",
-  "secondaryAction",
-  "backgroundMode",
-  "highlights",
-  "items",
-  "anchor",
-] as const
 
 export type BlockPatch = Partial<{
   heading: string
@@ -338,20 +326,37 @@ export const patchSection = async (
     : 0
   const block = blocks[index]
   if (!block || typeof block !== "object") throw new Error("Selected block is missing.")
-  const record = block as unknown as Record<string, unknown>
-  if (isUnavailableCatalogBlockType(record.blockType)) {
+  if (isUnavailableCatalogBlockType(block.blockType)) {
     throw new Error("This section is not in the live catalog. Remove it instead of editing copy.")
   }
-  const next = { ...record }
-  for (const key of BLOCK_PATCH_KEYS) {
-    if (input.patch[key] !== undefined) {
-      next[key] = input.patch[key]
+  const patch = input.patch
+  const copy = {
+    ...(patch.heading !== undefined ? { heading: patch.heading } : {}),
+    ...(patch.body !== undefined ? { body: patch.body } : {}),
+    ...(patch.intro !== undefined ? { intro: patch.intro } : {}),
+    ...(patch.anchor !== undefined ? { anchor: patch.anchor } : {}),
+  }
+  if (block.blockType === "hero" || block.blockType === "cta") {
+    if (patch.primaryAction === null) throw new Error("This block requires a primary action.")
+    if (patch.backgroundMode === "image" && block.image == null) {
+      throw new Error("An image background needs an existing image on this block. Choose another backgroundMode.")
     }
+    blocks[index] = {
+      ...block, ...copy,
+      ...(patch.primaryAction !== undefined ? { primaryAction: patch.primaryAction } : {}),
+      ...(patch.secondaryAction !== undefined ? { secondaryAction: patch.secondaryAction ?? {} } : {}),
+      ...(patch.backgroundMode !== undefined ? { backgroundMode: patch.backgroundMode } : {}),
+      ...(block.blockType === "hero" && patch.highlights !== undefined ? { highlights: patch.highlights } : {}),
+    }
+  } else if (block.blockType === "services") {
+    blocks[index] = { ...block, ...copy, ...(patch.items !== undefined ? {
+      items: patch.items.map(({ action, ...item }) => ({ ...item, ...(action !== undefined ? { action: action ?? {} } : {}) })),
+    } : {}) }
+  } else if (block.blockType === "appointments") {
+    blocks[index] = { ...block, ...copy }
+  } else {
+    throw new Error("This section is not in the live catalog. Remove it instead of editing copy.")
   }
-  if (next.backgroundMode === "image" && next.image == null) {
-    throw new Error("An image background needs an existing image on this block. Choose another backgroundMode.")
-  }
-  blocks[index] = next as never
   await ctx.payload.update({
     collection: "pages",
     id: page.id,

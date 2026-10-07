@@ -85,7 +85,9 @@ const propertyPayload = (body: Record<string, unknown>): AnalyticsEventPropertie
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>
   try {
-    body = await req.json()
+    const raw: unknown = await req.json()
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+    body = raw as Record<string, unknown>
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }

@@ -8,7 +8,9 @@ import {
 } from "@/lib/checkout/checkoutProfile"
 import type { CheckoutProfile } from "@/payload-types"
 
-import { asPayload } from "../_helpers/mockPayload"
+import type { Payload } from "payload"
+import { createPayloadFixture, type PayloadFixtureMethod } from "../_helpers/payloadFixture"
+import { checkoutProfileFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
 const registeredDraft = {
   partyType: "registered_business" as const,
@@ -51,10 +53,9 @@ describe("checkout profile authority", () => {
   })
 
   it("appends audited profile versions and never updates an accepted correction target", async () => {
-    const find = vi.fn()
-      .mockResolvedValueOnce({ docs: [] })
-      .mockResolvedValueOnce({
-        docs: [{
+    const find = vi.fn<PayloadFixtureMethod<"find">>()
+      .mockResolvedValueOnce(paginatedFixture([]))
+      .mockResolvedValueOnce(paginatedFixture([checkoutProfileFixture({
           id: 41,
           profileKey: "run:9:checkout-profile:1",
           profileVersion: 1,
@@ -82,11 +83,10 @@ describe("checkout profile authority", () => {
           actorEmail: "owner@example.test",
           sourceRequestId: "req-1",
           createdAt: "2026-07-26T12:00:00.000Z",
-        }],
-      })
-    const create = vi.fn(async ({ data }) => ({ id: 41 + create.mock.calls.length, ...data }))
+        })]))
+    const create = vi.fn(async ({ data }: Parameters<Payload["create"]>[0]) => Object.assign(checkoutProfileFixture({ id: 41 + create.mock.calls.length }), data))
     const update = vi.fn()
-    const payload = asPayload({ find, create, update })
+    const payload = createPayloadFixture({ find, create, update })
 
     const initial = await saveCheckoutProfileVersion({
       payload,
@@ -135,7 +135,7 @@ describe("checkout profile authority", () => {
   })
 
   it("returns the current profile on an optimistic-version conflict", async () => {
-    const current = {
+    const current = checkoutProfileFixture({
       id: 52,
       profileKey: "run:9:checkout-profile:2",
       profileVersion: 2,
@@ -159,10 +159,10 @@ describe("checkout profile authority", () => {
         phoneSubscriberNumber: "1234567",
       },
       createdAt: "2026-07-26T12:05:00.000Z",
-    }
+    })
     const create = vi.fn()
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [current] })),
+    const payload = createPayloadFixture({
+      find: vi.fn<PayloadFixtureMethod<"find">>(async () => (paginatedFixture([current]))),
       create,
     })
 
@@ -184,7 +184,7 @@ describe("checkout profile authority", () => {
   })
 
   it("creates a confirmed structured-name version when a legacy projection is submitted unchanged", async () => {
-    const legacy = {
+    const legacy = checkoutProfileFixture({
       id: 53,
       profileKey: "run:9:checkout-profile:2",
       profileVersion: 2,
@@ -214,10 +214,10 @@ describe("checkout profile authority", () => {
       },
       createdAt: "2026-07-26T12:00:00.000Z",
       updatedAt: "2026-07-26T12:00:00.000Z",
-    } as CheckoutProfile
-    const create = vi.fn(async ({ data }) => ({ id: 54, ...data }))
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [legacy] })),
+    })
+    const create = vi.fn(async ({ data }: Parameters<Payload["create"]>[0]) => Object.assign(checkoutProfileFixture({ id: 54 }), data))
+    const payload = createPayloadFixture({
+      find: vi.fn(async () => (paginatedFixture([legacy]))),
       create,
     })
     const visibleDraft = checkoutProfileView(legacy)
@@ -275,7 +275,7 @@ describe("checkout profile authority", () => {
   })
 
   it("projects incomplete pre-Phase-3 profiles for visible correction without treating them as registrant-ready", () => {
-    const legacyProfile = {
+    const legacyProfile = checkoutProfileFixture({
       id: 51,
       profileKey: "run:9:profile:1",
       profileVersion: 1,
@@ -289,7 +289,7 @@ describe("checkout profile authority", () => {
       billingAddress: { country: "NL" },
       createdAt: "2026-07-26T12:00:00.000Z",
       updatedAt: "2026-07-26T12:00:00.000Z",
-    } as CheckoutProfile
+    })
 
     expect(checkoutProfileView(legacyProfile)).toMatchObject({
       firstName: "Ada",
@@ -301,7 +301,7 @@ describe("checkout profile authority", () => {
   })
 
   it("fails closed for a complete legacy compound name until structured names are confirmed", () => {
-    const legacyProfile = {
+    const legacyProfile = checkoutProfileFixture({
       id: 52,
       profileKey: "run:9:profile:2",
       profileVersion: 2,
@@ -327,7 +327,7 @@ describe("checkout profile authority", () => {
       },
       createdAt: "2026-07-26T12:00:00.000Z",
       updatedAt: "2026-07-26T12:00:00.000Z",
-    } as CheckoutProfile
+    })
 
     expect(() => domainRegistrantFromCheckoutProfile(legacyProfile)).toThrow(
       "confirmed structured first and last names",

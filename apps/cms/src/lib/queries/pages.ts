@@ -6,8 +6,9 @@ import type { Page } from "@/payload-types"
 import {
   findAllPaginated,
   normalisePagination,
+  normaliseFindResult,
   type PayloadFindResult,
-  type PayloadLikeFindClient,
+  type PayloadFindClient,
 } from "./paginate"
 
 // Audit-p2 #13 (T10/T8) — listing queries no longer use a hardcoded
@@ -35,14 +36,14 @@ export interface ListOpts {
 export async function listPagesPaginated(
   tenantId: number | string,
   opts?: ListOpts,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"pages">,
 ): Promise<PayloadFindResult<Page>> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const client = payload ?? (await getPayload({ config }))
   const { page, limit } = normalisePagination(opts)
   const where: Where = { tenant: { equals: tenantId } }
   const q = opts?.q?.trim()
   if (q) where.or = [{ title: { like: q } }, { slug: { like: q } }]
-  return client.find<Page>({
+  return client.find({
     collection: "pages",
     overrideAccess: true,
     where,
@@ -50,7 +51,7 @@ export async function listPagesPaginated(
     depth: 1,
     page,
     limit,
-  })
+  }).then(normaliseFindResult)
 }
 
 /**
@@ -61,10 +62,10 @@ export async function listPagesPaginated(
  */
 export async function listPages(
   tenantId: number | string,
-  payload?: PayloadLikeFindClient,
+  payload?: PayloadFindClient<"pages">,
 ): Promise<Page[]> {
-  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
-  return findAllPaginated<Page>(client, {
+  const client = payload ?? (await getPayload({ config }))
+  return findAllPaginated(client, {
     collection: "pages",
     overrideAccess: true,
     where: { tenant: { equals: tenantId } },

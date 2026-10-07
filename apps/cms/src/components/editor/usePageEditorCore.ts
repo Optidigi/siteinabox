@@ -1,5 +1,7 @@
 "use client"
 
+import { clientPageSaveSchema } from "@/components/clientPayload"
+import { asRecord } from "@/lib/record"
 import {
   useCallback,
   useEffect,
@@ -465,20 +467,22 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
         headers: { "content-type": "application/json" },
         body: JSON.stringify(saveBody),
       })
-      const result = await response.json().catch(() => null)
+      const rawResult: unknown = await response.json().catch(() => null)
+      const errorResult = asRecord(rawResult)
       if (!response.ok) {
-        if (response.status === 409 && typeof result?.message === "string") {
-          throw new Error(localizePageEditorSaveError(result.message, t))
+        if (response.status === 409 && typeof errorResult?.message === "string") {
+          throw new Error(localizePageEditorSaveError(errorResult.message, t))
         }
-        const message = typeof result?.message === "string" ? result.message : `HTTP ${response.status}`
+        const message = typeof errorResult?.message === "string" ? errorResult.message : `HTTP ${response.status}`
         throw new Error(localizePageEditorSaveError(message, t))
       }
-      createdPage = result?.page?.id == null ? null : result.page
+      const result = clientPageSaveSchema.parse(rawResult)
+      createdPage = result.page
       if (typeof result?.page?.updatedAt === "string") {
         baselineUpdatedAtRef.current = result.page.updatedAt
       }
       if (themeWasDirty && normalizedThemeSnapshot) {
-        const savedTheme = (result?.theme ?? normalizedThemeSnapshot) as ThemeTokens
+        const savedTheme = result.theme ?? normalizedThemeSnapshot
         setThemeState(savedTheme)
         setThemeBaseline(savedTheme)
         pageEditorThemeCache.set(tenantStyleCacheKey, savedTheme)

@@ -1,4 +1,6 @@
 import "server-only"
+import { z } from "zod"
+import { ProviderBoundaryError, requestProviderJson } from "@/lib/providers/http"
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
@@ -43,7 +45,7 @@ export type OpenProviderRegistrationRequest = {
 export type OpenProviderRegistrationResult = {
   id: number | string | null
   domain: string
-  status: "registered" | "requested"
+  status: "registered" | "requested" | "unknown"
   raw: unknown
 }
 
@@ -72,7 +74,7 @@ export type OpenProviderDnskey = {
 export type OpenProviderTransferResult = {
   id: string | number
   domain: string
-  status: "requested" | "transferred"
+  status: "requested" | "transferred" | "unknown"
   raw: unknown
 }
 
@@ -144,10 +146,27 @@ export type OpenProviderResellerBalance = {
 }
 
 type FetchLike = typeof fetch
+const providerFetch = (options?: OpenProviderOptions): typeof fetch => async (input, init = {}) => {
+  const url = new URL(String(input))
+  if (url.protocol !== "https:" || url.username || url.password || url.hash) throw new Error("Provider request URL is invalid.")
+  const response = await requestProviderJson(url.toString(), init, {
+    operation: "OpenProvider request",
+    timeoutMs: options?.timeoutMs ?? 10_000,
+    maxBodyBytes: 512 * 1024,
+    readAttempts: String(input).includes("/authcode") ? 1 : 2,
+    signal: options?.signal,
+    fetchImpl: options?.fetchImpl,
+  })
+  if (response.ok) dataObject(response.body)
+  return Response.json(response.body ?? null, { status: response.status })
+}
+
 
 type OpenProviderOptions = {
   env?: NodeJS.ProcessEnv
   fetchImpl?: FetchLike
+  timeoutMs?: number
+  signal?: AbortSignal
   token?: string
 }
 
@@ -254,6 +273,8 @@ const readObject = (value: unknown): Record<string, unknown> =>
 
 const dataObject = (value: unknown): Record<string, unknown> => {
   const root = readObject(value)
+  if (root.code != null && root.code !== 0) throw new Error("OpenProvider response envelope is invalid.")
+  if (!root.data || typeof root.data !== "object" || Array.isArray(root.data)) throw new Error("OpenProvider response data is invalid.")
   return readObject(root.data)
 }
 
@@ -278,6 +299,14 @@ const providerErrorCode = async (response: Response): Promise<string | null> => 
   } catch {
     return null
   }
+}
+
+const validProviderId = (value: unknown): value is string | number =>
+  typeof value === "number" ? Number.isSafeInteger(value) && value > 0 :
+    typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value)
+
+const assertMutationIdentity = (data: Record<string, unknown>, expected: string | number): void => {
+  if (data.id != null && (!validProviderId(data.id) || String(data.id) !== String(expected))) throw new OpenProviderIndeterminateWriteError("OpenProvider mutation identity")
 }
 
 const fetcher = (options?: OpenProviderOptions): FetchLike => options?.fetchImpl ?? globalThis.fetch
@@ -389,7 +418,7 @@ export async function loginOpenProvider(options?: OpenProviderOptions): Promise<
 
   pendingOpenProviderLoginKey = key
   pendingOpenProviderLogin = (async () => {
-    const response = await fetchImpl(`${apiBase(env)}/auth/login`, {
+    const response = await providerFetch(options)(`${apiBase(env)}/auth/login`, {
       method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify(credentials),
@@ -427,13 +456,16 @@ const canonicalMoneyAmount = (value: string | number): string | null => {
 const normalizeMoney = (source: unknown): { amount: string; currency: string } | null => {
   if (!source || typeof source !== "object" || Array.isArray(source)) return null
   const value = readObject(source)
+  // A present reseller quote is authoritative; malformed currency or amount
+  // must not silently substitute the provider's public product price.
+  if (value.reseller != null) return normalizeMoney(value.reseller)
   const nestedPrice = readObject(value.price)
   const amount = nestedPrice.create ?? value.price ?? value.amount ?? value.product_price
   const currency = value.currency ?? value.product_currency
   if ((typeof amount === "string" || typeof amount === "number") && typeof currency === "string") {
     const normalizedAmount = canonicalMoneyAmount(amount)
     const normalizedCurrency = currency.trim().toUpperCase()
-    if (normalizedAmount && /^[A-Z]{3}$/.test(normalizedCurrency)) {
+    if (normalizedAmount && normalizedCurrency === "EUR") {
       return { amount: normalizedAmount, currency: normalizedCurrency }
     }
   }
@@ -508,7 +540,7 @@ const fetchOpenProviderAvailability = async (
   options?: OpenProviderAvailabilityOptions,
   availabilityTimeoutMs = OPENPROVIDER_AVAILABILITY_TIMEOUT_MS,
 ): Promise<Response> =>
-  fetcher(options)(`${apiBase(env)}/domains/check`, {
+  providerFetch(options)(`${apiBase(env)}/domains/check`, {
     method: "POST",
     headers: jsonHeaders(token),
     body: JSON.stringify({
@@ -616,7 +648,7 @@ const fetchAvailabilityResults = async (
       )
     }
   } catch (error) {
-    if (isAvailabilityTimeout(error)) return availabilityProviderErrorResults(domains, "provider_timeout")
+    if (isAvailabilityTimeout(error) || (error instanceof ProviderBoundaryError && ["timeout", "cancelled", "transport"].includes(error.reason))) return availabilityProviderErrorResults(domains, "provider_timeout")
     throw error
   }
 
@@ -708,7 +740,7 @@ const fetchOpenProviderSuggestions = async (
   body: Record<string, unknown>,
   options?: OpenProviderOptions,
 ): Promise<Response> =>
-  fetcher(options)(`${apiBase(env)}/domains/suggest-name`, {
+  providerFetch(options)(`${apiBase(env)}/domains/suggest-name`, {
     method: "POST",
     headers: jsonHeaders(token),
     body: JSON.stringify(body),
@@ -1081,7 +1113,7 @@ export async function createOpenProviderCustomerHandle(
   const token = options?.token ?? await loginOpenProvider(options)
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/customers`, {
+    response = await providerFetch(options)(`${apiBase(env)}/customers`, {
       method: "POST",
       headers: jsonHeaders(token),
       body: JSON.stringify(buildOpenProviderCustomerRequest(details, options?.reference)),
@@ -1112,7 +1144,7 @@ export async function createOpenProviderCustomerHandle(
       : typeof data.id === "string"
         ? data.id
         : null
-  if (!handle) {
+  if (!handle || !validProviderId(handle)) {
     throw new OpenProviderIndeterminateWriteError(
       "OpenProvider customer handle creation",
     )
@@ -1132,9 +1164,35 @@ const openProviderDomainName = (value: Record<string, unknown>): string | null =
   }
 }
 
+const providerText = z.string().trim().min(1).max(1024)
+const domainRecordSchema = z.object({
+  id: z.union([z.number().int().positive().max(Number.MAX_SAFE_INTEGER), z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/)]),
+  domain: z.object({ name: providerText, extension: providerText }),
+  status: providerText.optional(),
+  owner_handle: providerText.nullish(),
+  admin_handle: providerText.nullish(),
+  name_servers: z.array(z.object({ name: providerText })).max(13).optional(),
+  autorenew: providerText.nullish(),
+  renewal_date: providerText.nullish(),
+  registry_expiration_date: providerText.nullish(),
+  verification_email_status: providerText.nullish(),
+  verification_email_exp_date: providerText.nullish(),
+  verification_email_status_description: providerText.nullish(),
+  dnssec: z.union([z.boolean(), providerText]).nullish(),
+  is_dnssec_enabled: z.boolean().nullish(),
+  dnssec_keys: z.array(z.object({
+    flags: z.number().int().min(0).max(65_535),
+    protocol: z.literal(3),
+    alg: z.number().int().min(1).max(255),
+    pub_key: providerText,
+  })).max(4).optional(),
+}).passthrough()
+
 const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord | null => {
-  const source = readObject(value)
-  const id = typeof source.id === "string" || typeof source.id === "number" ? source.id : null
+  const parsed = domainRecordSchema.safeParse(value)
+  if (!parsed.success) return null
+  const source = parsed.data
+  const id = validProviderId(source.id) ? source.id : null
   const domain = openProviderDomainName(source)
   if (id == null || !domain) return null
   const nameServers = Array.isArray(source.name_servers)
@@ -1254,7 +1312,7 @@ export async function getOpenProviderDomainOperationPrice(
     operation,
     period: "1",
   })
-  const response = await fetcher(options)(`${apiBase(env)}/domains/prices?${query.toString()}`, {
+  const response = await providerFetch(options)(`${apiBase(env)}/domains/prices?${query.toString()}`, {
     method: "GET",
     headers: jsonHeaders(token),
   })
@@ -1270,7 +1328,7 @@ export async function getOpenProviderDomainOperationPrice(
   const reseller = readObject(prices.reseller)
   const currency = typeof reseller.currency === "string" ? reseller.currency.trim().toUpperCase() : ""
   const netAmountMinor = providerPriceMinor(reseller.price)
-  if (!currency || netAmountMinor == null) {
+  if (currency !== "EUR" || netAmountMinor == null || !Number.isSafeInteger(netAmountMinor) || netAmountMinor < 0) {
     throw new Error(`OpenProvider ${operation} price response is incomplete.`)
   }
   return {
@@ -1302,13 +1360,14 @@ export async function setOpenProviderDomainAutorenew(
   autorenew: "on" | "off",
   options?: OpenProviderOptions,
 ): Promise<OpenProviderAutorenewResult> {
+  if (!validProviderId(domainId)) throw new Error("OpenProvider domain id is invalid.")
   const normalizedId = String(domainId).trim()
   if (!normalizedId) throw new Error("OpenProvider domain id is required.")
   const env = options?.env ?? process.env
   const token = options?.token ?? await loginOpenProvider(options)
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
+    response = await providerFetch(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
       method: "PUT",
       headers: jsonHeaders(token),
       body: JSON.stringify({ autorenew }),
@@ -1329,6 +1388,7 @@ export async function setOpenProviderDomainAutorenew(
     throw new OpenProviderIndeterminateWriteError("OpenProvider domain autorenew update", error)
   }
   const data = dataObject(payload)
+  assertMutationIdentity(data, domainId)
   const returnedId = typeof data.id === "string" || typeof data.id === "number"
     ? data.id
     : domainId
@@ -1352,17 +1412,18 @@ export async function findOpenProviderDomain(
     with_verification_email: "true",
     limit: "2",
   })
-  const response = await fetcher(options)(`${apiBase(env)}/domains?${query.toString()}`, {
+  const response = await providerFetch(options)(`${apiBase(env)}/domains?${query.toString()}`, {
     method: "GET",
     headers: jsonHeaders(token),
   })
   if (!response.ok) throw new OpenProviderApiError("OpenProvider domain lookup", response.status)
   const data = dataObject(await json(response))
-  const results = Array.isArray(data.results) ? data.results : []
+  if (!Array.isArray(data.results) || data.results.length > 2) throw new Error("OpenProvider domain lookup is incomplete.")
+  const results = data.results.map(parseOpenProviderDomainRecord)
+  if (results.some((entry) => entry == null || entry.domain !== domain.domain)) throw new Error("OpenProvider domain lookup identity is invalid.")
   const lookup = classifyOpenProviderDomainLookup(
     domain.domain,
     results
-    .map(parseOpenProviderDomainRecord)
     .filter((entry): entry is OpenProviderDomainRecord => entry != null),
   )
   if (lookup.outcome === "ambiguous") {
@@ -1375,6 +1436,7 @@ export async function findOpenProviderCustomerByReference(
   reference: string,
   options?: OpenProviderOptions,
 ): Promise<OpenProviderCustomerRecord | null> {
+  options = { ...options, signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000) }
   const normalizedReference = cleanEnv(reference)
   if (!normalizedReference) throw new Error("OpenProvider customer reference is required.")
   const env = options?.env ?? process.env
@@ -1388,7 +1450,7 @@ export async function findOpenProviderCustomerByReference(
       limit: String(pageSize),
       offset: String(offset),
     })
-    const response = await fetcher(options)(
+    const response = await providerFetch(options)(
       `${apiBase(env)}/customers?${query.toString()}`,
       {
         method: "GET",
@@ -1406,13 +1468,16 @@ export async function findOpenProviderCustomerByReference(
       throw new OpenProviderCustomerReferenceLookupIncompleteError()
     }
     const page = data.results
+    if (page.length > pageSize) throw new OpenProviderCustomerReferenceLookupIncompleteError()
     const customers = page.flatMap((result): OpenProviderCustomerRecord[] => {
       const source = readObject(result)
       const handle = typeof source.handle === "string" ? source.handle : null
+      if (source.comments != null && typeof source.comments !== "string") throw new OpenProviderCustomerReferenceLookupIncompleteError()
       const comments = typeof source.comments === "string"
         ? source.comments
         : null
-      return handle ? [{ handle, comments, raw: result }] : []
+      if (!handle || !validProviderId(handle)) throw new OpenProviderCustomerReferenceLookupIncompleteError()
+      return [{ handle, comments, raw: result }]
     })
     exactCustomers.push(...customers.filter((customer) =>
       customer.comments === normalizedReference))
@@ -1437,7 +1502,7 @@ export async function getOpenProviderResellerBalance(
 ): Promise<OpenProviderResellerBalance> {
   const env = options?.env ?? process.env
   const token = options?.token ?? await loginOpenProvider(options)
-  const response = await fetcher(options)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/resellers?with_settings=true`,
     {
       method: "GET",
@@ -1458,7 +1523,7 @@ export async function getOpenProviderResellerBalance(
     typeof reservedAmount !== "number" ||
     !Number.isFinite(reservedAmount) ||
     typeof currency !== "string" ||
-    !currency.trim()
+    currency.trim().toUpperCase() !== "EUR"
   ) {
     throw new Error("OpenProvider reseller balance response is incomplete.")
   }
@@ -1476,11 +1541,12 @@ export async function getOpenProviderDomainAuthCode(
   | { delivery: "provider_returned"; authCode: string }
   | { delivery: "registrant_email" }
 > {
+  if (!validProviderId(domainId)) throw new Error("OpenProvider domain id is invalid.")
   const normalizedId = String(domainId).trim()
   if (!normalizedId) throw new Error("OpenProvider domain id is required.")
   const env = options?.env ?? process.env
   const token = options?.token ?? await loginOpenProvider(options)
-  const response = await fetcher(options)(
+  const response = await providerFetch(options)(
     `${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}/authcode?auth_code_type=external`,
     {
       method: "GET",
@@ -1531,7 +1597,7 @@ export async function registerOpenProviderDomain(
   })
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/domains`, {
+    response = await providerFetch(options)(`${apiBase(env)}/domains`, {
       method: "POST",
       headers: jsonHeaders(token),
       body: JSON.stringify(body),
@@ -1553,18 +1619,19 @@ export async function registerOpenProviderDomain(
     throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration", error)
   }
   const data = dataObject(payload)
-  const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : null
+  const id = validProviderId(data.id) ? data.id : null
   if (id == null) {
     throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration")
   }
+  if (data.domain != null && openProviderDomainName(data) !== domain.domain) throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration")
   const providerStatus = typeof data.status === "string" ? data.status.toUpperCase() : ""
   return {
     id,
     domain: domain.domain,
     status:
-      !providerStatus || providerStatus === "ACT" || providerStatus === "ACTIVE"
+      providerStatus === "ACT" || providerStatus === "ACTIVE"
         ? "registered"
-        : "requested",
+        : providerStatus === "REQ" ? "requested" : "unknown",
     raw: payload,
   }
 }
@@ -1598,7 +1665,7 @@ export async function transferOpenProviderDomain(
   })
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/domains/transfer`, {
+    response = await providerFetch(options)(`${apiBase(env)}/domains/transfer`, {
       method: "POST",
       headers: jsonHeaders(token),
       body: JSON.stringify(body),
@@ -1623,15 +1690,16 @@ export async function transferOpenProviderDomain(
     throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer", error)
   }
   const data = dataObject(payload)
-  const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : null
+  const id = validProviderId(data.id) ? data.id : null
   if (id == null) {
     throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer")
   }
+  if (data.domain != null && openProviderDomainName(data) !== domain.domain) throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer")
   const status = typeof data.status === "string" ? data.status.toUpperCase() : ""
   return {
     id,
     domain: domain.domain,
-    status: ["ACT", "ACTIVE", "REGISTERED"].includes(status) ? "transferred" : "requested",
+    status: ["ACT", "ACTIVE", "REGISTERED"].includes(status) ? "transferred" : status === "REQ" ? "requested" : "unknown",
     raw: payload,
   }
 }
@@ -1641,6 +1709,7 @@ export async function updateOpenProviderDomainNameservers(
   nameServers: Array<{ name: string }>,
   options?: OpenProviderOptions,
 ): Promise<OpenProviderNameserverUpdateResult> {
+  if (!validProviderId(domainId)) throw new Error("OpenProvider domain id is invalid.")
   const normalizedId = String(domainId).trim()
   const normalizedNameservers = [...new Set(
     nameServers.map((entry) => entry.name.trim().toLowerCase().replace(/\.$/, "")),
@@ -1653,7 +1722,7 @@ export async function updateOpenProviderDomainNameservers(
   const token = options?.token ?? await loginOpenProvider(options)
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
+    response = await providerFetch(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
       method: "PUT",
       headers: jsonHeaders(token),
       body: JSON.stringify({
@@ -1683,6 +1752,7 @@ export async function updateOpenProviderDomainNameservers(
     )
   }
   const data = dataObject(payload)
+  assertMutationIdentity(data, domainId)
   const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : domainId
   return {
     id,
@@ -1696,6 +1766,7 @@ export async function updateOpenProviderDomainDnssec(
   input: { enabled: boolean; keys: OpenProviderDnskey[] },
   options?: OpenProviderOptions,
 ): Promise<OpenProviderNameserverUpdateResult> {
+  if (!validProviderId(domainId)) throw new Error("OpenProvider domain id is invalid.")
   const normalizedId = String(domainId).trim()
   if (!normalizedId) throw new Error("OpenProvider domain id is required.")
   if (input.enabled && input.keys.length === 0) {
@@ -1706,7 +1777,7 @@ export async function updateOpenProviderDomainDnssec(
   const token = options?.token ?? await loginOpenProvider(options)
   let response: Response
   try {
-    response = await fetcher(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
+    response = await providerFetch(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
       method: "PUT",
       headers: jsonHeaders(token),
       body: JSON.stringify({
@@ -1730,6 +1801,7 @@ export async function updateOpenProviderDomainDnssec(
     throw new OpenProviderIndeterminateWriteError("OpenProvider domain DNSSEC update", error)
   }
   const data = dataObject(payload)
+  assertMutationIdentity(data, domainId)
   return {
     id: typeof data.id === "string" || typeof data.id === "number" ? data.id : domainId,
     status: typeof data.status === "string" ? data.status : null,

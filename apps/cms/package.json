@@ -28,7 +28,8 @@
     "legal:seed-visual": "tsx scripts/seed-legal-visual-fixture.ts",
     "seed:renderer-staging": "tsx scripts/seed-renderer-staging-tenants.ts",
     "seed:local-admin": "tsx scripts/seed-super-admin.ts",
-    "ops:renderer-alias": "tsx scripts/ensure-renderer-domain-alias.ts"
+    "ops:renderer-alias": "tsx scripts/ensure-renderer-domain-alias.ts",
+    "generate:migration-index": "tsx scripts/generate-migration-index.ts"
   },
   "dependencies": {
     "@better-auth/infra": "^0.3.7",
@@ -71,7 +72,7 @@
     "next": "16.3.8",
     "next-intl": "^4.13.6",
     "next-themes": "^0.4.6",
-    "nodemailer": "10.0.13",
+    "nodemailer": "10.0.16",
     "parse5": "^8.0.1",
     "payload": "3.90.1",
     "pg": "^8.23.0",

@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { User } from "@/payload-types"
+import { userFixture } from "../_helpers/generatedDocs"
 
-import { cast } from "../_helpers/cast"
 import { hookArgsFor } from "../_helpers/hookFixtures"
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
 
 const mocks = vi.hoisted(() => ({ publishCurrentTenantState: vi.fn() }))
 vi.mock("@/lib/publish/currentState", () => mocks)
@@ -13,9 +12,9 @@ import {
 } from "@/hooks/publishPageAfterUserSave"
 import { DEFER_PAGE_AUTO_PUBLISH_HEADER } from "@/lib/publish/pageEditorSaveContract"
 
-const user = cast<User>({ id: 8, role: "editor", tenants: [{ tenant: 7 }], updatedAt: "", createdAt: "", email: "editor@test.local" })
+const user = userFixture({ id: 8, role: "editor", tenants: [{ tenant: 7 }], email: "editor@test.local" })
 const sessionHeaders = () => new Headers({ cookie: "payload-token=test-session" })
-const payload = asPayload({ marker: "payload" })
+const payload = createTestPayload()
 
 const invoke = (overrides: Record<string, unknown> = {}) => publishPageAfterUserSave(hookArgsFor(publishPageAfterUserSave, {
   doc: { id: 24, tenant: 7, status: "published" },
@@ -55,18 +54,18 @@ describe("page save publication fallback", () => {
   })
 
   it("does not publish unauthenticated or draft writes", async () => {
-    await invoke({ req: { user: null, payload: asPayload({}), headers: new Headers() } })
+    await invoke({ req: { user: null, payload: createTestPayload(), headers: new Headers() } })
     await invoke({ doc: { id: 24, tenant: 7, status: "draft" } })
 
     expect(mocks.publishCurrentTenantState).not.toHaveBeenCalled()
   })
 
   it("does not publish Local API or API-key writes without a browser session", async () => {
-    await invoke({ req: { user, payload: asPayload({}), headers: new Headers() } })
+    await invoke({ req: { user, payload: createTestPayload(), headers: new Headers() } })
     await invoke({
       req: {
         user,
-        payload: asPayload({}),
+        payload: createTestPayload(),
         headers: new Headers({ authorization: "users API-Key test" }),
       },
     })

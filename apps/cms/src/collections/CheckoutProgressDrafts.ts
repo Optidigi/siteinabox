@@ -1,3 +1,4 @@
+import type { CheckoutProgressDraft } from "@/payload-types"
 import type {
   CollectionBeforeChangeHook,
   CollectionBeforeValidateHook,
@@ -7,12 +8,12 @@ import type {
 import { migrationSourceMechanisms } from "@siteinabox/contracts/domain-migration"
 
 const lifecycleEnabled = (
-  args: Parameters<CollectionBeforeChangeHook>[0],
+  args: Parameters<CollectionBeforeChangeHook<CheckoutProgressDraft>>[0],
 ): boolean =>
   args.req?.context?.checkoutProgressDraftLifecycle === true ||
   args.context?.checkoutProgressDraftLifecycle === true
 
-export const protectCheckoutProgressDraft: CollectionBeforeChangeHook = (args) => {
+export const protectCheckoutProgressDraft: CollectionBeforeChangeHook<CheckoutProgressDraft> = (args) => {
   if (!lifecycleEnabled(args)) {
     throw new Error(
       "Checkout progress drafts are mutable only through the reviewed preview-grant lifecycle.",
@@ -44,7 +45,7 @@ export const protectCheckoutProgressDraft: CollectionBeforeChangeHook = (args) =
   return args.data
 }
 
-export const validateCheckoutProgressDraft: CollectionBeforeValidateHook = ({
+export const validateCheckoutProgressDraft: CollectionBeforeValidateHook<CheckoutProgressDraft> = ({
   data,
   originalDoc,
 }) => {

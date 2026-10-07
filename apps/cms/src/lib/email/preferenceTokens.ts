@@ -72,25 +72,28 @@ export function verifyEmailPreferenceToken(
   if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) {
     throw new Error("Invalid email preference token signature")
   }
-  let claims: Partial<EmailPreferenceTokenClaims>
+  let rawClaims: unknown
   try {
-    claims = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"))
+    rawClaims = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"))
   } catch {
     throw new Error("Invalid email preference token payload")
   }
-  const validAction = emailPreferenceTokenActions.includes(claims.allowedAction as EmailPreferenceTokenAction)
+  if (!rawClaims || typeof rawClaims !== "object" || Array.isArray(rawClaims)) throw new Error("Invalid email preference token claims")
+  const claims = rawClaims as Record<string, unknown>
+  const allowedAction = emailPreferenceTokenActions.find((action) => action === claims.allowedAction)
   if (
     claims.version !== 1 || claims.purpose !== "email-preferences" ||
     typeof claims.subjectKey !== "string" || !claims.subjectKey.startsWith("email:") ||
-    !validAction || typeof claims.issuedAt !== "number" || typeof claims.expiresAt !== "number" ||
-    typeof claims.nonce !== "string" || !claims.nonce
+    !allowedAction || typeof claims.issuedAt !== "number" || typeof claims.expiresAt !== "number" ||
+    typeof claims.nonce !== "string" || !claims.nonce ||
+    (claims.tenantId !== undefined && typeof claims.tenantId !== "number" && typeof claims.tenantId !== "string")
   ) throw new Error("Invalid email preference token claims")
   const now = options.nowSeconds ?? Math.floor(Date.now() / 1000)
   if (claims.issuedAt > now + 300 || claims.expiresAt <= now) throw new Error("Email preference token expired")
   if (options.requiredAction && claims.allowedAction !== options.requiredAction) {
     throw new Error("Email preference token action is not allowed")
   }
-  return claims as EmailPreferenceTokenClaims
+  return { version: 1, purpose: "email-preferences", subjectKey: claims.subjectKey, allowedAction, issuedAt: claims.issuedAt, expiresAt: claims.expiresAt, nonce: claims.nonce, ...(claims.tenantId !== undefined ? { tenantId: claims.tenantId } : {}) }
 }
 
 export function createEmailPreferenceLinks(input: {

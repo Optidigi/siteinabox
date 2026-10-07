@@ -1,27 +1,35 @@
 import { describe, expect, it, vi } from "vitest"
-import type { Payload } from "payload"
-import { DEFAULT_APPOINTMENT_SCHEDULE } from "@siteinabox/contracts"
+import type { Appointment, AppointmentCalendarOauthState, SiteSetting } from "@/payload-types"
+import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 import { purgeStaleAppointments } from "@/lib/jobs/purgeStaleAppointments"
+import { createTestPayload } from "../_helpers/testPayload"
+import { paginatedFixture } from "../_helpers/generatedDocs"
+
+const timestamp = "2026-08-01T00:00:00Z"
+const setting = (id: number, tenant: number, retentionDays: number): SiteSetting => {
+  const data = createSiteSettingsData(tenant, "Fixture", "https://fixture.example")
+  return { ...data, id, appointments: { ...data.appointments, retentionDays }, createdAt: timestamp, updatedAt: timestamp }
+}
+const appointment = (id: number, tenant: number): Appointment => ({
+  id, tenant, status: "completed", startAt: "2026-01-01T09:00:00Z", endAt: "2026-01-01T09:30:00Z",
+  timezone: "Europe/Amsterdam", durationMinutes: 30, visitorName: "Fixture", visitorEmail: "fixture@example.com",
+  source: "website", eventVersion: 1, createdAt: timestamp, updatedAt: timestamp,
+})
+const oauthState: AppointmentCalendarOauthState = {
+  id: 5, stateDigest: "fixture-state", tenant: 11, user: 1, provider: "google", encryptedCodeVerifier: "fixture-ciphertext",
+  returnPath: "/appointments", expiresAt: timestamp, createdAt: timestamp, updatedAt: timestamp,
+}
 
 describe("purge stale appointments", () => {
   it("paginates tenant settings and applies each tenant retention cutoff", async () => {
-    const find = vi.fn(async (args: { collection: string; page?: number }) => {
-      if (args.collection === "site-settings" && args.page === 1) {
-        return {
-          docs: [{ id: 1, tenant: 11, appointments: { ...DEFAULT_APPOINTMENT_SCHEDULE, retentionDays: 30 } }],
-          hasNextPage: true,
-        }
-      }
-      if (args.collection === "site-settings") {
-        return {
-          docs: [{ id: 2, tenant: 22, appointments: { ...DEFAULT_APPOINTMENT_SCHEDULE, retentionDays: 120 } }],
-          hasNextPage: false,
-        }
-      }
-      throw new Error(`unexpected find collection ${args.collection}`)
-    })
-    const remove = vi.fn(async (args: { collection: string }) => args.collection === "appointments" ? { deletedCount: 2 } : { deletedCount: 1 })
-    const payload = { find, delete: remove } as unknown as Payload
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find")
+      .mockResolvedValueOnce(paginatedFixture([setting(1, 11, 30)], { hasNextPage: true }))
+      .mockResolvedValueOnce(paginatedFixture([setting(2, 22, 120)], { page: 2 }))
+    const remove = vi.spyOn(payload, "delete")
+      .mockResolvedValueOnce({ docs: [appointment(1, 11), appointment(2, 11)], errors: [] })
+      .mockResolvedValueOnce({ docs: [appointment(3, 22), appointment(4, 22)], errors: [] })
+      .mockResolvedValueOnce({ docs: [oauthState], errors: [] })
     const result = await purgeStaleAppointments({ payload, now: new Date("2026-09-01T00:00:00.000Z") })
 
     expect(result).toMatchObject({ appointmentsDeleted: 4, oauthStatesDeleted: 1, tenantsExamined: 2, tenantsSkipped: 0 })

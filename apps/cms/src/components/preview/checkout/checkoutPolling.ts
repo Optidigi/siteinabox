@@ -87,7 +87,6 @@ export const useCheckoutPolling = ({
     }
     // The bound server action is stable for this mounted checkout. Restarting
     // the loop on every status projection would create overlapping polls.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     loadLiveStatusAction,
     paymentReturn,

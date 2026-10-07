@@ -1,3 +1,5 @@
+import { asRecord } from "@/lib/record"
+import type { DomainMigration } from "@/payload-types"
 import {
   domainMigrationStates,
   domainMigrationStateTransitions,
@@ -120,12 +122,12 @@ const mutableLifecycleFields = new Set([
 ])
 
 const contextEnabled = (
-  args: Parameters<CollectionBeforeChangeHook>[0],
+  args: Parameters<CollectionBeforeChangeHook<DomainMigration>>[0],
 ): boolean =>
   args.req?.context?.domainMigrationLifecycleMutation === true ||
   args.context?.domainMigrationLifecycleMutation === true
 
-export const protectDomainMigration: CollectionBeforeChangeHook = (args) => {
+export const protectDomainMigration: CollectionBeforeChangeHook<DomainMigration> = (args) => {
   if (args.operation !== "update") return args.data
   if (!contextEnabled(args)) {
     throw new Error(
@@ -141,7 +143,7 @@ export const protectDomainMigration: CollectionBeforeChangeHook = (args) => {
     currentState !== nextState &&
     !domainMigrationStateTransitions[
       currentState as keyof typeof domainMigrationStateTransitions
-    ]?.includes(nextState as never)
+    ]?.some((candidate) => candidate === nextState)
   ) {
     throw new Error(`Invalid domain migration state transition: ${currentState} -> ${nextState}.`)
   }
@@ -150,7 +152,7 @@ export const protectDomainMigration: CollectionBeforeChangeHook = (args) => {
     if (!frozenOnceFields.has(field)) return true
     const previous = original?.[field]
     if (previous == null) return false
-    return stableStringify(previous) !== stableStringify(args.data?.[field])
+    return stableStringify(previous) !== stableStringify(asRecord(args.data)?.[field])
   })
   if (invalidField) {
     throw new Error(`Domain migration field "${invalidField}" is immutable after acquisition.`)
@@ -158,7 +160,7 @@ export const protectDomainMigration: CollectionBeforeChangeHook = (args) => {
   return args.data
 }
 
-export const validateDomainMigration: CollectionBeforeValidateHook = ({
+export const validateDomainMigration: CollectionBeforeValidateHook<DomainMigration> = ({
   data,
   originalDoc,
 }) => {

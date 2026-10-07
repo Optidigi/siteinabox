@@ -1,3 +1,4 @@
+import { userFixture, tenantFixture } from "../_helpers/generatedDocs"
 import { describe, it, expect } from "vitest"
 import { evaluateGate, type GateDecision } from "@/lib/gateDecision"
 import type { SiabContext } from "@/lib/context"
@@ -5,18 +6,18 @@ import type { Tenant, User } from "@/payload-types"
 
 // Test fixtures: synthetic Tenant + User shapes shaped just enough to exercise
 // evaluateGate. We don't need a real Payload boot — the gate is pure logic.
-const t1 = { id: 1 } as Tenant
-const t2 = { id: 2 } as Tenant
+const t1 = tenantFixture({ id: 1 })
+const t2 = tenantFixture({ id: 2 })
 
 const ctxSuper: SiabContext = { mode: "super-admin", tenant: null }
 const ctxT1: SiabContext = { mode: "tenant", tenant: t1 }
 const ctxT2: SiabContext = { mode: "tenant", tenant: t2 }
 
-const userSA = { id: 1, role: "super-admin", tenants: [] } as unknown as User
-const userOwner1 = { id: 2, role: "owner", tenants: [{ tenant: t1 }] } as unknown as User
-const userEditor1 = { id: 3, role: "editor", tenants: [{ tenant: t1 }] } as unknown as User
-const userViewer1 = { id: 4, role: "viewer", tenants: [{ tenant: t1 }] } as unknown as User
-const userOwner2 = { id: 5, role: "owner", tenants: [{ tenant: t2 }] } as unknown as User
+const userSA = userFixture({ id: 1, role: "super-admin", tenants: [] })
+const userOwner1 = userFixture({ id: 2, role: "owner", tenants: [{ tenant: t1 }] })
+const userEditor1 = userFixture({ id: 3, role: "editor", tenants: [{ tenant: t1 }] })
+const userViewer1 = userFixture({ id: 4, role: "viewer", tenants: [{ tenant: t1 }] })
+const userOwner2 = userFixture({ id: 5, role: "owner", tenants: [{ tenant: t2 }] })
 
 type Case = { host: SiabContext; who: User | null; expect: GateDecision }
 
@@ -64,13 +65,13 @@ describe("evaluateGate — host × role × tenant matrix", () => {
   it("normalizes string and populated tenant relationship IDs", () => {
     expect(
       evaluateGate(
-        { id: 6, role: "editor", tenants: [{ tenant: "1" }] } as unknown as User,
+        { role: "editor", tenants: [{ tenant: "1" }] },
         ctxT1,
       ),
     ).toEqual({ allow: true })
     expect(
       evaluateGate(
-        { id: 7, role: "viewer", tenants: [{ tenant: { id: "2" } }] } as unknown as User,
+        { role: "viewer", tenants: [{ tenant: { id: "2" } }] },
         ctxT2,
       ),
     ).toEqual({ allow: true })

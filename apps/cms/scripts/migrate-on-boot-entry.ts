@@ -19,7 +19,7 @@
  * which esbuild cannot bundle. Drizzle's adapter accepts an explicit
  * `migrations` arg on `migrate({ migrations })`, sidestepping the FS.
  */
-import { getPayload } from "payload"
+import { getPayload, type Payload } from "payload"
 
 import { migrations } from "@/migrations"
 import config from "@/payload.config"
@@ -47,7 +47,7 @@ process.stdin.destroy()
  * unconditionally issues a `select count(*) from "payload_migrations"` which
  * fails with Postgres error 42P01 against an empty schema.
  */
-async function safeMigrationCount(payload: { db: unknown; count: (args: { collection: string; overrideAccess: boolean }) => Promise<{ totalDocs: number }> }): Promise<number> {
+async function safeMigrationCount(payload: Pick<Payload, "db" | "count">): Promise<number> {
   const db = payload.db as {
     execute?: (args: { drizzle?: unknown; raw: string }) => Promise<{ rows: Array<Record<string, unknown>> }>
     drizzle?: unknown
@@ -142,10 +142,8 @@ try {
   const applied = Math.max(0, after.totalDocs - beforeCount)
   const ms = Date.now() - start
   if (applied === 0) {
-    // eslint-disable-next-line no-console
     console.log(`[migrate-on-boot] no pending migrations (${ms}ms)`)
   } else {
-    // eslint-disable-next-line no-console
     console.log(`[migrate-on-boot] ${applied} migration(s) applied (${ms}ms)`)
   }
 
@@ -153,7 +151,6 @@ try {
   await payload.db.destroy?.()
   process.exit(0)
 } catch (err) {
-  // eslint-disable-next-line no-console
   console.error("[migrate-on-boot] FAILED:", err)
   process.exit(1)
 }

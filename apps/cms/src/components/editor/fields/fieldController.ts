@@ -5,7 +5,6 @@ import { useFormContext } from "react-hook-form"
 import type { ElementPath } from "@/components/editor/elementPath"
 import {
   appendArrayItem,
-  getArrayItems,
   removeArrayItem,
   reorderArrayItems,
   updateArrayItem,
@@ -40,7 +39,7 @@ export type BlockArrayFieldController<T extends EditorArrayItem = EditorArrayIte
 const dirtySetValueOptions = { shouldDirty: true } as const
 
 export function useBlockFieldController(path: BlockFieldPath): BlockFieldController {
-  const { watch, setValue } = useFormContext()
+  const { watch, setValue } = useFormContext<Record<string, unknown>>()
   const name = blockFieldName(path)
   const value = watch(name)
   const setFieldValue = useCallback<BlockFieldSetValue>(
@@ -51,7 +50,7 @@ export function useBlockFieldController(path: BlockFieldPath): BlockFieldControl
 }
 
 export function useElementPathFieldController(path: ElementPath): BlockFieldController {
-  const { watch, setValue } = useFormContext()
+  const { watch, setValue } = useFormContext<Record<string, unknown>>()
   const name = elementPathFieldName(path)
   const value = watch(name)
   const setFieldValue = useCallback<BlockFieldSetValue>(
@@ -61,21 +60,21 @@ export function useElementPathFieldController(path: ElementPath): BlockFieldCont
   return { name, value, setValue: setFieldValue }
 }
 
-export function useBlockArrayFieldController<T extends EditorArrayItem = EditorArrayItem>(
+export function useBlockArrayFieldController(
   path: BlockFieldPath,
-): BlockArrayFieldController<T> {
-  const { watch, setValue } = useFormContext()
+): BlockArrayFieldController<EditorArrayItem> {
+  const { watch, setValue } = useFormContext<Record<string, unknown>>()
   const name = blockFieldName(path)
   const rawItems = watch(name)
-  const items = getArrayItems<T>(rawItems)
+  const items = Array.isArray(rawItems) ? rawItems.filter((item: unknown): item is EditorArrayItem => item != null && typeof item === "object" && !Array.isArray(item) && (!("id" in item) || item.id === undefined || typeof item.id === "string" || typeof item.id === "number")) : []
 
   const setItems = useCallback(
-    (next: T[]) => setValue(name, next, dirtySetValueOptions),
+    (next: EditorArrayItem[]) => setValue(name, next, dirtySetValueOptions),
     [name, setValue],
   )
 
   const updateItem = useCallback(
-    (itemIndex: number, next: T) => setItems(updateArrayItem(items, itemIndex, next)),
+    (itemIndex: number, next: EditorArrayItem) => setItems(updateArrayItem(items, itemIndex, next)),
     [items, setItems],
   )
 
@@ -96,7 +95,7 @@ export function useBlockArrayFieldController<T extends EditorArrayItem = EditorA
   )
 
   const appendItem = useCallback(
-    (seed: Partial<T> = {}) => {
+    (seed: Partial<EditorArrayItem> = {}) => {
       const result = appendArrayItem(items, seed)
       setItems(result.items)
       return result

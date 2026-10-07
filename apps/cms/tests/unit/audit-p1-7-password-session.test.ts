@@ -1,11 +1,14 @@
+import type { Payload } from "payload"
+import type { User } from "@/payload-types"
+import { createInitializedTestPayload, createTestRequest } from "../_helpers/testPayload"
+import { userFixture } from "../_helpers/generatedDocs"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { Users } from "@/collections/Users"
 
 import { errLike, cast } from "../_helpers/cast"
-import { asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
+import { hookCollection, hookRequest, asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
 import { expectAccessField } from "../_helpers/payloadFields"
-import { asFindClient } from "../_helpers/payloadFindClient"
-import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit finding #7 (P1, T5) — stolen-session → permanent takeover via password
 // PATCH; no server-side current-password verification; no session invalidation
 // on password change. Two coordinated sub-fixes:
@@ -110,8 +113,8 @@ import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFi
 // Hook extraction
 // -----------------------------------------------------------------------------
 
-const beforeOperationHooks = (Users.hooks?.beforeOperation ?? []) as unknown as BeforeOperationHook[]
-const beforeValidateHooks = (Users.hooks?.beforeValidate ?? []) as unknown as BeforeValidateHook[]
+const beforeOperationHooks = (Users.hooks?.beforeOperation ?? [])
+const beforeValidateHooks = (Users.hooks?.beforeValidate ?? [])
 
 // Existing hook order (per AMD-3 and audit-p1 #5 batches):
 //   beforeOperation[0] = rejectNonSuperAdminApiKeyWrites (AMD-3)
@@ -376,68 +379,37 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   // (`node_modules/payload/dist/auth/endpoints/login.js`), handlers receive
   // a PayloadRequest with `.user`, `.payload`, `.data` (pre-parsed body),
   // `.t`, `.i18n`, etc. We pass the minimal subset the handler will read.
-  const buildReq = (opts: {
-    user: MockDoc | null
+  const buildReq = async (opts: {
+    user: Pick<User, "id" | "email" | "role"> | null
     body: Record<string, unknown>
-    payloadStubs?: { login?: (...args: unknown[]) => unknown; update?: (...args: unknown[]) => unknown; findByID?: (...args: unknown[]) => unknown }
+    payloadStubs?: { login?: (...args: Parameters<Payload["login"]>) => ReturnType<Payload["login"]> }
   }) => {
-    const updateCalls: MockUpdateArgs[] = []
-    const loginCalls: MockCreateArgs[] = []
-    const defaultLogin = vi.fn(async ({ data }: MockCreateArgs) => ({
-      user: { id: opts.user?.id, email: opts.user?.email },
-      token: `freshly.signed.jwt-for-${String((data as MockDoc).email)}`,
-      exp: Math.floor(Date.now() / 1000) + 7200,
-    }))
-    const defaultUpdate = vi.fn(async ({ id, data }: MockUpdateArgs) => ({ id, ...data }))
-    const login = opts.payloadStubs?.login ?? defaultLogin
-    const update = opts.payloadStubs?.update ?? defaultUpdate
-    const findByID = opts.payloadStubs?.findByID ?? vi.fn(async () => opts.user)
-
-    return {
-      req: {
-        user: opts.user,
-        data: opts.body,
-        headers: new Headers(),
-        t: (k: string) => k,
-        context: {},
-        payload: asPayload({
-          login: async (args: MockCreateArgs) => {
-            loginCalls.push(args)
-            return login(args)
-          },
-          update: async (args: MockUpdateArgs) => {
-            updateCalls.push(args)
-            return update(args)
-          },
-          findByID,
-          config: {
-            cookiePrefix: "payload",
-          },
-          // Payload's `auth.cookies` config drives generatePayloadCookie; the
-          // endpoint will pull from collection.config.auth.cookies. We provide
-          // a minimal shape that mirrors Payload's defaults.
-          collections: {
-            users: {
-              config: {
-                slug: "users",
-                auth: {
-                  cookies: { sameSite: "Lax", secure: false, domain: undefined },
-                  tokenExpiration: 7200,
-                  useSessions: true,
-                },
-              },
-            },
-          },
-        }),
-      },
-      updateCalls,
-      loginCalls,
-    }
+    const updateCalls: Parameters<Payload["update"]>[0][] = []
+    const loginCalls: Parameters<Payload["login"]>[0][] = []
+    const payload = await createInitializedTestPayload([{ slug: "users", auth: { useSessions: true, tokenExpiration: 7200, cookies: { sameSite: "Lax", secure: false } }, fields: [] }])
+    const user = opts.user ? userFixture(opts.user) : null
+    vi.spyOn(payload, "login").mockImplementation(async args => {
+      loginCalls.push(args)
+      if (opts.payloadStubs?.login) return opts.payloadStubs.login(args)
+      if (!user) throw new Error("Missing authenticated fixture user")
+      return { user, token: `freshly.signed.jwt-for-${user.email}`, exp: Math.floor(Date.now() / 1000) + 7200 }
+    })
+    vi.spyOn(payload, "update").mockImplementation(async args => {
+      updateCalls.push(args)
+      if (!user) throw new Error("Missing authenticated fixture user")
+      return Object.assign(user, args.data)
+    })
+    vi.spyOn(payload, "findByID").mockImplementation(async () => {
+      if (!user) throw new Error("Missing authenticated fixture user")
+      return user
+    })
+    const req = await createTestRequest(payload, { user, data: opts.body, headers: new Headers(), context: {} })
+    return { req, updateCalls, loginCalls }
   }
 
   it("Case 5 — anonymous POST → 401", async () => {
     const ep = findChangePasswordEndpoint()!
-    const { req } = buildReq({ user: null, body: { currentPassword: "x", newPassword: "newpass-1234" } })
+    const { req } = await buildReq({ user: null, body: { currentPassword: "x", newPassword: "newpass-1234" } })
     const res = await ep.handler(req)
     expect(res.status).toBe(401)
   })
@@ -447,8 +419,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
     const failingLogin = vi.fn(async () => {
       throw Object.assign(new Error("AuthenticationError"), { status: 401 })
     })
-    const { req } = buildReq({
-      user: { id: "u1", email: "u1@x", role: "editor" },
+    const { req } = await buildReq({
+      user: { id: 1, email: "u1@x", role: "editor" },
       body: { currentPassword: "wrong", newPassword: "newpass-1234" },
       payloadStubs: { login: failingLogin },
     })
@@ -458,8 +430,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
 
   it("Case 7 — correct currentPassword + valid newPassword → 200 + Set-Cookie + payload.update called with allowSelfPasswordChange context", async () => {
     const ep = findChangePasswordEndpoint()!
-    const { req, updateCalls, loginCalls } = buildReq({
-      user: { id: "u1", email: "u1@x", role: "editor" },
+    const { req, updateCalls, loginCalls } = await buildReq({
+      user: { id: 1, email: "u1@x", role: "editor" },
       body: { currentPassword: "right-now", newPassword: "newpass-1234" },
     })
     const res = await ep.handler(req)
@@ -480,7 +452,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
     expect(updateCalls.length).toBe(1)
     const updateCall = updateCalls[0]!
     expect(updateCall.collection).toBe("users")
-    expect(updateCall.id).toBe("u1")
+    expect(updateCall.id).toBe(1)
     expect(updateCall.data).toEqual({ password: "newpass-1234" })
     expect(updateCall.overrideAccess).toBe(true)
     expect(updateCall.context?.allowSelfPasswordChange).toBe(true)
@@ -488,8 +460,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
 
   it("Case 10 — super-admin can also use the endpoint (positive control)", async () => {
     const ep = findChangePasswordEndpoint()!
-    const { req } = buildReq({
-      user: { id: "sa1", email: "sa@x", role: "super-admin" },
+    const { req } = await buildReq({
+      user: { id: 2, email: "sa@x", role: "super-admin" },
       body: { currentPassword: "old", newPassword: "newpass-1234" },
     })
     const res = await ep.handler(req)
@@ -498,8 +470,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
 
   it("Case 11 — newPassword shorter than 8 chars → 400 (defensive validation)", async () => {
     const ep = findChangePasswordEndpoint()!
-    const { req } = buildReq({
-      user: { id: "u1", email: "u1@x", role: "editor" },
+    const { req } = await buildReq({
+      user: { id: 1, email: "u1@x", role: "editor" },
       body: { currentPassword: "old", newPassword: "short" },
     })
     const res = await ep.handler(req)
@@ -508,8 +480,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
 
   it("Case 12 — non-string fields in body → 400", async () => {
     const ep = findChangePasswordEndpoint()!
-    const { req } = buildReq({
-      user: { id: "u1", email: "u1@x", role: "editor" },
+    const { req } = await buildReq({
+      user: { id: 1, email: "u1@x", role: "editor" },
       body: { currentPassword: 42, newPassword: { evil: true } },
     })
     const res = await ep.handler(req)
@@ -518,8 +490,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
 
   it("Missing fields entirely → 400 (currentPassword and newPassword both required)", async () => {
     const ep = findChangePasswordEndpoint()!
-    const { req } = buildReq({
-      user: { id: "u1", email: "u1@x", role: "editor" },
+    const { req } = await buildReq({
+      user: { id: 1, email: "u1@x", role: "editor" },
       body: {},
     })
     const res = await ep.handler(req)
@@ -548,8 +520,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       data,
       originalDoc: undefined,
       operation: "update",
-      req: { context: {} },
-      collection: {},
+      req: hookRequest(),
+      collection: hookCollection(),
       context: {},
     })
     expect(data.sessions).toEqual([])
@@ -562,7 +534,7 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
     // passes it to beforeValidate. The new hash differs from originalDoc.hash,
     // which is the authoritative discriminator for a real password rotation.
     const data: MockDoc = {
-      id: "u1",
+      id: 1,
       email: "u1@x",
       hash: "newly-generated-hash-bytes",
       salt: "newly-generated-salt-bytes",
@@ -573,8 +545,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       data,
       originalDoc: { hash: "old-hash-bytes", salt: "old-salt-bytes" },
       operation: "update",
-      req: { context: {} },
-      collection: {},
+      req: hookRequest(),
+      collection: hookCollection(),
       context: {},
     })
     expect(data.sessions).toEqual([])
@@ -590,7 +562,7 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
     // is NOT a credential rotation and sessions must be preserved.
     const existingHash = "the-unchanged-stored-hash"
     const data: MockDoc = {
-      id: "u1",
+      id: 1,
       email: "u1@x",
       hash: existingHash, // same as stored — not a rotation
       salt: "stored-salt-bytes",
@@ -601,8 +573,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       data,
       originalDoc: { hash: existingHash, salt: "stored-salt-bytes" },
       operation: "update",
-      req: { context: {} },
-      collection: {},
+      req: hookRequest(),
+      collection: hookCollection(),
       context: {},
     })
     expect(data.sessions).toEqual([{ id: "keep-this-session" }])
@@ -620,8 +592,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       data,
       originalDoc: undefined,
       operation: "update",
-      req: { context: {} },
-      collection: {},
+      req: hookRequest(),
+      collection: hookCollection(),
       context: {},
     })
     expect(data.sessions).toEqual([])
@@ -636,8 +608,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       data,
       originalDoc: { hash: "stored-hash", salt: "stored-salt" },
       operation: "update",
-      req: { context: {} },
-      collection: {},
+      req: hookRequest(),
+      collection: hookCollection(),
       context: {},
     })
     expect(data.sessions).toEqual([{ id: "keep-this-session" }])
@@ -649,8 +621,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       data,
       originalDoc: undefined,
       operation: "create",
-      req: { context: {} },
-      collection: {},
+      req: hookRequest(),
+      collection: hookCollection(),
       context: {},
     })
     expect(data.sessions).toBeUndefined()
@@ -716,8 +688,7 @@ describe("audit-p1 #7 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 / P1 #5 must
   it("R5 (P1 #5): rejectBogusAuthForgotPassword still fires on operation==='forgotPassword' with bogus auth signal", async () => {
     const reqWithBogusCookie = {
       user: null,
-      headers: { get: (k: string) => (k === "cookie" ? "payload-token=garbage" : null) },
-      t: (k: string) => k,
+      headers: new Headers({ cookie: "payload-token=garbage" }),
       context: {},
     }
     await expectForbidden(

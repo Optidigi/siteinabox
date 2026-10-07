@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto"
-import Module from "node:module"
+import { enableServerOnlyForOperations } from "./serverOnlyForOperations"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import type { CollectionSlug, DataFromCollectionSlug, Payload, Where } from "payload"
-import type { IntakeSubmission, PublishedSiteSnapshot as PayloadPublishedSiteSnapshot, SiteGenerationRun } from "@/payload-types"
+import type { CollectionSlug, DataFromCollectionSlug, RequiredDataFromCollectionSlug, Payload, Where } from "payload"
+import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
@@ -139,22 +139,9 @@ type ExecuteHelpers = SiteGenerationHelpers & {
   recordGenerationRunPaymentState: typeof import("@/lib/payments/generationRunPayment")["recordGenerationRunPaymentState"]
 }
 
-const installServerOnlyShim = () => {
-  const loader = Module as unknown as {
-    _load?: (request: string, parent: unknown, isMain: boolean) => unknown
-    _siabServerOnlyShimInstalled?: boolean
-  }
-  if (loader._siabServerOnlyShimInstalled || !loader._load) return
-  const originalLoad = loader._load
-  loader._load = (request, parent, isMain) => {
-    if (request === "server-only" || request.includes("/node_modules/server-only/")) return {}
-    return originalLoad(request, parent, isMain)
-  }
-  loader._siabServerOnlyShimInstalled = true
-}
 
 const loadSiteGenerationHelpers = async (): Promise<SiteGenerationHelpers> => {
-  installServerOnlyShim()
+  enableServerOnlyForOperations()
   const siteGeneration = await import("@/lib/site-generation/applySiteGenerationSpec")
   return {
     applySiteGenerationSpec: siteGeneration.applySiteGenerationSpec,
@@ -165,7 +152,7 @@ const loadSiteGenerationHelpers = async (): Promise<SiteGenerationHelpers> => {
 }
 
 const loadExecuteHelpers = async (): Promise<ExecuteHelpers> => {
-  installServerOnlyShim()
+  enableServerOnlyForOperations()
   const [siteGeneration, promotion, publishing, payment] = await Promise.all([
     loadSiteGenerationHelpers(),
     import("@/lib/site-generation/promoteGenerationRunPages"),
@@ -366,48 +353,22 @@ export const parseRendererSeedSpecForCms = (
   return parsed.data
 }
 
-const findOne = async <T>(
+const findOne = async <C extends CollectionSlug>(
   payload: Payload,
-  collection: CollectionSlug,
-  where: Record<string, unknown>,
-): Promise<T | undefined> => {
-  const result = await payload.find({
-    collection,
-    where: where as Where,
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-  return result.docs[0] as T | undefined
+  collection: C,
+  where: Where,
+): Promise<DataFromCollectionSlug<C> | undefined> => {
+  const result = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true })
+  return result.docs[0]
+}
+
+const databaseId = (value: string | number): number => {
+  const id = typeof value === "number" ? value : Number(value)
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error("The fixture requires a positive PostgreSQL document ID.")
+  return id
 }
 
 type PipelineStatus = NonNullable<IntakeSubmission["statusTransitions"]>[number]["status"]
-
-const createRecord = <C extends CollectionSlug>(
-  payload: Payload,
-  collection: C,
-  data: Record<string, unknown>,
-  extra: Omit<Parameters<Payload["create"]>[0], "collection" | "data"> = {},
-) =>
-  payload.create({
-    collection,
-    data: data as unknown as DataFromCollectionSlug<C>,
-    ...extra,
-  } as Parameters<Payload["create"]>[0])
-
-const updateRecord = <C extends CollectionSlug>(
-  payload: Payload,
-  collection: C,
-  id: string | number,
-  data: Record<string, unknown>,
-  extra: Omit<Parameters<Payload["update"]>[0], "collection" | "id" | "data"> = {},
-) =>
-  payload.update({
-    collection,
-    id,
-    data: data as unknown as Partial<DataFromCollectionSlug<C>>,
-    ...extra,
-  } as Parameters<Payload["update"]>[0])
 
 const transition = (status: PipelineStatus, message: string, at: string): NonNullable<IntakeSubmission["statusTransitions"]>[number] => ({ status, message, at })
 
@@ -419,7 +380,7 @@ const upsertIntakeSubmission = async (
 ): Promise<{ doc: IntakeSubmission; operation: "created" | "updated" }> => {
   const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:intake:v1`
   const normalizedHash = stableHash(spec.intake)
-  const data: Partial<IntakeSubmission> = {
+  const data: RequiredDataFromCollectionSlug<"intake-submissions"> = {
     businessName: spec.intake.businessName,
     contactName: spec.intake.contact?.name ?? null,
     contactEmail: spec.intake.contact?.email ?? spec.settings.contactEmail ?? null,
@@ -441,7 +402,7 @@ const upsertIntakeSubmission = async (
     ],
     error: null,
   }
-  const existing = await findOne<IntakeSubmission>(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+  const existing = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
   if (existing) {
     const doc = await payload.update({
       collection: "intake-submissions",
@@ -450,13 +411,13 @@ const upsertIntakeSubmission = async (
       depth: 0,
       overrideAccess: true,
     })
-    return { doc: doc as IntakeSubmission, operation: "updated" as const }
+    return { doc, operation: "updated" as const }
   }
-  const doc = await createRecord(payload, "intake-submissions", data, {
+  const doc = await payload.create({ collection: "intake-submissions", data,
     depth: 0,
     overrideAccess: true,
   })
-  return { doc: doc as IntakeSubmission, operation: "created" as const }
+  return { doc, operation: "created" as const }
 }
 
 const upsertGenerationRun = async (
@@ -470,8 +431,8 @@ const upsertGenerationRun = async (
 ): Promise<{ doc: SiteGenerationRun; operation: "created" | "updated" }> => {
   const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:run:v1`
   const normalizedIntakeHash = stableHash(spec.intake)
-  const runData: Record<string, unknown> = {
-    intakeSubmission: intakeId,
+  const runData: RequiredDataFromCollectionSlug<"site-generation-runs"> = {
+    intakeSubmission: databaseId(intakeId),
     status: "preview_ready",
     idempotencyKey,
     normalizedIntake: spec.intake,
@@ -497,9 +458,9 @@ const upsertGenerationRun = async (
     spec,
     validation: applyResult.validation,
     applyResult,
-    tenant: applyResult.tenantId,
-    pages: applyResult.pageIds ?? [],
-    settings: applyResult.settingsId,
+    tenant: databaseId(applyResult.tenantId),
+    pages: applyResult.pageIds.map(databaseId),
+    settings: databaseId(applyResult.settingsId),
     statusTransitions: [
       transition("queued", `Renderer ${fixture.profileLabel} seed queued by operator script.`, now),
       transition("applying", "Validated SiteGenerationSpec applied through CMS importer.", now),
@@ -510,22 +471,22 @@ const upsertGenerationRun = async (
     errors: null,
   }
 
-  const existing = await findOne<SiteGenerationRun>(payload, "site-generation-runs", { idempotencyKey: { equals: idempotencyKey } })
+  const existing = await findOne(payload, "site-generation-runs", { idempotencyKey: { equals: idempotencyKey } })
   if (existing) {
     const doc = await payload.update({
       collection: "site-generation-runs",
       id: existing.id,
-      data: runData as Partial<SiteGenerationRun>,
+      data: runData,
       depth: 0,
       overrideAccess: true,
     })
-    return { doc: doc as SiteGenerationRun, operation: "updated" as const }
+    return { doc, operation: "updated" as const }
   }
-  const doc = await createRecord(payload, "site-generation-runs", runData as Record<string, unknown>, {
+  const doc = await payload.create({ collection: "site-generation-runs", data: runData,
     depth: 0,
     overrideAccess: true,
   })
-  return { doc: doc as SiteGenerationRun, operation: "created" as const }
+  return { doc, operation: "created" as const }
 }
 
 const linkIntake = async (
@@ -534,10 +495,10 @@ const linkIntake = async (
   runId: string | number,
   tenantId: string | number | undefined,
 ) => {
-  await updateRecord(payload, "intake-submissions", intakeId, {
-    generationRun: runId,
-    ...(tenantId !== undefined ? { tenant: tenantId } : {}),
-  }, {
+  await payload.update({ collection: "intake-submissions", id: intakeId, data: {
+    generationRun: databaseId(runId),
+    ...(tenantId !== undefined ? { tenant: databaseId(tenantId) } : {}),
+  },
     depth: 0,
     overrideAccess: true,
   })
@@ -714,23 +675,24 @@ const createStagingPublishedSnapshot = async (
   const version = snapshot.manifest.version
   const snapshotWithAnalytics = injectRendererSeedAnalytics(snapshot, fixture, tenantId, version)
   const hash = stableHash(snapshotWithAnalytics)
-  const snapshotDoc = await createRecord(payload, "published-site-snapshots", {
-    tenant: typeof tenantId === "number" ? tenantId : Number(tenantId),
-    sourceGenerationRun: typeof generationRun.id === "number" ? generationRun.id : Number(generationRun.id),
+  if (!snapshotWithAnalytics.publishedAt) throw new Error("A published snapshot must declare its publication time.")
+  const snapshotDoc = await payload.create({ collection: "published-site-snapshots", data: {
+    tenant: databaseId(tenantId),
+    sourceGenerationRun: generationRun.id,
     snapshotKey: `${snapshotWithAnalytics.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
     version,
     status: "drafted",
     domain: snapshotWithAnalytics.domain,
     snapshotHash: hash,
-    snapshot: snapshotWithAnalytics as unknown as PayloadPublishedSiteSnapshot["snapshot"],
+    snapshot: { ...snapshotWithAnalytics },
     publishedAt: snapshotWithAnalytics.publishedAt,
     activationReason: options.activate
       ? `Renderer ${fixture.profileLabel} activation for ${fixture.domain}`
       : `Renderer ${fixture.profileLabel} parity snapshot for ${fixture.domain}`,
-  }, {
+  },
     depth: 0,
     overrideAccess: true,
-  }) as PayloadPublishedSiteSnapshot
+  })
 
   if (!options.activate) return { snapshot: snapshotDoc, activated: false }
   const activated = await helpers.activatePublishedSnapshot(payload, {
@@ -742,7 +704,7 @@ const createStagingPublishedSnapshot = async (
 }
 
 const runFixture = async (
-  payload: Payload,
+  payload: Payload | undefined,
   fixture: RendererSeedFixture,
   options: CliOptions,
   helpers: SiteGenerationHelpers | ExecuteHelpers,
@@ -770,7 +732,8 @@ const runFixture = async (
   if (options.replaceExistingPages) console.log("           after activation, move unspecified published pages to draft (reversible)")
 
   if (!options.execute) return
-  const executeHelpers = helpers as ExecuteHelpers
+  if (!payload || !("recordGenerationRunPaymentState" in helpers)) throw new Error("Execution requires the initialized CMS and execution helpers.")
+  const executeHelpers = helpers
 
   const now = new Date().toISOString()
   const intake = await upsertIntakeSubmission(payload, fixture, parsedSpec, now)
@@ -833,11 +796,11 @@ const main = async () => {
   const fixtures = selectRendererSeedFixtures(options)
   if (!options.execute) {
     const helpers = await loadSiteGenerationHelpers()
-    for (const fixture of fixtures) await runFixture({} as Payload, fixture, options, helpers)
+    for (const fixture of fixtures) await runFixture(undefined, fixture, options, helpers)
     return
   }
 
-  installServerOnlyShim()
+  enableServerOnlyForOperations()
   await import("dotenv/config")
   const helpers = await loadExecuteHelpers()
   const [{ getPayload }, { default: config }] = await Promise.all([

@@ -1,14 +1,17 @@
-import type { Access, FieldAccess } from "payload"
+import type { Access, FieldAccess, PayloadRequest } from "payload"
+import { createTestPayload, createTestRequest } from "./testPayload"
 
-type AccessInput = Parameters<Access>[0]
-type FieldAccessInput = Parameters<FieldAccess>[0]
+type AccessInput = Parameters<Access<unknown>>[0]
+type FieldAccessInput = Parameters<FieldAccess<Record<string, unknown> & { id: number | string }, Record<string, unknown>>>[0]
+const baseRequest = await createTestRequest(createTestPayload())
 
-/** Build partial access-check fixtures without `any`. */
-export function accessArgs(partial: Record<string, unknown>): AccessInput {
-  return partial as unknown as AccessInput
+type Input<T> = Omit<Partial<T>, "req"> & { req?: Partial<PayloadRequest> }
+
+/** Complete the actual request contract; callers supply truthful generated users. */
+export function accessArgs(partial: Input<AccessInput>): AccessInput {
+  return { ...partial, req: { ...baseRequest, ...partial.req } }
 }
 
-/** Build partial field-access fixtures without `any`. */
-export function fieldAccessArgs(partial: Record<string, unknown>): FieldAccessInput {
-  return partial as unknown as FieldAccessInput
+export function fieldAccessArgs(partial: Input<FieldAccessInput>): FieldAccessInput {
+  return { ...partial, req: { ...baseRequest, ...partial.req } }
 }

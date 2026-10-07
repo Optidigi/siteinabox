@@ -10,7 +10,8 @@ import {
 
 const rendererId = "11111111-1111-4111-8111-111111111111"
 const cmsId = "22222222-2222-4222-8222-222222222222"
-const env = {
+const env: NodeJS.ProcessEnv = {
+  NODE_ENV: "test",
   CLOUDFLARE_API_BASE_URL: "https://cloudflare.test/client/v4",
   CLOUDFLARE_API_TOKEN: "cf-token",
   CLOUDFLARE_ACCOUNT_ID: "account-123",
@@ -18,7 +19,7 @@ const env = {
   CLOUDFLARE_RENDERER_TUNNEL_NAME: "siteinabox-renderer",
   CLOUDFLARE_CMS_TUNNEL_ID: cmsId,
   CLOUDFLARE_CMS_TUNNEL_NAME: "siteinabox-cms",
-} as unknown as NodeJS.ProcessEnv
+}
 
 describe("Cloudflare dedicated Tunnel contracts", () => {
   it("builds exact sorted ingress with a terminal neutral 404", () => {
@@ -305,5 +306,25 @@ describe("Cloudflare dedicated Tunnel contracts", () => {
       ["example.nl"],
       { env, fetchImpl: fetchMock as typeof fetch },
     )).rejects.toBeInstanceOf(CloudflareTunnelApiError)
+  })
+})
+
+
+describe("Cloudflare Tunnel bounded read seams", () => {
+  it("rejects missing success and oversized bodies without configuration writes", async () => {
+    for (const body of [JSON.stringify({ result: {} }), " ".repeat(600_000)]) {
+      const fetchImpl = vi.fn(async () => new Response(body))
+      await expect(inspectCloudflareTunnel("renderer", { env, fetchImpl })).rejects.toThrow()
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+      expect(fetchImpl.mock.calls[0]).toBeDefined()
+    }
+  })
+  it("bounds stalled reads and forwards an already cancelled request", async () => {
+    await expect(inspectCloudflareTunnel("renderer", { env, timeoutMs: 20, fetchImpl: vi.fn(() => new Promise<Response>(() => {})) })).rejects.toThrow("timeout")
+    const controller = new AbortController()
+    controller.abort()
+    const fetchImpl = vi.fn(async () => Response.json({ success: true }))
+    await expect(inspectCloudflareTunnel("renderer", { env, signal: controller.signal, fetchImpl })).rejects.toThrow("cancelled")
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 })

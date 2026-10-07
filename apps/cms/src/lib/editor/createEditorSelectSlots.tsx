@@ -45,7 +45,6 @@ export function createEditorSelectSlots(): BlockEditSlots {
         return <span {...fieldSelectAttributes(props.elementPath)} className={props.className} />
       }
       return (
-        // eslint-disable-next-line @next/next/no-img-element -- editor select marker wrap
         <img
           src={resolved.src}
           alt={props.alt ?? resolved.alt ?? ""}

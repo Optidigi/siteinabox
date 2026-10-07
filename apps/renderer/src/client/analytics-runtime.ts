@@ -1,3 +1,4 @@
+import type { BeforeSendFn } from "posthog-js"
 import type {
   ConsentSelection,
   ConsentSelectionInput,
@@ -34,14 +35,9 @@ type AnalyticsConfig = {
 
 export {}
 
-type PostHogRequest = {
-  data?: unknown
-  callback?: (response: { statusCode: number }) => void
-}
-
-type GatedPostHogSend = ((request: PostHogRequest) => void) & {
-  __siabConsentGated?: true
-}
+type PostHogClient = typeof import("posthog-js").default
+type PostHogRequest = Parameters<PostHogClient["_send_request"]>[0]
+type GatedPostHogSend = PostHogClient["_send_request"]
 
 type PostHogRetryQueue = {
   _enqueue?: (request: PostHogRequest) => void
@@ -50,24 +46,21 @@ type PostHogRetryQueue = {
   _poller?: number
   _isPolling?: boolean
 }
+type PostHogRequestQueue = { _queue?: unknown[] }
 
-type PostHogRequestQueue = {
-  _queue?: unknown[]
+// These transport fields are private in the SDK declarations. Check their
+// installed runtime shape before adapting the queue, keeping mutations on the
+// original object so revocation clears the transport that actually sends data.
+const isPostHogQueue = (value: unknown): value is PostHogRetryQueue => {
+  if (!value || typeof value !== "object") return false
+  return (!("_queue" in value) || Array.isArray(value._queue))
+    && (!("_poller" in value) || value._poller === undefined || typeof value._poller === "number")
+    && (!("_isPolling" in value) || typeof value._isPolling === "boolean")
+    && (!("_enqueue" in value) || typeof value._enqueue === "function")
+    && (!("retriableRequest" in value) || typeof value.retriableRequest === "function")
 }
-
-type PostHogClient = {
-  init: (token: string, config: Record<string, unknown>, name?: string) => void
-  register: (properties: Record<string, unknown>) => void
-  capture?: (event: string, properties?: Record<string, unknown>) => void
-  group?: (groupType: string, groupKey: string, properties?: Record<string, unknown>) => void
-  opt_in_capturing?: (options?: { captureEventName?: string | false | null }) => void
-  opt_out_capturing?: () => void
-  clear_opt_in_out_capturing?: () => void
-  reset?: () => void
-  _send_request?: GatedPostHogSend
-  _requestQueue?: PostHogRequestQueue
-  _retryQueue?: PostHogRetryQueue
-}
+const privateQueue = (value: unknown): PostHogRetryQueue | undefined => isPostHogQueue(value) ? value : undefined
+const __siabConsentGated = new WeakSet<GatedPostHogSend>()
 
 type RuntimeState = {
   consentGranted: boolean
@@ -147,7 +140,8 @@ let posthogStartupToken = 0
 const gatedPostHogRetryQueues = new WeakSet<object>()
 
 const isBaselinePostHogRequest = (request: PostHogRequest) => {
-  const records = Array.isArray(request.data) ? request.data : [request.data]
+  const data: unknown = request.data
+  const records: unknown[] = Array.isArray(data) ? data : [data]
   return records.length > 0 && records.every((record) => {
     if (!record || typeof record !== "object") return false
     const properties = (record as { properties?: unknown }).properties
@@ -179,7 +173,7 @@ const discardQueuedPostHogTransport = (queue?: PostHogRetryQueue | PostHogReques
 
 const installPostHogConsentGate = (instance: PostHogClient) => {
   const sendRequest = instance._send_request
-  if (sendRequest && sendRequest.__siabConsentGated !== true) {
+  if (sendRequest && !__siabConsentGated.has(sendRequest)) {
     const gatedSend: GatedPostHogSend = (request) => {
       if (!canSendPostHogRequest(request)) {
         dropPostHogRequest(request)
@@ -187,11 +181,11 @@ const installPostHogConsentGate = (instance: PostHogClient) => {
       }
       sendRequest.call(instance, request)
     }
-    gatedSend.__siabConsentGated = true
+    __siabConsentGated.add(gatedSend)
     instance._send_request = gatedSend
   }
 
-  const retryQueue = instance._retryQueue
+  const retryQueue = privateQueue(instance._retryQueue)
   if (!retryQueue || gatedPostHogRetryQueues.has(retryQueue)) return
   const enqueue = retryQueue._enqueue
   if (enqueue) {
@@ -215,8 +209,8 @@ const installPostHogConsentGate = (instance: PostHogClient) => {
 
 const sealPostHogTransportAfterRevoke = (instance: PostHogClient) => {
   installPostHogConsentGate(instance)
-  discardQueuedPostHogTransport(instance._requestQueue)
-  discardQueuedPostHogTransport(instance._retryQueue)
+  discardQueuedPostHogTransport(privateQueue(instance._requestQueue))
+  discardQueuedPostHogTransport(privateQueue(instance._retryQueue))
 }
 
 const registerConsentCleanup = (cleanup: ConsentCleanup) => {
@@ -379,12 +373,13 @@ const consentedSemanticEvents = new Set([
   "site_conversion_completed",
 ])
 
-const sanitizeAutocaptureEvent = (event: Record<string, unknown> | null | undefined) => {
+const sanitizeAutocaptureEvent: BeforeSendFn = (event) => {
   if (!event || typeof event !== "object") return null
   const eventName = typeof event.event === "string" ? event.event : ""
   if (!["$autocapture", "$rageclick", "$dead_click", "$web_vitals", "$pageview", "$pageleave", "$groupidentify"].includes(eventName) && !consentedSemanticEvents.has(eventName)) return null
 
-  const props = typeof event.properties === "object" && event.properties ? event.properties as Record<string, unknown> : {}
+  const rawProperties: unknown = event.properties
+  const props = typeof rawProperties === "object" && rawProperties ? rawProperties as Record<string, unknown> : {}
   const isWebVitals = eventName === "$web_vitals"
   if (!state.consentGranted) {
     if (eventName !== "$pageview" && !isWebVitals) return null
@@ -461,7 +456,7 @@ const setupPostHogAutocapture = () => {
         state.posthogStarted = false
         return
       }
-      const posthog = (module.default ?? module) as unknown as PostHogClient
+      const posthog = module.default
       state.posthog = posthog
       installPostHogConsentGate(posthog)
       posthog.init(config.posthogProjectToken!, {
@@ -495,8 +490,8 @@ const setupPostHogAutocapture = () => {
           element_attribute_ignorelist: ["value", "placeholder", "name", "aria-label", "title"],
         },
         before_send: sanitizeAutocaptureEvent,
-        loaded(instance: PostHogClient) {
-          if (state.consentGranted) activateConsentedPostHog(instance)
+        loaded() {
+          if (state.consentGranted) activateConsentedPostHog(posthog)
         },
       })
       installPostHogConsentGate(posthog)
@@ -512,7 +507,7 @@ const setupPostHogAutocapture = () => {
   })
 }
 
-const activateConsentedPostHog = (instance: PostHogClient) => {
+const activateConsentedPostHog = (instance: Pick<PostHogClient, "opt_in_capturing" | "register" | "group">) => {
   instance.opt_in_capturing?.({ captureEventName: false })
   instance.register(baseProperties())
   const config = state.config

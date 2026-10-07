@@ -1,6 +1,8 @@
+import { createTaskRunner } from "../_helpers/taskRunner"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { asPayload } from "../_helpers/mockPayload"
+import { createTestPayload } from "../_helpers/testPayload"
+import { managedDomainFixture, domainMigrationFixture, orderFixture, paymentAttemptFixture, paginatedFixture } from "../_helpers/generatedDocs"
 
 const {
   reconcileCommerceEdgeRouting,
@@ -81,14 +83,11 @@ describe("commerce reconciliation migration scheduling", () => {
 
   it("performs no edge writes or blocking alert when provider writes are intentionally disabled", async () => {
     commerceProviderWritesAllowed.mockReturnValue(false)
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
-    })
-    const handler = reconcileCommerceTask.handler as unknown as (
-      args: { req: { payload: typeof payload } }
-    ) => Promise<{ output: { examined: number; queued: number } }>
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+    const handler = createTaskRunner(reconcileCommerceTask)
 
-    await expect(handler({ req: { payload } })).resolves.toBeDefined()
+    await expect(handler({ input: {}, req: { payload } })).resolves.toBeDefined()
 
     expect(reconcileCommerceEdgeRouting).not.toHaveBeenCalled()
     expect(recordCommerceAdminException).not.toHaveBeenCalledWith(
@@ -103,18 +102,14 @@ describe("commerce reconciliation migration scheduling", () => {
       pending: 0,
       failed: 301,
     })
-    const find = vi.fn(async ({ collection }: { collection: string }) => ({
-      docs: collection === "managed-domains"
-        ? [{ id: 951, providerRenewalDate: "2026-07-29T00:00:00.000Z" }]
-        : [],
-      totalDocs: collection === "managed-domains" ? 1 : 0,
-    }))
-    const payload = asPayload({ find })
-    const handler = reconcileCommerceTask.handler as unknown as (
-      args: { req: { payload: typeof payload } }
-    ) => Promise<{ output: { examined: number; queued: number } }>
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => (paginatedFixture(collection === "managed-domains"
+        ? [managedDomainFixture({ id: 951, providerRenewalDate: "2026-07-29T00:00:00.000Z" })]
+        : [])))
 
-    await expect(handler({ req: { payload } })).resolves.toBeDefined()
+    const handler = createTaskRunner(reconcileCommerceTask)
+
+    await expect(handler({ input: {}, req: { payload } })).resolves.toBeDefined()
     expect(recordCommerceAdminException).toHaveBeenCalledWith(
       expect.objectContaining({
         code: "edge_routing_blocked",
@@ -132,14 +127,11 @@ describe("commerce reconciliation migration scheduling", () => {
       examined: 1,
       recoveredPaymentIds: ["tr_recovered_missing_webhook"],
     })
-    const payload = asPayload({
-      find: vi.fn(async () => ({ docs: [], totalDocs: 0 })),
-    })
-    const handler = reconcileCommerceTask.handler as unknown as (
-      args: { req: { payload: typeof payload } }
-    ) => Promise<{ output: { examined: number; queued: number } }>
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+    const handler = createTaskRunner(reconcileCommerceTask)
 
-    const result = await handler({ req: { payload } })
+    const result = await handler({ input: {}, req: { payload } })
 
     expect(queueMolliePaymentSync).toHaveBeenCalledTimes(1)
     expect(queueMolliePaymentSync).toHaveBeenCalledWith(
@@ -165,18 +157,14 @@ describe("commerce reconciliation migration scheduling", () => {
   })
 
   it("requeues active automatic migrations through the default coalescing task", async () => {
-    const find = vi.fn(async ({ collection }: { collection: string }) => ({
-      docs: collection === "domain-migrations"
-        ? [{ id: 901, state: "verifying" }]
-        : [],
-      totalDocs: collection === "domain-migrations" ? 1 : 0,
-    }))
-    const payload = asPayload({ find })
-    const handler = reconcileCommerceTask.handler as unknown as (
-      args: { req: { payload: typeof payload } }
-    ) => Promise<{ output: { examined: number; queued: number } }>
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => (paginatedFixture(collection === "domain-migrations"
+        ? [domainMigrationFixture({ id: 901, state: "verifying" })]
+        : [])))
 
-    const result = await handler({ req: { payload } })
+    const handler = createTaskRunner(reconcileCommerceTask)
+
+    const result = await handler({ input: {}, req: { payload } })
 
     expect(queueDomainMigrationPreparation).toHaveBeenCalledWith(payload, 901)
     expect(result.output).toEqual({ examined: 1, queued: 1 })
@@ -198,36 +186,26 @@ describe("commerce reconciliation migration scheduling", () => {
   })
 
   it("requeues paid fulfillment-pending orders after a release-gate pause", async () => {
-    const find = vi.fn(async ({
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({
       collection,
       where,
-    }: {
-      collection: string
-      where?: { and?: Array<Record<string, unknown>> }
     }) => {
       if (collection === "orders") {
-        return {
-          docs: [{ id: 701, state: "fulfillment_pending" }],
-          totalDocs: 1,
-        }
+        return paginatedFixture([orderFixture({ id: 701, state: "fulfillment_pending" })])
       }
       if (
         collection === "payment-attempts" &&
         where?.and?.some((condition) => "order" in condition)
       ) {
-        return {
-          docs: [{ id: 801, order: 701, state: "paid" }],
-          totalDocs: 1,
-        }
+        return paginatedFixture([paymentAttemptFixture({ id: 801, order: 701, state: "paid" })])
       }
-      return { docs: [], totalDocs: 0 }
+      return paginatedFixture([])
     })
-    const payload = asPayload({ find })
-    const handler = reconcileCommerceTask.handler as unknown as (
-      args: { req: { payload: typeof payload } }
-    ) => Promise<{ output: { examined: number; queued: number } }>
 
-    const result = await handler({ req: { payload } })
+    const handler = createTaskRunner(reconcileCommerceTask)
+
+    const result = await handler({ input: {}, req: { payload } })
 
     expect(queueOrderFulfillment).toHaveBeenCalledWith(payload, {
       orderId: 701,
@@ -237,22 +215,18 @@ describe("commerce reconciliation migration scheduling", () => {
   })
 
   it("queues a stale provider renewal check even when cached expiry is far away", async () => {
-    const find = vi.fn(async ({ collection }: { collection: string }) => ({
-      docs: collection === "managed-domains"
-        ? [{
+    const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => (paginatedFixture(collection === "managed-domains"
+        ? [managedDomainFixture({
             id: 951,
             expiresAt: "2029-07-28T00:00:00.000Z",
             providerAutorenewCheckedAt: "2026-07-01T00:00:00.000Z",
-          }]
-        : [],
-      totalDocs: collection === "managed-domains" ? 1 : 0,
-    }))
-    const payload = asPayload({ find })
-    const handler = reconcileCommerceTask.handler as unknown as (
-      args: { req: { payload: typeof payload } }
-    ) => Promise<{ output: { examined: number; queued: number } }>
+          })]
+        : [])))
 
-    await handler({ req: { payload } })
+    const handler = createTaskRunner(reconcileCommerceTask)
+
+    await handler({ input: {}, req: { payload } })
 
     expect(queueDomainRenewal).toHaveBeenCalledWith(payload, 951)
     expect(find).toHaveBeenCalledWith(expect.objectContaining({
@@ -277,22 +251,18 @@ describe("commerce reconciliation migration scheduling", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-07-28T00:00:00.000Z"))
     try {
-      const find = vi.fn(async ({ collection }: { collection: string }) => ({
-        docs: collection === "managed-domains"
-          ? [{
+      const payload = createTestPayload()
+    const find = vi.spyOn(payload, "find").mockImplementation(async ({ collection }) => (paginatedFixture(collection === "managed-domains"
+          ? [managedDomainFixture({
               id: 952,
               providerRenewalDate: "2026-10-26T00:00:00.000Z",
               providerAutorenewCheckedAt: "2026-07-28T00:00:00.000Z",
-            }]
-          : [],
-        totalDocs: collection === "managed-domains" ? 1 : 0,
-      }))
-      const payload = asPayload({ find })
-      const handler = reconcileCommerceTask.handler as unknown as (
-        args: { req: { payload: typeof payload } }
-      ) => Promise<{ output: { examined: number; queued: number } }>
+            })]
+          : [])))
 
-      await handler({ req: { payload } })
+      const handler = createTaskRunner(reconcileCommerceTask)
+
+      await handler({ input: {}, req: { payload } })
 
       expect(queueDomainRenewal).toHaveBeenCalledWith(payload, 952)
       expect(find).toHaveBeenCalledWith(expect.objectContaining({

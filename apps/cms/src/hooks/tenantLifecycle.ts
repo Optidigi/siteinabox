@@ -1,3 +1,4 @@
+import type { Tenant } from "@/payload-types"
 import path from "node:path"
 import { promises as fs } from "node:fs"
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from "payload"
@@ -14,7 +15,7 @@ const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.da
 const shouldSkipProjection = (req: { context?: Record<string, unknown> } | undefined): boolean =>
   req?.context?.skipProjection === true
 
-export const createTenantDir: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
+export const createTenantDir: CollectionAfterChangeHook<Tenant> = async ({ doc, operation, req }) => {
   if (shouldSkipProjection(req)) return doc
   if (operation !== "create") return doc
   const id = String(doc.id)
@@ -35,7 +36,7 @@ export const createTenantDir: CollectionAfterChangeHook = async ({ doc, operatio
   return doc
 }
 
-export const archiveTenantDir: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+export const archiveTenantDir: CollectionAfterChangeHook<Tenant> = async ({ doc, previousDoc, req }) => {
   if (shouldSkipProjection(req)) return doc
   const wasArchived = previousDoc?.status === "archived"
   const isArchived = doc.status === "archived"
@@ -61,7 +62,7 @@ export const archiveTenantDir: CollectionAfterChangeHook = async ({ doc, previou
  * Without this, the dir stays under `archived/` and the new "active" tenant
  * has no projection target — pages re-published after un-archive would 404.
  */
-export const restoreTenantDir: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+export const restoreTenantDir: CollectionAfterChangeHook<Tenant> = async ({ doc, previousDoc, req }) => {
   if (shouldSkipProjection(req)) return doc
   const wasArchived = previousDoc?.status === "archived"
   const isArchived = doc.status === "archived"
@@ -81,7 +82,7 @@ export const restoreTenantDir: CollectionAfterChangeHook = async ({ doc, previou
   return doc
 }
 
-export const enrollTenantAnalytics: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+export const enrollTenantAnalytics: CollectionAfterChangeHook<Tenant> = async ({ doc, previousDoc, req }) => {
   if (shouldSkipProjection(req)) return doc
   const urls = tenantAnalyticsAppUrls(doc)
   if (urls.length === 0) return doc
@@ -107,7 +108,7 @@ export const enrollTenantAnalytics: CollectionAfterChangeHook = async ({ doc, pr
  * Failures are logged but do not propagate — the DB delete already
  * committed, and a leftover dir is operator-cleanable, not a hard error.
  */
-export const removeTenantDir: CollectionAfterDeleteHook = async ({ doc, req }) => {
+export const removeTenantDir: CollectionAfterDeleteHook<Tenant> = async ({ doc, req }) => {
   const id = String(doc.id)
   const live = path.join(dataDir(), "tenants", id)
   const archived = path.join(dataDir(), "archived", id)
@@ -131,7 +132,7 @@ export const removeTenantDir: CollectionAfterDeleteHook = async ({ doc, req }) =
  * tenant-scoped admin operations would silently return empty until they pick
  * a different tenant. Clearing the cookie on delete restores the expected UX.
  */
-export const clearTenantCookieIfStale: CollectionAfterDeleteHook = async ({ id, req }) => {
+export const clearTenantCookieIfStale: CollectionAfterDeleteHook<Tenant> = async ({ id, req }) => {
   // Cookie value is the deleted tenant's id encoded as string. Compare loosely
   // because the cookie value is always a string and id may be number|string
   // depending on the tenants collection's id type.

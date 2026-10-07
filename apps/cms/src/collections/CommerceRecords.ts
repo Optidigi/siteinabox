@@ -1,8 +1,10 @@
+import type { AccountingDocument, BillingAgreement, CheckoutProfile, CommerceNotificationDelivery, DomainRenewalCycle, ManagedDomain, PaymentAttempt } from "@/payload-types"
 import type {
   CollectionBeforeChangeHook,
   CollectionBeforeValidateHook,
   CollectionConfig,
 } from "payload"
+import { asRecord } from "@/lib/record"
 import { domainToASCII } from "node:url"
 import {
   billingAgreementStates,
@@ -75,8 +77,8 @@ const immutableFieldIsUnchanged = (
   return stableStringify(nextValue) === stableStringify(originalValue)
 }
 
-const protectLifecycleUpdate = (
-  args: Parameters<CollectionBeforeChangeHook>[0],
+const protectLifecycleUpdate = <T extends { id: number | string }>(
+  args: Parameters<CollectionBeforeChangeHook<T>>[0],
   input: {
     label: string
     contextKey: string
@@ -91,8 +93,8 @@ const protectLifecycleUpdate = (
       `${input.label} records are immutable outside the reviewed ${input.label.toLowerCase()} lifecycle.`,
     )
   }
-  const currentState = args.originalDoc?.state
-  const nextState = args.data?.state
+  const currentState = asRecord(args.originalDoc)?.state
+  const nextState = asRecord(args.data)?.state
   if (
     typeof currentState === "string" &&
     typeof nextState === "string" &&
@@ -108,8 +110,8 @@ const protectLifecycleUpdate = (
       !input.allowedFields.has(field) &&
       !immutableFieldIsUnchanged(
         field,
-        args.data?.[field],
-        args.originalDoc as Record<string, unknown> | undefined,
+        asRecord(args.data)?.[field],
+        asRecord(args.originalDoc) ?? undefined,
         input.relationshipFields,
       ),
   )
@@ -119,7 +121,7 @@ const protectLifecycleUpdate = (
   return args.data
 }
 
-export const rejectCheckoutProfileMutation: CollectionBeforeChangeHook = ({
+export const rejectCheckoutProfileMutation: CollectionBeforeChangeHook<CheckoutProfile> = ({
   data,
   operation,
 }) => {
@@ -129,7 +131,7 @@ export const rejectCheckoutProfileMutation: CollectionBeforeChangeHook = ({
   return data
 }
 
-export const validateCheckoutProfile: CollectionBeforeValidateHook = ({ data }) => {
+export const validateCheckoutProfile: CollectionBeforeValidateHook<CheckoutProfile> = ({ data }) => {
   if (!data) return data
   const partyType = data.partyType
   const classification = partyType === "registered_business"
@@ -198,7 +200,7 @@ export const validateCheckoutProfile: CollectionBeforeValidateHook = ({ data }) 
 const DOMAIN_ASCII_PATTERN =
   /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/
 
-export const normalizeManagedDomain: CollectionBeforeValidateHook = ({ data }) => {
+export const normalizeManagedDomain: CollectionBeforeValidateHook<ManagedDomain> = ({ data }) => {
   if (!data?.domainNameAscii) return data
   const normalized = domainToASCII(String(data.domainNameAscii).trim().replace(/\.$/, ""))
     .toLowerCase()
@@ -236,7 +238,7 @@ const paymentAttemptMutableFields = new Set([
   "stateHistory",
 ])
 
-export const protectPaymentAttempt: CollectionBeforeChangeHook = (args) =>
+export const protectPaymentAttempt: CollectionBeforeChangeHook<PaymentAttempt> = (args) =>
   protectLifecycleUpdate(args, {
     label: "Payment-attempt",
     contextKey: "paymentAttemptLifecycleMutation",
@@ -271,7 +273,7 @@ const billingAgreementMutableFields = new Set([
   "stateHistory",
 ])
 
-export const protectBillingAgreement: CollectionBeforeChangeHook = (args) =>
+export const protectBillingAgreement: CollectionBeforeChangeHook<BillingAgreement> = (args) =>
   protectLifecycleUpdate(args, {
     label: "Billing-agreement",
     contextKey: "billingAgreementLifecycleMutation",
@@ -359,9 +361,9 @@ const managedDomainTerminalTransferFields = new Set([
   "transferOutConfirmedAt",
 ])
 
-export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
+export const protectManagedDomain: CollectionBeforeChangeHook<ManagedDomain> = (args) => {
   if (args.operation === "update") {
-    const original = args.originalDoc as Record<string, unknown> | undefined
+    const original = asRecord(args.originalDoc) ?? undefined
     const currentCustody = original?.custodyStatus ?? "managed"
     const nextCustody = args.data?.custodyStatus
     if (
@@ -370,7 +372,7 @@ export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
       currentCustody !== nextCustody &&
       !managedDomainCustodyStateTransitions[
         currentCustody as keyof typeof managedDomainCustodyStateTransitions
-      ]?.includes(nextCustody as never)
+      ]?.some((candidate) => candidate === nextCustody)
     ) {
       throw new Error(
         `Invalid managed-domain custody transition: ${currentCustody} -> ${nextCustody}.`,
@@ -380,7 +382,7 @@ export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
       if (!managedDomainFrozenOffboardingFields.has(field)) return false
       const previous = original?.[field]
       return previous != null &&
-        stableStringify(previous) !== stableStringify(args.data?.[field])
+        stableStringify(previous) !== stableStringify(asRecord(args.data)?.[field])
     })
     if (changedFrozenField) {
       throw new Error(
@@ -390,7 +392,7 @@ export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
     if (currentCustody === "transferred_out") {
       const changedTerminalField = Object.keys(args.data ?? {}).find((field) =>
         managedDomainTerminalTransferFields.has(field) &&
-        stableStringify(original?.[field]) !== stableStringify(args.data?.[field])
+        stableStringify(original?.[field]) !== stableStringify(asRecord(args.data)?.[field])
       )
       if (changedTerminalField) {
         throw new Error(
@@ -411,13 +413,13 @@ export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
   })
 }
 
-export const validateManagedDomainCustody: CollectionBeforeValidateHook = ({
+export const validateManagedDomainCustody: CollectionBeforeValidateHook<ManagedDomain> = ({
   data,
   originalDoc,
 }) => {
   if (!data) return data
   const current = {
-    ...(originalDoc as Record<string, unknown> | undefined),
+    ...originalDoc,
     ...data,
   }
   const custodyStatus = String(current.custodyStatus ?? "managed")
@@ -530,7 +532,7 @@ const renewalCycleMutableFields = new Set([
   "stateHistory",
 ])
 
-export const validateDomainRenewalCycle: CollectionBeforeValidateHook = ({ data }) => {
+export const validateDomainRenewalCycle: CollectionBeforeValidateHook<DomainRenewalCycle> = ({ data }) => {
   if (!data) return data
   if (
     data.providerRenewalMode === "explicit_renew" &&
@@ -559,15 +561,15 @@ const accountingDocumentStateTransitions = {
   failed: ["pending_provider", "issued"],
 } as const
 
-export const protectAccountingDocument: CollectionBeforeChangeHook = (args) => {
+export const protectAccountingDocument: CollectionBeforeChangeHook<AccountingDocument> = (args) => {
   if (args.operation === "update" && args.originalDoc?.state === "issued") {
     const changedIssuedIdentity = ["providerOperationId", "issuedAt"].find(
       (field) =>
         field in (args.data ?? {}) &&
         !immutableFieldIsUnchanged(
           field,
-          args.data?.[field],
-          args.originalDoc as Record<string, unknown>,
+          asRecord(args.data)?.[field],
+          asRecord(args.originalDoc) ?? undefined,
           new Set(),
         ),
     )
@@ -601,14 +603,14 @@ const renewalIndicativePricingFields = new Set([
   "grossAmountMinor",
 ])
 
-export const protectDomainRenewalCycle: CollectionBeforeChangeHook = (args) => {
+export const protectDomainRenewalCycle: CollectionBeforeChangeHook<DomainRenewalCycle> = (args) => {
   if (args.operation === "update") {
     const changedPricingField = Object.keys(args.data ?? {}).find(
       (field) => renewalIndicativePricingFields.has(field) &&
         !immutableFieldIsUnchanged(
           field,
-          args.data?.[field],
-          args.originalDoc as Record<string, unknown>,
+          asRecord(args.data)?.[field],
+          asRecord(args.originalDoc) ?? undefined,
           new Set(),
         ),
     )
@@ -652,7 +654,7 @@ const commerceNotificationMutableFields = new Set([
   "lastError",
 ])
 
-export const protectCommerceNotification: CollectionBeforeChangeHook = (args) =>
+export const protectCommerceNotification: CollectionBeforeChangeHook<CommerceNotificationDelivery> = (args) =>
   protectLifecycleUpdate(args, {
     label: "Commerce-notification",
     contextKey: "commerceNotificationLifecycleMutation",

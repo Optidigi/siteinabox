@@ -185,7 +185,7 @@
     {
       "package": "nodemailer",
       "manifest": "apps/cms/package.json",
-      "version": "10.0.13",
+      "version": "10.0.16",
       "patchedVersion": "10.0.13",
       "advisoryIds": [
         "GHSA-39m8-27wv-hr27",
@@ -197,7 +197,9 @@
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-39m8-27wv-hr27",
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4g23-2xm8-66gc",
         "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-4ffr-jq9g-5ffx",
-        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95"
+        "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-g73g-hqqh-jr95",
+        "https://github.com/nodemailer/nodemailer/releases/tag/v10.0.14",
+        "https://github.com/nodemailer/nodemailer/releases/tag/v10.0.16"
       ]
     }
   ],
@@ -408,7 +410,7 @@
     {
       "advisoryId": "GHSA-39m8-27wv-hr27",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
@@ -429,7 +431,7 @@
     {
       "advisoryId": "GHSA-4g23-2xm8-66gc",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
@@ -450,7 +452,7 @@
     {
       "advisoryId": "GHSA-4ffr-jq9g-5ffx",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",
@@ -471,7 +473,7 @@
     {
       "advisoryId": "GHSA-g73g-hqqh-jr95",
       "package": "nodemailer",
-      "reviewedVersion": "10.0.13",
+      "reviewedVersion": "10.0.16",
       "disposition": "fixed",
       "source": "publisher; absent from current pnpm audit",
       "shippedReachability": "runtime",

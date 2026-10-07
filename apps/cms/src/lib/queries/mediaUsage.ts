@@ -3,9 +3,8 @@ import { cache } from "react"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { buildMediaUsageMap } from "./mediaUsageWalker"
-import { findAllPaginated, type PayloadLikeFindClient } from "./paginate"
+import { findAllPaginated } from "./paginate"
 import type { MediaUsageMap } from "./mediaUsageWalker"
-import type { Page, SiteSetting } from "@/payload-types"
 
 export type { MediaPageRef, MediaUsageEntry, MediaUsageMap } from "./mediaUsageWalker"
 export { buildMediaUsageMap } from "./mediaUsageWalker"
@@ -28,7 +27,7 @@ export { buildMediaUsageMap } from "./mediaUsageWalker"
 export const getMediaUsage = cache(async (tenantId: number | string): Promise<MediaUsageMap> => {
   const payload = await getPayload({ config })
   const [pages, settingsRes] = await Promise.all([
-    findAllPaginated<Page>(payload as unknown as PayloadLikeFindClient, {
+    findAllPaginated(payload, {
       collection: "pages",
       overrideAccess: true,
       where: { tenant: { equals: tenantId } },
@@ -43,6 +42,6 @@ export const getMediaUsage = cache(async (tenantId: number | string): Promise<Me
     })
   ])
 
-  const settings = (settingsRes.docs[0] as Pick<SiteSetting, "branding"> | undefined) ?? null
+  const settings = settingsRes.docs[0] ?? null
   return buildMediaUsageMap(pages, settings)
 })
