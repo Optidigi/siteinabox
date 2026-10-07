@@ -7,28 +7,16 @@ import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
 import { matchesWhere } from "../_helpers/mockPayload"
 import { asDocRecord } from "../_helpers/payloadApi"
 
-const mailMocks = vi.hoisted(() => {
-  class MockMailSendError extends Error {
-    normalized: { retryState: "retryable" | "permanent" }
-    constructor(retryState: "retryable" | "permanent") {
-      super("mail failed")
-      this.normalized = { retryState }
-    }
-  }
-  return { MockMailSendError }
-})
-
-vi.mock("@/lib/email/sendEmail", () => ({
-  MailSendError: mailMocks.MockMailSendError,
-  asMailLogPayload: (value: unknown) => value,
-  sendEmail: vi.fn(async () => ({ status: "sent" })),
+vi.mock("@/lib/email/sendEmail", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/email/sendEmail")>(),
+  sendEmail: vi.fn(async () => ({ provider: "test", providerMessageId: "msg-1" })),
 }))
 
 import {
   deliverCommerceNotification,
   ensureCommerceNotification,
 } from "@/lib/commerce/notifications"
-import { sendEmail } from "@/lib/email/sendEmail"
+import { sendEmail, MailSendError } from "@/lib/email/sendEmail"
 
 const createPayload = async (cycle: Partial<DomainRenewalCycle> = {}) => {
   const payload = await createInitializedTestPayload()
@@ -80,7 +68,7 @@ const createPayload = async (cycle: Partial<DomainRenewalCycle> = {}) => {
     if (collection === "commerce-notification-deliveries") {
       const delivery = deliveries.find(entry => String(entry.id) === String(id))
       if (!delivery) throw new Error("missing delivery")
-      return delivery
+      return structuredClone(delivery)
     }
     throw new Error("unexpected find " + collection)
   })
@@ -96,6 +84,13 @@ const createPayload = async (cycle: Partial<DomainRenewalCycle> = {}) => {
     for (const delivery of docs) Object.assign(delivery, args.data)
     return { docs, errors: [], totalDocs: docs.length }
   }))
+  vi.spyOn(payload.db, "updateOne").mockImplementation(async ({ collection, where, data, options }) => {
+    if (collection !== "commerce-notification-deliveries" || options?.atomic !== true) throw new Error("Expected atomic commerce claim")
+    const row = deliveries.find(entry => matchesWhere(asDocRecord(entry), where))
+    if (!row) return null
+    Object.assign(row, data)
+    return structuredClone(row)
+  })
   vi.spyOn(payload.jobs, "queue").mockResolvedValue({ id: 1, input: {}, totalTried: 0, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" })
   for (const method of ["warn", "error", "info"] as const) vi.spyOn(payload.logger, method)
   return { deliveries, create, payload }
@@ -103,6 +98,7 @@ const createPayload = async (cycle: Partial<DomainRenewalCycle> = {}) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(sendEmail).mockReset().mockResolvedValue({ provider: "test", providerMessageId: "msg-1" })
   vi.useFakeTimers()
   vi.setSystemTime(new Date("2026-08-01T09:00:00.000Z"))
 })
@@ -110,6 +106,105 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe("commerce notification delivery evidence", () => {
+  it("does not resend a processing delivery after its worker died before receipt persistence", async () => {
+    const store = await createPayload()
+    const delivery = commerceNotificationFixture({ id: 42, status: "processing", attemptCount: 1, retryState: "permanent",
+      lastAttemptAt: "2026-08-01T08:00:00.000Z", leaseUntil: "2026-08-01T08:15:00.000Z", nextAttemptAt: null,
+    })
+    store.deliveries.push(delivery)
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: delivery.id, now: new Date("2026-08-01T09:00:00.000Z") })).resolves.toBe("skipped")
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("checks all atomic predicates, including null and sibling boolean clauses", () => {
+    expect(matchesWhere({ id: 1, retryState: null, leaseUntil: "2026-08-01T10:00:00.000Z" }, { and: [{ id: { equals: 1 } }], retryState: { equals: null }, leaseUntil: { greater_than: "2026-08-01T09:00:00.000Z" } })).toBe(true)
+    expect(matchesWhere({ id: 2, retryState: "permanent" }, { or: [{ id: { equals: 2 } }], retryState: { not_equals: "permanent" } })).toBe(false)
+  })
+
+  it("retries known preparation failures before any provider write", async () => {
+    const store = await createPayload()
+    const delivery = commerceNotificationFixture({ id: 42, nextAttemptAt: new Date().toISOString() })
+    store.deliveries.push(delivery)
+    const find = vi.mocked(store.payload.findByID).getMockImplementation()!
+    let rejectPreparation = true
+    vi.mocked(store.payload.findByID).mockImplementation(async args => {
+      if (args.collection === "tenants" && rejectPreparation) { rejectPreparation = false; throw new Error("tenant read unavailable") }
+      return find(args)
+    })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).resolves.toBe("failed")
+    expect(delivery).toMatchObject({ retryState: "retryable", status: "failed" })
+    expect(sendEmail).not.toHaveBeenCalled()
+    vi.setSystemTime(new Date(delivery.nextAttemptAt!))
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).resolves.toBe("sent")
+    expect(sendEmail).toHaveBeenCalledOnce()
+  })
+
+  it("fences a stale preparation worker before it can dispatch mail", async () => {
+    const store = await createPayload()
+    store.deliveries.push(commerceNotificationFixture({ id: 42, nextAttemptAt: new Date().toISOString() }))
+    const find = vi.mocked(store.payload.findByID).getMockImplementation()!
+    let release!: () => void
+    let entered!: () => void
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    const started = new Promise<void>(resolve => { entered = resolve })
+    let pause = true
+    vi.mocked(store.payload.findByID).mockImplementation(async args => {
+      if (args.collection === "tenants" && pause) { pause = false; entered(); await blocked }
+      return find(args)
+    })
+    const stale = deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })
+    const rejected = expect(stale).rejects.toThrow("claim could not be verified atomically")
+    await started
+    vi.setSystemTime(new Date("2026-08-01T09:16:00.000Z"))
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).resolves.toBe("sent")
+    release()
+    await rejected
+    expect(sendEmail).toHaveBeenCalledOnce()
+    expect(store.deliveries[0]).toMatchObject({ status: "sent", attemptCount: 2 })
+  })
+
+  it("retains pre-send uncertainty after a verified receipt cannot be persisted", async () => {
+    const store = await createPayload()
+    const delivery = commerceNotificationFixture({ id: 42, nextAttemptAt: "2026-08-01T09:00:00.000Z" })
+    store.deliveries.push(delivery)
+    const atomic = vi.mocked(store.payload.db.updateOne).getMockImplementation()!
+    vi.mocked(store.payload.db.updateOne).mockImplementation(async args => {
+      if (asDocRecord(args.data).status === "sent") throw new Error("receipt persistence unavailable")
+      return atomic(args)
+    })
+    vi.mocked(sendEmail).mockImplementationOnce(async () => {
+      expect(delivery).toMatchObject({ status: "processing", retryState: "permanent" })
+      return { provider: "test", providerMessageId: "msg-verified" }
+    })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).rejects.toThrow("claim could not be verified atomically")
+    expect(delivery).toMatchObject({ status: "processing", retryState: "permanent", attemptCount: 1 })
+    vi.setSystemTime(new Date("2026-08-01T10:00:00.000Z"))
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).resolves.toBe("skipped")
+    expect(sendEmail).toHaveBeenCalledOnce()
+  })
+
+  it("blocks uncertain transport failures and bounds definitive rejection retries", async () => {
+    const store = await createPayload()
+    const delivery = commerceNotificationFixture({ id: 42, nextAttemptAt: new Date().toISOString() })
+    store.deliveries.push(delivery)
+    vi.mocked(sendEmail).mockRejectedValue(new MailSendError({ provider: "test", providerErrorCode: "429", providerErrorMessage: "rejected", retryState: "retryable" }))
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).resolves.toBe("failed")
+      expect(delivery.attemptCount).toBe(attempt)
+      if (delivery.nextAttemptAt) vi.setSystemTime(new Date(delivery.nextAttemptAt))
+    }
+    expect(delivery).toMatchObject({ retryState: "permanent", nextAttemptAt: null })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 42, now: new Date() })).resolves.toBe("skipped")
+    expect(sendEmail).toHaveBeenCalledTimes(4)
+    const uncertain = commerceNotificationFixture({ id: 43, notificationKey: "uncertain", nextAttemptAt: new Date().toISOString() })
+    store.deliveries.push(uncertain)
+    vi.mocked(sendEmail).mockRejectedValueOnce(new MailSendError({ provider: "test", providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", providerErrorMessage: "response lost", retryState: "permanent" }))
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 43, now: new Date() })).resolves.toBe("failed")
+    expect(uncertain).toMatchObject({ retryState: "permanent", nextAttemptAt: null })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: 43, now: new Date() })).resolves.toBe("skipped")
+    expect(sendEmail).toHaveBeenCalledTimes(5)
+  })
+
   it("deduplicates the same governed reminder key under retries", async () => {
     const store = await createPayload()
     const input = {
@@ -222,7 +317,7 @@ describe("commerce notification delivery evidence", () => {
       eventAt: "2026-08-01T10:00:00.000Z",
       billingAgreementId: 900,
     })
-    vi.mocked(sendEmail).mockRejectedValueOnce(new mailMocks.MockMailSendError("retryable"))
+    vi.mocked(sendEmail).mockRejectedValueOnce(new MailSendError({ provider: "test", providerErrorCode: "429", providerErrorMessage: "provider rejected", retryState: "retryable" }))
     const status = await deliverCommerceNotification({
       payload: store.payload,
       deliveryId: delivery.id,

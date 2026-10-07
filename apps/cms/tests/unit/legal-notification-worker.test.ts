@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { asRequirementDoc } from "../_helpers/cast"
 import type { LegalNotificationDelivery } from "@/payload-types"
-import { createTestPayload } from "../_helpers/testPayload"
+import { createInitializedTestPayload } from "../_helpers/testPayload"
 import { legalRequirementFixture, legalDocumentFixture, legalNotificationDeliveryFixture, tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
+import { matchesWhere } from "../_helpers/mockPayload"
+import { MailSendError } from "@/lib/email/sendEmail"
 import { asDocRecord } from "../_helpers/payloadApi"
 import { payloadUpdateFixture } from "../_helpers/payloadUpdateFixture"
 const mocks = vi.hoisted(() => ({ sendEmail: vi.fn() }))
@@ -12,9 +14,9 @@ vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
   return { ...actual, sendEmail: mocks.sendEmail }
 })
 
-import { dueFollowupKindForRequirement, processLegalRequirementNotifications } from "@/lib/jobs/sendLegalRequirementNotifications"
+import { legalNotificationKey, dueFollowupKindForRequirement, processLegalRequirementNotifications } from "@/lib/jobs/sendLegalRequirementNotifications"
 
-const createPayload = () => {
+const createPayload = async () => {
   let id = 100
   const requirement = legalRequirementFixture({
     id: 1,
@@ -35,19 +37,19 @@ const createPayload = () => {
     enforceAt: "2026-08-08T00:00:00.000Z",
   })
   const deliveries: LegalNotificationDelivery[] = []
-  const payload = createTestPayload()
+  const payload = await createInitializedTestPayload()
   vi.spyOn(payload, "find").mockImplementation(async ({ collection, where }) => {
     if (collection === "legal-requirements") return paginatedFixture([requirement])
     if (collection !== "legal-notification-deliveries") throw new Error(`Unexpected collection ${collection}`)
     const key = asDocRecord(where?.notificationKey ?? {}).equals
-    return paginatedFixture(deliveries.filter(item => item.notificationKey === key))
+    return paginatedFixture(deliveries.filter(item => item.notificationKey === key).map(item => structuredClone(item)))
   })
   vi.spyOn(payload, "create").mockImplementation(async ({ collection, data }) => {
     if (collection !== "legal-notification-deliveries") throw new Error("unexpected collection")
     const row = legalNotificationDeliveryFixture({ id: id++ })
     Object.assign(row, data)
     deliveries.push(row)
-    return row
+    return structuredClone(row)
   })
   vi.spyOn(payload, "update").mockImplementation(payloadUpdateFixture(async args => {
     if (args.collection === "legal-notification-deliveries" && args.where) {
@@ -61,18 +63,79 @@ const createPayload = () => {
     Object.assign(row, args.data)
     return row
   }))
+  vi.spyOn(payload.db, "updateOne").mockImplementation(async ({ collection, where, data, options }) => {
+    if (collection !== "legal-notification-deliveries" || options?.atomic !== true) throw new Error("Expected atomic legal claim")
+    const row = deliveries.find(entry => matchesWhere(asDocRecord(entry), where))
+    if (!row) return null
+    Object.assign(row, data)
+    return structuredClone(row)
+  })
   vi.spyOn(payload, "findByID").mockResolvedValue(requirement)
   return { payload, requirement, deliveries }
 }
 
+afterEach(() => vi.useRealTimers())
+
 describe("legal notification worker", () => {
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-07-11T12:00:00.000Z"))
     mocks.sendEmail.mockReset()
     mocks.sendEmail.mockResolvedValue({ provider: "test", providerMessageId: "msg-1" })
   })
 
+  it("does not resend expired processing mail with durable uncertain acceptance", async () => {
+    const { payload, requirement, deliveries } = await createPayload()
+    deliveries.push(legalNotificationDeliveryFixture({ id: 100, notificationKey: legalNotificationKey(requirement), requirement: requirement.id,
+      status: "processing", attemptCount: 1, retryState: "permanent", lastAttemptAt: "2026-07-11T10:00:00.000Z", leaseUntil: "2026-07-11T10:15:00.000Z", nextAttemptAt: "2026-07-11T10:00:00.000Z",
+    }))
+    await expect(processLegalRequirementNotifications({ payload, now: new Date("2026-07-11T12:00:00.000Z") })).resolves.toMatchObject({ sent: 0, skipped: 1 })
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("retains the permanent marker when verified receipt persistence fails", async () => {
+    const { payload, deliveries } = await createPayload()
+    const atomic = vi.mocked(payload.db.updateOne).getMockImplementation()!
+    vi.mocked(payload.db.updateOne).mockImplementation(async args => {
+      if (asDocRecord(args.data).status === "sent") throw new Error("receipt persistence unavailable")
+      return atomic(args)
+    })
+    mocks.sendEmail.mockImplementationOnce(async () => {
+      expect(deliveries[0]).toMatchObject({ status: "processing", retryState: "permanent" })
+      return { provider: "test", providerMessageId: "verified" }
+    })
+    await expect(processLegalRequirementNotifications({ payload, now: new Date() })).rejects.toThrow("claim could not be verified atomically")
+    expect(deliveries[0]).toMatchObject({ status: "processing", retryState: "permanent" })
+    vi.setSystemTime(new Date("2026-07-11T13:00:00.000Z"))
+    await expect(processLegalRequirementNotifications({ payload, now: new Date() })).resolves.toMatchObject({ sent: 0, skipped: 1 })
+    expect(mocks.sendEmail).toHaveBeenCalledOnce()
+  })
+
+  it("never replays an indeterminate mail dispatch", async () => {
+    const { payload, deliveries } = await createPayload()
+    mocks.sendEmail.mockRejectedValueOnce(new MailSendError({ provider: "test", providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", providerErrorMessage: "response lost", retryState: "permanent" }))
+    await expect(processLegalRequirementNotifications({ payload, now: new Date() })).resolves.toMatchObject({ failed: 1 })
+    expect(deliveries[0]).toMatchObject({ status: "failed", retryState: "permanent" })
+    vi.setSystemTime(new Date("2026-07-12T13:00:00.000Z"))
+    await expect(processLegalRequirementNotifications({ payload, now: new Date() })).resolves.toMatchObject({ sent: 0, skipped: 1 })
+    expect(mocks.sendEmail).toHaveBeenCalledOnce()
+  })
+
+  it("stops retrying definitive rejections after the existing retry budget", async () => {
+    const { payload, deliveries } = await createPayload()
+    mocks.sendEmail.mockRejectedValue(new MailSendError({ provider: "test", providerErrorCode: "429", providerErrorMessage: "rejected", retryState: "retryable" }))
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await expect(processLegalRequirementNotifications({ payload, now: new Date() })).resolves.toMatchObject({ failed: 1 })
+      expect(deliveries[0]?.attemptCount).toBe(attempt)
+      if (attempt < 4) vi.setSystemTime(new Date(deliveries[0]!.nextAttemptAt))
+    }
+    expect(deliveries[0]).toMatchObject({ status: "failed", retryState: "permanent" })
+    await expect(processLegalRequirementNotifications({ payload, now: new Date() })).resolves.toMatchObject({ sent: 0, skipped: 1 })
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(4)
+  })
+
   it("sends once, records the logical delivery, and marks the requirement notified", async () => {
-    const { payload, requirement, deliveries } = createPayload()
+    const { payload, requirement, deliveries } = await createPayload()
     const now = new Date("2026-07-11T12:00:00.000Z")
     await expect(processLegalRequirementNotifications({ payload: payload, now })).resolves.toMatchObject({ sent: 1, failed: 0 })
     await expect(processLegalRequirementNotifications({ payload: payload, now })).resolves.toMatchObject({ sent: 0, skipped: 1 })
@@ -88,8 +151,8 @@ describe("legal notification worker", () => {
   })
 
   it("retains a failed requirement and schedules a retry", async () => {
-    const { payload, requirement, deliveries } = createPayload()
-    mocks.sendEmail.mockRejectedValueOnce(new Error("provider unavailable"))
+    const { payload, requirement, deliveries } = await createPayload()
+    mocks.sendEmail.mockRejectedValueOnce(new MailSendError({ provider: "test", providerErrorCode: "429", providerErrorMessage: "provider rejected", retryState: "retryable" }))
     const now = new Date("2026-07-11T12:00:00.000Z")
     await expect(processLegalRequirementNotifications({ payload: payload, now })).resolves.toMatchObject({ sent: 0, failed: 1 })
     expect(requirement.status).toBe("failed")
@@ -98,7 +161,7 @@ describe("legal notification worker", () => {
   })
 
   it("emails a direct notice once without presenting an acceptance action", async () => {
-    const { payload, requirement } = createPayload()
+    const { payload, requirement } = await createPayload()
     requirement.action = "direct_notice"
     requirement.enforceAt = null
     await processLegalRequirementNotifications({ payload: payload, now: new Date("2026-07-11T12:00:00.000Z") })
@@ -109,7 +172,7 @@ describe("legal notification worker", () => {
   })
 
   it("starts the continued-use objection clock only after successful delivery", async () => {
-    const { payload, requirement } = createPayload()
+    const { payload, requirement } = await createPayload()
     requirement.action = "notice_and_continued_use"
     requirement.objectionDeadlineAt = "2026-08-08T00:00:00.000Z"
     requirement.enforceAt = null
@@ -129,7 +192,7 @@ describe("legal notification worker", () => {
   })
 
   it("sends one reminder before the continued-use objection deadline", async () => {
-    const { payload, requirement, deliveries } = createPayload()
+    const { payload, requirement, deliveries } = await createPayload()
     requirement.action = "notice_and_continued_use"
     requirement.objectionDeadlineAt = "2026-08-10T00:00:00.000Z"
     requirement.enforceAt = null
@@ -141,7 +204,7 @@ describe("legal notification worker", () => {
   })
 
   it("redacts recipient data and secrets from persisted provider errors", async () => {
-    const { payload, requirement, deliveries } = createPayload()
+    const { payload, requirement, deliveries } = await createPayload()
     mocks.sendEmail.mockRejectedValueOnce(new Error("owner@demo.nl Bearer secret-token"))
     await processLegalRequirementNotifications({ payload: payload, now: new Date("2026-07-11T12:00:00.000Z") })
     expect(requirement.lastError).toBe("[redacted-email] Bearer [redacted]")
@@ -149,18 +212,18 @@ describe("legal notification worker", () => {
   })
 
   it("does not start the objection clock after failed delivery", async () => {
-    const { payload, requirement } = createPayload()
+    const { payload, requirement } = await createPayload()
     requirement.action = "notice_and_continued_use"
     requirement.objectionDeadlineAt = "2026-08-08T00:00:00.000Z"
     requirement.enforceAt = null
-    mocks.sendEmail.mockRejectedValueOnce(new Error("provider unavailable"))
+    mocks.sendEmail.mockRejectedValueOnce(new MailSendError({ provider: "test", providerErrorCode: "429", providerErrorMessage: "provider rejected", retryState: "retryable" }))
     await processLegalRequirementNotifications({ payload: payload, now: new Date("2026-07-11T12:00:00.000Z") })
     expect(requirement.status).toBe("failed")
     expect(requirement.noticeDeliveredAt).toBeUndefined()
   })
 
   it("does not send for an active lease", async () => {
-    const { payload, deliveries } = createPayload()
+    const { payload, deliveries } = await createPayload()
     deliveries.push(legalNotificationDeliveryFixture({
       id: 55,
       notificationKey: "platform-terms:nl:2026-08-01.1:user:9:mandatory_reaccept:initial:legal-reacceptance-2026-07-11.1",
@@ -175,7 +238,7 @@ describe("legal notification worker", () => {
   })
 
   it("keeps acceptance authoritative when it races with provider delivery", async () => {
-    const { payload, requirement, deliveries } = createPayload()
+    const { payload, requirement, deliveries } = await createPayload()
     mocks.sendEmail.mockImplementationOnce(async () => {
       requirement.status = "satisfied"
       const delivery = deliveries[0]!

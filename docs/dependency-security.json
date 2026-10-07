@@ -201,6 +201,19 @@
         "https://github.com/nodemailer/nodemailer/releases/tag/v10.0.14",
         "https://github.com/nodemailer/nodemailer/releases/tag/v10.0.16"
       ]
+    },
+    {
+      "package": "payload",
+      "manifest": "apps/cms/package.json",
+      "version": "3.90.1",
+      "patchedVersion": "3.90.0",
+      "advisoryIds": [
+        "GHSA-2qw6-cm49-277x"
+      ],
+      "sources": [
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-2qw6-cm49-277x",
+        "https://github.com/payloadcms/payload/releases/tag/v3.90.0"
+      ]
     }
   ],
   "publisherOnlyResolvedAdvisories": [
@@ -490,6 +503,39 @@
       "sourceUse": "apps/cms/src/lib/email/sendEmail.ts: Cloudflare TLS SMTP fallback; DKIM signing is not configured",
       "patchedVersion": "10.0.13",
       "severity": "moderate"
+    },
+    {
+      "advisoryId": "GHSA-2qw6-cm49-277x",
+      "package": "payload",
+      "reviewedVersion": "3.90.1",
+      "disposition": "fixed",
+      "source": "publisher; absent from current pnpm audit",
+      "shippedReachability": "runtime",
+      "reason": "The CMS ships Payload Jobs. The October 6 access-control notice is fixed in the selected family; retain the complete 3.90.0 floor including its security migration.",
+      "sources": [
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-2qw6-cm49-277x"
+      ],
+      "paths": [
+        "apps__cms>payload"
+      ],
+      "sourceUse": "CMS Payload Local API and Jobs worker",
+      "patchedVersion": "3.89.0",
+      "severity": "high"
+    }
+  ],
+  "publisherAbsentPackages": [
+    {
+      "package": "@payloadcms/plugin-mcp",
+      "advisoryIds": [
+        "GHSA-jjm7-864w-gg8q",
+        "GHSA-h5rh-4jwf-738p"
+      ],
+      "disposition": "not installed",
+      "reason": "The root lockfile contains no resolved plugin-mcp package. Reassess both notices before adding it; the current Payload family is 3.90.1.",
+      "sources": [
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-jjm7-864w-gg8q",
+        "https://github.com/payloadcms/payload/security/advisories/GHSA-h5rh-4jwf-738p"
+      ]
     }
   ]
 }

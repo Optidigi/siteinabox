@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { userFixture } from "../_helpers/generatedDocs"
+import { userFixture, pageFixture } from "../_helpers/generatedDocs"
 
-import { hookArgsFor } from "../_helpers/hookFixtures"
+import { hookArgsFor, hookCollection, hookRequest } from "../_helpers/hookFixtures"
 import { createTestPayload } from "../_helpers/testPayload"
 
 const mocks = vi.hoisted(() => ({ publishCurrentTenantState: vi.fn() }))
@@ -16,10 +16,11 @@ const user = userFixture({ id: 8, role: "editor", tenants: [{ tenant: 7 }], emai
 const sessionHeaders = () => new Headers({ cookie: "payload-token=test-session" })
 const payload = createTestPayload()
 
-const invoke = (overrides: Record<string, unknown> = {}) => publishPageAfterUserSave(hookArgsFor(publishPageAfterUserSave, {
-  doc: { id: 24, tenant: 7, status: "published" },
-  req: { user, payload, headers: sessionHeaders() },
-  ...overrides,
+const invoke = (overrides: { doc?: Parameters<typeof pageFixture>[0]; req?: Partial<import("payload").PayloadRequest> } = {}) : unknown => publishPageAfterUserSave(hookArgsFor(publishPageAfterUserSave, {
+  collection: hookCollection("pages"), context: {}, operation: "update", data: {},
+  previousDoc: pageFixture({ id: 24, tenant: 7, status: "draft" }),
+  doc: pageFixture({ id: 24, tenant: 7, status: "published", ...overrides.doc }),
+  req: hookRequest({ user, payload, headers: sessionHeaders(), ...overrides.req }),
 }))
 
 describe("page save publication fallback", () => {

@@ -1,3 +1,5 @@
+import { migrationSourceAuthorizationFixture } from "../_helpers/generatedDocs"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
 import { userFixture } from "../_helpers/generatedDocs"
 import { describe, expect, it } from "vitest"
 
@@ -31,60 +33,60 @@ describe("migration source authorization collection", () => {
   })
 
   it("requires protected authority while live and clears it at terminal state", () => {
-    expect(() => validateMigrationSourceAuthorization(hookArgsFor(
+    expect(() => { validateMigrationSourceAuthorization(hookArgsFor(
       validateMigrationSourceAuthorization,
       {
         operation: "create",
         data: { state: "pending", encryptedAuthority: null },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
-    ))).toThrow("requires protected PKCE state")
-    expect(() => validateMigrationSourceAuthorization(hookArgsFor(
+    )) }).toThrow("requires protected PKCE state")
+    expect(() => { validateMigrationSourceAuthorization(hookArgsFor(
       validateMigrationSourceAuthorization,
       {
         operation: "update",
         data: { state: "revoked", encryptedAuthority: "sealed" },
-        originalDoc: { state: "authorized", encryptedAuthority: "sealed" },
-        req: {},
-        collection: {},
+        originalDoc: migrationSourceAuthorizationFixture({ state: "authorized", encryptedAuthority: "sealed" }),
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
-    ))).toThrow("cannot retain credentials")
+    )) }).toThrow("cannot retain credentials")
     expect(validateMigrationSourceAuthorization(hookArgsFor(
       validateMigrationSourceAuthorization,
       {
         operation: "update",
         data: { state: "revoked", encryptedAuthority: null },
-        originalDoc: { state: "authorized", encryptedAuthority: "sealed" },
-        req: {},
-        collection: {},
+        originalDoc: migrationSourceAuthorizationFixture({ state: "authorized", encryptedAuthority: "sealed" }),
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
     ))).toMatchObject({ state: "revoked", encryptedAuthority: null })
   })
 
   it("rejects lifecycle mutation without the reviewed internal context", () => {
-    expect(() => protectMigrationSourceAuthorization(hookArgsFor(
+    expect(() => { protectMigrationSourceAuthorization(hookArgsFor(
       protectMigrationSourceAuthorization,
       {
         operation: "update",
         data: { state: "revoked", encryptedAuthority: null },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: {},
       },
-    ))).toThrow("reviewed OAuth lifecycle")
-    expect(() => protectMigrationSourceAuthorization(hookArgsFor(
+    )) }).toThrow("reviewed OAuth lifecycle")
+    expect(() => { protectMigrationSourceAuthorization(hookArgsFor(
       protectMigrationSourceAuthorization,
       {
         operation: "update",
         data: { domainNameAscii: "other.example" },
-        req: {},
-        collection: {},
+        req: hookRequest({}),
+        collection: hookCollection("migration-source-authorizations"),
         context: { migrationSourceAuthorizationLifecycle: true },
       },
-    ))).toThrow("immutable")
+    )) }).toThrow("immutable")
   })
 })

@@ -18,7 +18,8 @@ must reconcile using the existing stable event key before another create.
 Expired claims use atomic database conditions and increasing attempt counts;
 stale workers cannot publish results from an earlier claim.
 
-Mail delivery records `retryState: permanent` before sending, then records the
+Appointment, commerce and legal notification workers record
+`retryState: permanent` before sending, then record the
 verified receipt or a definitive provider rejection. A crashed worker or an
 indeterminate transport outcome leaves that durable marker in place. Neither
 an expired lease nor an old in-memory snapshot may resend it. SMTP and the mail
@@ -28,10 +29,13 @@ Do not clear the marker merely because time has elapsed.
 
 ## Migration and recovery
 
-The owning generator for the provider uncertainty migration is
-`apps/cms/scripts/provider-write-uncertainty-migration.ts`. Its output adds the
+The owning generators are
+`apps/cms/scripts/provider-write-uncertainty-migration.ts` and
+`apps/cms/scripts/notification-write-uncertainty-migration.ts`. Their output adds the
 calendar marker, marks existing events without provider identities uncertain,
-and blocks existing processing mail deliveries. It preserves other row data.
+and blocks existing processing appointment, commerce and legal mail deliveries.
+Commerce gains the same retry-state field already owned by the other outboxes.
+The migrations preserve other row data.
 Generate Payload types and the migration index with the owning commands, inspect
 the resulting diff, and rehearse the complete migration chain against disposable
 PostgreSQL before release.
@@ -39,8 +43,12 @@ PostgreSQL before release.
 Retain this schema and its evidence when reverting application code. Older code
 does not honor the uncertainty controls, so stop the affected workers before
 reverting; do not resume older workers while unresolved writes exist. The down
-migration refuses to remove the calendar marker while any calendar uncertainty
-or processing mail with a permanent retry marker remains. Resolve each operation
+migrations refuse to remove calendar uncertainty or commerce retry markers while
+their guarded evidence remains. The commerce down migration rejects every
+permanent commerce or legal retry marker, including failed and cancelled rows;
+known permanent rejections require verified resolution too. Appointment and
+legal retry fields already existed and remain intact during schema rollback.
+Resolve each operation
 from verified provider evidence, rehearse rollback on a disposable database,
 and preserve an evidence export before any separately authorized production
 rollback. Never replace the installed secure dependencies with vulnerable

@@ -58,16 +58,18 @@ export type MockFindByIdArgs = MockFindArgs & { id: number | string }
 
 export function matchesWhere(doc: MockDoc, where: MockWhere | undefined): boolean {
   if (!where) return true
-  if (Array.isArray(where.and)) {
-    return where.and.every((entry) => matchesWhere(doc, entry))
-  }
-  if (Array.isArray(where.or)) {
-    return where.or.some((entry) => matchesWhere(doc, entry))
-  }
+  if (Array.isArray(where.and) && !where.and.every((entry) => matchesWhere(doc, entry))) return false
+  if (Array.isArray(where.or) && !where.or.some((entry) => matchesWhere(doc, entry))) return false
   return Object.entries(where).every(([field, condition]) => {
-    if (field === "and") return true
+    if (field === "and" || field === "or") return true
     if (condition && typeof condition === "object" && "equals" in condition) {
-      return String(doc[field]) === String((condition as { equals?: unknown }).equals)
+      return condition.equals == null ? doc[field] == null : String(doc[field]) === String(condition.equals)
+    }
+    if (condition && typeof condition === "object" && "not_equals" in condition) {
+      return condition.not_equals == null ? doc[field] != null : doc[field] != null && String(doc[field]) !== String(condition.not_equals)
+    }
+    if (condition && typeof condition === "object" && "greater_than" in condition) {
+      return doc[field] != null && String(doc[field]) > String(condition.greater_than)
     }
     if (condition && typeof condition === "object" && "in" in condition) {
       const values = (condition as { in?: unknown[] }).in ?? []

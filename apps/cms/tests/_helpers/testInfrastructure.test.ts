@@ -95,16 +95,18 @@ describe("mutable Payload store", () => {
     await expect(store.create(createArgs("orders", validOrder({ id: 1000, state: "accepted" })))).rejects.toThrow("injected unique race")
     await expect(store.create(createArgs("orders", validOrder({ id: 1000, state: "accepted" })))).resolves.toMatchObject({ id: 1_000 })
 
+    const beforeTransaction = structuredClone(store.collections.orders?.[0])
     await expect(store.transaction(async () => {
       await store.update({
         collection: "orders",
         id: 1,
         data: { paymentStatus: "paid" },
       })
+      expect(store.collections.orders?.[0]).toMatchObject({ paymentStatus: "paid" })
       throw new Error("restart")
     })).rejects.toThrow("restart")
 
-    expect(store.collections.orders?.[0]).toMatchObject({ state: "accepted" })
+    expect(store.collections.orders?.[0]).toEqual(beforeTransaction)
   })
 })
 

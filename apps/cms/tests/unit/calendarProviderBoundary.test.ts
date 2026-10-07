@@ -179,6 +179,20 @@ describe("calendar discovery consumed schemas and pagination", () => {
 })
 
 describe("durable create uncertainty and cleanup authority", () => {
+  it("reconciles an uncertain Google create by reading before any write", async () => {
+    const f = fixture(); f.event.providerCreateUncertain = true
+    const fetch = vi.fn().mockResolvedValue(Response.json(googleEvent)); vi.stubGlobal("fetch", fetch)
+    expect(await processAppointmentCalendarEvents({ payload: f.payload, now })).toMatchObject({ synced: 1 })
+    expect(fetch.mock.calls.map(call => call[1]?.method ?? "GET")).toEqual(["GET"])
+    expect(f.event.providerCreateUncertain).toBe(false)
+  })
+  it("retains uncertain Google create on read404 without replaying POST", async () => {
+    const f = fixture(); f.event.providerCreateUncertain = true
+    const fetch = vi.fn().mockResolvedValue(Response.json({}, { status: 404 })); vi.stubGlobal("fetch", fetch)
+    expect(await processAppointmentCalendarEvents({ payload: f.payload, now })).toMatchObject({ failed: 1, synced: 0 })
+    expect(fetch.mock.calls.map(call => call[1]?.method ?? "GET")).toEqual(["GET"])
+    expect(f.event.providerCreateUncertain).toBe(true)
+  })
   it("persists intent before the provider write and clears only validated success", async () => {
     const f = fixture(); vi.stubGlobal("fetch", vi.fn(async () => { expect(f.event.providerCreateUncertain).toBe(true); return Response.json(googleEvent) }))
     expect(await processAppointmentCalendarEvents({ payload: f.payload, now })).toMatchObject({ synced: 1 }); expect(f.event.providerCreateUncertain).toBe(false)

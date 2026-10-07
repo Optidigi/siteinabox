@@ -43,6 +43,24 @@ const env: NodeJS.ProcessEnv = {
 }
 
 describe("Cloudflare domain adapter", () => {
+  it.each([{}, { id: "record-123" }, { id: "record-123", type: "CNAME", name: "example.test", content: "renderer.siteinabox.nl", proxied: false }])("does not fabricate DNS creation evidence from incomplete or mismatched receipts", async (result) => {
+    const fetchImpl = vi.fn().mockResolvedValue(Response.json({ success: true, result }))
+    await expect(createCloudflareDnsRecord("zone-123", {
+      type: "CNAME", name: "example.test", content: "renderer.siteinabox.nl", ttl: 1, proxied: true,
+    }, { env, fetchImpl })).rejects.toBeInstanceOf(CloudflareIndeterminateWriteError)
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it("rereads an empty owned DNS update receipt and never claims the intended state without provider evidence", async () => {
+    const oldRecord = { id: "record-123", type: "CNAME", name: "example.test", content: "old.example.test", proxied: true }
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) =>
+      Response.json({ success: true, result: init?.method === "PUT" ? {} : [oldRecord] }))
+    await expect(reconcileOwnedCloudflareDnsRecord("zone-123", {
+      type: "CNAME", name: "example.test", content: "renderer.siteinabox.nl", ttl: 1, proxied: true,
+    }, ["record-123"], { env, fetchImpl })).rejects.toBeInstanceOf(CloudflareIndeterminateWriteError)
+    expect(fetchImpl.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(1)
+    expect(fetchImpl.mock.calls.filter(([, init]) => !init?.method || init.method === "GET")).toHaveLength(2)
+  })
   it("classifies exact zone authority as absent, exact, or ambiguous", () => {
     const zone = {
       id: "zone-123",
@@ -343,12 +361,14 @@ describe("Cloudflare domain adapter", () => {
               type: "A",
               name: `unrelated-${index}.example.nl`,
               content: "192.0.2.1",
+              proxied: false,
             }))
           : [{
               id: "foreign-aaaa",
               type: "AAAA",
               name: "www.example.nl",
               content: "2001:db8::1",
+              proxied: false,
             }],
         result_info: { total_pages: 2 },
       })
@@ -893,6 +913,31 @@ describe("Cloudflare domain adapter", () => {
   })
 })
 
+
+describe("Cloudflare consumed proxy authority", () => {
+  it.each(["A", "AAAA", "CNAME"])("rejects missing %s proxy state before edge reconciliation authority", async type => {
+    const record = { id: "record-123", type, name: "example.nl", content: type === "AAAA" ? "2001:db8::1" : type === "A" ? "192.0.2.1" : "renderer.siteinabox.nl", ttl: 300 }
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => Response.json({ success: true, result: [record], result_info: { page: 1, total_pages: 1, total_count: 1 } }))
+    await expect(assertCloudflareEdgeDnsRecordsReconciliable("zone-123", buildCloudflareEdgeDnsRecordRequests("example.nl", env), [], { env, fetchImpl })).rejects.toThrow("address record")
+    expect(fetchImpl.mock.calls.every(([, init]) => !init?.method || init.method === "GET")).toBe(true)
+  })
+
+  it.each(["A", "AAAA", "CNAME"])("rejects missing %s proxy state in automatic migration capture", async type => {
+    const fetchImpl = vi.fn(async () => Response.json({ success: true, result: [{ id: "record-123", type, name: "example.nl", content: type === "AAAA" ? "2001:db8::1" : type === "A" ? "192.0.2.1" : "renderer.siteinabox.nl", ttl: 300 }], result_info: { page: 1, total_pages: 1, total_count: 1 } }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", { env, fetchImpl })).rejects.toThrow()
+  })
+
+  it.each([undefined, null, "invalid/id"])("rejects missing or malformed migration record identity %s", async id => {
+    const fetchImpl = vi.fn(async () => Response.json({ success: true, result: [{ id, type: "TXT", name: "example.nl", content: "verification=ok", ttl: 300 }], result_info: { page: 1, total_pages: 1, total_count: 1 } }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", { env, fetchImpl })).rejects.toThrow()
+  })
+
+  it.each(["TXT", "MX"])("preserves documented DNS-only %s semantics when proxy state is omitted", async type => {
+    const record = { id: "record-123", type, name: "example.nl", content: type === "MX" ? "mail.example.nl" : "verification=ok", ttl: 300, ...(type === "MX" ? { priority: 10 } : {}) }
+    const fetchImpl = vi.fn(async () => Response.json({ success: true, result: [record], result_info: { page: 1, total_pages: 1, total_count: 1 } }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", { env, fetchImpl })).resolves.toEqual([expect.objectContaining({ id: "record-123", record: expect.objectContaining({ type, proxied: false }) })])
+  })
+})
 
 describe("Cloudflare malformed authority boundaries", () => {
   it.each([{ result: [] }, { success: true, result: [{}] }, { success: true, result: {} }])("never creates a zone from malformed lookup", async (body) => {

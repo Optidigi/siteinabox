@@ -652,6 +652,7 @@ const commerceNotificationMutableFields = new Set([
   "sentAt",
   "failedAt",
   "lastError",
+  "retryState",
 ])
 
 export const protectCommerceNotification: CollectionBeforeChangeHook<CommerceNotificationDelivery> = (args) =>
@@ -1473,6 +1474,7 @@ export const CommerceNotificationDeliveries: CollectionConfig = {
     { name: "sentAt", type: "date", index: true },
     { name: "failedAt", type: "date" },
     { name: "lastError", type: "textarea" },
+    { name: "retryState", type: "select", defaultValue: "none", options: selectOptions(["none", "retryable", "permanent"]) },
   ],
 }
 

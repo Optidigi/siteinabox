@@ -1,3 +1,6 @@
+import { createInitializedTestPayload, createTestRequest } from "../_helpers/testPayload"
+import { tenantFixture } from "../_helpers/generatedDocs"
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { MockDoc } from "../_helpers/mockPayload"
 import { argsFor } from "../_helpers/argsFor"
@@ -38,9 +41,13 @@ vi.mock("@/lib/analytics/projectEnrollment", () => ({
   },
 }))
 
-const fakeReq = () => ({
-  payload: { logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } },
-})
+const fakeReq = async () => {
+  const payload = await createInitializedTestPayload()
+  vi.spyOn(payload.logger, "info")
+  vi.spyOn(payload.logger, "warn")
+  vi.spyOn(payload.logger, "error")
+  return createTestRequest(payload)
+}
 
 const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 
@@ -50,12 +57,12 @@ beforeEach(() => {
 
 describe("removeTenantDir (afterDelete)", () => {
   it("removes both live and archived dirs with force:true", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await removeTenantDir(argsFor(removeTenantDir, {
-      doc: { id: 42 },
+      doc: tenantFixture({ id: 42 }),
       id: 42,
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
     }))
     expect(fs.rm).toHaveBeenCalledTimes(2)
@@ -73,13 +80,13 @@ describe("removeTenantDir (afterDelete)", () => {
 
   it("does not throw when fs.rm rejects — logs warn instead", async () => {
     vi.mocked(fs.rm).mockRejectedValueOnce(new Error("permission denied"))
-    const req = fakeReq()
+    const req = await fakeReq()
     await expect(
       removeTenantDir(argsFor(removeTenantDir, {
-        doc: { id: 7 },
+        doc: tenantFixture({ id: 7 }),
         id: 7,
         req,
-        collection: {},
+        collection: hookCollection("tenants"),
         context: {},
       })),
     ).resolves.toBeDefined()
@@ -89,11 +96,13 @@ describe("removeTenantDir (afterDelete)", () => {
 
 describe("createTenantDir (afterChange create)", () => {
   it("does not create tenant data dirs when skipProjection context is set", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await createTenantDir(argsFor(createTenantDir, {
-      doc: { id: 42 },
-      req: { ...req, context: { skipProjection: true } },
-      collection: {},
+      data: {},
+      previousDoc: tenantFixture(),
+      doc: tenantFixture({ id: 42 }),
+      req: hookRequest({ ...req, context: { skipProjection: true } }),
+      collection: hookCollection("tenants"),
       context: { skipProjection: true },
       operation: "create",
     }))
@@ -104,12 +113,13 @@ describe("createTenantDir (afterChange create)", () => {
 
 describe("enrollTenantAnalytics (verified tenant lifecycle)", () => {
   it("automatically enrolls a newly verified tenant", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await enrollTenantAnalytics(argsFor(enrollTenantAnalytics, {
-      doc: { id: 42, domain: "client.example", domainVerification: { status: "verified" } },
-      previousDoc: { id: 42, domain: "client.example", domainVerification: { status: "not_checked" } },
+      data: {},
+      doc: tenantFixture({ id: 42, domain: "client.example", domainVerification: { status: "verified" } }),
+      previousDoc: tenantFixture({ id: 42, domain: "client.example", domainVerification: { status: "not_checked" } }),
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
       operation: "update",
     }))
@@ -122,15 +132,23 @@ describe("enrollTenantAnalytics (verified tenant lifecycle)", () => {
   })
 
   it("does not call PostHog for unverified or unchanged domains", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await enrollTenantAnalytics(argsFor(enrollTenantAnalytics, {
-      doc: { id: 42, domain: "client.example", domainVerification: { status: "not_checked" } },
-      previousDoc: null,
+      collection: hookCollection("tenants"),
+      context: {},
+      data: {},
+      operation: "update",
+      doc: tenantFixture({ id: 42, domain: "client.example", domainVerification: { status: "not_checked" } }),
+      previousDoc: tenantFixture({ id: 42, domain: "client.example", domainVerification: { status: "not_checked" } }),
       req,
     }))
     await enrollTenantAnalytics(argsFor(enrollTenantAnalytics, {
-      doc: { id: 42, domain: "client.example", domainVerification: { status: "verified" } },
-      previousDoc: { id: 42, domain: "client.example", domainVerification: { status: "verified" } },
+      collection: hookCollection("tenants"),
+      context: {},
+      data: {},
+      operation: "update",
+      doc: tenantFixture({ id: 42, domain: "client.example", domainVerification: { status: "verified" } }),
+      previousDoc: tenantFixture({ id: 42, domain: "client.example", domainVerification: { status: "verified" } }),
       req,
     }))
 
@@ -140,12 +158,13 @@ describe("enrollTenantAnalytics (verified tenant lifecycle)", () => {
 
 describe("restoreTenantDir (status: archived → active)", () => {
   it("renames archived/<id> back to tenants/<id> on un-archive", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await restoreTenantDir(argsFor(restoreTenantDir, {
-      doc: { id: 9, status: "active" },
-      previousDoc: { id: 9, status: "archived" },
+      data: {},
+      doc: tenantFixture({ id: 9, status: "active" }),
+      previousDoc: tenantFixture({ id: 9, status: "archived" }),
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
       operation: "update",
     }))
@@ -156,12 +175,13 @@ describe("restoreTenantDir (status: archived → active)", () => {
   })
 
   it("no-op when status was not previously archived (active → active)", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await restoreTenantDir(argsFor(restoreTenantDir, {
-      doc: { id: 9, status: "active" },
-      previousDoc: { id: 9, status: "active" },
+      data: {},
+      doc: tenantFixture({ id: 9, status: "active" }),
+      previousDoc: tenantFixture({ id: 9, status: "active" }),
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
       operation: "update",
     }))
@@ -169,12 +189,13 @@ describe("restoreTenantDir (status: archived → active)", () => {
   })
 
   it("no-op on archived → archived (idempotent)", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await restoreTenantDir(argsFor(restoreTenantDir, {
-      doc: { id: 9, status: "archived" },
-      previousDoc: { id: 9, status: "archived" },
+      data: {},
+      doc: tenantFixture({ id: 9, status: "archived" }),
+      previousDoc: tenantFixture({ id: 9, status: "archived" }),
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
       operation: "update",
     }))
@@ -184,13 +205,14 @@ describe("restoreTenantDir (status: archived → active)", () => {
   it("warns instead of throwing when archived dir is missing", async () => {
     const enoent = Object.assign(new Error("not found"), { code: "ENOENT" })
     vi.mocked(fs.rename).mockRejectedValueOnce(enoent)
-    const req = fakeReq()
+    const req = await fakeReq()
     await expect(
       restoreTenantDir(argsFor(restoreTenantDir, {
-        doc: { id: 9, status: "active" },
-        previousDoc: { id: 9, status: "archived" },
+        data: {},
+        doc: tenantFixture({ id: 9, status: "active" }),
+        previousDoc: tenantFixture({ id: 9, status: "archived" }),
         req,
-        collection: {},
+        collection: hookCollection("tenants"),
         context: {},
         operation: "update",
       })),
@@ -201,12 +223,13 @@ describe("restoreTenantDir (status: archived → active)", () => {
 
 describe("archiveTenantDir (status: unknown → archived)", () => {
   it("renames tenants/<id> to archived/<id> on archive", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await archiveTenantDir(argsFor(archiveTenantDir, {
-      doc: { id: 5, status: "archived" },
-      previousDoc: { id: 5, status: "active" },
+      data: {},
+      doc: tenantFixture({ id: 5, status: "archived" }),
+      previousDoc: tenantFixture({ id: 5, status: "active" }),
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
       operation: "update",
     }))
@@ -217,12 +240,13 @@ describe("archiveTenantDir (status: unknown → archived)", () => {
   })
 
   it("no-op archived → archived", async () => {
-    const req = fakeReq()
+    const req = await fakeReq()
     await archiveTenantDir(argsFor(archiveTenantDir, {
-      doc: { id: 5, status: "archived" },
-      previousDoc: { id: 5, status: "archived" },
+      data: {},
+      doc: tenantFixture({ id: 5, status: "archived" }),
+      previousDoc: tenantFixture({ id: 5, status: "archived" }),
       req,
-      collection: {},
+      collection: hookCollection("tenants"),
       context: {},
       operation: "update",
     }))

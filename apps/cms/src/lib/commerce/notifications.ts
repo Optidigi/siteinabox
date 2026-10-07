@@ -2,11 +2,8 @@ import "server-only"
 
 import type { Payload } from "payload"
 import type {
-  BillingAgreement,
   CommerceNotificationDelivery,
   DomainRenewalCycle,
-  ManagedDomain,
-  Tenant,
 } from "@/payload-types"
 
 import {
@@ -19,6 +16,7 @@ import {
   asMailLogPayload,
   sendEmail,
 } from "@/lib/email/sendEmail"
+import { claimCommerceNotificationDelivery, transitionCommerceNotificationDelivery } from "@/lib/appointments/atomicClaims"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId } from "@/lib/relationshipId"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
@@ -71,7 +69,7 @@ export async function ensureCommerceNotification(input: {
         depth: 0,
         overrideAccess: true,
         context: { commerceNotificationLifecycleMutation: true },
-      }) as CommerceNotificationDelivery
+      })
     }
     return existing
   }
@@ -95,7 +93,7 @@ export async function ensureCommerceNotification(input: {
       },
       depth: 0,
       overrideAccess: true,
-    }) as CommerceNotificationDelivery
+    })
   } catch (error) {
     const raced = await findOneDoc(input.payload, "commerce-notification-deliveries", {
       notificationKey: { equals: notificationKey },
@@ -120,50 +118,6 @@ const retryAt = (now: Date, attemptCount: number) => new Date(
   RETRY_DELAYS_MS[Math.min(Math.max(attemptCount - 1, 0), RETRY_DELAYS_MS.length - 1)]!,
 ).toISOString()
 
-async function claimDelivery(
-  payload: Payload,
-  delivery: CommerceNotificationDelivery,
-  now: Date,
-): Promise<CommerceNotificationDelivery | null> {
-  if (delivery.status === "sent" || delivery.status === "cancelled") return null
-  if (delivery.status === "processing" && delivery.leaseUntil && new Date(delivery.leaseUntil) > now) {
-    return null
-  }
-  if (delivery.nextAttemptAt && new Date(delivery.nextAttemptAt) > now) return null
-  const attemptCount = delivery.attemptCount + 1
-  const claimed = await payload.update({
-    collection: "commerce-notification-deliveries",
-    where: {
-      and: [
-        { id: { equals: delivery.id } },
-        {
-          or: [
-            { status: { in: ["queued", "failed"] } },
-            {
-              and: [
-                { status: { equals: "processing" } },
-                { leaseUntil: { less_than_equal: now.toISOString() } },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-    data: {
-      status: "processing",
-      attemptCount,
-      lastAttemptAt: now.toISOString(),
-      leaseUntil: new Date(now.getTime() + LEASE_MS).toISOString(),
-      lastError: null,
-    },
-    depth: 0,
-    overrideAccess: true,
-    context: { commerceNotificationLifecycleMutation: true },
-  })
-  return Array.isArray(claimed?.docs)
-    ? claimed.docs[0] as CommerceNotificationDelivery | undefined ?? null
-    : null
-}
 
 export async function deliverCommerceNotification(input: {
   payload: Payload
@@ -176,90 +130,86 @@ export async function deliverCommerceNotification(input: {
     id: input.deliveryId,
     depth: 0,
     overrideAccess: true,
-  }) as CommerceNotificationDelivery
-  const claimed = await claimDelivery(input.payload, delivery, now)
+  })
+  const claimed = await claimCommerceNotificationDelivery(input.payload, delivery, now, LEASE_MS)
   if (!claimed) return "skipped"
-  const tenantId = relationshipId(claimed.tenant)
-  if (!tenantId) throw new Error("Commerce notification is missing a tenant.")
-  const tenant = await input.payload.findByID({
-    collection: "tenants",
-    id: tenantId,
-    depth: 0,
-    overrideAccess: true,
-  }) as Tenant
-  let domainName: string | null = null
-  let renewalCycle: DomainRenewalCycle | null = null
-  const agreementId = relationshipId(claimed.billingAgreement)
-  if (
-    agreementId &&
-    [
-      "payment_received",
-      "domain_verification_required",
-      "site_live_handoff",
-    ].includes(claimed.kind)
-  ) {
-    const agreement = await input.payload.findByID({
-      collection: "billing-agreements",
-      id: agreementId,
+  let markerAttempted = false
+  let dispatchStarted = false
+  let verifiedReceipt = false
+  try {
+    const tenantId = relationshipId(claimed.tenant)
+    if (!tenantId) throw new Error("Commerce notification is missing a tenant.")
+    const tenant = await input.payload.findByID({
+      collection: "tenants",
+      id: tenantId,
       depth: 0,
       overrideAccess: true,
-    }) as BillingAgreement
-    const orderId = relationshipId(agreement.originatingOrder)
-    if (orderId) {
-      const managedDomains = await input.payload.find({
-        collection: "managed-domains",
-        where: { originatingOrder: { equals: orderId } },
-        limit: 2,
+    })
+    let domainName: string | null = null
+    let renewalCycle: DomainRenewalCycle | null = null
+    const agreementId = relationshipId(claimed.billingAgreement)
+    if (
+      agreementId &&
+      [
+        "payment_received",
+        "domain_verification_required",
+        "site_live_handoff",
+      ].includes(claimed.kind)
+    ) {
+      const agreement = await input.payload.findByID({
+        collection: "billing-agreements",
+        id: agreementId,
         depth: 0,
         overrideAccess: true,
       })
-      if (managedDomains.docs.length === 1) {
-        domainName = (managedDomains.docs[0] as ManagedDomain).domainNameAscii
+      const orderId = relationshipId(agreement.originatingOrder)
+      if (orderId) {
+        const managedDomains = await input.payload.find({
+          collection: "managed-domains",
+          where: { originatingOrder: { equals: orderId } },
+          limit: 2,
+          depth: 0,
+          overrideAccess: true,
+        })
+        if (managedDomains.docs.length === 1) {
+          domainName = managedDomains.docs[0]!.domainNameAscii
+        }
       }
     }
-  }
-  const cycleId = relationshipId(claimed.renewalCycle)
-  if (cycleId) {
-    renewalCycle = await input.payload.findByID({
-      collection: "domain-renewal-cycles",
-      id: cycleId,
-      depth: 0,
-      overrideAccess: true,
-    }) as DomainRenewalCycle
-    if (
-      ["renewed", "cancelled"].includes(renewalCycle.state) &&
-      (
-        /^domain_renewal_(?:90|60|30|14|7|1)d$/.test(claimed.kind) ||
-        claimed.kind === "domain_renewal_admin_7d"
-      )
-    ) {
-      await input.payload.update({
-        collection: "commerce-notification-deliveries",
-        id: claimed.id,
-        data: {
-          status: "cancelled",
-          nextAttemptAt: null,
-          leaseUntil: null,
-          lastError: null,
-        },
+    const cycleId = relationshipId(claimed.renewalCycle)
+    if (cycleId) {
+      renewalCycle = await input.payload.findByID({
+        collection: "domain-renewal-cycles",
+        id: cycleId,
         depth: 0,
         overrideAccess: true,
-        context: { commerceNotificationLifecycleMutation: true },
       })
-      return "skipped"
+      if (
+        ["renewed", "cancelled"].includes(renewalCycle.state) &&
+        (
+          /^domain_renewal_(?:90|60|30|14|7|1)d$/.test(claimed.kind) ||
+          claimed.kind === "domain_renewal_admin_7d"
+        )
+      ) {
+        await transitionCommerceNotificationDelivery(input.payload, claimed, {
+            status: "cancelled",
+            nextAttemptAt: null,
+            leaseUntil: null,
+            lastError: null,
+          })
+        return "skipped"
+      }
+      const managedDomainId = relationshipId(renewalCycle.managedDomain)
+      if (managedDomainId) {
+        const managedDomain = await input.payload.findByID({
+          collection: "managed-domains",
+          id: managedDomainId,
+          depth: 0,
+          overrideAccess: true,
+        })
+        domainName = managedDomain.domainNameAscii
+      }
     }
-    const managedDomainId = relationshipId(renewalCycle.managedDomain)
-    if (managedDomainId) {
-      const managedDomain = await input.payload.findByID({
-        collection: "managed-domains",
-        id: managedDomainId,
-        depth: 0,
-        overrideAccess: true,
-      }) as ManagedDomain
-      domainName = managedDomain.domainNameAscii
-    }
-  }
-  try {
     if (claimed.kind === "site_live_handoff") {
       if (!agreementId) {
         throw new Error("Live handoff delivery is missing its billing agreement.")
@@ -267,6 +217,9 @@ export async function deliverCommerceNotification(input: {
       const { retryLiveHandoffForBillingAgreement } = await import(
         "@/lib/publish/liveHandoffEmail"
       )
+      markerAttempted = true
+      await transitionCommerceNotificationDelivery(input.payload, claimed, { retryState: "permanent" })
+      dispatchStarted = true
       const result = await retryLiveHandoffForBillingAgreement(
         input.payload,
         agreementId,
@@ -274,24 +227,15 @@ export async function deliverCommerceNotification(input: {
       if (result !== "sent") {
         throw new Error("Live handoff delivery could not be completed.")
       }
-      await input.payload.update({
-        collection: "commerce-notification-deliveries",
-        id: claimed.id,
-        data: {
-          status: "sent",
-          sentAt: now.toISOString(),
-          leaseUntil: null,
-          nextAttemptAt: null,
-          lastError: null,
-        },
-        depth: 0,
-        overrideAccess: true,
-        context: { commerceNotificationLifecycleMutation: true },
+      verifiedReceipt = true
+      await transitionCommerceNotificationDelivery(input.payload, claimed, {
+        status: "sent", retryState: "none", sentAt: now.toISOString(),
+        leaseUntil: null, nextAttemptAt: null, lastError: null,
       })
       return "sent"
     }
     const template = commerceNotificationTemplate({
-      kind: claimed.kind as CommerceNotificationKind,
+      kind: claimed.kind,
       eventAt: claimed.eventAt,
       tenantName: tenant.name,
       domainName,
@@ -312,6 +256,9 @@ export async function deliverCommerceNotification(input: {
       providerBalanceCheckedAt: renewalCycle?.providerBalanceCheckedAt,
       adminExceptionCode: renewalCycle?.adminExceptionCode,
     })
+    markerAttempted = true
+    await transitionCommerceNotificationDelivery(input.payload, claimed, { retryState: "permanent" })
+    dispatchStarted = true
     await sendEmail({
       to: claimed.recipient,
       subject: template.subject,
@@ -322,38 +269,22 @@ export async function deliverCommerceNotification(input: {
       tenant: numericRelationshipId(claimed.tenant),
       payload: asMailLogPayload(input.payload),
     })
-    await input.payload.update({
-      collection: "commerce-notification-deliveries",
-      id: claimed.id,
-      data: {
-        status: "sent",
-        sentAt: now.toISOString(),
-        leaseUntil: null,
-        nextAttemptAt: null,
-        lastError: null,
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { commerceNotificationLifecycleMutation: true },
+    verifiedReceipt = true
+    await transitionCommerceNotificationDelivery(input.payload, claimed, {
+      status: "sent", retryState: "none", sentAt: now.toISOString(),
+      leaseUntil: null, nextAttemptAt: null, lastError: null,
     })
     return "sent"
   } catch (error) {
-    const retryable = claimed.kind === "site_live_handoff" ||
-      error instanceof MailSendError &&
-        error.normalized.retryState === "retryable"
-    await input.payload.update({
-      collection: "commerce-notification-deliveries",
-      id: claimed.id,
-      data: {
-        status: "failed",
-        failedAt: now.toISOString(),
-        leaseUntil: null,
-        nextAttemptAt: retryable ? retryAt(now, claimed.attemptCount) : null,
-        lastError: redactOperationalMessage(error),
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { commerceNotificationLifecycleMutation: true },
+    // A verified provider receipt or an unverified marker write must never reopen delivery.
+    if (verifiedReceipt || markerAttempted && !dispatchStarted) throw error
+    const definitiveRejection = error instanceof MailSendError && error.normalized.providerErrorCode !== "E_PROVIDER_WRITE_INDETERMINATE"
+    const retryable = claimed.attemptCount <= RETRY_DELAYS_MS.length && (!dispatchStarted || definitiveRejection && error.normalized.retryState === "retryable")
+    await transitionCommerceNotificationDelivery(input.payload, claimed, {
+      status: "failed", retryState: retryable ? "retryable" : "permanent",
+      failedAt: now.toISOString(), leaseUntil: null,
+      nextAttemptAt: retryable ? retryAt(now, claimed.attemptCount) : null,
+      lastError: redactOperationalMessage(error),
     })
     return "failed"
   }
@@ -368,6 +299,7 @@ export async function queueDueCommerceNotifications(
     where: {
       and: [
         { status: { in: ["queued", "failed"] } },
+        { or: [{ retryState: { equals: null } }, { retryState: { not_equals: "permanent" } }] },
         { nextAttemptAt: { less_than_equal: now.toISOString() } },
       ],
     },

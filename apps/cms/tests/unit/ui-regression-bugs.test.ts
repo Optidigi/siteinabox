@@ -50,6 +50,8 @@ if (!Element.prototype.scrollIntoView) {
 
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
+import { translationText } from "@/lib/i18n/translationText"
+import nl from "@/locales/nl.json"
 import { ApiKeyManager } from "@/components/forms/ApiKeyManager"
 import { CreateUserForm } from "@/components/forms/CreateUserForm"
 
@@ -188,10 +190,13 @@ describe("observed UI bug regressions", () => {
     const adminAnalytics = read("src/app/(frontend)/(admin)/analytics/page.tsx")
     const tenantAnalytics = read("src/app/(frontend)/(admin)/sites/[slug]/analytics/page.tsx")
 
-    expect(adminAnalytics).toContain('measuredFromVisitors: t.raw("measuredFromVisitors")')
+    expect(adminAnalytics).toContain('t.raw("measuredFromVisitors")')
     expect(adminAnalytics).not.toContain('measuredFromVisitors: t("measuredFromVisitors")')
-    expect(tenantAnalytics).toContain('measuredFromVisitors: t.raw("measuredFromVisitors")')
+    expect(tenantAnalytics).toContain('t.raw("measuredFromVisitors")')
     expect(tenantAnalytics).not.toContain('measuredFromVisitors: t("measuredFromVisitors")')
+    expect(translationText(nl.analytics.measuredFromVisitors)).toContain("{samples}")
+    expect(translationText(nl.analytics.measuredFromVisitors)).toContain("{visitors}")
+    expect(() => translationText({ visitors: 1 })).toThrow("Expected a plain-text translation.")
   })
 
   it("allows common tenant-local hosts for Next dev resources", () => {

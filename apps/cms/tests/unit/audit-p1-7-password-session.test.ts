@@ -515,8 +515,8 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
   })
 
   it("Case 14 — operation:'update' with data.password set → hook returns data with sessions=[] AND mutates in place", async () => {
-    const data: MockDoc = { password: "anything", name: "Y" }
-    const result = await clearSessionsHook({
+    const data: Partial<User> & { editorMode?: string } = { password: "anything", name: "Y" }
+    const result: unknown = await clearSessionsHook({
       data,
       originalDoc: undefined,
       operation: "update",
@@ -525,25 +525,26 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
       context: {},
     })
     expect(data.sessions).toEqual([])
-    expect((result as MockDoc | undefined)?.sessions).toEqual([])
-    expect((result as MockDoc | undefined)?.name).toBe("Y")
+    if (!result || typeof result !== "object" || !("sessions" in result) || !("name" in result)) throw new Error("Missing returned user fields")
+    expect(result.sessions).toEqual([])
+    expect(result.name).toBe("Y")
   })
 
   it("Case 15 — operation:'update' with data.hash CHANGED vs originalDoc.hash (resetPassword path) → sessions cleared in place", async () => {
     // resetPassword.js writes a newly-derived hash onto the user object and
     // passes it to beforeValidate. The new hash differs from originalDoc.hash,
     // which is the authoritative discriminator for a real password rotation.
-    const data: MockDoc = {
+    const data: Partial<User> & { editorMode?: string } = {
       id: 1,
       email: "u1@x",
       hash: "newly-generated-hash-bytes",
       salt: "newly-generated-salt-bytes",
       resetPasswordExpiration: new Date().toISOString(),
-      sessions: [{ id: "old-session-1" }, { id: "old-session-2" }],
+      sessions: [{ id: "old-session-1", expiresAt: "2099-08-01T00:00:00.000Z" }, { id: "old-session-2", expiresAt: "2099-08-01T00:00:00.000Z" }],
     }
     await clearSessionsHook({
       data,
-      originalDoc: { hash: "old-hash-bytes", salt: "old-salt-bytes" },
+      originalDoc: userFixture({ hash: "old-hash-bytes", salt: "old-salt-bytes" }),
       operation: "update",
       req: hookRequest(),
       collection: hookCollection(),
@@ -561,32 +562,32 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
     // The fix compares against originalDoc.hash; when the hash is unchanged it
     // is NOT a credential rotation and sessions must be preserved.
     const existingHash = "the-unchanged-stored-hash"
-    const data: MockDoc = {
+    const data: Partial<User> & { editorMode?: string } = {
       id: 1,
       email: "u1@x",
       hash: existingHash, // same as stored — not a rotation
       salt: "stored-salt-bytes",
       editorMode: "canvas",
-      sessions: [{ id: "keep-this-session" }],
+      sessions: [{ id: "keep-this-session", expiresAt: "2099-08-01T00:00:00.000Z" }],
     }
     await clearSessionsHook({
       data,
-      originalDoc: { hash: existingHash, salt: "stored-salt-bytes" },
+      originalDoc: userFixture({ hash: existingHash, salt: "stored-salt-bytes" }),
       operation: "update",
       req: hookRequest(),
       collection: hookCollection(),
       context: {},
     })
-    expect(data.sessions).toEqual([{ id: "keep-this-session" }])
+    expect(data.sessions).toEqual([{ id: "keep-this-session", expiresAt: "2099-08-01T00:00:00.000Z" }])
   })
 
   it("Case 15c — fail-secure: originalDoc absent (undefined) and data.hash present → sessions cleared (safe direction)", async () => {
     // If for any reason originalDoc is missing on an update, we treat the hash
     // as having changed (conservative/safe) rather than skipping the clear.
-    const data: MockDoc = {
+    const data: Partial<User> & { editorMode?: string } = {
       hash: "some-hash",
       salt: "some-salt",
-      sessions: [{ id: "old-session" }],
+      sessions: [{ id: "old-session", expiresAt: "2099-08-01T00:00:00.000Z" }],
     }
     await clearSessionsHook({
       data,
@@ -600,23 +601,23 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
   })
 
   it("Case 16 — operation:'update' with NEITHER password NOR changed hash → sessions untouched (collateral pass-through)", async () => {
-    const data: MockDoc = {
+    const data: Partial<User> & { editorMode?: string } = {
       name: "Y",
-      sessions: [{ id: "keep-this-session" }],
+      sessions: [{ id: "keep-this-session", expiresAt: "2099-08-01T00:00:00.000Z" }],
     }
     await clearSessionsHook({
       data,
-      originalDoc: { hash: "stored-hash", salt: "stored-salt" },
+      originalDoc: userFixture({ hash: "stored-hash", salt: "stored-salt" }),
       operation: "update",
       req: hookRequest(),
       collection: hookCollection(),
       context: {},
     })
-    expect(data.sessions).toEqual([{ id: "keep-this-session" }])
+    expect(data.sessions).toEqual([{ id: "keep-this-session", expiresAt: "2099-08-01T00:00:00.000Z" }])
   })
 
   it("Case 17 — operation:'create' with data.password → does NOT clear sessions (create-time has no prior sessions to invalidate)", async () => {
-    const data: MockDoc = { password: "newuser-pw", email: "n@x" }
+    const data: Partial<User> & { editorMode?: string } = { password: "newuser-pw", email: "n@x" }
     await clearSessionsHook({
       data,
       originalDoc: undefined,

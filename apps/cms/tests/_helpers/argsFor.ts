@@ -1,15 +1,10 @@
-/** Build partial hook/collection handler args without `any`. */
+/** Verify the actual handler argument contract without altering the fixture. */
 export function argsFor<T extends (...args: never[]) => unknown>(
   _fn: T,
-  partial: Record<string, unknown>,
+  args: Parameters<T>[0],
 ): Parameters<T>[0] {
-  return partial as Parameters<T>[0]
+  return args
 }
 
-/** Build partial access-check fixtures without `any`. */
-export function accessArgsFor<T extends (...args: never[]) => unknown>(
-  _fn: T,
-  partial: Record<string, unknown>,
-): Parameters<T>[0] {
-  return partial as Parameters<T>[0]
-}
+/** Access fixtures satisfy the same installed handler contract as callers. */
+export const accessArgsFor = argsFor

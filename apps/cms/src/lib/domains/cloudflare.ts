@@ -449,19 +449,21 @@ export async function createCloudflareDnsRecord(
   }
   const payload = await readCloudflareWritePayload("Cloudflare DNS record creation", response)
   assertCloudflareOk("Cloudflare DNS record creation", response, payload)
-  const result = resultObject(payload)
-  const id = typeof result.id === "string" ? result.id : null
-  if (!id || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(id) || (result.name != null && result.name !== record.name) || (result.type != null && result.type !== record.type) || (result.content != null && result.content !== record.content)) {
-    throw new CloudflareIndeterminateWriteError("Cloudflare DNS record creation")
+  return verifiedDnsWriteResult("Cloudflare DNS record creation", payload, record)
+}
+
+const dnsWriteResultSchema = z.object({
+  id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/),
+  type: z.enum(["A", "CNAME"]), name: z.string().min(1).max(255),
+  content: z.string().min(1).max(4096), proxied: z.boolean(),
+})
+
+function verifiedDnsWriteResult(action: string, payload: unknown, requested: CloudflareDnsRecordRequest, recordId?: string): CloudflareDnsRecordResult {
+  const result = dnsWriteResultSchema.safeParse(resultObject(payload))
+  if (!result.success || (recordId !== undefined && result.data.id !== recordId) || result.data.name !== requested.name || result.data.type !== requested.type || result.data.content !== requested.content || result.data.proxied !== requested.proxied) {
+    throw new CloudflareIndeterminateWriteError(action)
   }
-  return {
-    id,
-    type: record.type,
-    name: typeof result.name === "string" ? result.name : record.name,
-    content: typeof result.content === "string" ? result.content : record.content,
-    proxied: typeof result.proxied === "boolean" ? result.proxied : record.proxied,
-    raw: payload,
-  }
+  return { ...result.data, raw: payload }
 }
 
 export async function listCloudflareDnsRecords(
@@ -553,13 +555,13 @@ export async function listCloudflareDnsRecords(
     const name = typeof result.name === "string" ? result.name : null
     const content = typeof result.content === "string" ? result.content : null
     if (!type) return []
-    if (!name || !content || typeof result.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(result.id) || (result.proxied != null && typeof result.proxied !== "boolean")) throw new Error("Cloudflare address record is invalid.")
+    if (!name || !content || typeof result.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(result.id) || typeof result.proxied !== "boolean") throw new Error("Cloudflare address record is invalid.")
     return [{
-      id: typeof result.id === "string" ? result.id : null,
+      id: result.id,
       type,
       name,
       content,
-      proxied: result.proxied === true,
+      proxied: result.proxied,
       raw: result,
     }]
   })
@@ -654,17 +656,7 @@ async function updateCloudflareDnsRecord(
   }
   const payload = await readCloudflareWritePayload("Cloudflare DNS record update", response)
   assertCloudflareOk("Cloudflare DNS record update", response, payload)
-  const result = resultObject(payload)
-  if ((result.id != null && result.id !== recordId) || (result.name != null && result.name !== record.name) || (result.type != null && result.type !== record.type) || (result.content != null && result.content !== record.content) || (result.proxied != null && result.proxied !== record.proxied)) throw new CloudflareIndeterminateWriteError("Cloudflare DNS record update")
-  const id = typeof result.id === "string" ? result.id : recordId
-  return {
-    id,
-    type: result.type === "A" || result.type === "CNAME" ? result.type : record.type,
-    name: typeof result.name === "string" ? result.name : record.name,
-    content: typeof result.content === "string" ? result.content : record.content,
-    proxied: typeof result.proxied === "boolean" ? result.proxied : record.proxied,
-    raw: payload,
-  }
+  return verifiedDnsWriteResult("Cloudflare DNS record update", payload, record, recordId)
 }
 
 export async function reconcileOwnedCloudflareDnsRecord(
@@ -797,8 +789,13 @@ const parseMigrationDnsRecord = (
   const ttl = typeof value.ttl === "number" && Number.isSafeInteger(value.ttl)
     ? value.ttl
     : null
-  if (ttl == null || ttl < 1 || ttl > 86_400 || (value.proxied != null && typeof value.proxied !== "boolean")) return null
-  const proxied = value.proxied === true
+  if (ttl == null || ttl < 1 || ttl > 86_400 || typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value.id)) return null
+  const proxyable = type === "A" || type === "AAAA" || type === "CNAME"
+  // Only address-resolution records can be proxied. An omitted address proxy
+  // state is unknown; other supported types are always DNS-only by contract.
+  // https://developers.cloudflare.com/dns/proxy-status/
+  if (proxyable ? typeof value.proxied !== "boolean" : value.proxied !== undefined && value.proxied !== false) return null
+  const proxied = proxyable && value.proxied === true
   const semanticTtl = proxied && ttl === 1 ? 300 : ttl
   if (!name) return null
   if (type === "MX") {
@@ -806,7 +803,7 @@ const parseMigrationDnsRecord = (
     const target = typeof value.content === "string" ? canonicalDnsName(value.content) : null
     if (priority == null || !target) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: { type, name, ttl: semanticTtl, priority, target, proxied },
       raw: value,
     }
@@ -824,7 +821,7 @@ const parseMigrationDnsRecord = (
     const caaValue = typeof data.value === "string" ? data.value : match?.[3]
     if (flags == null || !tag || !caaValue) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -855,7 +852,7 @@ const parseMigrationDnsRecord = (
       !target
     ) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -901,7 +898,7 @@ const parseMigrationDnsRecord = (
       !validAssociationData
     ) return null
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,
@@ -928,7 +925,7 @@ const parseMigrationDnsRecord = (
       ? canonicalDnsName(content)
       : content
     return {
-      id: typeof value.id === "string" ? value.id : null,
+      id: value.id,
       record: {
         type,
         name,

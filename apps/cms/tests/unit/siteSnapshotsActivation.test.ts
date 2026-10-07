@@ -1,3 +1,4 @@
+import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { PayloadRequest } from "payload"
 import {
@@ -201,11 +202,10 @@ describe("published snapshot activation gate", () => {
     })
     expect(snapshot.status).toBe("active")
     expect(payload.find).toHaveBeenCalledTimes(2)
+    const transactionRequestMatcher: unknown = expect.objectContaining({ transactionID: "publication-transaction" })
     expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({
       collection: "published-site-snapshots",
-      req: expect.objectContaining({
-        transactionID: "publication-transaction",
-      }),
+      req: transactionRequestMatcher,
     }))
     expect(payload.find).not.toHaveBeenCalledWith(expect.objectContaining({
       collection: "orders",
@@ -304,19 +304,19 @@ describe("published snapshot activation gate", () => {
     const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
     if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
 
-    const result = beforeValidate(hookArgsFor(beforeValidate, {
+    const result: unknown = beforeValidate(hookArgsFor(beforeValidate, {
       operation: "update",
       data: {
         status: "superseded",
         snapshot: legacySnapshot,
       },
-      originalDoc: {
+      originalDoc: publishedSnapshotFixture({
         status: "active",
         snapshot: legacySnapshot,
-      },
+      }),
       context: { publishSnapshotLifecycleMutation: true },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("published-site-snapshots"),
     }))
 
     expect(result).toEqual({
@@ -329,7 +329,7 @@ describe("published snapshot activation gate", () => {
     const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
     if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
 
-    const result = beforeValidate(hookArgsFor(beforeValidate, {
+    const result: unknown = beforeValidate(hookArgsFor(beforeValidate, {
       operation: "create",
       data: {
         snapshot: {
@@ -343,12 +343,15 @@ describe("published snapshot activation gate", () => {
           },
         },
       },
-      req: {},
-      collection: {},
+      req: hookRequest({}),
+      collection: hookCollection("published-site-snapshots"),
       context: {},
     }))
 
-    expect(result.snapshot.theme).toEqual({
+    if (!result || typeof result !== "object" || !("snapshot" in result)) throw new Error("Missing returned snapshot")
+    const returnedSnapshot = result.snapshot
+    if (!returnedSnapshot || typeof returnedSnapshot !== "object" || !("theme" in returnedSnapshot)) throw new Error("Missing returned snapshot theme")
+    expect(returnedSnapshot.theme).toEqual({
       version: 3,
       appearance: { mode: "light", backgroundMode: "animation" },
       colors: { schemeId: "emerald-calm" },
@@ -373,7 +376,7 @@ describe("published snapshot activation gate", () => {
     const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
     if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
 
-    expect(() => beforeValidate(hookArgsFor(beforeValidate, {
+    expect(() => { beforeValidate(hookArgsFor(beforeValidate, {
       operation: "update",
       data: {
         status: "superseded",
@@ -382,14 +385,14 @@ describe("published snapshot activation gate", () => {
           tenantSlug: "changed",
         },
       },
-      originalDoc: {
+      originalDoc: publishedSnapshotFixture({
         status: "active",
         snapshot: legacySnapshot,
-      },
+      }),
       context: { publishSnapshotLifecycleMutation: true },
-      req: {},
-      collection: {},
-    }))).toThrow("Published site snapshot failed contract validation")
+      req: hookRequest({}),
+      collection: hookCollection("published-site-snapshots"),
+    })) }).toThrow("Published site snapshot failed contract validation")
   })
 
   it("prunes published snapshots to the latest ten while preserving the active snapshot", async () => {

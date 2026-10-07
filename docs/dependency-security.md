@@ -22,12 +22,22 @@ Payload and its complete installed family are aligned to `3.90.1`. This includes
 the critical `3.90.0` fixes and the immediate relationship-filter follow-up.
 Its owned Lexical graph requires exact `0.50.0`; direct Lexical dependencies
 are aligned to that identity. Custom editor features must pass compilation and
-copy/paste/browser checks before release. Only the required upstream cooldown
-schema addition described below is included; access-control rules are preserved.
+copy/paste/browser checks before release. The security upgrade requires the
+upstream cooldown schema addition described below. The separate provider-boundary
+change adds durable write uncertainty as described in
+[the provider runbook](runbooks/provider-boundaries.md); access-control rules are preserved.
 Review the
 [Payload release notes](https://github.com/payloadcms/payload/releases/tag/v3.90.0)
 and [3.90.1 follow-up](https://github.com/payloadcms/payload/releases/tag/v3.90.1),
 especially changed field restrictions, API-key visibility and polymorphic joins.
+
+The fresh October 7 publisher review includes the October 6 High notices for
+[Jobs access control](https://github.com/payloadcms/payload/security/advisories/GHSA-2qw6-cm49-277x),
+[MCP hidden fields](https://github.com/payloadcms/payload/security/advisories/GHSA-jjm7-864w-gg8q)
+and [MCP recovery takeover](https://github.com/payloadcms/payload/security/advisories/GHSA-h5rh-4jwf-738p).
+Their respective fixed floors are `3.89.0`, `3.88.0` and `3.90.0`; the selected
+family `3.90.1` covers them. The newer `3.90.2` release does not identify another
+security floor, and Next's newer `16.4` minor is outside this patch scope.
 
 React and React DOM remain exact `19.2.8`; GraphQL remains `16.14.0`,
 TypeScript remains `6.0.3`, and the existing Vite `8.2.1` resolution is retained.

@@ -1,5 +1,4 @@
 import type { TaskConfig } from "payload"
-import { processLegalRequirementNotifications } from "@/lib/jobs/sendLegalRequirementNotifications"
 import { resolveNoticeAndContinuedUseRequirements } from "@/lib/legal/customerRequirements"
 
 export const sendLegalRequirementNotificationsTask: TaskConfig<{
@@ -17,6 +16,7 @@ export const sendLegalRequirementNotificationsTask: TaskConfig<{
     { name: "skipped", type: "number" },
   ],
   handler: async ({ req }) => {
+    const { processLegalRequirementNotifications } = await import("@/lib/jobs/sendLegalRequirementNotifications")
     try {
       const { syncLegalDocuments } = await import("@/lib/legal/legalDocuments")
       await syncLegalDocuments({

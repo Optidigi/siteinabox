@@ -865,7 +865,17 @@ const externalEvent = async (input: AppointmentCalendarEventInput): Promise<{ id
       if (!(error instanceof AppointmentCalendarError) || error.statusCode !== 404) throw error
     }
   }
-  if (input.provider === "microsoft" && input.createUncertain) throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
+  if (input.createUncertain) {
+    if (input.provider === "microsoft") throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
+    try {
+      const existing = await providerRequest(`${base}/${eventIdFor(input.eventKey)}`, input.token, { signal: input.signal })
+      return validateEvent(input, existing, eventIdFor(input.eventKey))
+    } catch (error) {
+      // Absence now cannot rule out an earlier timed-out create finishing later.
+      if (error instanceof AppointmentCalendarError && error.statusCode === 404) throw new AppointmentCalendarError("Calendar create outcome is unresolved; provider reconciliation is required.", 503)
+      throw error
+    }
+  }
   await input.onCreateIntent?.()
   try {
     const created = await providerRequest(input.provider === "google" ? `${base}?sendUpdates=none` : base, input.token, write("POST"), input.provider === "google" ? 200 : 201)

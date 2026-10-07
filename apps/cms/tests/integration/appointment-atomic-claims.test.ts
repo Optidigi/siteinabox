@@ -4,14 +4,20 @@ import {
   claimAppointmentCalendarEvent,
   claimAppointmentCalendarOAuthState,
   claimAppointmentNotificationDelivery,
+  claimCommerceNotificationDelivery,
+  claimLegalNotificationDelivery,
   transitionAppointmentCalendarEvent,
   transitionAppointmentNotificationDelivery,
+  transitionCommerceNotificationDelivery,
+  transitionLegalNotificationDelivery,
 } from "@/lib/appointments/atomicClaims"
 import { ensureAppointmentSideEffects } from "@/lib/appointments/sideEffects"
 import { getTestPayload, resetTestData } from "./_helpers"
+import { legalDocumentFixture } from "../_helpers/generatedDocs"
 
 let payload: Awaited<ReturnType<typeof getTestPayload>>
 const leaseMs = 300_000
+const businessRows: { commerce: number[]; legal: number[]; requirements: number[]; documents: number[] } = { commerce: [], legal: [], requirements: [], documents: [] }
 
 beforeAll(async () => {
   const uri = new URL(process.env.DATABASE_URI ?? "")
@@ -24,7 +30,13 @@ beforeAll(async () => {
   payload = await getTestPayload()
 }, 60_000)
 beforeEach(async () => resetTestData(payload))
-afterEach(() => vi.restoreAllMocks())
+afterEach(async () => {
+  vi.restoreAllMocks()
+  for (const id of businessRows.commerce.splice(0)) await payload.delete({ collection: "commerce-notification-deliveries", id, overrideAccess: true })
+  for (const id of businessRows.legal.splice(0)) await payload.delete({ collection: "legal-notification-deliveries", id, overrideAccess: true })
+  for (const id of businessRows.requirements.splice(0)) await payload.delete({ collection: "legal-requirements", id, overrideAccess: true })
+  for (const id of businessRows.documents.splice(0)) await payload.delete({ collection: "legal-documents", id, overrideAccess: true })
+})
 
 const fixture = async () => {
   const now = new Date()
@@ -114,5 +126,61 @@ describe("mail write uncertainty in real Postgres", () => {
     const uncertain = await payload.findByID({ collection: "appointment-notification-deliveries", id: claimed.id, depth: 0, overrideAccess: true })
     expect(uncertain).toMatchObject({ status: "processing", retryState: "permanent", attemptCount: 1 })
     expect(await claimAppointmentNotificationDelivery(payload, uncertain, expiredAt, leaseMs)).toBeNull()
+  })
+})
+
+const businessFixture = async () => {
+  const f = await fixture()
+  const tenant = typeof f.notification.tenant === "number" ? f.notification.tenant : f.notification.tenant.id
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...documentData } = legalDocumentFixture({ releaseKey: `atomic-legal-${f.now.getTime()}` })
+  const document = await payload.create({ collection: "legal-documents", overrideAccess: true, data: documentData })
+  businessRows.documents.push(document.id)
+  const requirement = await payload.create({ collection: "legal-requirements", overrideAccess: true, data: { requirementKey: `atomic-legal-${f.now.getTime()}`, tenant, subjectEmail: "fixture@example.test", document: document.id, action: "mandatory_reaccept", status: "pending" } })
+  businessRows.requirements.push(requirement.id)
+  const commerce = await payload.create({ collection: "commerce-notification-deliveries", overrideAccess: true, data: { notificationKey: "atomic-commerce-mail", tenant, recipient: "fixture@example.test", kind: "payment_received", templateVersion: "v1", eventAt: f.now.toISOString(), status: "queued", attemptCount: 0, nextAttemptAt: new Date(f.now.getTime() - 60000).toISOString() } })
+  businessRows.commerce.push(commerce.id)
+  const legal = await payload.create({ collection: "legal-notification-deliveries", overrideAccess: true, data: { notificationKey: "atomic-legal-mail", requirement: requirement.id, tenant, recipient: "fixture@example.test", kind: "initial", templateVersion: "v1", status: "queued", attemptCount: 0, nextAttemptAt: new Date(f.now.getTime() - 60000).toISOString() } })
+  businessRows.legal.push(legal.id)
+  return { now: f.now, commerce, legal }
+}
+
+describe("business mail claims in real Postgres", () => {
+  it("awards one commerce and legal receipt among eight contenders and blocks expired uncertain sends", async () => {
+    const f = await businessFixture()
+    const commerceClaims = await Promise.all(Array.from({ length: 8 }, () => claimCommerceNotificationDelivery(payload, f.commerce, f.now, leaseMs)))
+    const legalClaims = await Promise.all(Array.from({ length: 8 }, () => claimLegalNotificationDelivery(payload, f.legal, f.now, leaseMs)))
+    expect(commerceClaims.filter(value => value !== null)).toHaveLength(1)
+    expect(legalClaims.filter(value => value !== null)).toHaveLength(1)
+    const commerce = commerceClaims.find(value => value !== null), legal = legalClaims.find(value => value !== null)
+    if (!commerce || !legal) throw new Error("Expected actual business mail SQL receipts")
+    vi.spyOn(Date, "now").mockReturnValue(f.now.getTime())
+    await transitionCommerceNotificationDelivery(payload, commerce, { retryState: "permanent", lastError: "Synthetic uncertain provider write" })
+    await transitionLegalNotificationDelivery(payload, legal, { retryState: "permanent", lastError: "Synthetic uncertain provider write" })
+    const expired = new Date(f.now.getTime() + leaseMs + 1)
+    expect(await claimCommerceNotificationDelivery(payload, commerce, expired, leaseMs)).toBeNull()
+    expect(await claimLegalNotificationDelivery(payload, legal, expired, leaseMs)).toBeNull()
+    expect(await payload.findByID({ collection: "commerce-notification-deliveries", id: commerce.id, overrideAccess: true, depth: 0 })).toMatchObject({ status: "processing", retryState: "permanent", attemptCount: 1 })
+    expect(await payload.findByID({ collection: "legal-notification-deliveries", id: legal.id, overrideAccess: true, depth: 0 })).toMatchObject({ status: "processing", retryState: "permanent", attemptCount: 1 })
+  })
+
+  it("fences resumed business send and receipt transitions after lease replacement", async () => {
+    const f = await businessFixture()
+    const commerce = await claimCommerceNotificationDelivery(payload, f.commerce, f.now, leaseMs)
+    const legal = await claimLegalNotificationDelivery(payload, f.legal, f.now, leaseMs)
+    if (!commerce || !legal) throw new Error("Expected initial business claims")
+    const reclaimedAt = new Date(f.now.getTime() + leaseMs + 1)
+    const replacementCommerce = await claimCommerceNotificationDelivery(payload, commerce, reclaimedAt, leaseMs)
+    const replacementLegal = await claimLegalNotificationDelivery(payload, legal, reclaimedAt, leaseMs)
+    if (!replacementCommerce || !replacementLegal) throw new Error("Expected replacement business claims")
+    vi.spyOn(Date, "now").mockReturnValue(f.now.getTime() + 1)
+    await expect(transitionCommerceNotificationDelivery(payload, commerce, { retryState: "permanent" })).rejects.toBeInstanceOf(AppointmentLeaseLostError)
+    await expect(transitionLegalNotificationDelivery(payload, legal, { retryState: "permanent" })).rejects.toBeInstanceOf(AppointmentLeaseLostError)
+    await expect(transitionCommerceNotificationDelivery(payload, commerce, { status: "sent", retryState: "none", leaseUntil: null })).rejects.toBeInstanceOf(AppointmentLeaseLostError)
+    await expect(transitionLegalNotificationDelivery(payload, legal, { status: "failed", retryState: "retryable", leaseUntil: null })).rejects.toBeInstanceOf(AppointmentLeaseLostError)
+    vi.mocked(Date.now).mockReturnValue(reclaimedAt.getTime() + 1)
+    await transitionCommerceNotificationDelivery(payload, replacementCommerce, { status: "sent", retryState: "none", leaseUntil: null })
+    await transitionLegalNotificationDelivery(payload, replacementLegal, { status: "sent", retryState: "none", leaseUntil: null })
+    expect(await payload.findByID({ collection: "commerce-notification-deliveries", id: commerce.id, overrideAccess: true, depth: 0 })).toMatchObject({ status: "sent", attemptCount: 2 })
+    expect(await payload.findByID({ collection: "legal-notification-deliveries", id: legal.id, overrideAccess: true, depth: 0 })).toMatchObject({ status: "sent", attemptCount: 2 })
   })
 })

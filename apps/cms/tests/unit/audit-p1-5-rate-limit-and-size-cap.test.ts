@@ -856,11 +856,7 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Users.hooks.beforeOperation forgot-p
 
 describe("OBS-5 — forgot-password target-email limiter after Payload auth", () => {
   const callTargetLimiter = (email: string, user: ReturnType<typeof userFixture> | null = userFixture({ id: 2, role: "editor" })) =>
-    rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
-      args: { data: { email } },
-      operation: "forgotPassword",
-      req: reqShape({ user }),
-    }))
+    callBeforeOpHook(rateLimitForgotPasswordByTargetEmail, { operation: "forgotPassword", data: { email }, req: reqShape({ user }) })
 
   it("allows the first three reset attempts for the same target email", async () => {
     await expect(callTargetLimiter("Victim@Example.com")).resolves.toBeTruthy()
@@ -898,19 +894,17 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
 
   it("is operation-scoped and ignores calls without a concrete target email", async () => {
     await expect(
-      rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
-        args: { data: { email: "victim@example.com" } },
-        operation: "create",
+      callBeforeOpHook(rateLimitForgotPasswordByTargetEmail, {
+        operation: "create", data: { email: "victim@example.com" },
         req: reqShape({ user: userFixture({ id: 2, role: "editor" }) }),
-      })),
+      }),
     ).resolves.toBeTruthy()
 
     await expect(
-      rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
-        args: { data: {} },
-        operation: "forgotPassword",
+      callBeforeOpHook(rateLimitForgotPasswordByTargetEmail, {
+        operation: "forgotPassword", data: { email: "" },
         req: reqShape({ user: userFixture({ id: 2, role: "editor" }) }),
-      })),
+      }),
     ).resolves.toBeTruthy()
   })
 })

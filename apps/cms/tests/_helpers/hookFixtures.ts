@@ -1,14 +1,38 @@
+import type { User } from "@/payload-types"
 import { buildConfig, type CollectionBeforeOperationHook, type CollectionBeforeValidateHook, type PayloadRequest, type RequestContext } from "payload"
 import { postgresAdapter } from "@payloadcms/db-postgres"
 import { createTestPayload, createTestRequest } from "./testPayload"
 import { argsFor } from "./argsFor"
 
 export type BeforeOperationHook = CollectionBeforeOperationHook
-export type BeforeValidateHook = CollectionBeforeValidateHook
+export type BeforeValidateHook = CollectionBeforeValidateHook<User>
 const configuration = await buildConfig({
   secret: "unit-hook-fixture-secret",
   db: postgresAdapter({ pool: { connectionString: "postgresql://fixture:fixture@localhost/fixture" } }),
-  collections: ["users", "pages", "media", "domain-migrations", "site-settings"].map((slug) => ({ slug, auth: slug === "users", fields: [] })),
+  collections: [
+    "users",
+    "pages",
+    "media",
+    "domain-migrations",
+    "site-settings",
+    "tenants",
+    "orders",
+    "checkout-profiles",
+    "payment-attempts",
+    "billing-agreements",
+    "managed-domains",
+    "domain-renewal-cycles",
+    "accounting-documents",
+    "commerce-notification-deliveries",
+    "migration-source-authorizations",
+    "published-site-snapshots",
+    "legal-documents",
+    "legal-publication-events",
+    "agreement-acceptances",
+    "site-review-revisions",
+    "site-approvals",
+    "communication-preference-events",
+  ].map((slug) => ({ slug, auth: slug === "users", fields: [] })),
 })
 const baseRequest = await createTestRequest(createTestPayload())
 
@@ -53,6 +77,6 @@ export function callBeforeOpHook(hook: BeforeOperationHook, opts: {
   })
 }
 
-export function hookArgsFor<T extends (...args: never[]) => unknown>(fn: T, partial: Record<string, unknown>): Parameters<T>[0] {
+export function hookArgsFor<T extends (...args: never[]) => unknown>(fn: T, partial: Parameters<T>[0]): Parameters<T>[0] {
   return argsFor(fn, partial)
 }
