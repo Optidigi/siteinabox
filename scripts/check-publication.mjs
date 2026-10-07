@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { setTimeout } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
+import { expectedCiJobs } from "./check-required-ci.mjs"
 
 export function matchesPolicy(expected, observed) {
   if (Array.isArray(expected)) return Array.isArray(observed) && expected.length === observed.length && expected.every((value, index) => matchesPolicy(value, observed[index]))
@@ -44,8 +45,11 @@ async function main() {
   const history = api("/actions/runs/" + runId + "/approvals")
   assertPublicationApproval(environment, branches, history, actor, attempt)
   const matrix = JSON.parse(await readFile(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
-  const jobs = [...new Set(matrix.profiles.ci.map((id) => matrix.checks.find((check) => check.id === id).ciJob))]
-    .flatMap((job) => job === "image-verification" ? ["cms", "renderer", "site"].map((app) => job + " (" + app + ")") : [job])
+  const jobs = expectedCiJobs(matrix)
+    .flatMap((job) => job === "image-verification"
+      ? matrix.checks.filter((check) => check.ciJob === job && matrix.profiles.ci.includes(check.id))
+        .map((check) => job + " (" + check.run[2] + ")")
+      : [job])
   jobs.push("required-ci")
   const deadline = Date.now() + 30 * 60 * 1000
   while (Date.now() < deadline) {

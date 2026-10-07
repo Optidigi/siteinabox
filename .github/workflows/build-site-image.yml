@@ -9,6 +9,7 @@ on:
       - "packages/legal-content/**"
       - ".nvmrc"
       - "scripts/check-publication.mjs"
+      - "scripts/check-required-ci.mjs"
       - "scripts/check-dependency-security.mjs"
       - "docs/dependency-security.json"
       - "ops/github/main-ruleset.json"
