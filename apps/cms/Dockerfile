@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # 1. Build
-FROM node:26.7.0-alpine AS builder
+FROM node:26.10.0-alpine AS builder
 WORKDIR /repo
 RUN apk add --no-cache libc6-compat
 RUN npm install -g pnpm@11.21.0
@@ -28,6 +28,8 @@ RUN pnpm install --frozen-lockfile --offline \
   --store-dir=/pnpm/store
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV CI=true
+ENV PAYLOAD_DISABLE_JOBS_AUTORUN=1
+ENV SITE_GENERATION_PROVIDER=mock
 # PAYLOAD_SECRET / DATABASE_URI must be set at runtime, not build time.
 # But payload.config.ts throws if they're missing — provide build-time
 # placeholders so `next build` (which evaluates the config) can complete.
@@ -45,7 +47,7 @@ RUN pnpm --filter siab-payload payload generate:types \
  && node apps/cms/scripts/build-runtime-bundle.mjs
 
 # 2. Runtime
-FROM node:26.7.0-alpine AS runner
+FROM node:26.10.0-alpine AS runner
 WORKDIR /app
 ARG SIAB_BUILD_REVISION=unknown
 ENV NODE_ENV=production

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process"
 import { resolve } from "node:path"
 
 import { indentation, stripYamlComment } from "./workflow-path-parser.mjs"
+import { assertRequiredCiWorkflow, expectedCiJobs } from "./check-required-ci.mjs"
 
 const repoRoot = resolve(new URL("..", import.meta.url).pathname)
 const matrixPath = resolve(repoRoot, "docs/verification-matrix.json")
@@ -209,6 +210,14 @@ async function validateMatrix() {
   for (const id of checks.keys()) if (!profileIds.has(id)) fail(id + " is not included in any profile")
 
   await assertCiMatrixCoverage(checks)
+  const images = [...checks.values()].filter((check) => check.ciJob === "image-verification")
+  const imageJob = workflowJobBlock(ciSource, "image-verification")
+  const variants = imageJob.match(/^        app: \[([^\]]+)\]$/m)?.[1].split(/,\s*/).sort()
+  if (JSON.stringify(variants) !== JSON.stringify(images.map((check) => check.run[2]).sort()) ||
+      !workflowRunCommands(ciSource, "image-verification").includes("pnpm image:verify ${{ matrix.app }}")) {
+    fail("image-verification variants must run every canonical packaged-image check")
+  }
+  assertRequiredCiWorkflow(ciSource, expectedCiJobs(matrix))
 
   return checks
 }

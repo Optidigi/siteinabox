@@ -3,6 +3,9 @@
 This document describes current ownership and data flow. Source contracts and
 executable configuration remain authoritative for exact behavior.
 
+For onboarding, checkout, domain migration and activation changes, read the
+[approved customer self-service target](contracts/self-service-target.md).
+
 ## Applications and packages
 
 - `apps/landing` owns the public marketing site.

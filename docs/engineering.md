@@ -79,8 +79,8 @@ Practical stopping rules:
 2. Read the applicable current sources and identify owners, callers, data flow,
    contracts, tests, and release path.
 3. Reproduce the problem where feasible, classify it, and select risk.
-4. Use one implementation owner. Split only independent, bounded research or
-   review work.
+4. Use one integration owner. Delegate independent work using the bounded
+   contract below; the owner integrates changes and remains accountable.
 5. Make the smallest coherent change. Avoid new sources of truth and do not
    remove compatibility behavior without consumer evidence.
 6. Verify in expanding rings: focused regression, changed package/app, broader
@@ -95,3 +95,37 @@ Owner input is required for product/security/privacy policy, credentials,
 destructive removal, production/provider writes, unresolved consumers, and
 material release or rollback decisions. Do not weaken a control to make a
 change pass.
+
+## Delegation and handoff
+
+One integration owner controls the active PR, resolves conflicts, and produces
+the review packet. Start with at most three additional workers across the whole
+tree and two delegation levels. The owner may reduce this budget for measured
+capacity; increasing it requires recording the resource evidence and disjoint
+ownership in the operational packet. Exactly one worker owns the shared
+lockfile and one integrates generated configuration; migration ownership is
+exclusive. Use separate worktrees when file ownership alone is insufficient.
+
+Each parent supplies the child with the exact base/head, objective, owned files,
+invariants, permission ceiling, resource/time bound, output location, and a
+checkable completion criterion. Include pointers to root `AGENTS.md`, the
+approved scope, nearest manifests/tests, applicable contracts, and any requested
+skills with their reviewed revision. Children read these pointers explicitly;
+conversation inheritance is not assumed. A child may delegate only an
+independent subtask within the shared worker/depth budget and its own scope.
+
+Configure descendant permissions no broader than the parent's and verify the
+actual runtime ceiling before dispatch. File ownership is coordination, not
+sandbox enforcement. Report unavailable isolation, cancellation, or quota
+controls and use a narrower supported execution mode; written instructions do
+not establish a hard security boundary. Production/provider writes and
+administrative changes retain their separate approval requirements.
+
+A handoff records exact SHAs, changed files, decisions with source pointers,
+commands/results, unresolved findings, remaining checks, and transferred
+ownership. Keep transient model selections, task identifiers, machine paths,
+credentials, and raw transcripts in the private operational packet. Integration
+is complete only when every changed and materially affected surface is accounted
+for, required checks pass, and fresh separate Standards and Spec reviews have
+their findings resolved or explicitly gated. Architect review remains separate;
+the integration owner stops at the requested PR-review boundary.

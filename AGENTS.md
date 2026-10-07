@@ -80,8 +80,10 @@ When changing `apps/cms`:
 
 - Make the smallest coherent change; do not create a framework for one case or
   another source of truth.
-- One agent normally owns investigation through handoff. Use additional agents
-  only for bounded read-only research or genuinely independent review.
+- One integration owner owns the active PR through handoff. Delegate bounded
+  implementation, research, or independent review with exclusive write surfaces
+  and at most the parent's permissions. Before delegating or nesting, read
+  [the delegation contract](docs/engineering.md#delegation-and-handoff).
 - MCPs are repository tools. Inventory availability before relying on them,
   use read-only operations first, and keep credentials in user scope. Follow
   `docs/tooling.md`.

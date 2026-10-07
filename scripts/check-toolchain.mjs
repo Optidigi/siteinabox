@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises"
 import { execFileSync } from "node:child_process"
-import { resolve } from "node:path"
+import { join, resolve } from "node:path"
 
 const repoRoot = resolve(new URL("..", import.meta.url).pathname)
 const rootPackage = JSON.parse(await readFile(resolve(repoRoot, "package.json"), "utf8"))
@@ -16,6 +16,9 @@ const errors = []
 if (!/^\d+\.\d+\.\d+$/.test(expectedNode)) {
   errors.push(".nvmrc must contain an exact Node version: " + expectedNode)
 }
+if (process.versions.node !== expectedNode) {
+  errors.push("Node " + process.versions.node + " does not match .nvmrc " + expectedNode)
+}
 
 if (!Number.isInteger(lowerNode) || !Number.isInteger(upperNode)) {
   errors.push("root engines.node is not a bounded major range: " + nodeRange)
@@ -29,7 +32,7 @@ async function listFiles(directory, predicate) {
   const ignoredDirectories = new Set([".next", ".turbo", ".cache", "coverage", "dist", "node_modules"])
   const files = []
   for (const entry of entries) {
-    const relative = resolve(directory, entry.name)
+    const relative = join(directory, entry.name)
     if (entry.isDirectory()) {
       if (!ignoredDirectories.has(entry.name)) files.push(...(await listFiles(relative, predicate)))
     } else if (predicate(relative)) {
@@ -43,7 +46,7 @@ const workflowFiles = await listFiles(".github/workflows", (file) => /\.(yml|yam
 for (const file of workflowFiles) {
   const content = await readFile(resolve(repoRoot, file), "utf8")
   for (const match of content.matchAll(/node-version:\s*["']?(\d+(?:\.\d+){0,2})/g)) {
-    if (Number(match[1]) !== lowerNode) errors.push(file + " declares Node " + match[1])
+    if (match[1] !== expectedNode) errors.push(file + " declares Node " + match[1] + ", expected " + expectedNode)
   }
   for (const match of content.matchAll(/node-version-file:\s*["']?([^"'\s]+)["']?/g)) {
     const declared = (await readFile(resolve(repoRoot, match[1]), "utf8")).trim()
@@ -82,7 +85,7 @@ if (errors.length > 0) {
 
 console.log(
   "Toolchain OK: Node " +
-    lowerNode +
+    expectedNode +
     ", pnpm " +
     expectedPnpm +
     "; checked " +
