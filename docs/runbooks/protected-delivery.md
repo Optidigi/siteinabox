@@ -14,6 +14,15 @@ contexts plus `required-ci` are bound to the observed GitHub Actions app.
 The summary rejects skipped, cancelled and missing canonical jobs, including
 all packaged-image variants.
 
+Canonical CI retains a read-only ruleset diagnostic made with its actual workflow
+token. `node scripts/inspect-delivery-controls.mjs` records whether each bypass
+list is visible; an omitted list is unknown, never an empty bypass list. This
+diagnostic does not certify installed main protection or independent approval.
+The publication guard still requires the complete live policy readback. A token
+that cannot observe its bypass list leaves publication blocked; do not grant the
+publication job administration writes or weaken that comparison to hide missing
+evidence.
+
 Administrative configuration is outside Git: changing this file does not install
 a ruleset. Obtain explicit owner authorization immediately before the write.
 Read the existing rulesets and active main rules first, prepare the exact diff,

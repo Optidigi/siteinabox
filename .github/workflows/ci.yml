@@ -30,6 +30,17 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Inspect delivery-control visibility with the actual workflow token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/inspect-delivery-controls.mjs
+      - name: Retain read-only delivery-control diagnostics
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: delivery-control-readback
+          path: artifacts/delivery-control-readback.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Static deployment parity
         run: pnpm deployment:static-parity
       - name: Repository configuration contracts
