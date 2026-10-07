@@ -1,14 +1,8 @@
-name: ci
+name: ci-disposable-control-proof
 
 on:
   pull_request:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    branches: [control-proof/pr01-20261007-target]
 
 permissions:
   contents: read
@@ -16,165 +10,36 @@ permissions:
 jobs:
   package-quality:
     runs-on: ubuntu-latest
-    env:
-      TYPE_SAFETY_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Static deployment parity
-        run: pnpm deployment:static-parity
-      - name: Repository configuration contracts
-        run: |
-          pnpm mcp:check
-          pnpm docs:check
-          pnpm type-safety:check
-          pnpm environment:check
-          pnpm workflow:check
-          pnpm workflow:actions:check
-      - name: Shared package type checks
-        run: pnpm packages:typecheck
-      - name: Contract and renderer tests
-        run: |
-          pnpm --dir packages/contracts test
-          pnpm --dir packages/site-renderer test
-      - name: Legal release integrity
-        run: |
-          pnpm legal:check
-          pnpm --dir packages/legal-content test
+      - name: Intentionally fail an Actions-source required check
+        run: exit 1
 
   cms-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Payload types
-        run: |
-          pnpm --dir apps/cms payload generate:types
-          pnpm --dir apps/cms payload generate:importmap
-        env:
-          PAYLOAD_SECRET: ci-placeholder
-          DATABASE_URI: postgres://placeholder@placeholder/placeholder
-      - name: Payload dependency contract
-        run: pnpm --dir apps/cms payload:contract
-      - name: Type check
-        run: pnpm --dir apps/cms typecheck
-      - name: Responsive canvas contract
-        run: pnpm --dir apps/cms check:responsive
-      - name: Frontend boundary contract
-        run: pnpm --dir apps/cms lint:ui-boundary
-      - name: Frontend composition contract
-        run: pnpm --dir apps/cms lint:ui-composition
-      - name: Lint (no-css)
-        run: pnpm --dir apps/cms lint:no-css
+      - run: echo "Disposable control fixture only; no application verification is claimed"
 
   cms-test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: payload
-          POSTGRES_PASSWORD: ci-password
-          POSTGRES_DB: payload_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    env:
-      PAYLOAD_SECRET: ci-test-secret
-      DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
-      PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Install authoritative DNS validation tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends bind9-utils
-      - name: Generate Payload types
-        run: |
-          pnpm --dir apps/cms payload generate:types
-      - name: Commerce failure rehearsals and staged release gate
-        run: pnpm --dir apps/cms check:commerce-release
-      - name: Run vitest (unit + integration)
-        run: pnpm --dir apps/cms test
-      - name: Install checkout browser
-        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
-      - name: Verify checkout browser contract
-        run: pnpm --dir apps/cms test:checkout-browser
+      - run: echo "Disposable control fixture only; no application verification is claimed"
 
   site:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm landing:build
-      - run: pnpm landing:test
-      - name: Install site browser-test browser
-        run: pnpm --dir apps/landing exec playwright install --with-deps chromium
-      - name: Verify landing UI, responsive, and accessibility contracts
-        env:
-          SIAB_REUSE_LANDING_BUILD: "1"
-        run: pnpm --dir apps/landing test:ui
-      - name: Verify landing analytics consent lifecycle
-        run: pnpm --dir apps/landing test:analytics-browser
-      - name: Upload landing browser-test diagnostics
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: landing-browser-test-diagnostics
-          path: apps/landing/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
+      - run: echo "Disposable control fixture only; no application verification is claimed"
 
   renderer:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm renderer:deploy-contract
-      - run: pnpm renderer:typecheck
-      - run: pnpm renderer:test
-      - run: pnpm renderer:build
-      - name: Install renderer browser
-        run: pnpm --dir apps/renderer exec playwright install --with-deps chromium
-      - name: Verify analytics lifecycle ownership
-        run: pnpm --dir apps/renderer test:analytics-browser
+      - run: echo "Disposable control fixture only; no application verification is claimed"
+
+  required-ci:
+    if: ${{ always() }}
+    needs: [package-quality, cms-quality, cms-test, site, renderer]
+    runs-on: ubuntu-latest
+    env:
+      RESULTS: ${{ toJSON(needs) }}
+    steps:
+      - name: Fail closed when the intentional required dependency fails
+        run: printf '%s' "$RESULTS" | jq -e 'all(.[]; .result == "success")'
