@@ -42,6 +42,27 @@ security-driven major update. Node stays on the selected Node 26 toolchain.
 The 1,440-minute release-age policy and native build allowlist remain separate
 controls; no release-age exclusions are introduced.
 
+## Required Payload compatibility migration
+
+Payload 3.90 adds a hidden `resetPasswordRequestedAt` date for its default
+15-second reset-email cooldown. The security-safe family requires the generated
+nullable `users.reset_password_requested_at` column before runtime queries can
+work against the committed SQL schema. Preserve that upstream guard; setting
+its interval to zero removes the security behavior. The
+[publisher's migration instructions](https://github.com/payloadcms/payload/releases/tag/v3.90.0)
+and [introducing change](https://github.com/payloadcms/payload/commit/1c46204a73a0a9f988a80c52690eee5a4ada3cf1)
+explain the dependency-owned schema addition.
+
+`20261007_160729_payload_security_password_reset_cooldown` adds only that nullable
+timestamp, without changing existing rows, defaults, indexes, collection policy
+or customer authentication flows. Payload/Drizzle generated the one-column DDL;
+the Payload generator rebuilt the static index from dated migration modules.
+The older snapshots predate later committed migrations, so this predefined
+migration excludes unrelated snapshot drift and non-migration helper modules.
+Rehearse both the full empty-database chain and the prior-schema upgrade with
+synthetic preserved user data. No production database write is authorized by
+these checks.
+
 ## Current findings and release gates
 
 [The checked inventory](dependency-security.json) contains every current

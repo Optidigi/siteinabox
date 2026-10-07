@@ -91,7 +91,12 @@ or merge authorization. Preserve skipped/unavailable evidence as release gates.
 Roll back manifests, lockfile, runtime/image declarations and affected CI together
 only to a reviewed compatible graph with acceptable security. A known vulnerable
 previous graph is not a durable rollback target. No schema rollback is implied
-by a dependency-only change. Git reverts do not remove external rules/environment
+by a toolchain rollback. The Payload security compatibility migration adds a
+nullable cooldown timestamp; keep that additive column when rolling application
+code back to a reviewed compatible security-safe version. Its generated down
+migration removes cooldown timestamps and must never run while the selected
+Payload version requires the field. Rehearse any separately authorized database
+recovery on a disposable prior state first. Git reverts do not remove external rules/environment
 configuration; prepare any administrative rollback separately and obtain owner
 authorization immediately before it. Keep publication/deployment blocked while
 required checks, independent approval or control evidence are unavailable.
