@@ -40,8 +40,9 @@ export async function dynamic({ payload }: { payload: Payload }) {
   if (!mail) throw new Error("Missing declared notice mail enum")
   assert(mail.values.includes("preview.expiry_notice"), "Missing declared notice mail intent")
   mail.values = mail.values.filter((value) => value !== "preview.expiry_notice")
-  const up: string[] = await kit.generateMigration(before, snapshot)
-  const down: string[] = await kit.generateMigration(snapshot, before)
+  const format = (statement: string) => statement.split("\n").map((line) => line.replaceAll("\t", "  ").trimEnd()).filter((line) => line.length > 0).join("\n")
+  const up: string[] = (await kit.generateMigration(before, snapshot)).map(format)
+  const down: string[] = (await kit.generateMigration(snapshot, before)).map(format)
   assert(up.length > 0 && down.length > 0, "Expected an additive migration")
   assert(up.every((statement) => !/DROP\s+(TABLE|COLUMN|TYPE)|RENAME\s/i.test(statement)), "Unexpected destructive upgrade")
   const evidenceTables = ["builder_quota_accounts", "builder_operations", "customer_auth_accounts", "customer_session_bindings", "costly_search_budgets", "magic_mail_budgets"]

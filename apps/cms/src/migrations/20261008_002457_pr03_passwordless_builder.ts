@@ -10,110 +10,103 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   ALTER TYPE "public"."enum_payload_jobs_task_slug" ADD VALUE 'inactive-previews' BEFORE 'send-legal-requirement-notifications';
   ALTER TYPE "public"."enum_payload_jobs_task_slug" ADD VALUE 'reconcile-builder-operations' BEFORE 'send-legal-requirement-notifications';
   CREATE TABLE "builder_quota_accounts" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"customer_email" varchar NOT NULL,
-  	"visible_used" numeric DEFAULT 0 NOT NULL,
-  	"visible_reserved" numeric DEFAULT 0 NOT NULL,
-  	"charged_cost_units" numeric DEFAULT 0 NOT NULL,
-  	"attempts" numeric DEFAULT 0 NOT NULL,
-  	"revision" numeric DEFAULT 0 NOT NULL,
-  	"ingress_requests" numeric DEFAULT 0 NOT NULL,
-  	"ingress_day" varchar DEFAULT '1970-01-01' NOT NULL,
-  	"active_operation_key" varchar,
-  	"ingress_token" varchar,
-  	"last_activity_at" timestamp(3) with time zone NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "customer_email" varchar NOT NULL,
+    "visible_used" numeric DEFAULT 0 NOT NULL,
+    "visible_reserved" numeric DEFAULT 0 NOT NULL,
+    "charged_cost_units" numeric DEFAULT 0 NOT NULL,
+    "attempts" numeric DEFAULT 0 NOT NULL,
+    "revision" numeric DEFAULT 0 NOT NULL,
+    "ingress_requests" numeric DEFAULT 0 NOT NULL,
+    "ingress_day" varchar DEFAULT '1970-01-01' NOT NULL,
+    "active_operation_key" varchar,
+    "ingress_token" varchar,
+    "last_activity_at" timestamp(3) with time zone NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   CREATE TABLE "builder_quota_global" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"key" varchar NOT NULL,
-  	"active_operations" numeric DEFAULT 0 NOT NULL,
-  	"charged_cost_units" numeric DEFAULT 0 NOT NULL,
-  	"attempts" numeric DEFAULT 0 NOT NULL,
-  	"revision" numeric DEFAULT 0 NOT NULL,
-  	"ingress_requests" numeric DEFAULT 0 NOT NULL,
-  	"ingress_day" varchar DEFAULT '1970-01-01' NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "key" varchar NOT NULL,
+    "active_operations" numeric DEFAULT 0 NOT NULL,
+    "charged_cost_units" numeric DEFAULT 0 NOT NULL,
+    "attempts" numeric DEFAULT 0 NOT NULL,
+    "revision" numeric DEFAULT 0 NOT NULL,
+    "ingress_requests" numeric DEFAULT 0 NOT NULL,
+    "ingress_day" varchar DEFAULT '1970-01-01' NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   CREATE TABLE "builder_operations" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"operation_key" varchar NOT NULL,
-  	"operation_id" varchar NOT NULL,
-  	"customer_email" varchar NOT NULL,
-  	"message_hash" varchar NOT NULL,
-  	"state" "enum_builder_operations_state" NOT NULL,
-  	"reservation_token" varchar NOT NULL,
-  	"revision" numeric DEFAULT 0 NOT NULL,
-  	"reserved_cost_units" numeric DEFAULT 0 NOT NULL,
-  	"settled_cost_units" numeric DEFAULT 0 NOT NULL,
-  	"dispatched_cost_units" numeric DEFAULT 0 NOT NULL,
-  	"known_cost_units" numeric DEFAULT 0 NOT NULL,
-  	"model_calls" numeric DEFAULT 0 NOT NULL,
-  	"weighted_steps" numeric DEFAULT 0 NOT NULL,
-  	"unknown_calls" numeric DEFAULT 0 NOT NULL,
-  	"outstanding_calls" numeric DEFAULT 0 NOT NULL,
-  	"cost_known" boolean DEFAULT true NOT NULL,
-  	"slot_held" boolean DEFAULT true NOT NULL,
-  	"started_at" timestamp(3) with time zone NOT NULL,
-  	"deadline_at" timestamp(3) with time zone NOT NULL,
-  	"settled_at" timestamp(3) with time zone,
-  	"error_code" varchar,
-  	"result" jsonb,
-  	"intake_submission_id" numeric,
-  	"generation_run_id" numeric,
-  	"configuration_revision" varchar NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "operation_key" varchar NOT NULL,
+    "operation_id" varchar NOT NULL,
+    "customer_email" varchar NOT NULL,
+    "message_hash" varchar NOT NULL,
+    "state" "enum_builder_operations_state" NOT NULL,
+    "reservation_token" varchar NOT NULL,
+    "revision" numeric DEFAULT 0 NOT NULL,
+    "reserved_cost_units" numeric DEFAULT 0 NOT NULL,
+    "settled_cost_units" numeric DEFAULT 0 NOT NULL,
+    "dispatched_cost_units" numeric DEFAULT 0 NOT NULL,
+    "known_cost_units" numeric DEFAULT 0 NOT NULL,
+    "model_calls" numeric DEFAULT 0 NOT NULL,
+    "weighted_steps" numeric DEFAULT 0 NOT NULL,
+    "unknown_calls" numeric DEFAULT 0 NOT NULL,
+    "outstanding_calls" numeric DEFAULT 0 NOT NULL,
+    "cost_known" boolean DEFAULT true NOT NULL,
+    "slot_held" boolean DEFAULT true NOT NULL,
+    "started_at" timestamp(3) with time zone NOT NULL,
+    "deadline_at" timestamp(3) with time zone NOT NULL,
+    "settled_at" timestamp(3) with time zone,
+    "error_code" varchar,
+    "result" jsonb,
+    "intake_submission_id" numeric,
+    "generation_run_id" numeric,
+    "configuration_revision" varchar NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   CREATE TABLE "customer_auth_accounts" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"user_id" integer NOT NULL,
-  	"auth_epoch" timestamp(3) with time zone NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "user_id" integer NOT NULL,
+    "auth_epoch" timestamp(3) with time zone NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   CREATE TABLE "customer_session_bindings" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"better_auth_session_id" varchar NOT NULL,
-  	"user_id" integer NOT NULL,
-  	"payload_session_id" varchar,
-  	"state" "enum_customer_session_bindings_state" DEFAULT 'issuing' NOT NULL,
-  	"revoked_at" timestamp(3) with time zone,
-  	"handoff_key" varchar,
-  	"paid_order_id" integer,
-  	"paid_attempt_id" integer,
-  	"preview_session_id" varchar,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "better_auth_session_id" varchar NOT NULL,
+    "user_id" integer NOT NULL,
+    "payload_session_id" varchar,
+    "state" "enum_customer_session_bindings_state" DEFAULT 'issuing' NOT NULL,
+    "revoked_at" timestamp(3) with time zone,
+    "handoff_key" varchar,
+    "paid_order_id" integer,
+    "paid_attempt_id" integer,
+    "preview_session_id" varchar,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   CREATE TABLE "costly_search_budgets" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"key" varchar NOT NULL,
-  	"day" varchar NOT NULL,
-  	"attempts" numeric DEFAULT 0 NOT NULL,
-  	"active_claims" jsonb NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "key" varchar NOT NULL,
+    "day" varchar NOT NULL,
+    "attempts" numeric DEFAULT 0 NOT NULL,
+    "active_claims" jsonb NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   CREATE TABLE "magic_mail_budgets" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"budget_key" varchar NOT NULL,
-  	"day" varchar NOT NULL,
-  	"attempts" numeric NOT NULL,
-  	"last_claim_token" varchar,
-  	"last_claim_at" timestamp(3) with time zone,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "budget_key" varchar NOT NULL,
+    "day" varchar NOT NULL,
+    "attempts" numeric NOT NULL,
+    "last_claim_token" varchar,
+    "last_claim_at" timestamp(3) with time zone,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_state" "enum_preview_access_grants_inactive_notice_state";
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_claimed_at" timestamp(3) with time zone;
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_sent_at" timestamp(3) with time zone;
