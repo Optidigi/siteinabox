@@ -21,15 +21,19 @@ export async function dynamic({ payload }: { payload: Payload }) {
   }
   const grant = before.tables["public.preview_access_grants"]
   assert(grant, "Missing existing preview grants")
-  for (const name of ["inactive_notice_state", "inactive_notice_claimed_at", "inactive_notice_sent_at", "inactive_notice_activity_at", "inactive_expires_at", "inactive_expired_at"]) {
+  for (const name of ["expiry_policy", "inactive_notice_state", "inactive_notice_claimed_at", "inactive_notice_sent_at", "inactive_notice_activity_at", "inactive_expires_at", "inactive_expired_at"]) {
     assert(grant.columns[name], `Missing declared preview field ${name}`)
     delete grant.columns[name]
   }
+  // Existing fixed grants required an expiry. Inactivity grants use notice
+  // receipts instead, so the forward schema permits an absent fixed deadline.
+  grant.columns.expires_at = { ...z.object({ notNull: z.boolean() }).passthrough().parse(grant.columns.expires_at), notNull: true }
   // The field's index is part of the same additive declaration.
   const indexes = z.record(z.string(), z.unknown()).parse(grant.indexes)
-  for (const key of Object.keys(indexes)) if (key.includes("inactive_expires_at") || key.includes("inactive_expired_at")) delete indexes[key]
+  for (const key of Object.keys(indexes)) if (key.includes("expiry_policy") || key.includes("inactive_expires_at") || key.includes("inactive_expired_at")) delete indexes[key]
   grant.indexes = indexes
   delete before.enums["public.enum_preview_access_grants_inactive_notice_state"]
+  delete before.enums["public.enum_preview_access_grants_expiry_policy"]
   for (const name of ["public.enum_payload_jobs_task_slug", "public.enum_payload_jobs_log_task_slug"]) {
     const enumeration = before.enums[name]
     if (!enumeration) throw new Error(`Missing declared jobs ${name}`)
@@ -48,7 +52,7 @@ export async function dynamic({ payload }: { payload: Payload }) {
   const evidenceTables = ["builder_quota_accounts", "builder_operations", "customer_auth_accounts", "customer_session_bindings", "costly_search_budgets", "magic_mail_budgets", "preview_session_revocations"]
   const conditions = evidenceTables.map((table) => `EXISTS (SELECT 1 FROM "${table}")`)
   conditions.push(`EXISTS (SELECT 1 FROM "builder_quota_global" WHERE "attempts" > 0 OR "ingress_requests" > 0 OR "active_operations" > 0 OR "charged_cost_units" > 0)`)
-  conditions.push(`EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL)`)
+  conditions.push(`EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "expiry_policy" = 'inactivity' OR "expires_at" IS NULL OR "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL)`)
   conditions.push(`EXISTS (SELECT 1 FROM "payload_jobs" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations'))`)
   conditions.push(`EXISTS (SELECT 1 FROM "payload_jobs_log" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations'))`)
   conditions.push(`EXISTS (SELECT 1 FROM "mail_logs" WHERE "flow" = 'preview.expiry_notice')`)

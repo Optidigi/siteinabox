@@ -83,4 +83,16 @@ describe("checkout progress drafts", () => {
     })).resolves.toBeNull()
     expect(remove).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }))
   })
+  it("bounds checkout PII independently for a live inactivity grant without a fixed expiry", async () => {
+    const payload = createTestPayload()
+    vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([]))
+    const create = vi.spyOn(payload, "create").mockResolvedValue(checkoutProgressFixture({ id: 42, previewAccessGrant: 11, tenant: 7, generationRun: 9, expiresAt: "2026-08-17T12:00:00.000Z" }))
+    const context = contextWith(payload)
+    context.grant = { ...context.grant, expiryPolicy: "inactivity", expiresAt: null }
+    await saveCheckoutProgressDraft({ context, now: new Date("2026-08-03T12:00:00.000Z"), draft: {} })
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ expiresAt: "2026-08-17T12:00:00.000Z" }) }))
+    context.grant.revokedAt = "2026-08-03T11:00:00.000Z"
+    await expect(saveCheckoutProgressDraft({ context, now: new Date("2026-08-03T12:00:00.000Z"), draft: {} })).rejects.toThrow("Preview access is no longer available")
+    expect(create).toHaveBeenCalledTimes(1)
+  })
 })

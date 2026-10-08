@@ -1,6 +1,6 @@
 import type { Payload, PayloadRequest } from "payload"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
-import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
+import { grantIsActive, previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { assertLiveBuilderTransaction } from "./quotaTransaction"
 import { normalizeBuilderEmail } from "./thread"
 
@@ -36,10 +36,11 @@ export async function assertBuilderAccountEligible(
   const grants = await payload.find({
     collection: "preview-access-grants", where: { and: [
       { customerEmail: { equals: customerEmail } }, { clientSlug: { equals: clientSlug } },
-      { revokedAt: { exists: false } }, { expiresAt: { greater_than: new Date().toISOString() } },
-    ] }, limit: 1, sort: "-updatedAt", depth: 0, overrideAccess: true, req,
+      { revokedAt: { exists: false } }, { inactiveExpiredAt: { exists: false } },
+    ] }, limit: 25, sort: "-updatedAt", depth: 0, overrideAccess: true, req,
   })
-  const grant = grants.docs[0]
+  const now = new Date()
+  const grant = grants.docs.find((entry) => grantIsActive(entry, now))
   if (!grant) throw new Error("builder_preview_revoked")
   const tenantId = relationshipId(grant.tenant)
   const runId = relationshipId(grant.generationRun)

@@ -142,10 +142,12 @@ Rolling back to a known vulnerable graph does not satisfy the release gate.
 
 ## Node publication boundary
 
-Node 26.11.0 is the current official non-security release on October 7. Its
-exact official Alpine image was unavailable in the reviewed registry probe,
+Node 26.11.1 is the current official non-security release reviewed on October 8.
+Its exact official Alpine image and the 26.11.0 image were unavailable in the
+reviewed registry probes,
 while 26.10.0 was available. Keep the fully published 26.10.0 toolchain coherent
-across repository, CI and image stages until the official 26.11.0 image exists;
+across repository, CI and image stages until the current official release's
+Alpine image exists;
 then synchronize all exact pins and re-run canonical app/image checks before
 acceptance of that update. This is an explicit publication constraint, not a
 claim that 26.10.0 is the newest Node release. Review the [official distribution

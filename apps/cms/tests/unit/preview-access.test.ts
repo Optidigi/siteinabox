@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { asMockDoc } from "../_helpers/cast"
 import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
@@ -112,8 +112,12 @@ describe("preview access grants", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(previewNow)
     createState()
   })
+
+  afterEach(() => vi.useRealTimers())
 
   it("authorizes the correct customer for only the granted slug and pages", async () => {
     const { loadPreviewGrantContext } = await import("@/lib/preview/previewAccess")
@@ -183,6 +187,32 @@ describe("preview access grants", () => {
     })).rejects.toThrow("Preview page is not available")
   })
 
+  it("preserves inactivity-governed preview and checkout after the old fourteen-day timestamp", async () => {
+    const { grants } = createState()
+    if (!grants[0]) throw new Error("Missing grant fixture")
+    grants[0].expiryPolicy = "inactivity"
+    grants[0].expiresAt = "2026-06-01T00:00:00.000Z"
+    const { loadPreviewGrantAuthority } = await import("@/lib/preview/previewAccess")
+    expect((await loadPreviewGrantAuthority({ clientSlug: "preview-studio", email: "customer@example.com", now: previewNow })).grant.id).toBe(900)
+  })
+  it("new automatic grants have inactivity authority without an independent fixed expiry", async () => {
+    const { grants } = createState()
+    grants.length = 0
+    const { createOrRefreshPreviewGrant } = await import("@/lib/preview/previewAccess")
+    const grant = await createOrRefreshPreviewGrant({ generationRunId: 500, customerEmail: "customer@example.com" })
+    expect(grant).toMatchObject({ expiryPolicy: "inactivity" })
+    expect(grant.expiresAt).toBeUndefined()
+  })
+  it.each(["revoked", "inactiveExpired", "expiredFixed"])("automatic refresh cannot restore %s authority", async (kind) => {
+    const { grants } = createState()
+    if (!grants[0]) throw new Error("Missing grant fixture")
+    if (kind === "revoked") grants[0].revokedAt = "2026-06-25T00:00:00.000Z"
+    if (kind === "inactiveExpired") { grants[0].expiryPolicy = "inactivity"; grants[0].inactiveExpiredAt = "2026-06-25T00:00:00.000Z" }
+    if (kind === "expiredFixed") grants[0].expiresAt = "2026-06-25T00:00:00.000Z"
+    const { createOrRefreshPreviewGrant } = await import("@/lib/preview/previewAccess")
+    await expect(createOrRefreshPreviewGrant({ generationRunId: 500, customerEmail: "customer@example.com" })).rejects.toThrow("Preview access is not available")
+    expect(mocks.payload.update).not.toHaveBeenCalled()
+  })
   it("creates or refreshes preview grants from preview-ready generation runs", async () => {
     const { createOrRefreshPreviewGrant } = await import("@/lib/preview/previewAccess")
 
@@ -194,12 +224,12 @@ describe("preview access grants", () => {
 
     expect(grant.clientSlug).toBe("preview-studio")
     expect(grant.clientSlug).not.toBe("preview-studio-company")
+    expect(grant.expiresAt).toBe("2026-06-27T10:00:00.000Z")
     expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
       collection: "preview-access-grants",
       data: expect.objectContaining({
         clientSlug: "preview-studio",
         pages: [100, 101],
-        revokedAt: null,
         sentCount: 2,
       }),
     }))

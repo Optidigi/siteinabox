@@ -6,8 +6,6 @@ import { relationshipValue, relationshipId, sameRelationshipId } from "@/lib/rel
 import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 import { slugify } from "@/lib/slugify"
 
-export const DEFAULT_PREVIEW_GRANT_TTL_DAYS = 14
-
 export type PreviewGrantContext = {
   grant: PreviewAccessGrant
   payload: Payload
@@ -65,22 +63,21 @@ const payloadRelationIds = (items: unknown): number[] =>
       .filter((id): id is number => id != null)
     : []
 
-const grantIsActive = (grant: PreviewAccessGrant, now: Date): boolean => {
-  if (grant.revokedAt) return false
-  const expiresAt = new Date(grant.expiresAt)
-  return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > now.getTime()
+export const grantIsActive = (grant: PreviewAccessGrant, now: Date): boolean => {
+  if (grant.revokedAt || grant.inactiveExpiredAt) return false
+  // Inactivity expiry requires the owning worker's committed delivered-notice
+  // decision. A disabled policy cannot expire previews through another clock.
+  if (grant.expiryPolicy === "inactivity") return true
+  if (grant.expiryPolicy && grant.expiryPolicy !== "fixed") return false
+  // Legacy grants remain fixed: never infer that an old deadline was automatic.
+  const expiresAt = typeof grant.expiresAt === "string" ? Date.parse(grant.expiresAt) : NaN
+  return Number.isFinite(expiresAt) && expiresAt > now.getTime()
 }
 
 const pageMatchesSlug = (page: Page, slug: string | null | undefined): boolean => {
   if (!slug) return false
   const normalized = slug.replace(/^\/+|\/+$/g, "") || "index"
   return String(page.slug) === normalized
-}
-
-const defaultGrantExpiry = (now = new Date()): string => {
-  const expiry = new Date(now)
-  expiry.setDate(expiry.getDate() + DEFAULT_PREVIEW_GRANT_TTL_DAYS)
-  return expiry.toISOString()
 }
 
 export async function hasActivePreviewGrant(email: string, clientSlug: string, payloadArg?: Payload): Promise<boolean> {
@@ -251,6 +248,7 @@ export async function createOrRefreshPreviewGrant(input: {
     overrideAccess: true,
     req: input.req,
   })
+  fence()
   if (!run || run.status !== "preview_ready") throw new Error("Generation run is not preview-ready")
 
   const tenantId = relationshipId(run.tenant)
@@ -263,6 +261,7 @@ export async function createOrRefreshPreviewGrant(input: {
     overrideAccess: true,
     req: input.req,
   })
+  fence()
   if (!tenant || tenant.status === "archived" || tenant.status === "suspended") {
     throw new Error("Preview tenant is not available")
   }
@@ -272,7 +271,8 @@ export async function createOrRefreshPreviewGrant(input: {
   )
   if (!clientSlug) throw new Error("Preview client slug is not available")
 
-  const expiresAt = input.expiresAt || defaultGrantExpiry()
+  const explicitExpiry = input.expiresAt != null
+  if (explicitExpiry && !Number.isFinite(Date.parse(input.expiresAt ?? ""))) throw new Error("Invalid preview expiry date")
   fence()
   const existing = await payload.find({
     collection: "preview-access-grants",
@@ -288,10 +288,12 @@ export async function createOrRefreshPreviewGrant(input: {
     overrideAccess: true,
     req: input.req,
   })
+  fence()
   const pageIds = payloadRelationIds(run.pages)
   const now = new Date().toISOString()
   const current = existing.docs[0]
   if (current) {
+    if (!grantIsActive(current, new Date())) throw new Error("Preview access is not available")
     fence()
     await payload.update({
       collection: "preview-access-grants",
@@ -301,8 +303,7 @@ export async function createOrRefreshPreviewGrant(input: {
         generationRun: run.id,
         clientSlug,
         pages: pageIds,
-        expiresAt,
-        revokedAt: null,
+        ...(explicitExpiry ? { expiryPolicy: "fixed", expiresAt: input.expiresAt } : {}),
         ...(input.sendEmail ? { lastSentAt: now, sentCount: (current.sentCount ?? 0) + 1 } : {}),
       },
       overrideAccess: true,
@@ -310,17 +311,19 @@ export async function createOrRefreshPreviewGrant(input: {
       depth: 0,
     })
     fence()
-    return await payload.findByID({
+    const refreshed = await payload.findByID({
       collection: "preview-access-grants",
       id: current.id,
       depth: 0,
       overrideAccess: true,
       req: input.req,
     })
+    fence()
+    return refreshed
   }
 
   fence()
-  return await payload.create({
+  const created = await payload.create({
     collection: "preview-access-grants",
     data: {
       customerEmail,
@@ -328,11 +331,14 @@ export async function createOrRefreshPreviewGrant(input: {
       generationRun: run.id,
       clientSlug,
       pages: pageIds,
-      expiresAt,
+      expiryPolicy: explicitExpiry ? "fixed" : "inactivity",
+      ...(explicitExpiry ? { expiresAt: input.expiresAt } : {}),
       ...(input.sendEmail ? { lastSentAt: now, sentCount: 1 } : {}),
     },
     overrideAccess: true,
     req: input.req,
     depth: 0,
   })
+  fence()
+  return created
 }

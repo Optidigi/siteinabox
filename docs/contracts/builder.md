@@ -80,6 +80,19 @@ pending retention/disclosure review. A late notice postpones expiry until a full
 notice period has elapsed. Paid, accepted, published, account, domain and billing
 obligations are conservatively exempt.
 
+New automatic builder grants use the explicit `inactivity` expiry policy without
+a fixed deadline. Access remains valid until explicit revocation or a completed
+inactivity expiry; exhausting builder turns does not expire preview or checkout.
+Legacy and operator-issued grants use `fixed` policy and retain their recorded
+deadlines. The additive migration classifies existing grants as fixed rather
+than guessing their original intent. Extending a legacy deadline requires a
+separate review; refresh cannot reactivate a revoked or expired grant. Fixed
+grants require a valid deadline, including when updated through the CMS.
+
+Checkout progress retains its separate fourteen-day personal-data lifetime,
+capped by a fixed grant's deadline when applicable. That progress lifetime does
+not control the website's preview retention.
+
 The bounded job commits a notice claim before transport. Failed or uncertain
 delivery is retained and is neither blindly retried nor treated as delivered.
 Expiry revokes unpaid preview access while preserving tenant content, identity,
@@ -100,8 +113,10 @@ sixteen-case low/medium evaluation reserves at most $42.56 under the documented
 model envelope. Operator evaluation requires reviewed isolation and explicit
 principal spending authorization; offline rehearsal is not paid evaluation.
 
-The additive migration preserves existing columns. Its down guard rejects
-stored identity, accounting, mail, job and notice evidence. After customer use,
+The additive migration preserves existing columns and makes grant deadlines
+nullable for inactivity policy. Its down guard rejects inactivity or missing
+deadline grants and stored identity, accounting, mail, job and notice evidence.
+After customer use,
 prefer a forward fix; preserve schema and evidence while containing workers.
 Do not restore insecure dependency versions or delete durable claims to make an
 older application start.

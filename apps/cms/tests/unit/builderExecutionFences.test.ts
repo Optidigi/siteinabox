@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { createTestPayload } from "../_helpers/testPayload"
 import { pageFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { offlineBuilderExecution } from "../_helpers/builderExecution"
+import { createOfflineTransactionPayload } from "../_helpers/offlineTransactionPayload"
 import { patchSection, updateSectionProps } from "@/lib/agent/tools"
 import { runBuilderTurn, BuilderChatRequestSchema } from "@/lib/builder/runBuilderTurn"
 
@@ -19,11 +20,11 @@ describe("actual builder tool execution fences", () => {
     expect(update).not.toHaveBeenCalled()
   })
   it("production direct bypass paths pass the transaction request into read and mutation", async () => {
-    const payload = createTestPayload()
+    const payload = await createOfflineTransactionPayload()
     const find = vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([page()]))
     const update = vi.spyOn(payload, "update").mockResolvedValue(page())
     const executionContext = offlineBuilderExecution()
-    const req = { transactionID: "live-fixture-transaction" }
+    const req = { transactionID: "offline-unit-fixture" }
     const fence = vi.fn()
     executionContext.withWrite = async (mutation) => { fence(); return mutation(req) }
     await updateSectionProps({ payload, tenantId: 7, executionContext }, { pageSlug: "index", field: "heading", value: "After" })

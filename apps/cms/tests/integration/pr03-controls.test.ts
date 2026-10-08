@@ -72,7 +72,7 @@ describe("A02 real notice and retained data", () => {
     const tenant = await payload.create({ collection: "tenants", overrideAccess: true, data: { name: "Inactive fixture", slug: `inactive-${key}`, domain: `inactive-${key}.test`, status: "provisioning" } })
     const intake = await payload.create({ collection: "intake-submissions", overrideAccess: true, data: { businessName: "Inactive fixture", source: "fixture", status: "submitted", idempotencyKey: key, raw: {} } })
     const run = await payload.create({ collection: "site-generation-runs", overrideAccess: true, data: { intakeSubmission: intake.id, status: "preview_ready", provider: "mock", model: "fixture:generic", idempotencyKey: key, normalizedIntake: {}, normalizedIntakeHash: key, promptVersion: "fixture", generationInputHash: key, tenant: tenant.id } })
-    const grant = await payload.create({ collection: "preview-access-grants", overrideAccess: true, data: { customerEmail, tenant: tenant.id, generationRun: run.id, clientSlug: tenant.slug, expiresAt: new Date(Date.now() + 60 * 86_400_000).toISOString() } })
+    const grant = await payload.create({ collection: "preview-access-grants", overrideAccess: true, data: { customerEmail, tenant: tenant.id, generationRun: run.id, clientSlug: tenant.slug, expiryPolicy: "inactivity", expiresAt: new Date(Date.now() + 60 * 86_400_000).toISOString() } })
     await recordAuthenticatedBuilderActivity(payload, customerEmail)
     const account = await new BuilderQuotaService(payload).account(customerEmail)
     if (!account) throw new Error("Missing activity account")

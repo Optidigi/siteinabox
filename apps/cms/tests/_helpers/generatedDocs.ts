@@ -26,6 +26,7 @@ export const generationRunFixture = (patch: Partial<SiteGenerationRun> = {}): Si
 
 export const previewGrantFixture = (patch: Partial<PreviewAccessGrant> = {}): PreviewAccessGrant => ({
   id: 1, customerEmail: "fixture@example.com", tenant: 1, generationRun: 1, clientSlug: "fixture",
+  expiryPolicy: "fixed",
   expiresAt: "2026-09-01T00:00:00.000Z", createdAt: timestamp, updatedAt: timestamp, ...patch,
 })
 

@@ -18,4 +18,14 @@ describe("saved approved catalog boundary", () => {
   it("accepts removal of the unavailable section", () => {
     expect(enforceApprovedCatalog(args({ blocks: [] }, pageFixture({ status: "draft", blocks: [legacy] })))).toEqual({ blocks: [] })
   })
+  it("rejects an additional copy of an unchanged unavailable section", () => {
+    expect(() => enforceApprovedCatalog(args({ blocks: [legacy, legacy] }, pageFixture({ status: "draft", blocks: [legacy] })))).toThrow("remove or replace")
+  })
+  it("permits reordering or reducing previously duplicated legacy sections", () => {
+    const second = { ...legacy, heading: "Second legacy section" }
+    const original = pageFixture({ status: "draft", blocks: [legacy, legacy, second] })
+    const reordered = { blocks: [second, legacy, legacy] }
+    expect(enforceApprovedCatalog(args(reordered, original))).toEqual(reordered)
+    expect(enforceApprovedCatalog(args({ blocks: [legacy] }, original))).toEqual({ blocks: [legacy] })
+  })
 })

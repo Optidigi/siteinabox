@@ -78,13 +78,14 @@ export async function processInactivePreviews(payload: Payload, options: {
   const limit = z.number().int().min(1).max(100).parse(options.limit ?? 20)
   const service = new BuilderQuotaService(payload)
   await service.initialize()
-  const batch = await payload.find({ collection: "preview-access-grants", where: { id: { greater_than: afterId } }, sort: "id", limit, depth: 0, overrideAccess: true })
+  const batch = await payload.find({ collection: "preview-access-grants", where: { and: [{ id: { greater_than: afterId } }, { expiryPolicy: { equals: "inactivity" } }] }, sort: "id", limit, depth: 0, overrideAccess: true })
   let notices = 0, expired = 0, unknown = 0
   for (const candidate of batch.docs) {
     const claimed = await service.retry(() => service.transaction(async (req) => {
       await service.lockGlobal(req)
       assertLiveBuilderTransaction(payload, req)
       const grant = await payload.findByID({ collection: "preview-access-grants", id: candidate.id, depth: 0, overrideAccess: true, req })
+      if (grant.expiryPolicy !== "inactivity") return null
       const account = await service.account(grant.customerEmail.trim().toLowerCase(), req)
       const activityAt = account?.lastActivityAt ?? grant.createdAt
       const exempt = grant.revokedAt != null || await protectedObligations(payload, grant, req)

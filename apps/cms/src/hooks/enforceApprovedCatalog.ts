@@ -9,12 +9,18 @@ export const enforceApprovedCatalog: CollectionBeforeValidateHook<Page> = ({ dat
   const issues = approvedCatalogIssues(blocks)
   if (issues.length === 0) return data
   const previous: unknown = originalDoc?.blocks
+  const remainingLegacy = Array.isArray(previous)
+    ? previous.map((block: unknown) => JSON.stringify(block))
+    : []
   const isDraft = (data?.status ?? originalDoc?.status ?? "draft") === "draft"
   const unchangedLegacy = isDraft && Array.isArray(blocks) && Array.isArray(previous)
     && issues.every((issue) => {
       const index = issue.path[1]
       if (typeof index !== "number") return false
-      return previous.some((block: unknown) => JSON.stringify(block) === JSON.stringify(blocks[index]))
+      const matchingIndex = remainingLegacy.indexOf(JSON.stringify(blocks[index]))
+      if (matchingIndex < 0) return false
+      remainingLegacy.splice(matchingIndex, 1)
+      return true
     })
   if (!unchangedLegacy) throw new Error(issues.map((issue) => issue.message).join(" "))
   return data

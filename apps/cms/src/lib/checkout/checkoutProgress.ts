@@ -9,7 +9,7 @@ import {
 } from "@siteinabox/contracts/domain-migration"
 import { contractingPartyTypeSchema } from "@siteinabox/contracts/commerce"
 
-import type { PreviewGrantContext } from "@/lib/preview/previewAccess"
+import { grantIsActive, type PreviewGrantContext } from "@/lib/preview/previewAccess"
 import { normalizeDomain } from "@/lib/domains/normalize"
 import { relationshipId, type RelationshipIdRef } from "@/lib/relationshipId"
 
@@ -143,10 +143,14 @@ const findDraft = async (
 }
 
 const expiryFor = (context: PreviewGrantContext, now: Date): string => {
-  const grantExpiry = new Date(context.grant.expiresAt).getTime()
-  if (!Number.isFinite(grantExpiry) || grantExpiry <= now.getTime()) {
+  if (!grantIsActive(context.grant, now)) {
     throw new Error("Preview access is no longer available.")
   }
+  // A checkout draft's PII lifetime does not expire the saved website. Fixed
+  // grants still cap this draft; inactivity grants expire through notice receipts.
+  const grantExpiry = context.grant.expiryPolicy === "inactivity"
+    ? Infinity
+    : Date.parse(context.grant.expiresAt ?? "")
   return new Date(Math.min(grantExpiry, now.getTime() + CHECKOUT_PROGRESS_MAX_LIFETIME_MS))
     .toISOString()
 }

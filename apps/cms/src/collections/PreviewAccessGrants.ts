@@ -1,11 +1,23 @@
-import type { CollectionConfig } from "payload"
+import type { CollectionBeforeValidateHook, CollectionConfig } from "payload"
+import type { PreviewAccessGrant } from "@/payload-types"
 import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { fenceBuilderAuthority, fenceBuilderAuthorityDeletion } from "./builderAuthorityFence"
 
+// Missing policy retains the existing fixed-expiry contract; automatic customer
+// grant issuance opts into inactivity explicitly. Partial updates use the source
+// document rather than treating an omitted date as permission to remove it.
+export const validatePreviewGrantExpiry: CollectionBeforeValidateHook<PreviewAccessGrant> = ({ data, originalDoc }) => {
+  const expiryPolicy = data?.expiryPolicy ?? originalDoc?.expiryPolicy ?? "fixed"
+  if (expiryPolicy !== "fixed" && expiryPolicy !== "inactivity") throw new Error("Invalid preview expiry policy")
+  const expiresAt = data && "expiresAt" in data ? data.expiresAt : originalDoc?.expiresAt
+  if (expiryPolicy === "fixed" && (typeof expiresAt !== "string" || !Number.isFinite(Date.parse(expiresAt)))) throw new Error("Fixed preview grants require an expiry date")
+  return { ...data, expiryPolicy }
+}
+
 export const PreviewAccessGrants: CollectionConfig = {
   slug: "preview-access-grants",
-  hooks: { beforeValidate: [fenceBuilderAuthority], beforeDelete: [fenceBuilderAuthorityDeletion] },
+  hooks: { beforeValidate: [fenceBuilderAuthority, validatePreviewGrantExpiry], beforeDelete: [fenceBuilderAuthorityDeletion] },
   labels: { singular: { en: "Preview access grant", nl: "Previewtoegang" }, plural: { en: "Preview access grants", nl: "Previewtoegangen" } },
   access: {
     create: isSuperAdmin,
@@ -48,7 +60,8 @@ export const PreviewAccessGrants: CollectionConfig = {
       hasMany: true,
       admin: { description: adminText("Pages this grant can preview. Empty means all pages linked to the generation run.", "Pagina's die met deze toegang bekeken kunnen worden. Leeg betekent alle pagina's van de generatieronde.") },
     },
-    { name: "expiresAt", type: "date", required: true, index: true },
+    { name: "expiryPolicy", type: "select", options: ["fixed", "inactivity"], required: true, defaultValue: "fixed", index: true, admin: { description: adminText("Fixed expiry preserves explicit and legacy deadlines. Inactivity expires only through the approved notice lifecycle.", "Vaste vervaldatum behoudt expliciete en bestaande termijnen. Inactiviteit verloopt alleen via de goedgekeurde kennisgevingscyclus.") } },
+    { name: "expiresAt", type: "date", index: true },
     { name: "revokedAt", type: "date", index: true },
     { name: "lastSentAt", type: "date" },
     { name: "sentCount", type: "number", defaultValue: 0 },

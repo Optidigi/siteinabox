@@ -1,7 +1,8 @@
 import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
-    await db.execute(sql`CREATE TYPE "public"."enum_preview_access_grants_inactive_notice_state" AS ENUM('sending', 'sent', 'unknown');
+    await db.execute(sql`CREATE TYPE "public"."enum_preview_access_grants_expiry_policy" AS ENUM('fixed', 'inactivity');
+  CREATE TYPE "public"."enum_preview_access_grants_inactive_notice_state" AS ENUM('sending', 'sent', 'unknown');
   CREATE TYPE "public"."enum_builder_operations_state" AS ENUM('reserved', 'running', 'succeeded', 'failed', 'interrupted');
   CREATE TYPE "public"."enum_customer_session_bindings_state" AS ENUM('issuing', 'active', 'revoked');
   ALTER TYPE "public"."enum_mail_logs_flow" ADD VALUE 'preview.expiry_notice' BEFORE 'privacy.data_export';
@@ -115,6 +116,8 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
     "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
+  ALTER TABLE "preview_access_grants" ALTER COLUMN "expires_at" DROP NOT NULL;
+  ALTER TABLE "preview_access_grants" ADD COLUMN "expiry_policy" "enum_preview_access_grants_expiry_policy" DEFAULT 'fixed' NOT NULL;
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_state" "enum_preview_access_grants_inactive_notice_state";
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_claimed_at" timestamp(3) with time zone;
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_sent_at" timestamp(3) with time zone;
@@ -159,12 +162,13 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "preview_session_revocations_email_idx" ON "preview_session_revocations" USING btree ("email");
   CREATE INDEX "preview_session_revocations_updated_at_idx" ON "preview_session_revocations" USING btree ("updated_at");
   CREATE INDEX "preview_session_revocations_created_at_idx" ON "preview_session_revocations" USING btree ("created_at");
+  CREATE INDEX "preview_access_grants_expiry_policy_idx" ON "preview_access_grants" USING btree ("expiry_policy");
   CREATE INDEX "preview_access_grants_inactive_expires_at_idx" ON "preview_access_grants" USING btree ("inactive_expires_at");
   CREATE INDEX "preview_access_grants_inactive_expired_at_idx" ON "preview_access_grants" USING btree ("inactive_expired_at");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
-    await db.execute(sql`DO $$ BEGIN IF EXISTS (SELECT 1 FROM "builder_quota_accounts") OR EXISTS (SELECT 1 FROM "builder_operations") OR EXISTS (SELECT 1 FROM "customer_auth_accounts") OR EXISTS (SELECT 1 FROM "customer_session_bindings") OR EXISTS (SELECT 1 FROM "costly_search_budgets") OR EXISTS (SELECT 1 FROM "magic_mail_budgets") OR EXISTS (SELECT 1 FROM "preview_session_revocations") OR EXISTS (SELECT 1 FROM "builder_quota_global" WHERE "attempts" > 0 OR "ingress_requests" > 0 OR "active_operations" > 0 OR "charged_cost_units" > 0) OR EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL) OR EXISTS (SELECT 1 FROM "payload_jobs" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "payload_jobs_log" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "mail_logs" WHERE "flow" = 'preview.expiry_notice') THEN RAISE EXCEPTION 'Preserve customer identity, accounting and notice evidence; use a forward fix'; END IF; END $$;
+    await db.execute(sql`DO $$ BEGIN IF EXISTS (SELECT 1 FROM "builder_quota_accounts") OR EXISTS (SELECT 1 FROM "builder_operations") OR EXISTS (SELECT 1 FROM "customer_auth_accounts") OR EXISTS (SELECT 1 FROM "customer_session_bindings") OR EXISTS (SELECT 1 FROM "costly_search_budgets") OR EXISTS (SELECT 1 FROM "magic_mail_budgets") OR EXISTS (SELECT 1 FROM "preview_session_revocations") OR EXISTS (SELECT 1 FROM "builder_quota_global" WHERE "attempts" > 0 OR "ingress_requests" > 0 OR "active_operations" > 0 OR "charged_cost_units" > 0) OR EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "expiry_policy" = 'inactivity' OR "expires_at" IS NULL OR "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL) OR EXISTS (SELECT 1 FROM "payload_jobs" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "payload_jobs_log" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "mail_logs" WHERE "flow" = 'preview.expiry_notice') THEN RAISE EXCEPTION 'Preserve customer identity, accounting and notice evidence; use a forward fix'; END IF; END $$;
   ALTER TABLE "builder_quota_accounts" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "builder_quota_global" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "builder_operations" DISABLE ROW LEVEL SECURITY;
@@ -193,14 +197,18 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TYPE "public"."enum_payload_jobs_task_slug";
   CREATE TYPE "public"."enum_payload_jobs_task_slug" AS ENUM('inline', 'purge-stale-form-submissions', 'purge-expired-checkout-progress-drafts', 'send-legal-requirement-notifications', 'process-appointment-notifications', 'process-appointment-calendar-events', 'purge-stale-appointments', 'sync-mollie-payment', 'fulfill-order', 'prepare-domain-migration', 'prepare-domain-transfer-out', 'renew-domain', 'reconcile-commerce', 'deliver-commerce-notification', 'request-mollie-refund');
   ALTER TABLE "payload_jobs" ALTER COLUMN "task_slug" SET DATA TYPE "public"."enum_payload_jobs_task_slug" USING "task_slug"::"public"."enum_payload_jobs_task_slug";
+  DROP INDEX "preview_access_grants_expiry_policy_idx";
   DROP INDEX "preview_access_grants_inactive_expires_at_idx";
   DROP INDEX "preview_access_grants_inactive_expired_at_idx";
+  ALTER TABLE "preview_access_grants" ALTER COLUMN "expires_at" SET NOT NULL;
+  ALTER TABLE "preview_access_grants" DROP COLUMN "expiry_policy";
   ALTER TABLE "preview_access_grants" DROP COLUMN "inactive_notice_state";
   ALTER TABLE "preview_access_grants" DROP COLUMN "inactive_notice_claimed_at";
   ALTER TABLE "preview_access_grants" DROP COLUMN "inactive_notice_sent_at";
   ALTER TABLE "preview_access_grants" DROP COLUMN "inactive_notice_activity_at";
   ALTER TABLE "preview_access_grants" DROP COLUMN "inactive_expires_at";
   ALTER TABLE "preview_access_grants" DROP COLUMN "inactive_expired_at";
+  DROP TYPE "public"."enum_preview_access_grants_expiry_policy";
   DROP TYPE "public"."enum_preview_access_grants_inactive_notice_state";
   DROP TYPE "public"."enum_builder_operations_state";
   DROP TYPE "public"."enum_customer_session_bindings_state";`);
