@@ -1,3 +1,4 @@
+import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, mastraAggregateUsage } from "@/lib/ai-generation/boundedMastra"
 import { Agent } from "@mastra/core/agent"
 import { SITE_GENERATION_SYSTEM_PROMPT, SITE_GENERATION_PROMPT_VERSION } from "./prompts/siteGenerationPrompt"
 import { SitegenOutputSchema } from "@/lib/sitegen/output-schema"
@@ -54,8 +55,8 @@ export const defaultMastraChatReasoningEffort = (env: EnvLookup = process.env): 
 
 export const mastraOpenAIProviderOptions = (
   effort: MastraReasoningEffort = defaultMastraReasoningEffort(),
-): { openai: { reasoningEffort: MastraReasoningEffort } } => ({
-  openai: { reasoningEffort: effort },
+): { openai: { reasoningEffort: MastraReasoningEffort; store: false } } => ({
+  openai: { reasoningEffort: effort, store: false },
 })
 
 export const parseMastraJsonObject = (result: { object?: unknown; text?: string }): unknown => {
@@ -85,6 +86,9 @@ export const createMastraSiteGenerationProvider = (
       if (!process.env.OPENAI_API_KEY?.trim()) {
         throw new Error("OPENAI_API_KEY is required when SITE_GENERATION_PROVIDER=mastra")
       }
+      const executionContext = request.executionContext
+      if (executionContext && model !== "openai/gpt-5.6-luna") throw new Error("Customer generation model is outside the reviewed candidate family.")
+      const limits = customerModelLimits(customerEffort(executionContext ? reasoningEffort : "medium"), true)
       const agent = new Agent({
         id: "siab-sitegen",
         name: "Site in a Box Sitegen",
@@ -93,17 +97,19 @@ export const createMastraSiteGenerationProvider = (
           content: SITE_GENERATION_SYSTEM_PROMPT,
           providerOptions,
         },
-        model,
+        model: executionContext ? customerMastraModel(executionContext, limits) : model,
+        maxRetries: 0,
       })
       // OpenAI structured output rejects Zod discriminatedUnion (`oneOf`) on
       // `pages[].sections`. Ask for JSON and validate with SitegenOutputSchema.
-      const generated = await agent.generate(
+      const generate = (signal?: AbortSignal) => agent.generate(
         [
           "Return one JSON object only. No markdown, no commentary.",
           JSON.stringify(request.input),
         ].join("\n\n"),
-        { providerOptions },
+        { providerOptions, ...(executionContext ? { ...customerMastraSettings(executionContext, limits), ...(signal ? { abortSignal: signal } : {}) } : { maxSteps: 1, modelSettings: { maxOutputTokens: 8192, maxRetries: 0, timeout: { totalMs: 90000, stepMs: 45000 } } }) },
       )
+      const generated = executionContext ? await executionContext.modelCall(limits, generate, (result) => mastraAggregateUsage(result, limits)) : await generate()
       const parsedOutput = SitegenOutputSchema.parse(coerceSitegenModelJson(parseMastraJsonObject(generated)))
       return {
         provider: "mastra",

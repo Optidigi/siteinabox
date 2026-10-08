@@ -1,6 +1,7 @@
 "use server"
 
-import { headers } from "next/headers"
+import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies"
+import { cookies, headers } from "next/headers"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { previewAuthRequestHeaders } from "@/lib/preview/previewHost"
 import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
@@ -19,7 +20,14 @@ export async function requestBuilderMagicLinkAction(
 export async function signOutBuilderAction(): Promise<void> {
   const headerStore = await headers()
   if (!isPreviewRequestAuthority(headerStore)) return
-  await (previewAuth.api).signOut({
+  const result = await previewAuth.api.signOut({
+    returnHeaders: true,
     headers: previewAuthRequestHeaders(headerStore),
-  }).catch(() => null)
+  })
+  const cookieStore = await cookies()
+  for (const setCookie of result.headers.getSetCookie()) {
+    for (const [name, attributes] of parseSetCookieHeader(setCookie)) {
+      cookieStore.set(name, attributes.value, toCookieOptions(attributes))
+    }
+  }
 }

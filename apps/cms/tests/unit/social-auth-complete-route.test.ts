@@ -57,7 +57,7 @@ describe("social auth completion route", () => {
   })
 
   it("redirects to login when Better Auth has no linked Payload user", async () => {
-    mocks.getSession.mockResolvedValueOnce({ user: {} })
+    mocks.getSession.mockResolvedValueOnce({ response: { user: {}, session: { id: "ba-session" } }, headers: new Headers() })
 
     const res = await GET(request())
 
@@ -67,7 +67,7 @@ describe("social auth completion route", () => {
   })
 
   it("mints a Payload cookie and preserves a safe next redirect", async () => {
-    mocks.getSession.mockResolvedValueOnce({ user: { payloadUserId: "42" } })
+    mocks.getSession.mockResolvedValueOnce({ response: { user: { payloadUserId: "42" }, session: { id: "ba-session" } }, headers: new Headers() })
     mocks.issuePayloadSessionCookie.mockResolvedValueOnce("payload-token=signed; Path=/; HttpOnly")
 
     const res = await GET(request("/api/siab-auth/complete?next=/sites"))
@@ -75,11 +75,11 @@ describe("social auth completion route", () => {
     expect(res.status).toBe(307)
     expect(res.headers.get("location")).toBe("https://admin.siteinabox.nl/sites")
     expect(res.headers.get("set-cookie")).toBe("payload-token=signed; Path=/; HttpOnly")
-    expect(mocks.issuePayloadSessionCookie).toHaveBeenCalledWith("42", expect.any(Request))
+    expect(mocks.issuePayloadSessionCookie).toHaveBeenCalledWith("42", expect.any(Request), "ba-session")
   })
 
   it("uses forwarded platform admin hosts instead of container-local request URLs", async () => {
-    mocks.getSession.mockResolvedValueOnce({ user: { payloadUserId: "42" } })
+    mocks.getSession.mockResolvedValueOnce({ response: { user: { payloadUserId: "42" }, session: { id: "ba-session" } }, headers: new Headers() })
     mocks.issuePayloadSessionCookie.mockResolvedValueOnce("payload-token=signed; Path=/; HttpOnly")
 
     const res = await GET(internalRequest("/api/siab-auth/complete?next=/sites"))
@@ -107,7 +107,7 @@ describe("social auth completion route", () => {
   })
 
   it("uses the platform admin host dynamically too", async () => {
-    mocks.getSession.mockResolvedValueOnce({ user: {} })
+    mocks.getSession.mockResolvedValueOnce({ response: { user: {}, session: { id: "ba-session" } }, headers: new Headers() })
 
     const res = await GET(internalRequest("/api/siab-auth/complete", "admin.siteinabox.nl"))
 
@@ -127,7 +127,7 @@ describe("social auth completion route", () => {
   })
 
   it("rejects unsafe next redirects through the shared validator", async () => {
-    mocks.getSession.mockResolvedValueOnce({ user: { payloadUserId: "42" } })
+    mocks.getSession.mockResolvedValueOnce({ response: { user: { payloadUserId: "42" }, session: { id: "ba-session" } }, headers: new Headers() })
     mocks.issuePayloadSessionCookie.mockResolvedValueOnce("payload-token=signed; Path=/; HttpOnly")
 
     const res = await GET(request("/api/siab-auth/complete?next=https://evil.example/path"))
@@ -136,7 +136,7 @@ describe("social auth completion route", () => {
   })
 
   it("redirects to login when the Payload session bridge fails", async () => {
-    mocks.getSession.mockResolvedValueOnce({ user: { payloadUserId: "42" } })
+    mocks.getSession.mockResolvedValueOnce({ response: { user: { payloadUserId: "42" }, session: { id: "ba-session" } }, headers: new Headers() })
     mocks.issuePayloadSessionCookie.mockRejectedValueOnce(new Error("wrong host"))
 
     const res = await GET(request())

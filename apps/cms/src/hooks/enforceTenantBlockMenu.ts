@@ -33,7 +33,7 @@ const extractTenantId = (raw: unknown): string | number | null => {
 }
 
 type BlockMenuInput = { tenant?: RelationshipIdRef; blocks?: unknown }
-export const enforceTenantBlockMenu = async <T extends BlockMenuInput | null | undefined>({ data, originalDoc }: Omit<Parameters<CollectionBeforeValidateHook<Page>>[0], "data"> & { data?: T }): Promise<T | undefined> => {
+export const enforceTenantBlockMenu = async <T extends BlockMenuInput | null | undefined>({ data, originalDoc, req }: Omit<Parameters<CollectionBeforeValidateHook<Page>>[0], "data"> & { data?: T }): Promise<T | undefined> => {
   const tenantId = extractTenantId(
     (data)?.tenant ?? (originalDoc)?.tenant,
   )
@@ -41,7 +41,7 @@ export const enforceTenantBlockMenu = async <T extends BlockMenuInput | null | u
   // Dynamic import to break the payload.config ↔ Pages ↔ enforceTenantBlockMenu
   // ↔ loadManifest circular module-init cycle under esbuild bundling.
   const { loadTenantManifest } = await import("@/lib/richText/loadManifest")
-  const manifest = await loadTenantManifest(tenantId)
+  const manifest = await loadTenantManifest(tenantId, req)
   const allowed = new Set(
     manifest.blocks && manifest.blocks.length > 0
       ? manifest.blocks.map((b) => b.slug)

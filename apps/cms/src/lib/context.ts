@@ -1,10 +1,11 @@
 import { cookies, headers } from "next/headers"
 import { notFound } from "next/navigation"
-import { getPayload } from "payload"
+import { getPayload, type PayloadRequest } from "payload"
 import config from "@/payload.config"
 import { PLATFORM_PROXY_MODE } from "@/lib/hostToTenant"
 import { relationshipId } from "@/lib/relationshipId"
 import type { Tenant, User } from "@/payload-types"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 
 export type SiabMode = "super-admin" | "tenant"
 
@@ -52,8 +53,8 @@ export const currentPayloadUser = async (): Promise<User | null> => {
  * has no tenant; owner/editor/viewer have exactly one. Host is no longer the
  * lock — `src/proxy.ts` only admits the platform admin host.
  */
-export const resolveSiabContextForUser = async (user: User): Promise<SiabContext> => {
-  const payload = await getPayload({ config })
+export const resolveSiabContextForUser = async (user: User, req?: Partial<PayloadRequest>): Promise<SiabContext> => {
+  const payload = req?.payload ?? await getPayload({ config })
 
   if (user.role === "super-admin") {
     const tenants = Array.isArray(user.tenants) ? user.tenants : []
@@ -68,12 +69,14 @@ export const resolveSiabContextForUser = async (user: User): Promise<SiabContext
 
   let tenant: Tenant
   try {
+    if (req?.transactionID !== undefined) assertLiveBuilderTransaction(payload, req)
     tenant = await payload.findByID({
       collection: "tenants",
       id: tenantId,
       depth: 0,
       overrideAccess: true,
-    }) as Tenant
+      req,
+    })
   } catch {
     notFound()
   }

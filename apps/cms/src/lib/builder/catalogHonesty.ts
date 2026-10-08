@@ -26,7 +26,7 @@ const UNAVAILABLE_ASK: Array<{ id: (typeof SITEGEN_UNAVAILABLE_BLOCK_TYPES)[numb
   { id: "work", pattern: /\b(portfolio|projecten|werkvoorbeelden)\b/i, label: "portfolio" },
   { id: "reviews", pattern: /\b(reviews|beoordelingen|getuigenissen)\b/i, label: "reviews" },
   { id: "pricing", pattern: /\b(prijslijst|prijstabel|tarievenblok)\b/i, label: "prijzenblok" },
-  { id: "contact", pattern: /\b(contactpagina|apart contactblok)\b/i, label: "contactpagina" },
+  { id: "contact", pattern: /\b(contactpagina|apart contactblok|contactformulier|contact form|contact page)\b/i, label: "contact/form" },
 ]
 
 export const sitegenCatalogDigest = (): string => {
@@ -48,7 +48,8 @@ export const sitegenCatalogDigest = (): string => {
 export const unavailableAsksIn = (message: string): string[] =>
   UNAVAILABLE_ASK.filter((entry) => entry.pattern.test(message)).map((entry) => entry.label)
 
-export const composeFirstSiteReply = (facts: BuilderFacts, extra?: { unavailable?: string[] }): string => {
+export const composeFirstSiteReply = (facts: BuilderFacts, extra?: { unavailable?: string[]; locale?: "nl" | "en" }): string => {
+  if (extra?.locale === "en") return `Here is a first homepage for ${facts.businessName}: hero, services and a clear next step${facts.formType === "appointment" ? ", including appointments" : ""}. ${extra.unavailable?.length ? `${extra.unavailable.join(", ")} has no approved catalog design, so it is left out. ` : ""}Separate about, FAQ, portfolio and contact forms still need approved designs. Tell me what to change in the theme, copy or variant.`
   const modules = facts.formType === "appointment"
     ? "inclusief afsprakenmodule"
     : facts.selectedActions.includes("whatsapp")
@@ -57,20 +58,25 @@ export const composeFirstSiteReply = (facts: BuilderFacts, extra?: { unavailable
   const missing = extra?.unavailable?.length
     ? ` ${extra.unavailable.join(", ")} zit nog niet in de catalogus, dus dat laat ik weg.`
     : ""
-  return `Hier is een eerste homepage voor ${facts.businessName}: hero, diensten en ${modules}.${missing} Dat is wat we nu kunnen maken — geen aparte over-ons, FAQ of portfolio. Zeg wat er anders moet aan thema, teksten of variant.`
+  return `Hier is een eerste homepage voor ${facts.businessName}: hero, diensten en ${modules}.${missing} Dat is wat we nu kunnen maken — geen aparte over-ons, FAQ, portfolio of contactformulier. Zeg wat er anders moet aan thema, teksten of variant.`
 }
 
-export const composeAskBriefReply = (): string =>
-  "Ik bouw een eerste homepage met onze bestaande blokken (hero, diensten, CTA; afspraken als je dat wilt). Geen complete site met FAQ of portfolio — die families bestaan nog niet. Welk vak doe je, en waar werk je?"
+export const composeAskBriefReply = (locale?: "nl" | "en"): string =>
+  locale === "en" ? "I can build a first homepage with the approved hero, services and CTA sections, plus appointments if needed. Separate FAQ, portfolio and contact form designs are unavailable. What do you do, and where do you work?" :
+  "Ik bouw een eerste homepage met onze bestaande blokken (hero, diensten, CTA; afspraken als je dat wilt). Geen complete site met FAQ of portfolio — die families en een contactformulier hebben nog geen goedgekeurd ontwerp. Welk vak doe je, en waar werk je?"
 
-export const composeAskLookReply = (): string =>
+export const composeAskLookReply = (locale?: "nl" | "en"): string =>
+  locale === "en" ? "I have enough to build. What style suits your business? Choose a style, or let me choose." :
   "Ik heb genoeg om te bouwen. Welke uitstraling past? Tik een sfeer, of zeg dat ik het kies — dan maak ik de homepage."
 
-export const composeUnavailableReply = (labels: string[]): string =>
+export const composeUnavailableReply = (labels: string[], locale?: "nl" | "en"): string =>
+  locale === "en" ? `${labels.join(" and ")} has no approved catalog design yet. I can build a homepage with hero, services, CTA and optional appointments. Shall I make a first version?` :
   `${labels.join(" en ")} kan ik nog niet als eigen blok zetten: die zitten niet in de huidige catalogus. Wat wél kan is een homepage met hero, diensten en een CTA (en afspraken als je dat wilt). Zal ik daar een eerste versie van maken?`
 
-export const composeConfirmGenerateReply = (): string =>
+export const composeConfirmGenerateReply = (locale?: "nl" | "en"): string =>
+  locale === "en" ? "I have enough for a first homepage with hero, services and CTA. Shall I build it?" :
   "Ik heb genoeg voor een eerste homepage met hero, diensten en CTA. Zal ik die nu maken?"
 
-export const composeMaintainerNoneReply = (): string =>
+export const composeMaintainerNoneReply = (locale?: "nl" | "en"): string =>
+  locale === "en" ? "I can change the theme, copy, approved hero/services/CTA/appointment variants, hours and contact details, or regenerate the homepage. Separate FAQ, about, portfolio and contact form designs are unavailable." :
   "Dat kan ik zo niet toepassen. Ik kan thema, titels, catalogusvarianten (hero/services/cta/appointments), openingstijden of contactgegevens aanpassen — of de homepage opnieuw genereren. FAQ, over-ons en portfolio kan ik nog niet toevoegen."

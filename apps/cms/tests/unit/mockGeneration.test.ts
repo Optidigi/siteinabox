@@ -28,7 +28,7 @@ describe("first-party mock Sitegen fixture", () => {
 
     expect(parsed.success, parsed.success ? undefined : parsed.error.message).toBe(true)
     expect(validation.valid, validation.valid ? undefined : JSON.stringify(validation.issues)).toBe(true)
-    expect(spec.pages).toHaveLength(3)
+    expect(spec.pages).toHaveLength(1)
     expect(spec.pages.every((page) => page.blocks[0]?.blockType === "hero")).toBe(true)
     expect(spec.settings.chrome?.navbar).toMatchObject({ variant: "navbar-01", placement: "hero-overlay" })
     expect(spec.settings.systemTemplates).toBeUndefined()
@@ -40,8 +40,8 @@ describe("first-party mock Sitegen fixture", () => {
     const spec = loadMockSiteGenerationSpec(normalized)
     const blockTypes = new Set(spec.pages.flatMap((page) => page.blocks.map((block) => block.blockType)))
     expect([...blockTypes].every((blockType) => SITE_BLOCK_SLUGS.includes(blockType))).toBe(true)
-    expect(blockTypes).toEqual(new Set(["hero", "services", "about", "process", "faq", "cta", "contact"]))
-    expect(spec.blocks?.map((block) => block.slug)).toEqual([...SITE_BLOCK_SLUGS])
+    expect(blockTypes).toEqual(new Set(["hero", "services", "cta"]))
+    expect(spec.blocks?.map((block) => block.slug)).toEqual(["hero", "services", "cta"])
   })
 
   it("keeps an invalid fixture limited to tenant identity validation", () => {

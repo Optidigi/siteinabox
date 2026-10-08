@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 import { builderAgentStatus } from "@/components/builder/builderPresence"
+import { builderCopy } from "@/components/builder/copy"
 import {
   builderPreviewActions,
   defaultBuilderMessages,
@@ -35,7 +36,9 @@ describe("builder shell chrome", () => {
     expect(shell).not.toContain("Preview verschijnt hier")
     expect(shell).not.toContain("neoChrome")
     expect(stage).toContain("data-siab-builder-stage")
-    expect(stage).toContain("BUILDER_STAGE_HEADLINE")
+    expect(stage).toContain("builderCopy[locale].headline")
+    expect(builderCopy.nl.headline).toBe("Wat gaan we bouwen?")
+    expect(builderCopy.en.headline).toBe("What shall we build?")
     expect(stage).toContain("BuilderLogo")
     expect(stage).not.toContain("BuilderThread")
     expect(stage).not.toContain("{children}")
@@ -79,7 +82,7 @@ describe("builder shell chrome", () => {
     expect(composer).toContain("lg:has-[:focus-visible]:border-foreground")
     expect(composer).not.toContain("lg:has-[:focus-visible]:outline-2")
     expect(composer).not.toContain("lg:has-[:focus-visible]:border-[3px]")
-    expect(shell).toContain("placeholder={agentStage ? BUILDER_STAGE_PLACEHOLDER : undefined}")
+    expect(shell).toContain("placeholder={agentStage ? copy.placeholder : undefined}")
     expect(read("src/lib/builder/thread.ts")).toContain("Wat gaan we bouwen?")
     expect(read("src/lib/builder/thread.ts")).toContain("max-w-[40rem]")
     expect(read("src/lib/builder/thread.ts")).toContain("Ik ben kapper in Tilburg")
@@ -102,7 +105,7 @@ describe("builder shell chrome", () => {
     expect(shell).toContain("SignOutControl")
     expect(shell).toContain("iconOnly")
     expect(shell).toContain("showDesktopSignOut={!hasPreview}")
-    expect(shell).toContain("desktopSignOut={<SignOutControl />}")
+    expect(shell).toContain("desktopSignOut={<SignOutControl locale={locale} />}")
     expect(header).toContain("showDesktopSignOut")
     expect(header).toContain("desktopSignOut")
     expect(header).toContain("className=\"lg:hidden\"")
@@ -137,7 +140,8 @@ describe("builder shell chrome", () => {
     expect(thread).toContain("BuilderSpeech")
     expect(thread).toContain("OPEN_PREVIEW_ACTION_ID")
     expect(thread).toContain("onOpenPreview")
-    expect(thread).toContain("Bekijk je site")
+    expect(thread).toContain("builderCopy[locale].preview")
+    expect(builderCopy.nl.preview).toBe("Bekijk je site")
   })
 
   it("names idle and busy presence phases", () => {

@@ -2,6 +2,7 @@ import type { Tenant } from "@/payload-types"
 import type { CollectionBeforeValidateHook } from "payload"
 import { ValidationError } from "payload"
 import { relationshipId } from "@/lib/relationshipId"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 
 // Slug of the collection this hook is attached to is set on the req's
 // hook context by Payload's pipeline; we read it for the ValidationError
@@ -32,11 +33,11 @@ export const validateTenantExists: CollectionBeforeValidateHook<{ id: number | s
 }) => {
   if (!data) return data
   if (data.tenant === undefined) return data
-  const targetId = relationshipId(data.tenant as Parameters<typeof relationshipId>[0])
+  const targetId = relationshipId(data.tenant)
   if (targetId == null) return data
 
   if (operation === "update") {
-    const currentId = relationshipId(originalDoc?.tenant as Parameters<typeof relationshipId>[0])
+    const currentId = relationshipId(originalDoc?.tenant)
     if (targetId === currentId) return data
   }
 
@@ -45,12 +46,14 @@ export const validateTenantExists: CollectionBeforeValidateHook<{ id: number | s
   // distinguish "tenant doesn't exist" from "you can't see it" —
   // the multi-tenant plugin's separate per-tenant access check
   // handles the visibility part).
+  if (req.transactionID !== undefined) assertLiveBuilderTransaction(req.payload, req)
   try {
     await req.payload.findByID({
       collection: "tenants",
       id: targetId,
       overrideAccess: true,
       depth: 0,
+      req,
     })
   } catch {
     throw new ValidationError({

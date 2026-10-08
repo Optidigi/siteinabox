@@ -1,3 +1,4 @@
+import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, mastraAggregateUsage } from "@/lib/ai-generation/boundedMastra"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
@@ -25,7 +26,6 @@ import {
   defaultEnabledAppointments,
   loadSiteSnapshot,
   patchSection,
-  pruneUnavailableBlocksIfPresent,
   removeUnavailableBlocks,
   replaceSection,
   setAppointments,
@@ -77,6 +77,7 @@ export const encodeSiteEditorSse = (event: SiteEditorStreamEvent): string =>
 
 export type SiteEditorTurnInput = {
   ctx: AgentWriteContext
+  locale?: "nl" | "en"
   message: string
   pageSlug: string
   selectedBlockIndex?: number | null
@@ -332,18 +333,22 @@ const SITE_EDITOR_INSTRUCTIONS = [
 
 const createEditorAgent = (input: SiteEditorTurnInput) => {
   const effort = defaultMastraMaintainReasoningEffort()
+  const executionContext = input.ctx.executionContext
+  const limits = customerModelLimits(executionContext ? customerEffort(effort) : "medium")
   const providerOptions = mastraOpenAIProviderOptions(effort)
   return {
     providerOptions,
+    limits,
     agent: new Agent({
       id: "siab-site-editor",
       name: "Site in a Box site editor",
       instructions: {
         role: "system",
-        content: SITE_EDITOR_INSTRUCTIONS,
+        content: SITE_EDITOR_INSTRUCTIONS + (input.locale === "en" ? " Reply in English." : " Antwoord in het Nederlands."),
         providerOptions,
       },
-      model: defaultMastraModelId(),
+      model: executionContext ? customerMastraModel(executionContext, limits) : defaultMastraModelId(),
+      maxRetries: 0,
       tools: createSiteEditorTools(input),
     }),
   }
@@ -366,6 +371,7 @@ const resultFromGenerated = async (
   snapshotBefore: SiteEditorSnapshot,
   ctx: AgentWriteContext,
   pageSlug: string,
+  locale: "nl" | "en" = "nl",
 ): Promise<SiteEditorTurnResult> => {
   const toolResults = [
     ...(Array.isArray(generated.toolResults) ? generated.toolResults.map((value: unknown) => value) : []),
@@ -374,14 +380,13 @@ const resultFromGenerated = async (
       : []),
   ]
   const { applied: wrote, regenerate } = summarizeEditorToolResults(toolResults)
-  const pruned = await pruneUnavailableBlocksIfPresent(ctx, pageSlug)
-  const applied = wrote || pruned.removed > 0
+  const applied = wrote
   const snapshot = applied ? await loadSiteSnapshot(ctx, pageSlug) : snapshotBefore
   const text = typeof generated.text === "string" && generated.text.trim().length >= 8
     ? generated.text.trim()
     : applied
-      ? "Ik heb de preview aangepast."
-      : "Ik heb niets gewijzigd. Zeg wat er anders moet aan thema, teksten of catalogusvariant."
+      ? (locale === "en" ? "I updated the preview." : "Ik heb de preview aangepast.")
+      : (locale === "en" ? "I changed nothing. Tell me what should change in the theme, copy or catalog variant." : "Ik heb niets gewijzigd. Zeg wat er anders moet aan thema, teksten of catalogusvariant.")
   return { text, applied, regenerate, snapshot }
 }
 
@@ -394,27 +399,36 @@ const iterateTextStream = async function* (stream: AsyncIterable<string>): Async
 export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions } = createEditorAgent(input)
-  const generated = await agent.generate(editorPrompt(input, snapshotBefore), {
+  const { agent, providerOptions, limits } = createEditorAgent(input)
+  const executionContext = input.ctx.executionContext
+  const generate = (signal?: AbortSignal) => agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
+    ...(executionContext ? { ...customerMastraSettings(executionContext, limits), ...(signal ? { abortSignal: signal } : {}) } : { maxSteps: 4, modelSettings: { maxOutputTokens: 2048, maxRetries: 0, timeout: { totalMs: 90000, stepMs: 45000 } } }),
   })
-  return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug)
+  const generated = executionContext ? await executionContext.modelCall(limits, generate, (result) => mastraAggregateUsage(result, limits)) : await generate()
+  return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug, input.locale)
 }
 
 export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncGenerator<SiteEditorStreamEvent> {
+  if (input.ctx.executionContext) {
+    yield { type: "done", result: await runSiteEditorAgent(input) }
+    return
+  }
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions } = createEditorAgent(input)
+  const { agent, providerOptions, limits } = createEditorAgent(input)
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
+    maxSteps: 4,
+    modelSettings: { maxRetries: 0, maxOutputTokens: 2048, timeout: { totalMs: 90000, stepMs: 45000 } },
   })
   for await (const chunk of iterateTextStream(streamed.textStream)) {
     yield { type: "delta", text: chunk }
   }
   const generated = await streamed.getFullOutput()
-  yield { type: "done", result: await resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug) }
+  yield { type: "done", result: await resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug, input.locale) }
 }
 
 const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> => {
@@ -423,6 +437,7 @@ const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEd
     previous: input.facts,
     recentMessages: input.recentMessages,
     hasExistingSite: true,
+    locale: input.locale,
   })
   if (plan.decision === "refuse" || plan.decision === "ask") {
     const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
@@ -437,11 +452,12 @@ const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEd
     selectedBlockIndex: input.selectedBlockIndex,
     role: input.role,
     user: input.ctx.user,
+    executionContext: input.ctx.executionContext,
     intent: maintainerIntentFromPlan(plan, input.message),
   })
   const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
   return {
-    text: fallback.applied || fallback.regenerate ? fallback.text : plan.reply,
+    text: fallback.applied || fallback.regenerate ? input.locale === "en" ? fallback.regenerate ? "I will regenerate the homepage." : "I updated the preview." : fallback.text : plan.reply,
     applied: fallback.applied,
     regenerate: fallback.regenerate,
     snapshot,
@@ -458,6 +474,7 @@ const mastraFallbackTurn = async (input: SiteEditorTurnInput): Promise<SiteEdito
     selectedBlockIndex: input.selectedBlockIndex,
     role: input.role,
     user: input.ctx.user,
+    executionContext: input.ctx.executionContext,
     intent: interpretMaintainerIntent(input.message),
   })
   const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
@@ -470,7 +487,8 @@ export async function runExistingSiteTurn(input: SiteEditorTurnInput & {
   if (input.useMastra) {
     try {
       return await runSiteEditorAgent(input)
-    } catch {
+    } catch (error) {
+      if (input.ctx.executionContext) throw error
       return mastraFallbackTurn(input)
     }
   }
@@ -484,7 +502,8 @@ export async function* streamExistingSiteTurn(input: SiteEditorTurnInput & {
     try {
       yield* streamSiteEditorAgent(input)
       return
-    } catch {
+    } catch (error) {
+      if (input.ctx.executionContext) throw error
       yield { type: "done", result: await mastraFallbackTurn(input) }
       return
     }

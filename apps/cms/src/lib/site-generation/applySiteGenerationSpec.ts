@@ -2,7 +2,9 @@ import { createHash } from "node:crypto"
 import { copyFile, mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { CollectionSlug, DataFromCollectionSlug, Payload, RequiredDataFromCollectionSlug, Where } from "payload"
+import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import { approvedCatalogIssues, approvedChromeIssues } from "@/lib/sitegen/catalog"
+import type { PayloadRequest, CollectionSlug, DataFromCollectionSlug, Payload, RequiredDataFromCollectionSlug, Where } from "payload"
 import {
   BlockSchema,
   SITE_BLOCK_SLUGS,
@@ -75,6 +77,8 @@ export type SiteGenerationValidationResult =
   | { valid: true; issues: ValidationIssue[]; data: SiteGenerationSpec }
 
 export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
+  executionContext?: BuilderExecutionContext
+  req?: Partial<PayloadRequest>
   mediaMode?: "skip-generated-placeholders" | "upload-generated-media"
   mediaAssets?: readonly SiteGenerationMediaAsset[]
   /** Move unspecified published pages to draft during an explicit replacement cutover. */
@@ -158,6 +162,7 @@ export const validateSiteGenerationSpecForCms = (
     pageSlugs.add(slug)
     const blocks = Array.isArray(pageRecord.blocks) ? pageRecord.blocks : []
     if (blocks.length === 0) issues.push(issue("missing_page_blocks", "Generated pages must contain at least one block.", ["pages", pageIndex, "blocks"]))
+    issues.push(...approvedCatalogIssues(blocks).map((entry) => issue(entry.code, entry.message, ["pages", pageIndex, ...entry.path])))
     const seen = new Set<string>()
     const seenAnchors = new Set<string>()
     blocks.forEach((block, blockIndex) => {
@@ -222,6 +227,7 @@ export const validateSiteGenerationSpecForCms = (
   })
 
   const settings = asRecord(value.settings)
+  issues.push(...approvedChromeIssues(settings?.chrome).map((message) => issue("unapproved_catalog_chrome", message, ["settings", "chrome"])))
   const disclosure = asRecord(settings?.privacyDisclosure)
   if (Array.isArray(disclosure?.marketingTechnologies) && disclosure.marketingTechnologies.length > 0) {
     issues.push(issue("unsupported_optional_tracking_without_consent_ui", "Optional marketing technologies are not enabled by generated sites.", ["settings", "privacyDisclosure", "marketingTechnologies"]))
@@ -421,7 +427,7 @@ const normalizeNav = (entries: GeneratedNavEntries, pageBySlug: Map<string, Exis
     : hrefToNavEntry(entry.href ?? "", entry.label, entry.external, pageBySlug))
 }
 
-const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap): Partial<SiteSetting> => {
+const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>): Partial<SiteSetting> => {
   const normalizedBranding = settings.branding ? normalizeMediaFields(settings.branding, mediaIds) : undefined
   const normalizedChrome = settings.chrome ? normalizeMediaFields(settings.chrome, mediaIds) : undefined
   const brandingLogo = asRecord(normalizedBranding)?.logo ?? null
@@ -473,8 +479,8 @@ const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSit
   }) as Partial<SiteSetting>
 }
 
-const findOne = async <C extends CollectionSlug>(payload: Payload, collection: C, where: Where): Promise<DataFromCollectionSlug<C> | undefined> => {
-  const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true })
+const findOne = async <C extends CollectionSlug>(payload: Payload, collection: C, where: Where, req?: Partial<PayloadRequest>): Promise<DataFromCollectionSlug<C> | undefined> => {
+  const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true, req })
   return found.docs[0]
 }
 
@@ -519,12 +525,12 @@ const prepareMediaAssets = async (assets: readonly SiteGenerationMediaAsset[] | 
   }
 }
 
-const upsertMediaAssets = async (payload: Payload, tenantId: string | number, assets: readonly PreparedMediaAsset[]): Promise<MediaIdMap> => {
+const upsertMediaAssets = async (payload: Payload, tenantId: string | number, assets: readonly PreparedMediaAsset[], req?: Partial<PayloadRequest>): Promise<MediaIdMap> => {
   const mediaIds: MediaIdMap = new Map()
   for (const asset of assets) {
     const existing = await findOne(payload, "media", {
       and: [{ tenant: { equals: tenantId } }, { filename: { equals: asset.filename } }],
-    })
+    }, req)
     const data = {
       tenant: Number(tenantId),
       filename: asset.filename,
@@ -538,7 +544,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
         filePath: asset.filePath,
         overwriteExistingFiles: true,
         depth: 0,
-        overrideAccess: true,
+        overrideAccess: true, req,
         context: DRAFT_IMPORT_CONTEXT,
       })
       : await payload.create({
@@ -547,7 +553,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
         filePath: asset.filePath,
         overwriteExistingFiles: true,
         depth: 0,
-        overrideAccess: true,
+        overrideAccess: true, req,
         context: DRAFT_IMPORT_CONTEXT,
       })
     const id = document.id
@@ -563,12 +569,13 @@ const upsertTenant = async (
   siteManifest: Record<string, unknown>,
   theme: ThemeTokens | null,
   pinTenantId?: string | number,
+  req?: Partial<PayloadRequest>,
 ) => {
-  const bySlug = await findOne(payload, "tenants", { slug: { equals: spec.tenant.slug } })
-  const byDomain = await findOne(payload, "tenants", { domain: { equals: spec.tenant.domain } })
+  const bySlug = await findOne(payload, "tenants", { slug: { equals: spec.tenant.slug } }, req)
+  const byDomain = await findOne(payload, "tenants", { domain: { equals: spec.tenant.domain } }, req)
   if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
   if (pinTenantId != null) {
-    const pinned = await findOne(payload, "tenants", { id: { equals: pinTenantId } })
+    const pinned = await findOne(payload, "tenants", { id: { equals: pinTenantId } }, req)
     if (!pinned) throw new Error(`Pinned tenant ${pinTenantId} was not found.`)
     if (bySlug && String(bySlug.id) !== String(pinTenantId)) {
       throw new Error(`Generation spec slug "${spec.tenant.slug}" belongs to another tenant.`)
@@ -577,42 +584,42 @@ const upsertTenant = async (
       throw new Error(`Generation spec domain "${spec.tenant.domain}" belongs to another tenant.`)
     }
     const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: pinned.status ?? "provisioning", emailSending: pinned.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
-    return { doc: await payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+    return { doc: await payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
   }
   const existing = bySlug ?? byDomain
   const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: existing?.status ?? "provisioning", emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
-  if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
-  return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+  return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
 }
 
-const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap) => {
+const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>) => {
   const results: Array<{ doc: ExistingPage; operation: ApplyOperation }> = []
   for (const page of pages) {
     const data = normalizePageData(tenantId, page, mediaIds)
-    const existing = await findOne(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] })
+    const existing = await findOne(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] }, req)
     if (existing) {
-      const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })
       results.push({ doc: updated as ExistingPage, operation: "updated" })
     } else {
       const createData: RequiredDataFromCollectionSlug<"pages"> = { ...data, title: page.title, slug: page.slug, status: "draft" }
-      const created = await payload.create({ collection: "pages", data: createData, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      const created = await payload.create({ collection: "pages", data: createData, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })
       results.push({ doc: created as ExistingPage, operation: "created" })
     }
   }
   return results
 }
 
-const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap) => {
+const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>) => {
   const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
-  const existing = await findOne(payload, "site-settings", { tenant: { equals: tenantId } })
-  if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+  const existing = await findOne(payload, "site-settings", { tenant: { equals: tenantId } }, req)
+  if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
   const defaults = createSiteSettingsData(tenantId, settings.siteName, settings.siteUrl)
   const createData: RequiredDataFromCollectionSlug<"site-settings"> = { ...defaults, ...data, tenant: defaults.tenant, siteName: defaults.siteName, siteUrl: defaults.siteUrl, appointments: data.appointments ?? defaults.appointments, consent: data.consent ?? defaults.consent }
-  return { doc: await payload.create({ collection: "site-settings", data: createData, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  return { doc: await payload.create({ collection: "site-settings", data: createData, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
 }
 
-const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>): Promise<RetainedPage[]> => {
-  const result = await payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true })
+const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>, req?: Partial<PayloadRequest>): Promise<RetainedPage[]> => {
+  const result = await payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true, req })
   return (result.docs as ExistingPage[]).filter((page) => !appliedSlugs.has(page.slug)).map((page) => ({ id: page.id, slug: page.slug, ...(page.status ? { status: page.status } : {}) }))
 }
 
@@ -620,21 +627,26 @@ export const retireUnspecifiedPagesForTenant = async (
   payload: Payload,
   tenantId: string | number,
   appliedSlugs: Set<string>,
+  req?: Partial<PayloadRequest>,
 ): Promise<{ retainedPages: RetainedPage[]; retiredPages: RetainedPage[] }> => {
-  const retainedPages = await retainedPagesForTenant(payload, tenantId, appliedSlugs)
+  const retainedPages = await retainedPagesForTenant(payload, tenantId, appliedSlugs, req)
   const retiredPages = retainedPages.filter((page) => page.status === "published")
   await Promise.all(retiredPages.map((page) => payload.update({
     collection: "pages",
     id: page.id,
     data: { status: "draft" },
     depth: 0,
-    overrideAccess: true,
+    overrideAccess: true, req,
     context: PAGE_REPLACEMENT_CONTEXT,
   })))
   return { retainedPages, retiredPages }
 }
 
 export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGenerationSpec, options: SiteGenerationApplyOptions = {}): Promise<CmsGenerationApplyResult> {
+  if (options.executionContext && !options.req) {
+    if (options.mediaAssets?.length) throw new Error("Customer generation cannot upload operator media assets.")
+    return options.executionContext.withWrite((req) => applySiteGenerationSpec(payload, spec, { ...options, req }))
+  }
   const sourceValidation = validateSiteGenerationSpecForCms(spec, options)
   if (!sourceValidation.valid) return { ok: false, validation: sourceValidation }
   const canonicalSpec = materializeTenantPrivacyDisclosure(canonicalizeSiteGenerationSpecForCms(sourceValidation.data))
@@ -646,16 +658,16 @@ export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGen
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const preparedMedia = await prepareMediaAssets(options.mediaAssets)
   try {
-    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId)
+    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId, options.req)
     const tenantId = tenant.doc.id as string | number
-    const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets) : new Map<string, string | number>()
-    const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)
+    const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets, options.req) : new Map<string, string | number>()
+    const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds, options.req)
     const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
-    const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds)
+    const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds, options.req)
     const pageState = options.retireUnspecifiedPages
-      ? await retireUnspecifiedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug)))
+      ? await retireUnspecifiedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug)), options.req)
       : {
-        retainedPages: await retainedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug))),
+        retainedPages: await retainedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug)), options.req),
         retiredPages: [],
       }
     return {

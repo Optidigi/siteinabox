@@ -13,7 +13,6 @@ export const CONTACT_CHOICES: BuilderChoice[] = [
   { id: "whatsapp", label: "Via WhatsApp" },
   { id: "phone-whatsapp", label: "Bellen en WhatsApp" },
   { id: "appointment", label: "Afspraak maken" },
-  { id: "form", label: "Een formulier" },
 ]
 
 export const GENERATE_CHOICE: BuilderChoice = {

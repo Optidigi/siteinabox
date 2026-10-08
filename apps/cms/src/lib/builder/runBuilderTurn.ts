@@ -1,3 +1,4 @@
+import type { BuilderExecutionContext } from "./executionContext"
 import type { Payload } from "payload"
 import { z } from "zod"
 import { runExistingSiteTurn } from "@/lib/agent/siteEditorAgent"
@@ -5,7 +6,7 @@ import { loadTenantById, loadTenantBySlug } from "@/lib/agent/tools"
 import { BuilderFactsSchema, heuristicExtractBuilderFacts, type BuilderFacts } from "./facts"
 import { unavailableAsksIn } from "./catalogHonesty"
 import { withBuilderPreview } from "./canvasSnapshot"
-import { choicesForFirstSite } from "./choices"
+import { choicesForFirstSite, localizeBuilderChoices } from "./choices"
 import { canUseMastraSiteEditor } from "./extractWithMastra"
 import { runFirstSiteTurn } from "./firstSiteAgent"
 import { generatePreview, type BuilderChatResult } from "./generatePreview"
@@ -14,6 +15,7 @@ import { type BuilderContact, type BuilderLegalAcceptance } from "./rawIntake"
 import { BuilderChatMessageSchema, BuilderLegalSchema } from "./thread"
 
 export const BuilderChatRequestSchema = z.object({
+  locale: z.enum(["nl", "en"]).default("nl"),
   message: z.string().trim().min(2).max(4000),
   contactName: z.string().trim().min(2).max(120),
   contactEmail: z.string().trim().email().max(160),
@@ -28,11 +30,14 @@ export const BuilderChatRequestSchema = z.object({
 export type BuilderChatRequest = z.infer<typeof BuilderChatRequestSchema>
 export type { BuilderChatResult } from "./generatePreview"
 
-export async function runBuilderTurn(payload: Payload, request: BuilderChatRequest): Promise<BuilderChatResult> {
+export async function runBuilderTurn(payload: Payload, request: BuilderChatRequest, executionContext: BuilderExecutionContext): Promise<BuilderChatResult> {
+  if (!executionContext) throw new Error("Customer builder execution requires a verified operation context.")
+  await executionContext.assertActive()
+  request = BuilderChatRequestSchema.parse(request)
   if (!request.legal.businessUseAccepted || !request.legal.termsAccepted) {
     return {
       ok: false,
-      text: "Vink eerst aan dat je dit voor je bedrijf aanvraagt en dat je akkoord gaat met de voorwaarden.",
+      text: request.locale === "en" ? "Confirm business use and accept the terms before continuing." : "Vink eerst aan dat je dit voor je bedrijf aanvraagt en dat je akkoord gaat met de voorwaarden.",
       error: "legal_required",
     }
   }
@@ -53,7 +58,7 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
     if (!tenant) {
       return {
         ok: false,
-        text: "Ik kan deze preview-site nu niet wijzigen. Vraag een nieuwe toegangslink of begin opnieuw na registratie.",
+        text: request.locale === "en" ? "This preview is unavailable. Request a new access link or restart after registration." : "Ik kan deze preview-site nu niet wijzigen. Vraag een nieuwe toegangslink of begin opnieuw na registratie.",
         facts,
         clientSlug: request.existingClientSlug ?? undefined,
         error: "tenant_not_found",
@@ -61,7 +66,8 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
     }
 
     const edited = await runExistingSiteTurn({
-      ctx: { payload, tenantId: tenant.id },
+      ctx: { payload, tenantId: tenant.id, executionContext },
+      locale: request.locale,
       message: request.message,
       pageSlug: "index",
       selectedBlockIndex: null,
@@ -88,6 +94,7 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
       legal,
       tenant.id,
       { draft: edited.text, unavailable: unavailableAsksIn(request.message) },
+      { executionContext, locale: request.locale },
     )
     return generated
   }
@@ -96,14 +103,17 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
     try {
       return await runFirstSiteTurn({
         payload,
-        message: request.message,
+        executionContext,
+        locale: request.locale,
+      message: request.message,
         previous: request.previousFacts ?? null,
         recentMessages: request.recentMessages,
         contact,
         legal,
       })
-    } catch {
-      // Deterministic gates remain the fallback when the talking agent fails.
+    } catch (error) {
+      // Paid failure or partial tool writes must not silently start a second operation.
+      throw error
     }
   }
 
@@ -112,6 +122,7 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
     previous: request.previousFacts ?? null,
     recentMessages: request.recentMessages,
     hasExistingSite: false,
+    locale: request.locale,
   })
   const facts = plan.facts
 
@@ -121,7 +132,7 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
       text: plan.reply,
       facts,
       status: plan.decision === "refuse" ? "unavailable" : "needs_brief",
-      choices: plan.decision === "ask" ? choicesForFirstSite(facts, false) : [],
+      choices: plan.decision === "ask" ? localizeBuilderChoices(choicesForFirstSite(facts, false), request.locale) : [],
     }
   }
 
@@ -131,12 +142,12 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
       text: plan.reply,
       facts,
       status: "needs_brief",
-      choices: choicesForFirstSite(facts, false),
+      choices: localizeBuilderChoices(choicesForFirstSite(facts, false), request.locale),
     }
   }
 
   return generatePreview(payload, facts, contact, legal, undefined, {
     draft: plan.reply,
     unavailable: unavailableAsksIn(request.message),
-  })
+  }, { executionContext, locale: request.locale })
 }

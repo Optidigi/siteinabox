@@ -39,6 +39,8 @@ and follow the executable source until the source is intentionally changed.
 
 - [`contracts/`](contracts/) — analytics, authentication, canvas/editor,
   legal, rich text, route access, responsive layout, and UI boundaries.
+- [`contracts/builder.md`](contracts/builder.md) — durable allowance, bounded
+  execution, approved catalog, preview lifecycle and activation gates.
 - [`runbooks/`](runbooks/) — local development, deployment, commerce,
   migration, provider, analytics, legal-release, and origin-isolation
   procedures.

@@ -3,7 +3,8 @@ import { Pool } from "pg"
 import { nextCookies } from "better-auth/next-js"
 import { magicLink } from "better-auth/plugins"
 import { getBetterAuthInfraPlugins } from "@/lib/betterAuthInfra"
-import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
+import { paidHandoffPlugin } from "@/lib/auth/paidHandoff"
+import { passwordlessBefore } from "@/lib/auth/passwordlessPolicy"
 import { resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
@@ -36,42 +37,6 @@ if (process.env.NODE_ENV !== "production") {
   globalThis.__siabBetterAuthPool = pool
 }
 
-const providerConfig = {
-  ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-    ? {
-        google: {
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          disableImplicitSignUp: true,
-          scope: ["openid", "email", "profile"],
-          prompt: "select_account" as const,
-        },
-      }
-    : {}),
-  ...(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET
-    ? {
-        microsoft: {
-          clientId: process.env.MICROSOFT_CLIENT_ID,
-          clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-          tenantId: process.env.MICROSOFT_TENANT_ID || "common",
-          disableImplicitSignUp: true,
-          scope: ["openid", "email", "profile"],
-          prompt: "select_account" as const,
-        },
-      }
-    : {}),
-  ...(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET
-    ? {
-        apple: {
-          clientId: process.env.APPLE_CLIENT_ID,
-          clientSecret: process.env.APPLE_CLIENT_SECRET,
-          disableImplicitSignUp: true,
-          scope: ["name", "email"],
-        },
-      }
-    : {}),
-}
-
 export const auth = betterAuth({
   appName: "SiteInABox",
   baseURL: getBetterAuthBaseURL(),
@@ -80,6 +45,7 @@ export const auth = betterAuth({
   trustedOrigins: getTrustedSocialAuthOrigins,
   telemetry: { enabled: false },
   advanced: {
+    useSecureCookies: process.env.NODE_ENV !== "development",
     trustedProxyHeaders: true,
   },
   user: {
@@ -110,8 +76,19 @@ export const auth = betterAuth({
   verification: {
     modelName: "better_auth_verifications",
   },
-  socialProviders: providerConfig,
+  emailAndPassword: { enabled: false },
+  // Recipient/global durable claims govern mail dispatch across shared IPs.
+  rateLimit: { customRules: { "/sign-in/magic-link": false } },
+  hooks: { before: passwordlessBefore },
   databaseHooks: {
+    session: {
+      delete: {
+        before: async (session) => {
+          const { revokeBetterAuthBinding } = await import("@/lib/auth/customerSessionBridge")
+          await revokeBetterAuthBinding(session.id)
+        },
+      },
+    },
     user: {
       create: {
         before: async (user) => {
@@ -127,6 +104,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    paidHandoffPlugin(),
     ...getBetterAuthInfraPlugins(),
     magicLink({
       expiresIn: 300,
@@ -139,4 +117,4 @@ export const auth = betterAuth({
   ],
 })
 
-export const enabledSocialAuthProviders = getEnabledSocialAuthProviders()
+export const enabledSocialAuthProviders = []

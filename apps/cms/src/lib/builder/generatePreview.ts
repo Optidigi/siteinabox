@@ -1,3 +1,4 @@
+import type { BuilderExecutionContext } from "./executionContext"
 import type { Payload } from "payload"
 import { processStoredIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
 import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
@@ -29,43 +30,50 @@ export const generatePreview = async (
   legal: BuilderLegalAcceptance,
   pinTenantId?: string | number,
   honesty?: { draft: string; unavailable: string[] },
+  options: { executionContext?: BuilderExecutionContext; locale?: "nl" | "en" } = {},
 ): Promise<BuilderChatResult> => {
+  await options.executionContext?.assertActive()
   const readyFacts = prepareFirstSiteGenerateFacts(facts)
   const reply = composeFirstSiteReply(readyFacts, {
     unavailable: honesty?.unavailable ?? [],
+    locale: options.locale,
   })
   const intake = buildRawIntakeFromBuilderFacts({ facts: readyFacts, contact, legal })
-  const stored = await storeIntakeSubmission(payload, intake)
+  const stored = await storeIntakeSubmission(payload, intake, { executionContext: options.executionContext, locale: options.locale })
   if (!stored.ok || stored.intakeSubmissionId == null) {
     return {
       ok: false,
-      text: "We konden je gegevens nu niet opslaan. Probeer het zo opnieuw.",
+      text: options.locale === "en" ? "We could not save your details. Please try again shortly." : "We konden je gegevens nu niet opslaan. Probeer het zo opnieuw.",
       facts: readyFacts,
       error: typeof stored.error?.message === "string" ? stored.error.message : "store_failed",
     }
   }
 
+  await options.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(stored.intakeSubmissionId) })
   const processed = await processStoredIntakeSubmission(
     payload,
     stored.intakeSubmissionId,
-    pinTenantId != null ? { retireUnspecifiedPages: true, pinTenantId } : undefined,
+    { executionContext: options.executionContext, ...(pinTenantId != null ? { retireUnspecifiedPages: true, pinTenantId } : {}) },
   )
   if (!processed.ok || processed.status !== "preview_ready" || processed.generationRunId == null) {
     const detail = typeof processed.error?.message === "string" ? processed.error.message : processed.status
     return {
       ok: false,
-      text: "De homepage is nog niet klaar. Zeg “probeer opnieuw” als ik het nog een keer mag bouwen.",
+      text: options.locale === "en" ? "The homepage is not ready yet. Submit a new request if you want to try again." : "De homepage is nog niet klaar. Zeg “probeer opnieuw” als ik het nog een keer mag bouwen.",
       facts: readyFacts,
       status: processed.status,
       error: detail || "generate_failed",
     }
   }
 
-  const grant = await createOrRefreshPreviewGrant({
-    generationRunId: processed.generationRunId,
+  const generationRunId = processed.generationRunId
+  const createGrant = (req?: Parameters<typeof createOrRefreshPreviewGrant>[0]["req"]) => createOrRefreshPreviewGrant({
+    generationRunId,
     customerEmail: contact.email,
     sendEmail: false,
+    req,
   })
+  const grant = options.executionContext ? await options.executionContext.withWrite(createGrant) : await createGrant()
 
   return withBuilderPreview({
     ok: true,

@@ -1,6 +1,6 @@
 import { SITEGEN_FOOTERS, SITEGEN_NAVBARS, SITEGEN_SECTIONS } from "@/lib/sitegen/catalog"
 
-export const SITE_GENERATION_PROMPT_VERSION = "sitegen-owned-v5"
+export const SITE_GENERATION_PROMPT_VERSION = "sitegen-owned-v6"
 
 export const SITE_GENERATION_SYSTEM_PROMPT = [
   "You prepare specific, scannable, profession-true Site in a Box content from normalized business intake.",
@@ -19,7 +19,7 @@ export const SITE_GENERATION_SYSTEM_PROMPT = [
   "For services-01, include only the supplied services, use two to six concise equal-weight feature cells with a title, description, and optional action, and keep each item specific to the business. Do not invent services, credentials, guarantees, prices, or results. The application owns the presentation icons when none are supplied.",
   "For services-02, include only the supplied services, use two to six concise service items with a title, description, and optional text action in a centered icon-led grid without individual cards. Do not invent services, credentials, guarantees, prices, or results. The application owns the presentation icons when none are supplied.",
   "For appointments-01, include the section only when appointmentSchedule is eligible. Choose inline or dialog presentation, keep the copy concise, and never generate availability, times, calendar details, visitor data, or provider configuration; those are resolved from the tenant appointment settings and runtime. Background mode is optional; choose image only with a supplied mediaId, and never invent a media ID.",
-  "Write Dutch visitor copy that names the trade and place when the intake supplies them. Prefer concrete offers over generic slogans.",
+  "Write visitor copy in intake.language: Dutch for nl, English for en. Name the trade and place when supplied. Preserve supplied service names literally. Prefer concrete offers over generic slogans.",
   "Use the supplied service names literally as titles, including unusual or adult wording; never substitute a different trade.",
   "Interpret the trade for hero heading, hero body, service descriptions, and CTA copy: what a visitor in this place actually gets, and why they would contact. Never use a template like “Bespreek {title} via bellen of WhatsApp”. Never lecture or sanitize the trade. Do not invent proof.",
   "When no media IDs are supplied, choose hero-01. Include appointments only when appointmentSchedule is eligible. Use intake visualPreferences scheme IDs as the site look.",

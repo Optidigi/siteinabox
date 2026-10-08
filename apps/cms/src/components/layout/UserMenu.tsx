@@ -1,6 +1,6 @@
 "use client"
 import { useTranslations } from "next-intl"
-import { useTransition } from "react"
+import { useEffect, useTransition } from "react"
 import { Avatar, AvatarFallback } from "@siteinabox/ui/components/avatar"
 import { Button } from "@siteinabox/ui/components/button"
 import {
@@ -11,7 +11,6 @@ import { LogOut, Key, User } from "lucide-react"
 import { ThemeSwitcher } from "@/components/theme-toggle"
 import { LanguageMenu } from "@/components/layout/LanguageMenu"
 import { useStatusFeedback } from "@/components/status-feedback"
-import { authClient } from "@/lib/auth-client"
 
 type Props = {
   user: { email: string; name?: string | null; role: "super-admin" | "owner" | "editor" | "viewer" }
@@ -23,13 +22,20 @@ export function UserMenu({ user }: Props) {
   const [pending, start] = useTransition()
   const initial = (user.name || user.email)[0]?.toUpperCase() ?? "?"
 
+  useEffect(() => {
+    if (user.role === "super-admin") return
+    const renew = () => { void fetch("/api/siab-auth/renew", { method: "POST" }) }
+    renew()
+    const timer = window.setInterval(renew, 6 * 60 * 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [user.role])
+
   const onLogout = () => start(async () => {
-    const res = await fetch("/api/users/logout", { method: "POST" })
+    const res = await fetch("/api/siab-auth/logout", { method: "POST" })
     if (!res.ok) {
       status.error(t("logoutFailed"))
       return
     }
-    await authClient.signOut().catch(() => null)
     window.location.replace("/login")
   })
 

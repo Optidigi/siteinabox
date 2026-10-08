@@ -1,6 +1,7 @@
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import { findOneDoc } from "@/lib/payloadCollection"
-import type { Payload } from "payload"
+import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import type { Payload, PayloadRequest } from "payload"
 import type { IntakeSubmission } from "@/payload-types"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
@@ -135,9 +136,11 @@ export async function notifyAdminOfIntakeStorage(payload: Payload, doc: IntakeSu
 export async function storeIntakeSubmission(
   payload: Payload,
   raw: PublicIntakeSubmission,
+  options: { executionContext?: BuilderExecutionContext; locale?: "nl" | "en"; req?: Partial<PayloadRequest> } = {},
 ): Promise<IntakeStorageResult> {
+  if (options.executionContext && !options.req) return options.executionContext.withWrite((req) => storeIntakeSubmission(payload, raw, { ...options, req }))
   try {
-    const normalized = normalizeIntakeSubmission(raw)
+    const normalized = { ...normalizeIntakeSubmission(raw), ...(options.locale ? { language: options.locale } : {}) }
     const normalizedHash = hashStableValue(normalized)
     const idempotencyKey = `public-intake:normalized:${hashStableValue({ raw, normalized })}`
     const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
@@ -162,9 +165,10 @@ export async function storeIntakeSubmission(
       },
       depth: 0,
       overrideAccess: true,
+      req: options.req,
     })
 
-    if ("legal" in raw && normalized.contact?.email) {
+    if (!options.executionContext && "legal" in raw && normalized.contact?.email) {
       try {
         await recordIntakeMarketingPreference({
           payload,
@@ -180,7 +184,7 @@ export async function storeIntakeSubmission(
       }
     }
 
-    await notifyAdminOfIntakeStorage(payload, intake)
+    if (!options.executionContext) await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)
   } catch (err) {
     const idempotencyKey = `public-intake:invalid:${hashStableValue(raw)}`
@@ -206,9 +210,10 @@ export async function storeIntakeSubmission(
       },
       depth: 0,
       overrideAccess: true,
+      req: options.req,
     })
 
-    await notifyAdminOfIntakeStorage(payload, intake)
+    if (!options.executionContext) await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)
   }
 }

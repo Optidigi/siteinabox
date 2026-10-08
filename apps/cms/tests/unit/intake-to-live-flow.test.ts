@@ -8,6 +8,7 @@ import { deliverCommerceNotification } from "@/lib/commerce/notifications"
 import { reconcileCommerceEdgeRouting } from "@/lib/domains/edgeRouting"
 import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
 import { processStoredIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
+import { approvedCatalogIssues, approvedChromeIssues } from "@/lib/sitegen/catalog"
 
 import { asGenerationRun, asMockDoc } from "../_helpers/cast"
 import { createArgs, relationId, updateArgs } from "../_helpers/payloadApi"
@@ -592,7 +593,18 @@ describe("intake-to-live mocked flow", () => {
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)
-    expect(store.pages).toHaveLength(3)
+    expect(store.pages).toHaveLength(1)
+    const homepage = store.pages[0]
+    const settings = store["site-settings"][0]
+    if (!homepage || !settings) throw new Error("Approved homepage fixture omitted its page or settings")
+    expect(homepage).toMatchObject({ slug: "index", status: "draft", blocks: [
+      { blockType: "hero", variant: "hero-01" },
+      { blockType: "services", variant: "services-01" },
+      { blockType: "cta", variant: "cta-01" },
+    ] })
+    expect(approvedCatalogIssues(homepage.blocks)).toEqual([])
+    expect(settings.chrome).toMatchObject({ navbar: { variant: "navbar-01", placement: "hero-overlay" }, footer: { variant: "footer-01" } })
+    expect(approvedChromeIssues(settings.chrome)).toEqual([])
     expect(store.media).toHaveLength(0)
     expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(false)
 

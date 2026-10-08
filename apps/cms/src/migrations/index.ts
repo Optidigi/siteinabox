@@ -142,6 +142,7 @@ import * as migration_20260905_200000_builder_sessions from './20260905_200000_b
 import * as migration_20261007_160729_payload_security_password_reset_cooldown from './20261007_160729_payload_security_password_reset_cooldown';
 import * as migration_20261007_195541_provider_write_uncertainty from './20261007_195541_provider_write_uncertainty';
 import * as migration_20261007_204339_notification_write_uncertainty from './20261007_204339_notification_write_uncertainty';
+import * as migration_20261008_002457_pr03_passwordless_builder from './20261008_002457_pr03_passwordless_builder';
 
 export const migrations = [
   {
@@ -862,6 +863,11 @@ export const migrations = [
   {
     up: migration_20261007_204339_notification_write_uncertainty.up,
     down: migration_20261007_204339_notification_write_uncertainty.down,
-    name: '20261007_204339_notification_write_uncertainty'
+    name: '20261007_204339_notification_write_uncertainty',
+  },
+  {
+    up: migration_20261008_002457_pr03_passwordless_builder.up,
+    down: migration_20261008_002457_pr03_passwordless_builder.down,
+    name: '20261008_002457_pr03_passwordless_builder'
   },
 ];

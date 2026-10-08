@@ -1,3 +1,4 @@
+import { approvedCatalogIssues } from "@/lib/sitegen/catalog"
 import { hookCollection, hookRequest } from "../_helpers/hookFixtures"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { PayloadRequest } from "payload"
@@ -75,6 +76,7 @@ const createActivationPayload = async (input?: { tenant?: Partial<Tenant>; run?:
     domain: tenant.domain,
     sourceGenerationRun: run.id,
     status: "drafted",
+    snapshot: { ...amicarePublishedSiteSnapshot, pages: amicarePublishedSiteSnapshot.pages.map((page) => ({ ...page, blocks: page.blocks.filter((block) => approvedCatalogIssues([block]).length === 0) })).filter((page) => page.blocks.length > 0) },
   })
   const updates: MockDoc[] = []
   const payload = await createInitializedTestPayload()

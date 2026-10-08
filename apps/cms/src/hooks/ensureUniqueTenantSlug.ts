@@ -1,6 +1,7 @@
 import type { Page } from "@/payload-types"
 import type { CollectionBeforeValidateHook } from "payload"
 import { ValidationError } from "payload"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 
 // Audit finding #8 (P1, T8) — pre-empt the (tenant_id, slug) unique-index
 // violation surfaced by `20260509_pages_tenant_slug_unique` with a clean
@@ -57,12 +58,14 @@ export const ensureUniqueTenantSlug = async <T extends Partial<Page> | null | un
   const selfExclusion =
     originalDoc?.id != null ? [{ id: { not_equals: originalDoc.id } }] : []
 
+  if (req.transactionID !== undefined) assertLiveBuilderTransaction(req.payload, req)
   const existing = await req.payload.find({
     collection: "pages",
     overrideAccess: true,
     depth: 0,
     limit: 1,
     pagination: false,
+    req,
     where: {
       and: [
         { tenant: { equals: tenantId } },

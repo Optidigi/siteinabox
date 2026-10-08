@@ -124,3 +124,12 @@ export const choicesFromAssistantText = (
   }
   return []
 }
+
+export const localizeBuilderChoices = (choices: BuilderChoice[], locale?: "nl" | "en"): BuilderChoice[] => {
+  if (locale !== "en") return choices
+  const labels: Record<string, string> = {
+    phone: "Mostly phone calls", whatsapp: "Via WhatsApp", "phone-whatsapp": "Phone and WhatsApp", appointment: "Book appointments", form: "A contact form",
+    "feel-terracotta": "Warm terracotta, soft", "feel-blue": "Clear blue, modern", "feel-emerald": "Green and practical", "feel-red": "Red and expressive", generate: "Build the homepage",
+  }
+  return choices.map((choice) => ({ ...choice, label: labels[choice.id] ?? choice.label }))
+}

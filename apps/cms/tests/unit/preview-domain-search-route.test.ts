@@ -3,12 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   providerReadsAllowed: vi.fn(),
+  budget: vi.fn(),
   requireContext: vi.fn(),
   search: vi.fn(),
   logTiming: vi.fn(),
   startTimer: vi.fn(),
 }))
 
+vi.mock("@/lib/builder/costlySearchBudget", () => ({
+  runBudgetedSearch: mocks.budget,
+  CostlySearchBudgetError: class extends Error {},
+}))
 vi.mock("@/lib/commerce/releaseGate", () => ({
   commerceProviderReadsAllowed: mocks.providerReadsAllowed,
 }))
@@ -48,10 +53,13 @@ const request = (
 describe("preview domain-search route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.budget.mockImplementation((_payload: unknown, _email: string, search: () => Promise<unknown>) => search())
     mocks.startTimer.mockReturnValue(100)
     mocks.providerReadsAllowed.mockReturnValue(true)
     mocks.requireContext.mockResolvedValue({
       clientSlug: "acme",
+      customerEmail: "verified@example.test",
+      payload: {},
       run: { id: 42 },
     })
     mocks.search.mockResolvedValue({

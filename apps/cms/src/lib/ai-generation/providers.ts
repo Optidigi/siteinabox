@@ -19,7 +19,10 @@ import { buildSiteGenerationModelInput, type SiteGenerationModelInput } from "./
 
 export type SiteGenerationProviderName = "mock" | "openai" | "mastra"
 
+import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+
 export type SiteGenerationProviderRequest = {
+  executionContext?: BuilderExecutionContext
   normalized: NormalizedIntake
   input: SiteGenerationModelInput
   inputHash: string
@@ -267,22 +270,44 @@ export const createOpenAISiteGenerationProvider = (config: SiteGenerationProvide
     model,
     promptVersion: SITE_GENERATION_PROMPT_VERSION,
     async generate(request) {
-  ensureEnabledSitegenBlocks(request.input)
+      if (request.executionContext) throw new Error("Customer generation requires the bounded Mastra candidate provider.")
+      ensureEnabledSitegenBlocks(request.input)
       if (!apiKey) throw new Error("OPENAI_API_KEY is required when SITE_GENERATION_PROVIDER=openai")
-      const response = await fetch(`${baseUrl}/responses`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const requestBody = JSON.stringify({
           model,
           store: false,
+          max_output_tokens: 8192,
           input: [
             { role: "developer", content: SITE_GENERATION_SYSTEM_PROMPT },
             { role: "user", content: JSON.stringify(request.input) },
           ],
           text: { format: { type: "json_schema", name: "sitegen_owned_sections", strict: true, schema: siteGenerationJsonSchema } },
-        }),
       })
-      const body: unknown = await response.json().catch(() => null)
+      if (Buffer.byteLength(requestBody, "utf8") > 65536) throw new Error("Trusted generation input exceeds its UTF-8 request limit.")
+      const response = await fetch(`${baseUrl}/responses`, {
+        signal: AbortSignal.timeout(45000),
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: requestBody,
+      })
+      const reader = response.body?.getReader()
+      const chunks: Uint8Array[] = []
+      let responseBytes = 0
+      if (reader) {
+        try {
+          for (;;) {
+            const next = await reader.read()
+            if (next.done) break
+            responseBytes += next.value.byteLength
+            if (responseBytes > 262144) throw new Error("Trusted generation response exceeds its byte limit; remote billing may be unknown.")
+            chunks.push(next.value)
+          }
+        } catch (error) { await reader.cancel().catch(() => undefined); throw error }
+        finally { reader.releaseLock() }
+      }
+      let body: unknown = null
+      try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")) } catch { /* handled below as malformed output */ }
+
       if (!response.ok) {
         const errorRecord = body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>).error : null
         const message = errorRecord && typeof errorRecord === "object" && !Array.isArray(errorRecord) && typeof (errorRecord as Record<string, unknown>).message === "string"

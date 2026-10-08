@@ -65,49 +65,22 @@ describe("cms agent route", () => {
     expect(mocks.runExistingSiteTurn).not.toHaveBeenCalled()
   })
 
-  it("passes the editor role into the site editor so settings writes can be denied", async () => {
-    mocks.payload.auth.mockResolvedValue({
-      user: { id: 2, role: "editor", tenants: [{ tenant: 7 }] },
-    })
-    const res = await POST(req({
-      message: "Bezoekers kunnen een afspraak maken.",
-      tenantSlug: "fixture-care",
-    }))
-    expect(res.status).toBe(200)
-    expect(mocks.runExistingSiteTurn).toHaveBeenCalledWith(expect.objectContaining({
-      ctx: expect.objectContaining({ tenantId: 7 }),
-      role: "editor",
-      allowRegenerate: false,
-    }))
-  })
+  for (const role of ["owner", "editor"]) {
+    for (const accept of ["application/json", "text/event-stream"]) {
+      it(`denies unsupported customer AI for ${role} via ${accept}`, async () => {
+        mocks.payload.auth.mockResolvedValue({ user: { id: 2, role, tenants: [{ tenant: 7 }] } })
+        const res = await POST(req({ message: "Change my website", tenantSlug: "fixture-care" }, accept))
+        expect(res.status).toBe(403)
+        expect(mocks.runExistingSiteTurn).not.toHaveBeenCalled()
+        expect(mocks.streamExistingSiteTurn).not.toHaveBeenCalled()
+        expect(mocks.payload.find).not.toHaveBeenCalled()
+      })
+    }
+  }
 
-  it("allows owners to patch on their tenant and returns the snapshot", async () => {
+  it("preserves the explicitly trusted super-admin SSE editor", async () => {
     mocks.payload.auth.mockResolvedValue({
-      user: { id: 2, role: "owner", tenants: [{ tenant: 7 }] },
-    })
-    const res = await POST(req({
-      message: "Bezoekers kunnen een afspraak maken.",
-      tenantSlug: "fixture-care",
-      pageSlug: "index",
-      selectedBlockIndex: 2,
-    }))
-    expect(res.status).toBe(200)
-    const body = await res.json() as { snapshot?: unknown; applied?: boolean }
-    expect(body.applied).toBe(true)
-    expect(body.snapshot).toBeTruthy()
-    expect(mocks.runExistingSiteTurn).toHaveBeenCalledWith(expect.objectContaining({
-      ctx: expect.objectContaining({ tenantId: 7 }),
-      message: "Bezoekers kunnen een afspraak maken.",
-      pageSlug: "index",
-      selectedBlockIndex: 2,
-      role: "owner",
-      allowRegenerate: false,
-    }))
-  })
-
-  it("streams SSE when the client asks for an event stream and applies only the done snapshot", async () => {
-    mocks.payload.auth.mockResolvedValue({
-      user: { id: 2, role: "owner", tenants: [{ tenant: 7 }] },
+      user: { id: 2, role: "super-admin", tenants: [] },
     })
     mocks.streamExistingSiteTurn.mockImplementation(async function* () {
       yield { type: "delta", text: "Ik " }

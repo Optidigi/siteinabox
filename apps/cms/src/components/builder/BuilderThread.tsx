@@ -1,9 +1,12 @@
 "use client"
 
+import { builderCopy } from "./copy"
+import type { Locale } from "@/i18n/config"
+
 import type { ReactNode, RefObject } from "react"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { BUILDER_PHASE_COPY, type BuilderBusyPhase } from "@/components/builder/builderPresence"
+import { type BuilderBusyPhase } from "@/components/builder/builderPresence"
 import { splitBuilderSpeech } from "@/lib/builder/chatSpeech"
 import { BUILDER_CHAT_WELL_CLASS, OPEN_PREVIEW_ACTION_ID, type BuilderChatMessage } from "@/lib/builder/thread"
 
@@ -20,9 +23,11 @@ function BuilderSpeech({ text }: { text: string }) {
 }
 
 function ThreadTurn({
+  locale = "nl",
   role,
   children,
 }: {
+  locale?: Locale
   role: "assistant" | "user"
   children: ReactNode
 }) {
@@ -30,7 +35,7 @@ function ThreadTurn({
   return (
     <div
       className={cn("flex w-full", isUser ? "justify-end" : "items-start")}
-      aria-label={isUser ? "Jij" : "SIAB"}
+      aria-label={isUser ? builderCopy[locale].you : "SIAB"}
     >
       <div
         className={cn(
@@ -47,6 +52,7 @@ function ThreadTurn({
 }
 
 export function BuilderThread({
+  locale = "nl",
   messages,
   busy,
   phase,
@@ -54,6 +60,7 @@ export function BuilderThread({
   onChoice,
   onOpenPreview,
 }: {
+  locale?: Locale
   messages: BuilderChatMessage[]
   busy: boolean
   phase: BuilderBusyPhase | null
@@ -61,7 +68,7 @@ export function BuilderThread({
   onChoice: (label: string) => void
   onOpenPreview?: () => void
 }) {
-  const phaseCopy = BUILDER_PHASE_COPY[phase ?? "schrijft"]
+  const phaseCopy = builderCopy[locale][phase ?? "schrijft"]
 
   return (
     <div
@@ -74,7 +81,7 @@ export function BuilderThread({
           const isLast = index === messages.length - 1
           const showChoices = isLast && entry.role === "assistant" && !busy && (entry.choices?.length ?? 0) > 0
           return (
-            <ThreadTurn key={`${entry.role}-${index}`} role={entry.role}>
+            <ThreadTurn key={`${entry.role}-${index}`} role={entry.role} locale={locale}>
               {entry.role === "user"
                 ? <p className="text-sm leading-relaxed whitespace-pre-wrap">{entry.text}</p>
                 : <BuilderSpeech text={entry.text} />}
@@ -105,8 +112,7 @@ export function BuilderThread({
                     disabled={busy}
                     onClick={onOpenPreview}
                   >
-                    {entry.actions.find((action) => action.id === OPEN_PREVIEW_ACTION_ID)?.label
-                      ?? "Bekijk je site"}
+                    {builderCopy[locale].preview}
                   </Button>
                 </div>
               ) : null}

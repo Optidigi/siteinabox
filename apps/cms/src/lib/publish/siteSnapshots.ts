@@ -1,3 +1,4 @@
+import { approvedCatalogIssues, assertApprovedCatalogChrome } from "@/lib/sitegen/catalog"
 import "server-only"
 import crypto from "node:crypto"
 import type { Payload, PayloadRequest, Where } from "payload"
@@ -324,7 +325,7 @@ function buildManifest(
   }
 }
 
-export function validatePublishedPageBlockVariants(
+function validateContractPageBlockVariants(
   pages: Array<{ blocks: ContractPage["blocks"] }>,
   _tenantSlug: string,
 ) {
@@ -338,6 +339,12 @@ export function validatePublishedPageBlockVariants(
   if (errors.length > 0) {
     throw new Error(`Published snapshot failed block validation: ${errors.join("; ")}`)
   }
+}
+
+export function validatePublishedPageBlockVariants(pages: Array<{ blocks: ContractPage["blocks"] }>, tenantSlug: string): void {
+  validateContractPageBlockVariants(pages, tenantSlug)
+  const issues = pages.flatMap((page) => approvedCatalogIssues(page.blocks))
+  if (issues.length) throw new Error(issues.map((issue) => issue.message).join(" "))
 }
 
 export function validatePublishedAppointmentSchedule(
@@ -395,6 +402,7 @@ export async function buildPublishedSiteSnapshot(
     language: projectedSettings.language ?? settingsDoc?.language ?? "nl",
     siteUrl: `https://${tenant.domain}`,
   }
+  assertApprovedCatalogChrome(settings.chrome)
   validatePublishedAppointmentSchedule(publishedPages, settings.appointments)
   const rendererTheme = snapshotThemeForTenant(tenant)
   const now = new Date().toISOString()
@@ -438,6 +446,12 @@ export async function activatePublishedSnapshot(
     throw new Error("Cannot activate a snapshot for a tenant domain that has changed.")
   }
 
+  if (snapshotDoc.status !== "active" || relationshipId(tenant.activeSnapshot) !== String(snapshotDoc.id)) {
+    const parsedSnapshot = schemaForPublishedSiteSnapshot(snapshotDoc.snapshot as Parameters<typeof schemaForPublishedSiteSnapshot>[0]).safeParse(snapshotDoc.snapshot)
+    if (!parsedSnapshot.success) throw new Error("Cannot activate an invalid snapshot.")
+    validatePublishedPageBlockVariants(parsedSnapshot.data.pages, tenant.slug)
+    assertApprovedCatalogChrome(parsedSnapshot.data.settings.chrome)
+  }
   const runId = relationshipId(snapshotDoc.sourceGenerationRun)
   const run = await getGenerationRun(payload, runId, options.req)
   const gate = canActivatePublishedSnapshot(run, { manualActivation: options.manualActivation, tenant })
@@ -790,7 +804,7 @@ export async function resolvePublishedSnapshotByHost(
     throw new Error(`Stored published site snapshot failed contract validation: ${formatContractValidationIssues(parsedSnapshot.error)}`)
   }
   const snapshot = parsedSnapshot.data
-  validatePublishedPageBlockVariants(snapshot.pages, tenant.slug)
+  validateContractPageBlockVariants(snapshot.pages, tenant.slug)
   if (normalizeRequestHost(snapshot.domain) !== normalizeRequestHost(tenant.domain)) return null
   const canonicalHost = normalizeRequestHost(tenant.domain)
   const explicitWwwHost = `www.${canonicalHost}`

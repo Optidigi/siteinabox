@@ -36,6 +36,8 @@ test("static site and renderer phases remain application-specific", () => {
 test("the checked-in inventory is fully classifiable", async () => {
   const inventory = JSON.parse(await readFile(new URL("../docs/environment-inventory.json", import.meta.url), "utf8"))
   const classifications = classifyInventory(inventory)
-  assert.equal(classifications.length, 105)
+  assert.equal(classifications.length, 107)
+  assert.deepEqual(classifications.find(({ app, name }) => app === "cms" && name === "BUILDER_EVALUATION_ISOLATION"), { app: "cms", name: "BUILDER_EVALUATION_ISOLATION", exposure: "internal", phase: "test", requiredness: "test-only" })
+  assert.deepEqual(classifications.find(({ app, name }) => app === "cms" && name === "BETTER_AUTH_API_KEY"), { app: "cms", name: "BETTER_AUTH_API_KEY", exposure: "secret", phase: "runtime", requiredness: "operation-scoped" })
   assert.ok(classifications.every(({ exposure, phase, requiredness }) => exposure && phase && requiredness))
 })

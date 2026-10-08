@@ -342,7 +342,7 @@ describe("preview checkout domain suggestion action", () => {
     vi.spyOn(console, "info").mockImplementation(() => {})
     vi.spyOn(console, "error").mockImplementation(() => {})
     vi.spyOn(console, "warn").mockImplementation(() => {})
-    mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
+    mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com", emailVerified: true } })
     mocks.loadPreviewGrantContext.mockResolvedValue({
       payload: { update: mocks.payloadUpdate },
       run: { id: 500, updatedAt: "draft-500" },
@@ -2159,7 +2159,7 @@ describe("preview checkout domain suggestion action", () => {
 
   it("derives period-end cancellation only from authenticated checkout authority", async () => {
     mocks.getSession.mockResolvedValue({
-      user: { id: "preview-user-7", email: "Customer@Example.com" },
+      user: { id: "preview-user-7", email: "Customer@Example.com", emailVerified: true },
     })
     const agreement = {
       id: 88,

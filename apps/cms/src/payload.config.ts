@@ -51,12 +51,20 @@ import { Pages } from "@/collections/Pages"
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { PreviewAccessGrants } from "@/collections/PreviewAccessGrants"
 import { BuilderSessions } from "@/collections/BuilderSessions"
+import { BuilderQuotaAccounts, BuilderQuotaGlobal, BuilderOperations } from "@/collections/BuilderQuota"
+import { CustomerAuthAccounts } from "@/collections/CustomerAuthAccounts"
+import { CustomerSessionBindings } from "@/collections/CustomerSessionBindings"
+import { CostlySearchBudgets } from "@/collections/CostlySearchBudgets"
+import { MagicMailBudgets } from "@/collections/MagicMailBudgets"
+import { installCustomerJwtStrategy } from "@/lib/auth/customerJwtStrategy"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import { purgeExpiredCheckoutProgressDraftsTask } from "@/lib/jobs/purgeExpiredCheckoutProgressDraftsTask"
+import { inactivePreviewsTask } from "@/lib/jobs/inactivePreviewsTask"
+import { reconcileBuilderOperationsTask } from "@/lib/builder/quotaReconciliationTask"
 import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTask"
 import { prepareDomainTransferOutTask } from "@/lib/jobs/prepareDomainTransferOutTask"
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
@@ -90,6 +98,7 @@ if (!DATABASE_URI) {
 // when Payload actually sends mail, not during boot, migrations, or health checks.
 
 export default buildConfig({
+  onInit: (payload) => { installCustomerJwtStrategy(payload) },
   secret: PAYLOAD_SECRET,
   // Operational one-off containers must terminate deterministically, and the
   // CMS must not emit anonymous deployment metadata to a third party.
@@ -109,6 +118,7 @@ export default buildConfig({
   db: postgresAdapter({
     pool: {
       connectionString: DATABASE_URI,
+      connectionTimeoutMillis: 5000,
       // Allow test harnesses (e.g. tsx restore-script child) to cap pool size
       // when spawned alongside a vitest process that already holds many connections.
       ...(process.env.PG_POOL_MAX ? { max: parseInt(process.env.PG_POOL_MAX, 10) } : {}),
@@ -158,6 +168,13 @@ export default buildConfig({
     PublishedSiteSnapshots,
     PreviewAccessGrants,
     BuilderSessions,
+    BuilderQuotaAccounts,
+    BuilderQuotaGlobal,
+    BuilderOperations,
+    CustomerAuthAccounts,
+    CustomerSessionBindings,
+    CostlySearchBudgets,
+    MagicMailBudgets,
     CheckoutProgressDrafts,
     LegalDocuments,
     LegalPublicationEvents,
@@ -195,6 +212,8 @@ export default buildConfig({
     tasks: [
       purgeStaleFormSubmissionsTask,
       purgeExpiredCheckoutProgressDraftsTask,
+      inactivePreviewsTask,
+      reconcileBuilderOperationsTask,
       sendLegalRequirementNotificationsTask,
       processAppointmentNotificationsTask,
       processAppointmentCalendarEventsTask,

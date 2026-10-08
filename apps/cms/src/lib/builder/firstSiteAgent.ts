@@ -1,6 +1,8 @@
+import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, mastraAggregateUsage } from "@/lib/ai-generation/boundedMastra"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
+import type { BuilderExecutionContext } from "./executionContext"
 import type { Payload } from "payload"
 import { COLOR_SCHEME_IDS, FONT_SCHEME_IDS, SHAPE_SCHEME_IDS } from "@siteinabox/contracts"
 import {
@@ -9,7 +11,7 @@ import {
   mastraOpenAIProviderOptions,
 } from "@/lib/ai-generation/mastraProvider"
 import { composeUnavailableReply, sitegenCatalogDigest, unavailableAsksIn } from "./catalogHonesty"
-import { choicesFromAssistantText, shouldApplyContactAnswer } from "./choices"
+import { localizeBuilderChoices, choicesFromAssistantText, shouldApplyContactAnswer } from "./choices"
 import {
   BuilderFactsSchema,
   applyModuleAnswer,
@@ -95,6 +97,8 @@ const applyContactPatch = (
 
 export async function runFirstSiteTurn(input: {
   payload: Payload
+  executionContext?: BuilderExecutionContext
+  locale?: "nl" | "en"
   message: string
   previous: BuilderFacts | null
   recentMessages?: BuilderChatMessage[]
@@ -117,7 +121,7 @@ export async function runFirstSiteTurn(input: {
   ) {
     return {
       ok: true,
-      text: composeUnavailableReply(unavailable),
+      text: composeUnavailableReply(unavailable, input.locale),
       facts,
       status: "unavailable",
       choices: [],
@@ -125,6 +129,7 @@ export async function runFirstSiteTurn(input: {
   }
 
   const generatedRef: { current: BuilderChatResult | null } = { current: null }
+  let generationTask: Promise<BuilderChatResult> | null = null
   let askedChoices: BuilderChoice[] = []
   const effort = defaultMastraChatReasoningEffort()
   const providerOptions = mastraOpenAIProviderOptions(effort)
@@ -141,7 +146,7 @@ export async function runFirstSiteTurn(input: {
       audience: z.string().trim().min(8).max(240).optional(),
       situation: z.string().trim().min(20).max(360).optional(),
       approach: z.string().trim().min(20).max(400).optional(),
-      contact: z.enum(["phone", "whatsapp", "phone-whatsapp", "appointment", "form"]).optional(),
+      contact: z.enum(["phone", "whatsapp", "phone-whatsapp", "appointment"]).optional(),
       colorSchemeId: z.enum(COLOR_SCHEME_IDS).optional(),
       fontSchemeId: z.enum(FONT_SCHEME_IDS).optional(),
       shapeSchemeId: z.enum(SHAPE_SCHEME_IDS).optional(),
@@ -202,12 +207,18 @@ export async function runFirstSiteTurn(input: {
     description: "Bouw de eerste homepage wanneer vak, gebied, diensten en contact bekend zijn. Look mag jij hebben afgeleid.",
     inputSchema: z.object({}),
     execute: async () => {
+      await input.executionContext?.assertActive()
+      if (generationTask) {
+        const cached = await generationTask
+        return cached.ok ? { ok: true, clientSlug: cached.clientSlug } : { ok: false, error: cached.error ?? "generate_failed" }
+      }
       if (!hasMinimumFirstSiteBrief(facts)) {
         return { ok: false, missing: firstSiteMissing(facts), reason: "brief_incomplete" }
       }
       const ready = prepareFirstSiteGenerateFacts(facts)
       facts = ready
-      const result = await generatePreview(input.payload, ready, input.contact, input.legal)
+      generationTask = generatePreview(input.payload, ready, input.contact, input.legal, undefined, undefined, { executionContext: input.executionContext, locale: input.locale })
+      const result = await generationTask
       generatedRef.current = result
       return result.ok
         ? { ok: true, clientSlug: result.clientSlug }
@@ -215,22 +226,25 @@ export async function runFirstSiteTurn(input: {
     },
   })
 
+  const executionContext = input.executionContext
+  const limits = customerModelLimits(executionContext ? customerEffort(defaultMastraChatReasoningEffort()) : "medium")
   const agent = new Agent({
     id: "siab-first-site",
     name: "Site in a Box first-site builder",
     instructions: {
       role: "system",
-      content: FIRST_SITE_INSTRUCTIONS,
+      content: FIRST_SITE_INSTRUCTIONS + (input.locale === "en" ? " Reply in English. All customer messages and choice labels must be in English." : " Antwoord in het Nederlands."),
       providerOptions,
     },
-    model: defaultMastraModelId(),
+    model: executionContext ? customerMastraModel(executionContext, limits) : defaultMastraModelId(),
+    maxRetries: 0,
     tools: { noteBrief, askUser, generateHomepage },
   })
 
   const history = (input.recentMessages ?? []).slice(-8)
     .map((entry) => `${entry.role}: ${entry.text}`)
     .join("\n")
-  const result = await agent.generate(
+  const generate = (signal?: AbortSignal) => agent.generate(
     [
       history,
       `Bekende feiten: ${JSON.stringify(facts)}`,
@@ -238,8 +252,10 @@ export async function runFirstSiteTurn(input: {
       "Antwoord in 1–2 zinnen. Eén vraag. Geen markdown. Geen herhaalde keuzelijst.",
       input.message,
     ].filter(Boolean).join("\n\n"),
-    { toolChoice: "auto", providerOptions, maxSteps: 4 },
+    { toolChoice: "auto", providerOptions, maxSteps: 4, ...(executionContext ? { ...customerMastraSettings(executionContext, limits), ...(signal ? { abortSignal: signal } : {}) } : { modelSettings: { maxOutputTokens: 2048, maxRetries: 0, timeout: { totalMs: 90000, stepMs: 45000 } } }) },
   )
+
+  const result = executionContext ? await executionContext.modelCall(limits, generate, (result) => mastraAggregateUsage(result, limits)) : await generate()
 
   const spoken = typeof result.text === "string" ? result.text.trim() : ""
   const generated = generatedRef.current
@@ -248,19 +264,19 @@ export async function runFirstSiteTurn(input: {
       ...generated,
       facts,
       text: spoken.length >= 8 ? spoken : generated.text,
-      choices: generated.ok ? [] : askedChoices,
+      choices: generated.ok ? [] : localizeBuilderChoices(askedChoices, input.locale),
     }
   }
 
   const text = spoken.length >= 8
     ? spoken
-    : "Oké — zeg het in je eigen woorden, of tik een knop als die bij mijn vraag past."
+    : input.locale === "en" ? "Tell me in your own words, or choose an option that answers my question." : "Oké — zeg het in je eigen woorden, of tik een knop als die bij mijn vraag past."
   const choices = askedChoices.length > 0 ? askedChoices : choicesFromAssistantText(text, facts)
   return {
     ok: true,
     text,
     facts,
     status: "needs_brief",
-    choices,
+    choices: localizeBuilderChoices(choices, input.locale),
   }
 }

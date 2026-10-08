@@ -19,7 +19,7 @@ const loadPreviewCheckoutBase = async (
   })
   const customerEmail = session?.user?.email
   const previewUserId = session?.user?.id
-  if (!customerEmail || (requireActor && !previewUserId)) {
+  if (!customerEmail || session?.user.emailVerified !== true || (requireActor && !previewUserId)) {
     throw new Error(t("previewLoginRequired"))
   }
 
@@ -43,7 +43,7 @@ const loadPreviewDomainSearchBase = async (
     query: { disableCookieCache: true },
   })
   const customerEmail = session?.user?.email
-  if (!customerEmail) throw new Error("Preview login is required.")
+  if (!customerEmail || session?.user.emailVerified !== true) throw new Error("Preview login is required.")
   return loadPreviewGrantAuthority({
     clientSlug: normalizePreviewClientSlug(clientSlug),
     email: customerEmail,

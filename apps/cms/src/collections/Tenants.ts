@@ -1,4 +1,5 @@
 import type { Tenant } from "@/payload-types"
+import { fenceBuilderAuthority, fenceBuilderAuthorityDeletion } from "./builderAuthorityFence"
 import type { CollectionBeforeChangeHook, CollectionConfig, PayloadRequest } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { relationshipId, type RelationshipIdRef } from "@/lib/relationshipId"
@@ -421,6 +422,8 @@ export const Tenants: CollectionConfig = {
     },
   ],
   hooks: {
+    beforeValidate: [fenceBuilderAuthority],
+    beforeDelete: [fenceBuilderAuthorityDeletion],
     beforeChange: [
       protectBillingSuspensionMetadata,
       protectPreCommerceRoutingAdoption,

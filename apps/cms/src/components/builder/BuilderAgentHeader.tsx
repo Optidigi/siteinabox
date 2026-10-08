@@ -1,17 +1,18 @@
 "use client"
 
+import { builderCopy } from "./copy"
+import type { Locale } from "@/i18n/config"
+
 import type { ReactNode } from "react"
 import { AppWindow } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import { BuilderLogo } from "@/components/builder/BuilderLogo"
 import { BuilderThemeToggle } from "@/components/builder/BuilderThemeToggle"
-import {
-  builderAgentStatus,
-  type BuilderBusyPhase,
-} from "@/components/builder/builderPresence"
+import { type BuilderBusyPhase } from "@/components/builder/builderPresence"
 import type { BuilderMobilePane } from "@/components/builder/useBuilderMobilePager"
 
 export function BuilderAgentHeader({
+  locale = "nl",
   email,
   busy,
   hasPreview,
@@ -23,6 +24,7 @@ export function BuilderAgentHeader({
   desktopSignOut,
   mobileSignOut,
 }: {
+  locale?: Locale
   email: string
   busy: boolean
   hasPreview: boolean
@@ -34,7 +36,8 @@ export function BuilderAgentHeader({
   desktopSignOut?: ReactNode
   mobileSignOut: ReactNode
 }) {
-  const status = builderAgentStatus(busy, hasPreview, phase)
+  const copy = builderCopy[locale]
+  const status = busy ? copy[phase ?? "schrijft"] : hasPreview ? copy.ready : copy.first
 
   return (
     <header className="flex w-full shrink-0 items-center gap-3 border-b-2 border-border bg-card px-4 py-3">
@@ -54,7 +57,7 @@ export function BuilderAgentHeader({
             variant="outline"
             size="icon"
             className="relative lg:hidden"
-            aria-label="Toon sitevoorbeeld"
+            aria-label={copy.preview}
             aria-current={pane === "preview" ? "true" : undefined}
             onClick={onShowPreview}
           >

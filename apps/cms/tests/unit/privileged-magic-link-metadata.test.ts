@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   resolvePayloadUserForMagicLink: vi.fn(),
   getPayload: vi.fn(),
+  claimMagicMailAttempt: vi.fn(),
 }))
+
+vi.mock("@/lib/auth/magicMailBudget", () => ({ claimMagicMailAttempt: mocks.claimMagicMailAttempt }))
 
 vi.mock("@/payload.config", () => ({ default: {} }))
 vi.mock("payload", async (importOriginal) => ({
@@ -39,6 +42,7 @@ describe("privileged CMS magic-link metadata", () => {
     mocks.getPayload.mockResolvedValue({ create: vi.fn() })
     mocks.resolvePayloadUserForMagicLink.mockResolvedValue({ id: 1 })
     mocks.sendEmail.mockResolvedValue({ provider: "test" })
+    mocks.claimMagicMailAttempt.mockResolvedValue(undefined)
   })
 
   it("is purpose-bound, claim-bound, recipient-bound, short-lived, and timing-safe verifiable", () => {
@@ -153,6 +157,12 @@ describe("privileged CMS magic-link metadata", () => {
       url: "https://admin.other.example/api/auth/magic-link/verify?token=secret",
       metadata,
     })).rejects.toThrow("Unsigned or invalid privileged")
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("does not dispatch ordinary mail without a durable budget receipt", async () => {
+    mocks.claimMagicMailAttempt.mockRejectedValueOnce(new Error("budget denied"))
+    await expect(sendCmsMagicLinkEmail({ email: "member@example.com", url: "https://admin.example.nl/api/auth/magic-link/verify?token=fixture", metadata: {} })).rejects.toThrow("budget denied")
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
 

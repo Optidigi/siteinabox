@@ -32,6 +32,7 @@
     "generate:migration-index": "tsx scripts/generate-migration-index.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "2.0.115",
     "@better-auth/infra": "^0.3.7",
     "@date-fns/tz": "^1.2.0",
     "@dnd-kit/core": "^6.3.1",
@@ -65,6 +66,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "d3-geo": "^3.1.1",
+    "drizzle-orm": "0.45.2",
     "graphql": "16.14.0",
     "i18n-iso-countries": "^7.14.0",
     "lexical": "0.50.0",

@@ -5,20 +5,19 @@ import * as path from "node:path"
 const src = (rel: string) => fs.readFileSync(path.resolve(process.cwd(), rel), "utf-8")
 
 describe("passwordless auth surface", () => {
-  it("keeps CMS login passwordless by default with a host-gated password fallback", () => {
+  it("keeps CMS login passwordless by default with explicit operator recovery entry", () => {
     const loginForm = src("src/components/forms/LoginForm.tsx")
-    expect(loginForm).toContain("allowPasswordLogin")
     expect(loginForm).toContain("passwordMode")
     expect(loginForm).toContain("authClient.signIn.magicLink")
     expect(loginForm).toContain("showCmsPassword")
     expect(loginForm).toMatch(/passwordMode\s*&&\s*showCmsPassword/)
-    expect(loginForm).toMatch(/allowPasswordLogin\s*&&\s*!isRegister/)
+    expect(loginForm).toContain('params.get("intent") === "operator"')
     expect(loginForm).toContain("passwordLogin")
     expect(loginForm).toContain("magicLinkLogin")
 
     const loginPage = src("src/app/(frontend)/login/page.tsx")
-    expect(loginPage).toContain("isPlatformAdminHost")
-    expect(loginPage).toContain("allowPasswordLogin")
+    expect(loginPage).not.toContain("socialProviders=")
+    expect(loginForm).not.toContain("authClient.signIn.social")
     expect(loginPage).toContain("unifyPublicAuth")
     expect(loginForm).toContain("requestUnifiedMagicLinkAction")
   })

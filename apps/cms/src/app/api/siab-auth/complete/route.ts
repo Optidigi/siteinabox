@@ -11,20 +11,22 @@ export async function GET(req: Request) {
 
   const authRequest = buildCmsAuthRequest(req)
   const url = new URL(authRequest.url)
-  const session = await auth.api.getSession({
+  const { response: session, headers: sessionHeaders } = await auth.api.getSession({
+    returnHeaders: true,
     headers: authRequest.headers,
     query: { disableCookieCache: true },
   })
 
-  const payloadUserId = (session?.user as { payloadUserId?: string | null } | undefined)?.payloadUserId
-  if (!payloadUserId) {
+  const payloadUserId = session?.user.payloadUserId
+  if (!payloadUserId || !session) {
     return NextResponse.redirect(new URL("/login?error=social-unlinked", url))
   }
 
   try {
-    const payloadCookie = await issuePayloadSessionCookie(payloadUserId, authRequest)
+    const payloadCookie = await issuePayloadSessionCookie(payloadUserId, authRequest, session.session.id)
     const destination = validateNextRedirect(url.searchParams.get("next"))
     const response = NextResponse.redirect(new URL(destination, url))
+    for (const cookie of sessionHeaders.getSetCookie()) response.headers.append("Set-Cookie", cookie)
     response.headers.append("Set-Cookie", payloadCookie)
     return response
   } catch {

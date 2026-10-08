@@ -1,4 +1,4 @@
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import {
   AppointmentScheduleSettingsSchema,
   BACKGROUND_MODE_IDS,
@@ -10,7 +10,8 @@ import {
   type ThemeTokenSpec,
 } from "@siteinabox/contracts"
 import { isLiveCatalogBlockType, isUnavailableCatalogBlockType } from "@/lib/builder/catalogHonesty"
-import { sitegenFooterFor, sitegenNavbarFor, sitegenVariantFor } from "@/lib/sitegen/catalog"
+import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import { assertApprovedCatalogBlocks, sitegenFooterFor, sitegenNavbarFor, sitegenVariantFor } from "@/lib/sitegen/catalog"
 import { themeSchema } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { Page, SiteSetting, Tenant, User } from "@/payload-types"
@@ -19,12 +20,14 @@ export type AgentWriteContext = {
   payload: Payload
   tenantId: string | number
   user?: User | null
+  executionContext?: BuilderExecutionContext
+  req?: Partial<PayloadRequest>
 }
 
-const collectionWrite = (ctx: AgentWriteContext): { overrideAccess: boolean; user?: User } =>
+const collectionWrite = (ctx: AgentWriteContext): { overrideAccess: boolean; user?: User; req?: Partial<PayloadRequest> } =>
   ctx.user
-    ? { overrideAccess: false, user: ctx.user }
-    : { overrideAccess: true }
+    ? { overrideAccess: false, user: ctx.user, req: ctx.req }
+    : { overrideAccess: true, req: ctx.req }
 
 const WEEKDAY_WINDOWS = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const
 
@@ -65,6 +68,7 @@ export const defaultEnabledAppointments = (): AppointmentScheduleSettings => ({
 })
 
 export const setTheme = async (ctx: AgentWriteContext, theme: ThemeTokenSpec): Promise<ThemeTokenSpec> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setTheme({ ...ctx, req }, theme))
   const parsed = ThemeTokenSpecSchema.safeParse(theme)
   if (!parsed.success) throw new Error(`Invalid theme: ${parsed.error.message}`)
   const cmsTheme = themeSchema.parse(parsed.data)
@@ -73,7 +77,7 @@ export const setTheme = async (ctx: AgentWriteContext, theme: ThemeTokenSpec): P
     id: ctx.tenantId,
     data: { theme: cmsTheme },
     depth: 0,
-    overrideAccess: true,
+    ...collectionWrite(ctx),
   })
   return parsed.data
 }
@@ -82,6 +86,7 @@ export const setAppointments = async (
   ctx: AgentWriteContext,
   schedule: AppointmentScheduleSettings = defaultEnabledAppointments(),
 ): Promise<AppointmentScheduleSettings> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setAppointments({ ...ctx, req }, schedule))
   const parsed = AppointmentScheduleSettingsSchema.parse(schedule)
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
@@ -99,6 +104,7 @@ export const setContact = async (
   ctx: AgentWriteContext,
   contact: { phone?: string | null; address?: string | null },
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setContact({ ...ctx, req }, contact))
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
   await ctx.payload.update({
@@ -120,6 +126,7 @@ export const updateSectionProps = async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; blockIndex?: number | null; field: "heading" | "body"; value: string },
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => updateSectionProps({ ...ctx, req }, input))
   const page = await findPageBySlug(ctx, input.pageSlug)
   if (!page) throw new Error("Page not found for tenant.")
   const blocks = Array.isArray(page.blocks) ? [...page.blocks] : []
@@ -129,6 +136,7 @@ export const updateSectionProps = async (
   const block = blocks[index]
   if (!block || typeof block !== "object") throw new Error("Selected block is missing.")
   blocks[index] = { ...block, [input.field]: input.value }
+  assertApprovedCatalogBlocks(blocks)
   await ctx.payload.update({
     collection: "pages",
     id: page.id,
@@ -142,6 +150,7 @@ export const setHours = async (
   ctx: AgentWriteContext,
   hours: Array<{ day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"; open: string | null; close: string | null; closed?: boolean }>,
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setHours({ ...ctx, req }, hours))
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
   await ctx.payload.update({
@@ -165,6 +174,7 @@ export const replaceSection = async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; blockIndex?: number | null; variant: string },
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => replaceSection({ ...ctx, req }, input))
   const blockType = catalogBlockTypeFromVariant(input.variant)
   if (!blockType || !sitegenVariantFor(blockType, input.variant)) {
     throw new Error("That section design is not in the Sitegen catalog.")
@@ -184,6 +194,7 @@ export const replaceSection = async (
     blockType,
     variant: input.variant,
   } as typeof current
+  assertApprovedCatalogBlocks(blocks)
   await ctx.payload.update({
     collection: "pages",
     id: page.id,
@@ -318,6 +329,7 @@ export const patchSection = async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; blockIndex?: number | null; patch: BlockPatch },
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => patchSection({ ...ctx, req }, input))
   const page = await findPageBySlug(ctx, input.pageSlug)
   if (!page) throw new Error("Page not found for tenant.")
   const blocks = Array.isArray(page.blocks) ? [...page.blocks] : []
@@ -357,6 +369,7 @@ export const patchSection = async (
   } else {
     throw new Error("This section is not in the live catalog. Remove it instead of editing copy.")
   }
+  assertApprovedCatalogBlocks(blocks)
   await ctx.payload.update({
     collection: "pages",
     id: page.id,
@@ -383,6 +396,7 @@ export const removeUnavailableBlocks = async (
   ctx: AgentWriteContext,
   pageSlug: string,
 ): Promise<{ removed: number; remaining: number }> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => removeUnavailableBlocks({ ...ctx, req }, pageSlug))
   const page = await findPageBySlug(ctx, pageSlug)
   if (!page) throw new Error("Page not found for tenant.")
   const blocks = Array.isArray(page.blocks) ? [...page.blocks] : []
@@ -395,6 +409,7 @@ export const removeUnavailableBlocks = async (
   if (next.length === 0) {
     throw new Error("I will not empty the page. Keep at least one live catalog section.")
   }
+  assertApprovedCatalogBlocks(next)
   await ctx.payload.update({
     collection: "pages",
     id: page.id,
@@ -414,6 +429,7 @@ export const setChrome = async (
     footerTagline?: string | null
   },
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setChrome({ ...ctx, req }, input))
   if (input.navbarVariant && !sitegenNavbarFor(input.navbarVariant)) {
     throw new Error("That navbar design is not in the live catalog.")
   }
@@ -454,6 +470,7 @@ export const setSeo = async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; title?: string | null; description?: string | null },
 ): Promise<void> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setSeo({ ...ctx, req }, input))
   const page = await findPageBySlug(ctx, input.pageSlug)
   if (!page) throw new Error("Page not found for tenant.")
   await ctx.payload.update({

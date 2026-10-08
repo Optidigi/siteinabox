@@ -6,7 +6,8 @@ import {
   type SiteGenerationSpec,
   type ValidationReport,
 } from "@siteinabox/contracts/generation"
-import type { Payload, Where } from "payload"
+import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import type { Payload, PayloadRequest, Where } from "payload"
 import type { Config, IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId } from "@/lib/relationshipId"
@@ -124,19 +125,24 @@ const updateIntake = async (
   payload: Payload,
   intake: IntakeSubmission,
   data: Partial<IntakeSubmission>,
+  executionContext?: BuilderExecutionContext,
+  req?: Partial<PayloadRequest>,
 ): Promise<IntakeSubmission> => {
+  if (executionContext && !req) return executionContext.withWrite((writeReq) => updateIntake(payload, intake, data, executionContext, writeReq))
   await payload.update({
     collection: "intake-submissions",
     id: intake.id,
     data,
     depth: 0,
     overrideAccess: true,
+    req,
   })
   return payload.findByID({
     collection: "intake-submissions",
     id: intake.id,
     depth: 0,
     overrideAccess: true,
+    req,
   })
 }
 
@@ -144,19 +150,24 @@ const updateRun = async (
   payload: Payload,
   run: SiteGenerationRun,
   data: Partial<SiteGenerationRun>,
+  executionContext?: BuilderExecutionContext,
+  req?: Partial<PayloadRequest>,
 ): Promise<SiteGenerationRun> => {
+  if (executionContext && !req) return executionContext.withWrite((writeReq) => updateRun(payload, run, data, executionContext, writeReq))
   await payload.update({
     collection: "site-generation-runs",
     id: run.id,
     data,
     depth: 0,
     overrideAccess: true,
+    req,
   })
   return payload.findByID({
     collection: "site-generation-runs",
     id: run.id,
     depth: 0,
     overrideAccess: true,
+    req,
   })
 }
 
@@ -165,25 +176,27 @@ const setIntakeStatus = async (
   intake: IntakeSubmission,
   status: WorkflowStatus,
   data: Partial<IntakeSubmission> = {},
+  executionContext?: BuilderExecutionContext,
 ): Promise<IntakeSubmission> =>
   updateIntake(payload, intake, {
     ...data,
     status,
     statusTransitions: appendTransition(intake, status),
-  })
+  }, executionContext)
 
 const setRunStatus = async (
   payload: Payload,
   run: SiteGenerationRun,
   status: WorkflowStatus,
   data: Partial<SiteGenerationRun> = {},
+  executionContext?: BuilderExecutionContext,
 ): Promise<SiteGenerationRun> =>
   updateRun(payload, run, {
     ...data,
     status,
     statusTransitions: appendTransition(run, status),
     ...(status === "preview_ready" || status === "failed" ? { completedAt: now() } : {}),
-  })
+  }, executionContext)
 
 const terminalResult = (intake: IntakeSubmission, run: SiteGenerationRun | null, reused: boolean): IntakeProcessingResult => ({
   ok: intake.status === "preview_ready" || run?.status === "preview_ready",
@@ -210,15 +223,19 @@ const processStoredIntakeGeneration = async (
     provider: SiteGenerationProvider
     mockFixture?: MockGenerationFixture
     maxGenerationAttempts: number
+    executionContext?: BuilderExecutionContext
     retireUnspecifiedPages?: boolean
     pinTenantId?: string | number
   },
 ): Promise<IntakeProcessingResult> => {
   let intake = input.intake
   const existingRun = await findOneDoc(payload, "site-generation-runs", { idempotencyKey: { equals: input.idempotencyKey } })
-  if (existingRun) return terminalResult(intake, existingRun, true)
+  if (existingRun) {
+    await input.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id), generationRunId: Number(existingRun.id) })
+    return terminalResult(intake, existingRun, true)
+  }
 
-  let run = await payload.create({
+  const createRun = (req?: Partial<PayloadRequest>) => payload.create({
     collection: "site-generation-runs",
     data: {
       intakeSubmission: intake.id,
@@ -236,15 +253,18 @@ const processStoredIntakeGeneration = async (
     },
     depth: 0,
     overrideAccess: true,
-  }) 
+    req,
+  })
+  let run = input.executionContext ? await input.executionContext.withWrite(createRun) : await createRun()
+  await input.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id), generationRunId: Number(run.id) })
 
-  intake = await setIntakeStatus(payload, intake, "queued", { generationRun: run.id })
+  intake = await setIntakeStatus(payload, intake, "queued", { generationRun: run.id }, input.executionContext)
 
   try {
-    run = await setRunStatus(payload, run, "generating", { startedAt: now() })
-    intake = await setIntakeStatus(payload, intake, "generating")
+    run = await setRunStatus(payload, run, "generating", { startedAt: now() }, input.executionContext)
+    intake = await setIntakeStatus(payload, intake, "generating", {}, input.executionContext)
 
-    const generated = await generateWithRetry(input.provider, input.providerRequest, input.maxGenerationAttempts)
+    const generated = await generateWithRetry(input.provider, { ...input.providerRequest, executionContext: input.executionContext }, input.executionContext ? 1 : input.maxGenerationAttempts)
     const providerResult = generated.result
     const sourceSpec = withDerivedTenantPrivacyDisclosure(canonicalSpecFromProviderResult(providerResult, input.normalized))
     const sourceValidation = validateSiteGenerationSpecForCms(sourceSpec, { variantScope: "self-serve" })
@@ -262,11 +282,11 @@ const processStoredIntakeGeneration = async (
       generationAttempts: generated.attempt,
       spec,
       specHash,
-    })
-    intake = await setIntakeStatus(payload, intake, "generated")
+    }, input.executionContext)
+    intake = await setIntakeStatus(payload, intake, "generated", {}, input.executionContext)
 
-    run = await setRunStatus(payload, run, "validating")
-    intake = await setIntakeStatus(payload, intake, "validating")
+    run = await setRunStatus(payload, run, "validating", {}, input.executionContext)
+    intake = await setIntakeStatus(payload, intake, "validating", {}, input.executionContext)
     const validationResult = sourceValidation.valid
       ? validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve", allowSystemPages: true })
       : sourceValidation
@@ -276,24 +296,25 @@ const processStoredIntakeGeneration = async (
     }
     if (!validation.valid) {
       const failure = { message: "Generated SiteGenerationSpec failed validation", validation }
-      run = await setRunStatus(payload, run, "failed", { validation, errors: failure })
-      intake = await setIntakeStatus(payload, intake, "failed", { error: failure })
+      run = await setRunStatus(payload, run, "failed", { validation, errors: failure }, input.executionContext)
+      intake = await setIntakeStatus(payload, intake, "failed", { error: failure }, input.executionContext)
       return terminalResult(intake, run, false)
     }
 
-    run = await setRunStatus(payload, run, "applying", { validation })
-    intake = await setIntakeStatus(payload, intake, "applying")
+    run = await setRunStatus(payload, run, "applying", { validation }, input.executionContext)
+    intake = await setIntakeStatus(payload, intake, "applying", {}, input.executionContext)
     const mediaMode = providerResult.provider === "mock" ? "upload-generated-media" : "skip-generated-placeholders"
     const applyResult = await applySiteGenerationSpec(payload, spec, {
       variantScope: "self-serve",
       mediaMode,
+      executionContext: input.executionContext,
       ...(input.retireUnspecifiedPages ? { retireUnspecifiedPages: true } : {}),
       ...(input.pinTenantId != null ? { pinTenantId: input.pinTenantId } : {}),
     })
     if (!applyResult.ok) {
       const failure = { message: "Generated SiteGenerationSpec could not be applied", validation: applyResult.validation }
-      run = await setRunStatus(payload, run, "failed", { validation: applyResult.validation, applyResult, errors: failure })
-      intake = await setIntakeStatus(payload, intake, "failed", { error: failure })
+      run = await setRunStatus(payload, run, "failed", { validation: applyResult.validation, applyResult, errors: failure }, input.executionContext)
+      intake = await setIntakeStatus(payload, intake, "failed", { error: failure }, input.executionContext)
       return terminalResult(intake, run, false)
     }
 
@@ -302,18 +323,18 @@ const processStoredIntakeGeneration = async (
       tenant: applyResult.tenantId != null ? Number(applyResult.tenantId) : null,
       pages: (applyResult.pageIds ?? []).map((id) => Number(id)),
       settings: applyResult.settingsId != null ? Number(applyResult.settingsId) : null,
-    })
+    }, input.executionContext)
     intake = await setIntakeStatus(payload, intake, "draft_ready", {
       tenant: applyResult.tenantId != null ? Number(applyResult.tenantId) : null,
-    })
+    }, input.executionContext)
 
-    run = await setRunStatus(payload, run, "preview_ready")
-    intake = await setIntakeStatus(payload, intake, "preview_ready")
+    run = await setRunStatus(payload, run, "preview_ready", {}, input.executionContext)
+    intake = await setIntakeStatus(payload, intake, "preview_ready", {}, input.executionContext)
     return terminalResult(intake, run, false)
   } catch (err) {
     const failure = errorPayload(err)
-    run = await setRunStatus(payload, run, "failed", { errors: failure })
-    intake = await setIntakeStatus(payload, intake, "failed", { error: failure })
+    run = await setRunStatus(payload, run, "failed", { errors: failure }, input.executionContext)
+    intake = await setIntakeStatus(payload, intake, "failed", { error: failure }, input.executionContext)
     return terminalResult(intake, run, false)
   }
 }
@@ -326,6 +347,7 @@ export async function processIntakeSubmission(
     provider?: SiteGenerationProvider
     providerConfig?: SiteGenerationProviderConfig
     maxGenerationAttempts?: number
+    executionContext?: BuilderExecutionContext
   } = {},
 ): Promise<IntakeProcessingResult> {
   const mockFixture = options.mockFixture ?? "generic"
@@ -333,12 +355,12 @@ export async function processIntakeSubmission(
     ...options.providerConfig,
     mockFixture,
   })
-  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+  const maxGenerationAttempts = Math.min(2, Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2)))
 
   let normalized
   let normalizedHash
   let providerRequest: SiteGenerationProviderRequest | undefined
-  let idempotencyKey
+  let idempotencyKey: string
   try {
     normalized = normalizeIntakeSubmission(raw)
     normalizedHash = hashStableValue(normalized)
@@ -350,7 +372,7 @@ export async function processIntakeSubmission(
     const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
     if (existing) return terminalResult(existing, null, true)
     const failure = errorPayload(err)
-    const intake = await payload.create({
+    const createIntake = (req?: Partial<PayloadRequest>) => payload.create({
       collection: "intake-submissions",
       data: {
         businessName: submittedBusinessName(raw),
@@ -365,7 +387,10 @@ export async function processIntakeSubmission(
       },
       depth: 0,
       overrideAccess: true,
-    }) 
+      req,
+    })
+    const intake = options.executionContext ? await options.executionContext.withWrite(createIntake) : await createIntake()
+    await options.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id) })
     return terminalResult(intake, null, false)
   }
 
@@ -374,7 +399,7 @@ export async function processIntakeSubmission(
   }
 
   const existingIntake = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
-  let intake = existingIntake ?? await payload.create({
+  const createIntake = (req?: Partial<PayloadRequest>) => payload.create({
     collection: "intake-submissions",
     data: {
       businessName: normalized.businessName,
@@ -390,9 +415,12 @@ export async function processIntakeSubmission(
     },
     depth: 0,
     overrideAccess: true,
-  }) 
+    req,
+  })
+  let intake = existingIntake ?? (options.executionContext ? await options.executionContext.withWrite(createIntake) : await createIntake())
+  await options.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id) })
 
-  intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
+  intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash }, options.executionContext)
 
   return processStoredIntakeGeneration(payload, {
     intake,
@@ -403,6 +431,7 @@ export async function processIntakeSubmission(
     provider,
     mockFixture,
     maxGenerationAttempts,
+    executionContext: options.executionContext,
   })
 }
 
@@ -414,6 +443,7 @@ export async function processStoredIntakeSubmission(
     provider?: SiteGenerationProvider
     providerConfig?: SiteGenerationProviderConfig
     maxGenerationAttempts?: number
+    executionContext?: BuilderExecutionContext
     retireUnspecifiedPages?: boolean
     pinTenantId?: string | number
   } = {},
@@ -423,7 +453,7 @@ export async function processStoredIntakeSubmission(
     ...options.providerConfig,
     mockFixture,
   })
-  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+  const maxGenerationAttempts = Math.min(2, Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2)))
 
   let intake = await payload.findByID({
     collection: "intake-submissions",
@@ -449,7 +479,7 @@ export async function processStoredIntakeSubmission(
   ].join(":")
 
   if (intake.status !== "normalized") {
-    intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
+    intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash }, options.executionContext)
   }
 
   return processStoredIntakeGeneration(payload, {
@@ -461,6 +491,7 @@ export async function processStoredIntakeSubmission(
     provider,
     mockFixture,
     maxGenerationAttempts,
+    executionContext: options.executionContext,
     retireUnspecifiedPages: options.retireUnspecifiedPages,
     pinTenantId: options.pinTenantId,
   })
@@ -474,6 +505,7 @@ export async function processReviewedIntakeSubmission(
     provider?: SiteGenerationProvider
     providerConfig?: SiteGenerationProviderConfig
     maxGenerationAttempts?: number
+    executionContext?: BuilderExecutionContext
   } = {},
 ): Promise<IntakeProcessingResult> {
   const mockFixture = options.mockFixture ?? "generic"
@@ -481,7 +513,7 @@ export async function processReviewedIntakeSubmission(
     ...options.providerConfig,
     mockFixture,
   })
-  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+  const maxGenerationAttempts = Math.min(2, Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2)))
 
   const intake = await payload.findByID({
     collection: "intake-submissions",
@@ -523,5 +555,6 @@ export async function processReviewedIntakeSubmission(
     provider,
     mockFixture,
     maxGenerationAttempts,
+    executionContext: options.executionContext,
   })
 }

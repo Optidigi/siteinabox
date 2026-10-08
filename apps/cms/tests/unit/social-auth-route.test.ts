@@ -46,13 +46,13 @@ describe("social auth route callback evidence", () => {
       { headers: { host: "admin.client.nl" } },
     ))
 
-    expect(post.status).toBe(404)
-    expect(get.status).toBe(404)
+    expect(post.status).toBe(403)
+    expect(get.status).toBe(403)
     expect(mocks.post).not.toHaveBeenCalled()
     expect(mocks.get).not.toHaveBeenCalled()
   })
 
-  it("allows only the exact provider and callback host with evidence", async () => {
+  it("denies configured social provider even on a registered callback host", async () => {
     vi.stubEnv(
       "SIAB_GOOGLE_OAUTH_CALLBACK_HOSTS",
       "admin.siteinabox.nl,admin.client.nl",
@@ -70,8 +70,8 @@ describe("social auth route callback evidence", () => {
       },
     ))
 
-    expect(response.status).toBe(204)
-    expect(mocks.post).toHaveBeenCalledTimes(1)
+    expect(response.status).toBe(403)
+    expect(mocks.post).not.toHaveBeenCalled()
   })
 
   it("rejects a forwarded-host mismatch instead of trusting it as callback evidence", async () => {
@@ -93,7 +93,7 @@ describe("social auth route callback evidence", () => {
       },
     ))
 
-    expect(response.status).toBe(404)
+    expect(response.status).toBe(403)
     expect(mocks.post).not.toHaveBeenCalled()
   })
 

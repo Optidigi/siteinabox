@@ -2,9 +2,11 @@ import type { CollectionConfig } from "payload"
 import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { generationWorkflowStatusOptions } from "@/collections/IntakeSubmissions"
+import { fenceBuilderAuthority, fenceBuilderAuthorityDeletion } from "./builderAuthorityFence"
 
 export const SiteGenerationRuns: CollectionConfig = {
   slug: "site-generation-runs",
+  hooks: { beforeValidate: [fenceBuilderAuthority], beforeDelete: [fenceBuilderAuthorityDeletion] },
   labels: { singular: { en: "Site generation run", nl: "Sitegeneratieronde" }, plural: { en: "Site generation runs", nl: "Sitegeneratierondes" } },
   access: {
     create: isSuperAdmin,

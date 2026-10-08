@@ -8,7 +8,7 @@ import { cast } from "../_helpers/cast"
 import { type MockUpdateArgs } from "../_helpers/mockPayload"
 const mocks = vi.hoisted(() => ({
   loadPreviewGrantContext: vi.fn(),
-  payload: { update: vi.fn() },
+  payload: { update: vi.fn(), find: vi.fn() },
   settingsDoc: {
     id: 10,
     tenant: 1,
@@ -90,6 +90,7 @@ const createState = () => {
     payment: { status: "not_started" },
   })
 
+  mocks.payload.find.mockResolvedValue({ docs: [mocks.settingsDoc] })
   mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => ({ id, ...data }))
   mocks.loadPreviewGrantContext.mockResolvedValue({
     clientSlug: "preview-studio",
@@ -139,6 +140,21 @@ describe("grant preview customizer service", () => {
       expect.any(Object),
       expect.objectContaining({ settingsContract: expect.any(Object) }),
     )
+  })
+
+  it("rejects actual unavailable page or chrome designs before approval writes", async () => {
+    const state = createState()
+    const page = state.pages[0]
+    if (!page) throw new Error("Approval fixture omitted its homepage")
+    page.blocks = [{ blockType: "contact", form: { formName: "Legacy fixture", submitLabel: "Send", fields: [{ name: "email", label: "Email", type: "email" }] }, heading: "Unavailable", contactMethods: [{ kind: "email", label: "Email", value: "fixture@example.test" }] }]
+    const { approvePreviewForGrant } = await import("@/lib/preview/customizer")
+    const input = { clientSlug: "preview-studio", customerEmail: "customer@example.com" }
+    await expect(approvePreviewForGrant(input)).rejects.toThrow("approved")
+    expect(mocks.payload.update).not.toHaveBeenCalled()
+    page.blocks = []
+    mocks.payload.find.mockResolvedValue({ docs: [{ ...mocks.settingsDoc, chrome: { navbar: { variant: "navbar-99" } } }] })
+    await expect(approvePreviewForGrant(input)).rejects.toThrow("approved")
+    expect(mocks.payload.update).not.toHaveBeenCalled()
   })
 
   it("persists only schema-approved theme tokens through the grant context", async () => {

@@ -1,3 +1,4 @@
+import { assertApprovedCatalogBlocks, assertApprovedCatalogChrome } from "@/lib/sitegen/catalog"
 import "server-only"
 import type { Page as ContractPage, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
 import type { Tenant } from "@/payload-types"
@@ -171,11 +172,15 @@ export async function approvePreviewForGrant(input: {
   approval: PreviewApprovalState
   payment: PreviewPaymentState
 }> {
-  const { payload, run } = await loadPreviewGrantContext({
+  const { payload, run, pages, tenant } = await loadPreviewGrantContext({
     clientSlug: input.clientSlug,
     email: input.customerEmail,
   })
 
+  for (const page of pages) assertApprovedCatalogBlocks(page.blocks)
+  const settings = await payload.find({ collection: "site-settings", where: { tenant: { equals: tenant.id } }, limit: 1, depth: 0, overrideAccess: true })
+  if (!settings.docs[0]) throw new Error("Site settings are missing; preserve the draft and repair before approval.")
+  assertApprovedCatalogChrome(settings.docs[0].chrome)
   const now = new Date().toISOString()
   const approval: PreviewApprovalState = { status: "approved", approvedAt: now }
   const currentPayment = normalizeGenerationRunPaymentState(run.payment)

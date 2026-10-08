@@ -218,3 +218,52 @@ export const SITEGEN_SERVICES_VARIANTS = SERVICES_VARIANTS
 export const SITEGEN_CTA_VARIANTS = CTA_VARIANTS
 
 export const SITEGEN_APPOINTMENT_VARIANTS = APPOINTMENT_VARIANTS
+
+/** Catalog membership is stricter than schema validity; legacy drafts need repair. */
+export const approvedCatalogIssues = (blocks: unknown): Array<{
+  code: "unapproved_catalog_block" | "unapproved_catalog_variant"
+  message: string
+  path: Array<string | number>
+}> => {
+  if (!Array.isArray(blocks)) return [{ code: "unapproved_catalog_block", message: "Page blocks must be an array of approved catalog sections.", path: ["blocks"] }]
+  return blocks.flatMap<{ code: "unapproved_catalog_block" | "unapproved_catalog_variant"; message: string; path: Array<string | number> }>((block: unknown, index) => {
+    const entry = block && typeof block === "object" ? block as Record<string, unknown> : {}
+    const family = SITEGEN_SECTIONS.find((section) => section.blockType === entry.blockType)
+    if (!family) return [{
+      code: "unapproved_catalog_block" as const,
+      message: `Section ${String(entry.blockType)} has no approved renderable catalog design. Preserve this draft and remove or replace that section before approval or publication.`,
+      path: ["blocks", index, "blockType"],
+    }]
+    if (!family.variants.some((variant) => variant.id === entry.variant)) return [{
+      code: "unapproved_catalog_variant" as const,
+      message: `Section ${family.blockType} variant ${String(entry.variant)} is not approved. Choose ${family.variants.map((variant) => variant.id).join(", ")}.`,
+      path: ["blocks", index, "variant"],
+    }]
+    return []
+  })
+}
+
+export const assertApprovedCatalogBlocks = (blocks: unknown): void => {
+  const issues = approvedCatalogIssues(blocks)
+  if (issues.length) throw new Error(issues.map((issue) => issue.message).join(" "))
+}
+
+export const approvedChromeIssues = (chrome: unknown): string[] => {
+  if (chrome == null) return [] // Existing defaults resolve from this catalog.
+  if (typeof chrome !== "object" || Array.isArray(chrome)) return ["Chrome must contain approved navbar/footer designs."]
+  const entry = chrome as Record<string, unknown>
+  return (["navbar", "footer"] as const).flatMap((family) => {
+    const row = entry[family]
+    if (row == null) return []
+    if (typeof row !== "object" || Array.isArray(row)) return [`Invalid ${family} catalog design.`]
+    const variant = (row as Record<string, unknown>).variant
+    if (variant == null) return []
+    const approved = family === "navbar" ? SITEGEN_NAVBARS.some((item) => item.id === variant) : SITEGEN_FOOTERS.some((item) => item.id === variant)
+    return approved ? [] : [`${family} variant ${String(variant)} has no approved renderable catalog design. Choose an approved variant before approval or publication.`]
+  })
+}
+
+export const assertApprovedCatalogChrome = (chrome: unknown): void => {
+  const issues = approvedChromeIssues(chrome)
+  if (issues.length) throw new Error(issues.join(" "))
+}

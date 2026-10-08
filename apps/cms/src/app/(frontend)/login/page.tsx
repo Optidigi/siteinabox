@@ -2,8 +2,6 @@ import { Suspense } from "react"
 import { headers } from "next/headers"
 import { LoginForm } from "@/components/forms/LoginForm"
 import { AuthShell } from "@/components/auth-shell"
-import { getEnabledSocialAuthProvidersForHost } from "@/lib/socialAuth/providers"
-import { isPlatformAdminHost } from "@/lib/hostToTenant"
 import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
 
 /**
@@ -12,17 +10,14 @@ import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
  * The auth shell stacks to a single column on phone widths.
  *
  * Departures from a generic two-column login block:
- *   - Social providers are shown only when configured — siab-payload remains
- *     invite-only and Payload-owned for authorization.
+ *   - Customers use verified email links; operator recovery is an explicit
+ *     entry and remains restricted by the Users operation hooks.
  *   - This page is the one public login/register surface on the platform
  *     admin host. CMS users get CMS magic links; everyone else goes to the builder.
  *   - Right panel uses the real SVG logo with dark/light CSS switching.
  */
 export default async function LoginPage() {
   const headerStore = await headers()
-  const host = headerStore.get("host") || ""
-  const socialProviders = getEnabledSocialAuthProvidersForHost(host)
-  const allowPasswordLogin = isPlatformAdminHost(host)
   const unifyPublicAuth = isPreviewRequestAuthority(headerStore)
 
   return (
@@ -39,8 +34,6 @@ export default async function LoginPage() {
           <div className="flex flex-col gap-6">
             <Suspense>
               <LoginForm
-                socialProviders={socialProviders}
-                allowPasswordLogin={allowPasswordLogin}
                 unifyPublicAuth={unifyPublicAuth}
               />
             </Suspense>

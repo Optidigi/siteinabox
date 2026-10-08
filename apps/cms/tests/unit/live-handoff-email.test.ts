@@ -4,6 +4,8 @@ import { asGenerationRun, asMockDoc, asPublishedSnapshot, asTenant } from "../_h
 import type { Tenant, SiteGenerationRun, PublishedSiteSnapshot, IntakeSubmission, User } from "@/payload-types"
 import type { MockDoc } from "../_helpers/mockPayload"
 import { createInitializedTestPayload, createTestPayload } from "../_helpers/testPayload"
+import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
+import { approvedCatalogIssues } from "@/lib/sitegen/catalog"
 import { tenantFixture, generationRunFixture, publishedSnapshotFixture, intakeSubmissionFixture, userFixture, agreementAcceptanceFixture, operationalAlertFixture, paginatedFixture } from "../_helpers/generatedDocs"
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
@@ -65,6 +67,8 @@ const draftedSnapshot = publishedSnapshotFixture({
   sourceGenerationRun: approvedPaidRun.id,
   status: "drafted",
   snapshot: {
+    ...amicarePublishedSiteSnapshot,
+    pages: amicarePublishedSiteSnapshot.pages.map((page) => ({ ...page, blocks: page.blocks.filter((block) => approvedCatalogIssues([block]).length === 0) })).filter((page) => page.blocks.length > 0),
     siteUrl: "https://clientsite.nl",
   },
 })

@@ -1,4 +1,5 @@
 import { asRecord } from "@/lib/record"
+import { fenceBuilderAuthority } from "./builderAuthorityFence"
 import type { Order } from "@/payload-types"
 import type {
   CollectionBeforeChangeHook,
@@ -145,7 +146,7 @@ export const SiteApprovals: CollectionConfig = {
   slug: "site-approvals",
   labels: { singular: { en: "Site approval", nl: "Sitegoedkeuring" }, plural: { en: "Site approvals", nl: "Sitegoedkeuringen" } },
   access: appendOnlyAccess,
-  hooks: appendOnlyHooks,
+  hooks: { ...appendOnlyHooks, beforeValidate: [fenceBuilderAuthority] },
   admin: { useAsTitle: "evidenceKey", defaultColumns: ["evidenceKey", "tenant", "reviewRevision", "approvedAt", "actorEmail"] },
   fields: [
     { name: "evidenceKey", type: "text", required: true, unique: true, index: true },
@@ -297,7 +298,7 @@ export const Orders: CollectionConfig = {
   labels: { singular: { en: "Order", nl: "Bestelling" }, plural: { en: "Orders", nl: "Bestellingen" } },
   access: { create: isSuperAdmin, read: isSuperAdmin, update: () => false, delete: () => false },
   hooks: {
-    beforeValidate: [validateOrderCommercialShape],
+    beforeValidate: [fenceBuilderAuthority, validateOrderCommercialShape],
     beforeChange: [protectFrozenOrder],
   },
   admin: { useAsTitle: "orderNumber", defaultColumns: ["orderNumber", "tenant", "customerEmail", "totalGross", "paymentStatus", "createdAt"] },

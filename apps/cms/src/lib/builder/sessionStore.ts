@@ -1,4 +1,5 @@
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
+import { assertLiveBuilderTransaction } from "./quotaTransaction"
 import type { BuilderSession } from "@/payload-types"
 import {
   BuilderFactsSchema,
@@ -66,7 +67,7 @@ export async function loadBuilderThread(payload: Payload, email: string): Promis
     depth: 0,
     overrideAccess: true,
   })
-  const doc = result.docs[0] as BuilderSession | undefined
+  const doc = result.docs[0]
   return doc ? toThread(doc) : null
 }
 
@@ -91,7 +92,7 @@ export async function upsertBuilderRegistration(
     depth: 0,
     overrideAccess: true,
   })
-  const current = existing.docs[0] as BuilderSession | undefined
+  const current = existing.docs[0]
   const data = {
     customerEmail,
     displayName: input.displayName.trim(),
@@ -109,7 +110,7 @@ export async function upsertBuilderRegistration(
   const doc = current
     ? await payload.update({ collection: COLLECTION, id: current.id, data, depth: 0, overrideAccess: true })
     : await payload.create({ collection: COLLECTION, data, depth: 0, overrideAccess: true })
-  const thread = toThread(doc as BuilderSession)
+  const thread = toThread(doc)
   if (!thread) throw new Error("builder_session_invalid")
   return thread
 }
@@ -117,7 +118,9 @@ export async function upsertBuilderRegistration(
 export async function saveBuilderThread(
   payload: Payload,
   thread: BuilderThread,
+  req?: Partial<PayloadRequest>,
 ): Promise<BuilderThread> {
+  if (req) assertLiveBuilderTransaction(payload, req)
   const parsed = BuilderThreadSchema.parse({
     ...thread,
     customerEmail: normalizeBuilderEmail(thread.customerEmail),
@@ -129,8 +132,9 @@ export async function saveBuilderThread(
     limit: 1,
     depth: 0,
     overrideAccess: true,
+    req,
   })
-  const current = existing.docs[0] as BuilderSession | undefined
+  const current = existing.docs[0]
   const data = {
     customerEmail: parsed.customerEmail,
     displayName: parsed.displayName,
@@ -140,10 +144,11 @@ export async function saveBuilderThread(
     facts: parsed.facts,
     clientSlug: parsed.clientSlug,
   }
+  if (req) assertLiveBuilderTransaction(payload, req)
   const doc = current
-    ? await payload.update({ collection: COLLECTION, id: current.id, data, depth: 0, overrideAccess: true })
-    : await payload.create({ collection: COLLECTION, data, depth: 0, overrideAccess: true })
-  const saved = toThread(doc as BuilderSession)
+    ? await payload.update({ collection: COLLECTION, id: current.id, data, depth: 0, overrideAccess: true, req })
+    : await payload.create({ collection: COLLECTION, data, depth: 0, overrideAccess: true, req })
+  const saved = toThread(doc)
   if (!saved) throw new Error("builder_session_invalid")
   return saved
 }

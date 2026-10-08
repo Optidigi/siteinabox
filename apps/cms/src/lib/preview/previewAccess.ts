@@ -1,8 +1,9 @@
 import "server-only"
-import { getPayload, type Payload } from "payload"
+import { getPayload, type Payload, type PayloadRequest } from "payload"
 import config from "@/payload.config"
 import type { Page, PreviewAccessGrant, SiteGenerationRun, Tenant } from "@/payload-types"
 import { relationshipValue, relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 import { slugify } from "@/lib/slugify"
 
 export const DEFAULT_PREVIEW_GRANT_TTL_DAYS = 14
@@ -235,8 +236,11 @@ export async function createOrRefreshPreviewGrant(input: {
   customerEmail: string
   expiresAt?: string | null
   sendEmail?: boolean
+  req?: Partial<PayloadRequest>
 }): Promise<PreviewAccessGrant> {
   const payload = await getPayload({ config })
+  const fence = () => { if (input.req) assertLiveBuilderTransaction(payload, input.req) }
+  fence()
   const customerEmail = normalizeEmail(input.customerEmail)
   if (!customerEmail) throw new Error("E-mailadres van de klant is verplicht")
 
@@ -245,19 +249,20 @@ export async function createOrRefreshPreviewGrant(input: {
     id: input.generationRunId,
     depth: 2,
     overrideAccess: true,
-  }) as SiteGenerationRun
+    req: input.req,
+  })
   if (!run || run.status !== "preview_ready") throw new Error("Generation run is not preview-ready")
 
-  const tenant = typeof run.tenant === "object" && run.tenant
-    ? run.tenant as Tenant
-    : run.tenant != null
-      ? await payload.findByID({
-          collection: "tenants",
-          id: run.tenant,
-          depth: 0,
-          overrideAccess: true,
-        }) as Tenant
-      : null
+  const tenantId = relationshipId(run.tenant)
+  if (!tenantId) throw new Error("Preview tenant is not available")
+  fence()
+  const tenant = await payload.findByID({
+    collection: "tenants",
+    id: tenantId,
+    depth: 0,
+    overrideAccess: true,
+    req: input.req,
+  })
   if (!tenant || tenant.status === "archived" || tenant.status === "suspended") {
     throw new Error("Preview tenant is not available")
   }
@@ -268,6 +273,7 @@ export async function createOrRefreshPreviewGrant(input: {
   if (!clientSlug) throw new Error("Preview client slug is not available")
 
   const expiresAt = input.expiresAt || defaultGrantExpiry()
+  fence()
   const existing = await payload.find({
     collection: "preview-access-grants",
     where: {
@@ -280,11 +286,13 @@ export async function createOrRefreshPreviewGrant(input: {
     limit: 1,
     depth: 0,
     overrideAccess: true,
+    req: input.req,
   })
   const pageIds = payloadRelationIds(run.pages)
   const now = new Date().toISOString()
-  const current = existing.docs[0] as PreviewAccessGrant | undefined
+  const current = existing.docs[0]
   if (current) {
+    fence()
     await payload.update({
       collection: "preview-access-grants",
       id: current.id,
@@ -298,16 +306,20 @@ export async function createOrRefreshPreviewGrant(input: {
         ...(input.sendEmail ? { lastSentAt: now, sentCount: (current.sentCount ?? 0) + 1 } : {}),
       },
       overrideAccess: true,
+      req: input.req,
       depth: 0,
     })
+    fence()
     return await payload.findByID({
       collection: "preview-access-grants",
       id: current.id,
       depth: 0,
       overrideAccess: true,
-    }) as PreviewAccessGrant
+      req: input.req,
+    })
   }
 
+  fence()
   return await payload.create({
     collection: "preview-access-grants",
     data: {
@@ -320,6 +332,7 @@ export async function createOrRefreshPreviewGrant(input: {
       ...(input.sendEmail ? { lastSentAt: now, sentCount: 1 } : {}),
     },
     overrideAccess: true,
+    req: input.req,
     depth: 0,
-  }) as PreviewAccessGrant
+  })
 }

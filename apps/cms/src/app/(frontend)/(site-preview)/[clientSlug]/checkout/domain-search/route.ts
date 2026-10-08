@@ -4,20 +4,21 @@ import { searchPreviewDomains, type PreviewDomainSearchMode } from "@/lib/domain
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import { requirePreviewDomainSearchContext } from "../previewCheckoutContext"
 import { browserOriginMatchesAuthority, isPreviewRequestAuthority } from "@/lib/requestAuthority"
+import { runBudgetedSearch, CostlySearchBudgetError } from "@/lib/builder/costlySearchBudget"
+import { readBoundedJSON, BodyReadError } from "@/lib/http/body"
 
 export type PreviewDomainSearchErrorCode =
   | "request_authority_rejected"
   | "preview_context_unavailable"
   | "provider_reads_disabled"
   | "domain_search_failed"
+  | "search_technical_limit"
+  | "invalid_search_request"
 
 export async function POST(request: NextRequest, route: { params: Promise<{ clientSlug: string }> }) {
   const startedAt = startPreviewCheckoutTimer()
   const { clientSlug } = await route.params
-  const body: unknown = await request.json().catch(() => null)
-  const source = body && typeof body === "object" ? body as { query?: unknown; mode?: unknown } : {}
-  const query = typeof source.query === "string" ? source.query : ""
-  const mode: PreviewDomainSearchMode = source.mode === "more" ? "more" : "primary"
+  let mode: PreviewDomainSearchMode = "primary"
   const logFailure = (
     failureCode: PreviewDomainSearchErrorCode,
     errorName?: string,
@@ -47,8 +48,15 @@ export async function POST(request: NextRequest, route: { params: Promise<{ clie
       hasMore: false,
     }, { status: 503 })
   }
+  let body: unknown
+  try { body = await readBoundedJSON(request, 2048, 5000) }
+  catch (error) { return NextResponse.json({ ok: false, errorCode: "invalid_search_request" }, { status: error instanceof BodyReadError && error.code === "payload_too_large" ? 413 : 400 }) }
+  const source = body && typeof body === "object" && !Array.isArray(body) ? body as { query?: unknown; mode?: unknown } : {}
+  if (typeof source.query !== "string" || source.query.length > 120 || source.mode !== undefined && source.mode !== "more" && source.mode !== "primary") return NextResponse.json({ ok: false, errorCode: "invalid_search_request" }, { status: 400 })
+  const query = source.query
+  mode = source.mode === "more" ? "more" : "primary"
   try {
-    const discovery = await searchPreviewDomains({ run: context.run, query, mode, signal: request.signal })
+    const discovery = await runBudgetedSearch(context.payload, context.customerEmail, () => searchPreviewDomains({ run: context.run, query, mode, signal: request.signal }))
     logPreviewCheckoutTiming("domain_search_total", startedAt, { clientSlug: context.clientSlug }, {
       mode, candidateCount: discovery.results.length, ok: true,
     })
@@ -59,6 +67,9 @@ export async function POST(request: NextRequest, route: { params: Promise<{ clie
       },
     })
   } catch (error) {
+    if (error instanceof CostlySearchBudgetError) {
+      return NextResponse.json({ ok: false, errorCode: "search_technical_limit", results: [], hasMore: false }, { status: 429 })
+    }
     const errorName = error instanceof Error ? error.name : "Error"
     logFailure("domain_search_failed", errorName)
     return NextResponse.json({

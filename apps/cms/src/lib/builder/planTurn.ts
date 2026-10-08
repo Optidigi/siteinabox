@@ -72,6 +72,7 @@ export const maintainerIntentFromPlan = (plan: BuilderTurnPlan, message: string)
 }
 
 const fallbackPlan = (input: {
+  locale?: "nl" | "en"
   message: string
   previous: BuilderFacts | null
   recentMessages?: BuilderChatMessage[]
@@ -90,14 +91,14 @@ const fallbackPlan = (input: {
       return BuilderTurnPlanSchema.parse({
         facts: extracted,
         decision: "refuse",
-        reply: composeUnavailableReply(unavailable),
+        reply: composeUnavailableReply(unavailable, input.locale),
         maintainerKind: "none",
       })
     }
     return BuilderTurnPlanSchema.parse({
       facts: extracted,
       decision: "maintain",
-      reply: intent.kind === "none" ? composeMaintainerNoneReply() : "Ik pas het aan.",
+      reply: intent.kind === "none" ? composeMaintainerNoneReply(input.locale) : input.locale === "en" ? "I will update it." : "Ik pas het aan.",
       maintainerKind: intent.kind,
       headingOrBody: intent.kind === "updateSectionProps" ? intent.field : null,
       headingOrBodyValue: intent.kind === "updateSectionProps" ? intent.value : null,
@@ -118,7 +119,7 @@ const fallbackPlan = (input: {
     return BuilderTurnPlanSchema.parse({
       facts: extracted,
       decision: "refuse",
-      reply: composeUnavailableReply(unavailable),
+      reply: composeUnavailableReply(unavailable, input.locale),
       maintainerKind: "none",
     })
   }
@@ -130,29 +131,30 @@ const fallbackPlan = (input: {
     return BuilderTurnPlanSchema.parse({
       facts,
       decision: "generate",
-      reply: composeFirstSiteReply(facts, { unavailable }),
+      reply: composeFirstSiteReply(facts, { unavailable, locale: input.locale }),
       maintainerKind: "none",
     })
   }
 
   const missing = firstSiteMissing(facts)
   const named = namedBuilderOffers(facts).map((offer) => offer.value)
-  let reply = composeAskBriefReply()
+  const en = input.locale === "en"
+  let reply = composeAskBriefReply(input.locale)
   if (missing.includes("diensten")) {
     reply = named.length > 0
-      ? `Ik zet ${named.join(" en ")} erin. Noem nog een tweede dienst, in je eigen woorden.`
-      : "Welke twee diensten bied je aan? Gewoon zoals jij ze noemt."
+      ? en ? `I will include ${named.join(" and ")}. Name one more service in your own words.` : `Ik zet ${named.join(" en ")} erin. Noem nog een tweede dienst, in je eigen woorden.`
+      : en ? "Which two services do you offer? Use your own words." : "Welke twee diensten bied je aan? Gewoon zoals jij ze noemt."
   } else if (missing.includes("plaats")) {
-    reply = "In welke plaats of regio werk je?"
+    reply = en ? "In which town or region do you work?" : "In welke plaats of regio werk je?"
   } else if (missing.includes("contactvoorkeur")) {
-    reply = "Hoe nemen bezoekers contact op? Tik een optie hieronder."
+    reply = en ? "How should visitors contact you? Choose an option below." : "Hoe nemen bezoekers contact op? Tik een optie hieronder."
   } else if (missing.includes("uitstraling")) {
-    reply = composeAskLookReply()
+    reply = composeAskLookReply(input.locale)
   } else {
-    reply = composeConfirmGenerateReply()
+    reply = composeConfirmGenerateReply(input.locale)
   }
   if (looksLikeChitchat(input.message) && missing.length > 0) {
-    reply = `Goed. ${reply}`
+    reply = `${en ? "Good." : "Goed."} ${reply}`
   }
 
   return BuilderTurnPlanSchema.parse({
@@ -215,6 +217,7 @@ export const overlayMastraPlan = (
 }
 
 export async function planBuilderTurn(input: {
+  locale?: "nl" | "en"
   message: string
   previous: BuilderFacts | null
   recentMessages?: BuilderChatMessage[]

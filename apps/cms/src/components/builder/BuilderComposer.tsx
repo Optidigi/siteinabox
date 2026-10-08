@@ -1,5 +1,8 @@
 "use client"
 
+import { builderCopy } from "./copy"
+import type { Locale } from "@/i18n/config"
+
 import { useEffect, useRef } from "react"
 import { SendHorizontal } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
@@ -8,6 +11,7 @@ import { cn } from "@siteinabox/ui/lib/utils"
 import { BUILDER_CHAT_WELL_CLASS } from "@/lib/builder/thread"
 
 export function BuilderComposer({
+  locale = "nl",
   message,
   busy,
   layout = "docked",
@@ -16,6 +20,7 @@ export function BuilderComposer({
   onMessageChange,
   onSend,
 }: {
+  locale?: Locale
   message: string
   busy: boolean
   layout?: "stage" | "docked"
@@ -90,10 +95,10 @@ export function BuilderComposer({
         {layout === "docked" ? (
           <p className="hidden flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] text-muted-foreground lg:flex">
             <kbd className="siab-builder-kbd">Enter</kbd>
-            <span>verzenden</span>
+            <span>{builderCopy[locale].send}</span>
             <span aria-hidden>·</span>
             <kbd className="siab-builder-kbd">Shift+Enter</kbd>
-            <span>nieuwe regel</span>
+            <span>{builderCopy[locale].newline}</span>
           </p>
         ) : null}
       </div>

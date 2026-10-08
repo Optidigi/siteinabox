@@ -67,6 +67,10 @@ export const changePasswordHandler: PayloadHandler = async (req) => {
     })
   }
 
+  if (req.user.role !== "super-admin") {
+    return new Response(errorBody("Use an email magic link"), { status: 403 })
+  }
+
   // 2. Body parse + validation. Payload pre-parses POST bodies into req.data
   // for endpoints (mirroring loginHandler at auth/endpoints/login.js:11-18).
   const data = (req).data as { currentPassword?: unknown; newPassword?: unknown } | undefined

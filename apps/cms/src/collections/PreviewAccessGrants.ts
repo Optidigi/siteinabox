@@ -1,9 +1,11 @@
 import type { CollectionConfig } from "payload"
 import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
+import { fenceBuilderAuthority, fenceBuilderAuthorityDeletion } from "./builderAuthorityFence"
 
 export const PreviewAccessGrants: CollectionConfig = {
   slug: "preview-access-grants",
+  hooks: { beforeValidate: [fenceBuilderAuthority], beforeDelete: [fenceBuilderAuthorityDeletion] },
   labels: { singular: { en: "Preview access grant", nl: "Previewtoegang" }, plural: { en: "Preview access grants", nl: "Previewtoegangen" } },
   access: {
     create: isSuperAdmin,
@@ -50,5 +52,11 @@ export const PreviewAccessGrants: CollectionConfig = {
     { name: "revokedAt", type: "date", index: true },
     { name: "lastSentAt", type: "date" },
     { name: "sentCount", type: "number", defaultValue: 0 },
+    { name: "inactiveNoticeState", type: "select", options: ["sending", "sent", "unknown"] },
+    { name: "inactiveNoticeClaimedAt", type: "date" },
+    { name: "inactiveNoticeSentAt", type: "date" },
+    { name: "inactiveNoticeActivityAt", type: "date" },
+    { name: "inactiveExpiresAt", type: "date", index: true },
+    { name: "inactiveExpiredAt", type: "date", index: true },
   ],
 }

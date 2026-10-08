@@ -1,3 +1,4 @@
+import { assertApprovedCatalogBlocks, assertApprovedCatalogChrome } from "@/lib/sitegen/catalog"
 import { asRecord } from "@/lib/record"
 import type { CollectionBeforeChangeHook, CollectionBeforeValidateHook, CollectionConfig } from "payload"
 import type { PublishedSiteSnapshot } from "@/payload-types"
@@ -96,6 +97,8 @@ export const PublishedSiteSnapshots: CollectionConfig = {
         if (!parsed.success) {
           throw new Error(`Published site snapshot failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
         }
+        assertApprovedCatalogChrome(parsed.data.settings.chrome)
+        for (const page of parsed.data.pages) assertApprovedCatalogBlocks(page.blocks)
         return { ...data, snapshot: parsed.data }
       }) satisfies CollectionBeforeValidateHook<PublishedSiteSnapshot>,
     ],

@@ -102,6 +102,7 @@ export function ProfileForm({ user }: { user: User }) {
   }
 
   const onUpdatePassword = async (v: z.infer<typeof passwordSchema>) => {
+    if (user.role !== "super-admin") return
     setPasswordPending(true)
     // Audit-p1 #7 sub-fix A — single POST to the verified-self-change
     // endpoint. The server re-checks `currentPassword` and rotates the
@@ -178,7 +179,7 @@ export function ProfileForm({ user }: { user: User }) {
         </CardContent>
       </Card>
 
-      <Card>
+      {user.role === "super-admin" && <Card>
         <CardHeader><CardTitle>{t("changePassword")}</CardTitle></CardHeader>
         <CardContent>
           <Form {...passwordForm}>
@@ -212,7 +213,7 @@ export function ProfileForm({ user }: { user: User }) {
             </form>
           </Form>
         </CardContent>
-      </Card>
+      </Card>}
       <UnsavedChangesDialog
         open={guard.pending !== null}
         onCancel={guard.cancel}

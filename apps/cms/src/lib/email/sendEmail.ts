@@ -23,6 +23,7 @@ export const mailIntents = [
   "auth.password_reset",
   "preview.magic_link",
   "preview.site_ready",
+  "preview.expiry_notice",
   "privacy.data_export",
   "intake.internal_notification",
   "forms.tenant_notification",

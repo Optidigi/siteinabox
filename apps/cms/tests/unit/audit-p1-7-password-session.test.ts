@@ -420,7 +420,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
       throw Object.assign(new Error("AuthenticationError"), { status: 401 })
     })
     const { req } = await buildReq({
-      user: { id: 1, email: "u1@x", role: "editor" },
+      user: { id: 1, email: "u1@x", role: "super-admin" },
       body: { currentPassword: "wrong", newPassword: "newpass-1234" },
       payloadStubs: { login: failingLogin },
     })
@@ -431,7 +431,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   it("Case 7 — correct currentPassword + valid newPassword → 200 + Set-Cookie + payload.update called with allowSelfPasswordChange context", async () => {
     const ep = findChangePasswordEndpoint()!
     const { req, updateCalls, loginCalls } = await buildReq({
-      user: { id: 1, email: "u1@x", role: "editor" },
+      user: { id: 1, email: "u1@x", role: "super-admin" },
       body: { currentPassword: "right-now", newPassword: "newpass-1234" },
     })
     const res = await ep.handler(req)
@@ -471,7 +471,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   it("Case 11 — newPassword shorter than 8 chars → 400 (defensive validation)", async () => {
     const ep = findChangePasswordEndpoint()!
     const { req } = await buildReq({
-      user: { id: 1, email: "u1@x", role: "editor" },
+      user: { id: 1, email: "u1@x", role: "super-admin" },
       body: { currentPassword: "old", newPassword: "short" },
     })
     const res = await ep.handler(req)
@@ -481,7 +481,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   it("Case 12 — non-string fields in body → 400", async () => {
     const ep = findChangePasswordEndpoint()!
     const { req } = await buildReq({
-      user: { id: 1, email: "u1@x", role: "editor" },
+      user: { id: 1, email: "u1@x", role: "super-admin" },
       body: { currentPassword: 42, newPassword: { evil: true } },
     })
     const res = await ep.handler(req)
@@ -491,7 +491,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   it("Missing fields entirely → 400 (currentPassword and newPassword both required)", async () => {
     const ep = findChangePasswordEndpoint()!
     const { req } = await buildReq({
-      user: { id: 1, email: "u1@x", role: "editor" },
+      user: { id: 1, email: "u1@x", role: "super-admin" },
       body: {},
     })
     const res = await ep.handler(req)

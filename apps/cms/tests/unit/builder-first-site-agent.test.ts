@@ -2,11 +2,13 @@ import { createTestPayload } from "../_helpers/testPayload"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CONTACT_CHOICES, defaultBuilderMessages } from "@/lib/builder/thread"
 
+const configurations = vi.hoisted(() => [] as unknown[])
 const generateMock = vi.hoisted(() => vi.fn())
 const generatePreviewMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@mastra/core/agent", () => ({
   Agent: class {
+    constructor(configuration: unknown) { configurations.push(configuration) }
     generate = generateMock
   },
 }))
@@ -17,6 +19,7 @@ vi.mock("@/lib/builder/generatePreview", () => ({
 
 describe("runFirstSiteTurn", () => {
   beforeEach(() => {
+    configurations.length = 0
     generateMock.mockReset()
     generatePreviewMock.mockReset()
   })
@@ -98,4 +101,21 @@ describe("runFirstSiteTurn", () => {
     expect(result.facts?.region).toBe("Heel Nederland")
     expect(result.facts?.offers.map((offer) => offer.value)).toEqual(["Handjobs", "Blowjobs"])
   })
+  it.each([false, true])("runs nested generation once even for repeated tool calls (throws=%s)", async (throws) => {
+    const { asRecord } = await import("@/lib/record")
+    const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
+    if (throws) generatePreviewMock.mockRejectedValue(new Error("partial generation interrupted"))
+    else generatePreviewMock.mockResolvedValue({ ok: true, text: "Homepage ready", clientSlug: "fixture-site" })
+    generateMock.mockImplementation(async () => {
+      const tool = asRecord(asRecord(asRecord(configurations.at(-1))?.tools)?.generateHomepage)
+      if (typeof tool?.execute !== "function") throw new Error("Expected actual generation tool")
+      for (let call = 0; call < 2; call++) {
+        try { await Reflect.apply(tool.execute, undefined, [{}]) } catch (error) { if (!throws) throw error }
+      }
+      return { text: "Homepage ready" }
+    })
+    await runFirstSiteTurn({ payload: createTestPayload(), message: "Ik ben kapper in Tilburg en doe knippen, kleur en baard. Bezoekers bellen mij. Strak blauw, modern.", previous: null, contact: { name: "Fixture", email: "fixture@example.test", phone: "0612345678" }, legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false } })
+    expect(generatePreviewMock).toHaveBeenCalledTimes(1)
+  })
+
 })

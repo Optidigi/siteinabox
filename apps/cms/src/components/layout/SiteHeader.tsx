@@ -46,7 +46,7 @@ export function SiteHeader({
         </div>
       ) : null}
       <div className="flex-1" />
-      {tenantSlug ? (
+      {tenantSlug && user.role === "super-admin" ? (
         <div className={onPageEditor ? "hidden min-[1280px]:block" : undefined}>
           <CmsAgentDrawer
             tenantSlug={tenantSlug}

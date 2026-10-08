@@ -1,4 +1,4 @@
-import { SITE_BLOCK_SLUGS, type GeneratedBlockSpec, type NormalizedIntake, type SiteGenerationSpec } from "@siteinabox/contracts"
+import { type GeneratedBlockSpec, type NormalizedIntake, type SiteGenerationSpec } from "@siteinabox/contracts"
 import { sitegenNormalizationContextFromIntake } from "@/lib/sitegen/normalize"
 
 export type MockGenerationFixture = "generic" | "invalid"
@@ -34,87 +34,46 @@ const suppliedMedia = (normalized: NormalizedIntake): BlockMediaRef[] =>
     .filter((asset): asset is BlockMediaRef => asset !== null)
 
 const blocksFor = (normalized: NormalizedIntake): GeneratedBlockSpec[] => {
+  const en = normalized.language === "en"
   const business = normalized.businessName
   const serviceNames = normalized.intakeBrief?.services.length
     ? normalized.intakeBrief.services.slice(0, 4)
-    : ["Advies", "Uitvoering"]
-  const services = serviceNames.length >= 2 ? serviceNames : [...serviceNames, "Nazorg"]
+    : en ? ["Advice", "Delivery"] : ["Advies", "Uitvoering"]
+  const services = serviceNames.length >= 2 ? serviceNames : [...serviceNames, en ? "Follow-up" : "Nazorg"]
   const context = sitegenNormalizationContextFromIntake(normalized)
   const contactMethods = context.contactMethods ?? []
   if (contactMethods.length === 0) throw new Error("The mock Sitegen fixture requires at least one supplied contact method.")
   const suppliedImages = suppliedMedia(normalized)
   const firstImage = suppliedImages[0]
-  const portrait = suppliedImages.find((asset) =>
-    typeof asset === "object" && asset !== null && "alt" in asset && typeof asset.alt === "string" && /portrait|person|professional|owner/i.test(asset.alt),
-  )
   return [
     {
       blockType: "hero",
       variant: "hero-01",
-      heading: `${business} helpt je verder`,
-      body: normalized.intakeBrief?.intro ?? `Heldere hulp voor ${normalized.intakeBrief?.audience ?? "mensen met een concrete vraag"}.`,
-      primaryAction: action("Neem contact op", "#contact"),
-      secondaryAction: action("Bekijk diensten", "#services"),
+      heading: en ? `${business} helps you move forward` : `${business} helpt je verder`,
+      body: normalized.intakeBrief?.intro ?? (en ? `Clear help for ${normalized.intakeBrief?.audience ?? "people with a concrete question"}.` : `Heldere hulp voor ${normalized.intakeBrief?.audience ?? "mensen met een concrete vraag"}.`),
+      primaryAction: action(normalized.language === "en" ? "Get in touch" : "Neem contact op", contactMethods[0]?.href ?? `mailto:${normalized.contact?.email ?? ""}`),
+      secondaryAction: action(en ? "View services" : "Bekijk diensten", "#services"),
       anchor: "hero",
     },
     {
       blockType: "services",
       variant: "services-01",
-      heading: "Waarmee kan ik helpen?",
-      intro: "Een overzicht van de belangrijkste diensten.",
-      items: services.map((title) => ({ title, body: `Praktische ondersteuning rond ${title.toLowerCase()}.`, action: null })),
+      heading: en ? "How can I help?" : "Waarmee kan ik helpen?",
+      intro: en ? "An overview of the main services." : "Een overzicht van de belangrijkste diensten.",
+      items: services.map((title) => ({ title, body: en ? `Practical support with ${title.toLowerCase()}.` : `Praktische ondersteuning rond ${title.toLowerCase()}.`, action: null })),
       anchor: "services",
-    },
-    {
-      blockType: "about",
-      heading: "Persoonlijk en duidelijk",
-      body: normalized.intakeBrief?.approach ?? "Je weet vooraf wat je kunt verwachten en houdt rechtstreeks contact.",
-      ...(portrait ? { portrait } : {}),
-      highlights: [{ title: "Rechtstreeks contact", text: "Een vast aanspreekpunt." }, { title: "Duidelijke afspraken", text: "Praktisch en begrijpelijk." }],
-      anchor: "about",
-    },
-    {
-      blockType: "process",
-      heading: "Zo werken we samen",
-      intro: "Van eerste vraag tot een passende oplossing.",
-      steps: [
-        { title: "Kennismaken", body: "We bespreken je vraag en gewenste resultaat." },
-        { title: "Plan maken", body: "Je ontvangt een duidelijke volgende stap." },
-        { title: "Aan de slag", body: "We voeren het werk zorgvuldig uit." },
-      ],
-      anchor: "process",
-    },
-    {
-      blockType: "faq",
-      heading: "Veelgestelde vragen",
-      intro: "Praktische antwoorden voordat je contact opneemt.",
-      items: [
-        { question: "Hoe snel kan ik starten?", answer: "Na een korte kennismaking spreken we de eerstvolgende passende stap af." },
-        { question: "Kan ik eerst overleggen?", answer: "Ja, een eerste gesprek helpt om de vraag en aanpak helder te krijgen." },
-      ],
-      anchor: "faq",
     },
     {
       blockType: "cta",
       variant: "cta-01",
-      heading: "Even overleggen?",
-      body: "Vertel kort waar je hulp bij zoekt.",
-      primaryAction: action("Neem contact op", "#contact"),
+      heading: en ? "Shall we talk?" : "Even overleggen?",
+      body: en ? "Tell us briefly what you need help with." : "Vertel kort waar je hulp bij zoekt.",
+      primaryAction: action(normalized.language === "en" ? "Get in touch" : "Neem contact op", contactMethods[0]?.href ?? `mailto:${normalized.contact?.email ?? ""}`),
       secondaryAction: null,
       ...(firstImage ? { image: firstImage } : {}),
-      anchor: "next-step",
-    },
-    {
-      blockType: "contact",
-      heading: "Neem contact op",
-      body: "Mail of bel voor een eerste kennismaking.",
-      contactMethods: [...contactMethods],
-      serviceArea: normalized.serviceArea,
-      openingHours: context.openingHours ?? null,
-      bookingAction: context.bookingAction ?? null,
-      form: context.form ?? null,
       anchor: "contact",
     },
+
   ]
 }
 
@@ -157,11 +116,9 @@ export function loadMockSiteGenerationSpec(
       serviceArea: normalized.serviceArea.map((name) => ({ name })),
     },
     pages: [
-      page("index", "Overzicht", blocks, normalized),
-      page("diensten", "Diensten", blocks.filter((block) => ["hero", "services", "process", "contact"].includes(block.blockType)), normalized),
-      page("contact", "Contact", blocks.filter((block) => ["hero", "contact"].includes(block.blockType)), normalized),
+      page("index", normalized.language === "en" ? "Overview" : "Overzicht", blocks, normalized),
     ],
-    blocks: SITE_BLOCK_SLUGS.map((slug) => ({ slug, label: slug })),
+    blocks: (["hero", "services", "cta"] as const).map((slug) => ({ slug, label: slug })),
     assets: suppliedMedia(normalized),
     generatedAt: new Date().toISOString(),
     generator: { name: "mock-site-generation", version: "sitegen-owned-v1", model: "fixture" },

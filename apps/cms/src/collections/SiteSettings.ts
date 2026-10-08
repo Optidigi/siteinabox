@@ -1,3 +1,4 @@
+import { enforceApprovedChrome } from "@/hooks/enforceApprovedChrome"
 import type { SiteSetting } from "@/payload-types"
 import type { FieldAdminConditionContext, FieldValidateContext } from "@/lib/payloadFieldContext"
 import type { CollectionBeforeValidateHook, CollectionConfig, PayloadRequest } from "payload"
@@ -499,6 +500,7 @@ export const SiteSettings: CollectionConfig = {
       validateTenantExists,
       normalizeSiteSettingsAliases,
       enforceSiteSettingsCapabilities,
+      enforceApprovedChrome,
     ],
     afterChange: [projectSettingsToDisk]
   }

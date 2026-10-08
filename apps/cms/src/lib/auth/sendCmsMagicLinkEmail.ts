@@ -95,6 +95,9 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
     return
   }
 
+  const payload = await getMailPayload()
+  const { claimMagicMailAttempt } = await import("./magicMailBudget")
+  await claimMagicMailAttempt(payload, input.email)
   const message = magicLinkTemplate({ loginUrl: input.url })
   await sendEmail({
     to: input.email,
@@ -102,6 +105,6 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
     html: message.html,
     text: message.text,
     intent: "auth.magic_link",
-    payload: asMailLogPayload(await getMailPayload()),
+    payload: asMailLogPayload(payload),
   })
 }

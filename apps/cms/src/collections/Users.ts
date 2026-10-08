@@ -1,4 +1,6 @@
 import { timingSafeEqual } from "crypto"
+import { requireRestrictedPasswordPrincipal, restrictPasswordRecovery } from "@/lib/auth/passwordlessPolicy"
+import { revokeCustomerSessionsOnLogout, fenceChangedCustomerAuthority } from "@/lib/auth/customerAuthHooks"
 import type { Access, ArrayFieldValidation, CollectionAfterReadHook, CollectionBeforeDeleteHook, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess, PayloadRequest } from "payload"
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
@@ -393,6 +395,7 @@ export const Users: CollectionConfig = {
   labels: { singular: { en: "User", nl: "Gebruiker" }, plural: { en: "Users", nl: "Gebruikers" } },
   auth: {
     useAPIKey: true,
+    cookies: { sameSite: "Lax", secure: process.env.NODE_ENV !== "development" },
     tokenExpiration: CMS_SESSION_EXPIRES_IN_SECONDS,
     // Audit-p1 #7 sub-fix B (T5) — Payload's built-in session-based JWT
     // invalidation. With this flag set, login signs JWTs with a per-session
@@ -445,11 +448,14 @@ export const Users: CollectionConfig = {
     //       verified endpoint; preserves the admin-reset path for super-
     //       admin; closes the sibling email-pivot vector identified in
     //       adversarial review).
+    beforeLogin: [requireRestrictedPasswordPrincipal],
+    afterLogout: [revokeCustomerSessionsOnLogout],
     beforeOperation: [
       rejectNonSuperAdminApiKeyWrites,
       rejectBogusAuthForgotPassword,
       rejectNonSuperAdminCredentialWrites,
       rateLimitForgotPasswordByTargetEmail,
+      restrictPasswordRecovery,
     ],
     // beforeValidate (collection) fires on update for both the regular
     // update pipeline AND the resetPassword path
@@ -458,7 +464,7 @@ export const Users: CollectionConfig = {
     // db.updateOne). The hook empties sessions[] when it sees a password-
     // rotation signature, invalidating every pre-rotation JWT for the user
     // (audit-p1 #7 sub-fix B).
-    beforeValidate: [clearSessionsOnPasswordChange],
+    beforeValidate: [clearSessionsOnPasswordChange, fenceChangedCustomerAuthority],
     beforeDelete: [preventUnsafeUserDelete],
     // FN-2026-0049 — `sessions` is auto-injected by Payload when
     // `useSessions: true`. Field-level overrides via the standard `fields`

@@ -5,6 +5,7 @@ import { projectPageToDisk } from "@/hooks/projectToDisk"
 import { deletePageFile } from "@/hooks/deleteFileFromDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { ensureUniqueTenantSlug } from "@/hooks/ensureUniqueTenantSlug"
+import { enforceApprovedCatalog } from "@/hooks/enforceApprovedCatalog"
 import { enforceTenantBlockMenu } from "@/hooks/enforceTenantBlockMenu"
 import { adminValidationText } from "@/lib/payloadAdminI18n"
 import { publishPageAfterUserSave } from "@/hooks/publishPageAfterUserSave"
@@ -45,7 +46,7 @@ export const Pages: CollectionConfig = {
       admin: { readOnly: true, hidden: false } }
   ],
   hooks: {
-    beforeValidate: [validateTenantExists, ensureUniqueTenantSlug, enforceTenantBlockMenu],
+    beforeValidate: [validateTenantExists, ensureUniqueTenantSlug, enforceTenantBlockMenu, enforceApprovedCatalog],
     beforeChange: [({ data, req }) => {
       if (req.user) data.updatedBy = req.user.id
       return data

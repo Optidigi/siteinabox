@@ -57,15 +57,16 @@ const fixtureSpec = (): SiteGenerationSpec => ({
         primaryAction: { label: "Get in touch", href: "#contact" },
       },
       {
-        blockType: "contact",
+        blockType: "cta",
+        variant: "cta-01",
         anchor: "contact",
         heading: "Contact",
         body: "Tell us what you need.",
-        contactMethods: [{ kind: "email", label: "Email", value: "hello@fixture-care.test", href: "mailto:hello@fixture-care.test" }],
+        primaryAction: { label: "Email", href: "mailto:hello@fixture-care.test" },
       },
     ],
   }],
-  blocks: [{ slug: "hero", label: "Hero" }, { slug: "contact", label: "Contact" }],
+  blocks: [{ slug: "hero", label: "Hero" }, { slug: "cta", label: "Call to action" }],
   generatedAt: "2026-08-13T00:00:00.000Z",
   generator: { name: "sitegen-owned", version: "1" },
 })
@@ -116,6 +117,16 @@ const payloadStub = () => {
 }
 
 describe("owned Sitegen application", () => {
+  it("rejects schema-valid unavailable contact before direct application IO", async () => {
+    const spec = fixtureSpec()
+    spec.pages[0]!.blocks.push({ blockType: "contact", heading: "Contact", contactMethods: [{ kind: "email", label: "Email", value: "fixture@example.test", href: "mailto:fixture@example.test" }] })
+    const { payload } = payloadStub()
+    const result = await applySiteGenerationSpec(payload, spec)
+    expect(result.ok).toBe(false)
+    expect(result.validation.issues).toEqual(expect.arrayContaining([expect.objectContaining({ code: "unapproved_catalog_block" })]))
+    expect(payload.find).not.toHaveBeenCalled()
+    expect(payload.create).not.toHaveBeenCalled()
+  })
   it("validates and applies a canonical semantic spec", async () => {
     const spec = fixtureSpec()
     const validation = validateSiteGenerationSpecForCms(spec)
@@ -127,7 +138,7 @@ describe("owned Sitegen application", () => {
     expect(result.tenantSlug).toBe("fixture-care")
     expect(store.pages[0]?.blocks).toEqual(expect.arrayContaining([
       expect.objectContaining({ blockType: "hero" }),
-      expect.objectContaining({ blockType: "contact" }),
+      expect.objectContaining({ blockType: "cta" }),
     ]))
   })
 
@@ -233,7 +244,7 @@ describe("owned Sitegen application", () => {
     expect(validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" }).valid).toBe(true)
   })
 
-  it("enforces homepage ordering, singleton sections, and final contact", () => {
+  it("enforces homepage ordering and singleton sections", () => {
     const invalid = fixtureSpec()
     invalid.pages[0]!.blocks = [
       invalid.pages[0]!.blocks[1]!,
@@ -242,6 +253,6 @@ describe("owned Sitegen application", () => {
     ]
     const result = validateSiteGenerationSpecForCms(invalid)
     expect(result.valid).toBe(false)
-    if (!result.valid) expect(result.issues.map((entry) => entry.code)).toEqual(expect.arrayContaining(["hero_not_first", "duplicate_singleton_section", "contact_not_last"]))
+    if (!result.valid) expect(result.issues.map((entry) => entry.code)).toEqual(expect.arrayContaining(["hero_not_first", "duplicate_singleton_section"]))
   })
 })

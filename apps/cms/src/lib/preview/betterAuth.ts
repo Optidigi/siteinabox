@@ -1,3 +1,4 @@
+import { passwordlessBefore } from "@/lib/auth/passwordlessPolicy"
 import { betterAuth } from "better-auth"
 import { APIError } from "better-auth/api"
 import { Pool } from "pg"
@@ -89,7 +90,12 @@ export const previewAuth = betterAuth({
   database: pool,
   trustedOrigins: getPreviewTrustedOrigins(),
   telemetry: { enabled: false },
+  emailAndPassword: { enabled: false },
+  // Recipient/global durable claims govern mail dispatch across shared IPs.
+  rateLimit: { customRules: { "/sign-in/magic-link": false } },
+  hooks: { before: passwordlessBefore },
   advanced: {
+    useSecureCookies: process.env.NODE_ENV !== "development",
     cookiePrefix: "siab-preview-auth",
     trustedProxyHeaders: true,
   },
@@ -127,6 +133,10 @@ export const previewAuth = betterAuth({
           ? siteReadyPreviewTemplate({ loginUrl: url })
           : magicLinkTemplate({ loginUrl: url })
         const payload = await getMailPayload()
+        if (!siteReady) {
+          const { claimMagicMailAttempt } = await import("@/lib/auth/magicMailBudget")
+          await claimMagicMailAttempt(payload, email)
+        }
         await sendEmail({
           to: email,
           subject: message.subject,

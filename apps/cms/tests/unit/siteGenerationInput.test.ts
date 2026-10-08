@@ -44,7 +44,7 @@ describe("site generation model input", () => {
   it("is deterministic for the owned prompt version", () => {
     const first = createSiteGenerationProviderRequest(normalized)
     const second = createSiteGenerationProviderRequest(normalized)
-    expect(SITE_GENERATION_PROMPT_VERSION).toBe("sitegen-owned-v5")
+    expect(SITE_GENERATION_PROMPT_VERSION).toBe("sitegen-owned-v6")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toMatch(/Bespreek \{title\} via bellen of WhatsApp/)
     expect(SITE_GENERATION_SYSTEM_PROMPT).toMatch(/Interpret the trade/)
     expect(first.inputHash).toBe(second.inputHash)

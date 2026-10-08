@@ -1,5 +1,8 @@
 "use client"
 
+import { builderCopy } from "./copy"
+import { restorePendingBuilderOperation, type PendingBuilderOperation } from "./clientOperation"
+import type { Locale } from "@/i18n/config"
 import { useMemo, useRef, useEffect, useState, useCallback } from "react"
 import { Rocket, Monitor, Tablet, Smartphone, LogOut, MessageSquare } from "lucide-react"
 import {
@@ -19,7 +22,6 @@ import { useBuilderMobilePager } from "@/components/builder/useBuilderMobilePage
 import type { BuilderFacts } from "@/lib/builder/facts"
 import {
   BUILDER_LANDING_OPENER,
-  BUILDER_STAGE_PLACEHOLDER,
   isBuilderAgentStage,
   withOpenPreviewAction,
   type BuilderChatMessage,
@@ -39,6 +41,7 @@ type BuilderResponse = {
   clientSlug?: string | null
   messages?: BuilderChatMessage[]
   error?: string
+  quota?: { remaining: number }
   applied?: boolean
   previewSnapshot?: BuilderPreviewSnapshot | null
 }
@@ -53,12 +56,12 @@ const viewportClass: Record<Viewport, string> = {
 
 const previewOpenedKey = (slug: string) => `siab-builder-preview-opened:${slug}`
 
-function SignOutControl({ iconOnly }: { iconOnly?: boolean }) {
+function SignOutControl({ iconOnly, locale = "nl" }: { iconOnly?: boolean; locale?: Locale }) {
   return (
     <form action={signOutBuilderAction}>
-      <Button type="submit" variant="outline" size={iconOnly ? "icon" : "sm"} aria-label="Uitloggen">
+      <Button type="submit" variant="outline" size={iconOnly ? "icon" : "sm"} aria-label={builderCopy[locale].signOut}>
         <LogOut className="size-4" />
-        {iconOnly ? <span className="sr-only">Uitloggen</span> : "Uitloggen"}
+        {iconOnly ? <span className="sr-only">{builderCopy[locale].signOut}</span> : builderCopy[locale].signOut}
       </Button>
     </form>
   )
@@ -68,12 +71,27 @@ export function BuilderShell({
   email,
   initialMessages,
   initialClientSlug,
+  locale = "nl",
+  initialRemaining,
 }: {
   email: string
   initialMessages: BuilderChatMessage[]
   initialFacts: BuilderFacts | null
   initialClientSlug: string | null
+  locale?: Locale
+  initialRemaining?: number
 }) {
+  const copy = builderCopy[locale]
+  const pendingRef = useRef<PendingBuilderOperation | null>(null)
+  const pendingKey = `siab-builder-pending:${email.trim().toLowerCase()}`
+  const [pending, setPending] = useState(false)
+  const [remaining, setRemaining] = useState<number | undefined>(initialRemaining)
+  const [requestNotice, setRequestNotice] = useState<string | null>(null)
+  useEffect(() => {
+    try { pendingRef.current = restorePendingBuilderOperation(sessionStorage.getItem(pendingKey)) }
+    catch { pendingRef.current = null }
+    setPending(Boolean(pendingRef.current))
+  }, [pendingKey])
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
   const [clientSlug, setClientSlug] = useState<string | null>(initialClientSlug)
@@ -210,24 +228,39 @@ export function BuilderShell({
 
   const previewInteractive = pane === "preview" && !paging
 
-  const send = async (raw?: string) => {
+  const send = async (raw?: string, retry = false) => {
     const trimmed = (raw ?? message).trim()
-    if (trimmed.length < 2 || busy) return
-    setMessages((current) => [...current, { role: "user", text: trimmed }])
+    if (busy || (!retry && (trimmed.length < 2 || trimmed.length > 4000 || remaining === 0 || pendingRef.current))) return
+    const operation = retry ? pendingRef.current : { operationId: crypto.randomUUID(), message: trimmed, locale }
+    if (!operation) return
+    pendingRef.current = operation
+    setPending(true)
+    try { sessionStorage.setItem(pendingKey, JSON.stringify(operation)) } catch { /* In-memory retry keeps the same UUID. */ }
+    if (!retry) setMessages((current) => [...current, { role: "user", text: trimmed }])
     setMessage("")
     setBusy(true)
+    setRequestNotice(null)
     try {
       const response = await fetch("/api/builder/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify(operation),
       })
       const body = (await response.json()) as BuilderResponse
-      if (Array.isArray(body.messages) && body.messages.length > 0) {
-        setMessages(body.messages)
-      } else {
-        setMessages((current) => [...current, { role: "assistant", text: body.text }])
+      if (body.quota && Number.isSafeInteger(body.quota.remaining) && body.quota.remaining >= 0) setRemaining(body.quota.remaining)
+      if (response.status === 202) { setRequestNotice(copy.pending); return }
+      const completed = Array.isArray(body.messages) && body.messages.length > 0
+      if (completed || response.status < 500) {
+        pendingRef.current = null
+        setPending(false)
+        try { sessionStorage.removeItem(pendingKey) } catch { /* Storage is optional. */ }
       }
+      if (!completed && !response.ok) {
+        setRequestNotice(body.error === "quota_exhausted" ? copy.exhausted : copy.unavailable)
+        return
+      }
+      if (completed) setMessages(body.messages ?? [])
+      else if (typeof body.text === "string") setMessages((current) => [...current, { role: "assistant", text: body.text }])
       if (body.previewSnapshot) {
         const sameSlug = Boolean(clientSlug && body.clientSlug === clientSlug)
         if (sameSlug && frameReady) {
@@ -243,10 +276,7 @@ export function BuilderShell({
       }
       if (body.clientSlug) setClientSlug(body.clientSlug)
     } catch {
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", text: "Er ging iets mis. Probeer het zo opnieuw." },
-      ])
+      setRequestNotice(copy.failed)
     } finally {
       setBusy(false)
     }
@@ -255,9 +285,10 @@ export function BuilderShell({
   const composer = (
     <BuilderComposer
       message={message}
-      busy={busy}
+      busy={busy || pending || remaining === 0}
+      locale={locale}
       layout={agentStage ? "stage" : "docked"}
-      placeholder={agentStage ? BUILDER_STAGE_PLACEHOLDER : undefined}
+      placeholder={agentStage ? copy.placeholder : undefined}
       onMessageChange={setMessage}
       onSend={() => void send()}
     />
@@ -289,6 +320,7 @@ export function BuilderShell({
           )}
         >
           <BuilderAgentHeader
+            locale={locale}
             email={email}
             busy={busy}
             hasPreview={hasPreview}
@@ -297,8 +329,8 @@ export function BuilderShell({
             pane={pane}
             showDesktopSignOut={!hasPreview}
             onShowPreview={openPreview}
-            desktopSignOut={<SignOutControl />}
-            mobileSignOut={<SignOutControl iconOnly />}
+            desktopSignOut={<SignOutControl locale={locale} />}
+            mobileSignOut={<SignOutControl iconOnly locale={locale} />}
           />
           <div
             data-siab-builder-chat
@@ -315,7 +347,7 @@ export function BuilderShell({
                     : "pointer-events-none absolute inset-0 opacity-0",
                 )}
               >
-                <BuilderAgentStage />
+                <BuilderAgentStage locale={locale} />
               </div>
               <div
                 key={agentStage ? "landing" : "live"}
@@ -326,6 +358,7 @@ export function BuilderShell({
                 )}
               >
                 <BuilderThread
+                  locale={locale}
                   messages={agentStage ? BUILDER_LANDING_OPENER : threadMessages}
                   busy={!agentStage && busy}
                   phase={phase}
@@ -334,6 +367,12 @@ export function BuilderShell({
                   onOpenPreview={hasPreview ? openPreview : undefined}
                 />
               </div>
+            </div>
+            <div className="px-4 py-2 text-sm" aria-live="polite">
+              {typeof remaining === "number" ? <p>{copy.remaining}: {remaining}</p> : null}
+              {requestNotice ? <p role="status">{requestNotice}</p> : null}
+              {remaining === 0 && !requestNotice ? <p>{copy.exhausted}</p> : null}
+              {pending ? <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void send(undefined, true)}>{copy.retry}</Button> : null}
             </div>
             {composer}
             <div aria-hidden className="siab-builder-stage-spacer" />
@@ -348,7 +387,7 @@ export function BuilderShell({
                 variant="outline"
                 size="icon"
                 className="lg:hidden"
-                aria-label="Toon chat"
+                aria-label={copy.chat}
                 aria-current={pane === "chat" ? "true" : undefined}
                 onClick={() => scrollToPane("chat")}
               >
@@ -358,7 +397,7 @@ export function BuilderShell({
                 {([
                   ["desktop", Monitor, "Desktop"],
                   ["tablet", Tablet, "Tablet"],
-                  ["phone", Smartphone, "Telefoon"],
+                  ["phone", Smartphone, copy.phone],
                 ] as const).map(([id, Icon, label]) => (
                   <Button
                     key={id}
@@ -378,12 +417,12 @@ export function BuilderShell({
                   <Button asChild variant="secondary" size="sm">
                     <a href={`/${clientSlug}/checkout`}>
                       <Rocket className="size-4 shrink-0" />
-                      Ga live
+                      {copy.goLive}
                     </a>
                   </Button>
                 ) : null}
                 <div className="hidden lg:block">
-                  <SignOutControl />
+                  <SignOutControl locale={locale} />
                 </div>
               </div>
             </div>
@@ -391,7 +430,7 @@ export function BuilderShell({
               <div className="flex min-h-0 flex-1 justify-center">
                 <iframe
                   ref={frameRef}
-                  title="Websitevoorbeeld"
+                  title={copy.frame}
                   src={frameSrc}
                   className={cn(
                     viewportClass[viewport],

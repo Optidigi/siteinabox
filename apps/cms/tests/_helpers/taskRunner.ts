@@ -5,6 +5,8 @@ const unexpectedTask = async (): Promise<never> => { throw new Error("Unexpected
 const tasks: RunTaskFunctions = {
   "purge-stale-form-submissions": unexpectedTask,
   "purge-expired-checkout-progress-drafts": unexpectedTask,
+  "inactive-previews": unexpectedTask,
+  "reconcile-builder-operations": unexpectedTask,
   "send-legal-requirement-notifications": unexpectedTask,
   "process-appointment-notifications": unexpectedTask,
   "process-appointment-calendar-events": unexpectedTask,
@@ -35,6 +37,7 @@ export function createTaskRunner<T extends { input: object; output: object }>(co
         id: 1, input: "unit-fixture", createdAt: timestamp, updatedAt: timestamp, totalTried: 0,
         taskStatus: {
           "purge-stale-form-submissions": {}, "purge-expired-checkout-progress-drafts": {},
+          "inactive-previews": {}, "reconcile-builder-operations": {},
           "send-legal-requirement-notifications": {}, "process-appointment-notifications": {},
           "process-appointment-calendar-events": {}, "purge-stale-appointments": {},
           "sync-mollie-payment": {}, "fulfill-order": {}, "prepare-domain-migration": {},
