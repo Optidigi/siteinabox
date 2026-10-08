@@ -1,7 +1,7 @@
 import { headers } from "next/headers"
 import { notFound } from "next/navigation"
 import { RendererFrameRuntime } from "@/components/renderer-frame/RendererFrameRuntime"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import { getPreviewCustomizerDataForGrant } from "@/lib/preview/customizer"
 import { getPreviewFixtureData, isPreviewFixtureRoute } from "@/lib/preview/previewFixture"
 import { isPreviewHost } from "@/lib/preview/previewHost"
@@ -44,10 +44,7 @@ export default async function RendererPreviewFramePage({ params }: { params: Pro
   if (!normalizedClientSlug) notFound()
 
   const headerStore = await headers()
-  const session = await previewAuth.api.getSession({
-    headers: headerStore,
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(headerStore)
   const customerEmail = session?.user?.email
   if (!customerEmail) notFound()
 

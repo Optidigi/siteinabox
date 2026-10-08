@@ -1,5 +1,6 @@
 import { offlineBuilderExecution } from "../_helpers/builderExecution"
 import { createTestPayload } from "../_helpers/testPayload"
+import { createOfflineTransactionPayload } from "../_helpers/offlineTransactionPayload"
 import { tenantFixture, paginatedFixture } from "../_helpers/generatedDocs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { BuilderChatRequestSchema, runBuilderTurn } from "@/lib/builder/runBuilderTurn"
@@ -142,7 +143,8 @@ describe("runBuilderTurn", () => {
   it("reuses an existing preview site instead of provisioning again", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = createTestPayload()
+    const payload = await createOfflineTransactionPayload()
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([tenantFixture({ id: 3, slug: "tilburg-kapper" })]))
     vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     const parsed = BuilderChatRequestSchema.parse({
@@ -162,7 +164,8 @@ describe("runBuilderTurn", () => {
   it("applies theme patches on an existing site without asking for a new brief", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = createTestPayload()
+    const payload = await createOfflineTransactionPayload()
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([tenantFixture({ id: 3, slug: "tilburg-kapper" })]))
     vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     const parsed = BuilderChatRequestSchema.parse({
@@ -203,7 +206,8 @@ describe("runBuilderTurn", () => {
   it("regenerates on the same tenant when asked to start over", async () => {
     const { processStoredIntakeSubmission } = await import("@/lib/intake/processIntakeSubmission")
     vi.mocked(processStoredIntakeSubmission).mockClear()
-    const payload = createTestPayload()
+    const payload = await createOfflineTransactionPayload()
+    vi.spyOn(payload, "findByID").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     vi.spyOn(payload, "find").mockResolvedValue(paginatedFixture([tenantFixture({ id: 3, slug: "tilburg-kapper" })]))
     vi.spyOn(payload, "update").mockResolvedValue(tenantFixture({ id: 3, slug: "tilburg-kapper" }))
     const parsed = BuilderChatRequestSchema.parse({

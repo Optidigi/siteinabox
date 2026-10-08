@@ -13,7 +13,7 @@ export async function dynamic({ payload }: { payload: Payload }) {
     enums: z.record(z.string(), z.object({ values: z.array(z.string()) }).passthrough()),
   }).passthrough().parse(await kit.generateDrizzleJson(payload.db.schema))
   const before = structuredClone(snapshot)
-  const tables = ["builder_quota_accounts", "builder_quota_global", "builder_operations", "customer_auth_accounts", "customer_session_bindings", "costly_search_budgets", "magic_mail_budgets"]
+  const tables = ["builder_quota_accounts", "builder_quota_global", "builder_operations", "customer_auth_accounts", "customer_session_bindings", "costly_search_budgets", "magic_mail_budgets", "preview_session_revocations"]
   for (const name of tables) {
     assert(before.tables[`public.${name}`], `Missing declared table ${name}`)
     delete before.tables[`public.${name}`]
@@ -45,7 +45,7 @@ export async function dynamic({ payload }: { payload: Payload }) {
   const down: string[] = (await kit.generateMigration(snapshot, before)).map(format)
   assert(up.length > 0 && down.length > 0, "Expected an additive migration")
   assert(up.every((statement) => !/DROP\s+(TABLE|COLUMN|TYPE)|RENAME\s/i.test(statement)), "Unexpected destructive upgrade")
-  const evidenceTables = ["builder_quota_accounts", "builder_operations", "customer_auth_accounts", "customer_session_bindings", "costly_search_budgets", "magic_mail_budgets"]
+  const evidenceTables = ["builder_quota_accounts", "builder_operations", "customer_auth_accounts", "customer_session_bindings", "costly_search_budgets", "magic_mail_budgets", "preview_session_revocations"]
   const conditions = evidenceTables.map((table) => `EXISTS (SELECT 1 FROM "${table}")`)
   conditions.push(`EXISTS (SELECT 1 FROM "builder_quota_global" WHERE "attempts" > 0 OR "ingress_requests" > 0 OR "active_operations" > 0 OR "charged_cost_units" > 0)`)
   conditions.push(`EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL)`)

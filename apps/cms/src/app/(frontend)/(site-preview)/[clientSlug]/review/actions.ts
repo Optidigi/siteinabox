@@ -2,16 +2,13 @@
 
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import type { PreviewReviewActionState } from "@/components/preview/PreviewReview"
 
 const requirePreviewReviewContext = async (clientSlug: string) => {
   const t = await getTranslations("preview")
-  const session = await previewAuth.api.getSession({
-    headers: await headers(),
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(await headers())
   const customerEmail = session?.user?.email
   if (!customerEmail) throw new Error(t("previewLoginRequired"))
 

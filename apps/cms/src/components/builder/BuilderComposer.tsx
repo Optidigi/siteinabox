@@ -88,7 +88,7 @@ export function BuilderComposer({
               disabled={busy || message.trim().length < minLength}
             >
               <SendHorizontal className="size-4 shrink-0" />
-              Stuur
+              {builderCopy[locale].send}
             </Button>
           </div>
         </div>

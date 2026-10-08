@@ -1,6 +1,6 @@
-import { passwordlessBefore } from "@/lib/auth/passwordlessPolicy"
+import { isForbiddenCustomerAuthPath } from "@/lib/auth/passwordlessPolicy"
 import { betterAuth } from "better-auth"
-import { APIError } from "better-auth/api"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { Pool } from "pg"
 import { magicLink } from "better-auth/plugins"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
@@ -93,7 +93,14 @@ export const previewAuth = betterAuth({
   emailAndPassword: { enabled: false },
   // Recipient/global durable claims govern mail dispatch across shared IPs.
   rateLimit: { customRules: { "/sign-in/magic-link": false } },
-  hooks: { before: passwordlessBefore },
+  hooks: { before: createAuthMiddleware(async (ctx) => {
+    if (isForbiddenCustomerAuthPath(ctx.path)) throw new APIError("FORBIDDEN", { message: "Use an email magic link to sign in." })
+    if (["/sign-out", "/revoke-session", "/revoke-sessions", "/revoke-other-sessions"].includes(ctx.path)) {
+      if (!ctx.headers) throw new APIError("UNAUTHORIZED")
+      const { revokePreviewRequestSessions } = await import("@/lib/auth/previewSessionAuthority")
+      await revokePreviewRequestSessions(ctx.headers, ctx.path, ctx.body)
+    }
+  }) },
   advanced: {
     useSecureCookies: process.env.NODE_ENV !== "development",
     cookiePrefix: "siab-preview-auth",
@@ -114,6 +121,16 @@ export const previewAuth = betterAuth({
   verification: {
     modelName: "preview_auth_verifications",
   },
+  databaseHooks: {
+    session: {
+      delete: {
+        before: async (session) => {
+          const { revokePreviewSession } = await import("@/lib/auth/previewSessionAuthority")
+          await revokePreviewSession(session.id, session.userId)
+        },
+      },
+    },
+  },
   plugins: [
     magicLink({
       expiresIn: 300,
@@ -131,7 +148,7 @@ export const previewAuth = betterAuth({
         const siteReady = isPrivilegedPreviewSiteReadyMetadata({ email, clientSlug, metadata })
         const message = siteReady
           ? siteReadyPreviewTemplate({ loginUrl: url })
-          : magicLinkTemplate({ loginUrl: url })
+          : magicLinkTemplate({ loginUrl: url, locale: metadata?.locale === "en" ? "en" : "nl" })
         const payload = await getMailPayload()
         if (!siteReady) {
           const { claimMagicMailAttempt } = await import("@/lib/auth/magicMailBudget")

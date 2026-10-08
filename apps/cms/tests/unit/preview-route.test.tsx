@@ -45,13 +45,7 @@ vi.mock("next/navigation", () => ({
   }),
 }))
 
-vi.mock("@/lib/preview/betterAuth", () => ({
-  previewAuth: {
-    api: {
-      getSession: mocks.getSession,
-    },
-  },
-}))
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({ readVerifiedPreviewSession: mocks.getSession }))
 
 vi.mock("@/lib/preview/customizer", () => ({
   getPreviewCustomizerDataForGrant: mocks.getPreviewCustomizerDataForGrant,

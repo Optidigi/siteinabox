@@ -1,4 +1,4 @@
-import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, mastraAggregateUsage } from "@/lib/ai-generation/boundedMastra"
+import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, createCustomerUsageCapture } from "@/lib/ai-generation/boundedMastra"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
@@ -228,6 +228,7 @@ export async function runFirstSiteTurn(input: {
 
   const executionContext = input.executionContext
   const limits = customerModelLimits(executionContext ? customerEffort(defaultMastraChatReasoningEffort()) : "medium")
+  const usageCapture = createCustomerUsageCapture(limits)
   const agent = new Agent({
     id: "siab-first-site",
     name: "Site in a Box first-site builder",
@@ -236,7 +237,7 @@ export async function runFirstSiteTurn(input: {
       content: FIRST_SITE_INSTRUCTIONS + (input.locale === "en" ? " Reply in English. All customer messages and choice labels must be in English." : " Antwoord in het Nederlands."),
       providerOptions,
     },
-    model: executionContext ? customerMastraModel(executionContext, limits) : defaultMastraModelId(),
+    model: executionContext ? customerMastraModel(executionContext, limits, usageCapture) : defaultMastraModelId(),
     maxRetries: 0,
     tools: { noteBrief, askUser, generateHomepage },
   })
@@ -255,7 +256,7 @@ export async function runFirstSiteTurn(input: {
     { toolChoice: "auto", providerOptions, maxSteps: 4, ...(executionContext ? { ...customerMastraSettings(executionContext, limits), ...(signal ? { abortSignal: signal } : {}) } : { modelSettings: { maxOutputTokens: 2048, maxRetries: 0, timeout: { totalMs: 90000, stepMs: 45000 } } }) },
   )
 
-  const result = executionContext ? await executionContext.modelCall(limits, generate, (result) => mastraAggregateUsage(result, limits)) : await generate()
+  const result = executionContext ? await executionContext.modelCall(limits, generate, () => usageCapture.usage()) : await generate()
 
   const spoken = typeof result.text === "string" ? result.text.trim() : ""
   const generated = generatedRef.current

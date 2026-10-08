@@ -2,6 +2,7 @@ import { escapeEmailHtml } from "@/lib/email/templateUtils"
 import { emailTheme } from "@/lib/email/emailTheme"
 
 type EmailLayoutOptions = {
+  locale?: "nl" | "en"
   preheader?: string
   eyebrow?: string
   title: string
@@ -19,7 +20,9 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   const notice = options.notice
     ? `<div style="margin:20px 0 0;border-left:3px solid ${emailTheme.yellowStrong};padding:10px 12px;background:#fffbea;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:12px;font-weight:${emailTheme.bodyWeight};line-height:1.5">${escapeEmailHtml(options.notice)}</div>`
     : ""
-  const footerCopy = options.footer === "security"
+  const footerCopy = options.locale === "en" && options.footer === "security"
+    ? "You received this security email because of an account action."
+    : options.footer === "security"
     ? "Je hebt deze beveiligingsmail ontvangen vanwege een accountactie."
     : options.footer === "legal"
       ? "Deze kennisgeving hoort bij je Site in a Box-account."
@@ -28,7 +31,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
         : "Site in a Box helpt je om professioneel online zichtbaar te zijn."
 
   return `<!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style type="text/css">@import url('${emailTheme.fontStylesheetUrl}');${emailTheme.headingFontFace}body,table,td,p,a,div,span,pre{font-family:${emailTheme.bodyFont}}h1,h2,h3,h4,h5,h6{font-family:${emailTheme.headingFont};font-weight:${emailTheme.headingWeight}}</style></head>
+<html lang="${options.locale ?? "nl"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style type="text/css">@import url('${emailTheme.fontStylesheetUrl}');${emailTheme.headingFontFace}body,table,td,p,a,div,span,pre{font-family:${emailTheme.bodyFont}}h1,h2,h3,h4,h5,h6{font-family:${emailTheme.headingFont};font-weight:${emailTheme.headingWeight}}</style></head>
 <body style="margin:0;padding:0;background:${emailTheme.pageBackground};color:${emailTheme.text};font-family:${emailTheme.bodyFont};font-weight:${emailTheme.bodyWeight};-webkit-text-size-adjust:100%">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${preheader}</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${emailTheme.pageBackground};width:100%">
@@ -43,7 +46,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
           ${intro}<div style="color:${emailTheme.text};font-family:${emailTheme.bodyFont};font-size:14px;font-weight:${emailTheme.bodyWeight};line-height:1.55">${options.body}</div>${notice}
         </td></tr>
         <tr><td style="padding:18px 8px 4px;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:11px;line-height:1.55;text-align:center">
-          ${footerCopy}<br><a href="https://www.siteinabox.nl/contact" style="color:${emailTheme.text};text-decoration:underline">Hulp nodig? Neem contact op</a>
+          ${footerCopy}<br><a href="https://www.siteinabox.nl/contact" style="color:${emailTheme.text};text-decoration:underline">${options.locale === "en" ? "Need help? Contact us" : "Hulp nodig? Neem contact op"}</a>
         </td></tr>
       </table>
     </td></tr>
@@ -55,8 +58,8 @@ export function renderEmailButton(label: string, url: string): string {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 19px;border-collapse:collapse"><tr><td colspan="2"><table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate"><tr><td bgcolor="${emailTheme.yellow}" style="background:${emailTheme.yellow};border:2px solid ${emailTheme.border};border-radius:0;mso-padding-alt:10px 20px"><a class="btn-eighteen" href="${escapeEmailHtml(url)}" style="display:block;padding:10px 20px;color:${emailTheme.text};font-family:${emailTheme.buttonFont};font-size:15px;font-weight:700;line-height:18px;text-align:center;text-decoration:none;white-space:nowrap">${escapeEmailHtml(label)}</a></td></tr></table></td><td width="5" height="42" valign="bottom" style="width:5px;height:42px;vertical-align:bottom"><table role="presentation" width="5" height="37" cellspacing="0" cellpadding="0" border="0" style="width:5px;height:37px;border-collapse:collapse"><tr><td bgcolor="${emailTheme.border}" style="background:${emailTheme.border};font-size:0;line-height:0">&nbsp;</td></tr></table></td></tr><tr><td width="5" height="5" style="width:5px;height:5px;font-size:0;line-height:0">&nbsp;</td><td height="5" bgcolor="${emailTheme.border}" style="height:5px;background:${emailTheme.border};font-size:0;line-height:0">&nbsp;</td><td width="5" height="5" bgcolor="${emailTheme.border}" style="width:5px;height:5px;background:${emailTheme.border};font-size:0;line-height:0">&nbsp;</td></tr></table>`
 }
 
-export function renderEmailFallbackLink(url: string): string {
-  return `<p style="margin:0;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:11px;line-height:1.5">Werkt de knop niet? Kopieer deze link naar je browser:<br><a href="${escapeEmailHtml(url)}" style="color:${emailTheme.text};word-break:break-all">${escapeEmailHtml(url)}</a></p>`
+export function renderEmailFallbackLink(url: string, locale: "nl" | "en" = "nl"): string {
+  return `<p style="margin:0;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:11px;line-height:1.5">${locale === "en" ? "Button not working? Copy this link into your browser:" : "Werkt de knop niet? Kopieer deze link naar je browser:"}<br><a href="${escapeEmailHtml(url)}" style="color:${emailTheme.text};word-break:break-all">${escapeEmailHtml(url)}</a></p>`
 }
 
 export function renderEmailInfoTable(rows: Array<[string, string]>): string {

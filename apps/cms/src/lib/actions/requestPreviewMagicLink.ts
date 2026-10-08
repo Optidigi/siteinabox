@@ -31,7 +31,7 @@ export async function requestPreviewMagicLinkAction(
         email,
         callbackURL: callbackPath,
         errorCallbackURL: callbackPath,
-        metadata: { previewClientSlug: normalizedClientSlug },
+        metadata: { previewClientSlug: normalizedClientSlug, locale: formData.get("locale") === "en" ? "en" : "nl" },
       },
       headers: previewAuthRequestHeaders(await headers()),
     })

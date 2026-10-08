@@ -107,6 +107,14 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
     "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
+  CREATE TABLE "preview_session_revocations" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "better_auth_session_id" varchar NOT NULL,
+    "email" varchar NOT NULL,
+    "revoked_at" timestamp(3) with time zone NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+  );
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_state" "enum_preview_access_grants_inactive_notice_state";
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_claimed_at" timestamp(3) with time zone;
   ALTER TABLE "preview_access_grants" ADD COLUMN "inactive_notice_sent_at" timestamp(3) with time zone;
@@ -147,12 +155,16 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE UNIQUE INDEX "magic_mail_budgets_budget_key_idx" ON "magic_mail_budgets" USING btree ("budget_key");
   CREATE INDEX "magic_mail_budgets_updated_at_idx" ON "magic_mail_budgets" USING btree ("updated_at");
   CREATE INDEX "magic_mail_budgets_created_at_idx" ON "magic_mail_budgets" USING btree ("created_at");
+  CREATE UNIQUE INDEX "preview_session_revocations_better_auth_session_id_idx" ON "preview_session_revocations" USING btree ("better_auth_session_id");
+  CREATE INDEX "preview_session_revocations_email_idx" ON "preview_session_revocations" USING btree ("email");
+  CREATE INDEX "preview_session_revocations_updated_at_idx" ON "preview_session_revocations" USING btree ("updated_at");
+  CREATE INDEX "preview_session_revocations_created_at_idx" ON "preview_session_revocations" USING btree ("created_at");
   CREATE INDEX "preview_access_grants_inactive_expires_at_idx" ON "preview_access_grants" USING btree ("inactive_expires_at");
   CREATE INDEX "preview_access_grants_inactive_expired_at_idx" ON "preview_access_grants" USING btree ("inactive_expired_at");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
-    await db.execute(sql`DO $$ BEGIN IF EXISTS (SELECT 1 FROM "builder_quota_accounts") OR EXISTS (SELECT 1 FROM "builder_operations") OR EXISTS (SELECT 1 FROM "customer_auth_accounts") OR EXISTS (SELECT 1 FROM "customer_session_bindings") OR EXISTS (SELECT 1 FROM "costly_search_budgets") OR EXISTS (SELECT 1 FROM "magic_mail_budgets") OR EXISTS (SELECT 1 FROM "builder_quota_global" WHERE "attempts" > 0 OR "ingress_requests" > 0 OR "active_operations" > 0 OR "charged_cost_units" > 0) OR EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL) OR EXISTS (SELECT 1 FROM "payload_jobs" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "payload_jobs_log" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "mail_logs" WHERE "flow" = 'preview.expiry_notice') THEN RAISE EXCEPTION 'Preserve customer identity, accounting and notice evidence; use a forward fix'; END IF; END $$;
+    await db.execute(sql`DO $$ BEGIN IF EXISTS (SELECT 1 FROM "builder_quota_accounts") OR EXISTS (SELECT 1 FROM "builder_operations") OR EXISTS (SELECT 1 FROM "customer_auth_accounts") OR EXISTS (SELECT 1 FROM "customer_session_bindings") OR EXISTS (SELECT 1 FROM "costly_search_budgets") OR EXISTS (SELECT 1 FROM "magic_mail_budgets") OR EXISTS (SELECT 1 FROM "preview_session_revocations") OR EXISTS (SELECT 1 FROM "builder_quota_global" WHERE "attempts" > 0 OR "ingress_requests" > 0 OR "active_operations" > 0 OR "charged_cost_units" > 0) OR EXISTS (SELECT 1 FROM "preview_access_grants" WHERE "inactive_notice_claimed_at" IS NOT NULL OR "inactive_expired_at" IS NOT NULL) OR EXISTS (SELECT 1 FROM "payload_jobs" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "payload_jobs_log" WHERE "task_slug" IN ('inactive-previews', 'reconcile-builder-operations')) OR EXISTS (SELECT 1 FROM "mail_logs" WHERE "flow" = 'preview.expiry_notice') THEN RAISE EXCEPTION 'Preserve customer identity, accounting and notice evidence; use a forward fix'; END IF; END $$;
   ALTER TABLE "builder_quota_accounts" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "builder_quota_global" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "builder_operations" DISABLE ROW LEVEL SECURITY;
@@ -160,6 +172,7 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "customer_session_bindings" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "costly_search_budgets" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "magic_mail_budgets" DISABLE ROW LEVEL SECURITY;
+  ALTER TABLE "preview_session_revocations" DISABLE ROW LEVEL SECURITY;
   DROP TABLE "builder_quota_accounts" CASCADE;
   DROP TABLE "builder_quota_global" CASCADE;
   DROP TABLE "builder_operations" CASCADE;
@@ -167,6 +180,7 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TABLE "customer_session_bindings" CASCADE;
   DROP TABLE "costly_search_budgets" CASCADE;
   DROP TABLE "magic_mail_budgets" CASCADE;
+  DROP TABLE "preview_session_revocations" CASCADE;
   ALTER TABLE "mail_logs" ALTER COLUMN "flow" SET DATA TYPE text;
   DROP TYPE "public"."enum_mail_logs_flow";
   CREATE TYPE "public"."enum_mail_logs_flow" AS ENUM('platform.operational', 'auth.magic_link', 'auth.password_reset', 'preview.magic_link', 'preview.site_ready', 'privacy.data_export', 'intake.internal_notification', 'forms.tenant_notification', 'appointments.visitor_notification', 'appointments.tenant_notification', 'site.live_notice', 'legal.reacceptance', 'commerce.billing', 'commerce.domain', 'product.notification', 'marketing.campaign');

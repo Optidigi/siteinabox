@@ -33,6 +33,17 @@ describe("owner-generated passwordless/builder migration", () => {
     }
     expect((await payload.find({ collection: "tenants", where: { slug: { equals: marker } }, overrideAccess: true })).docs[0]?.name).toBe("Retained fixture")
   })
+  it("preserves preview revocation evidence and refuses destructive rollback", async () => {
+    const req = await createLocalReq({}, payload), args = { payload, req, db: payload.db.drizzle }
+    const before = await columns()
+    const revocation = await payload.create({ collection: "preview-session-revocations", overrideAccess: true, data: { betterAuthSessionId: randomUUID(), email: "revocation-fixture@example.test", revokedAt: new Date().toISOString() } })
+    await expect(down(args)).rejects.toThrow("Preserve customer identity, accounting and notice evidence")
+    expect(await columns()).toEqual(before)
+    expect((await payload.findByID({ collection: "preview-session-revocations", id: revocation.id, overrideAccess: true })).betterAuthSessionId).toBe(revocation.betterAuthSessionId)
+    // Only this disposable test row is removed, so the independent mail guard
+    // scenario below proves its own evidence condition rather than this one.
+    await payload.delete({ collection: "preview-session-revocations", id: revocation.id, overrideAccess: true })
+  })
   it("refuses rollback after accounting or mail evidence appears and keeps the schema intact", async () => {
     const req = await createLocalReq({}, payload), args = { payload, req, db: payload.db.drizzle }
     const before = await columns()

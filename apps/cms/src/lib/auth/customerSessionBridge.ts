@@ -1,4 +1,6 @@
 import "server-only"
+import { queueCustomerRevocationReceipt } from "./customerRevocationReceipts"
+import { betterAuth } from "better-auth"
 import { APIError } from "better-auth/api"
 import { z } from "zod"
 import { createLocalReq, getFieldsToSign, getPayload, jwtSign, type Payload, type PayloadRequest } from "payload"
@@ -69,22 +71,46 @@ export async function validateCustomerPayloadSession(payload: Payload, user: Ses
   return authority !== null && await authorityAllows(payload, user, authority, req)
 }
 
-export async function revokeCustomerPayloadSessions(payload: Payload, user: SessionUser, allSessions: boolean, req?: Partial<PayloadRequest>): Promise<void> {
+export type CustomerRevocationReceipt = {
+  userId: number
+  allSessions: boolean
+  sid?: string
+  epoch?: { id: number; minimum: string }
+  bindings: { id: number; betterAuthSessionId: string; payloadSessionId?: string | null; revokedAt: string }[]
+}
+
+export async function verifyCommittedCustomerRevocation(payload: Payload, receipt: CustomerRevocationReceipt): Promise<void> {
+  if (receipt.epoch) {
+    const account = await payload.findByID({ collection: "customer-auth-accounts", id: receipt.epoch.id, depth: 0, overrideAccess: true })
+    const accountUser = typeof account.user === "object" ? account.user.id : account.user
+    if (accountUser !== receipt.userId || !(new Date(account.authEpoch).getTime() >= new Date(receipt.epoch.minimum).getTime())) throw new Error("Account revocation commit receipt unavailable")
+  }
+  for (const expected of receipt.bindings) {
+    const binding = await payload.findByID({ collection: "customer-session-bindings", id: expected.id, depth: 0, overrideAccess: true })
+    const bindingUser = typeof binding.user === "object" ? binding.user.id : binding.user
+    if (bindingUser !== receipt.userId || binding.betterAuthSessionId !== expected.betterAuthSessionId || binding.payloadSessionId !== expected.payloadSessionId || binding.state !== "revoked" || !binding.revokedAt || new Date(binding.revokedAt).getTime() < new Date(expected.revokedAt).getTime()) throw new Error("Device revocation commit receipt unavailable")
+  }
+}
+
+export async function revokeCustomerPayloadSessions(payload: Payload, user: SessionUser, allSessions: boolean, req?: Partial<PayloadRequest>): Promise<CustomerRevocationReceipt> {
   if (!req) {
     const service = new BuilderQuotaService(payload)
     await service.initialize()
-    await service.retry(() => service.transaction(async (transactionReq) => {
+    const receipt = await service.retry(() => service.transaction(async (transactionReq) => {
       await service.lockGlobal(transactionReq)
-      await revokeCustomerPayloadSessions(payload, user, allSessions, transactionReq)
+      return revokeCustomerPayloadSessions(payload, user, allSessions, transactionReq)
     }))
-    return
+    await verifyCommittedCustomerRevocation(payload, receipt)
+    return receipt
   }
   assertLiveBuilderTransaction(payload, req)
+  let epoch: CustomerRevocationReceipt["epoch"]
   if (allSessions) {
     // Separate durable fence cannot be overwritten by SDK full-user session
     // writes. Advance conditionally so concurrent revocations cannot regress it.
     const account = await accountAuthority(payload, user, req, true)
     const now = new Date().toISOString()
+    epoch = { id: account.id, minimum: now }
     assertLiveBuilderTransaction(payload, req)
     await payload.update({ collection: "customer-auth-accounts", where: { and: [{ id: { equals: account.id } }, { authEpoch: { less_than: now } }] }, data: { authEpoch: now }, overrideAccess: true, req })
     assertLiveBuilderTransaction(payload, req)
@@ -93,26 +119,37 @@ export async function revokeCustomerPayloadSessions(payload: Payload, user: Sess
   }
   if (!allSessions && !user._sid) throw new Error("Missing device session")
   if (req) assertLiveBuilderTransaction(payload, req)
-  const result = await payload.update({ collection: "customer-session-bindings", where: { and: [{ user: { equals: user.id } }, ...(allSessions ? [] : [{ payloadSessionId: { equals: user._sid } }])] }, data: { state: "revoked", revokedAt: new Date().toISOString() }, overrideAccess: true, ...(req ? { req } : {}) })
+  const revokedAt = new Date().toISOString()
+  const result = await payload.update({ collection: "customer-session-bindings", where: { and: [{ user: { equals: user.id } }, ...(allSessions ? [] : [{ payloadSessionId: { equals: user._sid } }])] }, data: { state: "revoked", revokedAt }, overrideAccess: true, req })
   if (result.errors.length) throw new Error("Device revocation failed")
   if (req) assertLiveBuilderTransaction(payload, req)
   const remaining = await payload.find({ collection: "customer-session-bindings", where: { and: [{ user: { equals: user.id } }, { state: { not_equals: "revoked" } }, ...(allSessions ? [] : [{ payloadSessionId: { equals: user._sid } }])] }, limit: 1, depth: 0, overrideAccess: true, req })
   if (remaining.totalDocs !== 0) throw new Error("Device revocation receipt unavailable")
+  const receipt: CustomerRevocationReceipt = { userId: user.id, allSessions, sid: user._sid, epoch, bindings: result.docs.map((binding) => ({ id: binding.id, betterAuthSessionId: binding.betterAuthSessionId, payloadSessionId: binding.payloadSessionId, revokedAt })) }
+  queueCustomerRevocationReceipt(payload, req, receipt)
+  return receipt
 }
 
 export async function revokeBetterAuthBinding(betterAuthSessionId: string): Promise<void> {
   const payload = await getPayload({ config })
   const service = new BuilderQuotaService(payload)
   await service.initialize()
-  await service.retry(() => service.transaction(async (req) => {
+  const revokedAt = new Date().toISOString()
+  const receipt = await service.retry(() => service.transaction(async (req) => {
     await service.lockGlobal(req)
     assertLiveBuilderTransaction(payload, req)
-    const result = await payload.update({ collection: "customer-session-bindings", where: { betterAuthSessionId: { equals: betterAuthSessionId } }, data: { state: "revoked", revokedAt: new Date().toISOString() }, overrideAccess: true, req })
+    const result = await payload.update({ collection: "customer-session-bindings", where: { betterAuthSessionId: { equals: betterAuthSessionId } }, data: { state: "revoked", revokedAt }, overrideAccess: true, req })
     if (result.errors.length) throw new Error("Better Auth device revocation failed")
     assertLiveBuilderTransaction(payload, req)
     const remaining = await payload.find({ collection: "customer-session-bindings", where: { and: [{ betterAuthSessionId: { equals: betterAuthSessionId } }, { state: { not_equals: "revoked" } }] }, limit: 1, depth: 0, overrideAccess: true, req })
     if (remaining.totalDocs !== 0) throw new Error("Better Auth device revocation receipt unavailable")
+    const rows = result.docs.map((binding) => ({ id: binding.id, userId: typeof binding.user === "object" ? binding.user.id : binding.user, payloadSessionId: binding.payloadSessionId }))
+    for (const row of rows) queueCustomerRevocationReceipt(payload, req, { userId: row.userId, allSessions: false, bindings: [{ id: row.id, betterAuthSessionId, payloadSessionId: row.payloadSessionId, revokedAt }] })
+    return rows
   }))
+  for (const expected of receipt) {
+    await verifyCommittedCustomerRevocation(payload, { userId: expected.userId, allSessions: false, bindings: [{ id: expected.id, betterAuthSessionId, payloadSessionId: expected.payloadSessionId, revokedAt }] })
+  }
 }
 
 type PaidHandoffClaim = { orderId: number; attemptId: number; previewSessionId: string }
@@ -127,7 +164,7 @@ export async function issueBoundPayloadSession(payloadUserId: string | number, r
     const handoffKey = handoff ? createHash("sha256").update(JSON.stringify([handoff.orderId, handoff.previewSessionId])).digest("hex") : null
     if (handoff) {
       const { readVerifiedPreviewSession } = await import("./verifiedPreviewSession")
-      const preview = await readVerifiedPreviewSession(request.headers)
+      const preview = await readVerifiedPreviewSession(request.headers, transactionReq)
       if (!preview || preview.session.id !== handoff.previewSessionId || preview.user.emailVerified !== true) throw new Error("Preview handoff authority unavailable")
       const { loadPaidHandoffFacts } = await import("./paidHandoff")
       await loadPaidHandoffFacts(payload, transactionReq, handoff.orderId, handoff.attemptId, preview.user.email)
@@ -178,4 +215,38 @@ export async function issueBoundPayloadSession(payloadUserId: string | number, r
 
 export async function issueBoundPayloadSessionCookie(payloadUserId: string | number, request: Request, betterAuthSessionId: string): Promise<string> {
   return (await issueBoundPayloadSession(payloadUserId, request, betterAuthSessionId)).cookie
+}
+
+async function createReadOnlyCmsAuth() {
+  const { auth } = await import("@/lib/betterAuth")
+  return betterAuth({ ...auth.options, session: { ...auth.options.session, deferSessionRefresh: true } })
+}
+let revocationReader: ReturnType<typeof createReadOnlyCmsAuth> | undefined
+export async function revokeCmsRequestSessions(headers: Headers, path: string, body: unknown): Promise<void> {
+  const { auth } = await import("@/lib/betterAuth")
+  revocationReader ??= createReadOnlyCmsAuth()
+  const reader = await revocationReader
+  const response = await reader.handler(new Request("https://admin.siteinabox.nl/api/auth/get-session?disableCookieCache=true&disableRefresh=true", { headers }))
+  if (!response.ok) throw new Error("CMS revocation authority unavailable")
+  const value: unknown = await response.json()
+  if (value === null) return
+  const current = z.object({ session: baSessionSchema, user: baUserSchema }).parse(value)
+  if (current.session.expiresAt.getTime() <= Date.now()) return
+  const { adapter } = await auth.$context
+  const rows = z.array(z.object({ id: z.string(), userId: z.string(), token: z.string() })).max(1000).parse(await adapter.findMany({ model: "session", where: [{ field: "userId", value: current.user.id }], limit: 1001 }))
+  let selected = rows.filter((row) => row.id === current.session.id)
+  if (path === "/revoke-sessions") {
+    selected = rows
+    const payload = await getPayload({ config })
+    const user = await payload.findByID({ collection: "users", id: z.coerce.number().int().positive().safe().parse(current.user.payloadUserId), depth: 0, overrideAccess: true })
+    if (user.email.trim().toLowerCase() !== current.user.email.trim().toLowerCase()) throw new Error("CMS revocation identity mismatch")
+    await revokeCustomerPayloadSessions(payload, user, true)
+  }
+  if (path === "/revoke-other-sessions") selected = rows.filter((row) => row.id !== current.session.id)
+  if (path === "/revoke-session") {
+    const target = z.object({ token: z.string().min(1) }).parse(body)
+    selected = rows.filter((row) => row.token === target.token)
+    if (selected.length !== 1) throw new Error("CMS revocation target not owned")
+  }
+  for (const row of selected) await revokeBetterAuthBinding(row.id)
 }

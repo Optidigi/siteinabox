@@ -1,4 +1,4 @@
-import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, mastraAggregateUsage } from "@/lib/ai-generation/boundedMastra"
+import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, createCustomerUsageCapture } from "@/lib/ai-generation/boundedMastra"
 import { Agent } from "@mastra/core/agent"
 import { SITE_GENERATION_SYSTEM_PROMPT, SITE_GENERATION_PROMPT_VERSION } from "./prompts/siteGenerationPrompt"
 import { SitegenOutputSchema } from "@/lib/sitegen/output-schema"
@@ -55,8 +55,8 @@ export const defaultMastraChatReasoningEffort = (env: EnvLookup = process.env): 
 
 export const mastraOpenAIProviderOptions = (
   effort: MastraReasoningEffort = defaultMastraReasoningEffort(),
-): { openai: { reasoningEffort: MastraReasoningEffort; store: false } } => ({
-  openai: { reasoningEffort: effort, store: false },
+) => ({
+  openai: { reasoningEffort: effort, reasoningMode: "standard" as const, serviceTier: "default" as const, truncation: "disabled" as const, store: false as const },
 })
 
 export const parseMastraJsonObject = (result: { object?: unknown; text?: string }): unknown => {
@@ -76,7 +76,6 @@ export const createMastraSiteGenerationProvider = (
 ): SiteGenerationProvider => {
   const model = config.model ?? defaultMastraModelId()
   const reasoningEffort = defaultMastraReasoningEffort()
-  const providerOptions = mastraOpenAIProviderOptions(reasoningEffort)
   return {
     name: "mastra",
     model,
@@ -88,7 +87,10 @@ export const createMastraSiteGenerationProvider = (
       }
       const executionContext = request.executionContext
       if (executionContext && model !== "openai/gpt-5.6-luna") throw new Error("Customer generation model is outside the reviewed candidate family.")
-      const limits = customerModelLimits(customerEffort(executionContext ? reasoningEffort : "medium"), true)
+      const activeEffort = executionContext ? customerEffort(defaultMastraChatReasoningEffort()) : reasoningEffort
+      const providerOptions = mastraOpenAIProviderOptions(activeEffort)
+      const limits = customerModelLimits(customerEffort(executionContext ? activeEffort : "medium"), true)
+      const usageCapture = createCustomerUsageCapture(limits)
       const agent = new Agent({
         id: "siab-sitegen",
         name: "Site in a Box Sitegen",
@@ -97,7 +99,7 @@ export const createMastraSiteGenerationProvider = (
           content: SITE_GENERATION_SYSTEM_PROMPT,
           providerOptions,
         },
-        model: executionContext ? customerMastraModel(executionContext, limits) : model,
+        model: executionContext ? customerMastraModel(executionContext, limits, usageCapture) : model,
         maxRetries: 0,
       })
       // OpenAI structured output rejects Zod discriminatedUnion (`oneOf`) on
@@ -109,11 +111,11 @@ export const createMastraSiteGenerationProvider = (
         ].join("\n\n"),
         { providerOptions, ...(executionContext ? { ...customerMastraSettings(executionContext, limits), ...(signal ? { abortSignal: signal } : {}) } : { maxSteps: 1, modelSettings: { maxOutputTokens: 8192, maxRetries: 0, timeout: { totalMs: 90000, stepMs: 45000 } } }) },
       )
-      const generated = executionContext ? await executionContext.modelCall(limits, generate, (result) => mastraAggregateUsage(result, limits)) : await generate()
+      const generated = executionContext ? await executionContext.modelCall(limits, generate, () => usageCapture.usage()) : await generate()
       const parsedOutput = SitegenOutputSchema.parse(coerceSitegenModelJson(parseMastraJsonObject(generated)))
       return {
         provider: "mastra",
-        model: `${model}:${reasoningEffort}`,
+        model: `${model}:${activeEffort}`,
         promptVersion: SITE_GENERATION_PROMPT_VERSION,
         input: request.input,
         inputHash: request.inputHash,

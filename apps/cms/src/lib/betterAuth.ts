@@ -4,7 +4,8 @@ import { nextCookies } from "better-auth/next-js"
 import { magicLink } from "better-auth/plugins"
 import { getBetterAuthInfraPlugins } from "@/lib/betterAuthInfra"
 import { paidHandoffPlugin } from "@/lib/auth/paidHandoff"
-import { passwordlessBefore } from "@/lib/auth/passwordlessPolicy"
+import { isForbiddenCustomerAuthPath } from "@/lib/auth/passwordlessPolicy"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
@@ -79,7 +80,14 @@ export const auth = betterAuth({
   emailAndPassword: { enabled: false },
   // Recipient/global durable claims govern mail dispatch across shared IPs.
   rateLimit: { customRules: { "/sign-in/magic-link": false } },
-  hooks: { before: passwordlessBefore },
+  hooks: { before: createAuthMiddleware(async (ctx) => {
+    if (isForbiddenCustomerAuthPath(ctx.path)) throw new APIError("FORBIDDEN", { message: "Use an email magic link to sign in." })
+    if (["/sign-out", "/revoke-session", "/revoke-sessions", "/revoke-other-sessions"].includes(ctx.path)) {
+      if (!ctx.headers) throw new APIError("UNAUTHORIZED")
+      const { revokeCmsRequestSessions } = await import("@/lib/auth/customerSessionBridge")
+      await revokeCmsRequestSessions(ctx.headers, ctx.path, ctx.body)
+    }
+  }) },
   databaseHooks: {
     session: {
       delete: {

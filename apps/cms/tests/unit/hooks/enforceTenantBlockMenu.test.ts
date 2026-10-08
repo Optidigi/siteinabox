@@ -84,14 +84,16 @@ describe("enforceTenantBlockMenu", () => {
   it("extracts tenant id from a populated tenant object", async () => {
     const spy = vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = { tenant: { id: 42 }, blocks: [{ blockType: "hero" }] }
-    await enforceTenantBlockMenu(hookArgs({ data, originalDoc: undefined }))
-    expect(spy).toHaveBeenCalledWith(42)
+    const args = hookArgs({ data, originalDoc: undefined })
+    await enforceTenantBlockMenu(args)
+    expect(spy).toHaveBeenCalledWith(42, args.req)
   })
 
   it("falls back to originalDoc.tenant when data.tenant is missing", async () => {
     const spy = vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = { blocks: [{ blockType: "hero" }] }
-    await enforceTenantBlockMenu(hookArgs({ data, originalDoc: pageFixture({ tenant: 13 }) }))
-    expect(spy).toHaveBeenCalledWith(13)
+    const args = hookArgs({ data, originalDoc: pageFixture({ tenant: 13 }) })
+    await enforceTenantBlockMenu(args)
+    expect(spy).toHaveBeenCalledWith(13, args.req)
   })
 })

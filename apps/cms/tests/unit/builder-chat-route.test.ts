@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   loadBuilderThread: vi.fn(), loadLatestActivePreviewGrant: vi.fn(), runBuilderTurn: vi.fn(),
   eligible: vi.fn(), consumeIngress: vi.fn(), reserve: vi.fn(), claim: vi.fn(), settle: vi.fn(), fail: vi.fn(), assertActive: vi.fn(), dispose: vi.fn(),
 }))
-vi.mock("@/lib/preview/betterAuth", () => ({ previewAuth: { api: { getSession: mocks.getSession } } }))
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({ readVerifiedPreviewSession: mocks.getSession }))
 vi.mock("@/lib/requestAuthority", () => ({ isPreviewRequestAuthority: mocks.isPreviewRequestAuthority }))
 vi.mock("@/access/authSignals", () => ({ hasUnvalidatedAuthSignal: mocks.hasUnvalidatedAuthSignal }))
 vi.mock("payload", () => ({ getPayload: vi.fn(async () => ({})) }))
@@ -37,7 +37,7 @@ describe("builder chat route", () => {
     vi.resetAllMocks()
     mocks.isPreviewRequestAuthority.mockReturnValue(true)
     mocks.hasUnvalidatedAuthSignal.mockReturnValue(false)
-    mocks.getSession.mockResolvedValue({ user: { email: "anna@example.com", emailVerified: true } })
+    mocks.getSession.mockResolvedValue({ session: { id: "verified-fixture-session" }, user: { id: "verified-fixture-user", email: "anna@example.com", emailVerified: true } })
     mocks.consumeIngress.mockResolvedValue(true)
     mocks.loadBuilderThread.mockResolvedValue(thread)
     mocks.reserve.mockResolvedValue({ status: "reserved", quota, lease: { operationKey: "fixture", reservationToken: operationId, customerEmail: "anna@example.com", deadlineAt: new Date(Date.now() + 60000).toISOString() } })
@@ -53,7 +53,7 @@ describe("builder chat route", () => {
     mocks.getSession.mockResolvedValue({ user: { email: "anna@example.com", emailVerified: false } })
     expect((await POST(chatReq())).status).toBe(403)
     expect(mocks.reserve).not.toHaveBeenCalled()
-    expect(mocks.getSession).toHaveBeenCalledWith(expect.objectContaining({ query: { disableCookieCache: true } }))
+    expect(mocks.getSession).toHaveBeenCalledWith(expect.any(Headers))
   })
   it("does not patch from a stored slug after the grant is revoked", async () => {
     mocks.reserve.mockRejectedValue(new Error("builder_preview_revoked"))

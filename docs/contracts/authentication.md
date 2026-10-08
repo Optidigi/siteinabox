@@ -61,7 +61,10 @@ Better Auth sessions have a 60-day lifetime and renew during active use. The
 customer menu calls the writable `/api/siab-auth/renew` boundary; that boundary
 returns renewed Better Auth cookies and a Payload JWT whose expiry follows the
 current Better Auth session. It reuses the existing Payload sid. Routine renewal
-requires the live verified session rather than another email login.
+requires the live verified session rather than another email login. Preview
+renewal uses the writable POST `/api/siab-auth/preview-renew` boundary. Application
+preview reads do not refresh cookies or delete expired sessions under the global
+fence; callers must invoke the writable renewal boundary during active use.
 
 Each Better Auth CMS session has one durable `customer-session-bindings` row
 and one Payload sid. Issuance is serialized with the shared quota global fence.
@@ -74,7 +77,9 @@ The onInit installer replaces exactly the terminal native `local-jwt` callback
 with the native JWT authenticator plus this gate. It rejects unknown strategy
 topologies at startup. An earlier strategy that returns null or throws is
 insufficient because Payload proceeds to the native JWT fallback. Earlier
-API-key strategies retain their independent behavior.
+API-key strategies retain their independent behavior. The native JWT lookup
+uses a separate Local request to read its private session array; the original
+REST/GraphQL request retains its external disclosure hooks and context.
 
 Device logout durably tombstones the exact binding. Global logout advances the
 separate `customer-auth-accounts` epoch and revokes all bindings. Pre-existing
@@ -84,7 +89,21 @@ advance the fence. Archived tenants fail the current request gate. Native Local
 SDK logout does not expose its allSessions argument to the hook, so ambiguous
 Local logout conservatively revokes globally; the explicit REST route preserves
 per-device behavior. Revocation checks durable receipts rather than treating
-two best-effort session deletions as proof.
+two best-effort session deletions as proof. Public CMS Better Auth sign-out/revoke endpoint hooks commit binding revocation
+before SDK deletion; global revocation also advances the account epoch. Public
+SDK commit callbacks are
+wrapped only for transaction IDs with queued revocation receipts; readback happens
+after the SDK releases that transaction. Silently rolled-back commits report
+failure instead of a successful logout.
+
+Preview sign-out and session revocation first commit exact per-session tombstones
+in `preview-session-revocations`, containing session ID, verified email and time
+without session tokens. The public endpoint before hook proves ownership from
+the signed session and source rows. SDK delete hooks also cover deleteMany. Every
+application preview read denies tombstones even when a failed SDK deletion leaves
+its source row alive. Builder eligibility reads the original signed session
+again inside each owning quota transaction; expiry, deletion or a tombstone
+prevents subsequent writes and settlement.
 
 ## Paid handoff phase
 
@@ -119,7 +138,12 @@ Infrastructure transactional email, SMS and Sentinel are not enabled.
 
 Source inspection and SDK/unit tests cover password/social denial, native JWT
 fallback behavior, binding/epoch gates, cookie plumbing and frozen paid facts.
-Real PostgreSQL checks have passed ten identity scenarios and six enabled
+Real PostgreSQL checks have passed nineteen customer identity scenarios and seven
+preview authority scenarios, including public REST and SDK swallowed-commit
+failures, exact device/global tombstones and read-only expiry under a global
+fence. These include in-flight mock completion denial and writable preview renewal
+with the same session ID. Public CMS sign-out/global-revoke fixtures also pass, including a swallowed
+binding commit that reports failure while existing authority remains live. Six enabled
 handoff scenarios, including concurrent issuance, epoch rejection and the SDK
 adapter boundary between the separate auth instances. Four mail-budget PostgreSQL
 regressions also pass, including concurrent recipients and swallowed-commit

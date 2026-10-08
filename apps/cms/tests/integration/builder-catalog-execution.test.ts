@@ -41,6 +41,32 @@ describe("actual catalog/apply execution on PostgreSQL (no model calls)", () => 
       expect(after.blocks).toEqual(before.blocks)
     } finally { execution.dispose() }
   }, 60000)
+  it("does not adopt or mutate another tenant when an unpinned customer collides by slug or domain", async () => {
+    const unique = randomUUID()
+    const slug = `existing-${unique}`
+    const tenant = await payload.create({ collection: "tenants", data: { name: "Existing customer", slug, domain: `${slug}.test`, status: "provisioning" }, overrideAccess: true, context: { skipProjection: true } })
+    const page = await payload.create({ collection: "pages", data: { tenant: tenant.id, title: "Original", slug: "index", status: "draft", blocks: [{ blockType: "hero", variant: "hero-01", heading: "Original private business", body: "Original content", primaryAction: { label: "Email", href: "mailto:owner@example.test" } }] }, overrideAccess: true, context: { skipProjection: true } })
+    const before = await payload.findByID({ collection: "tenants", id: tenant.id, depth: 0, overrideAccess: true })
+    const service = new BuilderQuotaService(payload, { ...builderQuotaPolicy, enabled: true })
+    await service.initialize()
+    const email = `new-customer-${unique}@example.test`
+    const admission = await service.reserve(email, { operationId: unique, message: "Build my independent business" }, async () => {})
+    if (admission.status !== "reserved") throw new Error(`Expected reservation, received ${admission.status}`)
+    await service.claim(admission.lease, async () => {})
+    const execution = new ReservedBuilderExecution(service, admission.lease, async () => {})
+    try {
+      for (const collision of [{ tenantSlug: slug, primaryDomain: `independent-${unique}.test` }, { tenantSlug: `independent-${unique}`, primaryDomain: `${slug}.test` }]) {
+        const spec = loadMockSiteGenerationSpec({ businessName: "Unrelated new business", ...collision, siteUrl: `https://${collision.primaryDomain}`, language: "en", contact: { email }, serviceArea: ["Utrecht"], goals: ["contact"], requestedPages: [{ slug: "index", title: "Home" }] })
+        await expect(applySiteGenerationSpec(payload, spec, { executionContext: execution, variantScope: "self-serve" })).rejects.toThrow("already belongs")
+        expect(await payload.findByID({ collection: "tenants", id: tenant.id, depth: 0, overrideAccess: true })).toEqual(before)
+        expect((await payload.findByID({ collection: "pages", id: page.id, depth: 0, overrideAccess: true })).blocks).toEqual(page.blocks)
+        expect((await payload.find({ collection: "preview-access-grants", where: { customerEmail: { equals: email } }, overrideAccess: true })).docs).toHaveLength(0)
+      }
+    } finally {
+      await service.fail(admission.lease, "fixture_complete", true)
+      execution.dispose()
+    }
+  }, 60000)
   it("rejects direct Local API introduction of unavailable contact design while preserving the tenant", async () => {
     const slug = `catalog-${randomUUID()}`
     const tenant = await payload.create({ collection: "tenants", data: { name: "Catalog bypass fixture", slug, domain: `${slug}.test`, status: "provisioning" }, overrideAccess: true, context: { skipProjection: true } })

@@ -55,7 +55,7 @@ describe("requestPreviewMagicLinkAction", () => {
       body: expect.objectContaining({
         email: "customer@example.com",
         callbackURL: "/reserved-domain",
-        metadata: { previewClientSlug: "reserved-domain" },
+        metadata: { previewClientSlug: "reserved-domain", locale: "nl" },
       }),
       headers: expect.any(Headers),
     }))

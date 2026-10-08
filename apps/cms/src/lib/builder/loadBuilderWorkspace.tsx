@@ -8,7 +8,7 @@ import { BuilderAuthGate } from "@/components/builder/BuilderAuthGate"
 import { BuilderShell } from "@/components/builder/BuilderShell"
 import { loadBuilderThread, saveBuilderThread } from "@/lib/builder/sessionStore"
 import { defaultBuilderMessages } from "@/lib/builder/thread"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import { hasActivePreviewGrant, loadLatestActivePreviewGrant } from "@/lib/preview/previewAccess"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { isLocalPreviewSessionBypass } from "@/lib/requestAuthority"
@@ -23,10 +23,7 @@ export async function renderBuilderWorkspace({
 }) {
   if (!(await isPreviewHost())) notFound()
 
-  const session = await previewAuth.api.getSession({
-    headers: await headers(),
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(await headers())
   const email = session?.user?.email?.trim().toLowerCase()
   if (!email || session?.user.emailVerified !== true) {
     const headerStore = await headers()

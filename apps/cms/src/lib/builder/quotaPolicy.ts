@@ -14,38 +14,45 @@ export type BuilderQuotaPolicy = z.infer<typeof BuilderQuotaPolicySchema>
 // Engineering ceilings. Customer activation requires separate cost/policy/eval approval.
 export const builderQuotaPolicy: BuilderQuotaPolicy = BuilderQuotaPolicySchema.parse({
   enabled: false, visibleLimit: 12, globalMaxActive: 2,
-  accountMaxCostUnits: 2_400_000, globalMaxCostUnits: 20_000_000,
+  accountMaxCostUnits: 31_920_000, globalMaxCostUnits: 100_000_000,
   accountMaxAttempts: 100, globalMaxAttempts: 10_000,
-  operationCostUnits: 200_000, operationMaxCalls: 12, operationMaxWeightedSteps: 16,
+  operationCostUnits: 2_660_000, operationMaxCalls: 12, operationMaxWeightedSteps: 16,
   operationTimeoutMs: 120_000, transactionRetries: 3,
-  configurationRevision: "pr03-disabled-luna-ceilings-v1",
+  configurationRevision: "pr03-disabled-luna-full-context-v2",
 })
 const callSchema = z.object({
   model: z.literal("openai/gpt-5.6-luna"), reasoningEffort: z.enum(["low", "medium"]),
   inputBytes: integer.positive().max(64 * 1024), maxOutputTokens: integer.positive().max(8192),
-  maxSteps: integer.positive().max(4),
+  maxBillableInputTokens: z.literal(1_050_000), maxSteps: integer.positive().max(4),
 }).strict()
-const usageSchema = z.object({ inputTokens: integer, outputTokens: integer,
+const stepSchema = z.object({ inputTokens: integer, outputTokens: integer,
   cachedInputTokens: integer.nullable(), cacheCreationInputTokens: integer.nullable(),
 }).strict()
+const usageSchema = stepSchema.extend({ stepUsage: z.array(stepSchema).optional() }).strict()
 const checkedCost = (units: number) => integer.parse(Math.ceil(units))
-// USD micro-units: $.20/M input, $.25/M cache creation, $1.20/M output.
-// Every input byte is conservatively treated as a token. Reject long context;
-// do not silently apply base prices to an unbounded or multiplier-priced call.
+// Full documented context per wire step, worst cache-write and long-context prices.
+// Byte limits bound local payload size; they do not estimate provider token framing.
 export function builderCallLiability(raw: BuilderModelCall): number {
   const call = callSchema.parse(raw)
-  return checkedCost(call.maxSteps * (call.inputBytes * 0.25 + call.maxOutputTokens * 1.2))
+  return checkedCost(call.maxSteps * (call.maxBillableInputTokens * 0.5 + call.maxOutputTokens * 1.8))
 }
 export function builderKnownCost(raw: BuilderTokenUsage, limits: BuilderModelCall): number {
   const call = callSchema.parse(limits)
   const usage = usageSchema.parse(raw)
-  if (usage.inputTokens > call.inputBytes * call.maxSteps || usage.outputTokens > call.maxOutputTokens * call.maxSteps) throw new Error("builder_usage_exceeds_envelope")
-  const cached = usage.cachedInputTokens ?? 0
-  const created = usage.cacheCreationInputTokens ?? 0
-  if (cached + created > usage.inputTokens) throw new Error("builder_usage_invalid")
-  // Missing cache detail uses the higher cache-write rate, never a free call.
-  const inputCost = usage.cachedInputTokens === null || usage.cacheCreationInputTokens === null
-    ? usage.inputTokens * 0.25
-    : (usage.inputTokens - cached - created) * 0.2 + cached * 0.02 + created * 0.25
-  return checkedCost(inputCost + usage.outputTokens * 1.2)
+  if (usage.inputTokens > call.maxBillableInputTokens * call.maxSteps || usage.outputTokens > call.maxOutputTokens * call.maxSteps) throw new Error("builder_usage_exceeds_envelope")
+  const steps = usage.stepUsage ?? (call.maxSteps === 1 ? [usage] : null)
+  if (!steps || steps.length < 1 || steps.length > call.maxSteps) throw new Error("builder_usage_missing_steps")
+  let total = 0
+  let input = 0, output = 0, cachedTotal = 0, createdTotal = 0
+  for (const step of steps) {
+    if (step.inputTokens > call.maxBillableInputTokens || step.outputTokens > call.maxOutputTokens) throw new Error("builder_usage_exceeds_envelope")
+    const cached = step.cachedInputTokens, created = step.cacheCreationInputTokens
+    if (cached === null || created === null) throw new Error("builder_usage_unknown_cache")
+    if (cached + created > step.inputTokens) throw new Error("builder_usage_invalid")
+    const long = step.inputTokens > 272000
+    total += (step.inputTokens - cached - created) * (long ? 0.4 : 0.2) + cached * (long ? 0.04 : 0.02) + created * (long ? 0.5 : 0.25) + step.outputTokens * (long ? 1.8 : 1.2)
+    input += step.inputTokens; output += step.outputTokens; cachedTotal += cached; createdTotal += created
+  }
+  if (input !== usage.inputTokens || output !== usage.outputTokens || cachedTotal !== usage.cachedInputTokens || createdTotal !== usage.cacheCreationInputTokens) throw new Error("builder_usage_invalid_aggregate")
+  return checkedCost(total)
 }

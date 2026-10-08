@@ -98,7 +98,7 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
   const payload = await getMailPayload()
   const { claimMagicMailAttempt } = await import("./magicMailBudget")
   await claimMagicMailAttempt(payload, input.email)
-  const message = magicLinkTemplate({ loginUrl: input.url })
+  const message = magicLinkTemplate({ loginUrl: input.url, locale: metadataText(input.metadata, "locale") === "en" ? "en" : "nl" })
   await sendEmail({
     to: input.email,
     subject: message.subject,

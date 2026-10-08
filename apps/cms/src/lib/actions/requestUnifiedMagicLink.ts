@@ -4,7 +4,7 @@ import { headers } from "next/headers"
 import { getPayload } from "payload"
 import { auth } from "@/lib/betterAuth"
 import {
-  BUILDER_MAGIC_LINK_GENERIC_SUCCESS,
+  builderMagicLinkCopy,
   sendBuilderMagicLink,
   type RequestBuilderMagicLinkState,
 } from "@/lib/builder/sendBuilderMagicLink"
@@ -19,9 +19,11 @@ export async function requestUnifiedMagicLinkAction(
   _state: RequestBuilderMagicLinkState,
   formData: FormData,
 ): Promise<RequestBuilderMagicLinkState> {
+  const locale = formData.get("locale") === "en" ? "en" : "nl"
+  const copy = builderMagicLinkCopy(locale)
   const headerStore = await headers()
   if (!isPreviewRequestAuthority(headerStore)) {
-    return { ok: false, message: "Niet beschikbaar." }
+    return { ok: false, message: copy.unavailable }
   }
 
   const intent = String(formData.get("intent") ?? "login")
@@ -31,7 +33,7 @@ export async function requestUnifiedMagicLinkAction(
 
   const email = normalizeBuilderEmail(String(formData.get("email") ?? ""))
   if (!email || !email.includes("@")) {
-    return { ok: false, message: "Vul een geldig e-mailadres in." }
+    return { ok: false, message: copy.invalidEmail }
   }
 
   try {
@@ -40,12 +42,12 @@ export async function requestUnifiedMagicLinkAction(
     const user = await loadEligibleCmsUser(email)
     const host = user ? cmsMagicLinkHost(user, superAdminHost) : null
     if (user && host) {
-      await sendCmsLoginMagicLink(email, host)
-      return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
+      await sendCmsLoginMagicLink(email, host, locale)
+      return { ok: true, message: copy.genericSuccess }
     }
   } catch (error) {
     console.error("Unified CMS magic-link request failed", error)
-    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
+    return { ok: true, message: copy.genericSuccess }
   }
 
   return sendBuilderMagicLink(formData)
@@ -83,12 +85,13 @@ const loadEligibleCmsUser = async (email: string): Promise<User | null> => {
   return user
 }
 
-async function sendCmsLoginMagicLink(email: string, host: string): Promise<void> {
+async function sendCmsLoginMagicLink(email: string, host: string, locale: "nl" | "en"): Promise<void> {
   await (auth.api).signInMagicLink({
     body: {
       email,
       callbackURL: "/api/siab-auth/complete?next=/",
       errorCallbackURL: "/login?error=magic-link-session",
+      metadata: { locale },
     },
     headers: cmsAuthHeadersForHost(host),
   })

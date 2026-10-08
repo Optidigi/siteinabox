@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Alert, AlertDescription } from "@siteinabox/ui/components/alert"
 import { AlertTriangle, Mail } from "lucide-react"
 import { validateNextRedirect } from "@/lib/auth/validateNextRedirect"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { authClient } from "@/lib/auth-client"
 import { requestUnifiedMagicLinkAction } from "@/lib/actions/requestUnifiedMagicLink"
@@ -48,6 +48,7 @@ export function LoginForm({
   unifyPublicAuth?: boolean
 }) {
   const t = useTranslations("auth")
+  const locale = useLocale()
   const router = useRouter()
   const params = useSearchParams()
   const status = useStatusFeedback()
@@ -112,6 +113,7 @@ export function LoginForm({
     const formData = new FormData()
     formData.set("intent", isRegister ? "register" : "login")
     formData.set("email", values.email)
+    formData.set("locale", locale)
     if (isRegister) {
       formData.set("displayName", values.displayName ?? "")
       if (values.businessUseAccepted) formData.set("businessUseAccepted", "true")
@@ -133,6 +135,7 @@ export function LoginForm({
     await authClient.signIn.magicLink(
       {
         email: form.getValues("email"),
+        metadata: { locale },
         callbackURL: `/api/siab-auth/complete?next=${encodeURIComponent(next)}`,
         errorCallbackURL: "/login?error=magic-link-session",
       },

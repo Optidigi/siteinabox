@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { nodeErrorCode } from "@/lib/record"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import { isPublicPreviewHostname } from "@/lib/preview/previewHost"
 import { hasActivePreviewGrantForTenant } from "@/lib/preview/previewAccess"
 
@@ -92,10 +92,7 @@ async function mediaResponse(
     }
   } else {
     if (!isPreviewMediaHost(req)) return new NextResponse("unauthorized", { status: 401 })
-    const session = await previewAuth.api.getSession({
-      headers: req.headers,
-      query: { disableCookieCache: true },
-    }).catch(() => null)
+    const session = await readVerifiedPreviewSession(req.headers).catch(() => null)
     const email = session?.user?.email
     if (!email) return new NextResponse("unauthorized", { status: 401 })
     const allowed = await hasActivePreviewGrantForTenant(email, tenantId, payload)

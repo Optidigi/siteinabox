@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useActionState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Mail, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Button } from "@siteinabox/ui/components/button"
@@ -23,6 +23,7 @@ export function PreviewLoginForm({
   callbackPath: string
 }) {
   const t = useTranslations("preview")
+  const locale = useLocale()
   const [state, formAction, pending] = useActionState(
     requestPreviewMagicLinkAction.bind(null, clientSlug, callbackPath),
     initialState,
@@ -30,6 +31,7 @@ export function PreviewLoginForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="locale" value={locale} />
       <div className="grid gap-2">
         <Label htmlFor="preview-email">{t("email")}</Label>
         <Input

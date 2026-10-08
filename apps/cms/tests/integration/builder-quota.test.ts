@@ -30,7 +30,7 @@ const claim = async (email = accountEmail) => {
   await service.claim(lease, eligible)
   return lease
 }
-const call = { model: "openai/gpt-5.6-luna", reasoningEffort: "low", inputBytes: 100, maxOutputTokens: 100, maxSteps: 1 } as const
+const call = { model: "openai/gpt-5.6-luna", reasoningEffort: "low", inputBytes: 100, maxBillableInputTokens: 1050000, maxOutputTokens: 100, maxSteps: 1 } as const
 const usage = { inputTokens: 100, outputTokens: 100, cachedInputTokens: 0, cacheCreationInputTokens: 0 }
 
 beforeAll(async () => {
@@ -71,7 +71,7 @@ describe("durable quota on real PostgreSQL", () => {
     expect(before).toMatchObject({ visibleUsed: 0, visibleReserved: 1, activeOperationKey: lease.operationKey, ingressRequests: 200 })
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 86400000)
     expect(await service.consumeIngress(accountEmail)).toBe(true)
-    expect(await service.account(accountEmail)).toMatchObject({ visibleUsed: 0, visibleReserved: 1, activeOperationKey: lease.operationKey, chargedCostUnits: 200000, attempts: 1, ingressRequests: 1 })
+    expect(await service.account(accountEmail)).toMatchObject({ visibleUsed: 0, visibleReserved: 1, activeOperationKey: lease.operationKey, chargedCostUnits: builderQuotaPolicy.operationCostUnits, attempts: 1, ingressRequests: 1 })
   }, 60_000)
   it("enforces the independent global ingress ceiling without touching technical/visible counters", async () => {
     await service.transaction(async (req) => {
@@ -115,7 +115,7 @@ describe("durable quota on real PostgreSQL", () => {
     const other = await service.reserve("quota-other@example.test", input(), eligible)
     expect(other.status).toBe("reserved")
     expect(await service.reserve("quota-third@example.test", input(), eligible)).toMatchObject({ status: "denied", reason: "busy" })
-    expect(await service.global()).toMatchObject({ activeOperations: 2, chargedCostUnits: 400000 })
+    expect(await service.global()).toMatchObject({ activeOperations: 2, chargedCostUnits: 2 * builderQuotaPolicy.operationCostUnits })
   })
   it("rolls back all three records when operation creation fails after both ledger writes", async () => {
     const create = payload.db.create.bind(payload.db)
@@ -178,8 +178,8 @@ describe("durable quota on real PostgreSQL", () => {
     disconnect.abort()
     await expect(running).rejects.toThrow("builder_execution_aborted")
     await service.fail(lease, "synthetic_disconnect", true)
-    expect(await service.account(accountEmail)).toMatchObject({ visibleUsed: 0, visibleReserved: 0, chargedCostUnits: 200000 })
-    expect(await service.global()).toMatchObject({ activeOperations: 1, chargedCostUnits: 200000 })
+    expect(await service.account(accountEmail)).toMatchObject({ visibleUsed: 0, visibleReserved: 0, chargedCostUnits: builderQuotaPolicy.operationCostUnits })
+    expect(await service.global()).toMatchObject({ activeOperations: 1, chargedCostUnits: builderQuotaPolicy.operationCostUnits })
     expect(await service.reserve(accountEmail, input(), eligible)).toMatchObject({ status: "denied", reason: "busy" })
     expect(await service.operation(lease.operationKey)).toMatchObject({ state: "failed", slotHeld: true, costKnown: false, outstandingCalls: 1 })
     remote.resolve("Late response")

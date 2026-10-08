@@ -21,13 +21,7 @@ vi.mock("next-intl/server", () => ({
   }),
 }))
 
-vi.mock("@/lib/preview/betterAuth", () => ({
-  previewAuth: {
-    api: {
-      getSession: mocks.getSession,
-    },
-  },
-}))
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({ readVerifiedPreviewSession: mocks.getSession }))
 
 vi.mock("@/lib/preview/previewAccess", () => ({
   loadPreviewGrantContext: mocks.loadPreviewGrantContext,

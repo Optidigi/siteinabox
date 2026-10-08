@@ -50,19 +50,12 @@ describe("CMS integration smoke", () => {
             secondaryAction: { label: "Contact", href: "#contact" },
           },
           {
-            blockType: "contact",
+            blockType: "cta",
+            variant: "cta-01",
             anchor: "contact",
             heading: "Contact",
-            body: "The form contract remains structured CMS data.",
-            contactMethods: [{ kind: "email", label: "Email", value: "hello@smoke.test", href: "mailto:hello@smoke.test" }],
-            form: { formName: "Smoke contact", submitLabel: "Send", fields: [
-              { name: "first-name", label: "First name", type: "text", required: true },
-              { name: "last-name", label: "Last name", type: "text", required: true },
-              { name: "company", label: "Company", type: "text" },
-              { name: "email", label: "Email", type: "email", required: true },
-              { name: "phone-number", label: "Phone number", type: "tel" },
-              { name: "message", label: "Message", type: "textarea", required: true },
-            ] },
+            body: "Contact uses an approved renderer-owned CTA.",
+            primaryAction: { label: "Email", href: "mailto:hello@smoke.test" },
           },
         ],
     }, { overrideAccess: true }))
@@ -124,7 +117,7 @@ describe("CMS integration smoke", () => {
     })
     expect(asDocRecord(storedPages.docs[0]!).blocks).toEqual(expect.arrayContaining([
       expect.objectContaining({ blockType: "hero" }),
-      expect.objectContaining({ blockType: "contact" }),
+      expect.objectContaining({ blockType: "cta", variant: "cta-01" }),
     ]))
 
     expect(storedSettings.docs).toHaveLength(1)

@@ -1,4 +1,4 @@
-import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, mastraAggregateUsage } from "@/lib/ai-generation/boundedMastra"
+import { customerEffort, customerMastraModel, customerMastraSettings, customerModelLimits, createCustomerUsageCapture } from "@/lib/ai-generation/boundedMastra"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
@@ -335,10 +335,12 @@ const createEditorAgent = (input: SiteEditorTurnInput) => {
   const effort = defaultMastraMaintainReasoningEffort()
   const executionContext = input.ctx.executionContext
   const limits = customerModelLimits(executionContext ? customerEffort(effort) : "medium")
+  const usageCapture = createCustomerUsageCapture(limits)
   const providerOptions = mastraOpenAIProviderOptions(effort)
   return {
     providerOptions,
     limits,
+    usageCapture,
     agent: new Agent({
       id: "siab-site-editor",
       name: "Site in a Box site editor",
@@ -347,7 +349,7 @@ const createEditorAgent = (input: SiteEditorTurnInput) => {
         content: SITE_EDITOR_INSTRUCTIONS + (input.locale === "en" ? " Reply in English." : " Antwoord in het Nederlands."),
         providerOptions,
       },
-      model: executionContext ? customerMastraModel(executionContext, limits) : defaultMastraModelId(),
+      model: executionContext ? customerMastraModel(executionContext, limits, usageCapture) : defaultMastraModelId(),
       maxRetries: 0,
       tools: createSiteEditorTools(input),
     }),
@@ -399,14 +401,14 @@ const iterateTextStream = async function* (stream: AsyncIterable<string>): Async
 export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions, limits } = createEditorAgent(input)
+  const { agent, providerOptions, limits, usageCapture } = createEditorAgent(input)
   const executionContext = input.ctx.executionContext
   const generate = (signal?: AbortSignal) => agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
     ...(executionContext ? { ...customerMastraSettings(executionContext, limits), ...(signal ? { abortSignal: signal } : {}) } : { maxSteps: 4, modelSettings: { maxOutputTokens: 2048, maxRetries: 0, timeout: { totalMs: 90000, stepMs: 45000 } } }),
   })
-  const generated = executionContext ? await executionContext.modelCall(limits, generate, (result) => mastraAggregateUsage(result, limits)) : await generate()
+  const generated = executionContext ? await executionContext.modelCall(limits, generate, () => usageCapture.usage()) : await generate()
   return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug, input.locale)
 }
 
@@ -417,7 +419,7 @@ export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncG
   }
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions, limits } = createEditorAgent(input)
+  const { agent, providerOptions } = createEditorAgent(input)
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,

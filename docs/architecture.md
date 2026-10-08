@@ -32,9 +32,8 @@ For onboarding, checkout, domain migration and activation changes, read the
    apply is pinned to the grant tenant id. The model never emits React, HTML,
    or a component tree.
 2. CMS workflows edit site, page, theme, SEO, domain, commercial, and publishing
-   data. The Sparkles agent uses the same patch tools: editors may change
-   theme and page sections; appointments, hours, and contact settings stay
-   owner (and super-admin) only.
+   data through ordinary role-based editing. Customer AI editing is unavailable
+   after purchase; the CMS agent endpoint is restricted to super-admin operation.
 3. Publishing creates an immutable validated snapshot and selects the tenant's
    active snapshot.
 4. The renderer resolves the request host, loads that snapshot, and renders it

@@ -1,6 +1,6 @@
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import {
   loadPreviewGrantAuthority,
   loadPreviewGrantContext,
@@ -13,10 +13,7 @@ const loadPreviewCheckoutBase = async (
   requireActor = false,
 ) => {
   const t = await getTranslations("preview")
-  const session = await previewAuth.api.getSession({
-    headers: requestHeaders ?? await headers(),
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(requestHeaders ?? await headers())
   const customerEmail = session?.user?.email
   const previewUserId = session?.user?.id
   if (!customerEmail || session?.user.emailVerified !== true || (requireActor && !previewUserId)) {
@@ -37,11 +34,7 @@ const loadPreviewDomainSearchBase = async (
   clientSlug: string,
   requestHeaders?: Headers,
 ) => {
-  const session = await previewAuth.api.getSession({
-    headers: requestHeaders ?? await headers(),
-    // Search must respect revocation immediately, just like checkout commands.
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(requestHeaders ?? await headers())
   const customerEmail = session?.user?.email
   if (!customerEmail || session?.user.emailVerified !== true) throw new Error("Preview login is required.")
   return loadPreviewGrantAuthority({

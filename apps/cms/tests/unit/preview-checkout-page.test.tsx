@@ -48,13 +48,7 @@ vi.mock("@/components/preview/PreviewLoginShell", () => ({
   PreviewLoginShell: vi.fn(() => null),
 }))
 
-vi.mock("@/lib/preview/betterAuth", () => ({
-  previewAuth: {
-    api: {
-      getSession: mocks.getSession,
-    },
-  },
-}))
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({ readVerifiedPreviewSession: mocks.getSession }))
 
 vi.mock("@/lib/preview/previewHost", () => ({
   isPreviewHost: mocks.isPreviewHost,

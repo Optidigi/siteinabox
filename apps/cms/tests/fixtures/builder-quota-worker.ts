@@ -22,7 +22,7 @@ if (mode === "reserve") {
   const execution = new ReservedBuilderExecution(service, admission.lease, eligible)
   // A pure never-resolving IO fixture represents a remote request whose
   // completion cannot be inferred from local process death. No paid API IO.
-  void execution.modelCall({ model: "openai/gpt-5.6-luna", reasoningEffort: "low", inputBytes: 100, maxOutputTokens: 100, maxSteps: 1 }, () => {
+  void execution.modelCall({ model: "openai/gpt-5.6-luna", reasoningEffort: "low", inputBytes: 100, maxBillableInputTokens: 1050000, maxOutputTokens: 100, maxSteps: 1 }, () => {
     emit({ phase: "dispatched", operationKey: admission.lease.operationKey })
     return new Promise<string>(() => undefined)
   }, () => null).catch(() => undefined)

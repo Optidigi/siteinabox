@@ -120,7 +120,7 @@ export function createPaidHandoffPlugin(releaseGate: () => boolean): BetterAuthP
           await handoffTransaction(service, async (req) => {
             await service.lockGlobal(req)
             await loadPaidHandoffFacts(payload, req, ctx.body.orderId, ctx.body.paymentAttemptId, preview.user.email)
-            const currentPreview = await readVerifiedPreviewSession(requestHeaders)
+            const currentPreview = await readVerifiedPreviewSession(requestHeaders, req)
             if (currentPreview?.session.id !== preview.session.id || currentPreview.user.emailVerified !== true) throw new APIError("FORBIDDEN")
             assertLiveBuilderTransaction(payload, req)
             const current = await payload.findByID({ collection: "customer-session-bindings", id: claim.binding.id, depth: 0, overrideAccess: true, req })

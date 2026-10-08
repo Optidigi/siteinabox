@@ -16,17 +16,29 @@ export type RequestBuilderMagicLinkState = {
 export const BUILDER_MAGIC_LINK_GENERIC_SUCCESS =
   "Als dit e-mailadres bij ons bekend is of net is geregistreerd, sturen we een inloglink."
 
+export const builderMagicLinkCopy = (locale: unknown) => locale === "en" ? {
+  genericSuccess: "If this email is registered or has just been registered, we will send a sign-in link.",
+  unavailable: "Unavailable.", invalidEmail: "Enter a valid email address.",
+  nameRequired: "Enter your name.", termsRequired: "Confirm business use and accept the terms.",
+} : {
+  genericSuccess: BUILDER_MAGIC_LINK_GENERIC_SUCCESS,
+  unavailable: "Niet beschikbaar.", invalidEmail: "Vul een geldig e-mailadres in.",
+  nameRequired: "Vul je naam in.", termsRequired: "Bevestig dat je dit voor je bedrijf aanvraagt en dat je akkoord gaat met de voorwaarden.",
+}
+
 export async function sendBuilderMagicLink(
   formData: FormData,
 ): Promise<RequestBuilderMagicLinkState> {
+  const locale = formData.get("locale") === "en" ? "en" : "nl"
+  const copy = builderMagicLinkCopy(locale)
   const headerStore = await headers()
   if (!isPreviewRequestAuthority(headerStore)) {
-    return { ok: false, message: "Niet beschikbaar." }
+    return { ok: false, message: copy.unavailable }
   }
   const intent = String(formData.get("intent") ?? "login")
   const email = normalizeBuilderEmail(String(formData.get("email") ?? ""))
   if (!email || !email.includes("@")) {
-    return { ok: false, message: "Vul een geldig e-mailadres in." }
+    return { ok: false, message: copy.invalidEmail }
   }
 
   try {
@@ -38,10 +50,10 @@ export async function sendBuilderMagicLink(
         marketingOptIn: formData.get("marketingOptIn") === "on" || formData.get("marketingOptIn") === "true",
       })
       if (displayName.length < 2) {
-        return { ok: false, message: "Vul je naam in." }
+        return { ok: false, message: copy.nameRequired }
       }
       if (!legal.success || !legal.data.businessUseAccepted || !legal.data.termsAccepted) {
-        return { ok: false, message: "Bevestig dat je dit voor je bedrijf aanvraagt en dat je akkoord gaat met de voorwaarden." }
+        return { ok: false, message: copy.termsRequired }
       }
       const payload = await getPayload({ config })
       await upsertBuilderRegistration(payload, {
@@ -65,12 +77,13 @@ export async function sendBuilderMagicLink(
         email,
         callbackURL,
         errorCallbackURL: "/login",
+        metadata: { locale },
       },
       headers: previewAuthRequestHeaders(headerStore),
     })
-    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
+    return { ok: true, message: copy.genericSuccess }
   } catch (error) {
     console.error("Builder magic-link request failed", error)
-    return { ok: true, message: BUILDER_MAGIC_LINK_GENERIC_SUCCESS }
+    return { ok: true, message: copy.genericSuccess }
   }
 }

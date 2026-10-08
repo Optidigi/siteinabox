@@ -7,6 +7,7 @@ import {
   type ValidationReport,
 } from "@siteinabox/contracts/generation"
 import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 import type { Payload, PayloadRequest, Where } from "payload"
 import type { Config, IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 import { findOneDoc } from "@/lib/payloadCollection"
@@ -121,55 +122,50 @@ const canonicalSpecFromProviderResult = (
   return sitegenOutputToGenerationSpec(output.data, normalized, sitegenNormalizationContextFromIntake(normalized), { model: result.model })
 }
 
+// Every Local API entry must retain its live owned session. The adapter otherwise
+// silently falls back to its root connection when a session disappears.
+const withIntakeTransaction = async <T>(
+  payload: Payload,
+  executionContext: BuilderExecutionContext | undefined,
+  operation: (req: Partial<PayloadRequest> | undefined, assertLive: () => void) => Promise<T>,
+): Promise<T> => {
+  const execute = async (req?: Partial<PayloadRequest>): Promise<T> => {
+    const assertLive = () => {
+      if (!executionContext) return
+      if (!req) throw new Error("builder_transaction_lost")
+      assertLiveBuilderTransaction(payload, req)
+      if (executionContext.signal.aborted) throw new Error("builder_execution_aborted")
+      if (Date.parse(executionContext.deadlineAt) <= Date.now()) throw new Error("builder_deadline_exceeded")
+    }
+    assertLive()
+    const value = await operation(req, assertLive)
+    assertLive()
+    return value
+  }
+  return executionContext ? executionContext.withWrite(execute) : execute()
+}
+
 const updateIntake = async (
   payload: Payload,
   intake: IntakeSubmission,
   data: Partial<IntakeSubmission>,
   executionContext?: BuilderExecutionContext,
-  req?: Partial<PayloadRequest>,
-): Promise<IntakeSubmission> => {
-  if (executionContext && !req) return executionContext.withWrite((writeReq) => updateIntake(payload, intake, data, executionContext, writeReq))
-  await payload.update({
-    collection: "intake-submissions",
-    id: intake.id,
-    data,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
-  return payload.findByID({
-    collection: "intake-submissions",
-    id: intake.id,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
-}
+): Promise<IntakeSubmission> => withIntakeTransaction(payload, executionContext, async (req, assertLive) => {
+  await payload.update({ collection: "intake-submissions", id: intake.id, data, depth: 0, overrideAccess: true, req })
+  assertLive()
+  return payload.findByID({ collection: "intake-submissions", id: intake.id, depth: 0, overrideAccess: true, req })
+})
 
 const updateRun = async (
   payload: Payload,
   run: SiteGenerationRun,
   data: Partial<SiteGenerationRun>,
   executionContext?: BuilderExecutionContext,
-  req?: Partial<PayloadRequest>,
-): Promise<SiteGenerationRun> => {
-  if (executionContext && !req) return executionContext.withWrite((writeReq) => updateRun(payload, run, data, executionContext, writeReq))
-  await payload.update({
-    collection: "site-generation-runs",
-    id: run.id,
-    data,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
-  return payload.findByID({
-    collection: "site-generation-runs",
-    id: run.id,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
-}
+): Promise<SiteGenerationRun> => withIntakeTransaction(payload, executionContext, async (req, assertLive) => {
+  await payload.update({ collection: "site-generation-runs", id: run.id, data, depth: 0, overrideAccess: true, req })
+  assertLive()
+  return payload.findByID({ collection: "site-generation-runs", id: run.id, depth: 0, overrideAccess: true, req })
+})
 
 const setIntakeStatus = async (
   payload: Payload,
@@ -229,7 +225,7 @@ const processStoredIntakeGeneration = async (
   },
 ): Promise<IntakeProcessingResult> => {
   let intake = input.intake
-  const existingRun = await findOneDoc(payload, "site-generation-runs", { idempotencyKey: { equals: input.idempotencyKey } })
+  const existingRun = await withIntakeTransaction(payload, input.executionContext, (req) => findOneDoc(payload, "site-generation-runs", { idempotencyKey: { equals: input.idempotencyKey } }, req))
   if (existingRun) {
     await input.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id), generationRunId: Number(existingRun.id) })
     return terminalResult(intake, existingRun, true)
@@ -255,7 +251,7 @@ const processStoredIntakeGeneration = async (
     overrideAccess: true,
     req,
   })
-  let run = input.executionContext ? await input.executionContext.withWrite(createRun) : await createRun()
+  let run = await withIntakeTransaction(payload, input.executionContext, createRun)
   await input.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id), generationRunId: Number(run.id) })
 
   intake = await setIntakeStatus(payload, intake, "queued", { generationRun: run.id }, input.executionContext)
@@ -369,7 +365,7 @@ export async function processIntakeSubmission(
   } catch (err) {
     const rawHash = hashStableValue(raw)
     idempotencyKey = `${provider.name}:${provider.model}:${provider.promptVersion}:invalid:${rawHash}`
-    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    const existing = await withIntakeTransaction(payload, options.executionContext, (req) => findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } }, req))
     if (existing) return terminalResult(existing, null, true)
     const failure = errorPayload(err)
     const createIntake = (req?: Partial<PayloadRequest>) => payload.create({
@@ -389,7 +385,7 @@ export async function processIntakeSubmission(
       overrideAccess: true,
       req,
     })
-    const intake = options.executionContext ? await options.executionContext.withWrite(createIntake) : await createIntake()
+    const intake = await withIntakeTransaction(payload, options.executionContext, createIntake)
     await options.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id) })
     return terminalResult(intake, null, false)
   }
@@ -398,7 +394,7 @@ export async function processIntakeSubmission(
     throw new Error("Generation provider request was not created")
   }
 
-  const existingIntake = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+  const existingIntake = await withIntakeTransaction(payload, options.executionContext, (req) => findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } }, req))
   const createIntake = (req?: Partial<PayloadRequest>) => payload.create({
     collection: "intake-submissions",
     data: {
@@ -417,7 +413,7 @@ export async function processIntakeSubmission(
     overrideAccess: true,
     req,
   })
-  let intake = existingIntake ?? (options.executionContext ? await options.executionContext.withWrite(createIntake) : await createIntake())
+  let intake = existingIntake ?? (await withIntakeTransaction(payload, options.executionContext, createIntake))
   await options.executionContext?.recordGenerationReferences({ intakeSubmissionId: Number(intake.id) })
 
   intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash }, options.executionContext)
@@ -455,12 +451,13 @@ export async function processStoredIntakeSubmission(
   })
   const maxGenerationAttempts = Math.min(2, Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2)))
 
-  let intake = await payload.findByID({
+  let intake = await withIntakeTransaction(payload, options.executionContext, (req) => payload.findByID({
     collection: "intake-submissions",
     id: intakeSubmissionId,
     depth: 0,
     overrideAccess: true,
-  }) 
+    req,
+  }))
 
   const normalized = NormalizedIntakeSchema.parse(intake.normalized)
   const normalizedHash = hashStableValue(normalized)
@@ -515,12 +512,13 @@ export async function processReviewedIntakeSubmission(
   })
   const maxGenerationAttempts = Math.min(2, Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2)))
 
-  const intake = await payload.findByID({
+  const intake = await withIntakeTransaction(payload, options.executionContext, (req) => payload.findByID({
     collection: "intake-submissions",
     id: intakeSubmissionId,
     depth: 0,
     overrideAccess: true,
-  }) 
+    req,
+  }))
 
   if (!intake.reviewedGenerationInput) {
     throw new Error("Reviewed GenerationInput is required before draft generation.")

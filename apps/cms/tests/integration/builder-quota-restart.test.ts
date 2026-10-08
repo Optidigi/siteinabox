@@ -1,3 +1,4 @@
+import { builderQuotaPolicy } from "@/lib/builder/quotaPolicy"
 import { spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import path from "node:path"
@@ -56,7 +57,7 @@ describe("durable builder worker process restart", () => {
       await stopped
       const recovery = startWorker("reconcile", email, operationId)
       try {
-        const reconciled = z.object({ phase: z.literal("reconciled"), first: z.object({ settled: z.number(), quarantined: z.number() }), second: z.object({ examined: z.number(), settled: z.number() }), operation: z.object({ state: z.literal("interrupted"), modelCalls: z.literal(1), outstandingCalls: z.literal(1), slotHeld: z.literal(true), costKnown: z.literal(false) }), account: z.object({ visibleUsed: z.literal(0), visibleReserved: z.literal(0), activeOperationKey: z.string(), chargedCostUnits: z.literal(200000), attempts: z.literal(2) }), global: z.object({ activeOperations: z.literal(1), chargedCostUnits: z.literal(200000) }) }).parse(await recovery.receipt)
+        const reconciled = z.object({ phase: z.literal("reconciled"), first: z.object({ settled: z.number(), quarantined: z.number() }), second: z.object({ examined: z.number(), settled: z.number() }), operation: z.object({ state: z.literal("interrupted"), modelCalls: z.literal(1), outstandingCalls: z.literal(1), slotHeld: z.literal(true), costKnown: z.literal(false) }), account: z.object({ visibleUsed: z.literal(0), visibleReserved: z.literal(0), activeOperationKey: z.string(), chargedCostUnits: z.literal(builderQuotaPolicy.operationCostUnits), attempts: z.literal(2) }), global: z.object({ activeOperations: z.literal(1), chargedCostUnits: z.literal(builderQuotaPolicy.operationCostUnits) }) }).parse(await recovery.receipt)
         expect(reconciled.first).toMatchObject({ settled: 1, quarantined: 1 })
         expect(reconciled.second).toMatchObject({ examined: 0, settled: 0 })
         expect(reconciled.account.activeOperationKey).toBe(dispatched.operationKey)

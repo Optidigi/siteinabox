@@ -1,6 +1,7 @@
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import { findOneDoc } from "@/lib/payloadCollection"
 import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 import type { Payload, PayloadRequest } from "payload"
 import type { IntakeSubmission } from "@/payload-types"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
@@ -139,13 +140,24 @@ export async function storeIntakeSubmission(
   options: { executionContext?: BuilderExecutionContext; locale?: "nl" | "en"; req?: Partial<PayloadRequest> } = {},
 ): Promise<IntakeStorageResult> {
   if (options.executionContext && !options.req) return options.executionContext.withWrite((req) => storeIntakeSubmission(payload, raw, { ...options, req }))
+  const assertLive = () => {
+    if (!options.executionContext) return
+    if (!options.req) throw new Error("builder_transaction_lost")
+    assertLiveBuilderTransaction(payload, options.req)
+    if (options.executionContext.signal.aborted) throw new Error("builder_execution_aborted")
+    if (Date.parse(options.executionContext.deadlineAt) <= Date.now()) throw new Error("builder_deadline_exceeded")
+  }
+  assertLive()
   try {
     const normalized = { ...normalizeIntakeSubmission(raw), ...(options.locale ? { language: options.locale } : {}) }
     const normalizedHash = hashStableValue(normalized)
     const idempotencyKey = `public-intake:normalized:${hashStableValue({ raw, normalized })}`
-    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    assertLive()
+    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } }, options.req)
+    assertLive()
     if (existing) return storedResult(existing, true)
 
+    assertLive()
     const intake = await payload.create({
       collection: "intake-submissions",
       data: {
@@ -167,6 +179,7 @@ export async function storeIntakeSubmission(
       overrideAccess: true,
       req: options.req,
     })
+    assertLive()
 
     if (!options.executionContext && "legal" in raw && normalized.contact?.email) {
       try {
@@ -187,11 +200,16 @@ export async function storeIntakeSubmission(
     if (!options.executionContext) await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)
   } catch (err) {
+    // Authority/transaction failure must escape instead of saving a fallback row.
+    assertLive()
     const idempotencyKey = `public-intake:invalid:${hashStableValue(raw)}`
-    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    assertLive()
+    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } }, options.req)
+    assertLive()
     if (existing) return storedResult(existing, true)
 
     const failure = errorPayload(err)
+    assertLive()
     const intake = await payload.create({
       collection: "intake-submissions",
       data: {
@@ -212,6 +230,7 @@ export async function storeIntakeSubmission(
       overrideAccess: true,
       req: options.req,
     })
+    assertLive()
 
     if (!options.executionContext) await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)

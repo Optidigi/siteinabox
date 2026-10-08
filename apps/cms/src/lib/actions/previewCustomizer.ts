@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import {
   approvePreviewForGrant,
   persistPreviewThemeForGrant,
@@ -16,10 +16,7 @@ import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayme
 import type { ThemeTokens } from "@/lib/theme/schema"
 
 const previewSessionEmail = async (loginRequiredMessage: string): Promise<string> => {
-  const session = await previewAuth.api.getSession({
-    headers: await headers(),
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(await headers())
   const email = session?.user?.email
   if (!email) throw new Error(loginRequiredMessage)
   return email

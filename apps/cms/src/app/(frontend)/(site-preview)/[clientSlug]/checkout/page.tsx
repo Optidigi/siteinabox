@@ -6,7 +6,7 @@ import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import {
@@ -80,10 +80,7 @@ export default async function PreviewCheckoutPage({
   const locale = await getLocale()
   const headerStore = await headers()
   const callbackPath = `/${normalizedClientSlug}/checkout`
-  const session = await previewAuth.api.getSession({
-    headers: headerStore,
-    query: { disableCookieCache: true },
-  })
+  const session = await readVerifiedPreviewSession(headerStore)
   const customerEmail = session?.user?.email
 
   if (!customerEmail) {

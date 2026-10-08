@@ -3,6 +3,7 @@ import { copyFile, mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 import { approvedCatalogIssues, approvedChromeIssues } from "@/lib/sitegen/catalog"
 import type { PayloadRequest, CollectionSlug, DataFromCollectionSlug, Payload, RequiredDataFromCollectionSlug, Where } from "payload"
 import {
@@ -30,6 +31,15 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 import { createSiteSettingsData } from "@/lib/queries/siteSettingsDefaults"
 import { approvedPublicAnalyticsConsent } from "@/lib/analytics/config"
+
+// The adapter falls back to its root connection if an owned session disappears.
+// Check both sides of every apply call before a subsequent mutation can proceed.
+async function guardedApplyCall<T>(payload: Payload, req: Partial<PayloadRequest> | undefined, call: () => Promise<T>): Promise<T> {
+  if (req) assertLiveBuilderTransaction(payload, req)
+  const result = await call()
+  if (req) assertLiveBuilderTransaction(payload, req)
+  return result
+}
 
 type ApplyOperation = "created" | "updated"
 type RetainedPage = { id: string | number; slug: string; status?: string }
@@ -480,7 +490,7 @@ const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSit
 }
 
 const findOne = async <C extends CollectionSlug>(payload: Payload, collection: C, where: Where, req?: Partial<PayloadRequest>): Promise<DataFromCollectionSlug<C> | undefined> => {
-  const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true, req })
+  const found = await guardedApplyCall(payload, req, () => payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true, req }))
   return found.docs[0]
 }
 
@@ -537,7 +547,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
       ...(asset.alt !== undefined ? { alt: asset.alt } : {}),
     }
     const document = existing
-      ? await payload.update({
+      ? await guardedApplyCall(payload, req, () => payload.update({
         collection: "media",
         id: existing.id,
         data,
@@ -546,8 +556,8 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
         depth: 0,
         overrideAccess: true, req,
         context: DRAFT_IMPORT_CONTEXT,
-      })
-      : await payload.create({
+      }))
+      : await guardedApplyCall(payload, req, () => payload.create({
         collection: "media",
         data,
         filePath: asset.filePath,
@@ -555,7 +565,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
         depth: 0,
         overrideAccess: true, req,
         context: DRAFT_IMPORT_CONTEXT,
-      })
+      }))
     const id = document.id
     mediaIds.set(asset.key, id)
     mediaIds.set(asset.filename, id)
@@ -570,6 +580,7 @@ const upsertTenant = async (
   theme: ThemeTokens | null,
   pinTenantId?: string | number,
   req?: Partial<PayloadRequest>,
+  customerCreation = false,
 ) => {
   const bySlug = await findOne(payload, "tenants", { slug: { equals: spec.tenant.slug } }, req)
   const byDomain = await findOne(payload, "tenants", { domain: { equals: spec.tenant.domain } }, req)
@@ -584,12 +595,13 @@ const upsertTenant = async (
       throw new Error(`Generation spec domain "${spec.tenant.domain}" belongs to another tenant.`)
     }
     const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: pinned.status ?? "provisioning", emailSending: pinned.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
-    return { doc: await payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+    return { doc: await guardedApplyCall(payload, req, () => payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })), operation: "updated" as const }
   }
   const existing = bySlug ?? byDomain
+  if (customerCreation && existing) throw new Error("Generation target already belongs to another tenant; choose an independent business identifier.")
   const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: existing?.status ?? "provisioning", emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
-  if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
-  return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  if (existing) return { doc: await guardedApplyCall(payload, req, () => payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })), operation: "updated" as const }
+  return { doc: await guardedApplyCall(payload, req, () => payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })), operation: "created" as const }
 }
 
 const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>) => {
@@ -598,11 +610,11 @@ const upsertPages = async (payload: Payload, tenantId: string | number, pages: G
     const data = normalizePageData(tenantId, page, mediaIds)
     const existing = await findOne(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] }, req)
     if (existing) {
-      const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })
+      const updated = await guardedApplyCall(payload, req, () => payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }))
       results.push({ doc: updated as ExistingPage, operation: "updated" })
     } else {
       const createData: RequiredDataFromCollectionSlug<"pages"> = { ...data, title: page.title, slug: page.slug, status: "draft" }
-      const created = await payload.create({ collection: "pages", data: createData, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })
+      const created = await guardedApplyCall(payload, req, () => payload.create({ collection: "pages", data: createData, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }))
       results.push({ doc: created as ExistingPage, operation: "created" })
     }
   }
@@ -612,14 +624,14 @@ const upsertPages = async (payload: Payload, tenantId: string | number, pages: G
 const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>) => {
   const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
   const existing = await findOne(payload, "site-settings", { tenant: { equals: tenantId } }, req)
-  if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+  if (existing) return { doc: await guardedApplyCall(payload, req, () => payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })), operation: "updated" as const }
   const defaults = createSiteSettingsData(tenantId, settings.siteName, settings.siteUrl)
   const createData: RequiredDataFromCollectionSlug<"site-settings"> = { ...defaults, ...data, tenant: defaults.tenant, siteName: defaults.siteName, siteUrl: defaults.siteUrl, appointments: data.appointments ?? defaults.appointments, consent: data.consent ?? defaults.consent }
-  return { doc: await payload.create({ collection: "site-settings", data: createData, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  return { doc: await guardedApplyCall(payload, req, () => payload.create({ collection: "site-settings", data: createData, depth: 0, overrideAccess: true, req, context: DRAFT_IMPORT_CONTEXT })), operation: "created" as const }
 }
 
 const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>, req?: Partial<PayloadRequest>): Promise<RetainedPage[]> => {
-  const result = await payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true, req })
+  const result = await guardedApplyCall(payload, req, () => payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true, req }))
   return (result.docs as ExistingPage[]).filter((page) => !appliedSlugs.has(page.slug)).map((page) => ({ id: page.id, slug: page.slug, ...(page.status ? { status: page.status } : {}) }))
 }
 
@@ -631,14 +643,14 @@ export const retireUnspecifiedPagesForTenant = async (
 ): Promise<{ retainedPages: RetainedPage[]; retiredPages: RetainedPage[] }> => {
   const retainedPages = await retainedPagesForTenant(payload, tenantId, appliedSlugs, req)
   const retiredPages = retainedPages.filter((page) => page.status === "published")
-  await Promise.all(retiredPages.map((page) => payload.update({
+  await Promise.all(retiredPages.map((page) => guardedApplyCall(payload, req, () => payload.update({
     collection: "pages",
     id: page.id,
     data: { status: "draft" },
     depth: 0,
     overrideAccess: true, req,
     context: PAGE_REPLACEMENT_CONTEXT,
-  })))
+  }))))
   return { retainedPages, retiredPages }
 }
 
@@ -658,7 +670,7 @@ export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGen
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const preparedMedia = await prepareMediaAssets(options.mediaAssets)
   try {
-    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId, options.req)
+    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId, options.req, Boolean(options.executionContext))
     const tenantId = tenant.doc.id as string | number
     const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets, options.req) : new Map<string, string | number>()
     const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds, options.req)

@@ -11,8 +11,7 @@ restricted to super-admin operation.
 ## Allowance and execution
 
 `builderQuotaPolicy` is the owning configuration. Its customer activation flag
-defaults to false pending policy, provider-bound and actual model evaluation
-approval. The engineering default is twelve lifetime successful visible turns
+defaults to false pending policy and actual model evaluation approval. The engineering default is twelve lifetime successful visible turns
 per normalized email, including clarifications and refusals. Device, session,
 thread and draft changes do not reset the allowance. Email aliases remain an
 abuse risk; normalized email is not a claim of perfect person identity.
@@ -29,6 +28,20 @@ uncertain cost. Separate daily ingress limits count malformed, duplicate, busy
 and failed requests without resetting lifetime accounting. Model envelopes bound
 time, calls, steps, output and concurrency; SDK retries are disabled. Unknown
 usage never becomes zero cost, and abort does not prove remote completion.
+
+The reviewed Luna envelope reserves the full 1,050,000-token context per wire
+step, including provider formatting, at the highest documented standard global
+long-context cache-write/output rates. A four-step parent and one-step generation
+reserve $2.66 per operation, with a $31.92 account ceiling and $100 global
+ceiling; these disabled engineering limits require activation approval. The
+64 KiB UTF-8 input bound is separate from billable-token accounting. Transport
+requires standard reasoning, default service tier, disabled truncation, no hosted
+tools or opaque conversation references, and the global Responses endpoint.
+Raw per-step terminal usage includes cache-write tokens; incomplete accounting
+retains the full liability. These are engineering reserves derived from the
+[official model contract](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
+and [usage pricing](https://developers.openai.com/api/docs/guides/prompt-caching),
+not a claim of invoice reconciliation.
 
 The global accounting fence precedes operation/account changes and each local
 mutation. Owning Payload transactions pass their live request through reads,
@@ -80,9 +93,12 @@ The candidate manifest specifies bounded Dutch/English low/medium evaluations
 using the existing model family. The preparation script defaults to a dry-run;
 it records planned namespaces and liability rather than paid results. Actual
 schema/catalog/apply/preview, factual restraint, injection, cost and latency
-evidence remains required. Provider token framing and effective cost ceilings
-must be proven or explicitly resolved before paid customer activation. Operator
-evaluation requires reviewed isolation and principal spending authorization.
+evidence remains required. The isolated runner checks the exact manifest and
+reviewed source, a pre-migrated disposable database and fresh data directory; it
+permits only the reviewed model transport and preserves failure evidence. A
+sixteen-case low/medium evaluation reserves at most $42.56 under the documented
+model envelope. Operator evaluation requires reviewed isolation and explicit
+principal spending authorization; offline rehearsal is not paid evaluation.
 
 The additive migration preserves existing columns. Its down guard rejects
 stored identity, accounting, mail, job and notice evidence. After customer use,

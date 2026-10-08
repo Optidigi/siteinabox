@@ -4,15 +4,20 @@ export type BuilderModelCall = Readonly<{
   model: "openai/gpt-5.6-luna"
   reasoningEffort: "low" | "medium"
   inputBytes: number
+  maxBillableInputTokens: number
   maxOutputTokens: number
   maxSteps: number
 }>
 
-export type BuilderTokenUsage = Readonly<{
+export type BuilderStepTokenUsage = Readonly<{
   inputTokens: number
   outputTokens: number
   cachedInputTokens: number | null
   cacheCreationInputTokens: number | null
+}>
+
+export type BuilderTokenUsage = BuilderStepTokenUsage & Readonly<{
+  stepUsage?: readonly BuilderStepTokenUsage[]
 }>
 
 // This authority is supplied by the verified-account reservation service.

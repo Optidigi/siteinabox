@@ -21,7 +21,6 @@ import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { useBuilderMobilePager } from "@/components/builder/useBuilderMobilePager"
 import type { BuilderFacts } from "@/lib/builder/facts"
 import {
-  BUILDER_LANDING_OPENER,
   isBuilderAgentStage,
   withOpenPreviewAction,
   type BuilderChatMessage,
@@ -92,6 +91,15 @@ export function BuilderShell({
     catch { pendingRef.current = null }
     setPending(Boolean(pendingRef.current))
   }, [pendingKey])
+  useEffect(() => {
+    const controller = new AbortController()
+    const renew = () => {
+      void fetch("/api/siab-auth/preview-renew", { method: "POST", credentials: "same-origin", signal: controller.signal }).catch(() => undefined)
+    }
+    renew()
+    const interval = window.setInterval(renew, 6 * 60 * 60 * 1000)
+    return () => { controller.abort(); window.clearInterval(interval) }
+  }, [email])
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
   const [clientSlug, setClientSlug] = useState<string | null>(initialClientSlug)
@@ -359,7 +367,7 @@ export function BuilderShell({
               >
                 <BuilderThread
                   locale={locale}
-                  messages={agentStage ? BUILDER_LANDING_OPENER : threadMessages}
+                  messages={agentStage ? [{ role: "assistant", text: copy.headline }] : threadMessages}
                   busy={!agentStage && busy}
                   phase={phase}
                   listRef={chatListRef}

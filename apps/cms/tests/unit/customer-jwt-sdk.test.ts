@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { executeAuthStrategies, jwtSign, JWTAuthentication } from "payload"
+import { createLocalReq, executeAuthStrategies, jwtSign, JWTAuthentication } from "payload"
 import { Users } from "@/collections/Users"
 import { installCustomerJwtStrategy } from "@/lib/auth/customerJwtStrategy"
 import { createInitializedTestPayload } from "../_helpers/testPayload"
@@ -33,6 +33,16 @@ describe("installed Payload JWT dispatch", () => {
       expect(Boolean(result.user)).toBe(allowed)
       expect(payload.authStrategies.at(-1)?.authenticate).not.toBe(JWTAuthentication)
     }
+  })
+  it.each(["REST", "GraphQL"] as const)("keeps the external %s request and disclosure context unchanged", async (payloadAPI) => {
+    const { payload, headers } = await fixture()
+    authority.validate.mockResolvedValue(true)
+    const req = await createLocalReq({ req: { headers, payloadAPI, context: { disclosure: "external" } } }, payload)
+    installCustomerJwtStrategy(payload)
+    expect((await executeAuthStrategies({ payload, headers, req, isGraphQL: payloadAPI === "GraphQL" })).user?.id).toBe(1)
+    expect(req.payloadAPI).toBe(payloadAPI)
+    expect(req.context).toEqual({ disclosure: "external" })
+    expect(payload.findByID).toHaveBeenCalledWith(expect.objectContaining({ req: expect.objectContaining({ payloadAPI: "local", context: { disclosure: "external" } }) }))
   })
   it("store exception cannot resurrect the native fallback", async () => {
     const { payload, headers } = await fixture()

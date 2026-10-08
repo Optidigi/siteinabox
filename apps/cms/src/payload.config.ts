@@ -56,6 +56,7 @@ import { CustomerAuthAccounts } from "@/collections/CustomerAuthAccounts"
 import { CustomerSessionBindings } from "@/collections/CustomerSessionBindings"
 import { CostlySearchBudgets } from "@/collections/CostlySearchBudgets"
 import { MagicMailBudgets } from "@/collections/MagicMailBudgets"
+import { PreviewSessionRevocations } from "@/collections/PreviewSessionRevocations"
 import { installCustomerJwtStrategy } from "@/lib/auth/customerJwtStrategy"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
@@ -175,6 +176,7 @@ export default buildConfig({
     CustomerSessionBindings,
     CostlySearchBudgets,
     MagicMailBudgets,
+    PreviewSessionRevocations,
     CheckoutProgressDrafts,
     LegalDocuments,
     LegalPublicationEvents,

@@ -4,11 +4,12 @@ import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { runBuilderTurn } from "@/lib/builder/runBuilderTurn"
 import { loadBuilderThread } from "@/lib/builder/sessionStore"
 import { legalIsAccepted, builderPreviewActions, type BuilderChatMessage } from "@/lib/builder/thread"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
 import { loadLatestActivePreviewGrant } from "@/lib/preview/previewAccess"
 import { relationshipValue } from "@/lib/relationshipId"
 import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
 import { assertBuilderAccountEligible } from "@/lib/builder/access"
+import { assertCurrentPreviewSessionAuthority } from "@/lib/auth/previewSessionAuthority"
 import { BuilderQuotaError, BuilderQuotaService, type BuilderOperationLease } from "@/lib/builder/quota"
 import { ReservedBuilderExecution } from "@/lib/builder/quotaExecution"
 import { BodyReadError } from "@/lib/http/body"
@@ -20,7 +21,7 @@ const denialStatus = (reason: string) => reason === "operation_conflict" ? 409 :
 
 export async function POST(req: NextRequest) {
   if (!isPreviewRequestAuthority(req.headers)) return NextResponse.json({ message: "Not found" }, { status: 404 })
-  const session = await previewAuth.api.getSession({ headers: req.headers, query: { disableCookieCache: true } })
+  const session = await readVerifiedPreviewSession(req.headers)
   const email = session?.user?.email?.trim().toLowerCase()
   if (!email) return NextResponse.json({ message: hasUnvalidatedAuthSignal(req) ? "Forbidden" : "Unauthorized" }, { status: hasUnvalidatedAuthSignal(req) ? 403 : 401 })
   if (session?.user.emailVerified !== true) return NextResponse.json({ message: "Verified email required", error: "email_unverified" }, { status: 403 })
@@ -33,7 +34,11 @@ export async function POST(req: NextRequest) {
   catch (error) { return NextResponse.json({ message: "Invalid builder body", error: error instanceof BodyReadError ? `builder_${error.code}` : "builder_invalid_json" }, { status: error instanceof BodyReadError && error.code === "payload_too_large" ? 413 : error instanceof BodyReadError && error.code === "body_timed_out" ? 408 : 400 }) }
   const parsed = builderOperationInputSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ message: "A UUID operationId and message of 2–4000 characters are required.", error: "builder_invalid_request" }, { status: 400 })
-  const eligible = (transactionReq?: Parameters<typeof assertBuilderAccountEligible>[2]) => assertBuilderAccountEligible(payload, email, transactionReq)
+  const sessionSubject = { sessionId: session.session.id, email }
+  const eligible = async (transactionReq?: Parameters<typeof assertBuilderAccountEligible>[2]) => {
+    await assertCurrentPreviewSessionAuthority(payload, transactionReq, req.headers, sessionSubject)
+    await assertBuilderAccountEligible(payload, email, transactionReq)
+  }
   let lease: BuilderOperationLease | undefined, execution: ReservedBuilderExecution | undefined
   try {
     const registered = await loadBuilderThread(payload, email)

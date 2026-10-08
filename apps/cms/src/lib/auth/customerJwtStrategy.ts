@@ -1,4 +1,5 @@
-import { JWTAuthentication, type AuthStrategyFunction, type Payload } from "payload"
+import { installCustomerRevocationReceipts } from "./customerRevocationReceipts"
+import { createLocalReq, JWTAuthentication, type AuthStrategyFunction, type Payload } from "payload"
 
 // Replace the terminal SDK callback rather than attempting a veto in an earlier
 // strategy: executeAuthStrategies continues on both null and exceptions.
@@ -9,7 +10,10 @@ export function installCustomerJwtStrategy(payload: Payload): void {
     throw new Error("Unsupported Payload JWT strategy topology")
   }
   const authenticate: AuthStrategyFunction = async (args) => {
-    const result = await JWTAuthentication(args)
+    // Native JWT validation needs the private session array. Preserve the external
+    // request so subsequent REST/GraphQL reads still apply disclosure hooks.
+    const lookupReq = await createLocalReq({ req: { ...args.req, payloadAPI: "local" } }, args.payload)
+    const result = await JWTAuthentication({ ...args, req: lookupReq })
     if (!result.user || result.user.collection !== "users") return result
     try {
       const { validateCustomerPayloadSession } = await import("./customerSessionBridge")
@@ -20,4 +24,5 @@ export function installCustomerJwtStrategy(payload: Payload): void {
     return { user: null }
   }
   native.authenticate = authenticate
+  installCustomerRevocationReceipts(payload)
 }

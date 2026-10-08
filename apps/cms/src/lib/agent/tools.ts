@@ -10,6 +10,7 @@ import {
   type ThemeTokenSpec,
 } from "@siteinabox/contracts"
 import { isLiveCatalogBlockType, isUnavailableCatalogBlockType } from "@/lib/builder/catalogHonesty"
+import { assertLiveBuilderTransaction } from "@/lib/builder/quotaTransaction"
 import type { BuilderExecutionContext } from "@/lib/builder/executionContext"
 import { assertApprovedCatalogBlocks, sitegenFooterFor, sitegenNavbarFor, sitegenVariantFor } from "@/lib/sitegen/catalog"
 import { themeSchema } from "@/lib/theme/schema"
@@ -24,6 +25,19 @@ export type AgentWriteContext = {
   req?: Partial<PayloadRequest>
 }
 
+async function guardedAgentCall<T>(ctx: AgentWriteContext, call: () => Promise<T>): Promise<T> {
+  const fence = () => {
+    if (ctx.executionContext) {
+      if (!ctx.req || ctx.executionContext.signal.aborted || Date.parse(ctx.executionContext.deadlineAt) <= Date.now()) throw new Error("builder_execution_unavailable")
+      assertLiveBuilderTransaction(ctx.payload, ctx.req)
+    }
+  }
+  fence()
+  const result = await call()
+  fence()
+  return result
+}
+
 const collectionWrite = (ctx: AgentWriteContext): { overrideAccess: boolean; user?: User; req?: Partial<PayloadRequest> } =>
   ctx.user
     ? { overrideAccess: false, user: ctx.user, req: ctx.req }
@@ -32,18 +46,18 @@ const collectionWrite = (ctx: AgentWriteContext): { overrideAccess: boolean; use
 const WEEKDAY_WINDOWS = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const
 
 const findTenantSettings = async (ctx: AgentWriteContext): Promise<SiteSetting | undefined> => {
-  const found = await ctx.payload.find({
+  const found = await guardedAgentCall(ctx, () => ctx.payload.find({
     collection: "site-settings",
     where: { tenant: { equals: ctx.tenantId } },
     limit: 1,
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
   return found.docs[0]
 }
 
 const findPageBySlug = async (ctx: AgentWriteContext, pageSlug: string): Promise<Page | undefined> => {
-  const found = await ctx.payload.find({
+  const found = await guardedAgentCall(ctx, () => ctx.payload.find({
     collection: "pages",
     where: {
       and: [
@@ -54,7 +68,7 @@ const findPageBySlug = async (ctx: AgentWriteContext, pageSlug: string): Promise
     limit: 1,
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
   return found.docs[0]
 }
 
@@ -72,13 +86,13 @@ export const setTheme = async (ctx: AgentWriteContext, theme: ThemeTokenSpec): P
   const parsed = ThemeTokenSpecSchema.safeParse(theme)
   if (!parsed.success) throw new Error(`Invalid theme: ${parsed.error.message}`)
   const cmsTheme = themeSchema.parse(parsed.data)
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "tenants",
     id: ctx.tenantId,
     data: { theme: cmsTheme },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
   return parsed.data
 }
 
@@ -90,13 +104,13 @@ export const setAppointments = async (
   const parsed = AppointmentScheduleSettingsSchema.parse(schedule)
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "site-settings",
     id: existing.id,
     data: { appointments: parsed },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
   return parsed
 }
 
@@ -107,7 +121,7 @@ export const setContact = async (
   if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setContact({ ...ctx, req }, contact))
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "site-settings",
     id: existing.id,
     data: {
@@ -119,7 +133,7 @@ export const setContact = async (
     },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
 
 export const updateSectionProps = async (
@@ -137,13 +151,13 @@ export const updateSectionProps = async (
   if (!block || typeof block !== "object") throw new Error("Selected block is missing.")
   blocks[index] = { ...block, [input.field]: input.value }
   assertApprovedCatalogBlocks(blocks)
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "pages",
     id: page.id,
     data: { blocks },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
 
 export const setHours = async (
@@ -153,13 +167,13 @@ export const setHours = async (
   if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setHours({ ...ctx, req }, hours))
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "site-settings",
     id: existing.id,
     data: { hours },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
 
 const catalogBlockTypeFromVariant = (variant: string): SitegenBlockType | null => {
@@ -195,13 +209,13 @@ export const replaceSection = async (
     variant: input.variant,
   } as typeof current
   assertApprovedCatalogBlocks(blocks)
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "pages",
     id: page.id,
     data: { blocks },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
 
 export const loadTenantById = async (payload: Payload, id: string | number): Promise<Tenant | undefined> => {
@@ -291,7 +305,11 @@ export const loadSiteSnapshot = async (
   ctx: AgentWriteContext,
   pageSlug: string,
 ): Promise<SiteEditorSnapshot> => {
-  const tenant = await loadTenantById(ctx.payload, ctx.tenantId)
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => loadSiteSnapshot({ ...ctx, req }, pageSlug))
+  const tenant = await guardedAgentCall(ctx, () => ctx.payload.findByID({ collection: "tenants", id: ctx.tenantId, depth: 0, ...collectionWrite(ctx) })).catch((error: unknown) => {
+    if (error instanceof Error && "status" in error && error.status === 404) return undefined
+    throw error
+  })
   const page = await findPageBySlug(ctx, pageSlug)
   const settings = await findTenantSettings(ctx)
   const chrome = settings?.chrome
@@ -370,19 +388,20 @@ export const patchSection = async (
     throw new Error("This section is not in the live catalog. Remove it instead of editing copy.")
   }
   assertApprovedCatalogBlocks(blocks)
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "pages",
     id: page.id,
     data: { blocks },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
 
 export const pruneUnavailableBlocksIfPresent = async (
   ctx: AgentWriteContext,
   pageSlug: string,
 ): Promise<{ removed: number; remaining: number }> => {
+  if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => pruneUnavailableBlocksIfPresent({ ...ctx, req }, pageSlug))
   const page = await findPageBySlug(ctx, pageSlug)
   if (!page) return { removed: 0, remaining: 0 }
   const blocks = Array.isArray(page.blocks) ? page.blocks : []
@@ -410,13 +429,13 @@ export const removeUnavailableBlocks = async (
     throw new Error("I will not empty the page. Keep at least one live catalog section.")
   }
   assertApprovedCatalogBlocks(next)
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "pages",
     id: page.id,
     data: { blocks: next },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
   return { removed, remaining: next.length }
 }
 
@@ -439,7 +458,7 @@ export const setChrome = async (
   const existing = await findTenantSettings(ctx)
   if (!existing) throw new Error("Site settings not found for tenant.")
   const chrome = existing.chrome
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "site-settings",
     id: existing.id,
     data: {
@@ -463,7 +482,7 @@ export const setChrome = async (
     },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
 
 export const setSeo = async (
@@ -473,7 +492,7 @@ export const setSeo = async (
   if (ctx.executionContext && !ctx.req) return ctx.executionContext.withWrite((req) => setSeo({ ...ctx, req }, input))
   const page = await findPageBySlug(ctx, input.pageSlug)
   if (!page) throw new Error("Page not found for tenant.")
-  await ctx.payload.update({
+  await guardedAgentCall(ctx, () => ctx.payload.update({
     collection: "pages",
     id: page.id,
     data: {
@@ -485,5 +504,5 @@ export const setSeo = async (
     },
     depth: 0,
     ...collectionWrite(ctx),
-  })
+  }))
 }
