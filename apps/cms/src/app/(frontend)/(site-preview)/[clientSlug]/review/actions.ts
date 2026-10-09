@@ -1,5 +1,6 @@
 "use server"
 
+import { recordVerifiedPreviewActivity } from "@/lib/preview/authenticatedPreviewActivity"
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
 import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
@@ -8,14 +9,17 @@ import type { PreviewReviewActionState } from "@/components/preview/PreviewRevie
 
 const requirePreviewReviewContext = async (clientSlug: string) => {
   const t = await getTranslations("preview")
-  const session = await readVerifiedPreviewSession(await headers())
+  const headerStore = await headers()
+  const session = await readVerifiedPreviewSession(headerStore)
   const customerEmail = session?.user?.email
   if (!customerEmail) throw new Error(t("previewLoginRequired"))
 
-  return loadPreviewGrantContext({
+  const context = await loadPreviewGrantContext({
     clientSlug: normalizePreviewClientSlug(clientSlug),
     email: customerEmail,
   })
+  await recordVerifiedPreviewActivity(headerStore, context.clientSlug)
+  return context
 }
 
 export async function submitPreviewReviewAction(

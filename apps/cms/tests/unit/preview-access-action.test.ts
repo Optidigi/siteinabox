@@ -63,6 +63,7 @@ describe("sendPreviewAccessAction", () => {
   it("creates a grant and sends a preview-host magic link through preview auth", async () => {
     const { sendPreviewAccessAction } = await import("@/lib/actions/previewAccess")
 
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-08T12:00:00.000Z"))
     const formData = new FormData()
     formData.set("email", "Customer@Example.com")
     const result = await sendPreviewAccessAction(500, { ok: false, message: "" }, formData)
@@ -76,6 +77,7 @@ describe("sendPreviewAccessAction", () => {
       generationRunId: 500,
       customerEmail: "customer@example.com",
       sendEmail: true,
+      expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(),
     })
     expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
@@ -95,6 +97,7 @@ describe("sendPreviewAccessAction", () => {
     const callHeaders = mocks.signInMagicLink.mock.calls[0]?.[0]?.headers as Headers
     expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
     expect(callHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
+    clock.mockRestore()
   })
 
   it("blocks non-super-admin operators before creating a grant", async () => {

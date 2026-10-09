@@ -1,3 +1,4 @@
+import { recordVerifiedPreviewActivity } from "@/lib/preview/authenticatedPreviewActivity"
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
 import { readVerifiedPreviewSession } from "@/lib/auth/verifiedPreviewSession"
@@ -13,7 +14,8 @@ const loadPreviewCheckoutBase = async (
   requireActor = false,
 ) => {
   const t = await getTranslations("preview")
-  const session = await readVerifiedPreviewSession(requestHeaders ?? await headers())
+  const headerStore = requestHeaders ?? await headers()
+  const session = await readVerifiedPreviewSession(headerStore)
   const customerEmail = session?.user?.email
   const previewUserId = session?.user?.id
   if (!customerEmail || session?.user.emailVerified !== true || (requireActor && !previewUserId)) {
@@ -24,6 +26,7 @@ const loadPreviewCheckoutBase = async (
     clientSlug: normalizePreviewClientSlug(clientSlug),
     email: customerEmail,
   })
+  await recordVerifiedPreviewActivity(headerStore, context.clientSlug)
   return {
     context,
     previewUserId: previewUserId ? String(previewUserId) : null,
@@ -34,13 +37,16 @@ const loadPreviewDomainSearchBase = async (
   clientSlug: string,
   requestHeaders?: Headers,
 ) => {
-  const session = await readVerifiedPreviewSession(requestHeaders ?? await headers())
+  const headerStore = requestHeaders ?? await headers()
+  const session = await readVerifiedPreviewSession(headerStore)
   const customerEmail = session?.user?.email
   if (!customerEmail || session?.user.emailVerified !== true) throw new Error("Preview login is required.")
-  return loadPreviewGrantAuthority({
+  const context = await loadPreviewGrantAuthority({
     clientSlug: normalizePreviewClientSlug(clientSlug),
     email: customerEmail,
   })
+  await recordVerifiedPreviewActivity(headerStore, context.clientSlug)
+  return context
 }
 
 export const requirePreviewCheckoutContext = async (

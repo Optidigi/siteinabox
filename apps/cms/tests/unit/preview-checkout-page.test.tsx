@@ -1,3 +1,4 @@
+vi.mock("@/lib/preview/authenticatedPreviewActivity", () => ({ recordVerifiedPreviewActivity: vi.fn(async () => undefined) }))
 import { describe, expect, it, vi } from "vitest"
 import type { ComponentProps } from "react"
 import type { PreviewCheckout } from "@/components/preview/PreviewCheckout"

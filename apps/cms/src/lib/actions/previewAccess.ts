@@ -38,6 +38,7 @@ export async function sendPreviewAccessAction(
       generationRunId,
       customerEmail: email,
       sendEmail: true,
+      expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(),
     })
     const previewUrl = `${PUBLIC_PREVIEW_ORIGIN}/${grant.clientSlug}`
     const previewSiteReadyAuthorization = createPreviewSiteReadyAuthorization({

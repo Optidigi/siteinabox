@@ -1,3 +1,4 @@
+import { recordVerifiedPreviewActivity } from "@/lib/preview/authenticatedPreviewActivity"
 import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
@@ -99,6 +100,7 @@ export default async function PreviewCheckoutPage({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
     })
+    await recordVerifiedPreviewActivity(headerStore, context.clientSlug)
     const oauthEnabled = cloudflareSourceCheckoutEnabled()
     const tenantId = relationshipId(context.tenant)
     const sourceMetadata =

@@ -1,3 +1,4 @@
+import { recordVerifiedPreviewActivity } from "@/lib/preview/authenticatedPreviewActivity"
 import { headers } from "next/headers"
 import { notFound } from "next/navigation"
 import { RendererFrameRuntime } from "@/components/renderer-frame/RendererFrameRuntime"
@@ -53,6 +54,7 @@ export default async function RendererPreviewFramePage({ params }: { params: Pro
     customerEmail,
     requestedPage: requestedPageSlug(pageSlug),
   })
+  await recordVerifiedPreviewActivity(headerStore, normalizedClientSlug)
 
   return (
     <RendererFrameRuntime

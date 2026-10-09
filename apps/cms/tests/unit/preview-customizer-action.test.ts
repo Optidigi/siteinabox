@@ -1,3 +1,4 @@
+vi.mock("@/lib/preview/authenticatedPreviewActivity", () => ({ recordVerifiedPreviewActivity: vi.fn(async () => undefined) }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
 

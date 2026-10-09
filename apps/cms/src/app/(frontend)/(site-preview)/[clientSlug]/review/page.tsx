@@ -1,3 +1,4 @@
+import { recordVerifiedPreviewActivity } from "@/lib/preview/authenticatedPreviewActivity"
 import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
@@ -47,6 +48,7 @@ export default async function PreviewReviewPage({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
     })
+    await recordVerifiedPreviewActivity(headerStore, context.clientSlug)
 
     return (
       <PreviewReview
