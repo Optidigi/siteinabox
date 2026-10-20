@@ -51,3 +51,10 @@ its policy fixtures are not substitutes for actual hosted results.
 
 See [protected delivery](runbooks/protected-delivery.md) for proposal and live
 control diagnostics. Source policy is not proof that settings are installed.
+
+For Astro group upgrades, keep renderer host/origin/form/appointment tests, both
+analytics browser commands and landing `test:ui` intact. The latter covers
+responsive themes, keyboard/mobile interactions, accessibility, phone links and
+contact behavior. Semantic build-output comparison excludes only explained
+compiler output; it does not substitute for these browser checks or for the
+unpublished consuming-image matrix. See [dependency compatibility](dependency-policy.md#astro-and-renderer-compatibility).
