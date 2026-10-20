@@ -356,20 +356,8 @@ function validateCloudflareRestDisposition(
   )
 }
 
-function normalizeEmailAddress(value: string) {
-  const trimmed = value.trim().toLowerCase()
-  if (!trimmed) return ""
-  const angle = trimmed.match(/<([^<>@\s]+@[^<>@\s]+)>/)
-  if (angle?.[1]) return angle[1]
-  return trimmed
-}
-
 function normalizeEmailSet(values: string[] | undefined) {
-  return new Set(
-    (values ?? [])
-      .map((value) => normalizeEmailAddress(value))
-      .filter(Boolean),
-  )
+  return new Set((values ?? []).flatMap((value) => mailboxes(value)))
 }
 
 function cloudflareDispositionError(

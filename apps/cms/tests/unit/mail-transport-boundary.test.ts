@@ -86,6 +86,32 @@ describe("mail provider acceptance evidence", () => {
     })
   })
 
+  it.each([
+    { to: "One <one@example.test>, Two <two@example.test>" },
+    { to: "one@example.test, two@example.test" },
+    { to: ["One <one@example.test>, Two <two@example.test>"] },
+  ])("accounts for every mailbox in REST recipient lists: %j", async ({ to }) => {
+    const provider = createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: {
+      message_id: "fixture-list", delivered: ["one@example.test"], queued: [], permanent_bounces: [],
+    } })))
+    await expect(provider.send({ ...input, to })).rejects.toMatchObject({
+      code: "E_PROVIDER_WRITE_INDETERMINATE", providerMessageId: "fixture-list",
+    })
+  })
+
+  it.each([
+    { to: "One <one@example.test>, Two <two@example.test>" },
+    { to: "one@example.test, two@example.test" },
+    { to: ["One <one@example.test>, Two <two@example.test>"] },
+  ])("accepts fully accounted REST recipient lists: %j", async ({ to }) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: {
+      message_id: "fixture-list", delivered: ["one@example.test", "two@example.test"], queued: [], permanent_bounces: [],
+    } })))
+    await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+      .send({ ...input, to })).resolves.toMatchObject({ providerMessageId: "fixture-list" })
+  })
+
   it.each(["delivered", "queued", "permanent_bounces", "suppressed_recipients"].flatMap((field) =>
     ["", " ", "not-a-mailbox", "recipient@example.test\n"].map((entry) => ({ field, entry })),
   ))("keeps malformed REST $field entries indeterminate: $entry", async ({ field, entry }) => {
