@@ -113,3 +113,8 @@ CMS framework upgrades must use Payload-owned generators and the public Lexical
 re-exports; see [dependency policy](dependency-policy.md#cms-framework-security-group)
 for the exact clipboard exception, migration snapshot baseline and rollback
 boundary. Keep MCP projections unchanged unless their canonical registry changes.
+
+Astro consumers use the exact compatible group in their owning manifests. React
+Compiler remains opt-in and disabled. Keep root Sass peer ownership distinct from
+Payload's exact private Sass dependency; [dependency policy](dependency-policy.md#astro-and-renderer-compatibility)
+records their different Immutable requirements and remaining advisory.

@@ -116,15 +116,53 @@ Next/Payload Browserslist, fast-uri and fast-copy. Payload now exposes Nodemaile
 types; the custom email adapter uses the bundled types and handles address groups,
 nested lists and missing addresses without a provider call during tests.
 
+## Astro and renderer compatibility
+
+On 2026-10-20, [Astro 7.4.1](https://github.com/withastro/astro/releases/tag/astro@7.4.1),
+[Node integration 11.1.9](https://github.com/withastro/astro/releases/tag/@astrojs%2Fnode@11.1.9),
+[React integration 7.1.0](https://github.com/withastro/astro/releases/tag/@astrojs%2Freact@7.1.0),
+Sitemap 3.7.4, Check 0.9.11 and Vite 8.3.4 are stable and eligible under the
+1,440-minute release-age rule. The raised minimum Node 22.22.0 is satisfied by
+the exact Node 24.22.0 LTS runtime. React/DOM remain the exact shared 19.3.1
+identity selected by the CMS upgrade.
+
+The React integration's major update uses version 6 of Vite's React plugin and Oxc for
+JSX/Fast Refresh, removing its Babel option. Neither app configures custom Babel
+transforms, so no application adapter or markup changes are needed. The optional
+React Compiler remains disabled; no experimental Astro rendering/cache features
+are enabled. Renderer standalone SSR, dynamic tenant host resolution, neutral
+unknown-host handling, origin trust and form/appointment ingress remain unchanged.
+Landing stays static on Nginx; copy, SEO, legal content, layouts and interactions
+are unchanged. Shared source and lockfile still trigger all three consuming images.
+
+The root supplies exact Sass 1.105.2 as a workspace build peer for Astro/Vite/Next,
+replacing their old automatically selected Sass/chokidar chain. Payload 3.91.0
+separately pins Sass 1.77.4 as its own dependency. Preserve that upstream pin;
+its transitive braces advisory remains an explicit release blocker. Keep the
+existing global patched Immutable 4.x override for that old Sass, and a narrow
+5.1.9 selector for Sass 1.105.2's required 5.x range. Do not force incompatible
+Immutable majors across the two contexts. Both Sass APIs compile a synthetic
+nested stylesheet in verification. The compatible fflate 0.4.9 patch removes
+PostHog's old compression advisory without changing PostHog or consent behavior.
+
+Renderer unit/host-routing checks, both analytics browser lifecycles and the
+landing responsive/accessibility/phone/keyboard/interaction suite are required.
+A baseline comparison of all nine emitted HTML documents preserves semantic
+DOM/text/attributes, excluding compiler-owned script/style payloads, hash URLs,
+markers and the expected Astro generator-version metadata. This is not byte-for-byte
+bundle or screenshot identity; browser/layout checks and actual unpublished
+packaged-image smokes provide their separate evidence. Do not weaken assertions
+or accept unexplained visual changes after a framework update.
+
 ## Shared dependency matrix
 
 | Dependency | Current workspace ranges | Policy decision |
 | --- | --- | --- |
 | React / React DOM | exact `19.3.1` in apps and shared runtime packages | Retain exact singleton versions. |
-| Astro | `^7.2.0` in landing and renderer | Framework-constrained; align only through an Astro compatibility change. |
+| Astro / Node / React integration | exact `7.4.1` / renderer `11.1.9` / `7.1.0` | Coherent Astro group; retain renderer origin/routing and landing browser contracts. |
 | Next / Payload | CMS-only `16.4.2` / `3.91.0` | CMS framework and schema boundary; do not align with Astro apps. |
 | Tailwind | `^4.3.3` across apps and shared packages | Compare generated CSS and framework support before alignment. |
-| Vite | `^8.2.1` in Astro apps and CMS | Framework/tooling constrained. |
+| Vite | exact `8.3.4` in Astro apps; CMS retains `^8.2.1` | Framework/tooling constrained; test-runner and CMS upgrades remain separate. |
 | Vitest | exact `4.1.10` in all direct consumers | Keep the test runner reproducible; upgrade only as one reviewed toolchain change. |
 | React Hook Form | `^7.85.0` in CMS, with the UI peer range aligned | Peer/runtime compatibility; keep the supported form contract aligned. |
 | PostHog | `^1.415.2` in CMS, landing, and renderer | Privacy-sensitive runtime; retain lifecycle and consent checks. |
@@ -141,7 +179,7 @@ nested lists and missing addresses without a provider call during tests.
 | `@esbuild-kit/core-utils>esbuild: 0.25.12` | Older Drizzle/TSX/Payload graph | Retire only when the owning graph accepts a patched esbuild without breaking CMS generation and tests. |
 | Better Auth XML entries for `fast-xml-parser`, `fast-xml-builder`, `path-expression-matcher`, `xml-naming`, `strnum`, and `anynum` | SSO XML graph repair | Better Auth upstream resolves a safe graph; CMS auth/SSO tests and `pnpm why` confirm the override is unused. |
 | `dompurify: 3.4.17` | Monaco/PostHog compatibility with current DOMPurify security fixes | Retire only after both sanitizer consumers resolve a patched version without the override. |
-| `immutable: 4.3.9` | Sass compatibility with current Immutable.js security fixes | Sass remains on its existing major and the package graph resolves the patched version. |
+| `immutable: 4.3.9` plus `sass@1.105.2>immutable: 5.1.9` | Keep Payload-owned Sass 1.77.4 on patched compatible 4.x; the root build peer Sass 1.105.2 requires compatible 5.x | Recheck each owning Sass dependency range and compile through both contexts before changing these selectors. |
 | `js-yaml: 4.3.2` | Astro/Payload schema tooling compatibility with current YAML security fixes | Retire only after both graphs resolve the patched version without the override. |
 | `postcss: 8.5.26` | Vite/Next/Tailwind compatibility with current PostCSS security fixes | Retire only after Vite and Next resolve a patched compatible version without the override. |
 | `sharp: 0.35.5` | Shared Astro/Next native image dependency pinned to the patched libvips line | Retire only after every framework graph resolves `>=0.35.5` without the override and native image builds remain green. |
@@ -168,22 +206,23 @@ Each exception can be retired only after:
 
 ## Current security disposition
 
-The M06 2026-10-20 production-dependency audit reports **1 critical, 9 high,
-7 moderate and 1 low** entries, down from M05's 8 critical, 35 high, 31 moderate
-and 7 low. No Next, Payload, sharp, Undici, Nodemailer, DOMPurify, YAML,
-Browserslist, fast-uri or fast-copy advisory remains on this graph. Compatible
-Payload/Next transitive updates and patched sanitizer/YAML overrides are included;
-release-age and native-build policy remain unchanged. This is a graph report,
-not proof that every prior condition was exploitable in deployed production.
+The M07 2026-10-20 production-dependency audit reports **0 critical, 1 high,
+0 moderate and 0 low** entries. M06's 1 critical/9 high/7 moderate/1 low and
+M05's earlier larger counts are historical. The Astro/image and devalue/adapter
+findings are resolved by the coherent framework update; compatible fflate
+removes the remaining compression finding. This records the resolved graph,
+not a claim that every old condition was exploitable on production.
 
-The remaining critical advisory is Astro `GHSA-26w7-cxv4-gfx2`, owned by M07.
-Remaining findings include Astro/devalue/adapter chains, shared PostHog's fflate,
-source-map-js and Sass/chokidar/braces; braces currently has no patched version
-in the advisory. These are explicit release blockers for their coherent owning
-updates and current release disposition. Do not suppress them or claim CMS or
-production is universally clear because the top-level framework findings are
-resolved. Re-run the audit and shipped-platform checks before publication or
-deployment. The earlier M05 figures and August clean-audit text are historical.
+The remaining high advisory is `GHSA-vfj7-8cjw-p6xm`: Payload 3.91.0 explicitly
+pins Sass 1.77.4, which retains chokidar 3 and braces 3.0.3. The braces advisory
+has no patched release. Updating the workspace Sass peer removes this chain from
+Astro/Vite/Next peers but cannot change Payload's private exact dependency. Do
+not force an unreviewed replacement, hide it with an audit exclusion, or claim a
+clean production graph. Recheck when Payload updates its owned Sass or when a
+separately reviewed compatibility fix is available, including CMS CSS/build and
+behavioral regressions. Publication/deployment remains blocked pending this
+security disposition and all separately approved operational gates. Re-run audit
+and native/platform evidence at actual release time.
 
 ## Reviewed updates still deferred
 
