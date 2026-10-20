@@ -1,0 +1,390 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-20",
+  "evidenceKind": "official image manifests and Action release identities; not deployment approval or completed verification",
+  "verificationPlatform": "linux/amd64",
+  "images": {
+    "node": {
+      "version": "24.22.0",
+      "reference": "docker.io/library/node:24.22.0-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f",
+      "platforms": [
+        {
+          "digest": "sha256:429bdfbc204b4eabc6438e6d34e4e9d8dd2ca1df8289bcd78cdd3c5db387b7a5",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:5b12456322560dcf9342f7339662bccf8c5665cf0732a8ec8363687aa93c5277",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux",
+            "variant": "v8"
+          }
+        },
+        {
+          "digest": "sha256:26b87499da2851b726b8a3612b874512637034533b298e80307d445836dd4b92",
+          "platform": {
+            "architecture": "s390x",
+            "os": "linux"
+          }
+        }
+      ],
+      "verificationOnly": false
+    },
+    "postgres": {
+      "version": "18.6",
+      "reference": "docker.io/library/postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873",
+      "platforms": [
+        {
+          "digest": "sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:548908d20dac4a46d489f436b744901a64c48b93999223dbd804d59bc62bec74",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v6"
+          }
+        },
+        {
+          "digest": "sha256:4b876a8e668b72c43573a999eee6a06cde0042dcea0b378caaa71bd999f40a8e",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v7"
+          }
+        },
+        {
+          "digest": "sha256:89f747171c4b0af0eacf5984550060be79786dbe286eb60cfa691d79d1e8b23f",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux",
+            "variant": "v8"
+          }
+        },
+        {
+          "digest": "sha256:1d22739c0a64fae400b80b9b7bc66c793915541c6a65977bbe9b8c88d22b3569",
+          "platform": {
+            "architecture": "386",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:7193bcd502992934d36436b3bee8019760af1cd81fcda938e2586e264dac5d5e",
+          "platform": {
+            "architecture": "ppc64le",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:c403bc6b4326fdb6771784116e08bd234d8a7918e753ba4268e1e8b66687dfb9",
+          "platform": {
+            "architecture": "riscv64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:b82b13bd4cb10ae4c9a55c8ac6304248d8b82a629b598c934c05ebf4f49d522d",
+          "platform": {
+            "architecture": "s390x",
+            "os": "linux"
+          }
+        }
+      ],
+      "verificationOnly": false
+    },
+    "postgres-rehearsal-baseline": {
+      "version": "18.4",
+      "reference": "docker.io/library/postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+      "platforms": [
+        {
+          "digest": "sha256:b6a16ed0eb96e2c362811f7eeb951eac8b459e7b40be4149ea5444aa7c65569b",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:bf2c57dd1e9192c65374fe57d3ae3a113e04389d2e844acdf784f3dabbe6e427",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v6"
+          }
+        },
+        {
+          "digest": "sha256:d87c01d266080e30e1be2f313a8cad6c85bf9cdd8dac272e08399844c1d8f072",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v7"
+          }
+        },
+        {
+          "digest": "sha256:122c9942437efcbbb8d595fc578dee7d26ee1543c2a8634d183adfa4a1e55b4d",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux",
+            "variant": "v8"
+          }
+        },
+        {
+          "digest": "sha256:bbf8ecc4093dbbaacfc9d62548ca728d33d6d5a6ad236017b6c611e32b5d7cfb",
+          "platform": {
+            "architecture": "386",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:69145b64e86b67baa17b129a0be7e9aadf9abb54d636152930f435aab85129f8",
+          "platform": {
+            "architecture": "ppc64le",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:4788c9760e849c82598428bb23045e9ba6a4aba529994232f4032227c0413493",
+          "platform": {
+            "architecture": "riscv64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:b12c1eead46b0baceff387df7d8a79423494db35fa9a2e3d326718b5879c1d42",
+          "platform": {
+            "architecture": "s390x",
+            "os": "linux"
+          }
+        }
+      ],
+      "verificationOnly": true
+    },
+    "nginx": {
+      "version": "1.31.7",
+      "reference": "docker.io/library/nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d",
+      "platforms": [
+        {
+          "digest": "sha256:138af827713b7671ef4ee2deea73bc6f08ae265130ce350307e3e7b52cd4b51b",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:570b6b765cea8c8ca21f880cbf64e81ceef94b5105192b32a725ddb916ca3ae0",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v6"
+          }
+        },
+        {
+          "digest": "sha256:2fb752c6135c8ca06b959fbc1e35210a122de5cef509a030e4b7fbd8ef875187",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v7"
+          }
+        },
+        {
+          "digest": "sha256:2d829ce6bc998fecd1cd72204c358c0c0614bab5edd9471dfcf8b92a49f4d323",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux",
+            "variant": "v8"
+          }
+        },
+        {
+          "digest": "sha256:7ddef4fb1b16816185c5e3ca4c76086e2db0d37f2e9eee57b9a3fb5182cca562",
+          "platform": {
+            "architecture": "386",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:e37661278194f12729015b8d9f6a364b9fdc8849d0c11d2d24ec161a75a4d741",
+          "platform": {
+            "architecture": "ppc64le",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:d9cab13c373e6a467fde4b37ae8b708247a9ab05b2e853b9b0633242ae503f8e",
+          "platform": {
+            "architecture": "riscv64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:691918406154aab2d61e77836c013a57ca92680e502b84ecf9ba8c67b9d06041",
+          "platform": {
+            "architecture": "s390x",
+            "os": "linux"
+          }
+        }
+      ],
+      "verificationOnly": false
+    },
+    "cloudflared": {
+      "version": "2026.10.1",
+      "reference": "docker.io/cloudflare/cloudflared:2026.10.1@sha256:a15a3b50b8dabd57ac2090e9484c0247dba9dfa1f0df4d298d4317f9d69eb2d5",
+      "platforms": [
+        {
+          "digest": "sha256:3c0502d2da137286136b44f5b1d0d0be7030cc4833db9f53cff86beadad6cefa",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:6d9f470f8df4161f90df39cd97719cdb8d02a8ade3885ab9b0ec15a495820b79",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        }
+      ],
+      "verificationOnly": false,
+      "nativeAmd64Sha256": "sha256:3bfc539f45d2620c71debb7a86be0efa737ed5ccbad9eb85c787116900e5c586",
+      "releaseUrl": "https://github.com/cloudflare/cloudflared/releases/tag/2026.10.1"
+    },
+    "dockerfile": {
+      "version": "1.28.0",
+      "reference": "docker.io/docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b",
+      "platforms": [
+        {
+          "digest": "sha256:a14763ac9c4a34bf3447636e8f36ca714972817d425e40228bb3263be2769448",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:da84f4c7220ca8b66b7a0be6066d5e559878c2248beb92bdc8530dd9356bd711",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:4b1e1bb58a7ad881f9795a56cf793faec9274ad0509458e3f9670595d834faca",
+          "platform": {
+            "architecture": "s390x",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:6f264da7796b50bb48295a5e38a0ecbfc12512b4cdbda8cf9a5a2a7581235369",
+          "platform": {
+            "architecture": "mips64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:73d2d42748c4167f2b262acbadcaa652323d4c1ac9e3044c3f5f8d268862972c",
+          "platform": {
+            "architecture": "riscv64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:460d1d218c88e41ae58b091d5e9ceba59a1bc991d50967ae17d0e14f5f922deb",
+          "platform": {
+            "architecture": "386",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:4d4983b6c211d11694c93fab2b3d8f2534c3c51b64a2b6fb74dd1d25d6a9f38f",
+          "platform": {
+            "architecture": "ppc64le",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:725c3031ee4b25be374bce6107b60fa165a3b56fa5679b73fac22d34ca8e7a2f",
+          "platform": {
+            "architecture": "mips64le",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:0eca591494d8b1a74e1ca55bbe4ba331c2f5a7d88b32d7dea9dd0783d07629f7",
+          "platform": {
+            "architecture": "mips",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:dfd5f7c295e0df97e903e6a592c9a4072966cd56ebe98f11c08f8afdfbc87deb",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v7"
+          }
+        },
+        {
+          "digest": "sha256:14a1d440861ee62e90af23b625ea268a9f435641be5179622b972eabf1bd242b",
+          "platform": {
+            "architecture": "mipsle",
+            "os": "linux"
+          }
+        }
+      ],
+      "verificationOnly": false
+    }
+  },
+  "actions": {
+    "actions/checkout": {
+      "version": "v7.0.1",
+      "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "releaseUrl": "https://github.com/actions/checkout/releases/tag/v7.0.1",
+      "publishedAt": "2026-07-20T15:10:05Z"
+    },
+    "actions/setup-node": {
+      "version": "v7.1.0",
+      "commit": "949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "releaseUrl": "https://github.com/actions/setup-node/releases/tag/v7.1.0",
+      "publishedAt": "2026-10-08T02:52:34Z"
+    },
+    "actions/upload-artifact": {
+      "version": "v7.0.2",
+      "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "releaseUrl": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+      "publishedAt": "2026-10-07T10:08:14Z"
+    },
+    "actions/download-artifact": {
+      "version": "v8.0.2",
+      "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "releaseUrl": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+      "publishedAt": "2026-10-07T10:09:51Z"
+    },
+    "pnpm/action-setup": {
+      "version": "v6.1.0",
+      "commit": "ea17c68df8912ef543352723c149a84f56e3d413",
+      "releaseUrl": "https://github.com/pnpm/action-setup/releases/tag/v6.1.0",
+      "publishedAt": "2026-09-05T07:31:28Z"
+    }
+  },
+  "deferred": [
+    {
+      "component": "PostgreSQL",
+      "version": "19rc1",
+      "reason": "prerelease; 18.6 is current stable, no data-directory major change authorized",
+      "recheck": "official stable release and separately assessed major migration requirement"
+    },
+    {
+      "component": "cloudflared",
+      "version": "2026.10.2",
+      "publishedAt": "2026-10-20T09:17:30Z",
+      "reason": "under the approved 1440-minute release-age window at selection",
+      "recheckAt": "2026-10-21T09:17:30Z"
+    }
+  ]
+}

@@ -118,3 +118,9 @@ Astro consumers use the exact compatible group in their owning manifests. React
 Compiler remains opt-in and disabled. Keep root Sass peer ownership distinct from
 Payload's exact private Sass dependency; [dependency policy](dependency-policy.md#astro-and-renderer-compatibility)
 records their different Immutable requirements and remaining advisory.
+
+Infrastructure updates use [reviewed immutable identities](infrastructure-images.json)
+and the owning `infrastructure:check`, `infrastructure:tunnel` and `image:verify`
+commands. Verify exact publisher digests before using an isolated cloudflared
+binary. Offline validation requires no provider login; retain its boundary from
+live tunnel reconciliation and preserve existing production volumes.

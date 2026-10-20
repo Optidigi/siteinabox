@@ -16,6 +16,26 @@ operations.
 It captures the gotchas hit during the first production deploy so they don't
 bite the next operator.
 
+## Reviewed images and rehearsal boundary
+
+[Infrastructure identities](../infrastructure-images.json) records the current
+image digests, Action commits and verified target architecture. Literal pins in
+Compose and Dockerfiles must match it. `pnpm infrastructure:check` is read-only.
+The unpublished CMS image smoke also validates cloudflared offline with network
+disabled and rehearses PostgreSQL 18.4 to 18.6 using real migrations and a
+populated fixture on a newly owned verification volume. Retain its runtime,
+restart and ingress evidence with the exact source/run/image record.
+
+This preserves `siab-payload_postgres-data`, `/var/lib/postgresql`, existing data
+bind mounts, user assumptions, secrets, network/origin isolation and health
+contracts. The rehearsal never uses the production volume or real tunnel token.
+An image pin/source merge is not a production pull, restart or deployment
+approval. Obtain the exact operational gate before applying it. PostgreSQL stays
+on major 18; a future major requires an assessed data-directory migration and
+rollback/restore plan. Prefer a forward patched minor; never delete/recreate the
+volume to recover from an upgrade. Application/data restore evidence remains a
+separate release requirement; server recovery protocols are outside this change.
+
 ## Prerequisites
 
 Before running anything in this document, the following must be true:

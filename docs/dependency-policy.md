@@ -172,6 +172,52 @@ or accept unexplained visual changes after a framework update.
 | Playwright | exact `1.62.1` in direct consumers | Retain exact browser/tool alignment. |
 | Zod | `^4.4.3` across apps and packages | Shared contract runtime; preserve lockfile identity. |
 
+## Infrastructure identities
+
+[The reviewed image and Action inventory](infrastructure-images.json) records
+execution-time versions, immutable publisher digests, Linux platform descriptors
+and official Action release commits. Dockerfiles/Compose/workflows keep literal
+pins; `pnpm infrastructure:check` checks their agreement. It does not authorize a
+deployment or attest unexecuted image tests. All six workflows retain their event,
+permission, required-context and publication boundaries.
+
+Node remains 24.22.0 LTS on the digest-pinned Alpine base. The Dockerfile frontend
+is the published 1.28.0 image pinned by digest. Landing retains Nginx's existing
+mainline channel, now exact 1.31.7 with its publisher digest; this is a released
+mainline build, distinct from the older 1.30 stable branch. Application source,
+Nginx configuration, content and visuals are unchanged. Both Node runners retain
+UID 1000; the actual image verifier records architecture and Alpine release, and
+processes native sharp pixels through Next.
+
+PostgreSQL 18.6 is the [current supported stable minor](https://www.postgresql.org/support/versioning/).
+19 RC1 is not eligible. Production/dev/CI use the same reviewed 18.6 image without
+changing the existing major, PGDATA mount, volume names, ports, credentials or
+network boundaries. The verification-only 18.4 image is a populated same-major
+baseline, not a deployment candidate. The CMS image smoke runs real committed
+migrations, preserves a sanitized tenant/theme fixture and schema/history through
+an 18.4-to-18.6 binary/container replacement on one uniquely labelled owned volume,
+then reruns the actual boot entrypoint and checks that no migration is pending.
+It checks the database's actual version, OS and unchanged PostgreSQL UID. The
+volume is eligible for cleanup only while its ownership label still matches;
+this is not a production backup/restore or Amicare rollout claim.
+
+Cloudflared 2026.10.1 is the selected eligible release. 2026.10.2 was published on
+2026-10-20 at 09:17:30 UTC and was under the approved 1,440-minute age window at
+selection; recheck it after 2026-10-21 at 09:17:30 UTC with fresh compatibility and
+security evidence. The native Linux AMD64 validation binary is checked against
+its publisher SHA-256. The image verifier uses the immutable connector image with
+network disabled and Compose UID 1000, compiling the existing ingress builder for
+both services. Actual `ingress validate` / `ingress rule` commands verify service
+targets, unknown-host 404 handling and rejection of a missing final catchall.
+These offline checks neither connect a tunnel nor attest installed provider state.
+
+Checkout 7.0.1 and Download Artifact 8.0.2 already matched the current publisher
+releases. Setup Node 7.1.0, Upload Artifact 7.0.2 and pnpm Setup 6.1.0 are refreshed
+by exact release commit; pnpm Setup explicitly supports pnpm 12. Registry cache
+exports, image publication and live replacement remain separate approved gates.
+Recheck release support, advisories and immutable identities at actual rollout;
+never replace persisted volumes as an update or rollback shortcut.
+
 ## Root overrides
 
 | Entry | Current reason | Removal gate |
