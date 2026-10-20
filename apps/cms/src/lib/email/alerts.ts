@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto"
 import type { MailIntent, MailLogPayload, MailRetryState, MailTenantRef } from "@/lib/email/sendEmail"
 import type { OperationalAlert } from "@/payload-types"
 import type { Where } from "payload"
+import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 
 const ALERT_WINDOW_MINUTES = 15
 const REPEATED_FAILURE_THRESHOLD = 3
@@ -51,7 +52,7 @@ export async function recordMailFailureAlert(payload: MailAlertPayload | undefin
   const important = isImportantFailure(input)
   if (!repeated && !important) return
 
-  const severity = input.retryState === "permanent" || important ? "error" : "warning"
+  const severity = ["permanent", "manual_review"].includes(input.retryState) || important ? "error" : "warning"
   const reason = repeated ? "repeated_mail_failures" : "important_mail_failure"
   const alert = compactAlertData({
     severity,
@@ -86,7 +87,7 @@ export async function recordMailFailureAlert(payload: MailAlertPayload | undefin
 }
 
 function isImportantFailure(input: MailFailureAlertInput) {
-  return input.retryState === "permanent" || importantFailureIntents.has(input.flow)
+  return ["permanent", "manual_review"].includes(input.retryState) || importantFailureIntents.has(input.flow)
 }
 
 async function countRecentFailures(payload: MailAlertPayload, input: MailFailureAlertInput) {
@@ -118,13 +119,14 @@ async function countRecentFailures(payload: MailAlertPayload, input: MailFailure
       flow: input.flow,
       tenant: formatTenantRef(input.tenant),
       provider: input.provider,
-      error: error instanceof Error ? error.message : "Unknown mail alert query error",
+      error: redactOperationalMessage(error),
     })
     return undefined
   }
 }
 
 function suggestedAction(input: MailFailureAlertInput) {
+  if (input.retryState === "manual_review") return "Mail acceptance is unknown. Reconcile provider evidence before any resend; an automatic retry can duplicate delivery."
   if (input.retryState === "permanent") {
     return "Check sender/domain verification, recipient validity, and provider rejection code."
   }
@@ -203,7 +205,7 @@ async function upsertOperationalAlert(
     payload.logger?.warn?.("[mail] failed to write operational alert", {
       source: input.source,
       dedupeKey: input.dedupeKey,
-      error: error instanceof Error ? error.message : "Unknown operational alert write error",
+      error: redactOperationalMessage(error),
     })
   }
 }

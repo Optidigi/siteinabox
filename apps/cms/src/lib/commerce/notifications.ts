@@ -126,6 +126,7 @@ async function claimDelivery(
   now: Date,
 ): Promise<CommerceNotificationDelivery | null> {
   if (delivery.status === "sent" || delivery.status === "cancelled") return null
+  if (delivery.status === "failed" && !delivery.nextAttemptAt) return null
   if (delivery.status === "processing" && delivery.leaseUntil && new Date(delivery.leaseUntil) > now) {
     return null
   }
@@ -138,7 +139,8 @@ async function claimDelivery(
         { id: { equals: delivery.id } },
         {
           or: [
-            { status: { in: ["queued", "failed"] } },
+            { and: [{ status: { in: ["queued", "failed"] } }, { nextAttemptAt: { less_than_equal: now.toISOString() } }] },
+            { and: [{ status: { equals: "queued" } }, { nextAttemptAt: { exists: false } }] },
             {
               and: [
                 { status: { equals: "processing" } },
@@ -338,8 +340,7 @@ export async function deliverCommerceNotification(input: {
     })
     return "sent"
   } catch (error) {
-    const retryable = claimed.kind === "site_live_handoff" ||
-      error instanceof MailSendError &&
+    const retryable = error instanceof MailSendError &&
         error.normalized.retryState === "retryable"
     await input.payload.update({
       collection: "commerce-notification-deliveries",

@@ -42,6 +42,14 @@ describe("retryLegalDelivery", () => {
     expect(payload.db.rollbackTransaction).toHaveBeenCalledWith("tx-1")
   })
 
+  it("requires provider reconciliation before retrying an indeterminate write", async () => {
+    const { payload } = createPayload({ retryState: "manual_review" })
+    await expect(retryLegalDelivery({ payload, deliveryId: 7, actorUserId: 2, actorEmail: "admin@example.test", reason: "Nogmaals proberen" })).rejects.toThrow("providerbewijs")
+    expect(payload.create).not.toHaveBeenCalled()
+    expect(payload.update).not.toHaveBeenCalled()
+    expect(payload.db.rollbackTransaction).toHaveBeenCalledWith("tx-1")
+  })
+
   it("rejects non-failed deliveries and vague reasons", async () => {
     const { payload } = createPayload({ status: "sent" })
     await expect(retryLegalDelivery({ payload, deliveryId: 7, actorUserId: 2, actorEmail: "admin@example.test", reason: "Nogmaals proberen" })).rejects.toThrow("Alleen een mislukte")

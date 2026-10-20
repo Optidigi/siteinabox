@@ -312,7 +312,7 @@ export async function processLegalRequirementNotifications(input: {
       sent += 1
     } catch (error) {
       const normalized = error instanceof MailSendError ? error.normalized : null
-      const permanent = normalized?.retryState === "permanent"
+      const permanent = normalized?.retryState === "permanent" || normalized?.retryState === "manual_review"
       const message = redactOperationalMessage(normalized?.providerErrorMessage ?? (error instanceof Error ? error.message : "Unknown email delivery error"))
       await input.payload.update({
         collection: "legal-notification-deliveries",

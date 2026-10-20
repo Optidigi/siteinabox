@@ -228,17 +228,18 @@ export async function getLegalAttentionItems(
 
   const ranked: Array<LegalAttentionRow & { rank: number; time: number }> = []
   for (const item of deliveries.docs) {
+    const manualReview = item.retryState === "manual_review"
     const permanent = item.retryState === "permanent"
     ranked.push({
       id: `delivery-${item.id}`,
       kind: "delivery",
       severity: permanent ? "destructive" : "warning",
-      title: permanent ? "Definitieve verzendfout" : "Verzending opnieuw proberen",
+      title: manualReview ? "Bezorguitkomst controleren" : permanent ? "Definitieve verzendfout" : "Verzending opnieuw proberen",
       tenant: tenantLabel(item.tenant),
       subject: maskEmailRecipient(text(item.recipient)),
-      detail: permanent ? "De provider heeft deze juridische kennisgeving definitief geweigerd." : "De juridische kennisgeving kon niet worden verzonden.",
+      detail: manualReview ? "Acceptatie door de provider is onbekend. Controleer providerbewijs voordat u opnieuw verzendt." : permanent ? "De provider heeft deze juridische kennisgeving definitief geweigerd." : "De juridische kennisgeving kon niet worden verzonden.",
       ageOrDeadline: iso(item.lastAttemptAt),
-      status: permanent ? "permanent" : "retryable",
+      status: manualReview ? "manual_review" : permanent ? "permanent" : "retryable",
       href: `/legal/deliveries/${item.id}`,
       rank: permanent ? 0 : 2,
       time: new Date(item.lastAttemptAt ?? 0).getTime(),

@@ -204,7 +204,7 @@ const markFailed = async (
       nextAttemptAt: retryable ? retryAt(now, attemptCount) : PERMANENT_RETRY_AT,
       provider: normalized?.provider ?? null,
       providerMessageId: normalized?.providerMessageId ?? null,
-      retryState: retryable ? "retryable" : "permanent",
+      retryState: normalized?.retryState === "manual_review" ? "manual_review" : retryable ? "retryable" : "permanent",
       lastError: errorMessage,
     },
     depth: 0,

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload"
+import { mailRetryStates } from "@/lib/email/sendEmail"
 import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 
@@ -36,7 +37,7 @@ export const LegalNotificationDeliveries: CollectionConfig = {
     { name: "sentAt", type: "date", index: true },
     { name: "provider", type: "text" },
     { name: "providerMessageId", type: "text" },
-    { name: "retryState", type: "select", options: options(["none", "retryable", "permanent"]) },
+    { name: "retryState", type: "select", options: options(mailRetryStates) },
     { name: "lastError", type: "textarea" },
   ],
 }

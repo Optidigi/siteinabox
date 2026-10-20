@@ -49,6 +49,7 @@ git status --short
 - Do not import one application's components into another application.
 - Preserve existing provider boundaries for domains, DNS/proxy/email, analytics,
   and payments. External writes always require explicit approval.
+- For outbound-mail changes, read `docs/contracts/email.md`.
 
 ## CMS-specific safety
 

@@ -132,3 +132,10 @@ against production or let a CLI migrate provider account identifiers. The
 [authentication cutover contract](contracts/authentication.md#upgrade-and-cutover)
 owns those data and provider prerequisites. Existing environment names and
 provider credential routing remain unchanged.
+
+Outbound mail configuration inspection is the pure helper in
+`apps/cms/src/lib/email/configuration.ts`, surfaced as redacted metadata by CMS health.
+It does not construct/verify a transport or send a probe. The health endpoint's
+existing database/filesystem probes still make the endpoint unsuitable for strict
+read-only preflight. Follow the [mail contract](contracts/email.md) for
+indeterminate outcomes and the separate live-delivery gate.

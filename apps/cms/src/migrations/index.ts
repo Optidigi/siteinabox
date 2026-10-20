@@ -140,6 +140,7 @@ import * as migration_20260902_090000_appointment_section from './20260902_09000
 import * as migration_20260902_100000_appointment_effects from './20260902_100000_appointment_effects';
 import * as migration_20260905_200000_builder_sessions from './20260905_200000_builder_sessions';
 import * as migration_20261020_181335_cms_framework_security from './20261020_181335_cms_framework_security';
+import * as migration_20261020_214100_mail_transport_readiness from './20261020_214100_mail_transport_readiness';
 
 export const migrations = [
   {
@@ -850,6 +851,11 @@ export const migrations = [
   {
     up: migration_20261020_181335_cms_framework_security.up,
     down: migration_20261020_181335_cms_framework_security.down,
-    name: '20261020_181335_cms_framework_security'
+    name: '20261020_181335_cms_framework_security',
+  },
+  {
+    up: migration_20261020_214100_mail_transport_readiness.up,
+    down: migration_20261020_214100_mail_transport_readiness.down,
+    name: '20261020_214100_mail_transport_readiness'
   },
 ];

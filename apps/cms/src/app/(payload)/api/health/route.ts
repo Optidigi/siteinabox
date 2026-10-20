@@ -3,6 +3,7 @@ import path from "node:path"
 import { NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { inspectMailConfiguration } from "@/lib/email/configuration"
 import { normalizeBuildRevision } from "@/lib/health/normalizeBuildRevision"
 
 /**
@@ -46,6 +47,7 @@ export async function GET() {
       db: dbOk ? "connected" : "down",
       dataDir: dirOk ? "writable" : "unwritable",
       revision: normalizeBuildRevision(process.env.SIAB_BUILD_REVISION),
+      mail: inspectMailConfiguration(),
     },
     {
       status: ok ? 200 : 503,

@@ -33,7 +33,7 @@ describe("sendEmail", () => {
     delete process.env.CLOUDFLARE_EMAIL_API_TOKEN
     globalThis.fetch = mocks.fetch
     mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail })
-    mocks.sendMail.mockResolvedValue({ messageId: "test-message" })
+    mocks.sendMail.mockImplementation(async (message: { to: string | string[] }) => ({ messageId: "test-message", accepted: Array.isArray(message.to) ? message.to : [message.to], rejected: [] }))
     mocks.fetch.mockResolvedValue({
       ok: true,
       json: vi.fn(async () => ({
@@ -92,7 +92,7 @@ describe("sendEmail", () => {
       to: "customer@example.com",
       subject: "Preview access",
       html: "<p>Login</p>",
-    })).rejects.toThrow("CLOUDFLARE_EMAIL_SMTP_TOKEN missing or invalid")
+    })).rejects.toThrow("MAIL_TRANSPORT_NOT_CONFIGURED")
     expect(mocks.createTransport).not.toHaveBeenCalled()
 
     process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN = "<cloudflare-email-smtp-token>"
@@ -100,7 +100,7 @@ describe("sendEmail", () => {
       to: "customer@example.com",
       subject: "Preview access",
       html: "<p>Login</p>",
-    })).rejects.toThrow("CLOUDFLARE_EMAIL_SMTP_TOKEN missing or invalid")
+    })).rejects.toThrow("MAIL_TRANSPORT_NOT_CONFIGURED")
     expect(mocks.createTransport).not.toHaveBeenCalled()
   })
 
@@ -116,7 +116,7 @@ describe("sendEmail", () => {
       payload,
     }, {
       now: () => new Date("2026-07-01T12:01:00.000Z"),
-    })).rejects.toThrow("CLOUDFLARE_EMAIL_SMTP_TOKEN missing or invalid")
+    })).rejects.toThrow("MAIL_TRANSPORT_NOT_CONFIGURED")
 
     expect(mocks.createTransport).not.toHaveBeenCalled()
     expect(payload.create).toHaveBeenCalledWith({
@@ -128,8 +128,8 @@ describe("sendEmail", () => {
         recipient: "customer@example.com",
         status: "failed",
         provider: "cloudflare-smtp",
-        providerErrorMessage: "CLOUDFLARE_EMAIL_SMTP_TOKEN missing or invalid - cannot send email",
-        retryState: "none",
+        providerErrorMessage: expect.stringContaining("MAIL_TRANSPORT_NOT_CONFIGURED"),
+        retryState: "permanent",
         failedAt: "2026-07-01T12:01:00.000Z",
       }),
     })
@@ -337,9 +337,9 @@ describe("sendEmail", () => {
     expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
       collection: "mail-logs",
       data: expect.objectContaining({
-        status: "failed",
-        providerErrorCode: "E_CLOUDFLARE_DISPOSITION_UNKNOWN",
-        retryState: "none",
+        status: "indeterminate",
+        providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE",
+        retryState: "manual_review",
       }),
     }))
   })
@@ -493,8 +493,8 @@ describe("sendEmail", () => {
     })
     const expectation = expect(result).rejects.toMatchObject({
       normalized: {
-        providerErrorCode: "ETIMEDOUT",
-        retryState: "retryable",
+        providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE",
+        retryState: "manual_review",
       },
     })
     await vi.advanceTimersByTimeAsync(1_000)
@@ -505,9 +505,9 @@ describe("sendEmail", () => {
       overrideAccess: true,
       data: expect.objectContaining({
         flow: "auth.magic_link",
-        status: "failed",
-        providerErrorCode: "ETIMEDOUT",
-        retryState: "retryable",
+        status: "indeterminate",
+        providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE",
+        retryState: "manual_review",
         failedAt: "2026-07-01T12:02:00.000Z",
       }),
     })
@@ -653,7 +653,7 @@ describe("sendEmail", () => {
       responseCode: 503,
     }), "cloudflare-rest")).toMatchObject({
       provider: "cloudflare-rest",
-      retryState: "retryable",
+      retryState: "manual_review",
     })
     expect(normalizeProviderError(Object.assign(new Error("invalid request"), {
       responseCode: 400,
@@ -661,7 +661,7 @@ describe("sendEmail", () => {
       provider: "cloudflare-rest",
       retryState: "permanent",
     })
-    for (const responseCode of [408, 429]) {
+    for (const responseCode of [429]) {
       expect(normalizeProviderError(Object.assign(new Error("retry later"), {
         responseCode,
       }), "cloudflare-rest")).toMatchObject({ retryState: "retryable" })
@@ -824,6 +824,7 @@ describe("sendEmail", () => {
     })
     expect(normalizeProviderError(Object.assign(new Error("socket timed out"), {
       code: "ETIMEDOUT",
+      command: "CONN",
     }))).toMatchObject({
       providerErrorCode: "ETIMEDOUT",
       retryState: "retryable",

@@ -1,4 +1,5 @@
 import type { CollectionBeforeChangeHook, CollectionConfig } from "payload"
+import { mailRetryStates } from "@/lib/email/sendEmail"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 
@@ -76,7 +77,7 @@ export const AppointmentNotificationDeliveries: CollectionConfig = {
     { name: "sentAt", type: "date", index: true },
     { name: "provider", type: "text" },
     { name: "providerMessageId", type: "text" },
-    { name: "retryState", type: "select", options: options(["none", "retryable", "permanent"]) },
+    { name: "retryState", type: "select", options: options(mailRetryStates) },
     { name: "lastError", type: "textarea" },
   ],
 }

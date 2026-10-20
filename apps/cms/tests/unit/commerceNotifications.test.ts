@@ -3,13 +3,13 @@ import { asPayload, type MockDoc } from "../_helpers/mockPayload"
 
 const mailMocks = vi.hoisted(() => {
   class MockMailSendError extends Error {
-    normalized: { retryState: "retryable" | "permanent" }
-    constructor(retryState: "retryable" | "permanent") {
+    normalized: { retryState: "retryable" | "permanent" | "manual_review" }
+    constructor(retryState: "retryable" | "permanent" | "manual_review") {
       super("mail failed")
       this.normalized = { retryState }
     }
   }
-  return { MockMailSendError }
+  return { MockMailSendError, retryHandoff: vi.fn(async () => "failed") }
 })
 
 vi.mock("@/lib/email/sendEmail", () => ({
@@ -17,6 +17,7 @@ vi.mock("@/lib/email/sendEmail", () => ({
   asMailLogPayload: (value: unknown) => value,
   sendEmail: vi.fn(async () => ({ status: "sent" })),
 }))
+vi.mock("@/lib/publish/liveHandoffEmail", () => ({ retryLiveHandoffForBillingAgreement: mailMocks.retryHandoff }))
 
 import {
   deliverCommerceNotification,
@@ -236,6 +237,25 @@ describe("commerce notification delivery evidence", () => {
       subject: "Betaling ontvangen voor Site in a Box",
       text: expect.stringContaining("De domeinregistratie"),
     }))
+  })
+
+  it("does not automatically resend an indeterminate mail write", async () => {
+    const store = createPayload()
+    const delivery = await ensureCommerceNotification({ payload: store.payload, kind: "payment_failed_0d", tenantId: 1, recipient: "client@example.com", eventAt: "2026-08-01T10:00:00.000Z", billingAgreementId: 900 })
+    vi.mocked(sendEmail).mockRejectedValueOnce(new mailMocks.MockMailSendError("manual_review"))
+    await deliverCommerceNotification({ payload: store.payload, deliveryId: delivery.id, now: new Date("2026-08-01T10:00:00.000Z") })
+    expect(store.deliveries[0]).toMatchObject({ status: "failed", nextAttemptAt: null })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: delivery.id, now: new Date("2026-08-01T10:00:00.000Z") })).resolves.toBe("skipped")
+    expect(vi.mocked(sendEmail)).toHaveBeenCalledOnce()
+  })
+
+  it("holds live handoff when its wrapper cannot establish a safe retry outcome", async () => {
+    const store = createPayload()
+    const delivery = await ensureCommerceNotification({ payload: store.payload, kind: "site_live_handoff", tenantId: 1, recipient: "client@example.com", eventAt: "2026-08-01T10:00:00.000Z", billingAgreementId: 900 })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: delivery.id, now: new Date("2026-08-01T10:00:00.000Z") })).resolves.toBe("failed")
+    expect(store.deliveries[0]).toMatchObject({ status: "failed", nextAttemptAt: null })
+    await expect(deliverCommerceNotification({ payload: store.payload, deliveryId: delivery.id, now: new Date("2026-08-01T10:00:00.000Z") })).resolves.toBe("skipped")
+    expect(mailMocks.retryHandoff).toHaveBeenCalledOnce()
   })
 
   it("persists a retry lease after a transient mail failure", async () => {

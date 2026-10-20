@@ -266,6 +266,11 @@ const matchesWhere = (doc: MockDoc, where: MockWhere | undefined): boolean => {
         ? value != null
         : value == null
     }
+    if (condition && typeof condition === "object" && "less_than_equal" in condition) {
+      const limit = asMockDoc(condition).less_than_equal
+      if (typeof value === "string" && typeof limit === "string") return new Date(value).getTime() <= new Date(limit).getTime()
+      return typeof value === "number" && typeof limit === "number" && value <= limit
+    }
     return value === condition
   })
 }

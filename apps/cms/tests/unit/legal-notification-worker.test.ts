@@ -9,6 +9,7 @@ vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
 })
 
 import { dueFollowupKindForRequirement, processLegalRequirementNotifications } from "@/lib/jobs/sendLegalRequirementNotifications"
+import { MailSendError } from "@/lib/email/sendEmail"
 
 const createPayload = () => {
   let id = 100
@@ -91,6 +92,13 @@ describe("legal notification worker", () => {
     expect(requirement.status).toBe("failed")
     expect(deliveries[0]!).toMatchObject({ status: "failed", retryState: "retryable", attemptCount: 1 })
     expect(new Date(String(deliveries[0]!.nextAttemptAt)).getTime()).toBeGreaterThan(now.getTime())
+  })
+
+  it("preserves indeterminate acceptance for manual review without scheduling another send", async () => {
+    const { payload, deliveries } = createPayload()
+    mocks.sendEmail.mockRejectedValueOnce(new MailSendError({ provider: "cloudflare-rest", providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", providerErrorMessage: "Acceptance unknown; reconcile before retry", retryState: "manual_review" }))
+    await processLegalRequirementNotifications({ payload, now: new Date("2026-07-11T12:00:00Z") })
+    expect(deliveries[0]).toMatchObject({ status: "failed", retryState: "manual_review", nextAttemptAt: "9999-12-31T00:00:00.000Z" })
   })
 
   it("emails a direct notice once without presenting an acceptance action", async () => {
