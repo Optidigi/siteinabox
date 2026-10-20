@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "crypto"
+import { asRecord } from "@/lib/record"
 import type { Access, ArrayFieldValidation, CollectionBeforeDeleteHook, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess, PayloadRequest, Where } from "payload"
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
@@ -82,9 +83,23 @@ const canOwnerUpdateRoleTenantField: FieldAccess = ({ data, doc, req }) => {
   return tenantRowsMatchOnly(nextTenants, ownTenantId)
 }
 
+// Evaluate the original requested shape once, before field access can hide it.
+const canOwnerCreateUser = (user: User | null | undefined, data: unknown): boolean => {
+  const input = asRecord(data)
+  return user?.role === "owner" && user.tenants?.length === 1 &&
+    (input?.role === "editor" || input?.role === "viewer") &&
+    tenantRowsMatchOnly(input.tenants, ownerTenantIdOf(user))
+}
+
+const rejectUnsafeOwnerUserCreate: CollectionBeforeOperationHook = ({ args, operation, req }) => {
+  if (operation === "create" && args.overrideAccess !== true && req.user?.role === "owner" &&
+      !canOwnerCreateUser(req.user, args.data)) throw new Forbidden(req.t)
+  return args
+}
+
 // Field-access gate for `role.access.create` AND `tenants.access.create` ONLY.
-// Update access on these fields stays `isSuperAdminField` — the relaxation
-// here is CREATE-only; the stolen-cookie PATCH vector (audit P0 #2/#3) must
+// Update access retains its separate owner-safe gate; this authority change
+// is CREATE-only. The stolen-cookie PATCH vector (audit P0 #2/#3) must
 // remain closed and is verified by the AMD-1 test's update-access guard case.
 //
 // Admits exactly:
@@ -122,16 +137,7 @@ const canCreateUserField: FieldAccess = ({ req, data }) => {
   // own tenant. Owner cannot mint another owner (no role-promotion within
   // tenant) or a super-admin (re-arm guard for P0 #2/#3); cannot invite
   // into a tenant they don't own (T1 cross-tenant guard).
-  if (req.user.role === "owner") {
-    if (data?.role !== "editor" && data?.role !== "viewer") return false
-    const own = ownerTenantIdOf(req.user)
-    if (own == null) return false
-    const tenants = (data)?.tenants
-    if (!Array.isArray(tenants) || tenants.length !== 1) return false
-    const target = tenants[0]?.tenant
-    if (target == null) return false
-    return String(target) === String(own)
-  }
+  if (req.user.role === "owner") return canOwnerCreateUser(req.user, data)
 
   // D) editor / viewer / any other authed role → never permitted on create.
   return false
@@ -429,7 +435,7 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     // beforeOperation runs at the earliest collection-level point, BEFORE
-    // any field-level access strip. Three hooks compose; all short-circuit
+    // any field-level access strip. Existing hooks retain their order; all short-circuit
     // on operations they don't care about, so order does not affect
     // correctness — APPENDING preserves prior contracts:
     //   [0] AMD-3 — honest 403 (instead of AMD-2's silent strip) when a
@@ -450,6 +456,8 @@ export const Users: CollectionConfig = {
       rejectBogusAuthForgotPassword,
       rejectNonSuperAdminCredentialWrites,
       rateLimitForgotPasswordByTargetEmail,
+      // Reject original owner role/membership intent before fields can hide it.
+      rejectUnsafeOwnerUserCreate,
     ],
     // beforeValidate (collection) fires on update for both the regular
     // update pipeline AND the resetPassword path
@@ -525,33 +533,8 @@ export const Users: CollectionConfig = {
     create: async ({ req, data }) => {
       if (req.user?.role === "super-admin") return true
 
-      // OBS-9 belt-and-braces tenant-scoping check for owner-create-user.
-      // canCreateUserField (field-level) already validates the (role, tenants)
-      // shape for owner creates: it requires `tenants` to be a length-1 array
-      // matching the owner's own tenant id. But that chain is a single point
-      // of failure — if a future refactor weakens `canCreateUserField` (or
-      // strips it from any field), the only remaining defense is
-      // `validateTenants` catching an empty tenants array AFTER the field-
-      // level strip. This collection-level gate independently rejects when
-      // any provided tenant doesn't match the owner's, mirroring OBS-67's
-      // canWrite tenant-membership pattern.
-      //
-      // We defer to validateTenants when `tenants` is missing/empty — that's
-      // the canonical "tenant is required" error class and not the
-      // cross-tenant-injection concern OBS-9 covers.
-      if (req.user?.role === "owner") {
-        const tenants = (data as { tenants?: Array<{ tenant?: unknown }> } | null | undefined)?.tenants
-        if (!Array.isArray(tenants) || tenants.length === 0) return true
-        const own = ownerTenantIdOf(req.user)
-        if (own == null) return false
-        for (const row of tenants) {
-          const raw = row?.tenant
-          if (raw == null) return false
-          const id = typeof raw === "object" ? (raw as { id?: unknown }).id : raw
-          if (String(id) !== String(own)) return false
-        }
-        return true
-      }
+      if (req.user?.role === "owner") return canOwnerCreateUser(req.user, data)
+      if (req.user) return false
 
       // Bootstrap path (anonymous; audit-p1 #6) — unchanged.
       if (!requestHasValidBootstrapToken(req)) return false

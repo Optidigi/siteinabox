@@ -95,7 +95,7 @@ describe("audit-p1 #6 — bootstrap path requires BOOTSTRAP_TOKEN header + super
     expect(result).toBe(true)
   })
 
-  it("super-admin/owner shortcut still permits create regardless of bootstrap state", async () => {
+  it("super-admin bypasses bootstrap; an owner without membership cannot create", async () => {
     delete process.env.BOOTSTRAP_TOKEN
     expect(
       await accessCreate({
@@ -108,7 +108,7 @@ describe("audit-p1 #6 — bootstrap path requires BOOTSTRAP_TOKEN header + super
         req: reqFor({ user: { role: "owner" }, totalDocs: 5 }),
         data: { role: "editor" },
       })
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it("editor/viewer authed users are NOT shortcut-permitted (only super-admin/owner)", async () => {
