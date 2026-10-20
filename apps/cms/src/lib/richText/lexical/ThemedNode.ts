@@ -5,7 +5,7 @@ import {
   type NodeKey,
   type SerializedLexicalNode,
   type Spread,
-} from "lexical"
+} from "@payloadcms/richtext-lexical/lexical"
 import * as React from "react"
 
 export type SerializedThemedNode = Spread<
@@ -44,6 +44,12 @@ export class ThemedNode extends DecoratorNode<React.ReactNode> {
     this.__id = id
     this.__props = props
     this.__hasChildren = hasChildren
+  }
+
+  // RtThemed is a block node. Lexical's inline default lets normalization or
+  // clipboard insertion discard it when it appears directly below the root.
+  isInline(): false {
+    return false
   }
 
   createDOM(_config: EditorConfig): HTMLElement {

@@ -1,4 +1,4 @@
-import { TextNode, type EditorConfig, type SerializedTextNode } from "lexical"
+import { TextNode, type EditorConfig, type SerializedTextNode } from "@payloadcms/richtext-lexical/lexical"
 
 /**
  * TextNode subclass that mirrors the `--rt-style` / `--rt-color` / `--rt-font` CSS custom

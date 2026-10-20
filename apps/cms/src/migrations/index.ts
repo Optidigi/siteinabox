@@ -139,6 +139,7 @@ import * as migration_20260901_180000_appointment_mail_retention from './2026090
 import * as migration_20260902_090000_appointment_section from './20260902_090000_appointment_section';
 import * as migration_20260902_100000_appointment_effects from './20260902_100000_appointment_effects';
 import * as migration_20260905_200000_builder_sessions from './20260905_200000_builder_sessions';
+import * as migration_20261020_181335_cms_framework_security from './20261020_181335_cms_framework_security';
 
 export const migrations = [
   {
@@ -719,12 +720,12 @@ export const migrations = [
   {
     up: migration_20260820_115510_service_panel_selected_copy.up,
     down: migration_20260820_115510_service_panel_selected_copy.down,
-    name: '20260820_115510_service_panel_selected_copy'
+    name: '20260820_115510_service_panel_selected_copy',
   },
   {
     up: migration_20260820_130000_hero_pattern_split_image.up,
     down: migration_20260820_130000_hero_pattern_split_image.down,
-    name: '20260820_130000_hero_pattern_split_image'
+    name: '20260820_130000_hero_pattern_split_image',
   },
   {
     up: migration_20260825_160000_sitegen_canonical_hero_and_chrome.up,
@@ -845,5 +846,10 @@ export const migrations = [
     up: migration_20260905_200000_builder_sessions.up,
     down: migration_20260905_200000_builder_sessions.down,
     name: '20260905_200000_builder_sessions',
+  },
+  {
+    up: migration_20261020_181335_cms_framework_security.up,
+    down: migration_20261020_181335_cms_framework_security.down,
+    name: '20261020_181335_cms_framework_security'
   },
 ];

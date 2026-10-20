@@ -1,4 +1,4 @@
-import { ParagraphNode, type EditorConfig, type NodeKey, type SerializedParagraphNode, type Spread } from "lexical"
+import { ParagraphNode, type EditorConfig, type NodeKey, type SerializedParagraphNode, type Spread } from "@payloadcms/richtext-lexical/lexical"
 
 export type SerializedStyledParagraphNode = Spread<
   { style: string },

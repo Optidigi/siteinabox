@@ -1,16 +1,16 @@
 "use client"
 import * as React from "react"
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
+import { useLexicalComposerContext } from "@payloadcms/richtext-lexical/lexical/react/LexicalComposerContext"
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
   useBasicTypeaheadTriggerMatch,
-} from "@lexical/react/LexicalTypeaheadMenuPlugin"
+} from "@payloadcms/richtext-lexical/lexical/react/LexicalTypeaheadMenuPlugin"
 import { createPortal } from "react-dom"
-import { $createParagraphNode, $getSelection, $isRangeSelection } from "lexical"
-import { $setBlocksType } from "@lexical/selection"
-import { $createHeadingNode, $createQuoteNode } from "@lexical/rich-text"
-import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from "@lexical/list"
+import { $createParagraphNode, $getSelection, $isRangeSelection } from "@payloadcms/richtext-lexical/lexical"
+import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection"
+import { $createHeadingNode, $createQuoteNode } from "@payloadcms/richtext-lexical/lexical/rich-text"
+import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from "@payloadcms/richtext-lexical/lexical/list"
 import { $createThemedNode } from "@/lib/richText/lexical/ThemedNode"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { ThemedNodeDialog } from "@/components/editor/richText/toolbar/themed-node-dialog"

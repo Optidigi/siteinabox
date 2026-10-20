@@ -1,19 +1,14 @@
-import type { Address } from "nodemailer/lib/mailer"
 import type { PayloadEmailAdapter, SendEmailOptions } from "payload"
 import { asMailLogPayload, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 
 const DEFAULT_FROM_NAME = "Site in a Box"
 
-function addressValue(value: Address | string): string {
-  return typeof value === "string" ? value : value.address
-}
-
 function recipients(value: SendEmailOptions["to"]): string[] {
   if (!value) return []
-  return (Array.isArray(value) ? value : [value]).flatMap((entry) => {
-    if (typeof entry === "string") return [entry]
-    return [addressValue(entry)]
-  })
+  if (Array.isArray(value)) return value.flatMap(recipients)
+  if (typeof value === "string") return value.trim() ? [value] : []
+  if (value.group) return value.group.flatMap(recipients)
+  return value.address?.trim() ? [value.address] : []
 }
 
 function stringContent(value: SendEmailOptions["html"] | SendEmailOptions["text"]): string | undefined {

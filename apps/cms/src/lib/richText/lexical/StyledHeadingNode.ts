@@ -1,5 +1,5 @@
-import { HeadingNode, type SerializedHeadingNode } from "@lexical/rich-text"
-import type { EditorConfig, NodeKey, Spread } from "lexical"
+import { HeadingNode, type SerializedHeadingNode } from "@payloadcms/richtext-lexical/lexical/rich-text"
+import type { EditorConfig, NodeKey, Spread } from "@payloadcms/richtext-lexical/lexical"
 
 export type SerializedStyledHeadingNode = Spread<
   { style: string },

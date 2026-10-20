@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
-import { COMMAND_PRIORITY_NORMAL, PASTE_COMMAND, $getSelection, $isRangeSelection } from "lexical"
+import { useLexicalComposerContext } from "@payloadcms/richtext-lexical/lexical/react/LexicalComposerContext"
+import { COMMAND_PRIORITY_NORMAL, PASTE_COMMAND, $getSelection, $isRangeSelection } from "@payloadcms/richtext-lexical/lexical"
 import {
   $generateNodesFromSerializedNodes,
   $insertGeneratedNodes,
@@ -12,7 +12,8 @@ import { matchersForManifest } from "@/lib/richText/themedMatchers"
 import { useRtManifest } from "@/components/editor/RtManifestContext"
 import { useStatusFeedback } from "@/components/status-feedback"
 
-// API note: @lexical/clipboard (0.41.x) exports $generateNodesFromSerializedNodes,
+// Payload 3.91 does not re-export clipboard; this one direct package is pinned
+// to its exact Lexical version. It exports $generateNodesFromSerializedNodes,
 // which takes Array<BaseSerializedNode> and returns Array<LexicalNode>. We feed it
 // j.root.children — the top-level block nodes produced by rtToLexicalJson — then
 // use $insertGeneratedNodes to splice them into the current selection.

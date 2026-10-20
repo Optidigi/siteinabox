@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
-import { $getNodeByKey } from "lexical"
+import { useLexicalComposerContext } from "@payloadcms/richtext-lexical/lexical/react/LexicalComposerContext"
+import { $getNodeByKey } from "@payloadcms/richtext-lexical/lexical"
 import { RtTextNode } from "@/lib/richText/lexical/RtTextNode"
 
 /**
