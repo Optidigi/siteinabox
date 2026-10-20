@@ -1,9 +1,9 @@
 "use client"
 import * as React from "react"
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
-import { $getSelection, $isElementNode, $isRangeSelection, $isTextNode, type ElementNode, type TextFormatType } from "lexical"
-import { $isLinkNode, LinkNode } from "@lexical/link"
-import { $getNearestNodeOfType } from "@lexical/utils"
+import { useLexicalComposerContext } from "@payloadcms/richtext-lexical/lexical/react/LexicalComposerContext"
+import { $getSelection, $isElementNode, $isRangeSelection, $isTextNode, type ElementNode, type TextFormatType } from "@payloadcms/richtext-lexical/lexical"
+import { $isLinkNode, LinkNode } from "@payloadcms/richtext-lexical/lexical/link"
+import { $getNearestNodeOfType } from "@payloadcms/richtext-lexical/lexical/utils"
 import { StyledHeadingNode } from "@/lib/richText/lexical/StyledHeadingNode"
 import { StyledParagraphNode } from "@/lib/richText/lexical/StyledParagraphNode"
 

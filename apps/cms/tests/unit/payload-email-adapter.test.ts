@@ -37,6 +37,26 @@ describe("Payload Cloudflare email adapter", () => {
     }))
   })
 
+  it("preserves Nodemailer address groups and nested recipient lists", async () => {
+    const adapter = payloadEmailAdapter({ payload: asPayload({}) })
+    await adapter.sendEmail({
+      to: [["first@example.test"], { name: "Team", group: [{ address: "second@example.test" }] }],
+      html: "<p>Reset</p>",
+    })
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: ["first@example.test", "second@example.test"],
+    }))
+  })
+
+  it("rejects recipient objects without an address before transport", async () => {
+    const adapter = payloadEmailAdapter({ payload: asPayload({}) })
+    await expect(adapter.sendEmail({
+      to: { name: "Missing address" },
+      html: "<p>Reset</p>",
+    })).rejects.toThrow("at least one recipient")
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
   it("converts basic HTML into readable plain text", () => {
     expect(htmlToPlainText("<p>First &amp; second</p><p>Next</p>"))
       .toBe("First & second\n\nNext")

@@ -55,14 +55,14 @@
   },
   "peerDependencies": {
     "next-intl": "^4.13.6",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "react-hook-form": "^7.85.0",
     "recharts": "3.10.1"
   },
   "devDependencies": {
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "6.0.3"
   }
 }

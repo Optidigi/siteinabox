@@ -59,6 +59,22 @@ try {
     })
     if (result.error || result.status !== 0) throw new Error("Packaged renderer smoke failed")
   } else if (app === "cms") {
+    // Load sharp through Next's own dependency context in the actual runner,
+    // then process pixels so missing/incompatible native libraries fail here.
+    const sharpPin = (await readFile("pnpm-workspace.yaml", "utf8")).match(/^  sharp: "([^"]+)"$/m)?.[1]
+    if (!sharpPin) throw new Error("CMS native smoke requires the governed sharp override")
+    docker(["run", "--rm", "--entrypoint", "node", "--workdir", "/app/apps/cms", image,
+      "--input-type=module", "--eval", `
+        import { createRequire } from "node:module";
+        const appRequire = createRequire(process.cwd() + "/server.js");
+        const nextRequire = createRequire(appRequire.resolve("next/package.json"));
+        const sharp = nextRequire("sharp");
+        if (sharp.versions.sharp !== process.argv[1]) throw new Error("Packaged sharp differs from the security override");
+        const { info } = await sharp({ create: { width: 2, height: 2, channels: 3, background: "white" } })
+          .resize(1, 1).png().toBuffer({ resolveWithObject: true });
+        if (info.width !== 1 || info.height !== 1 || info.format !== "png") throw new Error("Packaged native image processing failed");
+        console.log(JSON.stringify({ nativeImageSmoke: "passed", sharp: sharp.versions.sharp, vips: sharp.versions.vips, platform: process.platform, arch: process.arch }));
+      `, sharpPin])
     docker(["network", "create", "--internal", network])
     docker(["run", "--rm", "--detach", "--name", database, "--network", network, "--network-alias", "postgres",
       "--tmpfs", "/var/lib/postgresql",

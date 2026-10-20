@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
-import { createEditor } from "lexical"
+import { $getRoot, createEditor } from "@payloadcms/richtext-lexical/lexical"
 import { rtToLexicalJson } from "@/lib/richText/lexical/rtToLexical"
+import { $generateNodesFromSerializedNodes, $insertGeneratedNodes } from "@lexical/clipboard"
+import { lexicalJsonToRt } from "@/lib/richText/lexical/lexicalToRt"
 import { buildLexicalNodes } from "@/lib/richText/lexical/buildNodeConfig"
 import type { RtBlockRoot } from "@/lib/richText/RtNode"
 
@@ -56,5 +58,29 @@ describe("rtToLexicalJson", () => {
     const j = rtToLexicalJson(root)
     const types = lexicalChildren(j).map((c: MockDoc) => c.type)
     expect(types).toEqual(["heading", "list", "paragraph", "themed"])
+  })
+})
+
+describe("Payload-owned Lexical custom content compatibility", () => {
+  it("loads and copies custom styled content through the real editor and paste API", () => {
+    const original: RtBlockRoot = { t: "root", variant: "block", children: [
+      { t: "heading", level: 2, style: "hero-eyebrow", children: [{ t: "text", v: "Amicare fixture" }] },
+      { t: "paragraph", style: "lead", children: [
+        { t: "text", v: "Care", marks: ["bold"], color: "accent", font: "heading" },
+        { t: "link", href: "/contact", children: [{ t: "text", v: "Contact" }] },
+      ] },
+      { t: "themed", id: "eyebrow", props: { text: "Sanitized fixture" } },
+    ] }
+    const source = editor()
+    source.setEditorState(source.parseEditorState(JSON.stringify(rtToLexicalJson(original))))
+    const copied = source.getEditorState().toJSON()
+    expect(lexicalJsonToRt(copied, "block")).toEqual(original)
+
+    const target = editor()
+    target.update(() => {
+      const nodes = $generateNodesFromSerializedNodes(copied.root.children)
+      $insertGeneratedNodes(target, nodes, $getRoot().selectEnd())
+    }, { discrete: true })
+    expect(lexicalJsonToRt(target.getEditorState().toJSON(), "block")).toEqual(original)
   })
 })

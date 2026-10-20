@@ -108,3 +108,8 @@ controls, follow [protected delivery](runbooks/protected-delivery.md).
 `pnpm delivery:inspect` uses the caller's existing `gh` authentication; missing
 permissions remain unknown controls. It does not install settings or authorize
 publication/deployment. Canonical MCP policy and credentials stay unchanged.
+
+CMS framework upgrades must use Payload-owned generators and the public Lexical
+re-exports; see [dependency policy](dependency-policy.md#cms-framework-security-group)
+for the exact clipboard exception, migration snapshot baseline and rollback
+boundary. Keep MCP projections unchanged unless their canonical registry changes.

@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
-import { COMMAND_PRIORITY_HIGH, KEY_ENTER_COMMAND, INSERT_LINE_BREAK_COMMAND } from "lexical"
+import { useLexicalComposerContext } from "@payloadcms/richtext-lexical/lexical/react/LexicalComposerContext"
+import { COMMAND_PRIORITY_HIGH, KEY_ENTER_COMMAND, INSERT_LINE_BREAK_COMMAND } from "@payloadcms/richtext-lexical/lexical"
 
 /**
  * In inline-variant editors (hero headline, eyebrow, etc.) we don't want
