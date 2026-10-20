@@ -1,6 +1,21 @@
 name: build-site-image
 
 on:
+  pull_request:
+    paths:
+      - "apps/landing/**"
+      - "packages/contracts/**"
+      - "packages/legal-content/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".dockerignore"
+      - ".github/workflows/build-site-image.yml"
+      - ".nvmrc"
+      - "scripts/verify-image.mjs"
+      - "scripts/image-artifact.mjs"
+      - "scripts/check-publication.mjs"
+      - "scripts/check-image-workflows.mjs"
   push:
     branches: [main]
     paths:
@@ -12,63 +27,43 @@ on:
       - "pnpm-workspace.yaml"
       - ".dockerignore"
       - ".github/workflows/build-site-image.yml"
-  workflow_dispatch: {}
+      - ".nvmrc"
+      - "scripts/verify-image.mjs"
+      - "scripts/image-artifact.mjs"
+      - "scripts/check-publication.mjs"
+      - "scripts/check-image-workflows.mjs"
+  workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: optidigi/siteinabox-site
+concurrency:
+  group: build-site-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build-and-push:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-,format=short
-
-      - name: Validate public analytics build inputs
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build and smoke-test unpublished image
+        id: verify
+        run: pnpm image:verify site
         env:
           POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
-        run: |
-          if [ -z "$POSTHOG_PROJECT_TOKEN" ]; then
-            echo "Required Actions secret POSTHOG_PROJECT_TOKEN is not configured." >&2
-            exit 1
-          fi
-
-      - name: Build and push
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+      - name: Retain verified image and source evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          context: .
-          file: apps/landing/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            SITE_URL=https://siteinabox.nl
-            POSTHOG_PROJECT_TOKEN=${{ secrets.POSTHOG_PROJECT_TOKEN }}
-            POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl
-            POSTHOG_HOST=https://eu.posthog.com
+          name: image-site
+          path: ${{ steps.verify.outputs.artifact-path }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
