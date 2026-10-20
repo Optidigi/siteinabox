@@ -227,3 +227,54 @@ user/mail records, then stops the child before owned-storage teardown. It is
 actual built-action security evidence, distinct from Local API/session tests and
 from real provider delivery. The full build manifest contains an encryption key
 and must not be printed or uploaded; only the redacted test result is retained.
+
+## Upgrade and cutover
+
+The authentication dependency group is Better Auth 1.7.11 with Infrastructure
+0.4.20. Existing provider buttons, Payload role/tenant authority, password
+fallback/recovery, bridge checks, bootstrap restrictions and preview isolation
+are retained. No provider registration, new login method or customer identity
+redesign is introduced. The local builder helper supplies the new adapter's
+required creation-source metadata; its endpoint remains development-loopback
+only.
+
+The SDK migration planner finds no required schema changes against committed
+CMS and preview migrations, including a populated disposable account fixture.
+No `issuer` column is introduced: this upgrade goes directly from 1.6 to a
+post-1.7.3 release. Before an authorized rollout, repeat a read-only inventory of
+both account namespaces for duplicate `(providerId, accountId)` pairs. Resolve
+ambiguities through a separately reviewed mapping; never merge identities by
+email or invent provider subjects. The 2026-10-20 production aggregate snapshot
+had zero Better Auth accounts/Microsoft links/duplicate keys/orphaned Payload
+links; it does not attest future state, Payload session absence, Amicare's
+commercial entitlement or a complete production migration rehearsal.
+
+The [1.7 upgrade guide](https://better-auth.com/docs/guides/1-7-upgrade-guide)
+requires existing Microsoft subjects to move from `sub` to verified `oid`.
+If any such links exist at cutover, stop the dependent rollout and prepare a
+scoped mapping from verified token claims or trusted Entra export. Pause Microsoft
+sign-in/linking during that operation; do not silently recreate or relink rows.
+Google/Microsoft account/app/calendar authorization and actual OAuth/mail tests
+remain deferred owner/provider gates. Synthetic tests do not prove registration,
+inbox receipt or real-provider token verification.
+
+Magic-link verification storage now uses a typed, namespaced token record.
+Atomic single consumption remains enforced. Pending links from the old package cannot be assumed
+redeemable after the swap. An authorized cutover must drain the configured
+five-minute link lifetime and resend through the owning authorized flow when
+needed; do not copy old token values or weaken replay/expiry checks. Package
+rollback likewise requires handling newly issued links, and any real provider
+subject migration needs its own reverse mapping/restore decision. Existing
+persisted account/session fixtures and the no-op schema plan do not replace
+final-schema restore, live Amicare preservation or rollout approval.
+
+The focused `better-auth-sdk.test.ts` exercises actual configured SDK link
+issuance/consumption, replay, expiry, unsafe redirect rejection, session logout
+and preview namespace behavior with in-memory persistence and mail/Payload
+doubles. `better-auth-upgrade.test.ts` uses the M02-authorized real PostgreSQL
+resource for committed migrations, empty/populated planner checks, account/link
+preservation, session revocation and the signed local builder cookie. Existing
+password/recovery/role/tenant and invitation tests remain required. See the
+[verification matrix](../verification-matrix.md) for canonical commands and
+[local setup](../runbooks/local-development.md#step-7-authorize-disposable-verification-then-run-tests)
+for prerequisites. Hosted consuming-image evidence is distinct from local tests.
