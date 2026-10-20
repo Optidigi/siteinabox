@@ -61,6 +61,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.argv[2] === "--check") {
     console.log("Required CI dependencies and consuming-image matrix verified")
   } else {
+    throw new Error("Intentional G02 disposable control rehearsal: required-ci must fail; never merge this fixture")
     const results = JSON.parse(process.env.CI_JOB_RESULTS ?? "null")
     assertRequiredCiResults(results, expectedCiJobs(matrix))
     const images = []
