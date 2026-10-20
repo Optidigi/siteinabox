@@ -91,6 +91,10 @@ export const auth = betterAuth({
         required: true,
         input: false,
         unique: true,
+        // OAuth parses additional fields before the creation hook. Defer this
+        // server-only value to that hook; it always resolves an eligible Payload
+        // user or throws. A missing hook value still violates database NOT NULL.
+        defaultValue: null,
       },
     },
   },

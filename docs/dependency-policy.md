@@ -172,6 +172,49 @@ or accept unexplained visual changes after a framework update.
 | Playwright | exact `1.62.1` in direct consumers | Retain exact browser/tool alignment. |
 | Zod | `^4.4.3` across apps and packages | Shared contract runtime; preserve lockfile identity. |
 
+## Authentication integration group
+
+Better Auth and its bundled core/adapters/telemetry are aligned at **1.7.11**;
+`@better-auth/infra` is **0.4.20**. These exact direct pins were selected from
+publisher metadata after the normal 1440-minute delay. Better Auth 1.7.12 was
+published 2026-10-20T11:59:45Z and is deferred until after
+2026-10-21T11:59:45Z, with fresh release/security/compatibility review. No age
+exception, peer override, native-build permission or unrelated graph refresh is
+part of this group. The framework's private Zod now satisfies its required
+`^4.5.4`; CMS/shared Zod remains 4.4.3. Next/React/Payload/PostgreSQL peers remain
+within the selected packages' declared ranges.
+
+The [publisher upgrade guide](https://better-auth.com/docs/guides/1-7-upgrade-guide)
+explains that 1.7.3 and later retain the 1.6 provider/account key layout. SIAB uses
+the built-in PostgreSQL adapter, magic-link and Next cookie plugins plus the
+optional dashboard plugin. It does not enable the changed OAuth-provider, SSO,
+SCIM or MCP identity-provider schemas. The SDK migration planner against real
+committed migrations requires no tables, columns or indexes for either existing
+CMS or preview configuration. Populated fixtures retain account rows, Payload
+links and session behavior; no schema migration is added. Historical migrations
+and the separate CMS/preview namespaces remain intact.
+
+The internal user-creation adapter now requires source metadata. The existing
+loopback-only development builder seed identifies its trusted administrative
+source explicitly; this adds no endpoint or role permission. Its real signed
+cookie is verified through the upgraded preview SDK. Production origin/CSRF
+checks are explicitly enabled in memory-adapter SDK tests because the SDK's test
+mode otherwise skips them. These tests exercise the configured instances with
+mail/Payload boundaries doubled, not a new authentication policy.
+
+First-social UI requests were reproduced failing with both installed SDK1.6.26
+and1.7.11 because `payloadUserId` was parsed before its server hook. A parser-only
+null default defers resolution to the existing verified/eligible Payload lookup,
+while required/unique/input-false metadata and the physical NOT NULL/unique
+constraints remain unchanged. Real database tests require no SQL default and
+reject null writes; no placeholder identity or migration is introduced.
+
+Microsoft subject migration, duplicate-key inventory, in-flight magic-link
+cutover and live provider verification remain separate release prerequisites;
+see the [authentication contract](contracts/authentication.md#upgrade-and-cutover).
+Reverting package pins is insufficient after a real provider-ID migration.
+The remaining Payload-private Sass/braces advisory continues to block release.
+
 ## Infrastructure identities
 
 [The reviewed image and Action inventory](infrastructure-images.json) records

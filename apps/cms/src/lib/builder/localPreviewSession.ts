@@ -99,7 +99,7 @@ export async function createLocalPreviewSessionCookie(): Promise<LocalPreviewSes
     email: LOCAL_BUILDER_EMAIL,
     name: LOCAL_BUILDER_NAME,
     emailVerified: true,
-  })
+  }, { method: "admin" })
   const session = await ctx.internalAdapter.createSession(user.id, false)
   const token = session.token
   if (!token) {

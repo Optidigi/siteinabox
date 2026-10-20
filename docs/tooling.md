@@ -124,3 +124,11 @@ and the owning `infrastructure:check`, `infrastructure:tunnel` and `image:verify
 commands. Verify exact publisher digests before using an isolated cloudflared
 binary. Offline validation requires no provider login; retain its boundary from
 live tunnel reconciliation and preserve existing production volumes.
+
+Authentication upgrades use the installed package's public
+`better-auth/db/migration` planner against an M02-authorized disposable target;
+inspect its plan before adding a committed migration. Do not run `auth@latest`
+against production or let a CLI migrate provider account identifiers. The
+[authentication cutover contract](contracts/authentication.md#upgrade-and-cutover)
+owns those data and provider prerequisites. Existing environment names and
+provider credential routing remain unchanged.
