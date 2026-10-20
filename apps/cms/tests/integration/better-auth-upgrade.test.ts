@@ -26,6 +26,18 @@ describe("Better Auth schema compatibility with committed migrations", () => {
       expect(plan.toBeAdded).toEqual([])
       expect(plan.toBeAddedIndexes).toEqual([])
     }
+    const pool = globalThis.__siabBetterAuthPool!
+    const column = await pool.query<{ is_nullable: string; column_default: string | null }>(
+      `SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='better_auth_users' AND column_name='payloadUserId'`,
+    )
+    expect(column.rows[0]).toEqual({ is_nullable: "NO", column_default: null })
+    const unique = await pool.query<{ enforced: boolean }>(`SELECT EXISTS (
+      SELECT 1 FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=ANY(i.indkey)
+      WHERE i.indrelid='better_auth_users'::regclass AND i.indisunique AND i.indnkeyatts=1 AND a.attname='payloadUserId'
+    ) AS enforced`)
+    expect(unique.rows[0]?.enforced).toBe(true)
+    await expect(pool.query(`INSERT INTO better_auth_users (id,name,email,"emailVerified","createdAt","updatedAt","payloadUserId")
+      VALUES ('missing-link-fixture','Fixture','missing-link@example.test',true,now(),now(),NULL)`)).rejects.toMatchObject({ code: "23502" })
   }, 30000)
 
   it("preserves persisted Payload links, provider keys and sessions on a populated schema", async () => {

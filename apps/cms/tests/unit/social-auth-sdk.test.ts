@@ -9,6 +9,7 @@ vi.mock("@/payload.config", () => ({ default: {} }))
 vi.mock("@/lib/auth/sendCmsMagicLinkEmail", () => ({ sendCmsMagicLinkEmail: sendCms }))
 
 const origin = "https://admin.siteinabox.nl"
+const callbackURL = "/api/siab-auth/complete?next=%2Fsites"
 const providers = ["google", "microsoft", "apple"] as const
 type Provider = (typeof providers)[number]
 const directory = "11111111-2222-3333-4444-555555555555"
@@ -45,25 +46,26 @@ beforeAll(async () => {
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks() })
 afterAll(() => { vi.unstubAllEnvs() })
 
-async function fixture(provider: Provider, verified = true) {
+async function fixture(provider: Provider, verified = true, seedExisting = true) {
   const store: Record<string, Record<string, unknown>[]> = {
     better_auth_users: [], better_auth_sessions: [], better_auth_accounts: [], better_auth_verifications: [],
   }
   const auth = betterAuth({ ...configuredOptions, advanced: { ...configuredOptions.advanced, disableOriginCheck: false, disableCSRFCheck: false }, database: memoryAdapter(store) })
   findPayloadUsers.mockResolvedValue({ totalDocs: 1, docs: [{ id: 42, email: "invited@example.test", role: "owner", tenants: [{ tenant: 7 }] }] })
-  // Production closes implicit social signup. Establish the existing CMS
-  // identity through its real primary magic-link flow and real eligibility hook,
-  // then log out before testing social sign-in/account linking.
-  const issueLink = await auth.handler(new Request(`${origin}/api/auth/sign-in/magic-link`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ email: "invited@example.test" }),
-  }))
-  expect(issueLink.status).toBe(200)
-  const link = sendCms.mock.calls.at(-1)?.[0].url
-  if (!link) throw new Error("SDK did not issue the synthetic CMS link")
-  const verifiedLink = await auth.handler(new Request(link, { headers: headers() }))
-  expect(verifiedLink.status).toBe(302)
-  await auth.api.signOut({ headers: new Headers(headers(cookieHeader(verifiedLink))) })
-  expect(store.better_auth_sessions).toHaveLength(0)
+  // Existing-identity cases use primary magic-link login. First-social cases
+  // begin without SDK users/accounts and send the actual UI's requestSignUp flag.
+  if (seedExisting) {
+    const issueLink = await auth.handler(new Request(`${origin}/api/auth/sign-in/magic-link`, {
+      method: "POST", headers: headers(), body: JSON.stringify({ email: "invited@example.test" }),
+    }))
+    expect(issueLink.status).toBe(200)
+    const link = sendCms.mock.calls.at(-1)?.[0].url
+    if (!link) throw new Error("SDK did not issue the synthetic CMS link")
+    const verifiedLink = await auth.handler(new Request(link, { headers: headers() }))
+    expect(verifiedLink.status).toBe(302)
+    await auth.api.signOut({ headers: new Headers(headers(cookieHeader(verifiedLink))) })
+    expect(store.better_auth_sessions).toHaveLength(0)
+  }
   let nonce = ""
   const calls: string[] = []
   vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
@@ -79,7 +81,7 @@ async function fixture(provider: Provider, verified = true) {
     throw new Error("Unexpected OAuth network destination; fixture refuses real network")
   }))
   const start = await auth.handler(new Request(`${origin}/api/auth/sign-in/social`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ provider, callbackURL: "/api/siab-auth/complete", additionalData: { role: "super-admin", tenantId: "forged" } }),
+    method: "POST", headers: headers(), body: JSON.stringify({ provider, requestSignUp: true, callbackURL, errorCallbackURL: "/login?error=social-session", additionalData: { role: "super-admin", tenantId: "forged" } }),
   }))
   expect(start.status).toBe(200)
   const result: { url: string } = await start.json()
@@ -97,11 +99,47 @@ async function fixture(provider: Provider, verified = true) {
 }
 
 describe("configured social providers through the actual upgraded SDK", () => {
+  it.each(providers)("%s first social login links the existing invited Payload user", async (provider) => {
+    const { auth, store, callback } = await fixture(provider, true, false)
+    const response = await callback()
+    expect(new URL(response.headers.get("location")!, origin).href).toBe(origin + callbackURL)
+    expect(store.better_auth_users).toEqual([expect.objectContaining({ payloadUserId: "42" })])
+    expect(store.better_auth_accounts?.length).toBe(1)
+    const sessionResponse = await auth.handler(new Request(`${origin}/api/auth/get-session`, { headers: headers(cookieHeader(response)) }))
+    const session: { user?: { payloadUserId?: string } } = await sessionResponse.json()
+    expect(session.user?.payloadUserId).toBe("42")
+  })
+
+  it.each(providers)("%s first social login rejects an unverified identity", async (provider) => {
+    const { store, callback } = await fixture(provider, false, false)
+    const response = await callback()
+    expect(response.status).toBe(401)
+    expect(store.better_auth_users).toHaveLength(0)
+    expect(store.better_auth_accounts).toHaveLength(0)
+    expect(store.better_auth_sessions).toHaveLength(0)
+  })
+
+  it.each(providers)("%s first social login refuses missing, ambiguous or ineligible Payload membership", async (provider) => {
+    for (const result of [
+      { totalDocs: 0, docs: [] },
+      { totalDocs: 2, docs: [{ id: 42 }, { id: 43 }] },
+      { totalDocs: 1, docs: [{ id: 42, role: "owner", tenants: [] }] },
+    ]) {
+      const { store, callback } = await fixture(provider, true, false)
+      findPayloadUsers.mockResolvedValue(result)
+      const response = await callback()
+      expect(response.status).toBe(401)
+      expect(store.better_auth_users).toHaveLength(0)
+      expect(store.better_auth_accounts).toHaveLength(0)
+      expect(store.better_auth_sessions).toHaveLength(0)
+    }
+  })
+
   it.each(providers)("%s callback links only the invited Payload identity and issues its session", async (provider) => {
     const { auth, store, callback, calls } = await fixture(provider)
     const response = await callback()
     expect(response.status).toBe(302)
-    expect(new URL(response.headers.get("location")!, origin).href).toBe(`${origin}/api/siab-auth/complete`)
+    expect(new URL(response.headers.get("location")!, origin).href).toBe(origin + callbackURL)
     expect(store.better_auth_accounts).toEqual([expect.objectContaining({ providerId: provider, accountId: provider === "microsoft" ? "synthetic-directory-object" : `${provider}-synthetic-subject` })])
     expect(store.better_auth_users).toEqual([expect.objectContaining({ payloadUserId: "42" })])
     const sessionResponse = await auth.handler(new Request(`${origin}/api/auth/get-session`, { headers: headers(cookieHeader(response)) }))
@@ -137,8 +175,8 @@ describe("configured social providers through the actual upgraded SDK", () => {
   it.each(providers)("%s rejects invalid state before exchanging a code", async (provider) => {
     const { store, callback, calls } = await fixture(provider)
     const response = await callback("forged-state")
-    expect(new URL(response.headers.get("location")!).origin).toBe(origin)
-    expect(new URL(response.headers.get("location")!).searchParams.has("error")).toBe(true)
+    expect(new URL(response.headers.get("location")!, origin).origin).toBe(origin)
+    expect(new URL(response.headers.get("location")!, origin).searchParams.has("error")).toBe(true)
     expect(calls).toHaveLength(0)
     expect(store.better_auth_accounts).toHaveLength(0)
     expect(store.better_auth_sessions).toHaveLength(0)
@@ -159,7 +197,7 @@ describe("configured social providers through the actual upgraded SDK", () => {
   it.each(providers)("%s rejects an unverified identity without linking or issuing a session", async (provider) => {
     const { store, callback } = await fixture(provider, false)
     const response = await callback()
-    expect(new URL(response.headers.get("location")!).searchParams.has("error")).toBe(true)
+    expect(new URL(response.headers.get("location")!, origin).searchParams.has("error")).toBe(true)
     expect(store.better_auth_users).toHaveLength(1)
     expect(store.better_auth_accounts).toHaveLength(0)
     expect(store.better_auth_sessions).toHaveLength(0)

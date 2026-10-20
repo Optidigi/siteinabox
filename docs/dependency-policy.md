@@ -202,6 +202,13 @@ checks are explicitly enabled in memory-adapter SDK tests because the SDK's test
 mode otherwise skips them. These tests exercise the configured instances with
 mail/Payload boundaries doubled, not a new authentication policy.
 
+First-social UI requests were reproduced failing with both installed SDK1.6.26
+and1.7.11 because `payloadUserId` was parsed before its server hook. A parser-only
+null default defers resolution to the existing verified/eligible Payload lookup,
+while required/unique/input-false metadata and the physical NOT NULL/unique
+constraints remain unchanged. Real database tests require no SQL default and
+reject null writes; no placeholder identity or migration is introduced.
+
 Microsoft subject migration, duplicate-key inventory, in-flight magic-link
 cutover and live provider verification remain separate release prerequisites;
 see the [authentication contract](contracts/authentication.md#upgrade-and-cutover).
