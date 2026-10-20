@@ -4,6 +4,8 @@ import { asRecord } from "@/lib/record"
 import { headers } from "next/headers"
 import config from "@/payload.config"
 import crypto from "node:crypto"
+import { z } from "zod"
+import type { User } from "@/payload-types"
 import { auth } from "@/lib/betterAuth"
 import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
 import { platformCmsOrigin } from "@/lib/hostToTenant"
@@ -17,7 +19,7 @@ import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkM
 // UserInviteForm's try/catch as a generic Error message.
 export type InviteUserResult =
   | { ok: true; id: number | string; delivery: "sent" }
-  | { ok: false; field?: string; error: string; code?: "validation_failed" | "delivery_failed"; id?: number | string; userCreated?: boolean }
+  | { ok: false; field?: string; error: string; code?: "validation_failed" | "creation_failed" | "delivery_failed"; id?: number | string; userCreated?: boolean }
 
 // Resolve a Payload user.tenants[].tenant entry (which may be either the
 // populated tenant doc or the bare FK id, depending on auth depth) to its id.
@@ -34,6 +36,17 @@ type InviteTenant = {
   name?: string | null
   domain?: string | null
   status?: string | null
+}
+
+const positiveId = z.union([z.number().int().positive().refine(Number.isSafeInteger),
+  z.string().regex(/^[1-9][0-9]*$/).transform(Number).refine(Number.isSafeInteger)])
+const inviteSchema = z.object({ email: z.string().trim().toLowerCase().email(),
+  name: z.string().trim().min(1), role: z.enum(["owner", "editor", "viewer"]), tenantId: positiveId }).strict()
+const resendSchema = z.object({ userId: positiveId, tenantId: positiveId }).strict()
+
+function matchingMembership(user: User, tenantId: number | string, role?: InviteRole) {
+  return user.tenants?.length === 1 && String(ownerTenantId(user)) === String(tenantId) &&
+    ["owner", "editor", "viewer"].includes(user.role) && (!role || user.role === role)
 }
 
 function tenantAdminUrl(): string {
@@ -56,27 +69,44 @@ async function loadInviteTenant(payload: Payload, tenantId: number | string): Pr
   return { tenant, adminUrl }
 }
 
-export async function sendInviteMagicLink(input: {
-  email: string
-  name: string
-  role: InviteRole
-  tenant: InviteTenant
-  adminUrl: string
+// Private to this action module: never exported as a remotely callable action.
+// Resolve caller and persisted recipient again immediately before signing.
+async function sendInviteMagicLink(payload: Payload, input: {
+  userId: number | string
+  tenantId: number | string
+  expectedEmail?: string
+  expectedRole?: InviteRole
 }) {
-  const url = new URL(input.adminUrl)
-  await (auth.api).signInMagicLink({
+  const { user: caller } = await payload.auth({ headers: await headers() })
+  if (!caller || !["owner", "super-admin"].includes(caller.role) ||
+      (caller.role === "owner" && (caller.tenants?.length !== 1 || String(ownerTenantId(caller)) !== String(input.tenantId)))) {
+    throw new Error("Forbidden: invitation authority changed")
+  }
+  const recipient = await payload.findByID({ collection: "users", id: input.userId,
+    depth: 0, user: caller, overrideAccess: false })
+  if (!matchingMembership(recipient, input.tenantId, input.expectedRole) ||
+      (caller.role === "owner" && recipient.role === "owner") ||
+      (input.expectedEmail && recipient.email !== input.expectedEmail)) {
+    throw new Error("Forbidden: invitation recipient authority changed")
+  }
+  const { tenant, adminUrl } = await loadInviteTenant(payload, input.tenantId)
+  const email = recipient.email
+  const name = recipient.name?.trim() || email
+  const role = recipient.role
+  const url = new URL(adminUrl)
+  const result = await (auth.api).signInMagicLink({
     body: {
-      email: input.email,
-      name: input.name,
-      callbackURL: input.adminUrl,
-      errorCallbackURL: `${input.adminUrl}/login`,
+      email,
+      name,
+      callbackURL: adminUrl,
+      errorCallbackURL: `${adminUrl}/login`,
       metadata: signPrivilegedMagicLinkMetadata("user_invite", {
-        recipientEmail: input.email.trim().toLowerCase(),
-        tenantId: String(input.tenant.id),
-        tenantName: input.tenant.name?.trim() || input.tenant.domain?.trim() || "Site in a Box",
-        recipientName: input.name,
-        role: input.role,
-        adminUrl: input.adminUrl,
+        recipientEmail: email,
+        tenantId: String(tenant.id),
+        tenantName: tenant.name?.trim() || tenant.domain?.trim() || "Site in a Box",
+        recipientName: name,
+        role,
+        adminUrl,
       }),
     },
     headers: buildCmsAuthHeaders(new Headers({
@@ -85,6 +115,7 @@ export async function sendInviteMagicLink(input: {
       "x-forwarded-proto": url.protocol.replace(":", ""),
     })),
   })
+  if (result?.status !== true) throw new Error("Invitation delivery was not confirmed")
 }
 
 export async function inviteUser(input: {
@@ -103,25 +134,37 @@ export async function inviteUser(input: {
   if (caller.role !== "super-admin" && caller.role !== "owner") {
     throw new Error("Forbidden: only super-admin or owner may invite users")
   }
+  if (!input || !["owner", "editor", "viewer"].includes(input.role) || (caller.role === "owner" && input.role === "owner")) {
+    throw new Error("Forbidden: invitation role is not permitted")
+  }
+  const parsed = inviteSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, code: "validation_failed", error: "Invalid invitation details." }
+  input = parsed.data
   if (caller.role === "owner") {
     const ownTenant = ownerTenantId(caller)
-    if (ownTenant == null || String(ownTenant) !== String(input.tenantId)) {
+    if (caller.tenants?.length !== 1 || ownTenant == null || String(ownTenant) !== String(input.tenantId)) {
       throw new Error("Forbidden: owner may only invite into own tenant")
     }
   }
 
-  const { tenant, adminUrl } = await loadInviteTenant(payload, input.tenantId)
+  await loadInviteTenant(payload, input.tenantId)
 
+  const findExisting = async () => (await payload.find({ collection: "users", user: caller, overrideAccess: false,
+    where: { email: { equals: input.email } }, depth: 0, limit: 1 })).docs[0]
+  let existing = await findExisting()
+  if (existing && !matchingMembership(existing, input.tenantId, input.role)) {
+    return { ok: false, code: "validation_failed", field: "email", error: "Email is unavailable for this invitation." }
+  }
   const tempPassword = crypto.randomBytes(16).toString("hex")
-  // Pass `user: caller` (NOT overrideAccess: true) so Payload's collection
-  // and field-level access rules — including the role/tenants gates added in
-  // audit P0 #2/#3 — apply to this create. An owner therefore cannot, for
-  // example, mint a super-admin even by editing the input role server-side.
+  // Local API defaults to bypassing access. Enforce both collection and field
+  // rules explicitly for this user-triggered operation.
   let created: { id: number | string }
+  let newlyCreated = false
   try {
-    created = await payload.create({
+    created = existing ?? await payload.create({
       collection: "users",
       user: caller,
+      overrideAccess: false,
       data: {
         email: input.email,
         name: input.name,
@@ -130,29 +173,23 @@ export async function inviteUser(input: {
         password: tempPassword
       }
     })
+    newlyCreated = !existing
   } catch (err) {
-    // fn-batch-6 follow-up — convert Payload validation errors to the
-    // structured return shape so the UI can render field-tied inline
-    // errors (e.g. duplicate email → set FormMessage on the email
-    // field). Auth/permission failures bubble as before; only known-
-    // safe validation paths fold into ok:false.
-    const e = asRecord(err)
-    const data = asRecord(e?.data)
-    const errors = Array.isArray(data?.errors) ? data.errors : []
-    const firstError = asRecord(errors[0])
-    const nestedData = asRecord(firstError?.data)
-    const nestedErrors = Array.isArray(nestedData?.errors) ? nestedData.errors : []
-    const innerRecord = asRecord(errors[0]) ?? asRecord(nestedErrors[0])
-    if (typeof innerRecord?.path === "string" && typeof innerRecord?.message === "string") {
-      return { ok: false as const, code: "validation_failed", field: innerRecord.path, error: innerRecord.message }
+    // A concurrent create may win the unique-email constraint. Reuse only the
+    // same authorized membership; never update identity, credentials or role.
+    if (asRecord(err)?.status === 403) throw err
+    existing = await findExisting()
+    if (!existing || !matchingMembership(existing, input.tenantId, input.role)) {
+      if (asRecord(err)?.status === 400) {
+        return { ok: false, code: "validation_failed", field: "email", error: "Invitation could not be created. Check the email and membership." }
+      }
+      payload.logger.warn("[invite] user creation failed")
+      return { ok: false, code: "creation_failed", error: "Invitation could not be created. Please try again." }
     }
-    if (typeof e?.message === "string") {
-      return { ok: false as const, code: "validation_failed", error: e.message }
-    }
-    throw err
+    created = existing
   }
   try {
-    await provisionDefaultTenantEmailPreferences({
+    if (newlyCreated) await provisionDefaultTenantEmailPreferences({
       payload,
       tenantId: input.tenantId,
       userId: created.id,
@@ -160,20 +197,20 @@ export async function inviteUser(input: {
       role: input.role,
     })
   } catch (err) {
-    payload.logger.warn({ err, userId: created.id }, "[invite] default email preference provisioning failed")
+    payload.logger.warn({ userId: created.id }, "[invite] default email preference provisioning failed")
   }
   // Normal onboarding is passwordless: create the Payload user, then ask
   // Better Auth to send the same magic-link flow used by CMS login.
   try {
-    await sendInviteMagicLink({ email: input.email, name: input.name, role: input.role, tenant, adminUrl })
+    await sendInviteMagicLink(payload, { userId: created.id, tenantId: input.tenantId, expectedEmail: input.email, expectedRole: input.role })
   } catch (err) {
-    payload.logger.warn({ err, email: input.email }, "[invite] magic-link send failed")
+    payload.logger.warn({ userId: created.id }, "[invite] magic-link delivery not confirmed")
     return {
       ok: false as const,
       code: "delivery_failed",
       id: created.id,
       userCreated: true,
-      error: "User created, but invitation delivery failed.",
+      error: "User exists, but invitation delivery could not be confirmed.",
     }
   }
   return { ok: true as const, id: created.id, delivery: "sent" }
@@ -191,17 +228,21 @@ export async function resendUserInvitation(input: {
   }
   if (caller.role === "owner") {
     const ownTenant = ownerTenantId(caller)
-    if (ownTenant == null || String(ownTenant) !== String(input.tenantId)) {
+    if (caller.tenants?.length !== 1 || ownTenant == null || String(ownTenant) !== String(input.tenantId)) {
       throw new Error("Forbidden: owner may only resend invitations in their own tenant")
     }
   }
 
-  const { tenant, adminUrl } = await loadInviteTenant(payload, input.tenantId)
+  const parsed = resendSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: "Invalid invitation details." }
+  input = parsed.data
+  await loadInviteTenant(payload, input.tenantId)
   const invited = await payload.findByID({
     collection: "users",
     id: input.userId,
     depth: 0,
     user: caller,
+    overrideAccess: false,
   })
   const invitedTenant = ownerTenantId(invited)
   if (invited.role === "super-admin" || invitedTenant == null || String(invitedTenant) !== String(input.tenantId)) {
@@ -212,16 +253,11 @@ export async function resendUserInvitation(input: {
   }
 
   try {
-    await sendInviteMagicLink({
-      email: invited.email,
-      name: invited.name?.trim() || invited.email,
-      role: invited.role,
-      tenant,
-      adminUrl,
-    })
+    await sendInviteMagicLink(payload, { userId: invited.id, tenantId: input.tenantId,
+      expectedEmail: invited.email, expectedRole: invited.role })
     return { ok: true }
   } catch (err) {
-    payload.logger.warn({ err, email: invited.email }, "[invite] resend magic-link failed")
+    payload.logger.warn({ userId: invited.id }, "[invite] resend magic-link delivery not confirmed")
     return { ok: false, error: "Invitation delivery failed." }
   }
 }

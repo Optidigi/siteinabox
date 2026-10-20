@@ -184,3 +184,46 @@ those to generate the JWT before deployment.
 8. Confirm logout clears both Payload and Better Auth sessions.
 9. If `BETTER_AUTH_API_KEY` is set, confirm the Better Auth Infrastructure
    dashboard receives sign-in/audit events for successful test logins.
+
+## Tenant invitations
+
+Invitation creation and resend authenticate the current Payload session. Owners
+may invite editor/viewer collaborators only into their single tenant;
+super-admins may provision tenant owner/editor/viewer accounts. Super-admin
+accounts remain tenantless and are not provisioned through the tenant invite
+form. User-triggered Local API operations explicitly set `overrideAccess: false`
+as well as passing the caller. The Users collection rejects original unsafe
+owner-create role/membership input before field access can strip it. Reviewed
+system provisioning and the one-time anonymous bootstrap-token path retain their
+existing separate authority.
+
+Only `inviteUser` and `resendUserInvitation` are public actions in the invitation
+module. The privileged mail signer is private. Immediately before signing it
+resolves the caller again, reads the current recipient with enforced access,
+checks single-tenant membership and permitted role, and rechecks that the tenant
+is available. Recipient identity/role and callback origin come from persisted
+membership and the platform origin; caller-supplied callback/metadata fields are
+rejected. A recipient or inviter whose authority changed fails safely.
+
+Email is normalized before lookup and create. A duplicate or competing create
+can reuse only the same permitted role and tenant membership. Conflicting
+membership is not moved or overwritten. Retrying delivery reuses the existing
+user ID without rotating passwords, sessions, identity anchors, names or
+commercial state. Default notification preferences are provisioned only for a
+newly created user. Authorized retry/resend may send another link; durable
+account-link budgets are a separate policy.
+
+Provider rejection or an unconfirmed response returns a delivery failure while
+preserving the created-user ID for retry. A successful action means the mail
+integration acknowledged sending; it is not proof of inbox receipt. The real
+Better Auth API response must acknowledge success. Integration verification uses
+mail doubles rather than live sends.
+
+Run `pnpm --dir apps/cms test:invitation-actions` after the M02 setup and committed
+migrations. This builds the real production CMS, checks its public action
+manifest, starts an owned loopback server and submits anonymous forged action
+requests. It requires masked production authorization failures and unchanged
+user/mail records, then stops the child before owned-storage teardown. It is
+actual built-action security evidence, distinct from Local API/session tests and
+from real provider delivery. The full build manifest contains an encryption key
+and must not be printed or uploaded; only the redacted test result is retained.

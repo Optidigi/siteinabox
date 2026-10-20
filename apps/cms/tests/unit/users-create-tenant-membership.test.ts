@@ -111,32 +111,30 @@ describe("Users.access.create — OBS-9 tenant-membership enforcement", () => {
     })
   })
 
-  describe("owner with missing/empty tenants — defer to validateTenants", () => {
-    it("owner submits no tenants[] — allows access; validateTenants will catch", async () => {
-      // Not the gate for "tenants is required". canCreateUserField + the
-      // validateTenants field-level invariant produce a typed error path;
-      // we don't preempt that with a generic 403.
+  describe("owner with missing/empty tenants — reject original unsafe intent", () => {
+    it("owner submits no tenants[] — denies access before field stripping", async () => {
+      // Malformed authority is rejected before fields can be stripped.
       const result = await createAccess({
         req: makeReq("owner", [{ tenant: 1 }]),
         data: { role: "editor", email: "x@example.com" },
       })
-      expect(result).toBe(true)
+      expect(result).toBe(false)
     })
 
-    it("owner submits empty tenants[] — allows access; validateTenants will catch", async () => {
+    it("owner submits empty tenants[] — denies access before field stripping", async () => {
       const result = await createAccess({
         req: makeReq("owner", [{ tenant: 1 }]),
         data: { role: "editor", tenants: [] },
       })
-      expect(result).toBe(true)
+      expect(result).toBe(false)
     })
 
-    it("owner submits null tenants — allows access; validateTenants will catch", async () => {
+    it("owner submits null tenants — denies access before field stripping", async () => {
       const result = await createAccess({
         req: makeReq("owner", [{ tenant: 1 }]),
         data: { role: "editor", tenants: null },
       })
-      expect(result).toBe(true)
+      expect(result).toBe(false)
     })
   })
 

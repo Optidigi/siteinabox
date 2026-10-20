@@ -134,6 +134,15 @@ jobs:
         run: pnpm --dir apps/cms check:commerce-release
       - name: Run vitest (unit + integration)
         run: pnpm --dir apps/cms test
+      - name: Verify actual built invitation action boundaries
+        run: pnpm --dir apps/cms test:invitation-actions
+      - name: Retain built invitation action evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: invitation-action-evidence
+          path: apps/cms/test-results/invitation-actions.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify checkout browser contract
         run: pnpm --dir apps/cms test:checkout-browser
 

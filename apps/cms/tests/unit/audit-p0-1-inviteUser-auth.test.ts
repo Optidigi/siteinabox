@@ -9,7 +9,7 @@ import { createElement } from "react"
 // plausibly anonymous if the action ID leaks) can create users at arbitrary
 // role + tenant. Fix: resolve caller via payload.auth({headers}); reject
 // non-(super-admin|owner); for owner, require input.tenantId === ownTenant.
-// Drop overrideAccess: true and pass `user: caller` so access rules run.
+// Set overrideAccess: false and pass `user: caller` so access rules run.
 
 // Stub the payload config (real one fails fast on missing env vars).
 vi.mock("@/payload.config", () => ({ default: {} }))
@@ -29,6 +29,7 @@ vi.mock("next/headers", () => ({
 const fakePayload = {
   auth: vi.fn(),
   create: vi.fn(),
+  find: vi.fn(),
   findByID: vi.fn(),
   forgotPassword: vi.fn(),
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() }
@@ -77,25 +78,27 @@ beforeEach(() => {
   }
   fakePayload.auth.mockReset()
   fakePayload.create.mockReset()
+  fakePayload.find.mockReset().mockResolvedValue({ docs: [] })
   fakePayload.findByID.mockReset()
   fakePayload.forgotPassword.mockReset()
   mocks.signInMagicLink.mockReset()
-  fakePayload.create.mockResolvedValue({ id: 42 })
-  fakePayload.findByID.mockResolvedValue({
-    id: 1,
-    name: "Example tenant",
-    domain: "example.nl",
-    status: "active",
+  let created: Record<string, unknown> = {}
+  fakePayload.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+    created = { id: 42, ...data }
+    return created
   })
+  fakePayload.findByID.mockImplementation(async ({ collection, id }: { collection: string; id: number }) =>
+    collection === "tenants" ? { id, name: "Example tenant", domain: "example.nl", status: "active" } :
+      id === 42 ? created : { id: 55, email: "member@example.com", name: "Member", role: "viewer", tenants: [{ tenant: 1 }] })
   fakePayload.forgotPassword.mockResolvedValue(undefined)
-  mocks.signInMagicLink.mockResolvedValue({ ok: true })
+  mocks.signInMagicLink.mockResolvedValue({ status: true })
 })
 
 describe("audit-p0 #1 — inviteUser server action must authenticate the caller", () => {
   it("rejects anonymous callers (no session)", async () => {
     fakePayload.auth.mockResolvedValue({ user: null })
     await expect(
-      inviteUser({ email: "atk@x", name: "atk", role: "owner", tenantId: 1 })
+      inviteUser({ email: "attacker@example.test", name: "atk", role: "owner", tenantId: 1 })
     ).rejects.toThrow()
     expect(fakePayload.create).not.toHaveBeenCalled()
   })
@@ -105,7 +108,7 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
       user: { id: 10, role: "editor", tenants: [{ tenant: { id: 1 } }] }
     })
     await expect(
-      inviteUser({ email: "atk@x", name: "atk", role: "editor", tenantId: 1 })
+      inviteUser({ email: "attacker@example.test", name: "atk", role: "editor", tenantId: 1 })
     ).rejects.toThrow()
     expect(fakePayload.create).not.toHaveBeenCalled()
   })
@@ -115,7 +118,7 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
       user: { id: 11, role: "viewer", tenants: [{ tenant: { id: 1 } }] }
     })
     await expect(
-      inviteUser({ email: "atk@x", name: "atk", role: "viewer", tenantId: 1 })
+      inviteUser({ email: "attacker@example.test", name: "atk", role: "viewer", tenantId: 1 })
     ).rejects.toThrow()
     expect(fakePayload.create).not.toHaveBeenCalled()
   })
@@ -125,20 +128,19 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
       user: { id: 20, role: "owner", tenants: [{ tenant: { id: 1 } }] }
     })
     await expect(
-      inviteUser({ email: "atk@x", name: "atk", role: "editor", tenantId: 999 })
+      inviteUser({ email: "attacker@example.test", name: "atk", role: "editor", tenantId: 999 })
     ).rejects.toThrow()
     expect(fakePayload.create).not.toHaveBeenCalled()
   })
 
-  it("owner can invite into OWN tenant; payload.create is called with `user` and WITHOUT `overrideAccess: true`", async () => {
+  it("owner invitations explicitly enforce collection and field access", async () => {
     const caller = { id: 20, role: "owner", tenants: [{ tenant: { id: 1 } }] }
     fakePayload.auth.mockResolvedValue({ user: caller })
-    await inviteUser({ email: "new@x", name: "new", role: "editor", tenantId: 1 })
+    await inviteUser({ email: "new@example.test", name: "new", role: "editor", tenantId: 1 })
     expect(fakePayload.create).toHaveBeenCalledTimes(1)
     const args = fakePayload.create.mock.calls[0]![0]
-    // The exact bug: previously this was `overrideAccess: true`, which let
-    // unauth callers and editors create super-admins.
-    expect(args.overrideAccess).not.toBe(true)
+    // Omission defaults to bypass in Payload; false is required even with user.
+    expect(args.overrideAccess).toBe(false)
     // The caller MUST be passed through so Payload's collection-level + new
     // field-level access rules (audit #2/#3) apply.
     expect(args.user).toBe(caller)
@@ -148,7 +150,7 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
     fakePayload.auth.mockResolvedValue({
       user: { id: 1, role: "super-admin", tenants: [] }
     })
-    await inviteUser({ email: "n@x", name: "n", role: "editor", tenantId: 999 })
+    await inviteUser({ email: "new@example.test", name: "n", role: "editor", tenantId: 999 })
     expect(fakePayload.create).toHaveBeenCalledTimes(1)
   })
 
@@ -194,7 +196,7 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
         code: "delivery_failed",
         id: 42,
         userCreated: true,
-        error: "User created, but invitation delivery failed.",
+        error: "User exists, but invitation delivery could not be confirmed.",
       })
   })
 
@@ -213,7 +215,7 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
     // both shapes — same pattern used in canManageUsers.
     const caller = { id: 20, role: "owner", tenants: [{ tenant: 1 }] }
     fakePayload.auth.mockResolvedValue({ user: caller })
-    await inviteUser({ email: "n@x", name: "n", role: "editor", tenantId: 1 })
+    await inviteUser({ email: "new@example.test", name: "n", role: "editor", tenantId: 1 })
     expect(fakePayload.create).toHaveBeenCalledTimes(1)
   })
 
