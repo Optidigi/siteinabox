@@ -10,6 +10,7 @@
       "packages-typecheck",
       "static-deployment-parity",
       "workflow-path-matrix",
+      "cms-test-guard",
       "publication-check"
     ],
     "ci": [
@@ -21,6 +22,7 @@
       "packages-typecheck",
       "static-deployment-parity",
       "workflow-path-matrix",
+      "cms-test-guard",
       "publication-check",
       "contracts-test",
       "site-renderer-test",
@@ -81,6 +83,7 @@
     { "id": "renderer-test", "command": "pnpm renderer:test", "run": ["pnpm", "renderer:test"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
     { "id": "renderer-build", "command": "pnpm renderer:build", "run": ["pnpm", "renderer:build"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
     { "id": "renderer-analytics-browser", "command": "pnpm --dir apps/renderer test:analytics-browser", "run": ["pnpm", "--dir", "apps/renderer", "test:analytics-browser"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "high" },
-    { "id": "publication-check", "command": "pnpm publication:check", "run": ["pnpm", "publication:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" }
+    { "id": "publication-check", "command": "pnpm publication:check", "run": ["pnpm", "publication:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
+    { "id": "cms-test-guard", "command": "pnpm cms:test:guard", "run": ["pnpm", "cms:test:guard"], "owner": "apps/cms", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" }
   ]
 }

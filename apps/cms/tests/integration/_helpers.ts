@@ -1,6 +1,5 @@
-import { getPayload, type Payload } from "payload"
-import config from "@/payload.config"
-import { migrations } from "@/migrations"
+import type { Payload } from "payload"
+import { assertDatabaseOwnership, assertWorkerStorage, loadCmsTestEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
 
 let cachedPayload: Payload | null = null
 
@@ -22,7 +21,14 @@ let cachedPayload: Payload | null = null
 // resetTestData() still wipes data between tests for isolation — it works
 // on tables, not schema, so the two concerns layer cleanly.
 export async function getTestPayload(): Promise<Payload> {
+  const { env, resource } = await loadCmsTestEnvironment()
+  await assertWorkerStorage(env, resource)
+  await assertDatabaseOwnership(env, resource)
   if (cachedPayload) return cachedPayload
+  // Dynamic imports keep even a direct helper entry point behind the guard.
+  const [{ getPayload }, { default: config }, { migrations }] = await Promise.all([
+    import("payload"), import("@/payload.config"), import("@/migrations"),
+  ])
   const payload = await getPayload({ config })
   // Payload's migrateFresh() dynamically imports generated TypeScript files.
   // Under Node's native type stripping, generator-emitted type imports can be
@@ -41,6 +47,10 @@ export async function getTestPayload(): Promise<Payload> {
 }
 
 export async function resetTestData(payload: Payload) {
+  if (payload !== cachedPayload) throw new Error("Refusing to reset an unowned Payload instance")
+  const { env, resource } = await loadCmsTestEnvironment()
+  await assertWorkerStorage(env, resource)
+  await assertDatabaseOwnership(env, resource)
   // Wipe collections in dependency order to satisfy FKs. Integration outboxes
   // reference appointments/connections, and appointments reference tenants.
   for (const slug of [
@@ -69,6 +79,7 @@ export async function resetTestData(payload: Payload) {
 }
 
 export async function seedFixture(payload: Payload) {
+  if (payload !== cachedPayload) throw new Error("Refusing to seed an unowned Payload instance")
   const t1 = await payload.create({
     collection: "tenants",
     data: { name: "Tenant 1", slug: "t1", domain: "t1.test", status: "active" },

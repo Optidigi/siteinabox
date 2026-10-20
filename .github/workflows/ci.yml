@@ -41,6 +41,7 @@ jobs:
           pnpm workflow:check
           pnpm workflow:actions:check
           pnpm publication:check
+          pnpm cms:test:guard
       - name: Shared package type checks
         run: pnpm packages:typecheck
       - name: Contract and renderer tests
@@ -101,9 +102,11 @@ jobs:
         ports:
           - 5432:5432
     env:
-      PAYLOAD_SECRET: ci-test-secret
+      PAYLOAD_SECRET: siab-test-ci-synthetic-secret
       DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
       PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
+      SITE_GENERATION_PROVIDER: mock
+      SIAB_TEST_RESOURCE_FILE: ${{ runner.temp }}/siab-test-cms/resource.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -118,6 +121,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends bind9-utils
+      - name: Authorize only the fresh CI PostgreSQL resource
+        run: node scripts/authorize-cms-test-resource.mjs --authorize-empty-database "$RUNNER_TEMP/siab-test-cms"
+      - name: Install checkout browser
+        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
       - name: Generate Payload types
         run: |
           pnpm --dir apps/cms payload generate:types
@@ -125,8 +132,6 @@ jobs:
         run: pnpm --dir apps/cms check:commerce-release
       - name: Run vitest (unit + integration)
         run: pnpm --dir apps/cms test
-      - name: Install checkout browser
-        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
       - name: Verify checkout browser contract
         run: pnpm --dir apps/cms test:checkout-browser
 

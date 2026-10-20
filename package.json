@@ -39,6 +39,8 @@
     "type-safety:check": "node --test scripts/check-type-safety.test.mjs && node scripts/check-type-safety.mjs",
     "type-safety:test": "node --test scripts/check-type-safety.test.mjs",
     "ui:typecheck": "pnpm --dir packages/ui typecheck",
+    "cms:test:authorize": "node scripts/authorize-cms-test-resource.mjs",
+    "cms:test:guard": "node --test scripts/cms-test-environment.test.mjs",
     "image:verify": "node scripts/verify-image.mjs",
     "publication:check": "node --test scripts/check-publication.test.mjs scripts/check-image-workflows.test.mjs && node scripts/check-image-workflows.mjs"
   }
