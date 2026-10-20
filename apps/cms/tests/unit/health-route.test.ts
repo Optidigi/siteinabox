@@ -72,4 +72,14 @@ describe("health endpoint", () => {
       revision: "deadbeef",
     })
   })
+
+  it("reports redacted configuration-only mail readiness without changing liveness", async () => {
+    payload.count.mockResolvedValue(1)
+    vi.stubEnv("CLOUDFLARE_EMAIL_SMTP_TOKEN", "synthetic-smtp-secret")
+    const response = await GET()
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.mail).toEqual({ status: "configured", provider: "cloudflare-smtp", issues: [], deliveryVerified: false })
+    expect(JSON.stringify(body)).not.toContain("synthetic-smtp-secret")
+  })
 })

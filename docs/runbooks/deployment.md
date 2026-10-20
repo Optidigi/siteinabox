@@ -272,6 +272,10 @@ and the dedicated mail-scoped `CLOUDFLARE_EMAIL_API_TOKEN`, with `EMAIL_FROM`
 as the platform sender. The DNS/zone automation token is never reused to send
 mail. SMTP via `CLOUDFLARE_EMAIL_SMTP_TOKEN` is the fallback when the REST mail
 token is absent and outbound `smtps://smtp.mx.cloudflare.net:465` is reachable.
+The [outbound mail contract](../contracts/email.md) defines configuration-only
+health diagnostics, acceptance versus delivery and indeterminate outcomes.
+Read it before retrying uncertain mail or rolling back its enum migration;
+health readiness never sends a test message.
 This path covers
 platform/admin messages, Better Auth CMS and preview magic links, intake
 internal notifications, privacy exports, preview handoff mail, and any other

@@ -21,7 +21,7 @@ export default async function LegalDeliveryDetailPage({ params, searchParams }: 
   const record = await getLegalRecord("legal-notification-deliveries", id)
   if (!record) notFound()
   const query = await searchParams
-  const canRetry = record.status === "failed" && record.retryState !== "permanent"
+  const canRetry = record.status === "failed" && record.retryState !== "permanent" && record.retryState !== "manual_review"
   return <div className="flex flex-col gap-4">
     <PageHeader title={t("deliveryDetail.title")} subtitle={recordLabel(record.tenant, ["name", "slug"]) || t("unknownTenant")} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/deliveries"><ArrowLeft />{t("detail.back")}</Link></Button>} />
     <LegalRouteTabs activePath="/legal/deliveries" />

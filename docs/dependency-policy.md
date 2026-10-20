@@ -215,6 +215,41 @@ see the [authentication contract](contracts/authentication.md#upgrade-and-cutove
 Reverting package pins is insufficient after a real provider-ID migration.
 The remaining Payload-private Sass/braces advisory continues to block release.
 
+## Mail transport qualification
+
+Nodemailer **10.1.7** was already selected in the CMS framework group and remains
+current in publisher metadata checked 2026-10-20. It includes its own compatible
+types; no stale DefinitelyTyped replacement, package bump or lockfile refresh is
+needed. The adapter uses its published address-parser export and typed transport
+contract. Release-age/native/override policy remains unchanged.
+
+[GHSA-6vj9-mwq6-2f5v](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-6vj9-mwq6-2f5v)
+is patched from 10.0.2. Its cache exploit requires different TLS server names on
+transports sharing a DNS host. SIAB uses one fixed Cloudflare SMTP host with
+implicit TLS and no per-tenant TLS server-name override; that exploit condition
+was not established by historical version matching. Current 10.1.7 is outside
+the affected range. This is source/package qualification, not a live TLS probe
+or a blanket image/security clearance.
+
+The [mail contract](contracts/email.md) owns readiness, receipts and retry states.
+Its adapters validate SMTP recipient acceptance and the
+[Cloudflare response shape](https://developers.cloudflare.com/api/resources/email_sending/methods/send/),
+including queued/bounced/suppressed recipients, without logging response bodies.
+Uncertain writes require manual reconciliation. The inherited Payload-private
+Sass/braces advisory still blocks release independently of this transport work.
+
+At the later M10 audit snapshot, the byte-identical production lockfile reports
+**0 critical, 3 high and 1 moderate** findings: the inherited braces issue plus
+three newly observed findings on `@mastra/core > @modelcontextprotocol/server`
+2.0.0. These are
+[shared transport isolation](https://github.com/advisories/GHSA-jm63-cq47-j5jp),
+[request validation memory exhaustion](https://github.com/advisories/GHSA-46jr-4wx8-v453),
+and [bearer-token audience validation](https://github.com/advisories/GHSA-rvq5-wwqv-78pq).
+Published fixes start at 2.3.0. They are not introduced or waived by the mail
+change: M11 owns compatible AI/Mastra graph remediation and exposure analysis;
+G03/release remain blocked. No MCP endpoint reachability or safety conclusion is
+inferred merely from this package-path inventory.
+
 ## Infrastructure identities
 
 [The reviewed image and Action inventory](infrastructure-images.json) records

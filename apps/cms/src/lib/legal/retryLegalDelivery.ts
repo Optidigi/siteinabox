@@ -21,10 +21,11 @@ export async function retryLegalDelivery(input: {
   try {
     const delivery = await input.payload.findByID({ collection: "legal-notification-deliveries", id: input.deliveryId, depth: 0, overrideAccess: true, req })
     if (delivery.status !== "failed") throw new Error("Alleen een mislukte verzending kan handmatig opnieuw worden geprobeerd.")
+    if (delivery.retryState === "manual_review") throw new Error("De uitkomst is onbekend. Controleer providerbewijs voordat deze kennisgeving opnieuw wordt verzonden.")
     if (delivery.retryState === "permanent") throw new Error("Een definitieve providerweigering kan niet automatisch opnieuw worden geprobeerd.")
     const result = await input.payload.update({
       collection: "legal-notification-deliveries",
-      where: { and: [{ id: { equals: delivery.id } }, { status: { equals: "failed" } }, { retryState: { not_equals: "permanent" } }] },
+      where: { and: [{ id: { equals: delivery.id } }, { status: { equals: "failed" } }, { retryState: { in: ["none", "retryable"] } }] },
       data: { status: "queued", nextAttemptAt: occurredAt, leaseUntil: null, retryState: "none", lastError: null },
       depth: 0, overrideAccess: true, req,
     })
