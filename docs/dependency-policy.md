@@ -49,7 +49,13 @@ without a `--frozen-lockfile` option; CMS prefetch uses that supported contract,
 then retains `install --frozen-lockfile --offline` for materialization. Do not hand-edit them or use the older
 CLI to rewrite this lockfile. Frozen installs with strict peer checking pass.
 The only new project package identity is the Node 24 typings; application runtime
-package versions remain unchanged. Native build permissions, security overrides
+package versions remain unchanged. The root also declares those same typings so
+workspace peer resolution shares the Node 24 context. A CMS-only declaration left
+shared UI's optional Next peer on Node 26 typings and created two next-intl wrapper
+identities. CMS mocks then missed the shared wrapper. Supplying the root peer
+unifies the graph without aliases, hoisting or peer-rule exceptions. The real
+provider/shared-dialog control passes on both graphs; this is a module/mock
+resolution regression, not evidence of a production translation outage. Native build permissions, security overrides
 and the release-age delay are preserved exactly. Agent-skill suggestions from
 dependencies do not authorize automatic skill installation or instruction changes.
 
@@ -67,7 +73,7 @@ dependencies do not authorize automatic skill installation or instruction change
 | PostHog | `^1.415.2` in CMS, landing, and renderer | Privacy-sensitive runtime; retain lifecycle and consent checks. |
 | Motion | `^13.1.0` in UI and renderer | Shared runtime aligned after renderer visual and type checks. |
 | TypeScript | exact `6.0.3` in all direct consumers | Keep the compiler reproducible; upgrade only as one reviewed toolchain change. |
-| `@types/node` | CMS-only exact `24.19.2` | Workspace-specific type surface aligned to the Node 24 LTS toolchain. |
+| `@types/node` | root and CMS exact `24.19.2` | Root supplies a consistent Node 24 peer context across workspaces; CMS retains its explicit build dependency. |
 | Playwright | exact `1.62.1` in direct consumers | Retain exact browser/tool alignment. |
 | Zod | `^4.4.3` across apps and packages | Shared contract runtime; preserve lockfile identity. |
 
