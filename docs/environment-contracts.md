@@ -69,3 +69,13 @@ Static applications keep their build/runtime boundary explicit:
 
 This is deliberately a non-mutating contract check. It does not print values,
 require production credentials, or change application startup behavior.
+
+## Disposable test authorization
+
+The test-only operator scripts own `SIAB_TEST_RESOURCE_FILE` (a private local
+authorization record) and optional `SIAB_TEST_BIND_VALIDATOR_PATH` (a real BIND
+executable). These are tooling inputs, not application runtime configuration.
+`DATABASE_URI_OVERRIDDEN`, `DATA_DIR_OVERRIDDEN` and `SIAB_ALLOW_TEST_EMAIL` no
+longer grant test overrides; tests require the exact authorized target and reject
+ambient provider credentials before initialization. See the
+[local verification procedure](runbooks/local-development.md#step-7-authorize-disposable-verification-then-run-tests).

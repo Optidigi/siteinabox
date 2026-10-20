@@ -185,18 +185,77 @@ clean volume.
 The marketing site's local `astro dev` CTAs point at `http://localhost:3000/login`.
 Production landing uses `https://admin.siteinabox.nl/login`.
 
-## Step 7: Run the test suite
+## Step 7: Authorize disposable verification, then run tests
 
-- **Unit tests:** `pnpm test`
-- **Integration tests** (require DB up): `pnpm test tests/integration/` — they skip if the DB isn't reachable; with the local compose up they run.
-- **Typecheck:** `pnpm typecheck` — runs `next typegen` first. Next owns the
-  generated, gitignored `next-env.d.ts`; do not edit or commit it.
-- **Remove abandoned test data:** from the repository root, run
-  `pnpm cms:cleanup-test-data` to list matching `apps/cms/.data-test-<pid>`
-  directories. Review the list, then rerun with `--apply` to remove them.
-  Local `.data-out/` can be deleted when you want a clean projection tree;
-  Postgres content is separate. Do not keep agent plans, screenshots, or
-  tenant exports under `.data-out/` expecting them to ship in an image.
+CMS tests can reset schema and collection data. Use an expressly disposable,
+fresh PostgreSQL 18 database (`payload_test`, or `siab_migration_test` for a
+separate rehearsal) on a dedicated local/CI service. The authorization command
+creates it from `template0` under your approved resource lifecycle; the service
+account needs database-creation permission and access to the `postgres` maintenance database. A localhost address or test-like name
+alone does not authorize destroying existing data.
+
+In a dedicated test checkout, supply the exact connection and synthetic secret,
+disable jobs and use mock AI. Resolve local `.env`, `.env.local`, `.env.test` and
+`.env.test.local` in that order, then shell values take precedence. The guard
+validates this complete effective environment before application initialization.
+Parsing uses the same dotenv parser as the owning CLI commands. Alternate
+`DOTENV_*` paths/override flags, dotenv CLI controls and env-file preloads are
+rejected; application initialization must run from `apps/cms`, so later default
+dotenv imports use the already-resolved files without overriding validated keys.
+Production/development-mode test children resolve the corresponding mode files
+before validation; env files cannot change their selected runtime mode.
+Any real provider configuration or unsafe database/storage override is an error;
+credentials are rejected rather than silently removed. Inject synthetic provider
+values through the existing test doubles instead of inheriting account credentials.
+
+```bash
+export DATABASE_URI=postgres://payload:test-only-password@127.0.0.1:5432/payload_test
+export PAYLOAD_SECRET=siab-test-local-synthetic-secret
+export PAYLOAD_DISABLE_JOBS_AUTORUN=1
+export SITE_GENERATION_PROVIDER=mock
+pnpm cms:test:authorize --create-database /absolute/private/siab-test-cms
+export SIAB_TEST_RESOURCE_FILE=/absolute/private/siab-test-cms/resource.json
+pnpm --dir apps/cms test
+```
+
+The explicit authorization command refuses every existing database without its
+matching private resource record, even an empty database, and refuses nonempty
+unowned storage. It checks the newly created database for schema dependencies
+and other user objects before recording a database ownership marker and a private resource file
+binding the exact connection to its storage root. Keep this file outside tracked
+source: it contains the connection credential. Repeated runs require that same
+file/marker pair. A changed tunnel, missing server, wrong marker, symlink,
+unowned directory or inherited provider credential fails before Payload can
+initialize, migrate or reset data. Never fabricate a marker on an existing
+customer/developer database to make a test pass.
+
+Tests require real BIND `named-checkzone` and the package-owned Playwright
+Chromium. Install `bind9-utils` and run
+`pnpm --dir apps/cms exec playwright install --with-deps chromium` before the
+suite. Missing prerequisites fail explicitly. `SIAB_TEST_BIND_VALIDATOR_PATH`
+can name an isolated real BIND binary for focused local verification; the full
+provider-acquisition suite still exercises its deployed `/usr/bin/named-checkzone`
+default or an explicitly injected validator path. No fake validator substitutes
+for authoritative DNS evidence.
+
+Each test worker receives a private directory below the authorized storage root;
+child processes inherit the validated target. Direct integration helpers validate
+again and apply the validated environment before importing Payload, resetting or
+seeding. Test children that execute a CMS operational script use
+`tests/_helpers/runGuardedCli.mjs` to check their final environment first. The
+existing missing-schema CLI failure fixture may set only its fixed search-path
+option; host/identity overrides and other URI options remain forbidden. Committed migrations define
+the schema; teardown closes over the worker's original path and marker and cannot
+use a later `DATA_DIR` value to remove another directory. Only the current run's
+storage is removed. Preserve the resource file/root for the next approved run.
+
+- **Pure safety fixtures:** `pnpm cms:test:guard` (no PostgreSQL/provider connection).
+- **CMS unit/integration tests:** `pnpm --dir apps/cms test` (authorized environment required).
+- **Focused integration:** `pnpm --dir apps/cms test tests/integration/`.
+- **Typecheck:** `pnpm --dir apps/cms typecheck` (runs owning Next type generation).
+- **Historical scratch cleanup:** `pnpm cms:cleanup-test-data` inventories older
+  `.data-test-<pid>` trees; its separate `--apply` operation still requires review.
+  It does not own the new resource root or any database.
 
 ## Verify the applications
 
