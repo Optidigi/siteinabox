@@ -33,20 +33,15 @@ The root `pnpm-lock.yaml` is the only dependency lock for CMS and shared
 packages. Do not create an app-local CMS workspace or lockfile; doing so can
 give linked UI packages a second React instance.
 
-CMS app work happens under `apps/cms`. From the monorepo root:
-
-```bash
-cd apps/cms
-```
-
-Or run CMS commands with `pnpm --dir apps/cms <script>`.
+Run every command below from the monorepo root. `pnpm --dir apps/cms` selects
+the CMS working directory, including its local dotenv files.
 
 ## Step 2: Start local Postgres
 
 **Standard (Docker):**
 ```bash
-docker compose -f docker-compose.local.yml up -d
-docker compose -f docker-compose.local.yml ps   # status should be "healthy"
+docker compose -f apps/cms/docker-compose.local.yml up -d
+docker compose -f apps/cms/docker-compose.local.yml ps   # status should be "healthy"
 ```
 
 **Podman without a Compose plugin:**
@@ -66,7 +61,7 @@ podman run -d \
   -e POSTGRES_PASSWORD=change-me \
   -p 5432:5432 \
   -v siteinabox-cms-postgres-dev:/var/lib/postgresql \
-  "$(node -p 'require("../../docs/infrastructure-images.json").images.postgres.reference')"
+  "$(node -p 'require("./docs/infrastructure-images.json").images.postgres.reference')"
 ```
 
 > **Password note:** The `.env` `DATABASE_URI` must use the password the volume was initialised with (`change-me`). If they diverge you'll get `password authentication failed` — fix by updating `DATABASE_URI` in `.env` to match.
@@ -78,7 +73,7 @@ The container is `siteinabox-cms-postgres-dev`, data lives in the named volume `
 Copy the example and edit:
 
 ```bash
-cp .env.example .env
+cp apps/cms/.env.example apps/cms/.env
 ```
 
 Values to set:
@@ -92,7 +87,7 @@ Values to set:
   path to `/data-out` instead. Never commit these trees or copy them into
   images:
   - `.data-out/` — local `DATA_DIR`
-  - `.data-test-<pid>/` — Vitest scratch from `apps/cms/tests/setup.ts`
+  - `.data-test-<pid>/` — historical scratch; current tests use the authorized root in Step 7
   - `.data/` — stray Next/tooling cache; not a SIAB `DATA_DIR`
 - `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl` — the current tenant resolver
   treats `localhost` as the super-admin surface in development
@@ -105,28 +100,21 @@ Values to set:
 - `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10` and `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60` — anonymous POST budget for `/api/forms`, `/api/builder/chat`, `/api/contact`, and `/api/users/forgot-password`.
 - `SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50` and `SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600` — extra anonymous generated-site form budget keyed by tenant/form target.
 
-## Step 4: First-boot schema push
+## Step 4: Apply committed migrations
 
-The Payload Postgres adapter pushes schema in `NODE_ENV=development` automatically on the first DB query. So the simplest path is:
-
-```bash
-pnpm dev
-# Open http://localhost:3000/admin → Payload's "Create first user" form appears.
-# (the page-load triggers a getPayload() init which pushes the schema)
-```
-
-If you'd rather match prod and run explicit migrations:
+The example sets `PAYLOAD_DB_PUSH=false`; opening a page does not initialize
+schema through development push. Apply the committed migrations to the local
+**development** database before starting CMS:
 
 ```bash
-pnpm payload migrate
+pnpm --dir apps/cms payload migrate
+pnpm --dir apps/cms dev
 ```
 
-The repo ships migrations under `src/migrations/`. In production, the
-Docker image's entrypoint runs an esbuild-bundled `migrate-on-boot.bundled.mjs`
-automatically before `node server.js` — there's no manual migrate step
-on deploy. For local development you keep using the CLI as above; the boot
-bundle (and the `dist-runtime/` directory it lives in) is only built and
-copied inside the Docker image, not in `pnpm dev`.
+Production images run the bundled migration entrypoint before `node server.js`.
+Local development uses the Payload CLI; `dist-runtime/` is built only for the
+image. Never point these development commands at a disposable test resource or
+an unrelated/production database. Step 7 defines the separate test lifecycle.
 
 ## Step 5: Create a local super-admin
 
@@ -140,7 +128,10 @@ pnpm --dir apps/cms run seed:local-admin
 That upserts `admin@local.test` / `LocalTest!1234` as `super-admin`. Sign in at
 http://localhost:3000/login with those credentials (email + password).
 
-You can still use Payload's first-user form if the database has no users yet.
+The Payload admin UI is disabled in this repository; `/admin` and its first-user
+form are not the setup path. The seed command creates a known local-only user,
+or resets that existing user's password. Run it only against your own local
+development database, with provider credentials absent.
 
 ## Step 6: Preview the AI site builder
 
@@ -181,14 +172,10 @@ If port 5432 is already taken, run Postgres on another host port and point
 `DATABASE_URI` at it, for example
 `postgres://payload:change-me@localhost:5433/payload`.
 
-Run `pnpm --dir apps/cms payload migrate` after pulling builder-session schema
-changes. If the CLI warns that development push already changed the database,
-do not accept data loss on a DB you care about. Confirm `builder_sessions`
-exists (dev push usually created it) and that the four `preview_auth_*` tables
-from `20260626_120000_add_preview_access_grants` exist. Use committed migrations
-and the owning migration rehearsal to diagnose missing schema; do not create
-application tables through ad hoc SQL. New disposable databases can use
-`payload migrate` from a clean volume.
+Run `pnpm --dir apps/cms payload migrate` after pulling schema changes. If an
+older development database was changed by push, do not accept data loss to clear
+a warning. Use the committed migrations and owning migration rehearsal to
+diagnose missing schema; do not create application tables through ad hoc SQL.
 
 The marketing site's local `astro dev` CTAs point at `http://localhost:3000/login`.
 Production landing uses `https://admin.siteinabox.nl/login`.
@@ -290,25 +277,26 @@ the repository root when verifying a change across the monorepo. These checks
 use local fixtures and services only; provider operations, paid checkout,
 production smoke, and image publication are separate release activities.
 
-| Surface | Owner | Minimum gate | Extra prerequisite |
-| --- | --- | --- | --- |
-| Shared contracts and repository policy | `packages/*` and root | `pnpm check:fast` | None |
-| Marketing site | `apps/landing` | `pnpm landing:build` and `pnpm landing:test` | Browser checks need Chromium; install it through `pnpm --dir apps/landing exec playwright install --with-deps chromium` |
-| CMS | `apps/cms` | Generate Payload types/import map, then `pnpm --dir apps/cms typecheck` and `pnpm --dir apps/cms test` | Local PostgreSQL, `DATABASE_URI`, and `PAYLOAD_SECRET` |
-| Published-site renderer | `apps/renderer` | `pnpm renderer:deploy-contract`, `pnpm renderer:typecheck`, `pnpm renderer:test`, and `pnpm renderer:build` | Browser checks need Chromium; renderer provider checks use local fixtures |
+The [verification matrix](../verification-matrix.md) owns command coverage,
+arguments, settings and pass/fail rules. Use `pnpm check:fast` for repository
+contracts and `pnpm check:ci` for the full sequence after installing its
+prerequisites. The latter uses CI browser settings and this checkout's fresh
+landing build/server. Stop any existing listener on its configured test port
+before running; the CI profile deliberately refuses to reuse it.
 
-For the complete CI command sequence, run `pnpm check:ci` after installing the
-documented prerequisites. The profile does not install PostgreSQL, operating
-system packages, or browser binaries for you. Use `pnpm check:toolchain` to
-verify the repository's Node, pnpm, workflow, Docker, and verification-matrix
-authorities.
+The matrix does not install PostgreSQL, BIND, Chromium/system libraries or Docker.
+An isolated BIND binary can satisfy focused tests with explicit injection, while
+the provider-acquisition suite still invokes the deployed absolute validator
+path. If that path or Docker is unavailable, report the affected local checks
+as blocked/partial and identify actual hosted source/run evidence separately.
+Never report a focused or hosted pass as a full local profile pass.
 
 ## Common operations
 
 - **Reset the local DB (lose all data):**
   ```bash
-  docker compose -f docker-compose.local.yml down -v
-  docker compose -f docker-compose.local.yml up -d
+  docker compose -f apps/cms/docker-compose.local.yml down -v
+  docker compose -f apps/cms/docker-compose.local.yml up -d
   ```
 - **Reset the local DB with direct Podman (lose all data):**
   ```bash
@@ -317,10 +305,10 @@ authorities.
   podman volume rm siteinabox-cms-postgres-dev
   # Recreate with the podman run command in Step 2.
   ```
-- **Tail logs:** `pnpm dev` already streams to stdout. For DB logs: `docker logs -f siteinabox-cms-postgres-dev` or `podman logs -f siteinabox-cms-postgres-dev`.
-- **Regenerate Payload types after collection edits:** `pnpm payload generate:types`
-- **Generate a new migration after collection edits:** `pnpm payload migrate:create my-change-name`
-- **Stop everything:** `Ctrl+C` the dev server, then `docker compose -f docker-compose.local.yml stop` or `podman stop siteinabox-cms-postgres-dev`.
+- **Tail logs:** `pnpm --dir apps/cms dev` already streams to stdout. For DB logs: `docker logs -f siteinabox-cms-postgres-dev` or `podman logs -f siteinabox-cms-postgres-dev`.
+- **Regenerate Payload types after collection edits:** `pnpm --dir apps/cms payload generate:types`
+- **Generate a new migration after collection edits:** `pnpm --dir apps/cms payload migrate:create my-change-name`
+- **Stop everything:** `Ctrl+C` the dev server, then `docker compose -f apps/cms/docker-compose.local.yml stop` or `podman stop siteinabox-cms-postgres-dev`.
 
 ## Platform notes
 
@@ -330,7 +318,7 @@ authorities.
 
 ## Troubleshooting
 
-- **Port 5432 already in use** — another Postgres is running on the host. Either stop it (`brew services stop postgresql` / `sudo systemctl stop postgresql` / Services on Windows), or override the host port: `POSTGRES_HOST_PORT=5433 docker compose -f docker-compose.local.yml up -d` and update `DATABASE_URI` in `.env`.
-- **`pnpm dev` errors with "PAYLOAD_SECRET is required"** — copy `.env.example` to `.env` and fill in `PAYLOAD_SECRET`.
-- **`relation "users" does not exist`** — the schema didn't push. Hit `/admin` once in the browser to trigger the `getPayload()` init, or run `pnpm payload migrate` explicitly.
-- **`/api/health` returns `dataDir: unwritable`** — the `.data-out/` directory needs to be writable by the dev process. On Linux/macOS: `chmod -R 755 .data-out`. On Windows: ensure no antivirus / Defender lock on the folder.
+- **Port 5432 already in use** — another Postgres is running on the host. Either stop it (`brew services stop postgresql` / `sudo systemctl stop postgresql` / Services on Windows), or override the host port: `POSTGRES_HOST_PORT=5433 docker compose -f apps/cms/docker-compose.local.yml up -d` and update `DATABASE_URI` in `.env`.
+- **CMS dev errors with "PAYLOAD_SECRET is required"** — copy `apps/cms/.env.example` to `apps/cms/.env` and fill in `PAYLOAD_SECRET`.
+- **`relation "users" does not exist`** — run `pnpm --dir apps/cms payload migrate` against the intended local development database; page loads do not replace migrations.
+- **`/api/health` returns `dataDir: unwritable`** — the `.data-out/` directory needs to be writable by the dev process. On Linux/macOS: `chmod -R 755 apps/cms/.data-out`. On Windows: ensure no antivirus / Defender lock on the folder.

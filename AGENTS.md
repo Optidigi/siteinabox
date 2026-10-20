@@ -92,6 +92,9 @@ When changing `apps/cms`:
 
 ## Verification and handoff
 
+- Use `docs/verification-matrix.json` and its runner for command coverage and
+  local/CI settings; setup and prerequisite guidance lives in
+  `docs/runbooks/local-development.md`.
 - For CI aggregation, protection diagnostics or delivery settings, read
   `docs/runbooks/protected-delivery.md`.
 
