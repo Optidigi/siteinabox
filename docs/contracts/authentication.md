@@ -278,3 +278,16 @@ password/recovery/role/tenant and invitation tests remain required. See the
 [verification matrix](../verification-matrix.md) for canonical commands and
 [local setup](../runbooks/local-development.md#step-7-authorize-disposable-verification-then-run-tests)
 for prerequisites. Hosted consuming-image evidence is distinct from local tests.
+
+`social-auth-sdk.test.ts` loads the configured Google, Microsoft and Apple
+options with synthetic client values. It establishes an existing CMS identity
+through the real primary magic-link flow, logs out, then exercises the actual
+OAuth initiation/callback and account/session linkage with closed implicit signup
+intact. The Payload eligibility hook is real; only its persistence query and mail
+transport are doubled. Synthetic code/token/photo/key endpoints refuse every
+unrecognized network destination. State, PKCE initiation, unsafe callbacks,
+unverified identities and forged role/tenant metadata have explicit assertions.
+Direct identity-token tests separately exercise real signature/key verification
+and invalid-signature rejection; callback-code tests are not described as live
+provider or direct-token verification. Microsoft fixtures assert the stable
+`oid` account subject. No live credentials or provider registrations are used.
