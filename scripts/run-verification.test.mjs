@@ -38,5 +38,14 @@ test("matrix admission preserves actual CI arguments and per-check settings", ()
     assert.deepEqual(JSON.parse(readFileSync(join(root, "result.json"), "utf8")), { args: ["--expected"], ci: "true", setting: "1" })
     writeFileSync(join(root, "probe.mjs"), "process.exit(7)")
     assert.equal(run("ci").status, 7, "a failed check must fail the profile")
+    const matrixCheck = { ...check, command: "pnpm probe cms", run: ["pnpm", "probe", "cms"], env: {} }
+    matrix.checks = [matrixCheck]
+    matrix.profileEnv = { ci: { CI: "true" } }
+    writeFileSync(matrixPath, JSON.stringify(matrix))
+    const matrixWorkflow = (env = "") => `jobs:\n  quality:\n    strategy:\n      matrix:\n        app: [cms]\n    steps:\n      - name: Matrix probe\n${env}        run: pnpm probe \${{ matrix.app }}\n`
+    writeFileSync(join(root, ".github/workflows/ci.yml"), matrixWorkflow())
+    assert.equal(run().status, 0)
+    writeFileSync(join(root, ".github/workflows/ci.yml"), matrixWorkflow('        env:\n          TEST_SETTING: "hosted-only"\n'))
+    assert.notEqual(run().status, 0, "matrix expansion must retain its originating step environment")
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
