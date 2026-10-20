@@ -210,7 +210,9 @@ export function createCloudflareRestProvider(config: { accountId: string; token:
         if (!parsed.success) throw indeterminateMailWrite()
         const body = parsed.data
         if (!response.ok || body.success !== true) {
-          if (body.success !== false || body.result?.message_id || response.status === 408 || response.status >= 500) throw indeterminateMailWrite(body.result?.message_id)
+          const hasAcceptanceEvidence = [body.result?.delivered, body.result?.queued]
+            .some((entries) => (entries?.length ?? 0) > 0)
+          if (body.success !== false || body.result?.message_id || hasAcceptanceEvidence || response.status === 408 || response.status >= 500) throw indeterminateMailWrite(body.result?.message_id)
           throw cloudflareRestError(response.status, body)
         }
         const disposition = validateCloudflareRestDisposition(input.to, body)

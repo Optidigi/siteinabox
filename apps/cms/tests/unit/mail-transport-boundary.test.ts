@@ -44,6 +44,24 @@ describe("mail provider acceptance evidence", () => {
     await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" }).send(input)).rejects.toMatchObject({ code: "E_PROVIDER_WRITE_INDETERMINATE" })
   })
 
+  it.each([200, 400, 429].flatMap((status) => ["delivered", "queued"].map((field) => ({ status, field }))))(
+    "keeps unsuccessful HTTP $status with $field evidence indeterminate", async ({ status, field }) => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: false, result: { [field]: [input.to] } }, { status })))
+      const provider = createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+      await expect(sendEmail(input, { provider })).rejects.toMatchObject({
+        normalized: { providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", retryState: "manual_review" },
+      })
+    },
+  )
+
+  it("retains retryable REST throttling without conflicting acceptance evidence", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: false }, { status: 429 })))
+    const provider = createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+    await expect(sendEmail(input, { provider })).rejects.toMatchObject({
+      normalized: { retryState: "retryable" },
+    })
+  })
+
   it("never reports suppressed recipients as accepted just because an ID exists", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: { message_id: "fixture", suppressed_recipients: [input.to], delivered: [], queued: [], permanent_bounces: [] } })))
     await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" }).send(input)).rejects.toMatchObject({ code: "E_CLOUDFLARE_SUPPRESSED" })
