@@ -6,13 +6,20 @@ Targets a developer who has just cloned the monorepo and wants `pnpm dev` in
 
 ## Prerequisites
 
-- **Node 26** — verify with `node -v`; `.nvmrc` pins the current local target
-- **pnpm 11** — install with `npm install -g pnpm@11.21.0`
+- **Node 24 LTS** — verify with `node -v`; `.nvmrc` pins the current local target
+- **pnpm 12** — install `pnpm@12.14.0` into an isolated tools prefix; add
+  its `node_modules/.bin` only to the current project shell's `PATH`
 - **Container runtime** — Docker or Podman
 - **Git** — for `git clone`
 
 > If Docker Compose is unavailable, use the documented Podman commands in
 > Step 2 to run PostgreSQL directly.
+
+Use `.nvmrc` in a project-scoped runtime manager or temporary shell `PATH`.
+Keep the standard Node used by other applications unchanged. Confirm the exact
+version and a nonempty `process.release.lts` before installation. pnpm 12 is a
+native CLI, but CMS, renderer and build scripts still execute the pinned Node.
+Keep the pnpm-generated environment and project lockfile documents together.
 
 ## Step 1: Clone and install
 

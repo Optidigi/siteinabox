@@ -15,7 +15,8 @@ and workflow YAML remain the executable authorities.
   does not install operating-system packages, browsers, or PostgreSQL.
 - pnpm check:toolchain validates the root Node/pnpm authority, repeated
   Docker/workflow declarations, local-development documentation, and matrix
-  structure.
+  structure. It also rejects non-LTS execution and same-major patch drift;
+  image builders and packaged Node smokes enforce the actual runtime contract.
 
 Hosted workflow YAML remains responsible for setup and service lifecycle. The
 matrix is the command inventory, not permission to make external provider

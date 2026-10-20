@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { once } from "node:events"
 import { request as createHttpRequest, createServer as createHttpServer } from "node:http"
 import { createServer as createNetServer } from "node:net"
@@ -6,6 +8,11 @@ import { createServer as createNetServer } from "node:net"
 import {
   amicarePublishedSiteSnapshot,
 } from "@siteinabox/contracts/fixtures/tenants"
+
+// Supervise Astro itself: native pnpm does not forward wrapper termination.
+// Resolve its declared package bin instead of depending on CLI internals.
+const astroManifest = import.meta.resolve("astro/package.json")
+export const astroCli = fileURLToPath(new URL(JSON.parse(readFileSync(new URL(astroManifest), "utf8")).bin.astro, astroManifest))
 
 export const TEST_RENDERER_ORIGIN_SECRET = "renderer-origin-smoke-secret-00000001"
 export const TEST_RENDERER_API_TOKEN = "renderer-api-smoke-token-000000001"

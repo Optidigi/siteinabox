@@ -1,12 +1,14 @@
 # syntax=docker/dockerfile:1.7
-ARG NODE_VERSION=26.7.0-alpine
+ARG NODE_VERSION=24.22.0-alpine
 ARG NGINX_VERSION=alpine
 
 FROM node:${NODE_VERSION} AS build
 WORKDIR /repo
-RUN npm install -g pnpm@11.21.0
+RUN npm install -g pnpm@12.14.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN node -e 'if (!process.release.lts) throw new Error("An actual Node LTS build runtime is required")' \
+  && test "$(pnpm --version)" = "$(node -p 'require("./package.json").packageManager.split("@")[1]')"
 COPY apps/landing/package.json apps/landing/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/legal-content/package.json packages/legal-content/package.json

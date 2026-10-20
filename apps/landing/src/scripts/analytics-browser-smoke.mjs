@@ -1,10 +1,16 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { createServer } from "node:net"
 import { gunzipSync } from "node:zlib"
 
 import { chromium } from "playwright"
+
+// Own the actual CLI child, not pnpm's non-forwarding native wrapper.
+const astroManifest = import.meta.resolve("astro/package.json")
+const astroCli = fileURLToPath(new URL(JSON.parse(readFileSync(new URL(astroManifest), "utf8")).bin.astro, astroManifest))
 
 async function openPort() {
   const server = createServer()
@@ -30,7 +36,7 @@ async function stopChild(child) {
 }
 
 async function buildLanding(env) {
-  const child = spawn("pnpm", ["exec", "astro", "build"], {
+  const child = spawn(process.execPath, [astroCli, "build"], {
     cwd: new URL("../..", import.meta.url),
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -132,7 +138,7 @@ const testEnv = {
   POSTHOG_HOST: ingestOrigin,
 }
 await buildLanding(testEnv)
-const child = spawn("pnpm", ["exec", "astro", "preview", "--host", "127.0.0.1", "--port", String(port)], {
+const child = spawn(process.execPath, [astroCli, "preview", "--host", "127.0.0.1", "--port", String(port)], {
   cwd: new URL("../..", import.meta.url),
   env: testEnv,
   stdio: ["ignore", "pipe", "pipe"],

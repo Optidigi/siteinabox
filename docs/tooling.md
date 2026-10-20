@@ -92,6 +92,10 @@ After an owner supplies that role, harmless availability checks are limited to
 
 ## Workspace tools
 
+For runtime/package-manager upgrades, read the
+[runtime contract](dependency-policy.md#runtime-and-package-manager-contract).
+Use the exact project pins in an isolated toolchain; preserve shared machine defaults.
+
 Node, pnpm, the workspace definition, dependency overrides, and the shared
 lockfile are root-owned. Package manifests own only package-specific scripts,
 dependencies, exports, and runtime engine constraints. Use root scripts for

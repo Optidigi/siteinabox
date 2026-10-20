@@ -16,7 +16,7 @@ test("publication accepts only a fresh, exact-source manual request", () => {
 test("publication binds the smoke evidence and image archive to the selected source and run attempt", () => {
   const evidence = { application: "cms", sourceSHA: sha, tag: "siab-verify-deadbeef-" + sha + ":cms",
     verificationRunId: "42", verificationRunAttempt: "1", imageId: "sha256:" + "b".repeat(64),
-    archiveSha256: "c".repeat(64), packagedSmoke: "passed", publishable: true, published: false }
+    archiveSha256: "c".repeat(64), nodeVersion: "24.22.0", buildNodeLts: "Krypton", nodeLts: "Krypton", packagedSmoke: "passed", publishable: true, published: false }
   const run = { ...verification, run_attempt: 1 }
   assertImageArtifact(request, run, evidence, "c".repeat(64))
   for (const change of [{ sourceSHA: "b".repeat(40) }, { verificationRunId: "43" }, { verificationRunAttempt: "2" },
