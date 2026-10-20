@@ -188,9 +188,10 @@ Production landing uses `https://admin.siteinabox.nl/login`.
 ## Step 7: Authorize disposable verification, then run tests
 
 CMS tests can reset schema and collection data. Use an expressly disposable,
-empty PostgreSQL 18 database (`payload_test`, or `siab_migration_test` for a
-separate rehearsal) on a dedicated local/CI service. Create that database only
-under your approved resource lifecycle. A localhost address or test-like name
+fresh PostgreSQL 18 database (`payload_test`, or `siab_migration_test` for a
+separate rehearsal) on a dedicated local/CI service. The authorization command
+creates it from `template0` under your approved resource lifecycle; the service
+account needs database-creation permission and access to the `postgres` maintenance database. A localhost address or test-like name
 alone does not authorize destroying existing data.
 
 In a dedicated test checkout, supply the exact connection and synthetic secret,
@@ -212,14 +213,15 @@ export DATABASE_URI=postgres://payload:test-only-password@127.0.0.1:5432/payload
 export PAYLOAD_SECRET=siab-test-local-synthetic-secret
 export PAYLOAD_DISABLE_JOBS_AUTORUN=1
 export SITE_GENERATION_PROVIDER=mock
-pnpm cms:test:authorize --authorize-empty-database /absolute/private/siab-test-cms
+pnpm cms:test:authorize --create-database /absolute/private/siab-test-cms
 export SIAB_TEST_RESOURCE_FILE=/absolute/private/siab-test-cms/resource.json
 pnpm --dir apps/cms test
 ```
 
-The explicit authorization command refuses to adopt nonempty/unowned databases
-or storage, including databases containing only user routines, standalone types
-or extra schemas. It records a database ownership marker and a private resource file
+The explicit authorization command refuses every existing database without its
+matching private resource record, even an empty database, and refuses nonempty
+unowned storage. It checks the newly created database for schema dependencies
+and other user objects before recording a database ownership marker and a private resource file
 binding the exact connection to its storage root. Keep this file outside tracked
 source: it contains the connection credential. Repeated runs require that same
 file/marker pair. A changed tunnel, missing server, wrong marker, symlink,

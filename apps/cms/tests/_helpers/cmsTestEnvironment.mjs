@@ -131,19 +131,19 @@ export async function assertDatabaseOwnership(env, resource) {
 
 export async function assertEmptyTestDatabase(client) {
   // A fresh database has public and system schemas plus the default plpgsql
-  // extension. Relations alone miss developer functions, standalone types and
-  // schemas that DROP SCHEMA CASCADE would also destroy.
+  // extension. Namespace dependencies cover every schema-owned object that
+  // DROP SCHEMA CASCADE can reach, including collations/text search/operators.
+  // https://www.postgresql.org/docs/18/catalog-pg-depend.html
   const result = await client.query(`
-    SELECT 'relation' AS kind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE NOT starts_with(n.nspname, 'pg_') AND n.nspname <> 'information_schema'
-    UNION ALL SELECT 'routine' FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE NOT starts_with(n.nspname, 'pg_') AND n.nspname <> 'information_schema'
-    UNION ALL SELECT 'type' FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+    SELECT 'schema-owned object' AS kind FROM pg_depend d
+      JOIN pg_namespace n ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = n.oid
       WHERE NOT starts_with(n.nspname, 'pg_') AND n.nspname <> 'information_schema'
     UNION ALL SELECT 'schema' FROM pg_namespace
       WHERE NOT starts_with(nspname, 'pg_') AND nspname NOT IN ('public', 'information_schema')
     UNION ALL SELECT 'extension' FROM pg_extension WHERE extname <> 'plpgsql'
     UNION ALL SELECT 'event trigger' FROM pg_event_trigger
+    UNION ALL SELECT 'large object' FROM pg_largeobject_metadata
+    UNION ALL SELECT 'default privileges' FROM pg_default_acl
     UNION ALL SELECT 'publication' FROM pg_publication
     UNION ALL SELECT 'foreign wrapper' FROM pg_foreign_data_wrapper
     UNION ALL SELECT 'foreign server' FROM pg_foreign_server
