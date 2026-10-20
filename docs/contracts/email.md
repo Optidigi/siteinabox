@@ -39,7 +39,8 @@ SMTP receipts must account for requested mailboxes without requested rejections;
 an ID alone is insufficient. Display names stay in message headers; receipt
 comparisons and metadata use normalized mailbox addresses. Partial acceptance
 and malformed receipts are indeterminate. REST retains documented asynchronous
-message-ID acceptance and fully accounted recipient receipts. Bounce/suppression
+message-ID acceptance only when recipient dispositions are empty, and otherwise
+requires fully accounted recipient receipts. Bounce/suppression
 is not delivery. Partial acceptance, lost responses, HTTP 408/5xx and malformed
 successful bodies remain indeterminate. Timeout/abort cannot prove unsent mail.
 The adapter never performs an automatic second provider send.

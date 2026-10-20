@@ -49,6 +49,44 @@ describe("mail provider acceptance evidence", () => {
     await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" }).send(input)).rejects.toMatchObject({ code: "E_CLOUDFLARE_SUPPRESSED" })
   })
 
+  it.each([
+    { delivered: [input.to] },
+    { queued: [input.to] },
+    { permanent_bounces: [input.to] },
+    { suppressed_recipients: [input.to] },
+  ].flatMap((disposition) => [
+    { ...disposition, message_id: "fixture-partial" },
+    { ...disposition, message_id: undefined },
+  ]))("keeps incomplete REST recipient evidence indeterminate: %j", async (disposition) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: {
+      delivered: [], queued: [], permanent_bounces: [], suppressed_recipients: [], ...disposition,
+    } })))
+    const provider = createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+    await expect(provider.send({ ...input, to: [input.to, "other@example.test"] })).rejects.toMatchObject({
+      code: "E_PROVIDER_WRITE_INDETERMINATE",
+      ...(disposition.message_id ? { providerMessageId: disposition.message_id } : {}),
+    })
+  })
+
+  it.each([
+    { delivered: [], queued: [] },
+    { delivered: [input.to], queued: ["other@example.test"] },
+  ])("retains asynchronous and complete REST acceptance: %j", async (disposition) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: {
+      message_id: "fixture-complete", permanent_bounces: [], ...disposition,
+    } })))
+    await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+      .send({ ...input, to: [input.to, "other@example.test"] })).resolves.toMatchObject({ providerMessageId: "fixture-complete" })
+  })
+
+  it("retains definite rejection when every REST recipient is rejected", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: {
+      message_id: "fixture-rejected", delivered: [], queued: [], permanent_bounces: [input.to], suppressed_recipients: ["other@example.test"],
+    } })))
+    await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" })
+      .send({ ...input, to: [input.to, "other@example.test"] })).rejects.toMatchObject({ code: "E_CLOUDFLARE_SUPPRESSED", providerMessageId: "fixture-rejected" })
+  })
+
   it("retains indeterminate classification across the actual account-link SDK API", async () => {
     const error = new MailSendError({ provider: "cloudflare-rest", providerErrorCode: "E_PROVIDER_WRITE_INDETERMINATE", providerErrorMessage: "Acceptance unknown; reconcile before retry", retryState: "manual_review" })
     const auth = betterAuth({ baseURL: "https://admin.siteinabox.nl", secret: "synthetic-mail-boundary-secret-over-32-chars", database: memoryAdapter({ user: [], session: [], account: [], verification: [] }), telemetry: { enabled: false }, plugins: [magicLink({ sendMagicLink: async () => { throw error } })] })

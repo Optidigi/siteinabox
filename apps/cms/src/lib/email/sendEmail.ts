@@ -302,7 +302,7 @@ function validateCloudflareRestDisposition(
   const bouncedRequested = [...requested].filter((recipient) => permanentBounces.has(recipient))
   const suppressedRequested = [...requested].filter((recipient) => suppressed.has(recipient))
   const accounted = [...requested].every(
-    (recipient) => accepted.has(recipient) || permanentBounces.has(recipient),
+    (recipient) => accepted.has(recipient) || permanentBounces.has(recipient) || suppressed.has(recipient),
   )
 
   if (requested.size === 0 || !result || (!messageId && !hasDispositionArrays)) {
@@ -311,6 +311,16 @@ function validateCloudflareRestDisposition(
       "Cloudflare Email REST API returned incomplete delivery evidence",
     )
   }
+  // Only an empty disposition can represent asynchronous whole-message
+  // acceptance. Once recipient evidence exists, it must account for everyone.
+  const hasRecipientEvidence = delivered.size + queued.size + permanentBounces.size + suppressed.size > 0
+  if (messageId && !hasRecipientEvidence) return { messageId }
+  if (!accounted) throw cloudflareDispositionError(
+    "E_PROVIDER_WRITE_INDETERMINATE",
+    "Cloudflare Email REST API did not account for every requested recipient",
+    undefined,
+    messageId,
+  )
   if (suppressedRequested.length > 0) {
     if ([...requested].some((recipient) => accepted.has(recipient))) throw indeterminateMailWrite(messageId)
     throw cloudflareDispositionError("E_CLOUDFLARE_SUPPRESSED", "Cloudflare suppressed the requested recipients; inspect provider suppression evidence before retrying", undefined, messageId)
@@ -324,12 +334,8 @@ function validateCloudflareRestDisposition(
       messageId,
     )
   }
-  // Cloudflare often accepts the message asynchronously: success + message_id
-  // with empty delivered/queued/permanent_bounces. Treat message acceptance as
-  // success unless a requested recipient permanently bounced.
-  if (messageId) return { messageId }
-  if (hasDispositionArrays && accounted && accepted.size === requested.size) {
-    return { messageId: undefined }
+  if ((messageId || hasDispositionArrays) && accepted.size === requested.size) {
+    return { messageId }
   }
   throw cloudflareDispositionError(
     "E_PROVIDER_WRITE_INDETERMINATE",
