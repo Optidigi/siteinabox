@@ -1,3 +1,5 @@
+// Integration boundary: real application callers, installed SDK and provider adapter.
+// Controlled models/HTTP fakes forbid live provider requests; guarded Vitest setup owns isolation.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createMockModel, MastraLanguageModelV2Mock } from "@mastra/core/test-utils/llm-mock"
 import type { Agent as SdkAgent, ToolsInput } from "@mastra/core/agent"
