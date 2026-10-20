@@ -59,12 +59,13 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - name: Build and smoke-test unpublished image
+        id: verify
         run: pnpm image:verify renderer
       - name: Retain verified image and source evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: image-renderer
-          path: artifacts/image-renderer.*
+          path: ${{ steps.verify.outputs.artifact-path }}
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

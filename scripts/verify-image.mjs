@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { setTimeout } from "node:timers/promises"
 import { sha256File } from "./image-artifact.mjs"
 
@@ -86,16 +86,20 @@ try {
       return response.ok && (await response.text()).includes("<html")
     })
   }
-  await mkdir("artifacts", { recursive: true })
-  const archive = "artifacts/image-" + app + ".tar"
+  const artifactDir = "artifacts/" + prefix
+  await mkdir(artifactDir, { recursive: true })
+  const archive = artifactDir + "/image-" + app + ".tar"
   docker(["save", "--output", archive, image])
   const archiveSha256 = await sha256File(archive)
-  await writeFile("artifacts/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,
+  await writeFile(artifactDir + "/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,
     imageId, tag: image, archiveSha256,
     verificationRunId: process.env.GITHUB_RUN_ID ?? null,
     verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
     nodeVersion: expectedNode, packagedSmoke: "passed", published: false }, null, 2) + "\n")
+  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
+    "artifact-path=" + artifactDir + "/image-" + app + ".*\n")
+  console.log("Verification artifacts: " + artifactDir)
   console.log("Packaged " + app + " image verification passed; no image published")
 } catch (error) {
   try { docker(["logs", container]) } catch { /* The container may not have started. */ }
