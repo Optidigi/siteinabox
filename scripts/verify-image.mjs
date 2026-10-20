@@ -149,7 +149,11 @@ try {
     // Stop the owned app before replacing only its owned database container.
     // The exact volume persists across this same-major binary update.
     docker(["stop", "--time", "10", container])
-    docker(["rm", "--force", database])
+    docker(["stop", "--time", "30", database])
+    if (docker(["inspect", "--format", "{{.State.ExitCode}}", database], true).trim() !== "0") {
+      throw new Error("PostgreSQL must stop cleanly before the minor-version replacement")
+    }
+    docker(["rm", database])
     await startDatabase(infrastructure.images.postgres)
     docker(["start", container])
     await health(cmsHealthy)
@@ -163,7 +167,7 @@ try {
     }
     postgresRehearsal = { from: infrastructure.images["postgres-rehearsal-baseline"].version,
       to: infrastructure.images.postgres.version, populatedDataPreserved: true, schemaPreserved: true,
-      migrationHistoryPreserved: true, actualEntrypointRestartPassed: true, runtimeBefore, runtimeAfter }
+      migrationHistoryPreserved: true, gracefulDatabaseStop: true, actualEntrypointRestartPassed: true, runtimeBefore, runtimeAfter }
   } else {
     const nginx = spawnSync("docker", ["run", "--rm", "--entrypoint", "nginx", image, "-v"], { encoding: "utf8" })
     if (nginx.error || nginx.status !== 0 || !(nginx.stdout + nginx.stderr).includes("nginx/" + infrastructure.images.nginx.version)) {
