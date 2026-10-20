@@ -238,7 +238,7 @@ including queued/bounced/suppressed recipients, without logging response bodies.
 Uncertain writes require manual reconciliation. The inherited Payload-private
 Sass/braces advisory still blocks release independently of this transport work.
 
-At the later M10 audit snapshot, the byte-identical production lockfile reports
+At the historical M10 audit snapshot, the byte-identical production lockfile reported
 **0 critical, 3 high and 1 moderate** findings: the inherited braces issue plus
 three newly observed findings on `@mastra/core > @modelcontextprotocol/server`
 2.0.0. These are
@@ -246,9 +246,30 @@ three newly observed findings on `@mastra/core > @modelcontextprotocol/server`
 [request validation memory exhaustion](https://github.com/advisories/GHSA-46jr-4wx8-v453),
 and [bearer-token audience validation](https://github.com/advisories/GHSA-rvq5-wwqv-78pq).
 Published fixes start at 2.3.0. They are not introduced or waived by the mail
-change: M11 owns compatible AI/Mastra graph remediation and exposure analysis;
-G03/release remain blocked. No MCP endpoint reachability or safety conclusion is
+change. The M11 graph qualification below removes that dependency path;
+G03/release remain blocked by the remaining advisory. No MCP endpoint reachability or safety conclusion is
 inferred merely from this package-path inventory.
+
+## AI runtime compatibility
+
+[Mastra core 1.78.0](https://github.com/mastra-ai/mastra/releases/tag/@mastra/core@1.78.0)
+was published on 2026-10-15 and satisfies the 1,440-minute rule and Node 24
+requirement. Its public Agent/tool/stream APIs remain usable, but default error
+processors and failed-stream completion semantics changed despite a minor
+version increment. The [AI runtime contract](contracts/ai-runtime.md) owns the
+explicit retry opt-out, terminal-state handling and later accounting obligations.
+Controlled old/new HTTP probes retain the same configured model, Responses route
+and reasoning; no live requests are required for compatibility proof.
+
+The owning pnpm upgrade removes `@modelcontextprotocol/server` and its core
+2.0.0 package from this production graph, following the upstream
+[embedded context declaration change](https://github.com/mastra-ai/mastra/pull/23998).
+This is removal of the affected installed dependency, not a universal statement
+about endpoint reachability or all MCP consumers. A fresh production audit on
+this graph reports **0 critical, 1 high and 0 moderate**; Payload's private
+Sass/braces advisory still blocks release. Existing retained package records,
+security overrides, native-build permissions and release-age policy are unchanged.
+React/React DOM singleton identity must remain exact across consumers.
 
 ## Infrastructure identities
 

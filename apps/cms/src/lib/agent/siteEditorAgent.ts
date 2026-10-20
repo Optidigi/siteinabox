@@ -12,6 +12,9 @@ import {
   defaultMastraMaintainReasoningEffort,
   defaultMastraModelId,
   mastraOpenAIProviderOptions,
+  mastraCompatibilityOptions,
+  assertMastraCompleted,
+  MastraRunIncompleteError,
 } from "@/lib/ai-generation/mastraProvider"
 import { sitegenCatalogDigest } from "@/lib/builder/catalogHonesty"
 import { mergeThemePatch } from "@/lib/theme/normalizeTheme"
@@ -336,6 +339,7 @@ const createEditorAgent = (input: SiteEditorTurnInput) => {
   return {
     providerOptions,
     agent: new Agent({
+      ...mastraCompatibilityOptions,
       id: "siab-site-editor",
       name: "Site in a Box site editor",
       instructions: {
@@ -398,7 +402,8 @@ export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<Si
   const generated = await agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
-  })
+  }).catch(() => { throw new MastraRunIncompleteError() })
+  assertMastraCompleted(generated)
   return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug)
 }
 
@@ -409,12 +414,18 @@ export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncG
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
-  })
-  for await (const chunk of iterateTextStream(streamed.textStream)) {
-    yield { type: "delta", text: chunk }
+  }).catch(() => { throw new MastraRunIncompleteError() })
+  try {
+    for await (const chunk of iterateTextStream(streamed.textStream)) {
+      yield { type: "delta", text: chunk }
+    }
+    const generated = await streamed.getFullOutput()
+    assertMastraCompleted(generated)
+    yield { type: "done", result: await resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug) }
+  } catch {
+    // Deltas and tool writes may already have escaped. Never run fallback writes.
+    throw new MastraRunIncompleteError()
   }
-  const generated = await streamed.getFullOutput()
-  yield { type: "done", result: await resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug) }
 }
 
 const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> => {
@@ -470,7 +481,8 @@ export async function runExistingSiteTurn(input: SiteEditorTurnInput & {
   if (input.useMastra) {
     try {
       return await runSiteEditorAgent(input)
-    } catch {
+    } catch (error) {
+      if (error instanceof MastraRunIncompleteError) throw error
       return mastraFallbackTurn(input)
     }
   }
@@ -484,7 +496,8 @@ export async function* streamExistingSiteTurn(input: SiteEditorTurnInput & {
     try {
       yield* streamSiteEditorAgent(input)
       return
-    } catch {
+    } catch (error) {
+      if (error instanceof MastraRunIncompleteError) throw error
       yield { type: "done", result: await mastraFallbackTurn(input) }
       return
     }

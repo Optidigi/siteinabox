@@ -7,6 +7,7 @@ import { unavailableAsksIn } from "./catalogHonesty"
 import { withBuilderPreview } from "./canvasSnapshot"
 import { choicesForFirstSite } from "./choices"
 import { canUseMastraSiteEditor } from "./extractWithMastra"
+import { MastraRunIncompleteError } from "@/lib/ai-generation/mastraProvider"
 import { runFirstSiteTurn } from "./firstSiteAgent"
 import { generatePreview, type BuilderChatResult } from "./generatePreview"
 import { planBuilderTurn } from "./planTurn"
@@ -102,7 +103,8 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
         contact,
         legal,
       })
-    } catch {
+    } catch (error) {
+      if (error instanceof MastraRunIncompleteError) throw error
       // Deterministic gates remain the fallback when the talking agent fails.
     }
   }

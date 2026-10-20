@@ -139,3 +139,9 @@ It does not construct/verify a transport or send a probe. The health endpoint's
 existing database/filesystem probes still make the endpoint unsuitable for strict
 read-only preflight. Follow the [mail contract](contracts/email.md) for
 indeterminate outcomes and the separate live-delivery gate.
+
+AI runtime upgrades use controlled model/HTTP doubles rather than provider keys
+or billable probes. The [AI runtime contract](contracts/ai-runtime.md) owns retry,
+terminal-output and later metering requirements. Application model configuration
+is separate from agent/MCP tooling selection; changing either does not authorize
+new provider spending.
