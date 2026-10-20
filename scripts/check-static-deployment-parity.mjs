@@ -26,7 +26,7 @@ function absent(label, content, unexpected) {
 
 const staticDockerContracts = [
   ["Node build stage", "FROM node:${NODE_VERSION} AS build"],
-  ["pinned pnpm bootstrap", "RUN npm install -g pnpm@11.21.0"],
+  ["pinned pnpm bootstrap", "RUN npm install -g " + JSON.parse(read("package.json")).packageManager],
   ["frozen dependency installation", "RUN pnpm install --frozen-lockfile"],
   ["production Node build", "ENV NODE_ENV=production"],
   ["Nginx static runtime", "FROM nginx:${NGINX_VERSION}"],

@@ -11,6 +11,10 @@ const revision = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }
 if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) {
   throw new Error("Commit the image source before recording exact-revision verification")
 }
+const expectedNode = (await readFile(".nvmrc", "utf8")).trim()
+if (process.versions.node !== expectedNode || !process.release.lts) {
+  throw new Error("Image verification requires the exact .nvmrc Node LTS toolchain")
+}
 const prefix = "siab-verify-" + randomUUID().slice(0, 8)
 const image = prefix + "-" + revision + ":" + app
 const container = prefix + "-app"
@@ -42,10 +46,12 @@ try {
     "--build-arg", "POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl", "--build-arg", "POSTHOG_HOST=https://eu.posthog.com")
   docker(["build", ...buildArgs, "--file", "apps/" + application + "/Dockerfile", "--tag", image, "."])
   const imageId = docker(["image", "inspect", "--format", "{{.Id}}", image], true).trim()
-  const expectedNode = (await readFile(".nvmrc", "utf8")).trim()
+  let nodeLts = null
   if (app !== "site") {
-    const node = docker(["run", "--rm", "--entrypoint", "node", image, "--version"], true).trim()
-    if (node !== "v" + expectedNode) throw new Error("Packaged Node differs from .nvmrc")
+    const node = JSON.parse(docker(["run", "--rm", "--entrypoint", "node", image, "--eval",
+      'console.log(JSON.stringify({version:process.versions.node,lts:process.release.lts||null}))'], true))
+    if (node.version !== expectedNode || !node.lts) throw new Error("Packaged Node must match .nvmrc and actually be LTS")
+    nodeLts = node.lts
   }
   if (app === "renderer") {
     const result = spawnSync("pnpm", ["--dir", "apps/renderer", "smoke:packaged-image"], {
@@ -96,7 +102,7 @@ try {
     verificationRunId: process.env.GITHUB_RUN_ID ?? null,
     verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
-    nodeVersion: expectedNode, packagedSmoke: "passed", published: false }, null, 2) + "\n")
+    nodeVersion: expectedNode, buildNodeLts: process.release.lts, nodeLts, packagedSmoke: "passed", published: false }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
     "artifact-path=" + artifactDir + "/image-" + app + ".*\nevidence-path=" + artifactDir + "/image-" + app + ".json\n")
   console.log("Verification artifacts: " + artifactDir)

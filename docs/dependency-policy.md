@@ -17,6 +17,40 @@ request to align every workspace to one version.
 - Use the installed pnpm version for `pnpm why --recursive PACKAGE`, frozen
   installs, and audit evidence.
 
+## Runtime and package-manager contract
+
+As verified on 2026-10-20, the newest released Node LTS is
+[24.22.0 Krypton](https://nodejs.org/en/blog/release/v24.22.0).
+[26.12.0 remains Current](https://nodejs.org/en/blog/release/v26.12.0), so it is
+not an eligible production replacement even though LTS is scheduled later.
+Recheck the official release index and actual `process.release.lts` at deployment;
+a planned date alone is insufficient. `.nvmrc` owns the exact runtime pin and
+root `engines.node` limits the supported major/minimum patch. Every CI setup and
+consuming image uses that pin; project tooling rejects another patch and Current.
+Use an isolated project toolchain rather than changing a shared machine default.
+
+[pnpm 12.14.0](https://github.com/pnpm/pnpm/releases/tag/v12.14.0) is the newest
+stable package manager observed at execution, published 2026-10-15 and eligible
+under the 1,440-minute rule. It supports the actual Linux glibc and musl targets
+used locally and by image builders. A bounded same-Node probe confirmed that
+pnpm 12's native wrapper exits on SIGTERM without stopping its supervised child
+or closing the inherited pipes; pnpm 11 forwarded termination. Astro verification
+harnesses therefore supervise the package's declared CLI directly with the pinned
+Node. The actual routing test now exits normally; assertions and landing behavior
+are unchanged. Native pnpm does not remove the application's Node requirement. Builders assert actual Node LTS and the root package-manager
+version before installing; CMS/renderer smokes also check the packaged Node
+version and LTS marker. Landing retains its unchanged Nginx runtime, while its
+builder checks Node. No registry publication or deployment is part of this change.
+
+pnpm owns lockfile generation. Its current lockfile has an environment document
+pinning package-manager platform binaries and a project document for dependencies;
+both use schema 9.0. Keep both documents. Do not hand-edit them or use the older
+CLI to rewrite this lockfile. Frozen installs with strict peer checking pass.
+The only new project package identity is the Node 24 typings; application runtime
+package versions remain unchanged. Native build permissions, security overrides
+and the release-age delay are preserved exactly. Agent-skill suggestions from
+dependencies do not authorize automatic skill installation or instruction changes.
+
 ## Shared dependency matrix
 
 | Dependency | Current workspace ranges | Policy decision |
@@ -31,7 +65,7 @@ request to align every workspace to one version.
 | PostHog | `^1.415.2` in CMS, landing, and renderer | Privacy-sensitive runtime; retain lifecycle and consent checks. |
 | Motion | `^13.1.0` in UI and renderer | Shared runtime aligned after renderer visual and type checks. |
 | TypeScript | exact `6.0.3` in all direct consumers | Keep the compiler reproducible; upgrade only as one reviewed toolchain change. |
-| `@types/node` | CMS-only exact `26.2.0` | Workspace-specific type surface aligned to the Node 26 toolchain. |
+| `@types/node` | CMS-only exact `24.19.2` | Workspace-specific type surface aligned to the Node 24 LTS toolchain. |
 | Playwright | exact `1.62.1` in direct consumers | Retain exact browser/tool alignment. |
 | Zod | `^4.4.3` across apps and packages | Shared contract runtime; preserve lockfile identity. |
 
@@ -54,7 +88,7 @@ request to align every workspace to one version.
 release-age exclusions are currently configured; patched versions are resolved
 through the normal policy and explicit compatibility overrides where needed.
 
-The 2026-08-12 production audit is clean: `pnpm audit --prod` reports zero
+The historical 2026-08-12 production audit was clean: `pnpm audit --prod` reports zero
 informational, low, moderate, high, or critical findings. The `sharp` override
 is retained as a narrow compatibility and security policy because Astro accepts
 the patched `0.35.x` line while its optional dependency range can otherwise
@@ -67,7 +101,29 @@ Each exception can be retired only after:
 3. The owning unit, integration, browser, renderer, legal, or MCP checks pass.
 4. Release notes and security advisories are reviewed for the affected graph.
 
+## Current security disposition
+
+The 2026-10-20 production-dependency audit reports **8 critical, 35 high,
+31 moderate and 7 low** entries. A comparison against the unchanged pre-M05
+project graph finds no new advisory identities introduced by the runtime/type
+contract change. The older CLI additionally reports two dev-only Vitest entries
+in its production audit; do not present their omission as a security fix.
+Critical entries affect Next, Payload and Astro. This supersedes the historical
+clean-audit claim for release decisions. Remediation belongs to their coherent
+framework/security upgrades, with compatibility, migration and consuming-image
+proof; publication/deployment remains blocked pending their disposition. Do not
+remove overrides, force peers or downgrade security controls to obtain a clean
+report. Re-run the audit on the actual selected graph before release.
+
 ## Reviewed updates still deferred
+
+The following 2026-08-12 version observations are historical, not current pins.
+Framework candidates are rechecked in their owning upgrade milestone. The newer
+Node 26 line has a specific current blocker: it is not yet LTS; recheck official
+status and consuming compatibility when LTS is actually released. Node 26 typings
+are likewise deferred while the selected application runtime is Node 24, so
+type checking does not advertise APIs absent from that runtime. No newer stable pnpm was observed than the
+selected 12.14.0. Preserve the age/security rule when rechecking either tool.
 
 On 2026-08-12, the compatible update pass removed the reviewed direct drift
 reported by the previous inventory. The remaining direct entries from

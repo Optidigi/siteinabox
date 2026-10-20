@@ -20,7 +20,12 @@ harness. The landing image runs its actual Nginx health contract.
 
 Each successful run writes an archive and JSON evidence under ignored
 `artifacts/`: full source SHA, local image ID, archive SHA-256, smoke result and
-workflow run/attempt. Hosted image workflows retain these as immutable Actions
+workflow run/attempt. Evidence also records the exact Node build version and LTS
+marker, plus the measured packaged Node LTS marker for CMS/renderer. Landing
+records a null Node runtime marker because it serves through Nginx. Missing or
+mismatched LTS evidence rejects archive admission; older Current-era archives
+must be replaced by verification of a reviewed LTS source before promotion.
+Recheck official support at the actual release/deployment time. Hosted image workflows retain these as immutable Actions
 artifacts for seven days. Download and preserve release evidence through the
 approved release/rollback record; expiring artifacts are not durable release
 evidence. Reverify if an archive expires.

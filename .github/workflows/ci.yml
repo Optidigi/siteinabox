@@ -37,6 +37,7 @@ jobs:
           pnpm mcp:check
           pnpm docs:check
           pnpm type-safety:check
+          pnpm check:toolchain
           pnpm environment:check
           pnpm workflow:check
           pnpm workflow:actions:check

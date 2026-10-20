@@ -1,12 +1,14 @@
 # syntax=docker/dockerfile:1.7
 
 # 1. Build
-FROM node:26.7.0-alpine AS builder
+FROM node:24.22.0-alpine AS builder
 WORKDIR /repo
 RUN apk add --no-cache libc6-compat
-RUN npm install -g pnpm@11.21.0
+RUN npm install -g pnpm@12.14.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN node -e 'if (!process.release.lts) throw new Error("An actual Node LTS build runtime is required")' \
+  && test "$(pnpm --version)" = "$(node -p 'require("./package.json").packageManager.split("@")[1]')"
 COPY apps/cms/package.json apps/cms/package.json
 COPY packages/contracts/package.json /repo/packages/contracts/package.json
 COPY packages/legal-content/package.json /repo/packages/legal-content/package.json
@@ -45,7 +47,7 @@ RUN pnpm --filter siab-payload payload generate:types \
  && node apps/cms/scripts/build-runtime-bundle.mjs
 
 # 2. Runtime
-FROM node:26.7.0-alpine AS runner
+FROM node:24.22.0-alpine AS runner
 WORKDIR /app
 ARG SIAB_BUILD_REVISION=unknown
 ENV NODE_ENV=production

@@ -6,6 +6,7 @@ import { join } from "node:path"
 import test from "node:test"
 
 import {
+  astroCli,
   assertHostRouting,
   assertStubCmsSnapshots,
   closeServer,
@@ -44,7 +45,7 @@ test("routes production hosts through canonical snapshots and keeps 404s analyti
   )
   const port = await getOpenPort()
   const baseUrl = `http://127.0.0.1:${port}`
-  const child = spawn("pnpm", ["exec", "astro", "dev", "--host", "127.0.0.1", "--port", String(port)], {
+  const child = spawn(process.execPath, [astroCli, "dev", "--host", "127.0.0.1", "--port", String(port)], {
     cwd: process.cwd(),
     env: {
       ...process.env,

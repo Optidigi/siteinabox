@@ -5,7 +5,7 @@ import { gunzipSync } from "node:zlib"
 
 import { chromium } from "playwright"
 
-import { getOpenPort, waitForRenderer } from "./host-routing-harness.mjs"
+import { astroCli, getOpenPort, waitForRenderer } from "./host-routing-harness.mjs"
 
 async function stopChild(child) {
   if (child.exitCode !== null) return
@@ -27,7 +27,7 @@ async function waitFor(predicate, message) {
 }
 
 async function buildRenderer() {
-  const build = spawn("pnpm", ["exec", "astro", "build"], {
+  const build = spawn(process.execPath, [astroCli, "build"], {
     cwd: new URL("../..", import.meta.url),
     env: {
       ...process.env,
@@ -76,7 +76,7 @@ const rendererOrigin = `http://127.0.0.1:${port}`
 const publicOrigin = `http://renderer.example.test:${port}`
 const ingestOrigin = `http://ingest.example.test:${port}/ingest`
 await buildRenderer()
-const child = spawn("pnpm", ["exec", "astro", "preview", "--host", "127.0.0.1", "--port", String(port)], {
+const child = spawn(process.execPath, [astroCli, "preview", "--host", "127.0.0.1", "--port", String(port)], {
   cwd: new URL("../..", import.meta.url),
   env: {
     ...process.env,
