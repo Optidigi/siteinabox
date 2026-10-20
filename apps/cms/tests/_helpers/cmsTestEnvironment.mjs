@@ -3,10 +3,11 @@ import { access, lstat, readFile, realpath, mkdtemp, writeFile, rm } from "node:
 import { constants, realpathSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { fileURLToPath } from "node:url"
 
-const cmsRoot = fileURLToPath(new URL("../../", import.meta.url))
-const require = createRequire(new URL("../../package.json", import.meta.url))
+// Vite rewrites new URL(..., import.meta.url) as a browser asset in jsdom
+// suites. Keep this Node-only setup anchored to its actual filesystem module.
+const cmsRoot = path.resolve(import.meta.dirname, "../..")
+const require = createRequire(path.join(cmsRoot, "package.json"))
 // Match the parser used by the existing dotenv/config CLI imports, including
 // colon-form assignments that Node's native parser does not recognize.
 const { parse: parseEnv } = require("dotenv")
