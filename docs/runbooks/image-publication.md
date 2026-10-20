@@ -4,7 +4,9 @@ Ordinary pull requests, matching main pushes and manual verification runs build
 and smoke-test images without publishing to a registry. The three
 `build-*-image.yml` workflows use read-only permissions, no registry login and no
 registry cache exports. `pnpm publication:check` protects this boundary and tests
-the publication admission policy. Existing canonical CI remains required evidence.
+the publication admission policy. The canonical CI image matrix and
+`required-ci` remain required evidence; see
+[protected delivery](protected-delivery.md).
 
 ## Verify
 
@@ -51,7 +53,7 @@ The guard rejects automatic events, branches other than main and every retry.
 It reads installed environment rules and the run's single explicit reviewer
 decision; an administrator bypass or historical decision is insufficient. It
 requires a main ancestor source, a successful main image verification run and
-every canonical CI job at that exact SHA. Missing, failed, cancelled or skipped
+every canonical CI job, all three image variants and `required-ci` at that exact SHA. Missing, failed, cancelled or skipped
 work blocks publication. Archive bytes, source, image and verification attempt
 must match the evidence. Inputs never select executable checkout code: the
 publication policy is checked out from the trusted main workflow revision.

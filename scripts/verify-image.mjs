@@ -98,7 +98,7 @@ try {
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
     nodeVersion: expectedNode, packagedSmoke: "passed", published: false }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
-    "artifact-path=" + artifactDir + "/image-" + app + ".*\n")
+    "artifact-path=" + artifactDir + "/image-" + app + ".*\nevidence-path=" + artifactDir + "/image-" + app + ".json\n")
   console.log("Verification artifacts: " + artifactDir)
   console.log("Packaged " + app + " image verification passed; no image published")
 } catch (error) {

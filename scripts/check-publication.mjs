@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
+import { expectedHostedJobs } from "./check-required-ci.mjs"
+import { assertImageVerificationEvidence } from "./image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 
 export function assertPublicationRequest({ event, ref, attempt, sha, image, verificationRunId }) {
@@ -40,14 +42,10 @@ export function assertVerifiedSource(request, verification, ci, jobs, expectedJo
 
 
 export function assertImageArtifact(request, verification, evidence, archiveSha256) {
-  if (evidence.application !== request.image || evidence.sourceSHA !== request.sha ||
-      !new RegExp("^siab-verify-[a-f0-9]{8}-" + request.sha + ":" + request.image + "$").test(evidence.tag ?? "") ||
-      evidence.verificationRunId !== request.verificationRunId ||
-      evidence.verificationRunAttempt !== String(verification.run_attempt) ||
-      !/^sha256:[a-f0-9]{64}$/.test(evidence.imageId ?? "") ||
-      !/^[a-f0-9]{64}$/.test(evidence.archiveSha256 ?? "") || evidence.archiveSha256 !== archiveSha256 ||
-      evidence.packagedSmoke !== "passed" || evidence.publishable !== true || evidence.published !== false) {
-    throw new Error("Image archive does not match the exact source, successful smoke and selected verification attempt")
+  assertImageVerificationEvidence({ sha: request.sha, runId: request.verificationRunId,
+    attempt: String(verification.run_attempt), image: request.image }, evidence)
+  if (evidence.archiveSha256 !== archiveSha256 || evidence.publishable !== true) {
+    throw new Error("Image archive does not match the verified bytes or publication build inputs")
   }
 }
 
@@ -76,7 +74,7 @@ export async function checkPublication() {
   const ci = runs.find((run) => ["push", "workflow_dispatch"].includes(run.event))
   const jobs = ci ? pages("/actions/runs/" + ci.id + "/jobs?per_page=100").flatMap((page) => page.jobs) : []
   const matrix = JSON.parse(await readFile(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
-  const expectedJobs = [...new Set(matrix.checks.filter((check) => matrix.profiles.ci.includes(check.id)).map((check) => check.ciJob))]
+  const expectedJobs = expectedHostedJobs(matrix)
   assertVerifiedSource(request, verification, ci, jobs, expectedJobs)
   const evidence = JSON.parse(await readFile("artifacts/image-" + request.image + ".json", "utf8"))
   const archiveSha256 = await sha256File("artifacts/image-" + request.image + ".tar")
