@@ -14,7 +14,8 @@ COPY packages/contracts/package.json /repo/packages/contracts/package.json
 COPY packages/legal-content/package.json /repo/packages/legal-content/package.json
 COPY packages/site-renderer/package.json /repo/packages/site-renderer/package.json
 COPY packages/ui/package.json /repo/packages/ui/package.json
-RUN pnpm fetch --frozen-lockfile --store-dir=/pnpm/store
+# pnpm 12 fetch consumes only the committed lockfile; install stays frozen/offline.
+RUN pnpm fetch --store-dir=/pnpm/store
 
 COPY apps/cms apps/cms
 COPY packages/contracts /repo/packages/contracts

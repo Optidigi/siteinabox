@@ -44,7 +44,9 @@ builder checks Node. No registry publication or deployment is part of this chang
 
 pnpm owns lockfile generation. Its current lockfile has an environment document
 pinning package-manager platform binaries and a project document for dependencies;
-both use schema 9.0. Keep both documents. Do not hand-edit them or use the older
+both use schema 9.0. Keep both documents. pnpm 12 fetch reads the lockfile
+without a `--frozen-lockfile` option; CMS prefetch uses that supported contract,
+then retains `install --frozen-lockfile --offline` for materialization. Do not hand-edit them or use the older
 CLI to rewrite this lockfile. Frozen installs with strict peer checking pass.
 The only new project package identity is the Node 24 typings; application runtime
 package versions remain unchanged. Native build permissions, security overrides
