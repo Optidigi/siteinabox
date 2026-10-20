@@ -340,16 +340,18 @@ unquoted, or strip quotes when reading (the helper in Step 5 does both).
 
 ## Step 3 — Login to GHCR (if image is private) and pull
 
-Record the verified digest emitted by `build-cms-image` in the deployment
+Record the published digest emitted by the separately approved `publish-image`
+workflow (image `cms`) in the deployment
 environment before pulling:
 
 ```bash
 SIAB_CMS_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
 ```
 
-Keep the previous digest in the approved change record for rollback. The image
-workflow publishes commit tags, smokes the exact output digest, and does not
-publish a mutable `latest` deployment target.
+Keep the previous digest in the approved change record for rollback. Automatic
+image workflows only verify unpublished images. The [publication workflow](image-publication.md)
+promotes the exact smoke-tested archive after source-bound approval; it does not
+rebuild, publish a mutable `latest` tag or deploy containers.
 
 ```bash
 # Skip if ghcr.io/optidigi/siteinabox-cms is public.
@@ -457,7 +459,8 @@ generic renderer catch-all.
 
 Marketing routes belong to `apps/landing/compose.yml` and must serve both the
 apex and `www` host. Set `SIAB_SITE_IMAGE_DIGEST=sha256:<digest>` to the
-verified digest emitted by the successful `build-site-image` workflow; never
+published digest emitted by the separately approved `publish-image` workflow
+(image `site`); never
 deploy a mutable tag:
 
 ```yaml
@@ -736,7 +739,7 @@ NODE_ENV=production
 HOST=0.0.0.0
 PORT=4321
 SIAB_CMS_URL=https://admin.siteinabox.nl
-SIAB_RENDERER_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
+SIAB_RENDERER_IMAGE_DIGEST=sha256:<digest from the approved publish-image workflow>
 SIAB_RENDERER_API_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-api-token
 CLOUDFLARE_TUNNEL_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-tunnel-token
 DATA_DIR=/data-out

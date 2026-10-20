@@ -1,6 +1,22 @@
 name: build-cms-image
 
 on:
+  pull_request:
+    paths:
+      - "apps/cms/**"
+      - "packages/contracts/**"
+      - "packages/legal-content/**"
+      - "packages/site-renderer/**"
+      - "packages/ui/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/build-cms-image.yml"
+      - ".dockerignore"
+      - ".nvmrc"
+      - "scripts/verify-image.mjs"
+      - "scripts/check-publication.mjs"
+      - "scripts/check-image-workflows.mjs"
   push:
     branches: [main]
     paths:
@@ -14,128 +30,39 @@ on:
       - "pnpm-workspace.yaml"
       - ".github/workflows/build-cms-image.yml"
       - ".dockerignore"
+      - ".nvmrc"
+      - "scripts/verify-image.mjs"
+      - "scripts/check-publication.mjs"
+      - "scripts/check-image-workflows.mjs"
   workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
-  group: build-cms-image-${{ github.ref }}
+  group: build-cms-image-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: payload
-          POSTGRES_PASSWORD: payload
-          POSTGRES_DB: payload
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U payload -d payload"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate image metadata
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
-        with:
-          images: ghcr.io/optidigi/siteinabox-cms
-          tags: |
-            type=sha,format=short
-            type=sha,format=long,prefix=sha-
-
-      - name: Build + push image
-        id: build
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-        with:
-          context: .
-          file: apps/cms/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            SIAB_BUILD_REVISION=${{ github.sha }}
-          cache-from: |
-            type=registry,ref=ghcr.io/optidigi/siteinabox-cms:buildcache
-            type=gha
-          cache-to: type=registry,ref=ghcr.io/optidigi/siteinabox-cms:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
-          platforms: linux/amd64
-
-      - name: Smoke-start pushed image
-        env:
-          IMAGE_REF: ghcr.io/optidigi/siteinabox-cms@${{ steps.build.outputs.digest }}
-          DATABASE_URI: postgres://payload:payload@host.docker.internal:5432/payload
-          PAYLOAD_SECRET: ci-smoke-start-secret-ci-smoke-start-secret
-          DATA_DIR: /tmp/siab-data
-          NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: siteinabox.nl
-        run: |
-          set -euo pipefail
-
-          container_name="siteinabox-cms-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          cleanup() {
-            docker logs "$container_name" > smoke-container.log 2>&1 || true
-            docker rm -f "$container_name" >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-
-          docker pull "$IMAGE_REF"
-          docker run \
-            --detach \
-            --name "$container_name" \
-            --add-host host.docker.internal:host-gateway \
-            --publish 3000:3000 \
-            --tmpfs "$DATA_DIR:mode=1777" \
-            --env DATABASE_URI="$DATABASE_URI" \
-            --env PAYLOAD_SECRET="$PAYLOAD_SECRET" \
-            --env DATA_DIR="$DATA_DIR" \
-            --env NEXT_PUBLIC_SUPER_ADMIN_DOMAIN="$NEXT_PUBLIC_SUPER_ADMIN_DOMAIN" \
-            "$IMAGE_REF"
-
-          deadline=$((SECONDS + 90))
-          response=""
-          until response="$(curl --fail --silent --show-error http://127.0.0.1:3000/api/health)"; do
-            if [ "$SECONDS" -ge "$deadline" ]; then
-              docker logs "$container_name" || true
-              exit 1
-            fi
-            sleep 3
-          done
-
-          revision=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.revision || '');")
-          status=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.status || '');")
-          db=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.db || '');")
-          dataDir=$(printf '%s' "$response" | node -e "const fs=require('node:fs'); const payload=JSON.parse(fs.readFileSync(0,'utf8')); process.stdout.write(payload.dataDir || '');")
-          if [ "$revision" != "${GITHUB_SHA}" ] || [ "$status" != "ok" ] || [ "$db" != "connected" ] || [ "$dataDir" != "writable" ]; then
-            echo "Healthcheck mismatch: status=$status db=$db dataDir=$dataDir revision=$revision expectedRevision=${GITHUB_SHA}" >&2
-            exit 1
-          fi
-
-      - name: Record verified image digest
-        run: echo "Verified CMS image \`ghcr.io/optidigi/siteinabox-cms@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload smoke-start logs
-        if: always()
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build and smoke-test unpublished image
+        run: pnpm image:verify cms
+      - name: Retain verified image and source evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: smoke-start-logs
-          path: smoke-container.log
-          if-no-files-found: ignore
+          name: image-cms
+          path: artifacts/image-cms.*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

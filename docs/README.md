@@ -62,6 +62,8 @@ and follow the executable source until the source is intentionally changed.
 - [`workflow-path-matrix.md`](workflow-path-matrix.md) and
   [`workflow-path-matrix.json`](workflow-path-matrix.json) — checked image
   workflow trigger coverage.
+- [`runbooks/image-publication.md`](runbooks/image-publication.md) — unpublished
+  image verification and explicitly approved exact-source registry promotion.
 - [`environment-inventory.json`](environment-inventory.json) — machine-owned
   source-read inventory consumed by `pnpm environment:check`.
 - [`contracts/rich-text-fixtures.json`](contracts/rich-text-fixtures.json) —

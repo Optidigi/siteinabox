@@ -21,3 +21,6 @@ playwright-report/
 # Local editor/system files
 .DS_Store
 *.tsbuildinfo
+
+# Unpublished image verification artifacts
+/artifacts/

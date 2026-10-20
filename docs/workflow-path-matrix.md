@@ -19,17 +19,20 @@ This is a minimum trigger guard, not a complete dependency graph. Dynamic
 imports, generated inputs, external operator scripts, and published snapshot
 compatibility still require the owning workflow and application checks.
 
-## Intentional differences retained
+## Verification and publication
 
-The matrix does not normalize workflow implementation details. Current evidence
-shows that CMS and renderer use newer Buildx, login, metadata, and build-push
-action majors than the static image workflows. CMS uses a registry cache while
-the other image workflows use GitHub Actions cache, and only CMS/renderer have
-explicit concurrency groups. Renderer also has a distinct packaged-image smoke
-path. These differences remain visible until hosted-log and owner evidence
-supports a separate consistency change.
+All three image workflows run on matching pull requests, main pushes and manual
+verification dispatches. They build local images, smoke-test them and retain
+an image archive plus source/image/hash evidence for seven days. They have
+read-only repository permissions, no registry login and no registry cache exports.
+`pnpm image:verify cms`, `renderer` or `site` runs the same unpublished seam
+locally with Docker and the repository toolchain. It requires committed clean
+source; all smoke resources are uniquely named and disposable. CMS uses an
+internal Docker network and temporary PostgreSQL, with jobs disabled and mock AI.
+Renderer retains its packaged host-routing smoke. Landing is built and served
+through its existing Nginx runtime without changing design or content.
 
-The check is deliberately about release-trigger safety: a shared package change
-must not silently stop rebuilding an application image. It does not claim that a
-cache is effective merely because a cache stanza exists, and it does not change
-branch protection or required-check policy.
+Only the separate manual `publish-image` workflow can promote a verified
+archive to GHCR. See [publication](runbooks/image-publication.md) for exact-source
+approval, retry, artifact retention and bootstrap boundaries. Publication changes
+no deployed container. Installed protections remain a separate control gate.
