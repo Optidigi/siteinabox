@@ -1,7 +1,7 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
 
 # 1. Build
-FROM node:24.22.0-alpine AS builder
+FROM node:24.22.0-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS builder
 WORKDIR /repo
 RUN apk add --no-cache libc6-compat
 RUN npm install -g pnpm@12.14.0
@@ -48,7 +48,7 @@ RUN pnpm --filter siab-payload payload generate:types \
  && node apps/cms/scripts/build-runtime-bundle.mjs
 
 # 2. Runtime
-FROM node:24.22.0-alpine AS runner
+FROM node:24.22.0-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS runner
 WORKDIR /app
 ARG SIAB_BUILD_REVISION=unknown
 ENV NODE_ENV=production
@@ -60,7 +60,7 @@ ENV SIAB_BUILD_REVISION=${SIAB_BUILD_REVISION}
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 RUN apk add --no-cache bind-tools wget
-# node:26-alpine ships with a `node` user at UID 1000; reuse it (matches the
+# The pinned Node Alpine image ships with a `node` user at UID 1000; reuse it (matches the
 # host's serveradmin UID 1000 so the bind-mounted /data-out is writable).
 COPY --from=builder --chown=node:node /repo/apps/cms/.next/standalone ./
 COPY --from=builder --chown=node:node /repo/apps/cms/.next/static ./apps/cms/.next/static

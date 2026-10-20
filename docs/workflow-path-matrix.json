@@ -22,7 +22,11 @@
         "scripts/image-artifact.mjs",
         ".github/workflows/ci.yml",
         "scripts/check-required-ci.mjs",
-        "scripts/image-evidence.mjs"
+        "scripts/image-evidence.mjs",
+        "docs/infrastructure-images.json",
+        "scripts/infrastructure-images.mjs",
+        "scripts/infrastructure-images.test.mjs",
+        "scripts/verify-tunnel-offline.mjs"
       ]
     },
     "build-renderer-image.yml": {
@@ -45,7 +49,11 @@
         "scripts/image-artifact.mjs",
         ".github/workflows/ci.yml",
         "scripts/check-required-ci.mjs",
-        "scripts/image-evidence.mjs"
+        "scripts/image-evidence.mjs",
+        "docs/infrastructure-images.json",
+        "scripts/infrastructure-images.mjs",
+        "scripts/infrastructure-images.test.mjs",
+        "scripts/verify-tunnel-offline.mjs"
       ]
     },
     "build-site-image.yml": {
@@ -66,7 +74,11 @@
         "scripts/image-artifact.mjs",
         ".github/workflows/ci.yml",
         "scripts/check-required-ci.mjs",
-        "scripts/image-evidence.mjs"
+        "scripts/image-evidence.mjs",
+        "docs/infrastructure-images.json",
+        "scripts/infrastructure-images.mjs",
+        "scripts/infrastructure-images.test.mjs",
+        "scripts/verify-tunnel-offline.mjs"
       ]
     }
   }

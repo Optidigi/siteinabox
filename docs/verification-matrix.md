@@ -58,3 +58,11 @@ responsive themes, keyboard/mobile interactions, accessibility, phone links and
 contact behavior. Semantic build-output comparison excludes only explained
 compiler output; it does not substitute for these browser checks or for the
 unpublished consuming-image matrix. See [dependency compatibility](dependency-policy.md#astro-and-renderer-compatibility).
+
+`pnpm infrastructure:check` binds the reviewed image/Action inventory to literal
+consumer pins and persisted-volume identities. It is part of the fast profile
+and package-quality job. CMS packaged verification additionally exercises offline
+connector ingress (network disabled) and an owned-volume PostgreSQL 18.4-to-18.6
+update/restart with committed migrations and populated fixture preservation.
+Image records retain actual architecture/OS, database and ingress results; they
+remain unpublished verification evidence, not production/provider proof.
