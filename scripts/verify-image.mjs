@@ -1,9 +1,8 @@
 import { execFileSync, spawnSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { createReadStream } from "node:fs"
-import { createHash } from "node:crypto"
 import { setTimeout } from "node:timers/promises"
+import { sha256File } from "./image-artifact.mjs"
 
 const app = process.argv[2]
 const application = { cms: "cms", renderer: "renderer", site: "landing" }[app]
@@ -13,7 +12,7 @@ if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim())
   throw new Error("Commit the image source before recording exact-revision verification")
 }
 const prefix = "siab-verify-" + randomUUID().slice(0, 8)
-const image = "siab-verified-" + revision + ":" + app
+const image = prefix + "-" + revision + ":" + app
 const container = prefix + "-app"
 const database = prefix + "-db"
 const network = prefix + "-network"
@@ -90,10 +89,9 @@ try {
   await mkdir("artifacts", { recursive: true })
   const archive = "artifacts/image-" + app + ".tar"
   docker(["save", "--output", archive, image])
-  const hash = createHash("sha256")
-  for await (const chunk of createReadStream(archive)) hash.update(chunk)
+  const archiveSha256 = await sha256File(archive)
   await writeFile("artifacts/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,
-    imageId, tag: image, archiveSha256: hash.digest("hex"),
+    imageId, tag: image, archiveSha256,
     verificationRunId: process.env.GITHUB_RUN_ID ?? null,
     verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),

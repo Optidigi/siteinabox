@@ -18,7 +18,8 @@
         ".nvmrc",
         "scripts/verify-image.mjs",
         "scripts/check-publication.mjs",
-        "scripts/check-image-workflows.mjs"
+        "scripts/check-image-workflows.mjs",
+        "scripts/image-artifact.mjs"
       ]
     },
     "build-renderer-image.yml": {
@@ -37,7 +38,8 @@
         ".nvmrc",
         "scripts/verify-image.mjs",
         "scripts/check-publication.mjs",
-        "scripts/check-image-workflows.mjs"
+        "scripts/check-image-workflows.mjs",
+        "scripts/image-artifact.mjs"
       ]
     },
     "build-site-image.yml": {
@@ -54,7 +56,8 @@
         ".nvmrc",
         "scripts/verify-image.mjs",
         "scripts/check-publication.mjs",
-        "scripts/check-image-workflows.mjs"
+        "scripts/check-image-workflows.mjs",
+        "scripts/image-artifact.mjs"
       ]
     }
   }

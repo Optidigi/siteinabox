@@ -42,6 +42,10 @@ The run name displays the source/image/run being approved. The protected
 `ghcr-publish` environment must have configured user reviewers, main-only custom
 branch policies and administrator bypass disabled. The owner may be the same
 person who dispatched the run; no additional human publisher is imposed.
+If the API omits the bypass-setting field, verify that setting in the environment
+UI as part of the installed-control gate; its absence is not proof that bypass
+is disabled. The guard independently requires an actual reviewer decision and
+rejects an explicitly enabled bypass setting whenever returned by the API.
 
 The guard rejects automatic events, branches other than main and every retry.
 It reads installed environment rules and the run's single explicit reviewer

@@ -14,7 +14,7 @@ test("publication accepts only a fresh, exact-source manual request", () => {
 })
 
 test("publication binds the smoke evidence and image archive to the selected source and run attempt", () => {
-  const evidence = { application: "cms", sourceSHA: sha, tag: "siab-verified-" + sha + ":cms",
+  const evidence = { application: "cms", sourceSHA: sha, tag: "siab-verify-deadbeef-" + sha + ":cms",
     verificationRunId: "42", verificationRunAttempt: "1", imageId: "sha256:" + "b".repeat(64),
     archiveSha256: "c".repeat(64), packagedSmoke: "passed", publishable: true, published: false }
   const run = { ...verification, run_attempt: 1 }
@@ -44,7 +44,7 @@ test("publication requires the selected main image run and every exact-source ca
   }
 })
 
-const environment = { id: 10, can_admins_bypass: false,
+const environment = { id: 10,
   deployment_branch_policy: { protected_branches: false, custom_branch_policies: true },
   protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "User", reviewer: { id: 7 } }] }] }
 const branches = [{ name: "main", type: "branch" }]

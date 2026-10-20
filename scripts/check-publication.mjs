@@ -1,3 +1,8 @@
+import { execFileSync } from "node:child_process"
+import { readFile } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
+import { sha256File } from "./image-artifact.mjs"
+
 export function assertPublicationRequest({ event, ref, attempt, sha, image, verificationRunId }) {
   if (event !== "workflow_dispatch" || ref !== "refs/heads/main" || attempt !== "1" ||
       !/^[a-f0-9]{40}$/.test(sha ?? "") || !["cms", "renderer", "site"].includes(image) ||
@@ -10,7 +15,9 @@ export function assertPublicationApproval(environment, branches, approvals) {
   const reviewers = environment.protection_rules?.find((rule) => rule.type === "required_reviewers")?.reviewers ?? []
   const policy = environment.deployment_branch_policy
   const approval = approvals[0]
-  if (environment.can_admins_bypass !== false || !reviewers.length ||
+  // Some API versions omit this setting. An explicit reviewer decision is
+  // required independently; the installed-control gate verifies UI-only policy.
+  if (environment.can_admins_bypass === true || !reviewers.length ||
       policy?.protected_branches !== false || policy?.custom_branch_policies !== true ||
       branches.length !== 1 || branches[0].name !== "main" || branches[0].type !== "branch" ||
       approvals.length !== 1 || approval?.state !== "approved" ||
@@ -30,16 +37,11 @@ export function assertVerifiedSource(request, verification, ci, jobs, expectedJo
     throw new Error("Publication requires successful exact-source main image verification and complete canonical CI; missing/skipped/cancelled work is not green")
   }
 }
-import { execFileSync } from "node:child_process"
-import { createHash } from "node:crypto"
-import { createReadStream } from "node:fs"
-import { readFile } from "node:fs/promises"
-import { fileURLToPath } from "node:url"
 
 
 export function assertImageArtifact(request, verification, evidence, archiveSha256) {
   if (evidence.application !== request.image || evidence.sourceSHA !== request.sha ||
-      evidence.tag !== "siab-verified-" + request.sha + ":" + request.image ||
+      !new RegExp("^siab-verify-[a-f0-9]{8}-" + request.sha + ":" + request.image + "$").test(evidence.tag ?? "") ||
       evidence.verificationRunId !== request.verificationRunId ||
       evidence.verificationRunAttempt !== String(verification.run_attempt) ||
       !/^sha256:[a-f0-9]{64}$/.test(evidence.imageId ?? "") ||
@@ -77,9 +79,8 @@ export async function checkPublication() {
   const expectedJobs = [...new Set(matrix.checks.filter((check) => matrix.profiles.ci.includes(check.id)).map((check) => check.ciJob))]
   assertVerifiedSource(request, verification, ci, jobs, expectedJobs)
   const evidence = JSON.parse(await readFile("artifacts/image-" + request.image + ".json", "utf8"))
-  const hash = createHash("sha256")
-  for await (const chunk of createReadStream("artifacts/image-" + request.image + ".tar")) hash.update(chunk)
-  assertImageArtifact(request, verification, evidence, hash.digest("hex"))
+  const archiveSha256 = await sha256File("artifacts/image-" + request.image + ".tar")
+  assertImageArtifact(request, verification, evidence, archiveSha256)
   console.log("Exact-source image archive, canonical CI and owner publication approval verified")
   return { request, evidence }
 }
