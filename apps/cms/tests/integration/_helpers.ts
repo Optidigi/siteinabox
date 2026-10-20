@@ -24,6 +24,7 @@ export async function getTestPayload(): Promise<Payload> {
   const { env, resource } = await loadCmsTestEnvironment()
   await assertWorkerStorage(env, resource)
   await assertDatabaseOwnership(env, resource)
+  Object.assign(process.env, env, { PAYLOAD_DB_PUSH: "false" })
   if (cachedPayload) return cachedPayload
   // Dynamic imports keep even a direct helper entry point behind the guard.
   const [{ getPayload }, { default: config }, { migrations }] = await Promise.all([

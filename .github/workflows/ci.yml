@@ -106,7 +106,6 @@ jobs:
       DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
       PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
       SITE_GENERATION_PROVIDER: mock
-      SIAB_TEST_RESOURCE_FILE: ${{ runner.temp }}/siab-test-cms/resource.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -122,7 +121,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends bind9-utils
       - name: Authorize only the fresh CI PostgreSQL resource
-        run: node scripts/authorize-cms-test-resource.mjs --authorize-empty-database "$RUNNER_TEMP/siab-test-cms"
+        run: |
+          node scripts/authorize-cms-test-resource.mjs --authorize-empty-database "$RUNNER_TEMP/siab-test-cms"
+          echo "SIAB_TEST_RESOURCE_FILE=$RUNNER_TEMP/siab-test-cms/resource.json" >> "$GITHUB_ENV"
       - name: Install checkout browser
         run: pnpm --dir apps/cms exec playwright install --with-deps chromium
       - name: Generate Payload types

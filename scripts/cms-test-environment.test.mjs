@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { mkdtemp, writeFile, access, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { assertDisposableCmsEnvironment, effectiveTestEnvironment, createWorkerStorage, cleanupWorkerStorage } from "../apps/cms/tests/_helpers/cmsTestEnvironment.mjs"
+import { assertDisposableCmsEnvironment, effectiveTestEnvironment, readEffectiveTestEnvironment, createWorkerStorage, cleanupWorkerStorage } from "../apps/cms/tests/_helpers/cmsTestEnvironment.mjs"
 
 const uri = "postgresql://test:synthetic@127.0.0.1:55432/payload_test"
 const resource = { version: 1, id: "b".repeat(32), databaseUri: uri, dataRoot: "/tmp/siab-test-authorized" }
@@ -19,6 +19,14 @@ test("destructive tests require exact explicit resource authorization, not a rew
   }
   assert.throws(() => assertDisposableCmsEnvironment(safe, undefined))
   assert.throws(() => assertDisposableCmsEnvironment({ ...safe, COMMERCE_RELEASE_STAGE: "live" }, resource))
+})
+
+test("the CLI missing-schema fixture may change only its search path, never the authorized server", () => {
+  const missingSchema = new URL(uri)
+  missingSchema.searchParams.set("options", "-csearch_path=siab_cli_missing_schema")
+  assertDisposableCmsEnvironment({ ...safe, DATABASE_URI: missingSchema.toString() }, resource)
+  missingSchema.searchParams.set("options", "-chost=production.example")
+  assert.throws(() => assertDisposableCmsEnvironment({ ...safe, DATABASE_URI: missingSchema.toString() }, resource))
 })
 
 test("worker cleanup removes only its owned directory and rejects an escaped or symlinked target", async () => {
@@ -48,4 +56,13 @@ test("configuration resolves before validation, retaining shell precedence witho
     assert.throws(() => assertDisposableCmsEnvironment({ ...safe, [name]: "real-looking-value" }, resource), new RegExp(name))
   }
   assert.throws(() => assertDisposableCmsEnvironment(effectiveTestEnvironment({}, ["DATABASE_URI=" + uri]), resource))
+})
+
+test("production-mode test children validate their production env files before imports", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "siab-test-env-"))
+  try {
+    await writeFile(path.join(directory, ".env.production"), "OPENAI_API_KEY=real-looking-provider-key")
+    const env = await readEffectiveTestEnvironment({ ...safe, NODE_ENV: "production" }, directory)
+    assert.throws(() => assertDisposableCmsEnvironment(env, resource), /OPENAI_API_KEY/)
+  } finally { await rm(directory, { recursive: true, force: true }) }
 })

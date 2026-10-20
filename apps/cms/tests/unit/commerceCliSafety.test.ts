@@ -65,7 +65,7 @@ describe("artifact-contained commerce CLI safety", () => {
     expect(runbook.match(/-e PAYLOAD_DISABLE_JOBS_AUTORUN=1/g)).toHaveLength(3)
   })
 
-  it.runIf(Boolean(process.env.DATABASE_URI))(
+  it(
     "exits promptly when a post-initialization inventory query fails",
     async () => {
       const configuredDatabaseUrl = process.env.DATABASE_URI
@@ -79,28 +79,31 @@ describe("artifact-contained commerce CLI safety", () => {
       )
       const child = spawn(
         "pnpm",
-        ["exec", "tsx", "scripts/check-commerce-edge-inventory.ts"],
+        ["exec", "tsx", "tests/_helpers/runGuardedCli.mjs", "scripts/check-commerce-edge-inventory.ts"],
         {
           cwd: cmsRoot,
           env: {
             ...process.env,
             BETTER_AUTH_SECRET:
-              "ci-cli-failure-auth-secret-ci-cli-failure-auth-secret",
+              "siab-test-cli-failure-auth-secret",
             DATABASE_URI: databaseUrl.toString(),
             NODE_ENV: "production",
             PAYLOAD_DISABLE_JOBS_AUTORUN: "1",
             PAYLOAD_SECRET:
-              "ci-cli-failure-payload-secret-ci-cli-failure-payload-secret",
+              "siab-test-cli-failure-payload-secret",
           },
-          stdio: "ignore",
+          stdio: ["ignore", "ignore", "pipe"],
         },
       )
+      let stderr = ""
+      child.stderr?.on("data", (chunk) => { stderr += String(chunk) })
       const timeout = setTimeout(() => child.kill("SIGKILL"), 15_000)
       const [code, signal] = await once(child, "exit")
       clearTimeout(timeout)
 
       expect(signal).toBeNull()
       expect(code).toBe(1)
+      expect(stderr).toContain("Commerce edge inventory command failed unexpectedly.")
     },
     20_000,
   )

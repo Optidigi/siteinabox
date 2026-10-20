@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto"
 import { readdir, mkdir, readFile, realpath, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { assertDisposableCmsEnvironment, assertDatabaseOwnership, loadCmsTestEnvironment, readEffectiveTestEnvironment, assertOwnedPath } from "../apps/cms/tests/_helpers/cmsTestEnvironment.mjs"
+import { assertDisposableCmsEnvironment, assertDatabaseOwnership, assertEmptyTestDatabase, loadCmsTestEnvironment, readEffectiveTestEnvironment, assertOwnedPath } from "../apps/cms/tests/_helpers/cmsTestEnvironment.mjs"
 
 const args = process.argv.slice(2)
 if (args.length !== 2 || args[0] !== "--authorize-empty-database" || !path.isAbsolute(args[1])) {
@@ -30,8 +30,8 @@ if (existing) {
   try {
     await client.connect()
     const marker = await client.query("SELECT shobj_description(oid, 'pg_database') AS marker FROM pg_database WHERE datname = current_database()")
-    const objects = await client.query("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema' LIMIT 1")
-    if (marker.rows[0]?.marker || objects.rowCount) throw new Error("Refusing to authorize a nonempty or already-owned database without its matching resource file")
+    if (marker.rows[0]?.marker) throw new Error("Refusing to authorize an already-owned database without its matching resource file")
+    await assertEmptyTestDatabase(client)
     const database = new URL(resource.databaseUri).pathname.slice(1)
     await client.query('COMMENT ON DATABASE "' + database + '" IS \'siab-test:' + resource.id + "'")
     await writeFile(path.join(dataRoot, ".siab-test-owner"), resource.id + "\n", { mode: 0o600, flag: "wx" })

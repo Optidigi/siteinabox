@@ -16,12 +16,17 @@ export function effectiveTestEnvironment(shell, files) {
 export function assertDisposableCmsEnvironment(env, resource) {
   let uri
   try { uri = new URL(env.DATABASE_URI) } catch { throw new Error("An explicitly authorized disposable DATABASE_URI is required") }
+  // This existing CLI fixture selects a nonexistent schema to exercise a
+  // post-initialization error. No host, identity or other option can change.
+  const missingSchema = uri.searchParams.size === 1 && uri.searchParams.get("options") === "-csearch_path=siab_cli_missing_schema"
+  const targetUri = new URL(uri)
+  if (missingSchema) targetUri.search = ""
   if (resource?.version !== 1 || !/^[a-f0-9]{32}$/.test(resource.id ?? "") ||
-      resource.databaseUri !== env.DATABASE_URI || !path.isAbsolute(resource.dataRoot ?? "") ||
+      resource.databaseUri !== targetUri.toString() || !path.isAbsolute(resource.dataRoot ?? "") ||
       !path.basename(resource.dataRoot).startsWith("siab-test-") ||
       !["postgres:", "postgresql:"].includes(uri.protocol) ||
       !["localhost", "127.0.0.1", "[::1]", "postgres"].includes(uri.hostname) ||
-      !uri.port || !uri.username || !uri.password || uri.search || uri.hash ||
+      !uri.port || !uri.username || !uri.password || uri.search && !missingSchema || uri.hash ||
       !["/payload_test", "/siab_migration_test"].includes(uri.pathname)) {
     throw new Error("Database/storage must match an explicitly authorized disposable resource; no database-name rewriting is permitted")
   }
@@ -54,12 +59,16 @@ export function assertDisposableCmsEnvironment(env, resource) {
 }
 
 export async function readEffectiveTestEnvironment(shell = process.env, directory = cmsRoot) {
+  const mode = shell.NODE_ENV || "test"
+  if (!["test", "production", "development"].includes(mode)) throw new Error("Unknown test child NODE_ENV")
   const files = []
-  for (const name of [".env", ".env.local", ".env.test", ".env.test.local"]) {
+  for (const name of [".env", ".env.local", ".env." + mode, ".env." + mode + ".local"]) {
     try { files.push(await readFile(path.join(directory, name), "utf8")) }
     catch (error) { if (error.code !== "ENOENT") throw error }
   }
-  return effectiveTestEnvironment(shell, files)
+  const env = effectiveTestEnvironment(shell, files)
+  if (env.NODE_ENV && env.NODE_ENV !== mode) throw new Error("Env files cannot change the test child runtime mode")
+  return { ...env, NODE_ENV: mode }
 }
 
 export async function assertOwnedPath(file, directory = false) {
@@ -79,16 +88,14 @@ export async function loadCmsTestEnvironment(env = process.env) {
   await assertOwnedPath(resourceFile)
   const resource = JSON.parse(await readFile(resourceFile, "utf8"))
   assertDisposableCmsEnvironment(effective, resource)
-  await assertOwnedPath(resource.dataRoot, true)
-  const owner = await readFile(path.join(resource.dataRoot, ".siab-test-owner"), "utf8")
-  if (owner.trim() !== resource.id) throw new Error("Test storage ownership marker is missing or mismatched")
+  await assertStorageRootOwnership(resource)
   return { env: effective, resource }
 }
 
 export async function assertDatabaseOwnership(env, resource) {
   assertDisposableCmsEnvironment(env, resource)
   const { Client } = require("pg")
-  const client = new Client({ connectionString: env.DATABASE_URI, connectionTimeoutMillis: 5000,
+  const client = new Client({ connectionString: resource.databaseUri, connectionTimeoutMillis: 5000,
     query_timeout: 5000, options: "-c default_transaction_read_only=on" })
   try {
     await client.connect()
@@ -101,6 +108,31 @@ export async function assertDatabaseOwnership(env, resource) {
     if (error.message?.includes("ownership marker")) throw error
     throw new Error("Authorized disposable PostgreSQL prerequisite failed before application initialization")
   } finally { await client.end() }
+}
+
+export async function assertEmptyTestDatabase(client) {
+  // A fresh database has public and system schemas plus the default plpgsql
+  // extension. Relations alone miss developer functions, standalone types and
+  // schemas that DROP SCHEMA CASCADE would also destroy.
+  const result = await client.query(`
+    SELECT 'relation' AS kind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+    UNION ALL SELECT 'routine' FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+    UNION ALL SELECT 'type' FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+    UNION ALL SELECT 'schema' FROM pg_namespace
+      WHERE nspname NOT LIKE 'pg_%' AND nspname NOT IN ('public', 'information_schema')
+    UNION ALL SELECT 'extension' FROM pg_extension WHERE extname <> 'plpgsql'
+    UNION ALL SELECT 'event trigger' FROM pg_event_trigger
+    UNION ALL SELECT 'publication' FROM pg_publication
+    UNION ALL SELECT 'foreign wrapper' FROM pg_foreign_data_wrapper
+    UNION ALL SELECT 'foreign server' FROM pg_foreign_server
+    UNION ALL SELECT 'database setting' FROM pg_db_role_setting
+      WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())
+    LIMIT 1
+  `)
+  if (result.rowCount) throw new Error("Refusing to authorize a nonempty database containing " + result.rows[0].kind)
 }
 
 export async function assertWorkerStorage(env, resource) {
@@ -116,13 +148,17 @@ export async function assertWorkerStorage(env, resource) {
 
 export async function createWorkerStorage(env, resource) {
   assertDisposableCmsEnvironment(env, resource)
+  await assertStorageRootOwnership(resource)
+  const dataDir = await mkdtemp(path.join(resource.dataRoot, "run-" + resource.id + "-"))
+  await writeFile(path.join(dataDir, ".siab-test-owner"), resource.id, { mode: 0o600 })
+  return { env: { ...env, DATA_DIR: dataDir }, resource }
+}
+
+async function assertStorageRootOwnership(resource) {
   await assertOwnedPath(resource.dataRoot, true)
   if ((await readFile(path.join(resource.dataRoot, ".siab-test-owner"), "utf8")).trim() !== resource.id) {
     throw new Error("Test storage ownership marker is missing or mismatched")
   }
-  const dataDir = await mkdtemp(path.join(resource.dataRoot, "run-" + resource.id + "-"))
-  await writeFile(path.join(dataDir, ".siab-test-owner"), resource.id, { mode: 0o600 })
-  return { env: { ...env, DATA_DIR: dataDir }, resource }
 }
 
 export async function cleanupWorkerStorage(worker) {

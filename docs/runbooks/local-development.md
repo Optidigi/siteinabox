@@ -197,6 +197,8 @@ In a dedicated test checkout, supply the exact connection and synthetic secret,
 disable jobs and use mock AI. Resolve local `.env`, `.env.local`, `.env.test` and
 `.env.test.local` in that order, then shell values take precedence. The guard
 validates this complete effective environment before application initialization.
+Production/development-mode test children resolve the corresponding mode files
+before validation; env files cannot change their selected runtime mode.
 Any real provider configuration or unsafe database/storage override is an error;
 credentials are rejected rather than silently removed. Inject synthetic provider
 values through the existing test doubles instead of inheriting account credentials.
@@ -212,7 +214,8 @@ pnpm --dir apps/cms test
 ```
 
 The explicit authorization command refuses to adopt nonempty/unowned databases
-or storage. It records a database ownership marker and a private resource file
+or storage, including databases containing only user routines, standalone types
+or extra schemas. It records a database ownership marker and a private resource file
 binding the exact connection to its storage root. Keep this file outside tracked
 source: it contains the connection credential. Repeated runs require that same
 file/marker pair. A changed tunnel, missing server, wrong marker, symlink,
@@ -231,7 +234,11 @@ for authoritative DNS evidence.
 
 Each test worker receives a private directory below the authorized storage root;
 child processes inherit the validated target. Direct integration helpers validate
-again before importing Payload, resetting or seeding. Committed migrations define
+again and apply the validated environment before importing Payload, resetting or
+seeding. Test children that execute a CMS operational script use
+`tests/_helpers/runGuardedCli.mjs` to check their final environment first. The
+existing missing-schema CLI failure fixture may set only its fixed search-path
+option; host/identity overrides and other URI options remain forbidden. Committed migrations define
 the schema; teardown closes over the worker's original path and marker and cannot
 use a later `DATA_DIR` value to remove another directory. Only the current run's
 storage is removed. Preserve the resource file/root for the next approved run.

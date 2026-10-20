@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process"
 import { describe, expect, it } from "vitest"
-import { assertDatabaseOwnership, loadCmsTestEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
+import { Client } from "pg"
+import { assertDatabaseOwnership, assertEmptyTestDatabase, loadCmsTestEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
 import { getTestPayload } from "./_helpers"
 
 describe("explicit disposable test ownership", () => {
@@ -27,4 +28,27 @@ describe("explicit disposable test ownership", () => {
     expect(restored.name).toBe("Disposable ownership fixture")
     await payload.delete({ collection: "tenants", id: tenant.id, overrideAccess: true })
   }, 30_000)
+
+  it.each([
+    ["function-only", "CREATE FUNCTION public.siab_guard_fixture() RETURNS integer LANGUAGE sql AS 'SELECT 1'"],
+    ["enum-only", "CREATE TYPE public.siab_guard_fixture AS ENUM ('synthetic')"],
+    ["schema-only", "CREATE SCHEMA siab_guard_fixture"],
+  ])("refuses to authorize a %s database as empty", async (_name, statement) => {
+    const { env, resource } = await loadCmsTestEnvironment()
+    await assertDatabaseOwnership(env, resource)
+    const client = new Client({ connectionString: resource.databaseUri })
+    await client.connect()
+    try {
+      // Transactional fixture on the expressly authorized test database. Rollback
+      // preserves the committed migrations and any preceding synthetic fixtures.
+      await client.query("BEGIN")
+      await client.query("DROP SCHEMA public CASCADE")
+      await client.query("CREATE SCHEMA public")
+      await client.query(statement)
+      await expect(assertEmptyTestDatabase(client)).rejects.toThrow("nonempty")
+    } finally {
+      await client.query("ROLLBACK")
+      await client.end()
+    }
+  })
 })
