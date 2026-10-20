@@ -1,7 +1,7 @@
 import path from "node:path"
 import { realpath } from "node:fs/promises"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { assertDatabaseOwnership, assertWorkerStorage, loadCmsTestEnvironment } from "./cmsTestEnvironment.mjs"
+import { applyCmsTestEnvironment, assertDatabaseOwnership, assertWorkerStorage, loadCmsTestEnvironment } from "./cmsTestEnvironment.mjs"
 
 const scriptsRoot = fileURLToPath(new URL("../../scripts/", import.meta.url))
 const args = process.argv.slice(2)
@@ -12,5 +12,5 @@ if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Tes
 const { env, resource } = await loadCmsTestEnvironment()
 await assertWorkerStorage(env, resource)
 await assertDatabaseOwnership(env, resource)
-Object.assign(process.env, env, { PAYLOAD_DB_PUSH: "false" })
+applyCmsTestEnvironment(env, resource)
 await import(pathToFileURL(target).href)

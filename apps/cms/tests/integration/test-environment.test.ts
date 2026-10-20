@@ -33,6 +33,7 @@ describe("explicit disposable test ownership", () => {
     ["function-only", "CREATE FUNCTION public.siab_guard_fixture() RETURNS integer LANGUAGE sql AS 'SELECT 1'"],
     ["enum-only", "CREATE TYPE public.siab_guard_fixture AS ENUM ('synthetic')"],
     ["schema-only", "CREATE SCHEMA siab_guard_fixture"],
+    ["pg-like user schema", "CREATE SCHEMA pgfoo; CREATE TABLE pgfoo.synthetic_fixture (id integer)"],
   ])("refuses to authorize a %s database as empty", async (_name, statement) => {
     const { env, resource } = await loadCmsTestEnvironment()
     await assertDatabaseOwnership(env, resource)

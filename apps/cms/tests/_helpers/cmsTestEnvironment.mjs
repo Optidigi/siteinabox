@@ -1,19 +1,24 @@
 import path from "node:path"
-import { parseEnv } from "node:util"
 import { access, lstat, readFile, realpath, mkdtemp, writeFile, rm } from "node:fs/promises"
-import { constants } from "node:fs"
+import { constants, realpathSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 
 const cmsRoot = fileURLToPath(new URL("../../", import.meta.url))
 const require = createRequire(new URL("../../package.json", import.meta.url))
+// Match the parser used by the existing dotenv/config CLI imports, including
+// colon-form assignments that Node's native parser does not recognize.
+const { parse: parseEnv } = require("dotenv")
 
 export function effectiveTestEnvironment(shell, files) {
   return Object.assign({}, ...files.map((text) => parseEnv(text)), shell)
 }
 
 export function assertDisposableCmsEnvironment(env, resource) {
+  const dotenvOption = Object.keys(env).find((name) => name.startsWith("DOTENV_") && env[name] !== undefined)
+  if (dotenvOption) throw new Error("Alternate dotenv loading is forbidden in tests: " + dotenvOption)
+  if (/dotenv|--env-file/.test(env["NODE_OPTIONS"] || "")) throw new Error("Alternate dotenv/env-file preload is forbidden in tests")
   let uri
   try { uri = new URL(env.DATABASE_URI) } catch { throw new Error("An explicitly authorized disposable DATABASE_URI is required") }
   // This existing CLI fixture selects a nonexistent schema to exercise a
@@ -56,6 +61,19 @@ export function assertDisposableCmsEnvironment(env, resource) {
     const relative = path.relative(resource.dataRoot, path.resolve(env.DATA_DIR))
     if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("DATA_DIR escapes the authorized test resource")
   }
+}
+
+export function applyCmsTestEnvironment(env, resource) {
+  assertDisposableCmsEnvironment(env, resource)
+  if (realpathSync(process.cwd()) !== realpathSync(cmsRoot)) {
+    throw new Error("Run CMS test application/CLI initialization from the owning apps/cms directory")
+  }
+  if (process.argv.some((argument) => /^dotenv_config_/i.test(argument))) {
+    throw new Error("Alternate dotenv CLI loading is forbidden in tests")
+  }
+  // All keys from the same default dotenv files/parser are now present. Later
+  // dotenv/config imports use override=false and cannot replace this result.
+  Object.assign(process.env, env, { PAYLOAD_DB_PUSH: "false" })
 }
 
 export async function readEffectiveTestEnvironment(shell = process.env, directory = cmsRoot) {
@@ -116,13 +134,13 @@ export async function assertEmptyTestDatabase(client) {
   // schemas that DROP SCHEMA CASCADE would also destroy.
   const result = await client.query(`
     SELECT 'relation' AS kind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+      WHERE NOT starts_with(n.nspname, 'pg_') AND n.nspname <> 'information_schema'
     UNION ALL SELECT 'routine' FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+      WHERE NOT starts_with(n.nspname, 'pg_') AND n.nspname <> 'information_schema'
     UNION ALL SELECT 'type' FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+      WHERE NOT starts_with(n.nspname, 'pg_') AND n.nspname <> 'information_schema'
     UNION ALL SELECT 'schema' FROM pg_namespace
-      WHERE nspname NOT LIKE 'pg_%' AND nspname NOT IN ('public', 'information_schema')
+      WHERE NOT starts_with(nspname, 'pg_') AND nspname NOT IN ('public', 'information_schema')
     UNION ALL SELECT 'extension' FROM pg_extension WHERE extname <> 'plpgsql'
     UNION ALL SELECT 'event trigger' FROM pg_event_trigger
     UNION ALL SELECT 'publication' FROM pg_publication

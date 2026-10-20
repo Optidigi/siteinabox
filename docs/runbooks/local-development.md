@@ -197,6 +197,10 @@ In a dedicated test checkout, supply the exact connection and synthetic secret,
 disable jobs and use mock AI. Resolve local `.env`, `.env.local`, `.env.test` and
 `.env.test.local` in that order, then shell values take precedence. The guard
 validates this complete effective environment before application initialization.
+Parsing uses the same dotenv parser as the owning CLI commands. Alternate
+`DOTENV_*` paths/override flags, dotenv CLI controls and env-file preloads are
+rejected; application initialization must run from `apps/cms`, so later default
+dotenv imports use the already-resolved files without overriding validated keys.
 Production/development-mode test children resolve the corresponding mode files
 before validation; env files cannot change their selected runtime mode.
 Any real provider configuration or unsafe database/storage override is an error;

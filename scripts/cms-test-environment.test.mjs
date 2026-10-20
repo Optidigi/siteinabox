@@ -58,6 +58,14 @@ test("configuration resolves before validation, retaining shell precedence witho
   assert.throws(() => assertDisposableCmsEnvironment(effectiveTestEnvironment({}, ["DATABASE_URI=" + uri]), resource))
 })
 
+test("dotenv syntax and alternate-loader controls cannot introduce unchecked values after validation", () => {
+  const colonSyntax = effectiveTestEnvironment(safe, ["OPENAI_API_KEY: real-looking-provider-key"])
+  assert.throws(() => assertDisposableCmsEnvironment(colonSyntax, resource), /OPENAI_API_KEY/)
+  for (const name of ["DOTENV_CONFIG_PATH", "DOTENV_CONFIG_OVERRIDE", "DOTENV_KEY"]) {
+    assert.throws(() => assertDisposableCmsEnvironment({ ...safe, [name]: "alternate-config" }, resource), /dotenv/i)
+  }
+})
+
 test("production-mode test children validate their production env files before imports", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "siab-test-env-"))
   try {
