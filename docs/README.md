@@ -72,3 +72,6 @@ and follow the executable source until the source is intentionally changed.
 Historical reports and completed implementation diaries belong in Git history,
 not beside current guidance. Runtime content, including public summaries and
 versioned legal documents, remains beside the code or package that consumes it.
+
+- [`runbooks/protected-delivery.md`](runbooks/protected-delivery.md) — required CI
+  evidence and separately approved delivery-control installation.

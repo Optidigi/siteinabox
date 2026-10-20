@@ -96,3 +96,11 @@ Node, pnpm, the workspace definition, dependency overrides, and the shared
 lockfile are root-owned. Package manifests own only package-specific scripts,
 dependencies, exports, and runtime engine constraints. Use root scripts for
 cross-workspace checks and package scripts for focused checks.
+
+## Delivery diagnostics
+
+For required-check evidence and a read-only inspection of repository delivery
+controls, follow [protected delivery](runbooks/protected-delivery.md).
+`pnpm delivery:inspect` uses the caller's existing `gh` authentication; missing
+permissions remain unknown controls. It does not install settings or authorize
+publication/deployment. Canonical MCP policy and credentials stay unchanged.

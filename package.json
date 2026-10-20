@@ -42,6 +42,8 @@
     "cms:test:authorize": "node scripts/authorize-cms-test-resource.mjs",
     "cms:test:guard": "node --test scripts/cms-test-environment.test.mjs",
     "image:verify": "node scripts/verify-image.mjs",
-    "publication:check": "node --test scripts/check-publication.test.mjs scripts/check-image-workflows.test.mjs && node scripts/check-image-workflows.mjs"
+    "publication:check": "node --test scripts/check-publication.test.mjs scripts/check-image-workflows.test.mjs && node scripts/check-image-workflows.mjs",
+    "ci:policy:check": "node --test scripts/check-required-ci.test.mjs scripts/image-evidence.test.mjs scripts/inspect-delivery-controls.test.mjs && node scripts/check-required-ci.mjs --check",
+    "delivery:inspect": "node scripts/inspect-delivery-controls.mjs"
   }
 }

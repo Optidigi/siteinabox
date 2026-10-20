@@ -11,7 +11,8 @@
       "static-deployment-parity",
       "workflow-path-matrix",
       "cms-test-guard",
-      "publication-check"
+      "publication-check",
+      "required-ci-policy"
     ],
     "ci": [
       "mcp-check",
@@ -47,7 +48,11 @@
       "renderer-typecheck",
       "renderer-test",
       "renderer-build",
-      "renderer-analytics-browser"
+      "renderer-analytics-browser",
+      "required-ci-policy",
+      "image-cms",
+      "image-renderer",
+      "image-site"
     ]
   },
   "checks": [
@@ -84,6 +89,10 @@
     { "id": "renderer-build", "command": "pnpm renderer:build", "run": ["pnpm", "renderer:build"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
     { "id": "renderer-analytics-browser", "command": "pnpm --dir apps/renderer test:analytics-browser", "run": ["pnpm", "--dir", "apps/renderer", "test:analytics-browser"], "owner": "apps/renderer", "ciJob": "renderer", "prerequisites": ["pnpm install --frozen-lockfile", "Chromium with Playwright dependencies"], "risk": "high" },
     { "id": "publication-check", "command": "pnpm publication:check", "run": ["pnpm", "publication:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
-    { "id": "cms-test-guard", "command": "pnpm cms:test:guard", "run": ["pnpm", "cms:test:guard"], "owner": "apps/cms", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" }
+    { "id": "cms-test-guard", "command": "pnpm cms:test:guard", "run": ["pnpm", "cms:test:guard"], "owner": "apps/cms", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
+    { "id": "required-ci-policy", "command": "pnpm ci:policy:check", "run": ["pnpm", "ci:policy:check"], "owner": "repository", "ciJob": "package-quality", "prerequisites": ["pnpm install --frozen-lockfile"], "risk": "high" },
+    { "id": "image-cms", "command": "pnpm image:verify cms", "run": ["pnpm", "image:verify", "cms"], "owner": "apps/cms", "ciJob": "image-verification", "ciContext": "image-verification (cms)", "prerequisites": ["pnpm install --frozen-lockfile", "Docker engine", "committed clean source"], "risk": "high" },
+    { "id": "image-renderer", "command": "pnpm image:verify renderer", "run": ["pnpm", "image:verify", "renderer"], "owner": "apps/renderer", "ciJob": "image-verification", "ciContext": "image-verification (renderer)", "prerequisites": ["pnpm install --frozen-lockfile", "Docker engine", "committed clean source"], "risk": "high" },
+    { "id": "image-site", "command": "pnpm image:verify site", "run": ["pnpm", "image:verify", "site"], "owner": "apps/landing", "ciJob": "image-verification", "ciContext": "image-verification (site)", "prerequisites": ["pnpm install --frozen-lockfile", "Docker engine", "committed clean source"], "risk": "high" }
   ]
 }

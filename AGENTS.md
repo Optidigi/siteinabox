@@ -92,6 +92,9 @@ When changing `apps/cms`:
 
 ## Verification and handoff
 
+- For CI aggregation, protection diagnostics or delivery settings, read
+  `docs/runbooks/protected-delivery.md`.
+
 - Run the narrowest check first, then the broader package and CI-equivalent
   checks justified by the changed surface.
 - Stop expanding verification when the changed surface and triggered risk are

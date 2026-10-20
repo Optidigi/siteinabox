@@ -19,7 +19,10 @@
         "scripts/verify-image.mjs",
         "scripts/check-publication.mjs",
         "scripts/check-image-workflows.mjs",
-        "scripts/image-artifact.mjs"
+        "scripts/image-artifact.mjs",
+        ".github/workflows/ci.yml",
+        "scripts/check-required-ci.mjs",
+        "scripts/image-evidence.mjs"
       ]
     },
     "build-renderer-image.yml": {
@@ -39,7 +42,10 @@
         "scripts/verify-image.mjs",
         "scripts/check-publication.mjs",
         "scripts/check-image-workflows.mjs",
-        "scripts/image-artifact.mjs"
+        "scripts/image-artifact.mjs",
+        ".github/workflows/ci.yml",
+        "scripts/check-required-ci.mjs",
+        "scripts/image-evidence.mjs"
       ]
     },
     "build-site-image.yml": {
@@ -57,7 +63,10 @@
         "scripts/verify-image.mjs",
         "scripts/check-publication.mjs",
         "scripts/check-image-workflows.mjs",
-        "scripts/image-artifact.mjs"
+        "scripts/image-artifact.mjs",
+        ".github/workflows/ci.yml",
+        "scripts/check-required-ci.mjs",
+        "scripts/image-evidence.mjs"
       ]
     }
   }
