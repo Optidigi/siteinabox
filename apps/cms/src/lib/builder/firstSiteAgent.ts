@@ -7,6 +7,9 @@ import {
   defaultMastraChatReasoningEffort,
   defaultMastraModelId,
   mastraOpenAIProviderOptions,
+  mastraCompatibilityOptions,
+  assertMastraCompleted,
+  MastraRunIncompleteError,
 } from "@/lib/ai-generation/mastraProvider"
 import { composeUnavailableReply, sitegenCatalogDigest, unavailableAsksIn } from "./catalogHonesty"
 import { choicesFromAssistantText, shouldApplyContactAnswer } from "./choices"
@@ -216,6 +219,7 @@ export async function runFirstSiteTurn(input: {
   })
 
   const agent = new Agent({
+    ...mastraCompatibilityOptions,
     id: "siab-first-site",
     name: "Site in a Box first-site builder",
     instructions: {
@@ -239,8 +243,9 @@ export async function runFirstSiteTurn(input: {
       input.message,
     ].filter(Boolean).join("\n\n"),
     { toolChoice: "auto", providerOptions, maxSteps: 4 },
-  )
+  ).catch(() => { throw new MastraRunIncompleteError() })
 
+  assertMastraCompleted(result)
   const spoken = typeof result.text === "string" ? result.text.trim() : ""
   const generated = generatedRef.current
   if (generated) {

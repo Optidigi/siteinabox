@@ -27,7 +27,7 @@ describe("runFirstSiteTurn", () => {
   })
 
   it("always lets the talking agent run instead of generating from a regex gate", async () => {
-    generateMock.mockResolvedValue({
+    generateMock.mockResolvedValue({ finishReason: "stop",
       text: "Ik zet een eerste homepage klaar in terracotta, zacht en duidelijk.",
     })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
@@ -46,7 +46,7 @@ describe("runFirstSiteTurn", () => {
   })
 
   it("offers contact chips only when that is the question just asked", async () => {
-    generateMock.mockResolvedValue({
+    generateMock.mockResolvedValue({ finishReason: "stop",
       text: "Hoe nemen bezoekers contact op?",
     })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
@@ -62,7 +62,7 @@ describe("runFirstSiteTurn", () => {
   })
 
   it("does not attach contact chips when the model asked several things at once", async () => {
-    generateMock.mockResolvedValue({
+    generateMock.mockResolvedValue({ finishReason: "stop",
       text: "Wat is je bedrijfsnaam, welke diensten bied je, en hoe nemen bezoekers contact op? Bellen of WhatsApp?",
     })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
@@ -78,7 +78,7 @@ describe("runFirstSiteTurn", () => {
   })
 
   it("does not replace a short model reply with a false plaats-diensten script", async () => {
-    generateMock.mockResolvedValue({ text: "" })
+    generateMock.mockResolvedValue({ finishReason: "stop", text: "" })
     const { runFirstSiteTurn } = await import("@/lib/builder/firstSiteAgent")
     const result = await runFirstSiteTurn({
       payload: {} as never,

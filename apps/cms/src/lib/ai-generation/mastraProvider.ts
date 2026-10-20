@@ -4,6 +4,27 @@ import { SitegenOutputSchema } from "@/lib/sitegen/output-schema"
 import { coerceSitegenModelJson } from "@/lib/sitegen/coerceModelJson"
 import type { SiteGenerationProvider, SiteGenerationProviderConfig, SiteGenerationProviderRequest, SiteGenerationProviderResult } from "./providers"
 
+// Preserve the pre-upgrade request policy: no model or processor retries.
+// Empty errorProcessors alone does not disable Mastra's new recovery defaults.
+export const mastraCompatibilityOptions = {
+  maxRetries: 0,
+  maxProcessorRetries: 0,
+  errorProcessorDefaults: false,
+} as const
+
+export class MastraRunIncompleteError extends Error {
+  constructor() {
+    super("AI run did not complete. Inspect the current preview before retrying; completed tool changes may remain.")
+    this.name = "MastraRunIncompleteError"
+  }
+}
+
+export function assertMastraCompleted(result: { finishReason?: unknown; error?: unknown }): void {
+  if (result.error != null || (result.finishReason !== "stop" && result.finishReason !== "tool-calls")) {
+    throw new MastraRunIncompleteError()
+  }
+}
+
 const DEFAULT_MASTRA_MODEL = "openai/gpt-5.6-luna"
 const REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh", "max"] as const
 
@@ -86,6 +107,7 @@ export const createMastraSiteGenerationProvider = (
         throw new Error("OPENAI_API_KEY is required when SITE_GENERATION_PROVIDER=mastra")
       }
       const agent = new Agent({
+        ...mastraCompatibilityOptions,
         id: "siab-sitegen",
         name: "Site in a Box Sitegen",
         instructions: {
@@ -104,6 +126,7 @@ export const createMastraSiteGenerationProvider = (
         ].join("\n\n"),
         { providerOptions },
       )
+      assertMastraCompleted(generated)
       const parsedOutput = SitegenOutputSchema.parse(coerceSitegenModelJson(parseMastraJsonObject(generated)))
       return {
         provider: "mastra",
