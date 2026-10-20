@@ -290,6 +290,15 @@ function validateCloudflareRestDisposition(
 ) {
   const result = body.result
   const messageId = safeProviderMessageId(result?.message_id)
+  const dispositions = [result?.delivered, result?.queued, result?.permanent_bounces, result?.suppressed_recipients]
+  // Validate raw entries before normalization can discard blank evidence.
+  try {
+    for (const entries of dispositions) {
+      for (const entry of entries ?? []) {
+        if (mailboxes(entry).length !== 1) throw indeterminateMailWrite(messageId)
+      }
+    }
+  } catch { throw indeterminateMailWrite(messageId) }
   const hasDispositionArrays = Array.isArray(result?.delivered)
     && Array.isArray(result.queued)
     && Array.isArray(result.permanent_bounces)
@@ -313,7 +322,7 @@ function validateCloudflareRestDisposition(
   }
   // Only an empty disposition can represent asynchronous whole-message
   // acceptance. Once recipient evidence exists, it must account for everyone.
-  const hasRecipientEvidence = delivered.size + queued.size + permanentBounces.size + suppressed.size > 0
+  const hasRecipientEvidence = dispositions.some((entries) => (entries?.length ?? 0) > 0)
   if (messageId && !hasRecipientEvidence) return { messageId }
   if (!accounted) throw cloudflareDispositionError(
     "E_PROVIDER_WRITE_INDETERMINATE",

@@ -68,6 +68,16 @@ describe("mail provider acceptance evidence", () => {
     })
   })
 
+  it.each(["delivered", "queued", "permanent_bounces", "suppressed_recipients"].flatMap((field) =>
+    ["", " ", "not-a-mailbox", "recipient@example.test\n"].map((entry) => ({ field, entry })),
+  ))("keeps malformed REST $field entries indeterminate: $entry", async ({ field, entry }) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ success: true, result: {
+      message_id: "fixture-malformed", delivered: [], queued: [], permanent_bounces: [], [field]: [entry],
+    } })))
+    await expect(createCloudflareRestProvider({ accountId: "fixture", token: "synthetic-token" }).send(input))
+      .rejects.toMatchObject({ code: "E_PROVIDER_WRITE_INDETERMINATE", providerMessageId: "fixture-malformed" })
+  })
+
   it.each([
     { delivered: [], queued: [] },
     { delivered: [input.to], queued: ["other@example.test"] },
