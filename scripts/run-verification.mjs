@@ -57,7 +57,7 @@ function workflowRunCommands(source, job) {
 
     const value = stripYamlComment(match[2].trim())
     if (!isBlockScalar(value)) {
-      if (value) commands.push(value)
+      if (value) commands.push({ command: value, lineIndex: index })
       continue
     }
 
@@ -70,12 +70,40 @@ function workflowRunCommands(source, job) {
         index = next - 1
         break
       }
-      commands.push(content)
+      commands.push({ command: content, lineIndex: next })
       index = next
     }
   }
 
-  return commands
+  const appMatrix = workflowJobBlock(source, job).match(/^\s+app:\s*\[([^\]]+)\]/m)
+  return commands.flatMap((record) => {
+    const { command } = record
+    if (!command.includes("${{ matrix.app }}")) return [record]
+    if (!appMatrix) fail(`${job}: missing app matrix for ${command}`)
+    return appMatrix[1].split(",").map((app) => ({ ...record, command: command.replaceAll("${{ matrix.app }}", app.trim()) }))
+  })
+}
+
+function workflowCommandEnvironment(source, job, record) {
+  const jobLines = workflowJobBlock(source, job).split("\n")
+  const stepStart = jobLines.findLastIndex((line, index) => index <= record.lineIndex && /^      - /.test(line))
+  if (stepStart === -1) fail(`${job}: command has no originating step`)
+  let stepEnd = jobLines.findIndex((line, index) => index > stepStart && /^      - /.test(line))
+  if (stepEnd === -1) stepEnd = jobLines.length
+  const env = {}
+  const lines = jobLines.slice(stepStart, stepEnd)
+  const start = lines.findIndex((line) => /^        env:\s*$/.test(line))
+  if (start === -1) {
+    if (lines.some((line) => /^        env:/.test(line))) fail(`${job}: unsupported inline step environment`)
+    return env
+  }
+  for (const line of lines.slice(start + 1)) {
+    if (line.trim() && indentation(line) <= 8) break
+    const match = line.match(/^          ([A-Z_][A-Z0-9_]*):\s*(.*?)\s*$/)
+    if (!match) continue
+    env[match[1]] = stripYamlComment(match[2]).replace(/^(["'])(.*)\1$/, "$2")
+  }
+  return env
 }
 
 function shellTokens(command) {
@@ -119,7 +147,7 @@ async function pnpmScriptKey(run) {
 
   const manifest = await packageManifest(packageDir)
   if (!manifest.scripts || !(scriptName in manifest.scripts)) return null
-  return `${packageDir}:${scriptName}`
+  return JSON.stringify([packageDir, scriptName, ...run.slice(index + 1)])
 }
 
 async function assertCommandAuthority(check) {
@@ -135,14 +163,20 @@ async function assertCommandAuthority(check) {
   }
 
   const ciCommands = workflowRunCommands(ciSource, check.ciJob)
+  let matchedCommand = ciCommands.find(({ command }) => command === check.command)
   if (executable === "pnpm") {
     const matrixKey = await pnpmScriptKey(check.run)
-    const ciKeys = await Promise.all(ciCommands.map((command) => pnpmScriptKey(shellTokens(command))))
+    const ciKeys = await Promise.all(ciCommands.map(({ command }) => pnpmScriptKey(shellTokens(command))))
     if (!ciKeys.includes(matrixKey)) {
       fail(`${check.id}: ${check.command} is not executed by a run field in CI job ${check.ciJob}`)
     }
-  } else if (!ciCommands.includes(check.command)) {
+    matchedCommand = ciCommands[ciKeys.indexOf(matrixKey)]
+  } else if (!matchedCommand) {
     fail(`${check.id}: ${check.command} is not executed by a run field in CI job ${check.ciJob}`)
+  }
+  const workflowEnv = workflowCommandEnvironment(ciSource, check.ciJob, matchedCommand)
+  if (JSON.stringify(Object.entries(workflowEnv).sort()) !== JSON.stringify(Object.entries(check.env ?? {}).sort())) {
+    fail(`${check.id}: per-check environment differs from CI step`)
   }
 }
 
@@ -168,7 +202,7 @@ async function assertCiMatrixCoverage(checks) {
   }
 
   for (const job of workflowJobNames(ciSource)) {
-    for (const command of workflowRunCommands(ciSource, job)) {
+    for (const { command } of workflowRunCommands(ciSource, job)) {
       const key = await pnpmScriptKey(shellTokens(command))
       if (key && !matrixScriptKeys.has(key)) {
         fail(`${job}: CI script ${command} is missing from docs/verification-matrix.json`)
@@ -181,6 +215,15 @@ async function validateMatrix() {
   if (matrix.version !== 1) fail("unsupported version")
   if (!matrix.profiles || typeof matrix.profiles !== "object") fail("profiles are missing")
   if (!Array.isArray(matrix.checks)) fail("checks must be an array")
+  if (matrix.profiles.ci && matrix.profileEnv?.ci?.CI !== "true") {
+    fail("ci profile must set CI=true for hosted test settings and owned browser servers")
+  }
+  for (const [profile, env] of Object.entries(matrix.profileEnv ?? {})) {
+    if (!matrix.profiles[profile] || !env || typeof env !== "object" ||
+        Object.values(env).some((value) => typeof value !== "string")) {
+      fail(`invalid environment for profile ${profile}`)
+    }
+  }
 
   const checks = new Map()
   for (const check of matrix.checks) {
@@ -234,7 +277,7 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
 for (const id of matrix.profiles[requestedProfile]) {
   const check = checks.get(id)
   console.log("\n[verification:" + requestedProfile + "] " + check.id + ": " + check.command)
-  const env = { ...process.env, ...(check.env ?? {}) }
+  const env = { ...process.env, ...(matrix.profileEnv?.[requestedProfile] ?? {}), ...(check.env ?? {}) }
   const [command, ...args] = check.run
   const result = spawnSync(command === "pnpm" ? pnpm : command, args, {
     cwd: repoRoot,

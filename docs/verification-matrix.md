@@ -1,9 +1,11 @@
 # Verification matrix
 
 The executable matrix is `verification-matrix.json`. It records each check's
-command, owner, CI job, prerequisites, and risk. `pnpm check:toolchain` also
+command (including arguments), per-check environment, owner, CI job,
+prerequisites, and risk. `pnpm check:toolchain` also
 validates that every command still exists in the owning package manifest or
-script file and that the declared CI job actually runs it; package manifests
+script file and that the declared CI job actually runs it with the same
+arguments and step environment; package manifests
 and workflow YAML remain the executable authorities.
 
 ## Profiles
@@ -13,6 +15,11 @@ and workflow YAML remain the executable authorities.
 - pnpm check:ci runs the command sequence represented by the hosted CI jobs. It
   assumes the caller has already installed the documented prerequisites; it
   does not install operating-system packages, browsers, or PostgreSQL.
+  The matrix's `profileEnv.ci` sets `CI=true`, applying the browser configuration's
+  hosted retries/reporting and refusing reuse of an already listening landing
+  server. `site-build` precedes `landing-ui`; the latter explicitly reuses that
+  checkout's freshly built output, matching its CI step. Individual development
+  commands retain their owning configuration's defaults.
 - pnpm check:toolchain validates the root Node/pnpm authority, repeated
   Docker/workflow declarations, local-development documentation, and matrix
   structure. It also rejects non-LTS execution and same-major patch drift;
@@ -22,6 +29,13 @@ Hosted workflow YAML remains responsible for setup and service lifecycle. The
 matrix is the command inventory, not permission to make external provider
 writes or use production credentials. External review checkouts are outside the
 repository toolchain and are not part of this matrix.
+
+The runner stops at the first nonzero exit or failed process launch. Missing
+prerequisites, skipped checks and a partial sequence are not a full local pass.
+Record the checkout/head, commands, settings, prerequisite gaps and actual
+results; retain hosted run/source identities separately. Docker-backed checks
+require committed clean source. A hosted pass can supply packaged evidence when
+Docker is unavailable locally, but does not become a local `check:ci` pass.
 
 ## Required hosted evidence
 
