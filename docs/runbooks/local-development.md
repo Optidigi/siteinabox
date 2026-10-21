@@ -322,3 +322,59 @@ Never report a focused or hosted pass as a full local profile pass.
 - **CMS dev errors with "PAYLOAD_SECRET is required"** — copy `apps/cms/.env.example` to `apps/cms/.env` and fill in `PAYLOAD_SECRET`.
 - **`relation "users" does not exist`** — run `pnpm --dir apps/cms payload migrate` against the intended local development database; page loads do not replace migrations.
 - **`/api/health` returns `dataDir: unwritable`** — the `.data-out/` directory needs to be writable by the dev process. On Linux/macOS: `chmod -R 755 apps/cms/.data-out`. On Windows: ensure no antivirus / Defender lock on the folder.
+
+
+### Real built application browser journey
+
+After Step 7 authorizes the disposable resource and the pinned toolchain is
+active, run `pnpm --dir apps/cms test:built-browser` from the repository root.
+It requires the existing PostgreSQL 18/BIND/Playwright prerequisites, Python 3
+for trace redaction and OpenSSL for a temporary local TLS certificate. Missing
+prerequisites fail; the command does not install services or skip assertions.
+Run it serially against the dedicated test resource: it resets that database
+with committed migrations and initializes fresh synthetic fixtures.
+
+The command builds this checkout's CMS through the existing invitation-action
+negative check, then builds the actual renderer. CI/full verification runs the
+invitation check first and uses the matrix's exact `--reuse-built` argument.
+Reuse requires a clean checkout and a matching source/configuration/toolchain,
+public/CI build settings, build ID and immutable artifact-byte receipt. It
+cannot attach to an existing server or silently accept an old build. Both
+applications restart from those same verified artifacts during the journey.
+
+Two synthetic tenants and owners, an unpublished private page and synthetic
+legacy routing-adoption fields represent existing supported behavior. These
+fixture fields are not actual entitlement, DNS or Amicare-adoption proof.
+The browser uses genuine password login, cookies, the real editor Save route,
+read-only PostgreSQL assertions, password rotation and the real renderer.
+Anonymous, other-tenant and revoked-session access must deny. For streamed
+[Next not-found responses](https://nextjs.org/docs/app/api-reference/file-conventions/not-found),
+HTTP 200 alone is insufficient: the check requires the real not-found boundary,
+no foreign editor/content, a forbidden save and an unchanged foreign row.
+The same published-marker assertion must also reject a deliberately saved but
+unpublished change through the real API, proving the persistence/publication
+boundary detects a broken result.
+
+Production-mode origin/bearer checks stay active. A loopback TLS/edge gateway
+and platform-authority proxy forward actual application responses; Chromium
+trusts only the run's generated certificate key and resolves fixture hosts to
+loopback. Backend fetch/HTTP transports use explicit deny doubles outside
+loopback. Jobs stay disabled, AI stays mock and inherited provider credentials
+remain forbidden. Only the two exact inline renderer test secrets accept the
+synthetic `siab-test-` prefix with at least 32 characters; secret-file references
+remain forbidden. No email, AI, calendar, payment, domain or production proof is
+inferred from this journey.
+
+Redacted traces, credential-free screenshots, sanitized server logs and a
+source/artifact/assertion summary go to `apps/cms/test-results/built-browser-*/`.
+Raw traces, synthetic passwords, TLS private keys and projection files stay in
+the private owned worker directory and are removed after owned servers stop.
+Cleanup targets only recorded child processes and that marked worker; it does
+not remove the resource authorization or unrelated directories. A failed
+assertion, missing startup or cleanup/evidence failure exits nonzero.
+
+Feature PRs extend this journey with meaningful user-visible and served-state
+assertions at existing routes. Keep component/browser and visual contracts as
+separate evidence; `test:checkout-browser` remains its narrower Vite fixture
+harness, not authenticated database-backed application proof. This journey is
+not live provider verification, production recovery or deployment clearance.

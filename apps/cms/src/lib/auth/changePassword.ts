@@ -1,5 +1,6 @@
 import { generatePayloadCookie } from "payload"
 import type { PayloadHandler } from "payload"
+import { asRecord } from "@/lib/record"
 
 // Audit-p1 #7 sub-fix A — POST /api/users/change-password
 //
@@ -67,9 +68,10 @@ export const changePasswordHandler: PayloadHandler = async (req) => {
     })
   }
 
-  // 2. Body parse + validation. Payload pre-parses POST bodies into req.data
-  // for endpoints (mirroring loginHandler at auth/endpoints/login.js:11-18).
-  const data = (req).data as { currentPassword?: unknown; newPassword?: unknown } | undefined
+  // 2. Custom endpoints can receive an unread JSON stream. Decode it only
+  // after authentication, retaining support for already parsed local requests.
+  const body = req.data ?? (typeof req.json === "function" ? await req.json().catch(() => null) : null)
+  const data = asRecord(body)
   const currentPassword = data?.currentPassword
   const newPassword = data?.newPassword
 

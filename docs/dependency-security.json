@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-21T09:54:08.587Z",
+  "reviewedAt": "2026-10-21T12:12:07.747Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
-  "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-  "graphHash": "028d33494e3744f9bc5c3f136fcf9e844436131dd12b037e74b8a7f0a811947f",
-  "configurationHash": "a2d620aa36aba6a1665d71d27919fee2598b59c5e115677b095ee61aeec4c372",
+  "reviewOwner": "M13 built-app compatibility evidence review (Codex engineering; no risk waiver)",
+  "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
+  "configurationHash": "dd66222cf8f59ffbb735321c2de500906d29e5748d5bd5819956d0f689f51116",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -68,14 +68,14 @@
       "kind": "github-release",
       "url": "https://api.github.com/repos/aquasecurity/trivy/releases/latest",
       "selected": false,
-      "sha256": "a8665d2ac25a31c0a10f66b2702f189a056b1ef49db31899a6ee4ad877e8ff8e"
+      "sha256": "3eed1e78d936065db4865bc19c33caf8fbfbaa161f86603b2355ea3cb8dfc95c"
     },
     {
       "id": "node-releases",
       "kind": "json",
       "url": "https://nodejs.org/dist/index.json",
       "selected": false,
-      "sha256": "4323fc206681fe2444cd344c65fb0bddb7d64ce9827f827fa0eaa05fdb6492b1"
+      "sha256": "52fe7ff162e0d4f54efe18d445836754163c448553fc0e5bac718d0129e59243"
     },
     {
       "id": "alpine-main",
@@ -744,6 +744,20 @@
       "url": "https://vuln.go.dev/ID/GO-2026-5932.json",
       "selected": false,
       "sha256": "6a685f52c906f24f2b6f96eebaade65cbba74ed674e8c54ba0c4f7a9da1c25d3"
+    },
+    {
+      "id": "better-auth-maintenance-release",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/better-auth/better-auth/releases/tags/v1.7.12",
+      "selected": false,
+      "sha256": "6b6ed20109512c76cd2f3b6160f5c3e9b5f31eb0ff3f15b883cb3fb3ca542a6d"
+    },
+    {
+      "id": "node-maintenance-release",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/nodejs/node/releases/tags/v24.22.1",
+      "selected": false,
+      "sha256": "8ef4b784b327893bfb2e4e894ebdaf5c3e92b8975107dd0a8f4237a0157a977f"
     }
   ],
   "publisherConstraints": [
@@ -4909,9 +4923,9 @@
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "5f18e337efed0400e34234be6fdd8eb4e79185ccb1e0c3beae42741dc503b3d0",
+      "fingerprint": "e2ecf17f76eb87fce17aa8a5777dcc3f3e446282ea4063bbf02932f3bf5d67a1",
       "status": "blocked",
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Verified inventory: 255 package records, 73 vulnerability records, 80 native files and 8 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers. Full sharp.versions is captured, but opaque bundled native libraries do not have universal scanner/advisory coverage; independent component qualification remains required.",
+      "reason": "CMS image: privileged migration helpers, image processing and administration service. Verified inventory: 255 package records, 73 vulnerability records, 80 native files and 8 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers. Full sharp.versions is captured, but opaque bundled native libraries do not have universal scanner/advisory coverage; independent component qualification remains required. M13 requalifies the eight changed helper bundles from the owning generator with unchanged frozen dependencies and preserved auth/current-password/session controls; the native/OS baseline is unchanged. Fresh hosted bytes must match this fingerprint; local generation alone is not candidate-image proof.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
@@ -4925,7 +4939,58 @@
       "reviewedReportSha256": "300baf14d2e45128ff25eca1a316e79d5eb6a079cbffff24039f0c9cc6bb0bb3",
       "reviewedNativeInventorySha256": "4283462e8d37bc10d3eabd3522bc463f77bdc766a00f82c168262d91e5c67341",
       "reviewedVerificationRunId": "39577255971",
-      "reviewedVerificationRunAttempt": "1"
+      "reviewedVerificationRunAttempt": "1",
+      "bundleQualification": {
+        "kind": "local-generator-with-verified-native-baseline",
+        "baselineSourceSHA": "b0b817d410a8256dfdfaf748d17f26e39e3822c6",
+        "baselineImageId": "sha256:5a06123a424a2e5be35375cdf0b6a2f9e574e2e865151558aed6d4a4461117a1",
+        "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
+        "node": "24.22.0",
+        "pnpm": "12.14.0",
+        "bundledScripts": [
+          {
+            "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
+            "size": 14647592,
+            "sha256": "b12539cfbdc6c7eb508d8ab33a7224a2c36517dd99589839a4fac3374fe4d5ae"
+          },
+          {
+            "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
+            "size": 14663805,
+            "sha256": "39732169412db44b7f3e70fee0efaa65a8ca07dd4ee6274c0936755c262012e5"
+          },
+          {
+            "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
+            "size": 14675686,
+            "sha256": "e1e51dca27c3f487271eb139391461e24b1618cc57bbba3dbbfdc0d085151420"
+          },
+          {
+            "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
+            "size": 14646473,
+            "sha256": "46ded266196fa5fe5e420fd2b5d44d1d1fbdd2197f25ca8d4686ea600595ecad"
+          },
+          {
+            "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
+            "size": 15491621,
+            "sha256": "e113af46c7d0b3cf39877e580cdbe04588e5049f61d5cce76b5313b057fb4323"
+          },
+          {
+            "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
+            "size": 14648407,
+            "sha256": "b2175076fd32eb16322ec50d0c4da672e471a3ac14e7b89fcd122e80e062d247"
+          },
+          {
+            "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
+            "size": 14653723,
+            "sha256": "3f0b7c889f0c57ce051be7e22645caa288aa87701d4db8a6f5a2ef224f729cd8"
+          },
+          {
+            "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
+            "size": 14742974,
+            "sha256": "d6638999e66bbd0ecd33382d56f9c92eecbb9a0f3c9a1e262b83ae98061f0067"
+          }
+        ],
+        "limitation": "Native baseline plus exact local generated bundle identities; final candidate hosted-image match remains mandatory. All native/security blockers retained."
+      }
     },
     {
       "application": "cms-postgres",
@@ -5024,16 +5089,17 @@
     },
     {
       "id": "better-auth-age-recheck",
-      "classification": "supported_release",
-      "releaseBlocked": false,
+      "classification": "unresolved_blocker",
+      "releaseBlocked": true,
       "affectedSurface": "Configured identity SDK",
-      "reason": "M09 selected and qualified eligible 1.7.11. Published 1.7.12 is not eligible before 2026-10-21T11:59:45Z; retain the current supported patch until the explicit age/compatibility recheck. No advisory is waived.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "At or after 2026-10-21T11:59:45Z, check actual publication time and requalify the compatible patch.",
-      "expiresAt": "2026-10-21T11:59:45.000Z",
+      "reason": "Rechecked official npm publication (2026-10-20T11:59:45.143Z) and publisher v1.7.12 release after the 24-hour floor. The patch is now age-eligible and includes token algorithm, proxy callback issuer/nonce and client-ID validation fixes. Current 1.7.11 remains the qualified graph; configured applicability and patch compatibility have not been qualified. This is an unresolved release blocker, not supported-latest clearance or a risk waiver. M13 preserves the dependency graph while proving the real password/session boundary.",
+      "reviewOwner": "M13 compatibility recheck (Codex engineering; no risk waiver)",
+      "recheck": "Before release, qualify 1.7.12 against configured passwordless/social/provider and session boundaries, refresh audits and exact consuming images; changed upstream facts also require review.",
+      "expiresAt": "2026-10-28T01:01:28.437Z",
       "sources": [
         "latest:better-auth",
-        "selected:better-auth"
+        "selected:better-auth",
+        "better-auth-maintenance-release"
       ]
     },
     {
@@ -5048,6 +5114,34 @@
       "sources": [
         "GO-2026-6809",
         "go-advisory-index"
+      ]
+    },
+    {
+      "id": "node-security-patch-qualification",
+      "classification": "unresolved_blocker",
+      "releaseBlocked": true,
+      "affectedSurface": "Node runtime and all consuming images",
+      "reason": "Fresh official index and v24.22.1 release identify a security patch (published 2026-10-21T10:38:25Z) newer than pinned 24.22.0. The 24-hour release-age floor has not elapsed; configured applicability, supported patch compatibility and consuming-image evidence remain unqualified. Retaining this engineering toolchain grants no runtime-security clearance or risk waiver.",
+      "reviewOwner": "M13 upstream drift review (Codex engineering; no risk waiver)",
+      "recheck": "At or after 2026-10-22T10:38:25Z and before release, qualify the eligible security patch and exact consuming images against current primary security facts.",
+      "expiresAt": "2026-10-28T01:01:28.437Z",
+      "sources": [
+        "node-releases",
+        "node-maintenance-release"
+      ]
+    },
+    {
+      "id": "scanner-patch-age-recheck",
+      "classification": "supported_release",
+      "releaseBlocked": false,
+      "affectedSurface": "Isolated advisory scanner",
+      "reason": "Fresh latest metadata identifies Trivy v0.76.1 published 2026-10-21T11:18:34Z, below the 24-hour age floor. Retain independently pinned and verified 0.76.0; latest patch changes AWS, Docker and common dependencies, with no application finding waived.",
+      "reviewOwner": "M13 upstream drift review (Codex engineering; no risk waiver)",
+      "recheck": "At or after 2026-10-22T11:18:34Z, recheck release age and qualify scanner changes before substituting the pinned tool.",
+      "expiresAt": "2026-10-22T11:18:34.000Z",
+      "sources": [
+        "scanner-release",
+        "scanner-latest"
       ]
     }
   ],

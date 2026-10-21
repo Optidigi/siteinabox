@@ -45,6 +45,10 @@ export function assertDisposableCmsEnvironment(env, resource) {
       if (!value.startsWith("siab-test-")) throw new Error("Inherited authentication secret must be synthetic: " + name)
       continue
     }
+    if (["SIAB_RENDERER_API_TOKEN", "SIAB_RENDERER_ORIGIN_SECRET"].includes(name)) {
+      if (!value.startsWith("siab-test-") || value.length < 32) throw new Error("Renderer test authentication must be explicitly synthetic: " + name)
+      continue
+    }
     if (name === "POSTGRES_PASSWORD" && value === decodeURIComponent(uri.password)) continue
     const provider = /^(?:OPENAI|ANTHROPIC|MOLLIE|OPENPROVIDER|CLOUDFLARE|POSTHOG|GOOGLE|MICROSOFT|APPLE|SMTP|AWS|S3|RESEND|SENDGRID)_/.test(name)
     const credential = /(?:KEY|TOKEN|SECRET|PASSWORD)(?:_FILE)?$/.test(name)

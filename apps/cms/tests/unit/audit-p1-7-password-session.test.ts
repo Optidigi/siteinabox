@@ -372,10 +372,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
     expect(typeof ep!.handler).toBe("function")
   })
 
-  // Synthetic Payload-style req shape. Per Payload v3 endpoint convention
-  // (`node_modules/payload/dist/auth/endpoints/login.js`), handlers receive
-  // a PayloadRequest with `.user`, `.payload`, `.data` (pre-parsed body),
-  // `.t`, `.i18n`, etc. We pass the minimal subset the handler will read.
+  // Most focused cases supply parsed data; the real custom-endpoint stream
+  // cases above additionally exercise req.json(), which built HTTP uses.
   const buildReq = (opts: {
     user: MockDoc | null
     body: Record<string, unknown>
@@ -434,6 +432,31 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
       loginCalls,
     }
   }
+
+  it("accepts a real custom-endpoint JSON stream when req.data was not pre-parsed", async () => {
+    const ep = findChangePasswordEndpoint()!
+    const { req, loginCalls, updateCalls } = buildReq({ user: { id: "u1", email: "u1@x", role: "editor" }, body: { currentPassword: "right-now", newPassword: "newpass-1234" } })
+    const { data, ...request } = req
+    const json = vi.fn(async () => data)
+    const response = await ep.handler({ ...request, json })
+    expect(response.status).toBe(200)
+    expect(json).toHaveBeenCalledOnce()
+    expect(loginCalls).toHaveLength(2)
+    expect(updateCalls).toHaveLength(1)
+  })
+  it("rejects anonymous or malformed JSON streams before credential operations", async () => {
+    const ep = findChangePasswordEndpoint()!
+    for (const user of [null, { id: "u1", email: "u1@x", role: "editor" }]) {
+      const { req, loginCalls, updateCalls } = buildReq({ user, body: {} })
+      const { data, ...request } = req
+      const json = vi.fn(async () => { throw new SyntaxError("Malformed fixture JSON") })
+      const response = await ep.handler({ ...request, json })
+      expect(response.status).toBe(user ? 400 : 401)
+      expect(loginCalls).toHaveLength(0)
+      expect(updateCalls).toHaveLength(0)
+      if (!user) expect(json).not.toHaveBeenCalled()
+    }
+  })
 
   it("Case 5 — anonymous POST → 401", async () => {
     const ep = findChangePasswordEndpoint()!

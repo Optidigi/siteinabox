@@ -53,6 +53,7 @@
       "cms-test",
       "cms-checkout-browser",
       "cms-invitation-actions",
+      "cms-built-browser",
       "site-build",
       "site-test",
       "landing-analytics-browser",
@@ -465,6 +466,29 @@
         "pnpm install --frozen-lockfile",
         "explicit M02 disposable PostgreSQL/storage authorization",
         "committed migrations"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-built-browser",
+      "command": "pnpm --dir apps/cms test:built-browser --reuse-built",
+      "run": [
+        "pnpm",
+        "--dir",
+        "apps/cms",
+        "test:built-browser",
+        "--reuse-built"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-test",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "explicit M02 disposable PostgreSQL/storage authorization",
+        "same-checkout fresh invitation-actions build receipt",
+        "Chromium with Playwright dependencies",
+        "bind9-utils",
+        "Python 3",
+        "OpenSSL"
       ],
       "risk": "high"
     },
