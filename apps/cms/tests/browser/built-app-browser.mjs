@@ -304,12 +304,17 @@ try {
   }
   try { await browser?.close() } catch (error) { failure ??= error }
   for (const server of [gateway, cmsBridge]) if (server) {
-    server.closeAllConnections()
-    await new Promise(resolve => server.close(resolve))
+    try {
+      server.closeAllConnections()
+      await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
+    } catch (error) { failure ??= error }
   }
   for (const owned of processes) {
     try { await stop(owned) } catch (error) { failure ??= error }
-    await writeFile(path.join(output, owned.role + ".log"), redact(owned.log), { mode: 0o600 })
+  }
+  for (const owned of processes) {
+    try { await writeFile(path.join(output, owned.role + ".log"), redact(owned.log), { mode: 0o600 }) }
+    catch (error) { failure ??= error }
   }
   try {
     const audits = []
@@ -321,16 +326,19 @@ try {
     assert.equal(providerAudit.deniedBackendOperations, 0, "This journey must not attempt backend provider operations")
     assert.equal(Number((await database.query("SELECT count(*) AS count FROM mail_logs")).rows[0].count), 0, "No fixture flow may emit mail")
   } catch (error) { failure ??= error }
-  await writeFile(path.join(output, "summary.json"), JSON.stringify({ sourceSHA: identity?.sourceSHA,
+  try { await database?.end() } catch (error) { failure ??= error }
+  try { await cleanupWorkerStorage(worker) } catch (error) { failure ??= error }
+  // Evidence failures must not interrupt teardown, and a passing receipt must
+  // include successful shutdown/owned-storage cleanup in its final verdict.
+  try { await writeFile(path.join(output, "summary.json"), JSON.stringify({ sourceSHA: identity?.sourceSHA,
     sourceDirty: identity?.sourceDirty, cmsBuild: identity, rendererArtifactSha256: rendererHash, rendererBuildSettingsSha256: rendererSettings, edgeCertificatePin: certificatePin,
     providerAudit, verificationRunId: process.env.GITHUB_RUN_ID ?? null, verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     environment: { node: process.versions.node, mode: "production", database: new URL(env.DATABASE_URI).pathname.slice(1),
       ownershipVerified: true, jobsAutorun: false, ai: "mock", providers: "deny external operations", rendererFixtureMode: false },
     browser: browser?.version(), assertions, blockedBrowserReads, status: failure ? "failed" : "passed",
     error: failure ? redact(failure.stack ?? String(failure)) : null,
-    limitations: "Built local application/session/persistence/renderer proof; not live provider, production, release or visual regression clearance" }, null, 2) + "\n", { mode: 0o600 })
-  try { await database?.end() } catch (error) { failure ??= error }
-  await cleanupWorkerStorage(worker)
+    limitations: "Built local application/session/persistence/renderer proof; not live provider, production, release or visual regression clearance" }, null, 2) + "\n", { mode: 0o600 }) }
+  catch (error) { failure ??= error }
 }
 if (failure) { console.error(redact(failure.stack ?? String(failure))); process.exitCode = 1 }
 else console.log("Real built CMS/browser/renderer journey passed: " + assertions.length + " boundary assertions; redacted evidence in " + path.relative(cmsRoot, output))

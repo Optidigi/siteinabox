@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M13 built-app compatibility evidence review (Codex engineering; no risk waiver)",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "1c121e3a273b9fcfa1ad41107d44a21a2e1eb4c74377f1a48419a556bb03e1e4",
+  "configurationHash": "dd66222cf8f59ffbb735321c2de500906d29e5748d5bd5819956d0f689f51116",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
