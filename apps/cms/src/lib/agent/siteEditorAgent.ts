@@ -1,3 +1,4 @@
+import { CustomerProjectionError } from "@/lib/projection/customerTransaction"
 import { assertCustomerAccess } from "@/lib/auth/customerWorkspace"
 import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { Agent } from "@mastra/core/agent"
@@ -496,7 +497,7 @@ export async function runExistingSiteTurn(input: SiteEditorTurnInput & {
     try {
       return await runSiteEditorAgent(input)
     } catch (error) {
-      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError) throw error
+      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError || error instanceof CustomerProjectionError) throw error
       return mastraFallbackTurn(input)
     }
   }
@@ -511,7 +512,7 @@ export async function* streamExistingSiteTurn(input: SiteEditorTurnInput & {
       yield* streamSiteEditorAgent(input)
       return
     } catch (error) {
-      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError) throw error
+      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError || error instanceof CustomerProjectionError) throw error
       yield { type: "done", result: await mastraFallbackTurn(input) }
       return
     }

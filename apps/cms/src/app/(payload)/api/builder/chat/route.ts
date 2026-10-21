@@ -1,3 +1,4 @@
+import { CustomerProjectionError } from "@/lib/projection/customerTransaction"
 import { NextResponse, type NextRequest } from "next/server"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { runBuilderTurn } from "@/lib/builder/runBuilderTurn"
@@ -21,6 +22,8 @@ export async function POST(req: NextRequest) {
   try {
     return await authenticatedBuilderTurn(req)
   } catch (error) {
+    if (error instanceof CustomerProjectionError) return NextResponse.json(
+      { message: error.message, error: error.code, committed: true }, { status: 503 })
     if (!(error instanceof CustomerIdentityError)) throw error
     return NextResponse.json({ message: "Verified workspace access is required.", error: error.code }, { status: 403 })
   }

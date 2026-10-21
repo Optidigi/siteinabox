@@ -156,4 +156,16 @@ describe("builder chat route", () => {
     expect(body.applied).toBe(true)
     expect(body.previewSnapshot?.pageId).toBe("1")
   })
+  it("reports committed content separately from a failed preview refresh", async () => {
+    const { CustomerProjectionError } = await import("@/lib/projection/customerTransaction")
+    mocks.getSession.mockResolvedValue(verifiedSession())
+    mocks.loadVerifiedCustomerGrant.mockResolvedValue({ clientSlug: "tilburg-kapper", tenant: { id: 3 } })
+    mocks.runBuilderTurn.mockRejectedValueOnce(new CustomerProjectionError())
+    const response = await POST(chatReq())
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ error: "E_CUSTOMER_PROJECTION_PENDING", committed: true })
+    expect(mocks.runBuilderTurn).toHaveBeenCalledTimes(1)
+    expect(mocks.saveBuilderThread).not.toHaveBeenCalled()
+  })
+
 })

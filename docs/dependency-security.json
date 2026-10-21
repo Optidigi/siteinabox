@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M14 verified-workspace compatibility evidence review (Codex engineering; no risk waiver)",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "c7fb46c5231ed1f8d02f3b79e3c3caed607166972e29abc7fecaf9b8fb497d22",
+  "configurationHash": "b89d8d1d0a4677cc17ba39536beb1b59ecf6e74e042e5d2fecad7876fa9dbb92",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -4923,7 +4923,7 @@
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "fa3fa8a8db265e203608e86a74b6c23028ea0f95dec6d241bef5e823a1eab4ed",
+      "fingerprint": "51e390ec57dcf1bb016cfabbda53d4348cee760d436cacffa681fce61d073fb6",
       "status": "blocked",
       "reason": "CMS privileged migration/auth helpers and image processing remain blocked for the existing unresolved native/OS findings. M14 reviews the eight changed generated helper bundles against actual M13 hosted native inventories and the unchanged frozen dependency graph; populated boot rehearsals preserve credentials and content, while new authority guards reject unsafe mappings. Local helper identities require exact final hosted-image matching and do not establish native security or production compatibility.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
@@ -4950,43 +4950,43 @@
         "bundledScripts": [
           {
             "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
-            "size": 14657062,
-            "sha256": "26eff2b008a15c09fab99d51dbd4c6163ff3610060a607e7eef0d4021fd47487"
+            "size": 14658197,
+            "sha256": "18d1e2531d1d8d56e221f852cd932c3044da7696a6d535fa79fc09acacada8e3"
           },
           {
             "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
-            "size": 14673275,
-            "sha256": "39a1b3387f6f2647251ae2d54dbd794f4efac48a38f0b251aeeddb3c5b5eaa57"
+            "size": 14674410,
+            "sha256": "7c5239249597babdad1655dadbbe6ec5e855e4a1a253319394fe24e454fc3612"
           },
           {
             "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
-            "size": 14685156,
-            "sha256": "0eb0bbe107f729e1cc2ef09a7614510effe88678393f447ff75f30b5a7b7505b"
+            "size": 14686291,
+            "sha256": "7ec7b1e85ad3754e4510ef5142d21f58f29c988cb0aeeacee7d7f8a719119acc"
           },
           {
             "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
-            "size": 14655943,
-            "sha256": "541651bafb3328291b83a5ec3d2fc194fbf25d6c9876bcdb5a1cb74b20ddd9f0"
+            "size": 14657078,
+            "sha256": "d263914633f7eb5cd361cafc94f5752202f26ef5055109b3d17d95d3910817be"
           },
           {
             "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
-            "size": 15511604,
-            "sha256": "1cb893e208f0a0cef6a48d197446dd5037a99c4a72f6994e64698e83dea54168"
+            "size": 15512739,
+            "sha256": "256acbe4748494d2f458d4b1180cd56fe92304351fdf558e3540c59916a86b9f"
           },
           {
             "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
-            "size": 14657877,
-            "sha256": "df8b29a1f1e8ced3e66f4c7844a1dafc1ada123e236de8641dc7c21e16f695a5"
+            "size": 14659012,
+            "sha256": "14e63be34a918a491a04b0db7025a6f7152ea7b04319aa656904d719e6f5192b"
           },
           {
             "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
-            "size": 14663196,
-            "sha256": "c65504c44408e7838b725e1fb56481dbc8b76bdcf275327a87bb61c97fb94669"
+            "size": 14664331,
+            "sha256": "05276df12eafc366531a87502356fde2fa55553b34c205ebd07066711ed4f39b"
           },
           {
             "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 14757983,
-            "sha256": "893150119f6791bdd4f76f42dba86fb004f33471f314ca00b5f18217c045c417"
+            "size": 14760198,
+            "sha256": "aeb2cbf9cefd97ce08a78e8dd831aedb1af9446b4fae31fcc10d504409c3501e"
           }
         ],
         "limitation": "Actual M13 hosted native baseline plus exact M14 locally generated helper hashes; final candidate hosted-image match required. All findings and five blocked native assessments remain."

@@ -160,7 +160,18 @@ calls and media preparation stay outside that transaction. Maintainer fallbacks
 retain the same authority, including theme updates and snapshot reads. Each local
 maintainer mutation uses that transaction and expiry check. The installed SDK
 pre-step hook validates authority before every model dispatch, including the
-next step after a completed tool; an identity error cannot trigger fallback.
+next step after a completed tool; an identity error cannot trigger fallback. Settings/page projection hooks queue their
+work on the server-owned transaction context, discard it on rollback, then
+re-read committed documents and use the existing projection hooks after commit.
+The queue is request-local, not a durable job or a second rendering system.
+
+If post-commit projection fails, the database remains committed. The operation
+reports `E_CUSTOMER_PROJECTION_PENDING` with `committed: true` and logs the
+account, tenant, collection and document ID. Restore the projection storage,
+then repeat the same authenticated, idempotent settings/page save to reconcile
+from committed data. Do not rerun AI generation or a purchase to repair a
+projection. A refresh failure must not be reported as a database rollback or
+complete preview success.
 
 Preview-grant expiry is renewable access, separate from account and session
 revocation. A current verified session may renew its bound, unrevoked grant after

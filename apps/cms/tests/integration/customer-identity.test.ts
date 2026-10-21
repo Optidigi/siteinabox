@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { sql } from "@payloadcms/db-postgres"
 import { Client } from "pg"
+import { readFile, unlink, mkdir, rmdir, writeFile } from "node:fs/promises"
+import path from "node:path"
 import { fixtureSpec } from "../_helpers/siteGenerationFixture"
 import type { Payload } from "payload"
 import { getTestPayload } from "./_helpers"
-import { queryRows } from "@/lib/record"
+import { asRecord, queryRows } from "@/lib/record"
 
 let payload: Payload
 beforeAll(async () => { payload = await getTestPayload() })
@@ -373,5 +375,80 @@ it.each(["revocation", "expiry"] as const)("keeps maintainer theme writes atomic
   } finally {
     release(); await mutation?.catch(() => undefined); await revocation?.catch(() => undefined)
     hooks.splice(hooks.indexOf(hook), 1); await revoker.end()
+  }
+}, 15000)
+
+
+it.each(["settings", "page"] as const)("preserves %s projection bytes on expiry and refreshes only committed changes", async kind => {
+  const { previewAuth } = await import("@/lib/preview/betterAuth")
+  const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+  const { applySiteGenerationSpec } = await import("@/lib/site-generation/applySiteGenerationSpec")
+  const { setContact, patchSection } = await import("@/lib/agent/tools")
+  const context = await previewAuth.$context
+  const user = await context.internalAdapter.createUser({ name: "Synthetic projection", email: `m14-projection-${kind}@test.invalid`, emailVerified: true }, { method: "test" })
+  const session = await context.internalAdapter.createSession(user.id)
+  const source = queryRows<{ firstVerifiedAt: Date | string }>(await payload.db.drizzle.execute(sql`
+    SELECT "firstVerifiedAt" FROM preview_auth_users WHERE id=${user.id}`))[0]!
+  const account = await resolveVerifiedCustomerAccount(payload, { user: { ...user, firstVerifiedAt: source.firstVerifiedAt }, session })
+  const authority = { accountId: account.id, previewSessionId: session.id }
+  const spec = fixtureSpec(), slug = `m14-projection-${kind}`
+  spec.tenant.slug = slug; spec.tenant.domain = slug + ".invalid"
+  spec.intake.tenantSlug = slug; spec.intake.primaryDomain = spec.tenant.domain
+  spec.intake.siteUrl = "https://" + spec.tenant.domain; spec.settings.siteUrl = spec.intake.siteUrl
+  const applied = await applySiteGenerationSpec(payload, spec, { customerAuthority: authority })
+  const { tenantId, settingsId } = applied
+  const pageId = applied.pageIds?.[0]
+  if (!applied.ok || tenantId == null || settingsId == null || pageId == null) throw new Error("Synthetic projection fixture did not apply")
+  const tenant = await payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true })
+  const manifest = asRecord(tenant.siteManifest)
+  if (!manifest) throw new Error("Synthetic projection fixture has no manifest")
+  const { resolveSettingsContract } = await import("@/lib/settingsContract")
+  const contract = resolveSettingsContract(manifest)
+  await payload.update({ collection: "tenants", id: tenant.id, overrideAccess: true, context: { skipProjection: true },
+    data: { siteManifest: { ...manifest, settings: { ...contract, details: { ...contract.details,
+      contact: { ...contract.details.contact, phone: true } } } } } })
+  // Publish only this synthetic fixture through the normal hook, so real
+  // projection files exist before the expiry/rollback experiment.
+  await payload.update({ collection: "pages", id: pageId, overrideAccess: true, data: { status: "published" } })
+  const collection = kind === "settings" ? "site-settings" : "pages"
+  const id = kind === "settings" ? settingsId : pageId
+  const before = await payload.findByID({ collection, id, overrideAccess: true, depth: 0 })
+  const directory = path.join(process.env.DATA_DIR!, "tenants", String(tenantId))
+  const files = ["site.json", "pages/index.json", "manifest.json"]
+  const bytes = async () => Promise.all(files.map(file => readFile(path.join(directory, file))))
+  const beforeFiles = await bytes()
+  const hooks = payload.collections[collection].config.hooks.afterChange ??= []
+  const hook: (typeof hooks)[number] = async ({ doc }) => {
+    if (doc.id === id) await new Promise(resolve => setTimeout(resolve, 600))
+    return doc
+  }
+  const change = (previewSessionId: string) => {
+    const ctx = { payload, tenantId: tenantId, customerAuthority: { ...authority, previewSessionId } }
+    return kind === "settings" ? setContact(ctx, { phone: "0612345678" })
+      : patchSection(ctx, { pageSlug: "index", blockIndex: 0, patch: { heading: "Committed projection title" } })
+  }
+  hooks.push(hook)
+  try {
+    await payload.db.drizzle.execute(sql`UPDATE preview_auth_sessions SET "expiresAt"=clock_timestamp()+interval '500 milliseconds' WHERE id=${session.id}`)
+    await expect(change(session.id)).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
+  } finally { hooks.splice(hooks.indexOf(hook), 1) }
+  expect(await payload.findByID({ collection, id, overrideAccess: true, depth: 0 })).toEqual(before)
+  expect(await bytes()).toEqual(beforeFiles)
+  const fresh = await context.internalAdapter.createSession(user.id)
+  await change(fresh.id)
+  expect(await bytes()).not.toEqual(beforeFiles)
+  if (kind === "settings") {
+    const site = path.join(directory, "site.json"), saved = await readFile(site)
+    await unlink(site); await mkdir(site)
+    try {
+      await expect(setContact({ payload, tenantId: tenantId, customerAuthority: { ...authority, previewSessionId: fresh.id } },
+        { phone: "0698765432" })).rejects.toMatchObject({ code: "E_CUSTOMER_PROJECTION_PENDING", committed: true })
+      const committed = await payload.findByID({ collection: "site-settings", id: settingsId, overrideAccess: true, depth: 0 })
+      expect(committed.contact?.phone).toBe("0698765432")
+    } finally { await rmdir(site); await writeFile(site, saved) }
+    // Repeat the same authenticated, idempotent save after storage recovery;
+    // this projects committed data without repeating AI or a provider write.
+    await setContact({ payload, tenantId: tenantId, customerAuthority: { ...authority, previewSessionId: fresh.id } }, { phone: "0698765432" })
+    expect((await readFile(site, "utf8")).includes("0698765432")).toBe(true)
   }
 }, 15000)

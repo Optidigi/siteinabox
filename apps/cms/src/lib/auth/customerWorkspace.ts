@@ -1,6 +1,7 @@
 // Shared by the Node migration/runtime graph and Next server request handlers.
 import type { Payload, PayloadRequest } from "payload"
 import { sql, type PostgresAdapter } from "@payloadcms/db-postgres"
+import { CustomerProjectionError, type CustomerProjectionTask } from "@/lib/projection/customerTransaction"
 import type { CustomerAccount, Tenant } from "@/payload-types"
 import { queryRows } from "@/lib/record"
 import { relationshipId } from "@/lib/relationshipId"
@@ -91,7 +92,9 @@ export async function withCustomerWorkspace<Result extends WorkspaceResult>(
 ): Promise<Result> {
   const transactionID = await payload.db.beginTransaction()
   if (!transactionID) throw new Error("Customer workspace requires a transaction")
-  const req = { transactionID }
+  const projections: CustomerProjectionTask[] = []
+  const req = { transactionID, context: { customerProjectionQueue: (task: CustomerProjectionTask): void => { projections.push(task) } } }
+  let result: Result
   try {
     const account = await currentCustomer(payload, authority, intent, undefined, req)
     const tenantId = relationshipId(account.tenant)
@@ -100,7 +103,7 @@ export async function withCustomerWorkspace<Result extends WorkspaceResult>(
     if (bound && ["archived", "suspended"].includes(bound.status)) {
       throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
     }
-    const result = await action(bound, req)
+    result = await action(bound, req)
     // A locked session can still expire while local work runs. Revalidate
     // against wall time before any content/binding becomes committed.
     await currentCustomer(payload, authority, intent, undefined, req)
@@ -110,9 +113,22 @@ export async function withCustomerWorkspace<Result extends WorkspaceResult>(
     if (!tenantId) await payload.update({ collection: "customer-accounts", id: account.id,
       data: { tenant: result.doc.id }, overrideAccess: true, depth: 0, req })
     await payload.db.commitTransaction(transactionID)
-    return result
   } catch (error) {
     await payload.db.rollbackTransaction(transactionID)
     throw error
   }
+  // Filesystem projection cannot participate in PostgreSQL rollback. Only
+  // materialize committed documents after the authority/expiry gate succeeds.
+  let projectionFailed = false
+  for (const task of projections) {
+    try { await task.run() }
+    catch (error) {
+      projectionFailed = true
+      payload.logger.error({ err: error, code: "E_CUSTOMER_PROJECTION_PENDING", committed: true,
+        accountId: authority.accountId, tenantId: result.doc.id, collection: task.collection, documentId: task.documentId },
+      "[projection] committed customer change needs refresh; restore storage and repeat the same authenticated save")
+    }
+  }
+  if (projectionFailed) throw new CustomerProjectionError()
+  return result
 }

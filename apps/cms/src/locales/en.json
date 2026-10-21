@@ -176,6 +176,7 @@
     "customerSignOut": "Sign out",
     "customerHistoryUnavailable": "We could not safely restore this account. Your saved work has been kept. Contact support before continuing.",
     "customerWorkspaceUnavailable": "Sign in to your existing website workspace. If access has been revoked or your work cannot be restored, contact support; registering again will not create another workspace.",
+    "customerRefreshPending": "Your changes were saved, but the preview could not refresh. Reload the page and repeat the same change if necessary.",
     "backToSignIn": "Back to sign in"
   },
   "dashboard": {

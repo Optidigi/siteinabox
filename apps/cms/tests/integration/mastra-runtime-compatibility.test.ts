@@ -8,7 +8,7 @@ import { createMastraSiteGenerationProvider } from "@/lib/ai-generation/mastraPr
 import { createSiteGenerationProviderRequest } from "@/lib/ai-generation/providers"
 import { runFirstSiteTurn } from "@/lib/builder/firstSiteAgent"
 import { heuristicExtractBuilderFacts } from "@/lib/builder/facts"
-import { runSiteEditorAgent, streamSiteEditorAgent, streamExistingSiteTurn, type SiteEditorStreamEvent } from "@/lib/agent/siteEditorAgent"
+import { runSiteEditorAgent, runExistingSiteTurn, streamSiteEditorAgent, streamExistingSiteTurn, type SiteEditorStreamEvent } from "@/lib/agent/siteEditorAgent"
 
 const runtime = vi.hoisted(() => ({
   model: undefined as ReturnType<typeof createMockModel> | MastraLanguageModelV2Mock | undefined,
@@ -243,4 +243,19 @@ it.each(["generate", "stream"] as const)("checks current authority before every 
   expect(completedContextReads).toBe(2)
   expect(modelRequests, "Revocation after a completed tool must stop the next provider step").toBe(1)
   expect(fetch).not.toHaveBeenCalled()
+})
+
+
+it("does not replay a maintainer write after a committed projection failure", async () => {
+  const tools = await import("@/lib/agent/tools")
+  const { CustomerProjectionError } = await import("@/lib/projection/customerTransaction")
+  const error = new CustomerProjectionError()
+  const prune = vi.spyOn(tools, "pruneUnavailableBlocksIfPresent").mockRejectedValue(error)
+  runtime.model = createMockModel({ version: "v2", mockText: "De preview is bijgewerkt." })
+  const input = editorInput()
+  try {
+    await expect(runExistingSiteTurn({ ...input, message: "Maak het thema groen en donker.", useMastra: true })).rejects.toBe(error)
+    expect(input.database.update).not.toHaveBeenCalled()
+    expect(input.database.create).not.toHaveBeenCalled()
+  } finally { prune.mockRestore() }
 })

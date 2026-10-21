@@ -229,8 +229,9 @@ export function BuilderShell({
       })
       const body = (await response.json()) as BuilderResponse
       if (!response.ok) {
-        const message = body.error === "E_CUSTOMER_VERIFICATION_HISTORY_REQUIRED"
-          ? tAuth("customerHistoryUnavailable") : tAuth("customerWorkspaceUnavailable")
+        const message = body.error === "E_CUSTOMER_PROJECTION_PENDING" ? tAuth("customerRefreshPending")
+          : body.error === "E_CUSTOMER_VERIFICATION_HISTORY_REQUIRED"
+            ? tAuth("customerHistoryUnavailable") : tAuth("customerWorkspaceUnavailable")
         setAccessError(message)
         return
       }
