@@ -117,8 +117,8 @@ The current reviewed baseline inventory comes from unpublished source
 Its parents are main `d5479b36` and reviewed PR head `6aac6808`. Package/CMS,
 actual built-browser and all three packaged-image jobs passed. The aggregate
 correctly rejected changed advisory provenance; review found 21 fingerprint
-changes across 11 existing CVEs, limited to vendor-severity metadata and added
-references. Advisory/package/version/path/selected-severity/fix facts remain
+changes across 11 existing CVEs, limited to vendor-severity metadata and
+reference-list changes. Advisory/package/version/path/selected-severity/fix facts remain
 unchanged. All 198 dispositions remain blockers. These baseline identities do
 not replace fresh final-candidate source/run/artifact verification.
 
