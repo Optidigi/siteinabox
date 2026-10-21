@@ -132,7 +132,7 @@
     "socialUnlinked": "Dat provideraccount is niet gekoppeld aan een uitgenodigde CMS-gebruiker.",
     "socialSession": "De provider-login kon geen CMS-sessie maken.",
     "socialSignInFailed": "Provider-login mislukt.",
-    "magicLinkSession": "De e-mailinloglink kon geen CMS-sessie maken.",
+    "magicLinkSession": "Deze inloglink is verlopen, al gebruikt of niet beschikbaar. Vul hieronder je e-mailadres in om een nieuwe link aan te vragen. Net een link aangevraagd? Controleer eerst je inbox en spammap.",
     "magicLinkSent": "Controleer je inbox en spammap. Gebruik de laatste inloglink; die verloopt na vijf minuten.",
     "magicLinkFailed": "Inloglink versturen mislukt.",
     "magicLinkGenericSuccess": "Als dit adres toegang heeft, gebruik dan de laatste link in je inbox of spammap. Herhaalde aanvragen behouden een actieve link. Nog niets ontvangen? Wacht vijf minuten voordat je opnieuw aanvraagt.",

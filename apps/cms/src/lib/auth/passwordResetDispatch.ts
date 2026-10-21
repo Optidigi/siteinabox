@@ -10,6 +10,7 @@ import { admitAccountLink, accountLinkFingerprint, type AccountLinkLease } from 
 import { getSuperAdminOrigin } from "./passwordRecovery"
 import { CustomerIdentityError } from "./verifiedCustomer"
 import { accountLinkLocale } from "./accountLinkLocale"
+import { accountLinkMembershipMatches } from "./accountLinkMembership"
 
 type ResetInvocation = { user: User; lease?: AccountLinkLease }
 const resets = new WeakMap<PayloadRequest, ResetInvocation>()
@@ -37,9 +38,7 @@ export const authorizePasswordResetConsumption: CollectionBeforeOperationHook = 
   const receipt = (await req.payload.find({ collection: "account-link-dispatches", overrideAccess: true, req,
     where: { tokenFingerprint: { equals: accountLinkFingerprint("payload", token) } }, depth: 0, limit: 1 })).docs[0]
   if (receipt) {
-    if (receipt.namespace !== "payload" || receipt.purpose !== "password_reset" || receipt.payloadUserId !== String(user.id) ||
-      receipt.recipient !== user.email.trim().toLowerCase() || receipt.role !== user.role ||
-      (receipt.tenantId ?? null) !== relationshipId(user.tenants?.[0]?.tenant)) throw new Forbidden()
+    if (receipt.namespace !== "payload" || receipt.purpose !== "password_reset" || !accountLinkMembershipMatches(receipt, user)) throw new Forbidden()
     const changed = queryRows(await db.execute(sql`UPDATE account_link_dispatches SET state='consumed', active_key=NULL,
       updated_at=clock_timestamp() WHERE id=${receipt.id} AND state IN ('queued','issuing','dispatching','sent','indeterminate')
       AND expires_at>clock_timestamp() RETURNING id`))

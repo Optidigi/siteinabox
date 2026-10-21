@@ -44,7 +44,9 @@ export async function authorizeCmsMagicLink(input: { email: string; url: string;
   const tenantId = relationshipId(user.tenants?.[0]?.tenant)
   if (tenantId) {
     const tenant = await (await getMailPayload()).findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true })
-    if (tenant.status === "archived" || tenant.status === "suspended") throw new AccountLinkError("E_ACCOUNT_LINK_TARGET")
+    // Suspended owners still need primary re-entry for billing/domain recovery.
+    // Capability restrictions belong after login; archive handling is unchanged.
+    if (tenant.status === "archived") throw new AccountLinkError("E_ACCOUNT_LINK_TARGET")
   }
   const intent = metadataText(input.metadata, "intent")
   if (intent && intent !== "user_invite" && intent !== "site_live_handoff") throw new AccountLinkError("E_ACCOUNT_LINK_PURPOSE")

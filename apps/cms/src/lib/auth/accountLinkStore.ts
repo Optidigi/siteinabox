@@ -11,6 +11,11 @@ import { AccountLinkError, accountLinkNamespaces, accountLinkPurposes, accountLi
 export const accountLinkFingerprint = (namespace: string, value: string) =>
   createHash("sha256").update(namespace + "\0" + value).digest("hex")
 
+export const accountLinkScopeKey = (target: AccountLinkTarget) => accountLinkFingerprint("scope", JSON.stringify([
+  target.namespace, target.purpose, target.recipient, target.payloadUserId ?? null, target.previewUserId ?? null,
+  target.tenantId ?? null, target.role ?? null, target.actorUserId ?? null, target.origin, target.callbackPath, target.errorCallbackPath,
+]))
+
 export type AccountLinkLease = { id: number; fence: number; token: string }
 export type AccountLinkAdmission =
   | { kind: "claimed"; lease: AccountLinkLease }
@@ -80,9 +85,7 @@ export async function admitAccountLink(payload: Payload, target: AccountLinkTarg
     await reserveWindow(db, "mailbox:" + activeKey, reset ? PASSWORD_RESET_RATE_LIMIT.window : limit.window,
       reset ? PASSWORD_RESET_RATE_LIMIT.max : limit.max, now)
     const token = randomBytes(32).toString("hex")
-    const scopeKey = accountLinkFingerprint("scope", JSON.stringify([target.namespace, target.purpose, target.recipient,
-      target.payloadUserId ?? null, target.previewUserId ?? null, target.tenantId ?? null, target.role ?? null,
-      target.actorUserId ?? null, target.origin, target.callbackPath, target.errorCallbackPath]))
+    const scopeKey = accountLinkScopeKey(target)
     const doc = await payload.create({ collection: "account-link-dispatches", overrideAccess: true, req,
       data: { ...target, activeKey, scopeKey, state: "admitted", fence: 1, leaseTokenHash: accountLinkFingerprint("lease", token),
         sendAttempts: 0, retryState: "none",

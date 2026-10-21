@@ -1,7 +1,7 @@
 import { sql } from "@payloadcms/db-postgres"
 import type { Payload, TaskConfig } from "payload"
 import type { User } from "@/payload-types"
-import { relationshipId } from "@/lib/relationshipId"
+import { accountLinkMembershipMatches } from "@/lib/auth/accountLinkMembership"
 import { asRecord } from "@/lib/record"
 import { asMailLogPayload, sendEmail } from "@/lib/email/sendEmail"
 import { accountLinkDeliveryFailure } from "@/lib/auth/accountLinkDelivery"
@@ -31,8 +31,7 @@ export async function processAccountLinkDispatches(payload: Payload): Promise<nu
     let user: User | null
     try {
       user = await payload.db.findOne<User>({ collection: "users", where: { id: { equals: receipt.payloadUserId } } })
-      if (!user || user.email.trim().toLowerCase() !== receipt.recipient || user.role !== receipt.role ||
-        (relationshipId(user.tenants?.[0]?.tenant) ?? null) !== (receipt.tenantId ?? null) || !user.resetPasswordToken ||
+      if (!user || !accountLinkMembershipMatches(receipt, user) || !user.resetPasswordToken ||
         accountLinkFingerprint("payload", user.resetPasswordToken) !== receipt.tokenFingerprint ||
         Date.parse(user.resetPasswordExpiration ?? "") <= Date.now()) throw new Error("Target changed")
       await assertPayloadCustomerActive(payload, user.id)

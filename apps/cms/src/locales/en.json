@@ -132,7 +132,7 @@
     "socialUnlinked": "That provider account is not linked to an invited CMS user.",
     "socialSession": "The provider login could not create a CMS session.",
     "socialSignInFailed": "Provider sign-in failed.",
-    "magicLinkSession": "The email sign-in link could not create a CMS session.",
+    "magicLinkSession": "This sign-in link is expired, already used or unavailable. Enter your email below to request a new link. If you just requested one, check your inbox and spam folder first.",
     "magicLinkSent": "Check your inbox and spam folder. Use the latest sign-in link; it expires after five minutes.",
     "magicLinkFailed": "Could not send sign-in link.",
     "magicLinkGenericSuccess": "If this address is eligible, use the latest link in your inbox or spam folder. Repeated requests keep an active link. If it has not arrived, wait five minutes before requesting another.",

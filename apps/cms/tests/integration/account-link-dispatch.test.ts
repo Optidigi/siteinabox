@@ -5,6 +5,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { sql, type PostgresAdapter } from "@payloadcms/db-postgres"
 import { down as undoAccountLinkSchema } from "@/migrations/20261021_225131_account_link_dispatch"
+import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
 import { getTestPayload } from "./_helpers"
 import { admitAccountLink, beginAccountLinkDelivery, bindAccountLinkToken, finishAccountLinkDelivery } from "@/lib/auth/accountLinkStore"
 import type { AccountLinkTarget } from "@/lib/auth/accountLinkTypes"
@@ -27,14 +28,21 @@ const target = (recipient = "m15-race@test.invalid"): AccountLinkTarget => ({
   namespace: "preview", purpose: "free_verification", lane: "acquisition", recipient,
   origin: "https://admin.siteinabox.nl", callbackPath: "/builder", errorCallbackPath: "/login",
 })
+function expectRecovery(response: Response) {
+  expect(response.status).toBe(302)
+  expect(response.headers.get("location")).toBe("https://admin.siteinabox.nl/login?error=magic-link-session")
+}
 
 describe("durable account-link storage", () => {
   it("can undo an unused schema transactionally without dependency-order errors", async () => {
     const transactionID = await payload.db.beginTransaction()
     if (!transactionID) throw new Error("No transaction")
     const db = (payload.db as unknown as PostgresAdapter).sessions[transactionID]!.db
+    const { createLocalReq } = await import("payload")
+    const req = await createLocalReq({}, payload)
+    req.transactionID = transactionID
     try {
-      await undoAccountLinkSchema({ db, payload, req: { transactionID } } as Parameters<typeof undoAccountLinkSchema>[0])
+      await undoAccountLinkSchema({ db, payload, req })
       const { rows } = await db.execute(sql`SELECT to_regclass('account_link_dispatches') AS relation`)
       expect(rows[0]?.relation).toBeNull()
     } finally { await payload.db.rollbackTransaction(transactionID) }
@@ -105,12 +113,12 @@ describe("durable account-link storage", () => {
     const link = new URL(match[0])
     const bad = new URL(link)
     bad.searchParams.set("callbackURL", "/other-workspace")
-    expect((await previewAuth.handler(new Request(bad))).status).toBe(401)
+    expectRecovery(await previewAuth.handler(new Request(bad)))
     const valid = await previewAuth.handler(new Request(link))
     expect(valid.status).toBe(302)
     expect(valid.headers.get("location")).toBe(origin + "/builder")
     expect(valid.headers.has("set-cookie")).toBe(true)
-    expect((await previewAuth.handler(new Request(link))).status).toBe(401)
+    expectRecovery(await previewAuth.handler(new Request(link)))
     const receipts = await payload.find({ collection: "account-link-dispatches", overrideAccess: true,
       where: { recipient: { equals: email } } })
     expect(receipts.totalDocs).toBe(1)
@@ -220,10 +228,10 @@ describe("durable account-link storage", () => {
       new URLSearchParams({ token, callbackURL: "/builder", errorCallbackURL: "/login" }))
     expect((await previewAuth.handler(link("synthetic-legacy"))).status).toBe(302)
     await insert("m15-unbound-new", "synthetic-unbound", new Date(activatedAt.getTime() + 1000))
-    expect((await previewAuth.handler(link("synthetic-unbound"))).status).toBe(401)
+    expectRecovery(await previewAuth.handler(link("synthetic-unbound")))
     await insert("m15-duplicate-a", "synthetic-duplicate", new Date(activatedAt.getTime() - 1000))
     await insert("m15-duplicate-b", "synthetic-duplicate", new Date(activatedAt.getTime() - 1000))
-    expect((await previewAuth.handler(link("synthetic-duplicate"))).status).toBe(401)
+    expectRecovery(await previewAuth.handler(link("synthetic-duplicate")))
   })
 
   it("rejects forged privileged CMS metadata before any verification row or mail is created", async () => {
@@ -252,10 +260,69 @@ describe("durable account-link storage", () => {
     const transactionID = await payload.db.beginTransaction()
     if (!transactionID) throw new Error("No transaction")
     const db = (payload.db as unknown as PostgresAdapter).sessions[transactionID]!.db
+    const { createLocalReq } = await import("payload")
+    const req = await createLocalReq({}, payload)
+    req.transactionID = transactionID
     try {
-      await expect(undoAccountLinkSchema({ db, payload, req: { transactionID } } as Parameters<typeof undoAccountLinkSchema>[0]))
+      await expect(undoAccountLinkSchema({ db, payload, req }))
         .rejects.toThrow("Preserve account-link authority")
     } finally { await payload.db.rollbackTransaction(transactionID) }
     expect((await payload.find({ collection: "account-link-dispatches", overrideAccess: true })).totalDocs).toBeGreaterThan(0)
+  })
+
+  it("never confirms a prior sent invitation for a changed role or a different purpose", async () => {
+    await payload.delete({ collection: "account-link-windows", where: {}, overrideAccess: true })
+    mail.send.mockClear()
+    const { auth } = await import("@/lib/betterAuth")
+    const tenant = await payload.create({ collection: "tenants", overrideAccess: true, context: { skipProjection: true },
+      data: { name: "Scope fixture", slug: "m15-scope", domain: "m15-scope.test", status: "active" } })
+    const user = await payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Scope fixture", email: "m15-scope@test.invalid", password: "Synthetic-password-42!", role: "viewer", tenants: [{ tenant: tenant.id }] } })
+    const headers = new Headers({ origin: "https://admin.siteinabox.nl", host: "admin.siteinabox.nl" })
+    const invite = (role: string) => auth.api.signInMagicLink({ headers, body: { email: user.email, callbackURL: "/", errorCallbackURL: "/login",
+      metadata: signPrivilegedMagicLinkMetadata("user_invite", { recipientEmail: user.email, tenantId: String(tenant.id),
+        role, tenantName: tenant.name, recipientName: user.name!, adminUrl: "https://admin.siteinabox.nl" }) } })
+    await invite("viewer")
+    await invite("viewer")
+    expect(mail.send).toHaveBeenCalledTimes(1)
+    await payload.update({ collection: "users", id: user.id, overrideAccess: true, data: { role: "editor" } })
+    await expect(invite("editor")).rejects.toMatchObject({ statusCode: 503 })
+    expect(mail.send).toHaveBeenCalledTimes(1)
+    const other = await payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Other scope", email: "m15-other-scope@test.invalid", password: "Synthetic-password-42!", role: "editor", tenants: [{ tenant: tenant.id }] } })
+    await auth.api.signInMagicLink({ headers, body: { email: other.email, callbackURL: "/", errorCallbackURL: "/login" } })
+    await expect(auth.api.signInMagicLink({ headers, body: { email: other.email, callbackURL: "/", errorCallbackURL: "/login",
+      metadata: signPrivilegedMagicLinkMetadata("user_invite", { recipientEmail: other.email, tenantId: String(tenant.id),
+        role: "editor", tenantName: tenant.name, recipientName: other.name!, adminUrl: "https://admin.siteinabox.nl" }) } }))
+      .rejects.toMatchObject({ statusCode: 503 })
+    expect(mail.send).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps suspended-owner primary re-entry and recovery available under acquisition pressure", async () => {
+    await payload.delete({ collection: "account-link-windows", where: {}, overrideAccess: true })
+    await payload.create({ collection: "account-link-windows", overrideAccess: true,
+      data: { key: "lane:acquisition", count: 10, expiresAt: new Date(Date.now() + 60_000).toISOString() } })
+    mail.send.mockClear()
+    const { auth } = await import("@/lib/betterAuth")
+    const tenant = await payload.create({ collection: "tenants", overrideAccess: true, context: { skipProjection: true },
+      data: { name: "Suspended recovery", slug: "m15-suspended", domain: "m15-suspended.test", status: "suspended" } })
+    const user = await payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Recovery owner", email: "m15-suspended@test.invalid", password: "Synthetic-password-42!",
+        role: "owner", tenants: [{ tenant: tenant.id }] } })
+    const headers = new Headers({ origin: "https://admin.siteinabox.nl", host: "admin.siteinabox.nl", cookie: "siab-locale=en" })
+    await auth.api.signInMagicLink({ headers, body: { email: user.email, callbackURL: "/", errorCallbackURL: "/login" } })
+    expect(mail.send).toHaveBeenCalledTimes(1)
+    expect(mail.send.mock.calls[0]![0]).toMatchObject({ subject: "Sign in to Site in a Box" })
+    const message = mail.send.mock.calls[0]![0] as { text: string }
+    const link = message.text.match(/https:\/\/[^\s<>]+magic-link\/verify[^\s<>]+/)
+    if (!link) throw new Error("No synthetic CMS link")
+    const result = await auth.handler(new Request(link[0]))
+    expect(result.status).toBe(302)
+    expect(result.headers.get("location")).toBe("https://admin.siteinabox.nl/")
+    await payload.forgotPassword({ collection: "users", data: { email: user.email } })
+    const { processAccountLinkDispatches } = await import("@/lib/jobs/accountLinkDispatchTask")
+    await processAccountLinkDispatches(payload)
+    expect(mail.send).toHaveBeenCalledTimes(2)
+    expect((await payload.findByID({ collection: "users", id: user.id, depth: 0, overrideAccess: true })).tenants?.[0]?.tenant).toBe(tenant.id)
   })
 })

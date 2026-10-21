@@ -5,6 +5,7 @@ import { AccountLinkError } from "./accountLinkTypes"
 import { asRecord } from "@/lib/record"
 import { relationshipId } from "@/lib/relationshipId"
 import { assertPreviewCustomerActive } from "./payloadCustomerAccess"
+import { accountLinkMembershipMatches } from "./accountLinkMembership"
 
 export async function authorizeSdkAccountLink(payload: Payload, namespace: "cms" | "preview", input: {
   email: string; origin: string; callbackPath: string; errorCallbackPath: string; metadata: unknown
@@ -46,8 +47,7 @@ export async function assertAccountLinkTargetCurrent(payload: Payload, target: A
   if (target.namespace === "cms") {
     const { resolvePayloadUserForMagicLink } = await import("@/lib/socialAuth/payloadUser")
     const user = await resolvePayloadUserForMagicLink(target.recipient)
-    if (String(user.id) !== target.payloadUserId || user.role !== target.role ||
-      (relationshipId(user.tenants?.[0]?.tenant) ?? undefined) !== target.tenantId) throw new AccountLinkError("E_ACCOUNT_LINK_TARGET")
+    if (!accountLinkMembershipMatches(target, user)) throw new AccountLinkError("E_ACCOUNT_LINK_TARGET")
     return
   }
   await assertPreviewCustomerActive(payload, { email: target.recipient, previewUserId: target.previewUserId })

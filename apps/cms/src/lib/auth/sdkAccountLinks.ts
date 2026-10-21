@@ -5,7 +5,7 @@ import { sql } from "@payloadcms/db-postgres"
 import { asRecord, queryRows } from "@/lib/record"
 import { accountLinkDeliveryFailure } from "./accountLinkDelivery"
 import { AccountLinkError, type AccountLinkTarget } from "./accountLinkTypes"
-import { admitAccountLink, accountLinkFingerprint, bindAccountLinkToken, beginAccountLinkDelivery,
+import { admitAccountLink, accountLinkFingerprint, accountLinkScopeKey, bindAccountLinkToken, beginAccountLinkDelivery,
   finishAccountLinkDelivery, type AccountLinkLease } from "./accountLinkStore"
 import { authorizeSdkAccountLink, assertAccountLinkTargetCurrent } from "./accountLinkAuthorization"
 import { CustomerIdentityError } from "./verifiedCustomer"
@@ -54,7 +54,9 @@ export function sdkAccountLinks(namespace: "cms" | "preview") {
           if (target.purpose === "invitation" || target.purpose === "site_handoff") {
             const previous = admission.kind === "coalesced" ? await payload.findByID({
               collection: "account-link-dispatches", id: admission.id, overrideAccess: true }) : null
-            if (previous?.state !== "sent") throw new APIError("SERVICE_UNAVAILABLE", { message: "Account-link delivery is not confirmed." })
+            if (previous?.state !== "sent" || previous.scopeKey !== accountLinkScopeKey(target)) {
+              throw new APIError("SERVICE_UNAVAILABLE", { message: "Account-link delivery is not confirmed." })
+            }
           }
           return ctx.json({ status: true })
         }
@@ -108,7 +110,9 @@ export function sdkAccountLinks(namespace: "cms" | "preview") {
         WHERE id=${receipt.id} AND state IN ('sent','indeterminate','dispatching') AND expires_at>clock_timestamp() RETURNING id`))
       if (rows.length !== 1) throw new AccountLinkError("E_ACCOUNT_LINK_TOKEN")
     } catch {
-      throw new APIError("UNAUTHORIZED", { message: "This link is unavailable. Request a new link after it expires." })
+      // Use only a fixed platform destination, never the rejected callback.
+      // The login page owns localized, accessible recovery guidance/actions.
+      throw ctx.redirect(new URL("/login?error=magic-link-session", origin).toString())
     }
   })
 
