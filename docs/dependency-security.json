@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
   "graphHash": "028d33494e3744f9bc5c3f136fcf9e844436131dd12b037e74b8a7f0a811947f",
-  "configurationHash": "677679d8a0e53bae32b47a4169bd81caed3cddfd276e242c95ac28f565b0320d",
+  "configurationHash": "fc6f355c7f3dfe4b9260a52c0a7017bac054a4e2c19cfb37525d9b45f84e3b59",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -96,7 +96,7 @@
       "kind": "json",
       "url": "https://vuln.go.dev/index/vulns.json",
       "selected": false,
-      "sha256": "37ce5f50d57fde5df399fd71c95aeb442d9b5d4aa55a95818cfe0e00b0ff8028"
+      "sha256": "fa37564650dc012b8c65fdd44b70ff1dd031edf033a8f54a8b2e0532dded9c8e"
     },
     {
       "id": "selected:next",
@@ -219,6 +219,13 @@
       "url": "https://api.github.com/repos/vitest-dev/vitest/releases/tags/v4.1.12",
       "selected": true,
       "sha256": "a54a329f1e044a4bf7b78765e6885ae071139bc31bcf3159a3de0094f2c66a40"
+    },
+    {
+      "id": "GO-2026-6809",
+      "kind": "json",
+      "url": "https://vuln.go.dev/ID/GO-2026-6809.json",
+      "selected": false,
+      "sha256": "de4d9bca56ac815cf747145e4a5774747d07130d1f51f277a7e5f117041f17a1"
     }
   ],
   "publisherConstraints": [
@@ -487,6 +494,20 @@
       "sources": [
         "latest:better-auth",
         "selected:better-auth"
+      ]
+    },
+    {
+      "id": "go-stdlib-advisory-recheck",
+      "classification": "unresolved_blocker",
+      "releaseBlocked": true,
+      "affectedSurface": "Shipped Go binaries and their certificate verification",
+      "reason": "Current official GO-2026-6809 advisory covers stdlib before 1.26.10 and 1.27 prereleases through 1.27.2. The pinned cloudflared diagnostic inventory reports stdlib 1.27.2; this is an affected package, with deployment exploitability unproven. Its database snapshot predates publication of this advisory. Retain a release block until all current shipped Go runtimes and advisory coverage are reviewed; no risk waiver or unapproved image replacement.",
+      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "recheck": "Before release or changed native/advisory facts; qualify patched native consumers and refresh scanner coverage.",
+      "expiresAt": "2026-10-28T01:01:28.437Z",
+      "sources": [
+        "GO-2026-6809",
+        "go-advisory-index"
       ]
     }
   ],

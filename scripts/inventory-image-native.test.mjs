@@ -50,3 +50,18 @@ test("non-executable ELF files with ordinary names remain bound and require Go c
     assert.equal(result.files[0].sha256, "1be679b2fbbce4cd056c1c3c1c50b3db09d6c4337eabd27e91968086cd172d5c")
   } finally { await rm(root, { recursive: true, force: true }) }
 })
+
+test("GNU tar escaped Unicode names are decoded without weakening path guards", async () => {
+  const root = await mkdtemp(join(tmpdir(), "siab-native-unicode-"))
+  try {
+    const content = join(root, "rootfs"); await mkdir(content)
+    const name = "NetLock_Arany_=Class_Gold=_Főtanúsítvány.crt"
+    await writeFile(join(content, name), "fixture certificate")
+    await writeFile(join(content, "Fő native.bin"), Buffer.from([0x7f, 0x45, 0x4c, 0x46]), { mode: 0o644 })
+    const archive = join(root, "rootfs.tar"); execFileSync("tar", ["-cf", archive, "-C", content, "."])
+    assert.deepEqual(inventoryImageNative(archive).files.map((file) => file.path), ["Fő native.bin"])
+    await writeFile(join(content, "unsafe\nname"), "fixture")
+    execFileSync("tar", ["-cf", archive, "-C", content, "."])
+    assert.throws(() => inventoryImageNative(archive), /Unsupported native archive member path/)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})

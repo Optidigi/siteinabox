@@ -9,6 +9,22 @@ const safeName = (name) => name.replace(/^\.\//, "")
 const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'"
 const marker = Buffer.from("\xff Go buildinf:", "latin1")
 
+// GNU tar's escape representation uses octal UTF-8 bytes under LANG=C.
+// Decode only that representation; controls, backslashes and traversal remain
+// unsupported. Never pass the displayed escape text back as a member name.
+function decodeTarName(displayed) {
+  const parts = displayed.split(/(\\[0-7]{3})/).map((part) => {
+    if (/^\\[0-7]{3}$/.test(part)) {
+      const byte = Number.parseInt(part.slice(1), 8)
+      if (byte > 255) throw new Error("Unsupported native archive member path")
+      return Buffer.from([byte])
+    }
+    if (part.includes("\\")) throw new Error("Unsupported native archive member path")
+    return Buffer.from(part, "utf8")
+  })
+  return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(parts))
+}
+
 /** Read flattened Docker-export members through tar pipes; never extract host files. */
 export function inventoryImageNative(archive) {
   if (!isAbsolute(archive)) throw new Error("Native archive inventory requires an absolute owned archive path")
@@ -23,9 +39,10 @@ export function inventoryImageNative(archive) {
     if (!line.startsWith("-")) continue // Links/devices are not followed or executed.
     const match = line.match(/^([-rwxstST]{10})\s+\S+\s+\d+\s+\d{4}-\d{2}-\d{2}\s+\S+\s+(.+)$/)
     if (!match) throw new Error("Unsupported native archive member metadata")
-    const name = safeName(match[2])
+    const decoded = decodeTarName(match[2])
+    const name = safeName(decoded)
     if (!name || name.startsWith("/") || name.split("/").includes("..") || /[\\\0\r\n]/.test(name)) throw new Error("Unsupported native archive member path")
-    selected.push(match[2])
+    selected.push(decoded)
   }
   if (!selected.length) return { files: [], goTargets: [], bundledScripts: [] }
   // Inspect every regular member's magic, independent of mode or suffix. Only

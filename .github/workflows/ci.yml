@@ -248,7 +248,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-dependency-diagnostics-${{ matrix.app }}
-          path: artifacts/siab-verify-*/image-*.log
+          path: |
+            artifacts/siab-verify-*/image-*.json
+            artifacts/siab-verify-*/image-*.log
           if-no-files-found: ignore
           retention-days: 7
 

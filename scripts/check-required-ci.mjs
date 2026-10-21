@@ -42,9 +42,9 @@ export function expectedHostedJobs(matrix) {
 
 export function assertImageMatrix(source) {
   const block = source.match(/^  image-verification:\s*\n([\s\S]*?)(?=^  [\w-]+:\s*$|(?![\s\S]))/m)?.[1]
-  // This exact log-only upload runs after failures; verification and evidence
+  // This exact diagnostic upload runs after failures; verification and evidence
   // steps still cannot acquire skip/conditional behavior.
-  const verification = block?.replace(/      - name: Retain scanner failure diagnostics\n        if: always\(\)\n        uses: actions\/upload-artifact@[a-f0-9]{40}[^\n]*\n        with:\n          name: ci-dependency-diagnostics-\$\{\{ matrix.app \}\}\n          path: artifacts\/siab-verify-\*\/image-\*\.log\n          if-no-files-found: ignore\n          retention-days: 7/, "")
+  const verification = block?.replace(/      - name: Retain scanner failure diagnostics\n        if: always\(\)\n        uses: actions\/upload-artifact@[a-f0-9]{40}[^\n]*\n        with:\n          name: ci-dependency-diagnostics-\$\{\{ matrix.app \}\}\n          path: \|\n            artifacts\/siab-verify-\*\/image-\*\.json\n            artifacts\/siab-verify-\*\/image-\*\.log\n          if-no-files-found: ignore\n          retention-days: 7/, "")
   const triggers = source.split("jobs:")[0]
   if (!block || !triggers.includes("  pull_request:\n") || !triggers.includes("  push:\n") ||
       /paths(?:-ignore)?:|branches-ignore:|pull_request_target:/.test(triggers) ||

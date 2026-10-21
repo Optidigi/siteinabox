@@ -73,12 +73,18 @@ export function validateImageInventory({ image, report, scanner, requiredTypes, 
     }
     for (const finding of result.Vulnerabilities ?? []) {
       const severity = finding?.Severity?.toLowerCase()
-      if (!text(finding?.VulnerabilityID) || !text(finding.PkgName) || !text(finding.PrimaryURL) ||
+      const goSource = /^GO-\d{4}-\d{4,}$/.test(finding?.VulnerabilityID ?? "") && finding.DataSource?.ID === "govulndb"
+        ? "https://pkg.go.dev/vuln/" + finding.VulnerabilityID : null
+      // Trivy may omit PrimaryURL for Go-only advisories. Require the exact
+      // canonical advisory reference rather than inventing a source or dropping it.
+      const source = text(finding?.PrimaryURL) ? finding.PrimaryURL :
+        goSource && Array.isArray(finding.References) && finding.References.includes(goSource) ? goSource : null
+      if (!text(finding?.VulnerabilityID) || !text(finding.PkgName) || !source ||
           !["unknown", "low", "medium", "high", "critical"].includes(severity)) {
         throw new Error("Image vulnerability evidence is malformed or has unknown schema")
       }
       findings.push({ id: finding.VulnerabilityID, package: finding.PkgName, version: finding.InstalledVersion || "(not-recorded)",
-        severity, fixedVersion: finding.FixedVersion ?? null, source: finding.PrimaryURL,
+        severity, fixedVersion: finding.FixedVersion ?? null, source,
         type: result.Type, target: result.Class === "os-pkgs" ? "os-packages" : result.Target,
         paths: [finding.PkgPath || (result.Class === "os-pkgs" ? "os-packages" : result.Target)],
         purl: finding.PkgIdentifier?.PURL ?? null, dataSource: finding.DataSource ?? null,

@@ -115,6 +115,13 @@ bundled npm/Go findings absent from `pnpm audit`, including a scanner-critical G
 standard-library finding in an esbuild binary. Presence does not establish an
 exploitable deployment condition or what production currently runs.
 
+A read-only diagnostic scan of the pinned cloudflared artifact identifies Go
+stdlib 1.27.2. The newly published
+[GO-2026-6809 advisory](https://pkg.go.dev/vuln/GO-2026-6809) includes that version;
+the scanned database snapshot predates the advisory. An explicit unresolved
+constraint therefore blocks release independently of scanner detection. This
+diagnostic evidence does not replace the five current-candidate inventories.
+
 Current-candidate native assessments must be completed from hosted artifacts
 before this milestone's inventory is qualified. Missing native records are
 intentional blockers during qualification, not a clean or completed release

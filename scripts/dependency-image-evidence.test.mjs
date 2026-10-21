@@ -64,3 +64,16 @@ test("documented severity provenance notice is retained but unknown warnings and
     assert.throws(() => validateScannerDiagnostics(bad), /completeness requires review/)
   }
 })
+
+test("Go database findings without PrimaryURL retain canonical advisory source and UNKNOWN severity", () => {
+  const input = fixture()
+  const finding = input.report.Results[0].Vulnerabilities[0]
+  delete finding.PrimaryURL
+  Object.assign(finding, { VulnerabilityID: "GO-2026-5932", Severity: "UNKNOWN",
+    DataSource: { ID: "govulndb", URL: "https://pkg.go.dev/vuln/" }, References: ["https://pkg.go.dev/vuln/GO-2026-5932"] })
+  const inventory = validateImageInventory(input)
+  assert.equal(inventory.findings[0].source, "https://pkg.go.dev/vuln/GO-2026-5932")
+  assert.equal(inventory.findings[0].severity, "unknown")
+  finding.References = ["https://example.test/not-the-advisory"]
+  assert.throws(() => validateImageInventory(input), /malformed|unknown schema/)
+})
