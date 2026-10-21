@@ -521,12 +521,12 @@ const prepareMediaAssets = async (assets: readonly SiteGenerationMediaAsset[] | 
   }
 }
 
-const upsertMediaAssets = async (payload: Payload, tenantId: string | number, assets: readonly PreparedMediaAsset[]): Promise<MediaIdMap> => {
+const upsertMediaAssets = async (payload: Payload, tenantId: string | number, assets: readonly PreparedMediaAsset[], req?: Partial<PayloadRequest>): Promise<MediaIdMap> => {
   const mediaIds: MediaIdMap = new Map()
   for (const asset of assets) {
     const existing = await findOne<Media>(payload, "media", {
       and: [{ tenant: { equals: tenantId } }, { filename: { equals: asset.filename } }],
-    })
+    }, req)
     const data = {
       tenant: Number(tenantId),
       filename: asset.filename,
@@ -542,6 +542,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
+        req,
       })
       : await payload.create({
         collection: "media",
@@ -551,6 +552,7 @@ const upsertMediaAssets = async (payload: Payload, tenantId: string | number, as
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
+        req,
       })
     const id = (document as Media).id
     mediaIds.set(asset.key, id)
@@ -565,15 +567,8 @@ const upsertTenant = async (
   siteManifest: Record<string, unknown>,
   theme: ThemeTokens | null,
   pinTenantId?: string | number,
-  customerAuthority?: CustomerAuthority,
   req?: Partial<PayloadRequest>,
 ): Promise<WorkspaceResult> => {
-  if (customerAuthority) return withCustomerWorkspace(payload, customerAuthority, (bound, transactionReq) => {
-    if (pinTenantId != null && String(bound?.id) !== String(pinTenantId)) {
-      throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
-    }
-    return upsertTenant(payload, spec, siteManifest, theme, bound?.id, undefined, transactionReq)
-  })
   const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } }, req)
   const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } }, req)
   if (req && pinTenantId == null && (bySlug || byDomain)) {
@@ -598,31 +593,31 @@ const upsertTenant = async (
   return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req }), operation: "created" as const }
 }
 
-const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap) => {
+const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>) => {
   const results: Array<{ doc: ExistingPage; operation: ApplyOperation }> = []
   for (const page of pages) {
     const data = normalizePageData(tenantId, page, mediaIds)
-    const existing = await findOne<Page>(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] })
+    const existing = await findOne<Page>(payload, "pages", { and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }] }, req)
     if (existing) {
-      const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      const updated = await payload.update({ collection: "pages", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req })
       results.push({ doc: updated as ExistingPage, operation: "updated" })
     } else {
-      const created = await payload.create({ collection: "pages", data: data as unknown as Page, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT })
+      const created = await payload.create({ collection: "pages", data: data as unknown as Page, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req })
       results.push({ doc: created as ExistingPage, operation: "created" })
     }
   }
   return results
 }
 
-const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap) => {
+const upsertSettings = async (payload: Payload, tenantId: string | number, settings: GeneratedSiteSettings, pageBySlug: Map<string, ExistingPage>, mediaIds?: MediaIdMap, req?: Partial<PayloadRequest>) => {
   const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
-  const existing = await findOne<SiteSetting>(payload, "site-settings", { tenant: { equals: tenantId } })
-  if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
-  return { doc: await payload.create({ collection: "site-settings", data: data as unknown as SiteSetting, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  const existing = await findOne<SiteSetting>(payload, "site-settings", { tenant: { equals: tenantId } }, req)
+  if (existing) return { doc: await payload.update({ collection: "site-settings", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req }), operation: "updated" as const }
+  return { doc: await payload.create({ collection: "site-settings", data: data as unknown as SiteSetting, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req }), operation: "created" as const }
 }
 
-const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>): Promise<RetainedPage[]> => {
-  const result = await payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true })
+const retainedPagesForTenant = async (payload: Payload, tenantId: string | number, appliedSlugs: Set<string>, req?: Partial<PayloadRequest>): Promise<RetainedPage[]> => {
+  const result = await payload.find({ collection: "pages", where: { tenant: { equals: tenantId } }, limit: 1000, depth: 0, overrideAccess: true, req })
   return (result.docs as ExistingPage[]).filter((page) => !appliedSlugs.has(page.slug)).map((page) => ({ id: page.id, slug: page.slug, ...(page.status ? { status: page.status } : {}) }))
 }
 
@@ -630,8 +625,9 @@ export const retireUnspecifiedPagesForTenant = async (
   payload: Payload,
   tenantId: string | number,
   appliedSlugs: Set<string>,
+  req?: Partial<PayloadRequest>,
 ): Promise<{ retainedPages: RetainedPage[]; retiredPages: RetainedPage[] }> => {
-  const retainedPages = await retainedPagesForTenant(payload, tenantId, appliedSlugs)
+  const retainedPages = await retainedPagesForTenant(payload, tenantId, appliedSlugs, req)
   const retiredPages = retainedPages.filter((page) => page.status === "published")
   await Promise.all(retiredPages.map((page) => payload.update({
     collection: "pages",
@@ -640,6 +636,7 @@ export const retireUnspecifiedPagesForTenant = async (
     depth: 0,
     overrideAccess: true,
     context: PAGE_REPLACEMENT_CONTEXT,
+    req,
   })))
   return { retainedPages, retiredPages }
 }
@@ -658,28 +655,41 @@ export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGen
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const preparedMedia = await prepareMediaAssets(options.mediaAssets)
   try {
-    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId, options.customerAuthority)
-    const tenantId = tenant.doc.id as string | number
-    const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets) : new Map<string, string | number>()
-    const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)
-    const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
-    const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds)
-    const pageState = options.retireUnspecifiedPages
-      ? await retireUnspecifiedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug)))
-      : {
-        retainedPages: await retainedPagesForTenant(payload, tenantId, new Set(parsedSpec.pages.map((page) => page.slug))),
-        retiredPages: [],
-      }
+    const applyContent = async (pinTenantId?: string | number, req?: Partial<PayloadRequest>) => {
+      const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, pinTenantId, req)
+      const tenantId = tenant.doc.id as string | number
+      const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets, req) : new Map<string, string | number>()
+      const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds, req)
+      const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
+      const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds, req)
+      const slugs = new Set(parsedSpec.pages.map((page) => page.slug))
+      const pageState = options.retireUnspecifiedPages
+        ? await retireUnspecifiedPagesForTenant(payload, tenantId, slugs, req)
+        : { retainedPages: await retainedPagesForTenant(payload, tenantId, slugs, req), retiredPages: [] }
+      return { ...tenant, pages, settings, pageState }
+    }
+    // The authority/session locks span ALL local content work. Revocation can
+    // commit before admission (denied), or after this atomic work completes.
+    // Media preparation and model/provider dispatch remain outside this lock.
+    const { doc, operation, pages, settings, pageState } = options.customerAuthority
+      ? await withCustomerWorkspace(payload, options.customerAuthority, (bound, req) => {
+        if (options.pinTenantId != null && String(bound?.id) !== String(options.pinTenantId)) {
+          throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+        }
+        return applyContent(bound?.id, req)
+      })
+      : await applyContent(options.pinTenantId)
+    const tenantId = doc.id as string | number
     return {
       ok: true,
       tenantId,
-      tenantSlug: tenant.doc.slug,
+      tenantSlug: doc.slug,
       pageIds: pages.map(({ doc }) => doc.id),
       settingsId: settings.doc.id,
       validation,
       idempotencyKey,
       operations: {
-        tenant: tenant.operation,
+        tenant: operation,
         settings: settings.operation,
         pages: pages.map(({ doc, operation }) => ({ id: doc.id, slug: doc.slug, operation })),
         retainedPages: pageState.retainedPages,

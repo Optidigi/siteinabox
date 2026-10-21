@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { sql } from "@payloadcms/db-postgres"
+import { Client } from "pg"
+import { fixtureSpec } from "../_helpers/siteGenerationFixture"
 import type { Payload } from "payload"
 import { getTestPayload } from "./_helpers"
 import { queryRows } from "@/lib/record"
@@ -231,4 +233,87 @@ describe("verified customer identity", () => {
       SELECT count(*) AS count FROM users_sessions WHERE _parent_id=${user.id}`))
     expect(Number(sessions[0]!.count)).toBe(0)
   })
+})
+
+
+it("serializes complete generated content against concurrent account revocation", async () => {
+  const { previewAuth } = await import("@/lib/preview/betterAuth")
+  const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+  const { applySiteGenerationSpec } = await import("@/lib/site-generation/applySiteGenerationSpec")
+  const context = await previewAuth.$context
+  const user = await context.internalAdapter.createUser({ name: "Synthetic generation race", email: "m14-content-race@test.invalid", emailVerified: true }, { method: "test" })
+  const session = await context.internalAdapter.createSession(user.id)
+  const source = queryRows<{ firstVerifiedAt: Date | string }>(await payload.db.drizzle.execute(sql`
+    SELECT "firstVerifiedAt" FROM preview_auth_users WHERE id=${user.id}`))[0]!
+  const account = await resolveVerifiedCustomerAccount(payload, { user: { ...user, firstVerifiedAt: source.firstVerifiedAt }, session })
+  const authority = { accountId: account.id, previewSessionId: session.id }
+  let releasePage!: () => void, reachedPage!: () => void
+  const paused = new Promise<void>(resolve => { releasePage = resolve })
+  const reached = new Promise<void>(resolve => { reachedPage = resolve })
+  const hooks = payload.collections.pages.config.hooks.afterChange ??= []
+  const hook: (typeof hooks)[number] = async ({ doc }) => {
+    if (doc.slug === "index" && doc.title === "M14 concurrent content") { reachedPage(); await paused }
+    return doc
+  }
+  hooks.push(hook)
+  const revoker = new Client({ connectionString: process.env.DATABASE_URI, application_name: "siab-m14-revocation-race" })
+  let generation: ReturnType<typeof applySiteGenerationSpec> | undefined
+  let revocation: Promise<void> | undefined
+  try {
+    await revoker.connect()
+    const spec = fixtureSpec(); spec.pages[0]!.title = "M14 concurrent content"
+    generation = applySiteGenerationSpec(payload, spec, { customerAuthority: authority })
+    await Promise.race([reached, generation.then(() => { throw new Error("Generation never reached the paused page") })])
+    revocation = revoker.query("UPDATE customer_accounts SET revoked_at=clock_timestamp() WHERE id=$1", [account.id]).then(() => undefined)
+    let blocked = false
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const waiting = queryRows<{ blocked: boolean }>(await payload.db.drizzle.execute(sql`
+        SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='siab-m14-revocation-race'
+          AND wait_event_type='Lock') AS blocked`))
+      if (waiting[0]?.blocked) { blocked = true; break }
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    expect(blocked, "Revocation must wait for all local generation work, including settings after this page").toBe(true)
+    releasePage()
+    const result = await generation; expect(result.ok).toBe(true)
+    await revocation
+    const persisted = await payload.findByID({ collection: "customer-accounts", id: account.id, overrideAccess: true, depth: 0 })
+    expect(persisted.revokedAt).toBeTruthy()
+    const tenantId = typeof persisted.tenant === "object" ? persisted.tenant!.id : persisted.tenant!
+    const settings = await payload.find({ collection: "site-settings", where: { tenant: { equals: tenantId } }, overrideAccess: true, depth: 0 })
+    expect(settings.totalDocs).toBe(1)
+    await expect(applySiteGenerationSpec(payload, spec, { customerAuthority: authority })).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
+    expect((await payload.find({ collection: "site-settings", where: { tenant: { equals: tenantId } }, overrideAccess: true, depth: 0 })).docs).toEqual(settings.docs)
+  } finally {
+    releasePage()
+    await generation?.catch(() => undefined)
+    await revocation?.catch(() => undefined)
+    hooks.splice(hooks.indexOf(hook), 1)
+    await revoker.end()
+  }
+}, 15000)
+
+
+it("rolls back local workspace work when its locked session expires before commit", async () => {
+  const { previewAuth } = await import("@/lib/preview/betterAuth")
+  const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+  const { withCustomerWorkspace } = await import("@/lib/auth/customerWorkspace")
+  const context = await previewAuth.$context
+  const user = await context.internalAdapter.createUser({ name: "Synthetic expiry", email: "m14-during-expiry@test.invalid", emailVerified: true }, { method: "test" })
+  const session = await context.internalAdapter.createSession(user.id)
+  const row = queryRows<{ firstVerifiedAt: Date | string }>(await payload.db.drizzle.execute(sql`
+    SELECT "firstVerifiedAt" FROM preview_auth_users WHERE id=${user.id}`))[0]!
+  const account = await resolveVerifiedCustomerAccount(payload, { user: { ...user, firstVerifiedAt: row.firstVerifiedAt }, session })
+  await payload.db.drizzle.execute(sql`UPDATE preview_auth_sessions SET "expiresAt"=clock_timestamp()+interval '500 milliseconds' WHERE id=${session.id}`)
+  let created = false
+  await expect(withCustomerWorkspace(payload, { accountId: account.id, previewSessionId: session.id }, async (_bound, req) => {
+    const doc = await payload.create({ collection: "tenants", overrideAccess: true, req, context: { skipProjection: true },
+      data: { name: "Rolled back workspace", slug: "m14-expiring", domain: "m14-expiring.invalid", status: "provisioning" } })
+    created = true
+    await new Promise(resolve => setTimeout(resolve, 600))
+    return { doc, operation: "created" }
+  })).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
+  expect(created).toBe(true)
+  expect((await payload.find({ collection: "tenants", where: { slug: { equals: "m14-expiring" } }, overrideAccess: true })).totalDocs).toBe(0)
+  expect((await payload.findByID({ collection: "customer-accounts", id: account.id, overrideAccess: true, depth: 0 })).tenant).toBeFalsy()
 })

@@ -1,3 +1,5 @@
+import { assertCustomerAccess } from "@/lib/auth/customerWorkspace"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
@@ -395,10 +397,16 @@ const iterateTextStream = async function* (stream: AsyncIterable<string>): Async
   }
 }
 
+async function assertEditorAuthority(ctx: AgentWriteContext) {
+  if (ctx.customerAuthority) await assertCustomerAccess(ctx.payload, ctx.customerAuthority,
+    { intent: "write", tenantId: ctx.tenantId })
+}
+
 export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
   const { agent, providerOptions } = createEditorAgent(input)
+  await assertEditorAuthority(input.ctx)
   const generated = await agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
@@ -411,6 +419,7 @@ export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncG
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
   const { agent, providerOptions } = createEditorAgent(input)
+  await assertEditorAuthority(input.ctx)
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
@@ -429,6 +438,7 @@ export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncG
 }
 
 const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> => {
+  await assertEditorAuthority(input.ctx)
   const plan = await planBuilderTurn({
     message: input.message,
     previous: input.facts,
@@ -448,6 +458,7 @@ const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEd
     selectedBlockIndex: input.selectedBlockIndex,
     role: input.role,
     user: input.ctx.user,
+    customerAuthority: input.ctx.customerAuthority,
     intent: maintainerIntentFromPlan(plan, input.message),
   })
   const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
@@ -469,6 +480,7 @@ const mastraFallbackTurn = async (input: SiteEditorTurnInput): Promise<SiteEdito
     selectedBlockIndex: input.selectedBlockIndex,
     role: input.role,
     user: input.ctx.user,
+    customerAuthority: input.ctx.customerAuthority,
     intent: interpretMaintainerIntent(input.message),
   })
   const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
@@ -482,7 +494,7 @@ export async function runExistingSiteTurn(input: SiteEditorTurnInput & {
     try {
       return await runSiteEditorAgent(input)
     } catch (error) {
-      if (error instanceof MastraRunIncompleteError) throw error
+      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError) throw error
       return mastraFallbackTurn(input)
     }
   }
@@ -497,7 +509,7 @@ export async function* streamExistingSiteTurn(input: SiteEditorTurnInput & {
       yield* streamSiteEditorAgent(input)
       return
     } catch (error) {
-      if (error instanceof MastraRunIncompleteError) throw error
+      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError) throw error
       yield { type: "done", result: await mastraFallbackTurn(input) }
       return
     }

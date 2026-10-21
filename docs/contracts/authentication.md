@@ -153,6 +153,12 @@ authority remains Payload-owned: owner/editor/viewer have one tenant and
 super-admin remains tenantless. Preview mutations/purchase require owner authority
 when a CMS membership exists; editors/viewers retain their role-appropriate CMS.
 
+Local generation retains the same request transaction through tenant, media, page, settings and retirement work;
+revocation serializes against the complete write. Session expiry is checked
+again against wall time before commit, so expired work rolls back. Provider
+calls and media preparation stay outside that transaction. Maintainer fallbacks
+retain the same authority, including theme updates and snapshot reads.
+
 Preview-grant expiry is renewable access, separate from account and session
 revocation. A current verified session may renew its bound, unrevoked grant after
 tenant/run checks; renewal cannot change identity or the anchor. A never-completed

@@ -30,7 +30,7 @@ const extractTenantId = (raw: unknown): string | number | null => {
   return null
 }
 
-export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ data, originalDoc }) => {
+export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ data, originalDoc, req }) => {
   const tenantId = extractTenantId(
     (data)?.tenant ?? (originalDoc)?.tenant,
   )
@@ -38,7 +38,7 @@ export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ dat
   // Dynamic import to break the payload.config ↔ Pages ↔ enforceTenantBlockMenu
   // ↔ loadManifest circular module-init cycle under esbuild bundling.
   const { loadTenantManifest } = await import("@/lib/richText/loadManifest")
-  const manifest = await loadTenantManifest(tenantId)
+  const manifest = await loadTenantManifest(tenantId, req)
   const allowed = new Set(
     manifest.blocks && manifest.blocks.length > 0
       ? manifest.blocks.map((b) => b.slug)

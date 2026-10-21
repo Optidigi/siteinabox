@@ -58,6 +58,7 @@ export const ensureUniqueTenantSlug: CollectionBeforeValidateHook = async ({
 
   const existing = await req.payload.find({
     collection: "pages",
+    req,
     overrideAccess: true,
     depth: 0,
     limit: 1,

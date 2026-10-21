@@ -62,6 +62,7 @@ export const ensureUniqueTenantFilename: CollectionBeforeValidateHook = async ({
 
   const existing = await req.payload.find({
     collection: "media",
+    req,
     overrideAccess: true,
     depth: 0,
     limit: 1,

@@ -7,7 +7,7 @@
 // body). The function uses `getPayload(config)` which is itself
 // server-only and would fail loudly in any client bundle, so the
 // marker's safety net is intact one layer deeper.
-import { getPayload } from "payload"
+import { type PayloadRequest, getPayload } from "payload"
 import config from "@/payload.config"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "./manifest"
 
@@ -23,12 +23,13 @@ export const DEFAULT_MANIFEST: RtManifest = {
   typeStyles: [],
 }
 
-export const loadTenantManifest = async (tenantId: string | number): Promise<RtManifest> => {
-  const payload = await getPayload({ config })
+export const loadTenantManifest = async (tenantId: string | number, req?: Partial<PayloadRequest>): Promise<RtManifest> => {
+  const payload = req?.payload ?? await getPayload({ config })
   const t = await payload.findByID({
     collection: "tenants",
     id: tenantId,
     overrideAccess: true,
+    req,
   })
   const raw = (t).siteManifest
   if (!raw) return DEFAULT_MANIFEST

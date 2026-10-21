@@ -36,7 +36,7 @@ async function currentCustomer(
     JOIN preview_auth_users u ON u.id=a.preview_user_id
     JOIN preview_auth_sessions s ON s."userId"=u.id
     WHERE a.id=${authority.accountId} AND s.id=${authority.previewSessionId}
-      AND s."expiresAt">now() AND u."emailVerified"=true AND u."verificationHistoryUnknown"=false
+      AND s."expiresAt">clock_timestamp() AND u."emailVerified"=true AND u."verificationHistoryUnknown"=false
       AND a.revoked_at IS NULL AND a.email=u.email
       AND a.verified_at=date_trunc('milliseconds',u."firstVerifiedAt")
     ${locking}`))
@@ -82,12 +82,12 @@ export async function assertCustomerAccess(
 }
 
 /** Serialize only local workspace writes; never pass provider I/O as action. */
-export async function withCustomerWorkspace(
+export async function withCustomerWorkspace<Result extends WorkspaceResult>(
   payload: Payload,
   authority: CustomerAuthority,
-  action: (bound: Tenant | null, req: Partial<PayloadRequest>) => Promise<WorkspaceResult>,
+  action: (bound: Tenant | null, req: Partial<PayloadRequest>) => Promise<Result>,
   intent: AccessIntent = "write",
-): Promise<WorkspaceResult> {
+): Promise<Result> {
   const transactionID = await payload.db.beginTransaction()
   if (!transactionID) throw new Error("Customer workspace requires a transaction")
   const req = { transactionID }
@@ -100,6 +100,9 @@ export async function withCustomerWorkspace(
       throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
     }
     const result = await action(bound, req)
+    // A locked session can still expire while local work runs. Revalidate
+    // against wall time before any content/binding becomes committed.
+    await currentCustomer(payload, authority, intent, undefined, req)
     if (tenantId && String(result.doc.id) !== tenantId) {
       throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
     }

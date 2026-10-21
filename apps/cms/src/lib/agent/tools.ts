@@ -78,7 +78,7 @@ export const setTheme = async (ctx: AgentWriteContext, theme: ThemeTokenSpec): P
     id: ctx.tenantId,
     data: { theme: cmsTheme },
     depth: 0,
-    overrideAccess: true,
+    ...await collectionWrite(ctx),
   })
   return parsed.data
 }
@@ -297,6 +297,7 @@ export const loadSiteSnapshot = async (
   ctx: AgentWriteContext,
   pageSlug: string,
 ): Promise<SiteEditorSnapshot> => {
+  await collectionWrite(ctx)
   const tenant = await loadTenantById(ctx.payload, ctx.tenantId)
   const page = await findPageBySlug(ctx, pageSlug)
   const settings = await findTenantSettings(ctx)
