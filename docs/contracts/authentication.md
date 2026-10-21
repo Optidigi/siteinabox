@@ -157,7 +157,10 @@ Local generation retains the same request transaction through tenant, media, pag
 revocation serializes against the complete write. Session expiry is checked
 again against wall time before commit, so expired work rolls back. Provider
 calls and media preparation stay outside that transaction. Maintainer fallbacks
-retain the same authority, including theme updates and snapshot reads.
+retain the same authority, including theme updates and snapshot reads. Each local
+maintainer mutation uses that transaction and expiry check. The installed SDK
+pre-step hook validates authority before every model dispatch, including the
+next step after a completed tool; an identity error cannot trigger fallback.
 
 Preview-grant expiry is renewable access, separate from account and session
 revocation. A current verified session may renew its bound, unrevoked grant after

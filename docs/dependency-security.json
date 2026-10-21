@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M14 verified-workspace compatibility evidence review (Codex engineering; no risk waiver)",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "ba259099f0a369b0757f4be775ff52411a00e17ef28a576c93eef966eae1fe07",
+  "configurationHash": "c7fb46c5231ed1f8d02f3b79e3c3caed607166972e29abc7fecaf9b8fb497d22",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -82,14 +82,14 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/main.json",
       "selected": false,
-      "sha256": "33db8c1a9fbb16fc5460f83a83f4e530f13440f6abaa5fcd8e39747f88428294"
+      "sha256": "fce48ccfe75049f9de81247f3929bf9f68d198f0e381944ab01a070bd65537cc"
     },
     {
       "id": "alpine-community",
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/community.json",
       "selected": false,
-      "sha256": "af61f6faaacdb1dde98931803811314c7120c6a1aaf41f7761bcb8923d95a39f"
+      "sha256": "8f41fdb54ca676404af3b0c8deca37fe2980edd83218e7281bacae847b03e417"
     },
     {
       "id": "go-advisory-index",
@@ -4923,7 +4923,7 @@
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "f3d17d13f8e412a704f55e5795118c368ac29305425a51de23c06af5af0aff9e",
+      "fingerprint": "fa3fa8a8db265e203608e86a74b6c23028ea0f95dec6d241bef5e823a1eab4ed",
       "status": "blocked",
       "reason": "CMS privileged migration/auth helpers and image processing remain blocked for the existing unresolved native/OS findings. M14 reviews the eight changed generated helper bundles against actual M13 hosted native inventories and the unchanged frozen dependency graph; populated boot rehearsals preserve credentials and content, while new authority guards reject unsafe mappings. Local helper identities require exact final hosted-image matching and do not establish native security or production compatibility.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
@@ -4985,8 +4985,8 @@
           },
           {
             "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 14757971,
-            "sha256": "d2929ae8857a73e08ea7d5c80aa0c62b9b25d7e090c029ba8085c151060689c1"
+            "size": 14757983,
+            "sha256": "893150119f6791bdd4f76f42dba86fb004f33471f314ca00b5f18217c045c417"
           }
         ],
         "limitation": "Actual M13 hosted native baseline plus exact M14 locally generated helper hashes; final candidate hosted-image match required. All findings and five blocked native assessments remain."
@@ -5142,6 +5142,19 @@
       "sources": [
         "scanner-release",
         "scanner-latest"
+      ]
+    },
+    {
+      "id": "musl-vendor-fix-recheck",
+      "classification": "unresolved_blocker",
+      "releaseBlocked": true,
+      "affectedSurface": "CMS, renderer, site and PostgreSQL Alpine libc artifacts",
+      "reason": "Fresh Alpine v3.24 main security data adds CVE-2026-107891 under musl 1.2.6-r3. Retained verified CMS/renderer/site/PostgreSQL package reports contain musl and musl-utils 1.2.6-r2. These bytes precede the vendor-listed fix; configured applicability, patched artifact compatibility and fresh analyzer reconciliation remain unqualified. This explicit vendor-drift release blocker does not infer deployment exploitability or waive any existing finding. Community drift only adds php83 fixes; no PHP package is present in the retained five inventories.",
+      "reviewOwner": "M14 primary-vendor-fact review (Codex engineering; no risk waiver)",
+      "recheck": "Before release or changed source facts: qualify patched musl consumers against current vendor/advisory evidence and exact image/native inventories. Keep findings/coverage gaps blocked until independently resolved.",
+      "expiresAt": "2026-10-28T01:01:28.437Z",
+      "sources": [
+        "alpine-main"
       ]
     }
   ],

@@ -1,5 +1,6 @@
-import type { Payload } from "payload"
-import { assertCustomerAccess, type CustomerAuthority } from "@/lib/auth/customerWorkspace"
+import type { Payload, PayloadRequest } from "payload"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
+import { assertCustomerAccess, withCustomerWorkspace, type CustomerAuthority } from "@/lib/auth/customerWorkspace"
 import {
   AppointmentScheduleSettingsSchema,
   BACKGROUND_MODE_IDS,
@@ -20,15 +21,32 @@ export type AgentWriteContext = {
   payload: Payload
   tenantId: string | number
   user?: User | null
+  req?: Partial<PayloadRequest>
   customerAuthority?: CustomerAuthority
 }
 
-const collectionWrite = async (ctx: AgentWriteContext): Promise<{ overrideAccess: boolean; user?: User }> => {
+const collectionWrite = async (ctx: AgentWriteContext): Promise<{ overrideAccess: boolean; user?: User; req?: Partial<PayloadRequest> }> => {
   if (ctx.customerAuthority) await assertCustomerAccess(ctx.payload, ctx.customerAuthority,
-    { intent: "write", tenantId: ctx.tenantId })
+    { intent: "write", tenantId: ctx.tenantId }, ctx.req)
   return ctx.user
-    ? { overrideAccess: false, user: ctx.user }
-    : { overrideAccess: true }
+    ? { overrideAccess: false, user: ctx.user, req: ctx.req }
+    : { overrideAccess: true, req: ctx.req }
+}
+
+// The customer/session lock spans local hook execution and the actual commit.
+// Nested tools reuse only the transaction established by this server context.
+const customerMutation = <Args extends unknown[], Result>(
+  action: (ctx: AgentWriteContext, ...args: Args) => Promise<Result>,
+) => async (ctx: AgentWriteContext, ...args: Args): Promise<Result> => {
+  if (!ctx.customerAuthority || ctx.req) return action(ctx, ...args)
+  const outcome = await withCustomerWorkspace(ctx.payload, ctx.customerAuthority, async (bound, req) => {
+    if (!bound || String(bound.id) !== String(ctx.tenantId)) {
+      throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+    }
+    const result = await action({ ...ctx, req }, ...args)
+    return { doc: bound, operation: "updated", result }
+  })
+  return outcome.result
 }
 
 const WEEKDAY_WINDOWS = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const
@@ -69,7 +87,7 @@ export const defaultEnabledAppointments = (): AppointmentScheduleSettings => ({
   })),
 })
 
-export const setTheme = async (ctx: AgentWriteContext, theme: ThemeTokenSpec): Promise<ThemeTokenSpec> => {
+export const setTheme = customerMutation(async (ctx: AgentWriteContext, theme: ThemeTokenSpec): Promise<ThemeTokenSpec> => {
   const parsed = ThemeTokenSpecSchema.safeParse(theme)
   if (!parsed.success) throw new Error(`Invalid theme: ${parsed.error.message}`)
   const cmsTheme = themeSchema.parse(parsed.data)
@@ -81,9 +99,9 @@ export const setTheme = async (ctx: AgentWriteContext, theme: ThemeTokenSpec): P
     ...await collectionWrite(ctx),
   })
   return parsed.data
-}
+})
 
-export const setAppointments = async (
+export const setAppointments = customerMutation(async (
   ctx: AgentWriteContext,
   schedule: AppointmentScheduleSettings = defaultEnabledAppointments(),
 ): Promise<AppointmentScheduleSettings> => {
@@ -98,9 +116,9 @@ export const setAppointments = async (
     ...await collectionWrite(ctx),
   })
   return parsed
-}
+})
 
-export const setContact = async (
+export const setContact = customerMutation(async (
   ctx: AgentWriteContext,
   contact: { phone?: string | null; address?: string | null },
 ): Promise<void> => {
@@ -119,9 +137,9 @@ export const setContact = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})
 
-export const updateSectionProps = async (
+export const updateSectionProps = customerMutation(async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; blockIndex?: number | null; field: "heading" | "body"; value: string },
 ): Promise<void> => {
@@ -141,9 +159,9 @@ export const updateSectionProps = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})
 
-export const setHours = async (
+export const setHours = customerMutation(async (
   ctx: AgentWriteContext,
   hours: Array<{ day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"; open: string | null; close: string | null; closed?: boolean }>,
 ): Promise<void> => {
@@ -156,7 +174,7 @@ export const setHours = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})
 
 const catalogBlockTypeFromVariant = (variant: string): SitegenBlockType | null => {
   const prefix = variant.split("-")[0]
@@ -166,7 +184,7 @@ const catalogBlockTypeFromVariant = (variant: string): SitegenBlockType | null =
   return null
 }
 
-export const replaceSection = async (
+export const replaceSection = customerMutation(async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; blockIndex?: number | null; variant: string },
 ): Promise<void> => {
@@ -196,7 +214,7 @@ export const replaceSection = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})
 
 export const loadTenantById = async (payload: Payload, id: string | number): Promise<Tenant | undefined> => {
   try {
@@ -332,7 +350,7 @@ export const loadSiteSnapshot = async (
   }
 }
 
-export const patchSection = async (
+export const patchSection = customerMutation(async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; blockIndex?: number | null; patch: BlockPatch },
 ): Promise<void> => {
@@ -365,9 +383,9 @@ export const patchSection = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})
 
-export const pruneUnavailableBlocksIfPresent = async (
+export const pruneUnavailableBlocksIfPresent = customerMutation(async (
   ctx: AgentWriteContext,
   pageSlug: string,
 ): Promise<{ removed: number; remaining: number }> => {
@@ -378,9 +396,9 @@ export const pruneUnavailableBlocksIfPresent = async (
     return { removed: 0, remaining: blocks.length }
   }
   return removeUnavailableBlocks(ctx, pageSlug)
-}
+})
 
-export const removeUnavailableBlocks = async (
+export const removeUnavailableBlocks = customerMutation(async (
   ctx: AgentWriteContext,
   pageSlug: string,
 ): Promise<{ removed: number; remaining: number }> => {
@@ -404,9 +422,9 @@ export const removeUnavailableBlocks = async (
     ...await collectionWrite(ctx),
   })
   return { removed, remaining: next.length }
-}
+})
 
-export const setChrome = async (
+export const setChrome = customerMutation(async (
   ctx: AgentWriteContext,
   input: {
     navbarVariant?: string | null
@@ -449,9 +467,9 @@ export const setChrome = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})
 
-export const setSeo = async (
+export const setSeo = customerMutation(async (
   ctx: AgentWriteContext,
   input: { pageSlug: string; title?: string | null; description?: string | null },
 ): Promise<void> => {
@@ -470,4 +488,4 @@ export const setSeo = async (
     depth: 0,
     ...await collectionWrite(ctx),
   })
-}
+})

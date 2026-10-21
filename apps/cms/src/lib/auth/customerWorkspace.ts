@@ -77,8 +77,9 @@ export async function assertCustomerAccess(
   payload: Payload,
   authority: CustomerAuthority,
   input: { intent: AccessIntent; tenantId?: string | number },
+  req?: Partial<PayloadRequest>,
 ): Promise<CustomerAccount> {
-  return currentCustomer(payload, authority, input.intent, input.tenantId)
+  return currentCustomer(payload, authority, input.intent, input.tenantId, req)
 }
 
 /** Serialize only local workspace writes; never pass provider I/O as action. */

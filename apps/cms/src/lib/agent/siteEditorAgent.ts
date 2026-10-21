@@ -410,6 +410,7 @@ export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<Si
   const generated = await agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
+    prepareStep: async () => { await assertEditorAuthority(input.ctx) },
   }).catch(() => { throw new MastraRunIncompleteError() })
   assertMastraCompleted(generated)
   return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug)
@@ -423,6 +424,7 @@ export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncG
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
+    prepareStep: async () => { await assertEditorAuthority(input.ctx) },
   }).catch(() => { throw new MastraRunIncompleteError() })
   try {
     for await (const chunk of iterateTextStream(streamed.textStream)) {

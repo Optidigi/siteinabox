@@ -77,6 +77,13 @@ export async function runVerifiedCustomerJourney(harness) {
       assert(original.tenant_id, "The generated website must bind to the verified account")
       assert(original.messages.some(message => message.role === "user" && message.text === marker))
       assert.equal(original.verified_at, initial.verified_at)
+      const maintained = await api(page, "/api/builder/chat", { message: "Maak het thema groen en donker." })
+      assert.equal(maintained.status, 200)
+      assert.equal(maintained.data.applied, true, "The returning customer must execute the guarded maintainer path")
+      const theme = await database.query("SELECT theme FROM tenants WHERE id=$1", [original.tenant_id])
+      assert.equal(theme.rows[0].theme.appearance.mode, "dark")
+      assert.equal((await accountState()).verified_at, initial.verified_at)
+      verify("returning customer applies a local maintainer theme change without losing workspace authority")
     } else {
       const state = await accountState()
       assert.equal(state.id, original.id); assert.equal(state.verified_at, original.verified_at)

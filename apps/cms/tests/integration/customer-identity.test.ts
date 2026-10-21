@@ -317,3 +317,61 @@ it("rolls back local workspace work when its locked session expires before commi
   expect((await payload.find({ collection: "tenants", where: { slug: { equals: "m14-expiring" } }, overrideAccess: true })).totalDocs).toBe(0)
   expect((await payload.findByID({ collection: "customer-accounts", id: account.id, overrideAccess: true, depth: 0 })).tenant).toBeFalsy()
 })
+
+it.each(["revocation", "expiry"] as const)("keeps maintainer theme writes atomic against %s during hooks", async boundary => {
+  const { previewAuth } = await import("@/lib/preview/betterAuth")
+  const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+  const { withCustomerWorkspace } = await import("@/lib/auth/customerWorkspace")
+  const { setTheme } = await import("@/lib/agent/tools")
+  const context = await previewAuth.$context
+  const user = await context.internalAdapter.createUser({ name: "Synthetic maintainer", email: `m14-tool-${boundary}@test.invalid`, emailVerified: true }, { method: "test" })
+  const session = await context.internalAdapter.createSession(user.id)
+  const row = queryRows<{ firstVerifiedAt: Date | string }>(await payload.db.drizzle.execute(sql`
+    SELECT "firstVerifiedAt" FROM preview_auth_users WHERE id=${user.id}`))[0]!
+  const account = await resolveVerifiedCustomerAccount(payload, { user: { ...user, firstVerifiedAt: row.firstVerifiedAt }, session })
+  const authority = { accountId: account.id, previewSessionId: session.id }
+  const tenant = (await withCustomerWorkspace(payload, authority, async (_bound, req) => ({
+    doc: await payload.create({ collection: "tenants", overrideAccess: true, req, context: { skipProjection: true },
+      data: { name: "Synthetic maintainer", slug: `m14-tool-${boundary}`, domain: `m14-tool-${boundary}.invalid`, status: "provisioning" } }), operation: "created",
+  }))).doc
+  let release!: () => void, reached!: () => void
+  const paused = new Promise<void>(resolve => { release = resolve })
+  const entered = new Promise<void>(resolve => { reached = resolve })
+  const hooks = payload.collections.tenants.config.hooks.afterChange ??= []
+  const hook: (typeof hooks)[number] = async ({ doc }) => {
+    if (doc.id === tenant.id) { reached(); await paused }
+    return doc
+  }
+  hooks.push(hook)
+  const revoker = new Client({ connectionString: process.env.DATABASE_URI, application_name: "siab-m14-tool-revoker" })
+  let mutation: ReturnType<typeof setTheme> | undefined, revocation: Promise<void> | undefined
+  try {
+    await revoker.connect()
+    if (boundary === "expiry") await payload.db.drizzle.execute(sql`UPDATE preview_auth_sessions
+      SET "expiresAt"=clock_timestamp()+interval '500 milliseconds' WHERE id=${session.id}`)
+    mutation = setTheme({ payload, tenantId: tenant.id, customerAuthority: authority }, fixtureSpec().theme)
+    // Attach the expected rejection before releasing the expiry hook.
+    const outcome = mutation.then(value => ({ value, error: null }), error => ({ value: null, error }))
+    await Promise.race([entered, outcome.then(() => { throw new Error("Mutation never reached the controlled hook") })])
+    if (boundary === "revocation") {
+      revocation = revoker.query("UPDATE customer_accounts SET revoked_at=clock_timestamp() WHERE id=$1", [account.id]).then(() => undefined)
+      let blocked = false
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const waiting = queryRows<{ blocked: boolean }>(await payload.db.drizzle.execute(sql`
+          SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='siab-m14-tool-revoker' AND wait_event_type='Lock') AS blocked`))
+        if (waiting[0]?.blocked) { blocked = true; break }
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      expect(blocked, "Revocation must serialize with the actual maintainer mutation and its hooks").toBe(true)
+      release(); expect((await outcome).error).toBeNull(); await revocation
+      await expect(setTheme({ payload, tenantId: tenant.id, customerAuthority: authority }, fixtureSpec().theme)).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 600)); release()
+      expect((await outcome).error).toMatchObject({ message: "E_CUSTOMER_SESSION_REQUIRED" })
+      expect((await payload.findByID({ collection: "tenants", id: tenant.id, overrideAccess: true })).theme).toEqual(tenant.theme)
+    }
+  } finally {
+    release(); await mutation?.catch(() => undefined); await revocation?.catch(() => undefined)
+    hooks.splice(hooks.indexOf(hook), 1); await revoker.end()
+  }
+}, 15000)

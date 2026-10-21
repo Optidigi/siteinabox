@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from "vitest"
 import { fixtureSpec } from "../_helpers/siteGenerationFixture"
 import { heuristicExtractBuilderFacts } from "@/lib/builder/facts"
 import { asPayload } from "../_helpers/mockPayload"
-const guard = vi.hoisted(() => ({ revoked: false, revokeDuringPlan: false, active: false, req: { transactionID: "synthetic-authority-transaction" } }))
+const guard = vi.hoisted(() => ({ bound: false, revoked: false, revokeDuringPlan: false, active: false, req: { transactionID: "synthetic-authority-transaction" } }))
 vi.mock("@/lib/auth/customerWorkspace", () => ({
   assertCustomerAccess: vi.fn(async () => { if (guard.revoked) throw new Error("E_CUSTOMER_SESSION_REQUIRED") }),
-  withCustomerWorkspace: async (_payload: unknown, _authority: unknown, action: (bound: null, req: typeof guard.req) => Promise<unknown>) => {
+  withCustomerWorkspace: async (_payload: unknown, _authority: unknown, action: (bound: { id: number } | null, req: typeof guard.req) => Promise<unknown>) => {
+    if (guard.revoked) throw new Error("E_CUSTOMER_SESSION_REQUIRED")
     guard.active = true
-    try { return await action(null, guard.req) } finally { guard.active = false }
+    try { return await action(guard.bound ? { id: 1 } : null, guard.req) } finally { guard.active = false }
   },
 }))
 vi.mock("@/lib/builder/planTurn", async importOriginal => {
@@ -49,7 +50,7 @@ it("retains customer authority in deterministic and planned maintainer theme wri
   const facts = heuristicExtractBuilderFacts("Ik ben kapper in Tilburg.", null)
   const payload = asPayload({ find: vi.fn(async () => ({ docs: [] })), findByID: vi.fn(), update: vi.fn() })
   try {
-    guard.revoked = true
+    guard.bound = true; guard.revoked = true
     await expect(applyMaintainerTurn({ payload, tenantId: 1, facts, message: "Maak het thema groen en donker.",
       customerAuthority: authority })).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
     expect(payload.update).not.toHaveBeenCalled()
@@ -59,5 +60,5 @@ it("retains customer authority in deterministic and planned maintainer theme wri
     })).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
     expect(payload.update).not.toHaveBeenCalled()
     expect(payload.findByID).not.toHaveBeenCalled()
-  } finally { guard.revoked = false; guard.revokeDuringPlan = false }
+  } finally { guard.bound = false; guard.revoked = false; guard.revokeDuringPlan = false }
 })
