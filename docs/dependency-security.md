@@ -111,22 +111,24 @@ bound to the verified bytes, and publication never rebuilds the candidate.
 
 ## Current frontier
 
-The current reviewed inventory comes from unpublished source
-`f81e5dc2ddad9fb6015c3f16a01108c99df7db47` in
-[canonical run 39577255971, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39577255971).
-Its parents are main `3caef2ba` and reviewed PR head `13e50f73`. All application
-packaged checks, populated PostgreSQL replacement/restart and network-disabled
-connector checks passed. These baseline component identities do not replace
-fresh final-candidate source/run/artifact verification.
+The current reviewed baseline inventory comes from unpublished source
+`ec50353f6a16dd7b47e93b5a8cc6c586ec97923d` in
+[canonical run 39663238675, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39663238675).
+Its parents are main `d5479b36` and reviewed PR head `6aac6808`. Package/CMS,
+actual built-browser and all three packaged-image jobs passed. The aggregate
+correctly rejected changed advisory provenance; review found 21 fingerprint
+changes across 11 existing CVEs, limited to vendor-severity metadata and added
+references. Advisory/package/version/path/selected-severity/fix facts remain
+unchanged. All 198 dispositions remain blockers. These baseline identities do
+not replace fresh final-candidate source/run/artifact verification.
 
-M13 preserves the frozen package versions. Its authentication fixes change the
-eight CMS helper bundles, so the CMS assessment records their exact owning-generator
-hashes against the verified native baseline. That local comparison is provisional
-until fresh hosted candidate bytes match; it does not replace image verification.
-Fresh publisher review also records Better Auth 1.7.12 and Node 24.22.1 security
-patch qualification as release blockers. Trivy 0.76.1 remains below the release-age
-floor at this review, with an explicit recheck deadline. Original global review
-expiry and all existing advisory/native blockers remain in force.
+M14 preserves the frozen graph. Its eight CMS helper hashes now match actual
+hosted bytes, with all five native fingerprints unchanged. Fresh publisher
+review retains Better Auth 1.7.12, Node 24.22.1 and the scanner security-patch
+qualification blockers, plus the newly listed Alpine musl vendor fix. Release-age
+recheck deadlines, the original global review expiry and all advisory/native
+blockers remain in force. No metadata refresh qualifies exploitability,
+publisher support or a compatible remediation.
 
 | Image role | Package records | Vulnerability records | Native files | Bundled scripts |
 | --- | ---: | ---: | ---: | ---: |
