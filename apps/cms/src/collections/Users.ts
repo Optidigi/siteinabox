@@ -13,6 +13,7 @@ import { changePasswordHandler } from "@/lib/auth/changePassword"
 import { assertPayloadCustomerActive } from "@/lib/auth/payloadCustomerAccess"
 import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { rateLimitForgotPasswordByTargetEmail } from "@/hooks/rateLimitForgotPassword"
+import { preparePasswordResetDispatch, stagePasswordResetDispatch, authorizePasswordResetConsumption } from "@/lib/auth/passwordResetDispatch"
 
 // Constant-time string compare. Length-mismatch returns false immediately
 // (timingSafeEqual itself throws on length mismatch); the per-byte compare
@@ -466,9 +467,12 @@ export const Users: CollectionConfig = {
       rejectBogusAuthForgotPassword,
       rejectNonSuperAdminCredentialWrites,
       rateLimitForgotPasswordByTargetEmail,
+      preparePasswordResetDispatch,
+      authorizePasswordResetConsumption,
       // Reject original owner role/membership intent before fields can hide it.
       rejectUnsafeOwnerUserCreate,
     ],
+    afterOperation: [stagePasswordResetDispatch],
     // beforeValidate (collection) fires on update for both the regular
     // update pipeline AND the resetPassword path
     // (`node_modules/payload/dist/auth/operations/resetPassword.js:70-79`

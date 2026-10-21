@@ -11,6 +11,7 @@ import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
 import { sendCmsMagicLinkEmail } from "@/lib/auth/sendCmsMagicLinkEmail"
 import { CMS_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 import { asRecord } from "@/lib/record"
+import { sdkAccountLinks } from "@/lib/auth/sdkAccountLinks"
 
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
@@ -83,7 +84,10 @@ async function authorizeCmsSession(userId: string, requestContext: GenericEndpoi
   if (String(asRecord(user)?.payloadUserId) !== String(payloadUser.id)) throw new APIError("UNAUTHORIZED")
 }
 
+const accountLinks = sdkAccountLinks("cms")
+
 export const auth = betterAuth({
+  hooks: { before: accountLinks.before },
   appName: "SiteInABox",
   baseURL: getBetterAuthBaseURL(),
   secret: authSecret,
@@ -150,9 +154,8 @@ export const auth = betterAuth({
     magicLink({
       expiresIn: 300,
       rateLimit: getMagicLinkRateLimit(),
-      sendMagicLink: async ({ email, url, metadata }) => {
-        await sendCmsMagicLinkEmail({ email, url, metadata })
-      },
+      sendMagicLink: async (input, context) => accountLinks.deliver(input, context,
+        locale => sendCmsMagicLinkEmail({ ...input, locale })),
     }),
     nextCookies(),
   ],

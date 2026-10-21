@@ -55,7 +55,19 @@ export async function runVerifiedCustomerJourney(harness) {
     await button.focus(); await page.keyboard.press("Enter")
     const link = await capturedLink(before)
     await page.getByRole("status").filter({ hasText: messages.auth.magicLinkGenericSuccess }).waitFor()
+    if (index === 0) {
+      const duplicate = await Promise.all(Array.from({ length: 4 }, () => api(page,
+        "/api/preview-auth/sign-in/magic-link", { email, callbackURL: "/builder", errorCallbackURL: "/login" })))
+      assert(duplicate.every(result => result.status === 200))
+      assert.equal((await readdir(env.DATA_DIR)).filter(name => /^mail-[\w-]+\.json$/.test(name) && !before.has(name)).length, 1)
+      const unsafe = new URL(link); unsafe.searchParams.set("callbackURL", "/builder/another-account")
+      assert.equal((await page.goto(unsafe.href)).status(), 401)
+      verify("simultaneous account-link replays retain one delivery and reject callback substitution before consumption")
+    }
     await page.goto(link); await page.waitForURL(url => url.pathname === "/builder" || url.pathname.startsWith("/builder/"))
+    const replay = await context.newPage()
+    assert.equal((await replay.goto(link)).status(), 401)
+    await replay.close()
     await page.getByRole("textbox", { name: messages.auth.customerMessage }).waitFor()
     await rememberCookies(context)
     if (index === 0) {

@@ -12,6 +12,7 @@ import { PREVIEW_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "
 import { isPrivilegedPreviewSiteReadyMetadata } from "@/lib/preview/trustedSiteReadyIntent"
 import { assertPreviewCustomerActive } from "@/lib/auth/payloadCustomerAccess"
 import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
+import { sdkAccountLinks } from "@/lib/auth/sdkAccountLinks"
 
 async function getMailPayload() {
   const [{ getPayload }, configModule] = await Promise.all([
@@ -95,7 +96,10 @@ async function authorizePreviewSession(userId: string, requestContext: GenericEn
   }
 }
 
+const accountLinks = sdkAccountLinks("preview")
+
 export const previewAuth = betterAuth({
+  hooks: { before: accountLinks.before },
   appName: "SiteInABox Preview",
   baseURL: getPreviewBetterAuthBaseURL(),
   basePath: "/api/preview-auth",
@@ -138,7 +142,8 @@ export const previewAuth = betterAuth({
     magicLink({
       expiresIn: 300,
       rateLimit: getMagicLinkRateLimit(),
-      sendMagicLink: async ({ email, url, metadata }) => {
+      sendMagicLink: async (input, context) => accountLinks.deliver(input, context, async locale => {
+        const { email, url, metadata } = input
         const clientSlug = typeof metadata?.previewClientSlug === "string" ? metadata.previewClientSlug : ""
         const builderAccess = allowPreviewMagicLinkWithoutGrant({
           previewClientSlug: metadata?.previewClientSlug,
@@ -159,7 +164,7 @@ export const previewAuth = betterAuth({
         const siteReady = isPrivilegedPreviewSiteReadyMetadata({ email, clientSlug, metadata })
         const message = siteReady
           ? siteReadyPreviewTemplate({ loginUrl: url })
-          : magicLinkTemplate({ loginUrl: url })
+          : magicLinkTemplate({ loginUrl: url, locale })
         await sendEmail({
           to: email,
           subject: message.subject,
@@ -168,7 +173,7 @@ export const previewAuth = betterAuth({
           intent: siteReady ? "preview.site_ready" : "preview.magic_link",
           payload: asMailLogPayload(payload),
         })
-      },
+      }),
     }),
   ],
 })

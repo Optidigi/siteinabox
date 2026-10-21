@@ -5,7 +5,8 @@ REST configuration takes precedence; SMTP is the fallback when no REST mail
 token is configured. The DNS automation token is never used for sending.
 `sendEmail.ts` owns intent/category policy, receipt interpretation and logging;
 `configuration.ts` owns pure configuration inspection and address parsing.
-Payload auth mail uses the lazy adapter. Security, transactional and legal mail
+Payload recovery is staged by its collection hooks and sent after commit by the
+existing job runner; other Payload auth mail retains the lazy adapter. Security, transactional and legal mail
 retain their essential classification and do not consult free AI budgets.
 Optional mail still requires its existing preferences and unsubscribe headers;
 templates retain their escaping rules.
@@ -51,8 +52,12 @@ retry form. Commerce failures without an explicit retryable outcome have no
 next attempt; duplicate queued jobs cannot reclaim a failed record without a
 scheduled retry. Generic live-handoff failures are no longer blindly retried
 after their wrapper loses structured outcome information. Inspect mail/provider
-evidence instead. Durable account-link dispatch and reconciliation/replay remain
-M15; this introduces neither a new queue nor permission to resend uncertain mail.
+evidence instead. [Durable account-link admission](authentication.md#durable-account-links)
+coalesces active requests and holds uncertain delivery until token expiry. Its
+recovery task uses the existing Payload queue and grants no permission to resend
+uncertain mail. Operator review may reconcile provider IDs/codes but must not
+reconstruct or paste raw verification links. Once the held link expires, a new
+authorized request remains subject to the durable limits.
 
 Logs retain routing metadata, provider IDs/codes and redacted errors, not rendered
 subject/body or raw provider causes. Invalid addresses become a marker in logs.

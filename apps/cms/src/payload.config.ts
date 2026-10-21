@@ -30,6 +30,7 @@ import { CheckoutProgressDrafts } from "@/collections/CheckoutProgressDrafts"
 import { MigrationCheckoutSecrets } from "@/collections/MigrationCheckoutSecrets"
 import { MigrationSourceAuthorizations } from "@/collections/MigrationSourceAuthorizations"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
+import { AccountLinkDispatches, AccountLinkWindows, AccountLinkPolicies } from "@/collections/AccountLinkRecords"
 import { MailLogs } from "@/collections/MailLogs"
 import {
   AgreementAcceptances,
@@ -62,6 +63,7 @@ import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTas
 import { prepareDomainTransferOutTask } from "@/lib/jobs/prepareDomainTransferOutTask"
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { deliverCommerceNotificationTask } from "@/lib/jobs/deliverCommerceNotificationTask"
+import { accountLinkDispatchTask } from "@/lib/jobs/accountLinkDispatchTask"
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
 import { renewDomainTask } from "@/lib/jobs/renewDomainTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
@@ -184,6 +186,9 @@ export default buildConfig({
     LegalNotificationDeliveries,
     LegalOperatorEvents,
     MailLogs,
+    AccountLinkDispatches,
+    AccountLinkWindows,
+    AccountLinkPolicies,
     OperationalAlerts,
   ],
   // Audit-p2 #10 (T11) — Forms GDPR retention. The purge task auto-schedules
@@ -208,6 +213,7 @@ export default buildConfig({
       renewDomainTask,
       reconcileCommerceTask,
       deliverCommerceNotificationTask,
+      accountLinkDispatchTask,
       requestMollieRefundTask,
     ],
     enableConcurrencyControl: true,

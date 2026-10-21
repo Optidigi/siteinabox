@@ -272,6 +272,23 @@ storage is removed. Preserve the resource file/root for the next approved run.
 
 ## Verify the applications
 
+Account-link tests use the same marked resource and synthetic mail boundary.
+The focused suite is `pnpm --dir apps/cms test tests/integration/account-link-dispatch.test.ts`;
+it includes independent guarded child processes, committed migrations and real
+SDK consumption. It does not send provider mail. The canonical built-browser
+journey also checks burst coalescing, callback substitution and replay through
+its captured transport. Keep local jobs disabled; tests invoke the recovery
+worker explicitly. Production requires the existing default queue worker to
+run for queued password-reset delivery, normally within its one-minute schedule.
+
+The additive account-link migration owns its tables, counters, activation policy
+and task enum values. Its generated DOWN refuses existing protocol records;
+do not delete them to force rollback. Prefer a forward fix. Reverting dispatch
+guards would discard durable admission/uncertain-send protection, so pause the
+affected issuance/worker paths during a separately reviewed code rollback and
+preserve the database, cutover policy and outstanding SDK/Payload token expiry.
+This is application recovery guidance, not a server-recovery protocol.
+
 The steps above cover the database-backed CMS setup. Use the matrix below from
 the repository root when verifying a change across the monorepo. These checks
 use local fixtures and services only; provider operations, paid checkout,

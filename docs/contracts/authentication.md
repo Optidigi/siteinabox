@@ -306,8 +306,8 @@ can reuse only the same permitted role and tenant membership. Conflicting
 membership is not moved or overwritten. Retrying delivery reuses the existing
 user ID without rotating passwords, sessions, identity anchors, names or
 commercial state. Default notification preferences are provisioned only for a
-newly created user. Authorized retry/resend may send another link; durable
-account-link budgets are a separate policy.
+newly created user. Authorized retry/resend uses the durable admission below;
+it does not replace an active possibly delivered link.
 
 Provider rejection or an unconfirmed response returns a delivery failure while
 preserving the created-user ID for retry. A successful action means the mail
@@ -323,6 +323,58 @@ user/mail records, then stops the child before owned-storage teardown. It is
 actual built-action security evidence, distinct from Local API/session tests and
 from real provider delivery. The full build manifest contains an encryption key
 and must not be printed or uploaded; only the redacted test result is retained.
+
+## Durable account links
+
+The CMS and preview SDK hooks authorize purpose, recipient, current membership
+and callback origin before creating a verification. Privileged invitation and
+handoff signatures retain their existing authority checks; the durable helper
+is backend-only and cannot turn public metadata into those purposes. A receipt
+binds namespace, target user/tenant/role, callback paths and a token fingerprint.
+Consumption rechecks current authority and the exact SDK row, rejects duplicate
+identifiers, and atomically claims one use before the SDK creates its session.
+SDK session creation retains the existing M14 guards and verification anchors.
+
+Short PostgreSQL transactions serialize admission and durable window counters.
+An active mailbox claim coalesces concurrent requests across processes and
+restarts. Existing SDK window/max settings govern separate acquisition,
+verified-return and established-CMS lanes; recovery retains three attempts per
+mailbox per hour. Lane selection comes from server records, never a submitted
+paid flag. Essential login/recovery does not consult free AI allocation or spend
+ceilings. This separation protects established teams without asserting that a
+particular account has a paid entitlement.
+
+Fenced leases distinguish admission/issuance from dispatch. Dispatch is recorded
+before provider I/O; no transaction spans that I/O. Known pre-send/rejected
+outcomes may permit another bounded request. A lost acknowledgement, unknown
+error or expired dispatch lease becomes `indeterminate/manual_review`; the
+possibly delivered link remains usable until expiry and cannot trigger blind
+redispatch. Provider acceptance is `sent`, not inbox proof. Public login requests
+give the same acknowledgement for coalescing, eligibility and admission limits;
+the existing outer IP/target limits still report honest 429 failures. Privileged
+invitation/handoff callers receive failure when acceptance is unconfirmed.
+
+Payload password recovery retains its built-in token/session operations. The
+collection hooks suppress synchronous email, stage a receipt with the token
+update in the same transaction, and preserve the old token on coalesced requests.
+The existing `account-link-dispatch` job runs every minute, claims queued work
+once and rechecks the current target/token before using the existing mail
+transport. Rolled-back staging is invisible to it. Reset consumption serializes
+by token, checks current revocation and recorded membership, and consumes its
+receipt in the same transaction as password rotation. Compatible outstanding
+Payload tokens and explicit trusted Local API `disableEmail` token-only recovery
+retain their native expiry and receive the same consumption serialization.
+
+Token semantics remain unchanged. At first protocol use, each SDK namespace
+records one durable cutover instant. Only existing unbound SDK rows created by
+then and expiring within its original five-minute lifetime remain compatible;
+later unbound rows reject. Preserve that policy across restarts and rollbacks.
+Receipts store fingerprints and row IDs, not raw links, subjects or bodies.
+The worker removes expired receipts after a further day and expired counters in
+bounded batches, retaining the cutover policy. SDK/Payload retain ownership of
+their token tables/fields. Never log or copy verification URLs into operator
+notes. See the [mail contract](email.md) for provider reconciliation and release
+approval, and the [local runbook](../runbooks/local-development.md) for setup.
 
 ## Upgrade and cutover
 
