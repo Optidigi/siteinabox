@@ -416,10 +416,12 @@ subject migration needs its own reverse mapping/restore decision. Existing
 persisted account/session fixtures and the no-op schema plan do not replace
 final-schema restore, live Amicare preservation or rollout approval.
 
-The focused `better-auth-sdk.test.ts` exercises actual configured SDK link
+The focused `tests/integration/better-auth-sdk.test.ts` exercises configured SDK link
 issuance/consumption, replay, expiry, unsafe redirect rejection, session logout
-and preview namespace behavior with in-memory persistence and mail/Payload
-doubles. `better-auth-upgrade.test.ts` uses the M02-authorized real PostgreSQL
+and preview namespace behavior with committed PostgreSQL persistence, real
+Payload authority and an outbound-mail double. It checks that denied requests
+create no SDK verification/account/session and issuance does not create preview
+users. `better-auth-upgrade.test.ts` uses the M02-authorized real PostgreSQL
 resource for committed migrations, empty/populated planner checks, account/link
 preservation, session revocation and the signed local builder cookie. Existing
 password/recovery/role/tenant and invitation tests remain required. See the
@@ -430,10 +432,12 @@ for prerequisites. Hosted consuming-image evidence is distinct from local tests.
 `social-auth-sdk.test.ts` loads the configured Google, Microsoft and Apple
 options with synthetic client values. It exercises the UI request with
 `requestSignUp: true` for an existing invited Payload user with no SDK identity,
-as well as returning identities established through the primary magic-link flow.
+as well as signed-out returning identities seeded through the actual SDK create
+hook and Payload eligibility policy. Primary magic-link issuance/logout is
+covered separately by the PostgreSQL SDK test.
 The actual OAuth callback must create/link only the authorized Payload identity
 and issue its session. The Payload eligibility hook is real; its persistence
-query and mail transport are doubled. Synthetic code/token/photo/key endpoints
+query is doubled. Synthetic code/token/photo/key endpoints
 refuse every unrecognized network destination. State, PKCE initiation, unsafe
 callbacks, unverified identities and forged role/tenant metadata have explicit
 assertions. Missing, ambiguous or ineligible Payload users create no SDK user,

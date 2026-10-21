@@ -94,6 +94,7 @@ describe("configured Better Auth SDK boundary on committed PostgreSQL", () => {
 
   it("rejects a forged cross-origin request before issuing mail or verification", async () => {
     const { auth, user } = await fixture("forged-sdk@example.test")
+    const before = await payload.db.drizzle.execute(sql`SELECT count(*) AS count FROM better_auth_verifications`)
     const response = await auth.handler(new Request(`${origin}/api/auth/sign-in/magic-link`, {
       method: "POST", headers: { host: "admin.siteinabox.nl", origin: "https://attacker.example", cookie: "unrelated=1", "content-type": "application/json" },
       body: JSON.stringify({ email: user.email }),
@@ -102,6 +103,8 @@ describe("configured Better Auth SDK boundary on committed PostgreSQL", () => {
     expect(mail.send).not.toHaveBeenCalled()
     const { rows } = await payload.db.drizzle.execute(sql`SELECT count(*) AS count FROM account_link_dispatches WHERE recipient=${user.email}`)
     expect(Number(rows[0]?.count)).toBe(0)
+    const after = await payload.db.drizzle.execute(sql`SELECT count(*) AS count FROM better_auth_verifications`)
+    expect(Number(after.rows[0]?.count)).toBe(Number(before.rows[0]?.count))
     expect(await counts(user.email)).toEqual({ users: 0, sessions: 0 })
   })
 
@@ -112,9 +115,11 @@ describe("configured Better Auth SDK boundary on committed PostgreSQL", () => {
     const url = capturedLink()
     const { rows } = await payload.db.drizzle.execute(sql`SELECT
       (SELECT count(*) FROM preview_auth_verifications WHERE identifier=${"magic-link:" + url.searchParams.get("token")}) AS preview,
-      (SELECT count(*) FROM better_auth_verifications WHERE identifier=${"magic-link:" + url.searchParams.get("token")}) AS cms`)
+      (SELECT count(*) FROM better_auth_verifications WHERE identifier=${"magic-link:" + url.searchParams.get("token")}) AS cms,
+      (SELECT count(*) FROM preview_auth_users WHERE email='builder-sdk@example.test') AS users`)
     expect(Number(rows[0]?.preview)).toBe(1)
     expect(Number(rows[0]?.cms)).toBe(0)
+    expect(Number(rows[0]?.users)).toBe(0)
     expect((await previewAuth.$context).authCookies.sessionToken.name).toContain("siab-preview-auth")
   })
 
