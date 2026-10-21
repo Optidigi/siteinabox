@@ -337,10 +337,28 @@ const SITE_EDITOR_INSTRUCTIONS = [
 ].join(" ")
 
 const createEditorAgent = (input: SiteEditorTurnInput) => {
+  let committedProjectionFailure: CustomerProjectionError | undefined
+  const assertCommittedOutcome = () => {
+    if (committedProjectionFailure) throw committedProjectionFailure
+  }
+  const failSdkRun = (error: unknown): never => {
+    assertCommittedOutcome()
+    if (error instanceof CustomerProjectionError || error instanceof CustomerIdentityError) throw error
+    throw new MastraRunIncompleteError()
+  }
+  const beforeStep = async () => {
+    assertCommittedOutcome()
+    await assertEditorAuthority(input.ctx)
+  }
+  // The installed SDK can serialize tool exceptions or replace their terminal
+  // error. Preserve the trusted committed outcome in this run's own closure.
+  const toolInput = { ...input, ctx: { ...input.ctx, onCommittedProjectionFailure: (error: CustomerProjectionError) => {
+    committedProjectionFailure ??= error
+  } } }
   const effort = defaultMastraMaintainReasoningEffort()
   const providerOptions = mastraOpenAIProviderOptions(effort)
   return {
-    providerOptions,
+    providerOptions, assertCommittedOutcome, failSdkRun, beforeStep,
     agent: new Agent({
       ...mastraCompatibilityOptions,
       id: "siab-site-editor",
@@ -351,7 +369,7 @@ const createEditorAgent = (input: SiteEditorTurnInput) => {
         providerOptions,
       },
       model: defaultMastraModelId(),
-      tools: createSiteEditorTools(input),
+      tools: createSiteEditorTools(toolInput),
     }),
   }
 }
@@ -406,13 +424,14 @@ async function assertEditorAuthority(ctx: AgentWriteContext) {
 export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions } = createEditorAgent(input)
+  const { agent, providerOptions, assertCommittedOutcome, failSdkRun, beforeStep } = createEditorAgent(input)
   await assertEditorAuthority(input.ctx)
   const generated = await agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
-    prepareStep: async () => { await assertEditorAuthority(input.ctx) },
-  }).catch(() => { throw new MastraRunIncompleteError() })
+    prepareStep: beforeStep,
+  }).catch(failSdkRun)
+  assertCommittedOutcome()
   assertMastraCompleted(generated)
   return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug)
 }
@@ -420,23 +439,24 @@ export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<Si
 export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncGenerator<SiteEditorStreamEvent> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions } = createEditorAgent(input)
+  const { agent, providerOptions, assertCommittedOutcome, failSdkRun, beforeStep } = createEditorAgent(input)
   await assertEditorAuthority(input.ctx)
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
-    prepareStep: async () => { await assertEditorAuthority(input.ctx) },
-  }).catch(() => { throw new MastraRunIncompleteError() })
+    prepareStep: beforeStep,
+  }).catch(failSdkRun)
   try {
     for await (const chunk of iterateTextStream(streamed.textStream)) {
       yield { type: "delta", text: chunk }
     }
     const generated = await streamed.getFullOutput()
+    assertCommittedOutcome()
     assertMastraCompleted(generated)
     yield { type: "done", result: await resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug) }
-  } catch {
+  } catch (error) {
     // Deltas and tool writes may already have escaped. Never run fallback writes.
-    throw new MastraRunIncompleteError()
+    failSdkRun(error)
   }
 }
 

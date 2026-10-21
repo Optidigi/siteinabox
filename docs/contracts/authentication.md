@@ -171,7 +171,9 @@ account, tenant, collection and document ID. Restore the projection storage,
 then repeat the same authenticated, idempotent settings/page save to reconcile
 from committed data. Do not rerun AI generation or a purchase to repair a
 projection. A refresh failure must not be reported as a database rollback or
-complete preview success.
+complete preview success. The editor keeps a trusted, per-run committed outcome
+outside SDK tool-error serialization, stops subsequent model steps and restores
+that typed outcome before generic terminal/error handling in both SDK modes.
 
 Preview-grant expiry is renewable access, separate from account and session
 revocation. A current verified session may renew its bound, unrevoked grant after

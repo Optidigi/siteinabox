@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M14 verified-workspace compatibility evidence review (Codex engineering; no risk waiver)",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "b89d8d1d0a4677cc17ba39536beb1b59ecf6e74e042e5d2fecad7876fa9dbb92",
+  "configurationHash": "d8824bc3be6e963169209c4f5232e75b25a099adc49aa4ff4903ab1a6b5617c1",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {

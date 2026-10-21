@@ -1,3 +1,4 @@
+import { CustomerProjectionError } from "@/lib/projection/customerTransaction"
 import type { Payload, PayloadRequest } from "payload"
 import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { assertCustomerAccess, withCustomerWorkspace, type CustomerAuthority } from "@/lib/auth/customerWorkspace"
@@ -21,6 +22,7 @@ export type AgentWriteContext = {
   payload: Payload
   tenantId: string | number
   user?: User | null
+  onCommittedProjectionFailure?: (error: CustomerProjectionError) => void
   req?: Partial<PayloadRequest>
   customerAuthority?: CustomerAuthority
 }
@@ -38,15 +40,20 @@ const collectionWrite = async (ctx: AgentWriteContext): Promise<{ overrideAccess
 const customerMutation = <Args extends unknown[], Result>(
   action: (ctx: AgentWriteContext, ...args: Args) => Promise<Result>,
 ) => async (ctx: AgentWriteContext, ...args: Args): Promise<Result> => {
-  if (!ctx.customerAuthority || ctx.req) return action(ctx, ...args)
-  const outcome = await withCustomerWorkspace(ctx.payload, ctx.customerAuthority, async (bound, req) => {
-    if (!bound || String(bound.id) !== String(ctx.tenantId)) {
-      throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
-    }
-    const result = await action({ ...ctx, req }, ...args)
-    return { doc: bound, operation: "updated", result }
-  })
-  return outcome.result
+  try {
+    if (!ctx.customerAuthority || ctx.req) return await action(ctx, ...args)
+    const outcome = await withCustomerWorkspace(ctx.payload, ctx.customerAuthority, async (bound, req) => {
+      if (!bound || String(bound.id) !== String(ctx.tenantId)) {
+        throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+      }
+      const result = await action({ ...ctx, req }, ...args)
+      return { doc: bound, operation: "updated", result }
+    })
+    return outcome.result
+  } catch (error) {
+    if (error instanceof CustomerProjectionError) ctx.onCommittedProjectionFailure?.(error)
+    throw error
+  }
 }
 
 const WEEKDAY_WINDOWS = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const

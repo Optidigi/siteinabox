@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import { MastraLanguageModelV2Mock } from "@mastra/core/test-utils/llm-mock"
+import type { ToolsInput } from "@mastra/core/agent"
 import { sql } from "@payloadcms/db-postgres"
 import { Client } from "pg"
 import { readFile, unlink, mkdir, rmdir, writeFile } from "node:fs/promises"
@@ -7,6 +9,17 @@ import { fixtureSpec } from "../_helpers/siteGenerationFixture"
 import type { Payload } from "payload"
 import { getTestPayload } from "./_helpers"
 import { asRecord, queryRows } from "@/lib/record"
+
+const projectionSdk = vi.hoisted(() => ({ model: undefined as MastraLanguageModelV2Mock | undefined }))
+vi.mock("@mastra/core/agent", async importOriginal => {
+  const actual = await importOriginal<typeof import("@mastra/core/agent")>()
+  return { ...actual, Agent: class extends actual.Agent<string, ToolsInput, unknown> {
+    constructor(config: ConstructorParameters<typeof actual.Agent>[0]) {
+      if (!projectionSdk.model) throw new Error("A controlled model is required for the projection test")
+      super({ ...config, model: projectionSdk.model })
+    }
+  } }
+})
 
 let payload: Payload
 beforeAll(async () => { payload = await getTestPayload() })
@@ -445,6 +458,55 @@ it.each(["settings", "page"] as const)("preserves %s projection bytes on expiry 
         { phone: "0698765432" })).rejects.toMatchObject({ code: "E_CUSTOMER_PROJECTION_PENDING", committed: true })
       const committed = await payload.findByID({ collection: "site-settings", id: settingsId, overrideAccess: true, depth: 0 })
       expect(committed.contact?.phone).toBe("0698765432")
+      const { runExistingSiteTurn, streamExistingSiteTurn } = await import("@/lib/agent/siteEditorAgent")
+      const { heuristicExtractBuilderFacts } = await import("@/lib/builder/facts")
+      const { CustomerProjectionError } = await import("@/lib/projection/customerTransaction")
+      const outcomes = []
+      vi.stubEnv("OPENAI_API_KEY", "siab-test-controlled-model-only")
+      vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Live provider requests are forbidden") }))
+      try {
+        for (const mode of ["generate", "stream"] as const) {
+          let requests = 0
+          const phone = mode === "generate" ? "0611111111" : "0622222222"
+          const response = () => {
+            requests += 1
+            return { content: requests === 1
+              ? [{ type: "tool-call" as const, toolCallId: "projection-contact", toolName: "setContact", input: JSON.stringify({ phone }) }]
+              : [{ type: "text" as const, text: "Must not claim this failed projection completed" }],
+            finishReason: requests === 1 ? "tool-calls" as const : "stop" as const,
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }, warnings: [] }
+          }
+          projectionSdk.model = new MastraLanguageModelV2Mock({ doGenerate: async () => response(), doStream: async () => {
+            const result = response()
+            return { stream: new ReadableStream({ start(controller) {
+              for (const item of result.content) {
+                if (item.type === "tool-call") controller.enqueue(item)
+                else {
+                  controller.enqueue({ type: "text-start", id: "projection-text" })
+                  controller.enqueue({ type: "text-delta", id: "projection-text", delta: item.text })
+                  controller.enqueue({ type: "text-end", id: "projection-text" })
+                }
+              }
+              controller.enqueue({ type: "finish", finishReason: result.finishReason, usage: result.usage }); controller.close()
+            } }) }
+          } })
+          const input = { ctx: { payload, tenantId, customerAuthority: { ...authority, previewSessionId: fresh.id } },
+            facts: heuristicExtractBuilderFacts("Synthetic projection", null), message: "Wijzig het telefoonnummer.", pageSlug: "index", role: "owner", useMastra: true }
+          let outcome = "completed"
+          try {
+            if (mode === "generate") await runExistingSiteTurn(input)
+            else for await (const _event of streamExistingSiteTurn(input)) { /* Drain the real SDK execution and final outcome. */ }
+          } catch (error) {
+            outcome = error instanceof CustomerProjectionError && error.committed ? error.code : error instanceof Error ? error.name : "unknown"
+          }
+          const stored = await payload.findByID({ collection: "site-settings", id: settingsId, overrideAccess: true, depth: 0 })
+          outcomes.push({ mode, outcome, requests, phone: stored.contact?.phone })
+        }
+      } finally { projectionSdk.model = undefined; vi.unstubAllGlobals(); vi.unstubAllEnvs() }
+      expect(outcomes).toEqual([
+        { mode: "generate", outcome: "E_CUSTOMER_PROJECTION_PENDING", requests: 1, phone: "0611111111" },
+        { mode: "stream", outcome: "E_CUSTOMER_PROJECTION_PENDING", requests: 1, phone: "0622222222" },
+      ])
     } finally { await rmdir(site); await writeFile(site, saved) }
     // Repeat the same authenticated, idempotent save after storage recovery;
     // this projects committed data without repeating AI or a provider write.
