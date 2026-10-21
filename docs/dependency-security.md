@@ -66,8 +66,11 @@ ignore-file loading, retains every severity/unfixed finding, and bounds process,
 input and output sizes. Database content/metadata hashes are recorded before and
 after scanning. `UpdatedAt` must be at most 24 hours old; future, expired or
 inconsistent metadata fails. Download time alone is not advisory freshness.
-Operational failures, malformed/truncated data and analysis warnings cannot
-produce clearance.
+Operational failures, malformed/truncated data and unknown analysis warnings
+cannot produce clearance. The exact pinned Trivy notice about cross-vendor
+severity selection is retained as provenance, along with severity-source/vendor
+fields and raw diagnostics; it does not suppress findings. See the publisher’s
+[severity-selection contract](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection).
 
 The image path exports a never-started, labelled container filesystem. Native
 magic is inspected for every regular member, regardless of name or permissions.

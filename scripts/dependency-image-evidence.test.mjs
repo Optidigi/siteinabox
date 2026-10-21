@@ -54,3 +54,13 @@ test("a native executable missed by the scanner cannot become a clean empty resu
   const x = fixture(); x.requiredTargets = ["app/esbuild"]
   assert.throws(() => validateImageInventory(x), /Native Go binary.*coverage/)
 })
+
+test("documented severity provenance notice is retained but unknown warnings and errors block", async () => {
+  const { validateScannerDiagnostics } = await import("./scan-image-dependencies.mjs")
+  const notice = "2026-10-21T01:15:00Z\tWARN\tUsing severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.76/guide/scanner/vulnerability#severity-selection for details."
+  assert.deepEqual(validateScannerDiagnostics(notice).map((item) => item.code), ["VENDOR_SEVERITY_FALLBACK"])
+  for (const bad of [notice + " extra", notice.replace("v0.76/", "v0.77/"),
+    "2026-10-21T01:15:00Z\tWARN\tFailed to analyze a binary", notice + "\n2026-10-21T01:15:00Z\tERROR\tIncomplete scan"]) {
+    assert.throws(() => validateScannerDiagnostics(bad), /completeness requires review/)
+  }
+})

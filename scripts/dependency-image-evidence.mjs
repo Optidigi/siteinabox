@@ -82,6 +82,7 @@ export function validateImageInventory({ image, report, scanner, requiredTypes, 
         type: result.Type, target: result.Class === "os-pkgs" ? "os-packages" : result.Target,
         paths: [finding.PkgPath || (result.Class === "os-pkgs" ? "os-packages" : result.Target)],
         purl: finding.PkgIdentifier?.PURL ?? null, dataSource: finding.DataSource ?? null,
+        severitySource: finding.SeveritySource ?? null, vendorSeverity: finding.VendorSeverity ?? null,
         references: finding.References ?? [], modifiedAt: finding.LastModifiedDate ?? null })
     }
   }

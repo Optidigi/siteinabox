@@ -26,7 +26,8 @@ export function imageReviewFindings(images) {
     const scope = "image:" + image.application
     for (const finding of image.inventory.findings) add({ scope, id: finding.id, package: finding.package,
       version: finding.version, severity: finding.severity === "medium" ? "moderate" : finding.severity, paths: finding.paths },
-    { fixedVersion: finding.fixedVersion, source: finding.source, modifiedAt: finding.modifiedAt })
+    { fixedVersion: finding.fixedVersion, source: finding.source, modifiedAt: finding.modifiedAt,
+      severitySource: finding.severitySource ?? null, vendorSeverity: finding.vendorSeverity ?? null })
     for (const item of image.inventory.unversionedPackages) add({ scope, id: "UNVERSIONED_NATIVE_COMPONENT", package: item.name,
       version: "(not-recorded)", severity: "unknown", paths: [item.target] }, { purl: item.purl })
     if (image.analysisGaps) {

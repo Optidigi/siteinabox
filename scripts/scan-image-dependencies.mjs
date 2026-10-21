@@ -6,6 +6,21 @@ import { prepareDependencyScanner } from "./prepare-dependency-scanner.mjs"
 import { validateImageInventory, NativeAnalysisIncompleteError } from "./dependency-image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 
+export function validateScannerDiagnostics(diagnostics) {
+  // Trivy's documented cross-vendor severity selection is provenance, not a
+  // failed analyzer. Recognize only the exact notice from the pinned scanner.
+  const documentation = "https://trivy.dev/docs/v0.76/guide/scanner/vulnerability#severity-selection"
+  const message = "Using severities from other vendors for some vulnerabilities. Read " + documentation + " for details."
+  const notices = []
+  for (const line of diagnostics.split("\n")) {
+    if (!/(?:^|\t)(?:WARN|ERROR|FATAL)(?:\t|\s)/.test(line)) continue
+    const warning = line.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\tWARN\t(.*)$/)
+    if (warning?.[1] !== message) throw new Error("Scanner reported analysis warnings/errors; inventory completeness requires review")
+    notices.push({ code: "VENDOR_SEVERITY_FALLBACK", diagnostic: line, documentation })
+  }
+  return notices
+}
+
 export async function scanImageDependencies({ root, archive, image, nativeInventory, outputPrefix, requiredTypes }) {
   const archiveStat = await lstat(archive)
   if (!archiveStat.isFile() || archiveStat.isSymbolicLink() || archiveStat.size > 4 * 1024 ** 3 ||
@@ -33,7 +48,7 @@ export async function scanImageDependencies({ root, archive, image, nativeInvent
     throw new Error("Image scanner output exceeded its completeness bound")
   }
   const diagnostics = await readFile(stderrFile, "utf8")
-  if (/(?:^|\t)(?:WARN|ERROR|FATAL)(?:\t|\s)/m.test(diagnostics)) throw new Error("Scanner reported analysis warnings/errors; inventory completeness requires review")
+  const scannerNotices = validateScannerDiagnostics(diagnostics)
   if (await sha256File(archive) !== image.archiveSha256 || await sha256File(scanner.databaseFile) !== scanner.evidence.databaseSha256 ||
       await sha256File(scanner.metadataFile) !== scanner.evidence.metadataSha256) throw new Error("Archive or advisory database changed during scanning")
   const report = JSON.parse(await readFile(reportFile, "utf8"))
@@ -52,7 +67,7 @@ export async function scanImageDependencies({ root, archive, image, nativeInvent
     imageId: image.imageId, archiveSha256: image.archiveSha256,
     collectedAt: new Date().toISOString(), scanner: scanner.evidence, reportSha256: await sha256File(reportFile),
     stdoutSha256: await sha256File(stdoutFile), stderrSha256: await sha256File(stderrFile),
-    inventoryStatus: analysisGaps ? "incomplete" : "collected", analysisGaps,
+    scannerNotices, inventoryStatus: analysisGaps ? "incomplete" : "collected", analysisGaps,
     nativeInventory, nativeInventorySha256: createHash("sha256").update(JSON.stringify(nativeInventory)).digest("hex"), inventory,
     releaseCleared: false, limitation: "Inventory collection is not advisory disposition or release clearance" }
   await writeFile(outputPrefix + ".dependencies.json", JSON.stringify(evidence, null, 2) + "\n", { flag: "wx" })
