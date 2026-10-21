@@ -480,15 +480,13 @@ export const Users: CollectionConfig = {
     // surface), so stripping from the public response shape doesn't
     // break login or session rotation.
     afterRead: [
-      ({ doc, req }) => {
-        // `req.payloadAPI` is "REST" / "GraphQL" / "local" — Payload sets
-        // this on every request handled by its operation pipeline. Local-
-        // API callers (the JWT strategy's session lookup, our own
-        // server-component queries, etc.) get "local" and must keep the
-        // sessions array intact for sid verification. External REST/
-        // GraphQL callers get the array stripped from the response shape.
+      ({ doc, req, overrideAccess }) => {
+        // JWT authentication performs a trusted overrideAccess read while
+        // retaining the incoming REST/GraphQL request. Preserve its sessions
+        // for sid validation; public serialization uses overrideAccess=false.
+        // Request headers/query/context cannot grant this internal privilege.
         const api = (req as { payloadAPI?: string } | undefined)?.payloadAPI
-        if (api === "local") return doc
+        if (api === "local" || overrideAccess === true) return doc
         if (doc && typeof doc === "object" && "sessions" in doc) {
           delete (doc as Record<string, unknown>).sessions
         }

@@ -56,6 +56,17 @@ replacement passes the relevant compatibility window; do not use a refactor as
 the reason to remove migration, legal, tenancy, commerce, provider, or rollback
 coverage.
 
+## Built application journeys
+
+`apps/cms`'s `test:built-browser` crosses actual built CMS, login/session,
+PostgreSQL, page-save/publication and production renderer boundaries. It provides
+Browser, Integration and Security/access evidence, including restart and a
+publication-negative control. The existing `test:checkout-browser` command is a
+Vite/component fixture harness; it retains its narrower checkout behavior and
+screenshot evidence. Neither command establishes live-provider or deployed
+customer-state proof. Setup and evidence ownership remain in the
+[local-development runbook](runbooks/local-development.md#real-built-application-browser-journey).
+
 ## Visual claims
 
 The name `visual regression` does not prove pixel comparison. A test belongs in

@@ -29,7 +29,8 @@
     "seed:renderer-staging": "tsx scripts/seed-renderer-staging-tenants.ts",
     "seed:local-admin": "tsx scripts/seed-super-admin.ts",
     "ops:renderer-alias": "tsx scripts/ensure-renderer-domain-alias.ts",
-    "test:invitation-actions": "node tests/security/invitation-actions.mjs"
+    "test:invitation-actions": "node tests/security/invitation-actions.mjs",
+    "test:built-browser": "node tests/browser/built-app-browser.mjs"
   },
   "dependencies": {
     "@better-auth/infra": "0.4.20",

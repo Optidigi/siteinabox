@@ -9,6 +9,8 @@ import { setTimeout } from "node:timers/promises"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, createWorkerStorage, cleanupWorkerStorage,
   applyCmsTestEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
 
+import { prepareBuiltCmsAssets, captureBuiltCmsIdentity } from "../browser/built-app-artifacts.mjs"
+
 const context = await loadCmsTestEnvironment({ ...process.env, NODE_ENV: "production" })
 await assertDatabaseOwnership(context.env, context.resource)
 const worker = await createWorkerStorage(context.env, context.resource)
@@ -20,6 +22,7 @@ let server
 try {
   execFileSync("pnpm", ["payload", "generate:importmap"], { stdio: "inherit", env: process.env })
   execFileSync("pnpm", ["build"], { stdio: "inherit", env: process.env })
+  await prepareBuiltCmsAssets()
   const manifest = JSON.parse(await readFile(".next/server/server-reference-manifest.json", "utf8"))
   // Never persist/print the complete manifest: it contains a build encryption key.
   const actions = Object.entries({ ...manifest.node, ...manifest.edge })
@@ -89,6 +92,7 @@ try {
     sourceSHA: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     buildId: (await readFile(".next/BUILD_ID", "utf8")).trim(),
     publicActions: results, privilegedHelperExposed: false, userAndMailCountsUnchanged: true,
+    buildIdentity: await captureBuiltCmsIdentity(),
   }, null, 2) + "\n")
   console.log("Built invitation actions reject anonymous forged input; privileged helper is not exposed; no user/mail records created")
 } finally {

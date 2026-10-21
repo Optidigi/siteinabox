@@ -37,6 +37,14 @@ results; retain hosted run/source identities separately. Docker-backed checks
 require committed clean source. A hosted pass can supply packaged evidence when
 Docker is unavailable locally, but does not become a local `check:ci` pass.
 
+The `cms-built-browser` check follows `cms-invitation-actions` and explicitly
+reuses that same-checkout build with `--reuse-built`; missing or changed source,
+settings or artifacts fail. Its owning command starts real production-mode CMS
+and renderer processes against the authorized disposable database, exercises
+actual sessions/save/publication/denials, restarts the same artifacts and retains
+redacted evidence. Standalone execution builds afresh. See the owning
+[setup and teardown guidance](runbooks/local-development.md#real-built-application-browser-journey).
+
 ## Required hosted evidence
 
 Canonical `ci.yml` runs every command owner and all three packaged-image

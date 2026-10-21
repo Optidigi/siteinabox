@@ -74,3 +74,13 @@ test("production-mode test children validate their production env files before i
     assert.throws(() => assertDisposableCmsEnvironment(env, resource), /OPENAI_API_KEY/)
   } finally { await rm(directory, { recursive: true, force: true }) }
 })
+
+test("built-app renderer auth accepts only explicit synthetic inline test secrets", () => {
+  for (const name of ["SIAB_RENDERER_API_TOKEN", "SIAB_RENDERER_ORIGIN_SECRET"]) {
+    assert.doesNotThrow(() => assertDisposableCmsEnvironment({ ...safe, [name]: "siab-test-browser-" + "x".repeat(32) }, resource))
+    for (const value of ["production-looking-secret-value", "siab-test-short"]) {
+      assert.throws(() => assertDisposableCmsEnvironment({ ...safe, [name]: value }, resource), new RegExp(name))
+    }
+    assert.throws(() => assertDisposableCmsEnvironment({ ...safe, [name + "_FILE"]: "/private/real-secret" }, resource), new RegExp(name))
+  }
+})

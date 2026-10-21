@@ -25,6 +25,8 @@
         "EMAIL_FROM",
         "FORMS_RETENTION_DAYS",
         "GH_TOKEN",
+        "GITHUB_RUN_ATTEMPT",
+        "GITHUB_RUN_ID",
         "GITHUB_TOKEN",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",

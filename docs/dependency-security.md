@@ -119,6 +119,15 @@ packaged checks, populated PostgreSQL replacement/restart and network-disabled
 connector checks passed. These baseline component identities do not replace
 fresh final-candidate source/run/artifact verification.
 
+M13 preserves the frozen package versions. Its authentication fixes change the
+eight CMS helper bundles, so the CMS assessment records their exact owning-generator
+hashes against the verified native baseline. That local comparison is provisional
+until fresh hosted candidate bytes match; it does not replace image verification.
+Fresh publisher review also records Better Auth 1.7.12 and Node 24.22.1 security
+patch qualification as release blockers. Trivy 0.76.1 remains below the release-age
+floor at this review, with an explicit recheck deadline. Original global review
+expiry and all existing advisory/native blockers remain in force.
+
 | Image role | Package records | Vulnerability records | Native files | Bundled scripts |
 | --- | ---: | ---: | ---: | ---: |
 | CMS | 255 | 73 | 80 | 8 |
