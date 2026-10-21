@@ -24,13 +24,18 @@ export function inventoryImageNative(archive) {
     const match = line.match(/^([-rwxstST]{10})\s+\S+\s+\d+\s+\d{4}-\d{2}-\d{2}\s+\S+\s+(.+)$/)
     if (!match) throw new Error("Unsupported native archive member metadata")
     const name = safeName(match[2])
-    const executable = [match[1][3], match[1][6], match[1][9]].some((mode) => /[xst]/.test(mode))
-    if (!executable && !nativeName(name) && !bundleName(name)) continue
     if (!name || name.startsWith("/") || name.split("/").includes("..") || /[\\\0\r\n]/.test(name)) throw new Error("Unsupported native archive member path")
     selected.push(match[2])
   }
   if (!selected.length) return { files: [], goTargets: [], bundledScripts: [] }
-  const command = quote(process.execPath) + " " + quote(fileURLToPath(import.meta.url)) + ' --member "$TAR_FILENAME"'
+  // Inspect every regular member's magic, independent of mode or suffix. Only
+  // native/bundle candidates need the Node hashing process; ordinary files are
+  // drained without extraction. Preserve consumed prefix bytes in the hash.
+  const inspect = quote(process.execPath) + " " + quote(fileURLToPath(import.meta.url)) + ' --member "$TAR_FILENAME" "$magic"'
+  const command = 'magic=$(head -c 4 | od -An -tx1); ' +
+    'case "$magic" in " 7f 45 4c 46") ' + inspect + ' ;; *) ' +
+    'case "$TAR_FILENAME" in *.node|*.so|*.so.*|*.a|*.wasm|*/dist-runtime/*.mjs|*/dist-runtime/*.cjs|*/dist-runtime/*.js) ' + inspect +
+    " ;; *) cat >/dev/null; printf '{}\\n' ;; esac ;; esac"
   const output = execFileSync("tar", ["--extract", "--to-command", command, "--null", "--files-from", "-", "--file", archive],
     { env, input: selected.join("\0") + "\0", encoding: "utf8", timeout: 300000, maxBuffer: 64 * 1024 * 1024 })
   const records = output.trim().split("\n").filter(Boolean).map((line) => JSON.parse(line))
@@ -40,11 +45,14 @@ export function inventoryImageNative(archive) {
     bundledScripts: records.filter((entry) => entry.bundle).map(({ native, go, bundle, format, ...entry }) => entry) }
 }
 
-async function member(name) {
+async function member(name, prefixHex) {
   name = safeName(name)
   if (!name || name.startsWith("/") || name.split("/").includes("..") || /[\\\0\r\n]/.test(name)) throw new Error("Unsafe native member path")
   const hash = createHash("sha256")
-  let prefix = Buffer.alloc(0); let suffix = Buffer.alloc(0); let size = 0; let go = false
+  if (!/^(?: [a-f0-9]{2}){0,4}$/.test(prefixHex)) throw new Error("Invalid inspected native prefix")
+  let prefix = Buffer.from(prefixHex.replaceAll(" ", ""), "hex")
+  hash.update(prefix)
+  let suffix = prefix; let size = prefix.length; let go = false
   for await (const chunk of process.stdin) {
     hash.update(chunk); size += chunk.length
     if (size > 512 * 1024 * 1024) throw new Error("Native member exceeds its completeness bound")
@@ -59,6 +67,6 @@ async function member(name) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (process.argv[2] !== "--member" || process.argv.length !== 4) throw new Error("Only an explicit archive member pipe is supported")
-  console.log(JSON.stringify(await member(process.argv[3])))
+  if (process.argv[2] !== "--member" || process.argv.length !== 5) throw new Error("Only an explicit archive member pipe is supported")
+  console.log(JSON.stringify(await member(process.argv[3], process.argv[4])))
 }

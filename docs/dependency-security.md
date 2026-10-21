@@ -70,7 +70,8 @@ Operational failures, malformed/truncated data and analysis warnings cannot
 produce clearance.
 
 The image path exports a never-started, labelled container filesystem. Native
-members and bundled migration code are hashed through tar pipes without host
+magic is inspected for every regular member, regardless of name or permissions.
+Detected native members and bundled migration code are hashed through tar pipes without host
 extraction, symlink traversal, model calls or application jobs. Node's full
 `process.versions`, CMS's full `sharp.versions`, OS inventories and artifact
 identities remain visible. Native assessments bind the exact bundled-script

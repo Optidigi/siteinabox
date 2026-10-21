@@ -34,3 +34,19 @@ test("flattened archive inventory hashes native bytes without extracting or foll
 test("native archive inventory rejects implicit filesystem targets", () => {
   assert.throws(() => inventoryImageNative("."), /absolute owned archive/)
 })
+
+test("non-executable ELF files with ordinary names remain bound and require Go coverage", async () => {
+  const root = await mkdtemp(join(tmpdir(), "siab-native-magic-"))
+  try {
+    const content = join(root, "rootfs"); await mkdir(content)
+    await writeFile(join(content, "native.bin"), Buffer.concat([Buffer.from([0x7f, 0x45, 0x4c, 0x46]), Buffer.from("\xff Go buildinf:fixture", "latin1")]), { mode: 0o644 })
+    await writeFile(join(content, "plain.txt"), "ordinary content")
+    await writeFile(join(content, "empty"), "")
+    const archive = join(root, "rootfs.tar"); execFileSync("tar", ["-cf", archive, "-C", content, "."])
+    const result = inventoryImageNative(archive)
+    assert.deepEqual(result.files.map((file) => [file.path, file.format]), [["native.bin", "elf"]])
+    assert.deepEqual(result.goTargets, ["native.bin"])
+    assert.equal(result.files[0].size, 25)
+    assert.equal(result.files[0].sha256, "1be679b2fbbce4cd056c1c3c1c50b3db09d6c4337eabd27e91968086cd172d5c")
+  } finally { await rm(root, { recursive: true, force: true }) }
+})

@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
   "graphHash": "028d33494e3744f9bc5c3f136fcf9e844436131dd12b037e74b8a7f0a811947f",
-  "configurationHash": "a5059aaf6f05845082de0a0077759530b45d06ec1c646ba30296b906d0f6e242",
+  "configurationHash": "ffac9ec4b536be6cbac590a5b30d80562c91c10e1158ed1a8be713194be4415b",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
