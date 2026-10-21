@@ -61,3 +61,15 @@ test("complete evidence-supported clean bundles can qualify without a permanent 
     assert.throws(() => validateImageReview(record, images, true), /evidence changed or is unreviewed/)
   }
 })
+
+test("reviewed findings with unresolved advisory provenance can never clear release", () => {
+  const { record, images } = fixture()
+  const finding = images[0].inventory.findings[0]
+  finding.source = null; finding.sourceStatus = "unresolved"; finding.severity = "unknown"
+  Object.assign(record.imageAdvisories[0], imageReviewFindings(images)[0], { classification: "analysis_gap" })
+  for (const assessment of record.nativeAssessments) assessment.status = "qualified"
+  assert.equal(validateImageReview(record, images).releaseBlocked, true)
+  assert.throws(() => validateImageReview(record, images, true), /Release blocked/)
+  finding.source = "https://example.test/newly-recorded-advisory"; finding.sourceStatus = "recorded"
+  assert.throws(() => validateImageReview(record, images), /New or changed advisory/)
+})

@@ -82,7 +82,10 @@ paths and hashes; changed, added or removed bundles require fresh review, withou
 revision normalization. Independent Go-binary presence must be reconciled
 with analyzer coverage. A controlled newer-esbuild probe was not catalogued by
 the selected scanner; this is an explicit analysis blocker, never a zero-finding
-result. Completed image smoke tests do not clear native advisory uncertainty.
+result. Missing advisory URLs remain explicit unresolved-source findings with
+retained database provenance, never inferred URLs or dropped findings. Resolving
+that source changes the reviewed fingerprint. Completed image smoke tests do
+not clear native advisory uncertainty.
 
 ## CI, drift and publication
 

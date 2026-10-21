@@ -75,5 +75,21 @@ test("Go database findings without PrimaryURL retain canonical advisory source a
   assert.equal(inventory.findings[0].source, "https://pkg.go.dev/vuln/GO-2026-5932")
   assert.equal(inventory.findings[0].severity, "unknown")
   finding.References = ["https://example.test/not-the-advisory"]
+  assert.equal(validateImageInventory(input).findings[0].sourceStatus, "unresolved")
+  finding.PrimaryURL = 123
   assert.throws(() => validateImageInventory(input), /malformed|unknown schema/)
+})
+
+test("an advisory with unresolved source metadata remains explicit blocked evidence", () => {
+  const input = fixture()
+  const finding = input.report.Results[0].Vulnerabilities[0]
+  delete finding.PrimaryURL
+  Object.assign(finding, { VulnerabilityID: "DSA-6572-1", PkgName: "ca-certificates", Severity: "UNKNOWN",
+    DataSource: { ID: "debian", Name: "Debian Security Tracker", URL: "https://salsa.debian.org/security-tracker-team/security-tracker" }, References: [] })
+  const inventory = validateImageInventory(input)
+  assert.equal(inventory.findings.length, 1)
+  assert.equal(inventory.findings[0].id, "DSA-6572-1")
+  assert.equal(inventory.findings[0].source, null)
+  assert.equal(inventory.findings[0].sourceStatus, "unresolved")
+  assert.equal(inventory.findings[0].severity, "unknown")
 })

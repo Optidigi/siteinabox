@@ -79,12 +79,14 @@ export function validateImageInventory({ image, report, scanner, requiredTypes, 
       // canonical advisory reference rather than inventing a source or dropping it.
       const source = text(finding?.PrimaryURL) ? finding.PrimaryURL :
         goSource && Array.isArray(finding.References) && finding.References.includes(goSource) ? goSource : null
-      if (!text(finding?.VulnerabilityID) || !text(finding.PkgName) || !source ||
+      if (!text(finding?.VulnerabilityID) || !text(finding.PkgName) ||
+          (finding.PrimaryURL != null && typeof finding.PrimaryURL !== "string") ||
+          (finding.References !== undefined && !Array.isArray(finding.References)) ||
           !["unknown", "low", "medium", "high", "critical"].includes(severity)) {
         throw new Error("Image vulnerability evidence is malformed or has unknown schema")
       }
       findings.push({ id: finding.VulnerabilityID, package: finding.PkgName, version: finding.InstalledVersion || "(not-recorded)",
-        severity, fixedVersion: finding.FixedVersion ?? null, source,
+        severity, fixedVersion: finding.FixedVersion ?? null, source, sourceStatus: source ? "recorded" : "unresolved",
         type: result.Type, target: result.Class === "os-pkgs" ? "os-packages" : result.Target,
         paths: [finding.PkgPath || (result.Class === "os-pkgs" ? "os-packages" : result.Target)],
         purl: finding.PkgIdentifier?.PURL ?? null, dataSource: finding.DataSource ?? null,
