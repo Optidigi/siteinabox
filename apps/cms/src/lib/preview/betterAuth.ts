@@ -1,4 +1,4 @@
-import { betterAuth } from "better-auth"
+import { betterAuth, type GenericEndpointContext } from "better-auth"
 import { APIError } from "better-auth/api"
 import { Pool } from "pg"
 import { magicLink } from "better-auth/plugins"
@@ -10,6 +10,8 @@ import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
 import { PREVIEW_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 import { isPrivilegedPreviewSiteReadyMetadata } from "@/lib/preview/trustedSiteReadyIntent"
+import { assertPreviewCustomerActive } from "@/lib/auth/payloadCustomerAccess"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 
 async function getMailPayload() {
   const [{ getPayload }, configModule] = await Promise.all([
@@ -82,6 +84,17 @@ export function getPreviewTrustedOrigins() {
   return origins
 }
 
+async function authorizePreviewSession(userId: string, requestContext: GenericEndpointContext | null): Promise<void> {
+  const adapter = requestContext?.context.internalAdapter ?? (await previewAuth.$context).internalAdapter
+  const user = await adapter.findUserById(userId)
+  if (!user || user.emailVerified !== true) throw new APIError("UNAUTHORIZED")
+  try { await assertPreviewCustomerActive(await getMailPayload(), { email: user.email, previewUserId: user.id }) }
+  catch (error) {
+    if (error instanceof CustomerIdentityError) throw new APIError("UNAUTHORIZED", { message: "Preview account access is unavailable." })
+    throw error
+  }
+}
+
 export const previewAuth = betterAuth({
   appName: "SiteInABox Preview",
   baseURL: getPreviewBetterAuthBaseURL(),
@@ -96,6 +109,12 @@ export const previewAuth = betterAuth({
   },
   user: {
     modelName: "preview_auth_users",
+    additionalFields: {
+      // The committed SQL verification trigger owns this instant. Existing
+      // verified rows without historical evidence deliberately remain null.
+      firstVerifiedAt: { type: "date", required: false, input: false },
+      verificationHistoryUnknown: { type: "boolean", required: true, defaultValue: false, input: false },
+    },
   },
   session: {
     modelName: "preview_auth_sessions",
@@ -108,6 +127,12 @@ export const previewAuth = betterAuth({
   },
   verification: {
     modelName: "preview_auth_verifications",
+  },
+  databaseHooks: {
+    session: { create: { before: async (session, context) => {
+      await authorizePreviewSession(session.userId, context)
+      return { data: session }
+    } } },
   },
   plugins: [
     magicLink({
@@ -123,11 +148,18 @@ export const previewAuth = betterAuth({
             message: "No active preview access grant matches this email.",
           })
         }
+        const payload = await getMailPayload()
+        try { await assertPreviewCustomerActive(payload, { email }) }
+        catch (error) {
+          // Public requests retain the same acknowledgement for revoked
+          // identities; session creation still refuses them. No mail dispatch.
+          if (error instanceof CustomerIdentityError) return
+          throw error
+        }
         const siteReady = isPrivilegedPreviewSiteReadyMetadata({ email, clientSlug, metadata })
         const message = siteReady
           ? siteReadyPreviewTemplate({ loginUrl: url })
           : magicLinkTemplate({ loginUrl: url })
-        const payload = await getMailPayload()
         await sendEmail({
           to: email,
           subject: message.subject,

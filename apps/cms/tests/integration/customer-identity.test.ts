@@ -1,0 +1,234 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { sql } from "@payloadcms/db-postgres"
+import type { Payload } from "payload"
+import { getTestPayload } from "./_helpers"
+import { queryRows } from "@/lib/record"
+
+let payload: Payload
+beforeAll(async () => { payload = await getTestPayload() })
+afterAll(async () => {
+  await globalThis.__siabBetterAuthPool?.end()
+  await globalThis.__siabPreviewBetterAuthPool?.end()
+  globalThis.__siabBetterAuthPool = undefined
+  globalThis.__siabPreviewBetterAuthPool = undefined
+  await payload?.destroy()
+})
+
+describe("verified customer identity", () => {
+  it("records the actual first verification transition once, independently of account creation and retries", async () => {
+    const database = payload.db.drizzle
+    const id = "m14-original-verification"
+    const createdAt = "2025-01-01T00:00:00.000Z"
+    await database.execute(sql`INSERT INTO preview_auth_users
+      (id, name, email, "emailVerified", "createdAt", "updatedAt")
+      VALUES (${id}, 'Synthetic identity', 'm14-anchor@test.invalid', false, ${createdAt}, ${createdAt})`)
+    const read = async () => queryRows<{ firstVerifiedAt: string | Date | null }>(
+      await database.execute(sql`SELECT "firstVerifiedAt" FROM preview_auth_users WHERE id=${id}`),
+    )[0]!.firstVerifiedAt
+    expect(await read()).toBeNull()
+    const before = Date.now()
+    await database.execute(sql`UPDATE preview_auth_users SET "emailVerified"=true WHERE id=${id}`)
+    const original = new Date((await read())!).toISOString()
+    expect(Date.parse(original)).toBeGreaterThanOrEqual(before - 1000)
+    expect(Date.parse(original)).toBeLessThanOrEqual(Date.now())
+    expect(original).not.toBe(createdAt)
+    await database.execute(sql`UPDATE preview_auth_users
+      SET "firstVerifiedAt"='2099-01-01T00:00:00Z', "updatedAt"=now() WHERE id=${id}`)
+    expect(new Date((await read())!).toISOString()).toBe(original)
+    await database.execute(sql`UPDATE preview_auth_users SET "emailVerified"=false WHERE id=${id}`)
+    await database.execute(sql`UPDATE preview_auth_users SET "emailVerified"=true WHERE id=${id}`)
+    expect(new Date((await read())!).toISOString()).toBe(original)
+  })
+
+  it("concurrent verified sessions claim one durable account and cannot replace its anchor or authority", async () => {
+    const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+    const inserted = queryRows<{ firstVerifiedAt: string | Date }>(await payload.db.drizzle.execute(sql`
+      INSERT INTO preview_auth_users (id,name,email,"emailVerified","createdAt","updatedAt")
+      VALUES ('m14-concurrent','Synthetic identity','m14-race@test.invalid',true,now(),now()) RETURNING "firstVerifiedAt"`))
+    const verifiedAt = new Date(inserted[0]!.firstVerifiedAt).toISOString()
+    const session = {
+      user: { id: "m14-concurrent", email: "m14-race@test.invalid", emailVerified: true, firstVerifiedAt: verifiedAt },
+      session: { id: "m14-session", userId: "m14-concurrent", expiresAt: new Date(Date.now() + 60_000) },
+    }
+    const accounts = await Promise.all(Array.from({ length: 4 }, () => resolveVerifiedCustomerAccount(payload, session)))
+    expect(new Set(accounts.map(account => account.id)).size).toBe(1)
+    expect(accounts.every(account => account.verifiedAt === verifiedAt)).toBe(true)
+    const account = accounts[0]!
+    await expect(resolveVerifiedCustomerAccount(payload, {
+      ...session, user: { ...session.user, firstVerifiedAt: new Date().toISOString() },
+    })).rejects.toThrow("E_CUSTOMER_IDENTITY_CONFLICT")
+    await expect(resolveVerifiedCustomerAccount(payload, {
+      ...session, user: { ...session.user, id: "substituted" },
+      session: { ...session.session, userId: "substituted" },
+    })).rejects.toThrow("E_CUSTOMER_IDENTITY_CONFLICT")
+    await payload.update({ collection: "customer-accounts", id: account.id, overrideAccess: true,
+      data: { revokedAt: new Date().toISOString() } })
+    await expect(resolveVerifiedCustomerAccount(payload, session)).rejects.toThrow("E_CUSTOMER_ACCOUNT_REVOKED")
+  })
+
+  it("refuses an initial claim with a substituted verification instant, then permits the actual database evidence", async () => {
+    const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+    const inserted = queryRows<{ firstVerifiedAt: string | Date }>(await payload.db.drizzle.execute(sql`
+      INSERT INTO preview_auth_users (id,name,email,"emailVerified","createdAt","updatedAt")
+      VALUES ('m14-source','Synthetic identity','m14-source@test.invalid',true,now(),now()) RETURNING "firstVerifiedAt"`))
+    const firstVerifiedAt = new Date(inserted[0]!.firstVerifiedAt).toISOString()
+    const session = {
+      user: { id: "m14-source", email: "m14-source@test.invalid", emailVerified: true, firstVerifiedAt },
+      session: { id: "m14-source-session", userId: "m14-source", expiresAt: new Date(Date.now() + 60_000) },
+    }
+    await expect(resolveVerifiedCustomerAccount(payload, {
+      ...session, user: { ...session.user, firstVerifiedAt: "2025-01-01T00:00:00.000Z" },
+    })).rejects.toThrow()
+    expect((await resolveVerifiedCustomerAccount(payload, session)).verifiedAt).toBe(firstVerifiedAt)
+  })
+
+  it("serializes competing workspace creation into one tenant and rejects an expired actor before its factory runs", async () => {
+    const { resolveVerifiedCustomerAccount } = await import("@/lib/auth/verifiedCustomer")
+    const { withCustomerWorkspace } = await import("@/lib/auth/customerWorkspace")
+    const inserted = queryRows<{ firstVerifiedAt: string | Date }>(await payload.db.drizzle.execute(sql`
+      INSERT INTO preview_auth_users (id,name,email,"emailVerified","createdAt","updatedAt")
+      VALUES ('m14-workspace','Synthetic identity','m14-workspace@test.invalid',true,now(),now()) RETURNING "firstVerifiedAt"`))
+    await payload.db.drizzle.execute(sql`INSERT INTO preview_auth_sessions
+      (id,"userId",token,"expiresAt","createdAt","updatedAt")
+      VALUES ('m14-workspace-session','m14-workspace','synthetic-workspace-token',now()+interval '1 hour',now(),now())`)
+    const account = await resolveVerifiedCustomerAccount(payload, {
+      user: { id: "m14-workspace", email: "m14-workspace@test.invalid", emailVerified: true,
+        firstVerifiedAt: new Date(inserted[0]!.firstVerifiedAt).toISOString() },
+      session: { id: "m14-workspace-session", userId: "m14-workspace", expiresAt: new Date(Date.now() + 60_000) },
+    })
+    const authority = { accountId: account.id, previewSessionId: "m14-workspace-session" }
+    let creations = 0
+    const results = await Promise.all(Array.from({ length: 4 }, () => withCustomerWorkspace(payload, authority, async (bound, req) => {
+      if (bound) return { doc: bound, operation: "updated" }
+      creations += 1
+      const doc = await payload.create({ collection: "tenants", overrideAccess: true, req,
+        context: { skipProjection: true }, data: { name: "Private workspace", slug: "m14-private", domain: "m14-private.invalid", status: "provisioning" } })
+      return { doc, operation: "created" }
+    })))
+    expect(creations).toBe(1)
+    expect(new Set(results.map(result => result.doc.id)).size).toBe(1)
+    await payload.db.drizzle.execute(sql`UPDATE preview_auth_sessions SET "expiresAt"=now()-interval '1 second'
+      WHERE id='m14-workspace-session'`)
+    let attempted = false
+    await expect(withCustomerWorkspace(payload, authority, async () => {
+      attempted = true
+      throw new Error("Expired authority reached tenant creation")
+    })).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
+    expect(attempted).toBe(false)
+  })
+
+  it("rejects a competing CMS membership before a bound customer can acquire another tenant", async () => {
+    const other = await payload.create({ collection: "tenants", overrideAccess: true,
+      context: { skipProjection: true }, data: { name: "Other workspace", slug: "m14-other", domain: "m14-other.invalid", status: "provisioning" } })
+    await expect(payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Conflicting owner", email: "m14-workspace@test.invalid", password: "Synthetic-fixture-password-42!",
+        role: "owner", tenants: [{ tenant: other.id }] } })).rejects.toThrow()
+    expect((await payload.find({ collection: "users", where: { email: { equals: "m14-workspace@test.invalid" } },
+      overrideAccess: true, depth: 0 })).totalDocs).toBe(0)
+  })
+
+  it("renews an expired bound grant with a fresh session while preserving identity, but never renews revoked access", async () => {
+    const { loadVerifiedCustomerGrant } = await import("@/lib/preview/previewAccess")
+    const account = (await payload.find({ collection: "customer-accounts", where: { email: { equals: "m14-workspace@test.invalid" } },
+      depth: 0, overrideAccess: true })).docs[0]!
+    const originalAnchor = account.verifiedAt
+    const tenantId = typeof account.tenant === "object" ? account.tenant!.id : account.tenant!
+    await payload.db.drizzle.execute(sql`INSERT INTO preview_auth_sessions
+      (id,"userId",token,"expiresAt","createdAt","updatedAt")
+      VALUES ('m14-return-session','m14-workspace','synthetic-return-token',now()+interval '1 hour',now(),now())`)
+    const authority = { accountId: account.id, previewSessionId: "m14-return-session" }
+    const intake = await payload.create({ collection: "intake-submissions", overrideAccess: true,
+      data: { businessName: "Private workspace", source: "builder", status: "preview_ready", idempotencyKey: "m14-return-intake", raw: { fixture: true } } })
+    const run = await payload.create({ collection: "site-generation-runs", overrideAccess: true,
+      data: { intakeSubmission: intake.id, tenant: tenantId, status: "preview_ready", idempotencyKey: "m14-return-run",
+        normalizedIntake: {}, normalizedIntakeHash: "a".repeat(64), provider: "mock", model: "fixture:generic",
+        promptVersion: "m14-fixture", generationInputHash: "b".repeat(64) } })
+    const grant = await payload.create({ collection: "preview-access-grants", overrideAccess: true,
+      data: { customerEmail: account.email, tenant: tenantId, generationRun: run.id, clientSlug: "m14-private",
+        expiresAt: "2025-01-01T00:00:00.000Z" } })
+    const restored = await loadVerifiedCustomerGrant({ payload, email: account.email, authority })
+    expect(restored?.grant.id).toBe(grant.id)
+    expect(Date.parse(restored!.grant.expiresAt)).toBeGreaterThan(Date.now())
+    expect((await payload.findByID({ collection: "customer-accounts", id: account.id, overrideAccess: true })).verifiedAt).toBe(originalAnchor)
+    await payload.update({ collection: "preview-access-grants", id: grant.id, overrideAccess: true,
+      data: { revokedAt: new Date().toISOString() } })
+    await expect(loadVerifiedCustomerGrant({ payload, email: account.email, authority })).rejects.toThrow("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
+    await payload.db.drizzle.execute(sql`UPDATE preview_auth_sessions SET "expiresAt"=now()-interval '1 second'
+      WHERE id='m14-return-session'`)
+    await expect(loadVerifiedCustomerGrant({ payload, email: account.email, authority })).rejects.toThrow("E_CUSTOMER_SESSION_REQUIRED")
+  })
+
+  it("account revocation invalidates linked Payload cookies, API keys and both SDK sessions without minting a replacement", async () => {
+    const account = (await payload.find({ collection: "customer-accounts", where: { email: { equals: "m14-workspace@test.invalid" } },
+      depth: 0, overrideAccess: true })).docs[0]!
+    const tenantId = typeof account.tenant === "object" ? account.tenant!.id : account.tenant!
+    const apiKey = "synthetic-m14-revocation-api-key"
+    const password = "Synthetic-fixture-password-42!"
+    const owner = await payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Bound owner", email: account.email, password, role: "owner", tenants: [{ tenant: tenantId }],
+        enableAPIKey: true, apiKey } })
+    const login = await payload.login({ collection: "users", data: { email: account.email, password } })
+    const headers = new Headers({ cookie: `${payload.config.cookiePrefix ?? "payload"}-token=${login.token}` })
+    const keyHeaders = new Headers({ authorization: `users API-Key ${apiKey}` })
+    expect((await payload.auth({ headers })).user?.id).toBe(owner.id)
+    expect((await payload.auth({ headers: keyHeaders })).user?.id).toBe(owner.id)
+    const [{ auth }, { previewAuth }] = await Promise.all([import("@/lib/betterAuth"), import("@/lib/preview/betterAuth")])
+    const cmsContext = await auth.$context
+    const previewContext = await previewAuth.$context
+    const cmsUser = await cmsContext.internalAdapter.createUser({ email: account.email, name: "Bound owner",
+      emailVerified: true, payloadUserId: String(owner.id) }, { method: "test" })
+    const cmsSession = await cmsContext.internalAdapter.createSession(cmsUser.id)
+    const previewSession = await previewContext.internalAdapter.createSession(account.previewUserId)
+    expect(Boolean(await cmsContext.internalAdapter.findSession(cmsSession.token))).toBe(true)
+    expect(Boolean(await previewContext.internalAdapter.findSession(previewSession.token))).toBe(true)
+    expect((await payload.findByID({ collection: "customer-accounts", id: account.id, overrideAccess: true, depth: 0 })).payloadUser).toBe(owner.id)
+    await payload.update({ collection: "customer-accounts", id: account.id, overrideAccess: true,
+      data: { revokedAt: new Date().toISOString() } })
+    expect((await payload.auth({ headers })).user?.id).toBeUndefined()
+    expect((await payload.auth({ headers: keyHeaders })).user?.id).toBeUndefined()
+    expect(Boolean(await cmsContext.internalAdapter.findSession(cmsSession.token))).toBe(false)
+    expect(Boolean(await previewContext.internalAdapter.findSession(previewSession.token))).toBe(false)
+    await expect(cmsContext.internalAdapter.createSession(cmsUser.id)).rejects.toThrow()
+    await expect(previewContext.internalAdapter.createSession(account.previewUserId)).rejects.toThrow()
+    await expect(payload.login({ collection: "users", data: { email: account.email, password } })).rejects.toThrow()
+    const { issuePayloadSessionCookie } = await import("@/lib/socialAuth/payloadSession")
+    await expect(issuePayloadSessionCookie(owner.id, new Request("https://admin.siteinabox.nl"), account.email)).rejects.toThrow()
+    await payload.update({ collection: "customer-accounts", id: account.id, overrideAccess: true, data: { revokedAt: null } })
+    const fresh = await payload.login({ collection: "users", data: { email: account.email, password } })
+    expect((await payload.auth({ headers: new Headers({ cookie: `${payload.config.cookiePrefix ?? "payload"}-token=${fresh.token}` }) })).user?.id).toBe(owner.id)
+    expect((await payload.auth({ headers })).user?.id).toBeUndefined()
+    expect((await payload.auth({ headers: keyHeaders })).user?.id).toBeUndefined()
+    expect((await payload.findByID({ collection: "customer-accounts", id: account.id, overrideAccess: true })).verifiedAt).toBe(account.verifiedAt)
+  })
+
+  it("refuses a suspended workspace at admission before any provider or content operation", async () => {
+    const { assertCustomerAccess } = await import("@/lib/auth/customerWorkspace")
+    const { previewAuth } = await import("@/lib/preview/betterAuth")
+    const account = (await payload.find({ collection: "customer-accounts", where: { email: { equals: "m14-workspace@test.invalid" } },
+      depth: 0, overrideAccess: true })).docs[0]!
+    const session = await (await previewAuth.$context).internalAdapter.createSession(account.previewUserId)
+    const tenantId = typeof account.tenant === "object" ? account.tenant!.id : account.tenant!
+    await payload.update({ collection: "tenants", id: tenantId, overrideAccess: true, context: { skipProjection: true },
+      data: { status: "suspended" } })
+    await expect(assertCustomerAccess(payload, { accountId: account.id, previewSessionId: session.id },
+      { intent: "write" })).rejects.toThrow("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
+  })
+
+  it("refuses a substituted verified broker email before minting a Payload session", async () => {
+    const { issuePayloadSessionCookie } = await import("@/lib/socialAuth/payloadSession")
+    const tenant = await payload.create({ collection: "tenants", overrideAccess: true, context: { skipProjection: true },
+      data: { name: "Existing CMS binding", slug: "m14-bridge", domain: "m14-bridge.invalid", status: "active" } })
+    const user = await payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Existing CMS owner", email: "m14-bridge@test.invalid", password: "Synthetic-fixture-password-42!",
+        role: "owner", tenants: [{ tenant: tenant.id }] } })
+    let minted = false
+    try {
+      await issuePayloadSessionCookie(user.id, new Request("https://admin.siteinabox.nl"), "substituted@test.invalid")
+      minted = true
+    } catch { /* The caller's verified email must agree with the current stored binding. */ }
+    expect(minted).toBe(false)
+    const sessions = queryRows<{ count: string }>(await payload.db.drizzle.execute(sql`
+      SELECT count(*) AS count FROM users_sessions WHERE _parent_id=${user.id}`))
+    expect(Number(sessions[0]!.count)).toBe(0)
+  })
+})

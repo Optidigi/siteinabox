@@ -17,12 +17,12 @@ export async function GET(req: Request) {
   })
 
   const payloadUserId = (session?.user as { payloadUserId?: string | null } | undefined)?.payloadUserId
-  if (!payloadUserId) {
+  if (!payloadUserId || !session?.user.email || session.user.emailVerified !== true) {
     return NextResponse.redirect(new URL("/login?error=social-unlinked", url))
   }
 
   try {
-    const payloadCookie = await issuePayloadSessionCookie(payloadUserId, authRequest)
+    const payloadCookie = await issuePayloadSessionCookie(payloadUserId, authRequest, session.user.email)
     const destination = validateNextRedirect(url.searchParams.get("next"))
     const response = NextResponse.redirect(new URL(destination, url))
     response.headers.append("Set-Cookie", payloadCookie)

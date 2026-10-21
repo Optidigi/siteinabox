@@ -1,14 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { getPayload } from "payload"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { runBuilderTurn } from "@/lib/builder/runBuilderTurn"
 import { loadBuilderThread, saveBuilderThread } from "@/lib/builder/sessionStore"
 import { legalIsAccepted, builderPreviewActions, type BuilderChatMessage } from "@/lib/builder/thread"
-import { previewAuth } from "@/lib/preview/betterAuth"
-import { loadLatestActivePreviewGrant } from "@/lib/preview/previewAccess"
-import { relationshipValue } from "@/lib/relationshipId"
+import { getVerifiedPreviewCustomer } from "@/lib/auth/verifiedPreviewSession"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
+import { assertCustomerAccess } from "@/lib/auth/customerWorkspace"
+import { loadVerifiedCustomerGrant } from "@/lib/preview/previewAccess"
 import { isPreviewRequestAuthority } from "@/lib/requestAuthority"
-import config from "@/payload.config"
 
 const MAX_BUILDER_BYTES = 64 * 1024
 
@@ -19,18 +18,25 @@ export async function POST(req: NextRequest) {
   if (!isPreviewRequestAuthority(req.headers)) {
     return NextResponse.json({ message: "Not found" }, { status: 404 })
   }
+  try {
+    return await authenticatedBuilderTurn(req)
+  } catch (error) {
+    if (!(error instanceof CustomerIdentityError)) throw error
+    return NextResponse.json({ message: "Verified workspace access is required.", error: error.code }, { status: 403 })
+  }
+}
 
-  const session = await previewAuth.api.getSession({
-    headers: req.headers,
-    query: { disableCookieCache: true },
-  })
-  const sessionEmail = session?.user?.email?.trim().toLowerCase()
-  if (!sessionEmail) {
+async function authenticatedBuilderTurn(req: NextRequest) {
+  const customer = await getVerifiedPreviewCustomer(req.headers)
+  if (customer) await assertCustomerAccess(customer.payload, customer.authority, { intent: "write" })
+  if (!customer) {
     if (hasUnvalidatedAuthSignal(req)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 })
     }
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
   }
+  const { payload, authority } = customer
+  const sessionEmail = customer.account.email
 
   const contentLength = Number(req.headers.get("content-length") ?? 0)
   if (Number.isFinite(contentLength) && contentLength > MAX_BUILDER_BYTES) {
@@ -43,23 +49,23 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ message: "Invalid JSON body" }, { status: 400 })
   }
-  if (!isRecord(body) || typeof body.message !== "string") {
+  if (!isRecord(body) || typeof body.message !== "string" || Object.keys(body).some(key => key !== "message")) {
     return NextResponse.json({ message: "JSON object body required" }, { status: 400 })
   }
 
-  const payload = await getPayload({ config })
-  const thread = await loadBuilderThread(payload, sessionEmail)
+  const thread = await loadBuilderThread(payload, sessionEmail, customer.account.id)
   if (!thread || !legalIsAccepted(thread.legal)) {
     return NextResponse.json({ message: "Registreer eerst met naam en voorwaarden." }, { status: 403 })
   }
 
-  const grant = await loadLatestActivePreviewGrant(sessionEmail, payload)
-  if (thread.clientSlug && !grant) {
+  const preview = await loadVerifiedCustomerGrant({ email: sessionEmail, payload, authority })
+  if (thread.clientSlug && !preview) {
     return NextResponse.json({ message: "Preview toegang is ingetrokken." }, { status: 403 })
   }
 
-  const existingClientSlug = grant?.clientSlug ?? null
-  const existingTenantId = relationshipValue(grant?.tenant)
+  const existingClientSlug = preview?.clientSlug ?? null
+  const existingTenantId = preview?.tenant.id ?? null
+  if (existingTenantId != null) await assertCustomerAccess(payload, authority, { intent: "write", tenantId: existingTenantId })
 
   const userMessage = body.message.trim()
   const result = await runBuilderTurn(payload, {
@@ -72,6 +78,7 @@ export async function POST(req: NextRequest) {
     recentMessages: thread.messages.slice(-8),
     existingClientSlug,
     existingTenantId,
+    customerAuthority: authority,
   })
 
   const messages: BuilderChatMessage[] = [
@@ -79,12 +86,13 @@ export async function POST(req: NextRequest) {
     { role: "user", text: userMessage },
     { role: "assistant", text: result.text, choices: result.choices, actions: builderPreviewActions(result.applied, result.clientSlug) },
   ]
+  await assertCustomerAccess(payload, authority, { intent: "write", tenantId: existingTenantId ?? undefined })
   const saved = await saveBuilderThread(payload, {
     ...thread,
     facts: result.facts ?? thread.facts,
     clientSlug: result.clientSlug ?? thread.clientSlug,
     messages,
-  })
+  }, customer.account.id)
 
   return NextResponse.json(
     {

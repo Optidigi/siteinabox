@@ -84,3 +84,14 @@ test("built-app renderer auth accepts only explicit synthetic inline test secret
     assert.throws(() => assertDisposableCmsEnvironment({ ...safe, [name + "_FILE"]: "/private/real-secret" }, resource), new RegExp(name))
   }
 })
+
+test("built authentication mail permits only a complete synthetic zero-account transport double", () => {
+  const mail = { CLOUDFLARE_ACCOUNT_ID: "0".repeat(32), CLOUDFLARE_EMAIL_API_TOKEN: "siab-test-mail-" + "x".repeat(32) }
+  assert.doesNotThrow(() => assertDisposableCmsEnvironment({ ...safe, ...mail }, resource))
+  for (const change of [{ CLOUDFLARE_ACCOUNT_ID: "1".repeat(32) }, { CLOUDFLARE_EMAIL_API_TOKEN: "real-looking-value" },
+    { CLOUDFLARE_EMAIL_API_TOKEN: "siab-test-short" }, { CLOUDFLARE_EMAIL_API_TOKEN_FILE: "/private/token" }]) {
+    assert.throws(() => assertDisposableCmsEnvironment({ ...safe, ...mail, ...change }, resource), /CLOUDFLARE/)
+  }
+  assert.throws(() => assertDisposableCmsEnvironment({ ...safe, CLOUDFLARE_ACCOUNT_ID: mail.CLOUDFLARE_ACCOUNT_ID }, resource))
+  assert.throws(() => assertDisposableCmsEnvironment({ ...safe, CLOUDFLARE_EMAIL_API_TOKEN: mail.CLOUDFLARE_EMAIL_API_TOKEN }, resource))
+})

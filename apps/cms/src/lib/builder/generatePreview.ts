@@ -48,7 +48,10 @@ export const generatePreview = async (
   const processed = await processStoredIntakeSubmission(
     payload,
     stored.intakeSubmissionId,
-    pinTenantId != null ? { retireUnspecifiedPages: true, pinTenantId } : undefined,
+    {
+      ...(pinTenantId != null ? { retireUnspecifiedPages: true, pinTenantId } : {}),
+      ...(contact.customerAuthority ? { customerAuthority: contact.customerAuthority } : {}),
+    },
   )
   if (!processed.ok || processed.status !== "preview_ready" || processed.generationRunId == null) {
     const detail = typeof processed.error?.message === "string" ? processed.error.message : processed.status

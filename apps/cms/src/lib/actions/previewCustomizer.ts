@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { getVerifiedPreviewCustomer } from "@/lib/auth/verifiedPreviewSession"
 import {
   approvePreviewForGrant,
   persistPreviewThemeForGrant,
@@ -15,14 +15,10 @@ import { loadPreviewGrantContext } from "@/lib/preview/previewAccess"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
-const previewSessionEmail = async (loginRequiredMessage: string): Promise<string> => {
-  const session = await previewAuth.api.getSession({
-    headers: await headers(),
-    query: { disableCookieCache: true },
-  })
-  const email = session?.user?.email
-  if (!email) throw new Error(loginRequiredMessage)
-  return email
+const requirePreviewCustomer = async (loginRequiredMessage: string) => {
+  const customer = await getVerifiedPreviewCustomer(await headers())
+  if (!customer) throw new Error(loginRequiredMessage)
+  return customer
 }
 
 
@@ -30,9 +26,11 @@ export async function setPreviewTheme(access: PreviewCustomizerAccess, theme: Th
   if (isPreviewFixtureRoute(access.clientSlug)) return theme
 
   const t = await getTranslations("preview")
+  const customer = await requirePreviewCustomer(t("previewLoginRequired"))
   return persistPreviewThemeForGrant({
     clientSlug: access.clientSlug,
-    customerEmail: await previewSessionEmail(t("previewLoginRequired")),
+    customerEmail: customer.account.email,
+    customerAuthority: customer.authority,
     theme,
   })
 }
@@ -42,9 +40,11 @@ export async function approvePreviewSite(access: PreviewCustomizerAccess): Promi
   payment: PreviewPaymentState
 }> {
   const t = await getTranslations("preview")
+  const customer = await requirePreviewCustomer(t("previewLoginRequired"))
   return approvePreviewForGrant({
     clientSlug: access.clientSlug,
-    customerEmail: await previewSessionEmail(t("previewLoginRequired")),
+    customerEmail: customer.account.email,
+    customerAuthority: customer.authority,
   })
 }
 
@@ -54,10 +54,14 @@ export async function createPreviewMollieCheckout(access: PreviewCustomizerAcces
   reused: boolean
 }> {
   const t = await getTranslations("preview")
-  const customerEmail = await previewSessionEmail(t("previewLoginRequired"))
+  const customer = await requirePreviewCustomer(t("previewLoginRequired"))
+  const customerEmail = customer.account.email
   const context = await loadPreviewGrantContext({
     clientSlug: access.clientSlug,
     email: customerEmail,
+    customerAuthority: customer.authority,
+    intent: "purchase",
+    renewExpired: true,
   })
   const result = await createMollieCheckoutForGenerationRun(context.payload, {
     runId: context.run.id,

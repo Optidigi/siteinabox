@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { spawn, execFileSync } from "node:child_process"
+import { spawn, spawnSync, execFileSync } from "node:child_process"
 import { once } from "node:events"
 import { createRequire } from "node:module"
 import { randomUUID, randomBytes, createHash, X509Certificate } from "node:crypto"
@@ -13,6 +13,9 @@ import { chromium } from "playwright"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, assertCmsTestPrerequisites, createWorkerStorage,
   cleanupWorkerStorage, applyCmsTestEnvironment, readEffectiveTestEnvironment, assertDisposableCmsEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
 import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
+import { runVerifiedCustomerJourney } from "./built-customer-journey.mjs"
+import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
+import { cookieCredentials } from "./built-app-credentials.mjs"
 
 const args = process.argv.slice(2)
 assert(args.length === 0 || args.length === 1 && args[0] === "--reuse-built", "Usage: test:built-browser [--reuse-built]")
@@ -27,7 +30,9 @@ execFileSync(process.execPath, ["--test", "tests/browser/built-app-harness.test.
 const worker = await createWorkerStorage(context.env, context.resource)
 const env = { ...worker.env, NODE_ENV: "production", PAYLOAD_DB_PUSH: "false", NEXT_TELEMETRY_DISABLED: "1", ASTRO_TELEMETRY_DISABLED: "1",
   SIAB_RENDERER_API_TOKEN: "siab-test-browser-renderer-" + randomBytes(16).toString("hex"),
-  SIAB_RENDERER_ORIGIN_SECRET: "siab-test-browser-origin-" + randomBytes(16).toString("hex") }
+  SIAB_RENDERER_ORIGIN_SECRET: "siab-test-browser-origin-" + randomBytes(16).toString("hex"),
+  CLOUDFLARE_ACCOUNT_ID: "0".repeat(32), CLOUDFLARE_EMAIL_API_TOKEN: "siab-test-mail-" + randomBytes(16).toString("hex"),
+  EMAIL_FROM: "noreply@test.invalid" }
 applyCmsTestEnvironment(env, context.resource)
 const runtime = path.join(cmsRoot, "tests/browser/built-app-runtime.mjs")
 const rendererRoot = path.resolve(cmsRoot, "../renderer")
@@ -35,12 +40,14 @@ const output = path.join(cmsRoot, "test-results/built-browser-" + randomUUID())
 await mkdir(output, { mode: 0o700, recursive: true })
 const secrets = new Set([env.PAYLOAD_SECRET, env.DATABASE_URI, decodeURIComponent(new URL(env.DATABASE_URI).password),
   env.SIAB_RENDERER_API_TOKEN, env.SIAB_RENDERER_ORIGIN_SECRET].filter(Boolean))
+secrets.add(env.CLOUDFLARE_EMAIL_API_TOKEN)
 const redact = (text) => [...secrets].sort((a, b) => b.length - a.length).reduce((s, secret) => s.replaceAll(secret, "[REDACTED]"), text)
 const processes = []
 const browserContexts = []
 const blockedBrowserReads = []
 const assertions = []
-let browser, cms, renderer, gateway, cmsBridge, database, fixture, identity, rendererHash, rendererSettings, certificatePin, providerAudit, failure
+const expectedGuardPids = new Set()
+let browser, cms, renderer, gateway, browserProxy, cmsBridge, database, fixture, identity, rendererHash, rendererSettings, certificatePin, providerAudit, failure
 const verify = (name) => assertions.push(name)
 
 async function freePort() {
@@ -50,16 +57,26 @@ async function freePort() {
 }
 function start(entry, cwd, childEnv, role) {
   const child = spawn(process.execPath, ["--import", runtime, entry], { cwd, env: childEnv, stdio: ["ignore", "pipe", "pipe"] })
-  const owned = { child, role, log: "" }
+  const owned = { child, role, log: "", spawnError: null }
+  child.on("error", error => { owned.spawnError = error })
+  expectedGuardPids.add(child.pid)
   for (const stream of [child.stdout, child.stderr]) stream.on("data", chunk => { owned.log = (owned.log + chunk).slice(-262144) })
   processes.push(owned); return owned
 }
 async function stop(owned) {
-  if (!owned || owned.child.exitCode !== null || owned.child.signalCode !== null) return
+  if (!owned || owned.spawnError || owned.child.exitCode !== null || owned.child.signalCode !== null) return
   const closed = once(owned.child, "close")
   owned.child.kill("SIGTERM")
   const timeout = setTimeout(() => owned.child.kill("SIGKILL"), 10000)
   try { await closed } finally { clearTimeout(timeout) }
+}
+function runGuardedScript(entry, args = [], timeout = 180000) {
+  const result = spawnSync(process.execPath, ["--import", "tsx", "--import", runtime, entry, ...args],
+    { cwd: cmsRoot, env, stdio: "inherit", timeout })
+  if (result.error) throw result.error
+  assert(Number.isInteger(result.pid), "Owned fixture process must start")
+  expectedGuardPids.add(result.pid)
+  assert.equal(result.status, 0, "Owned fixture process must succeed")
 }
 async function http(port, pathname, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -74,6 +91,7 @@ async function http(port, pathname, headers = {}) {
 async function ready(owned, port, pathname, status) {
   const started = Date.now()
   while (Date.now() - started < 30000) {
+    if (owned.spawnError) throw owned.spawnError
     if (owned.child.exitCode !== null || owned.child.signalCode !== null) throw new Error(owned.role + " exited before readiness")
     try { if ((await http(port, pathname)).status === status) return } catch { /* Wait only for this owned child's bounded startup. */ }
     await delay(500)
@@ -81,15 +99,15 @@ async function ready(owned, port, pathname, status) {
   throw new Error(owned.role + " startup prerequisite failed")
 }
 async function rememberCookies(browserContext) {
-  for (const cookie of await browserContext.cookies()) if (cookie.value) secrets.add(cookie.value)
+  for (const value of cookieCredentials(await browserContext.cookies())) secrets.add(value)
 }
-async function api(page, pathname, body) {
-  return page.evaluate(async ({ pathname, body }) => {
-    const response = await fetch(pathname, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+async function api(page, pathname, body, method = "POST") {
+  return page.evaluate(async ({ pathname, body, method }) => {
+    const response = await fetch(pathname, body === undefined ? {} : { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
     const text = await response.text()
     let data; try { data = JSON.parse(text) } catch { data = null }
     return { status: response.status, data }
-  }, { pathname, body })
+  }, { pathname, body, method })
 }
 function forwardApplication(incoming, outgoing, port, host, originSecret) {
   const headers = { ...incoming.headers, host, "x-forwarded-host": host, "x-forwarded-proto": "https" }
@@ -116,9 +134,11 @@ try {
     const receipt = JSON.parse(await readFile(path.join(cmsRoot, "test-results/invitation-actions.json"), "utf8"))
     assert.equal(receipt.privilegedHelperExposed, false)
     assert.equal(receipt.userAndMailCountsUnchanged, true)
+    assert.equal(receipt.transportGuardVerified, true)
+    assert.equal(receipt.providerOperationsAttempted, 0)
     identity = await assertBuiltCmsIdentity(receipt.buildIdentity)
   }
-  execFileSync(process.execPath, ["--import", "tsx", "--import", runtime, "tests/browser/built-app-fixture.ts"], { cwd: cmsRoot, env, stdio: "inherit", timeout: 180000 })
+  runGuardedScript("tests/browser/built-app-fixture.ts")
   fixture = JSON.parse(await readFile(path.join(env.DATA_DIR, "browser-fixture.json"), "utf8")); secrets.add(fixture.password)
   if (!reuse) {
     execFileSync("pnpm", ["test:invitation-actions"], { cwd: cmsRoot, env, stdio: "inherit", timeout: 600000 })
@@ -137,7 +157,7 @@ try {
   const cmsHost = "admin." + (env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN || "siteinabox.nl")
   assert.match(cmsHost, /^admin\.[a-z0-9.-]+$/)
   const edgePort = await freePort(), bridgePort = await freePort()
-  const cmsOrigin = "https://" + cmsHost + ":" + edgePort
+  const cmsOrigin = "https://" + cmsHost
   const publicOrigin = "https://" + fixture.tenants[0].domain + ":" + edgePort
   const allowedOrigins = new Set([cmsOrigin, publicOrigin])
   const cmsEnv = { ...env, HOSTNAME: "127.0.0.1", PORT: String(cmsPort) }
@@ -150,7 +170,7 @@ try {
   // loopback without DNS/CA/global environment changes or injected API auth.
   cmsBridge = createHttpServer((incoming, outgoing) => {
     if (incoming.method !== "GET" || incoming.url.split("?")[0] !== "/api/renderer/snapshot") { outgoing.writeHead(404); outgoing.end(); return }
-    forwardApplication(incoming, outgoing, cmsPort, cmsHost + ":" + edgePort)
+    forwardApplication(incoming, outgoing, cmsPort, cmsHost)
   })
   cmsBridge.listen(bridgePort, "127.0.0.1"); await once(cmsBridge, "listening")
   assert.equal((await http(bridgePort, "/api/renderer/snapshot?host=" + fixture.tenants[0].domain)).status, 401)
@@ -166,19 +186,24 @@ try {
     "-keyout", keyFile, "-out", certFile], { stdio: "ignore", timeout: 10000 })
   gateway = createHttpsServer({ key: await readFile(keyFile), cert: await readFile(certFile) }, (incoming, outgoing) => {
     const host = incoming.headers.host
-    const isCms = host === cmsHost + ":" + edgePort
+    const isCms = host === cmsHost
     const isPublic = host === fixture.tenants[0].domain + ":" + edgePort
     if ((!isCms && !isPublic) || !incoming.url.startsWith("/")) { outgoing.writeHead(404); outgoing.end(); return }
-    forwardApplication(incoming, outgoing, isCms ? cmsPort : rendererPort, host, isPublic ? env.SIAB_RENDERER_ORIGIN_SECRET : undefined)
+    forwardApplication(incoming, outgoing, isCms ? cmsPort : rendererPort, isCms ? cmsHost : host,
+      isPublic ? env.SIAB_RENDERER_ORIGIN_SECRET : undefined)
   })
   gateway.listen(edgePort, "127.0.0.1"); await once(gateway, "listening")
   const certificate = new X509Certificate(await readFile(certFile))
   certificatePin = createHash("sha256").update(certificate.publicKey.export({ type: "spki", format: "der" })).digest("base64")
+  // CONNECT preserves the browser's real origin and every redirect. Only these
+  // owned authorities can tunnel, and every tunnel ends at this loopback edge.
+  browserProxy = await createBuiltAppTunnel(edgePort, [cmsHost + ":443", fixture.tenants[0].domain + ":" + edgePort])
   // Trust only this run's generated loopback certificate, not arbitrary HTTPS.
-  browser = await chromium.launch({ headless: true, args: ["--ignore-certificate-errors-spki-list=" + certificatePin,
+  browser = await chromium.launch({ headless: true, proxy: { server: browserProxy.serverURL }, args: ["--ignore-certificate-errors-spki-list=" + certificatePin,
     "--host-resolver-rules=MAP " + cmsHost + " 127.0.0.1, MAP *.test 127.0.0.1"] })
-  async function newContext(name, headers = {}) {
-    const current = await browser.newContext({ viewport: { width: 1440, height: 1000 }, extraHTTPHeaders: headers })
+  async function newContext(name, headers = {}, viewport = { width: 1440, height: 1000 }) {
+    const current = await browser.newContext({ viewport, isMobile: viewport.width < 500,
+      hasTouch: viewport.width < 500, extraHTTPHeaders: headers })
     await current.route("**/*", route => {
       const url = new URL(route.request().url())
       if (allowedOrigins.has(url.origin)) return route.continue()
@@ -198,17 +223,17 @@ try {
   const denialBody = { tenantId: fixture.tenants[0].id, publish: true, page: { id: fixture.pages[0].id, data: { title: "forged", slug: "index", status: "published", blocks: [] } } }
   assert.equal((await api(guestPage, "/api/page-editor-save", denialBody)).status, 403)
   verify("anonymous protected page and real save endpoint deny")
-  async function login(page) {
-    const loginResponse = await page.goto(cmsOrigin + "/login?next=" + encodeURIComponent(ownedPath))
+  async function login(page, person = fixture.owners[0], target = ownedPath) {
+    const loginResponse = await page.goto(cmsOrigin + "/login?next=" + encodeURIComponent(target))
     assert.equal((await loginResponse.serverAddr()).ipAddress, "127.0.0.1", "Credentials must stay on the owned loopback gateway")
     await page.getByRole("button", { name: /password|wachtwoord/i }).click()
-    await page.locator('input[name="email"]').fill(fixture.owners[0].email)
+    await page.locator('input[name="email"]').fill(person.email)
     await page.locator('input[name="password"]').fill(fixture.password)
     const response = page.waitForResponse(r => new URL(r.url()).pathname === "/api/users/login" && r.request().method() === "POST")
     await page.locator('form').filter({ has: page.locator('input[name="password"]') }).locator('button[type="submit"]').click()
     assert.equal((await response).status(), 200)
-    await page.waitForURL(url => url.pathname === ownedPath)
-    await page.locator('input[name="title"]').first().waitFor({ state: "visible" })
+    await page.waitForURL(url => url.pathname === target)
+    if (target === ownedPath && person.role !== "viewer") await page.locator('input[name="title"]').first().waitFor({ state: "visible" })
     await rememberCookies(page.context())
   }
   await login(ownerPage); await login(stolenPage)
@@ -259,6 +284,39 @@ try {
     page: { ...denialBody.page, id: fixture.pages[1].id, expectedUpdatedAt: foreignBefore.updatedAt } })).status, 403)
   assert.deepEqual(await storedPage(fixture.pages[1].id, fixture.tenants[1].id), foreignBefore)
   verify("other-tenant page and real save endpoint deny")
+  const rolePages = new Map()
+  for (const person of fixture.roles) {
+    const context = await newContext("legacy-" + person.role)
+    const page = await context.newPage(); page.setDefaultTimeout(20000)
+    await login(page, person, person.role === "super-admin" ? "/sites" : ownedPath)
+    const me = await api(page, "/api/users/me")
+    assert.equal(me.data.user.role, person.role)
+    if (person.role === "super-admin") assert.equal(me.data.user.tenants?.length ?? 0, 0)
+    else {
+      assert.equal((await api(page, "/api/pages/" + fixture.pages[0].id)).status, 200)
+      if (person.role === "viewer") {
+        await page.getByRole("heading", { name: marker, exact: true }).first().waitFor()
+        assert.equal(await page.locator('input[name="title"]').count(), 0)
+      } else assert.equal(await page.locator('input[name="title"]').first().isEditable(), true)
+    }
+    rolePages.set(person.role, page)
+  }
+  const draftBefore = await storedPage(fixture.draftId)
+  const draftEdit = saveBody(draftBefore, "Editor permitted private update", false)
+  draftEdit.page.data.status = "draft"
+  assert.equal((await api(rolePages.get("editor"), "/api/page-editor-save", draftEdit)).status, 200)
+  const afterEditor = await storedPage(fixture.draftId)
+  assert.equal(afterEditor.title, "Editor permitted private update")
+  assert.equal((await api(rolePages.get("viewer"), "/api/page-editor-save", saveBody(afterEditor, "Viewer must not write", false))).status, 403)
+  assert.deepEqual(await storedPage(fixture.draftId), afterEditor)
+  verify("synthetic Amicare-compatible owner/editor/viewer access and tenantless super-admin remain effective")
+  const customerJourney = await runVerifiedCustomerJourney({ newContext, cmsOrigin, cmsRoot, env, fixture, database, api,
+    rememberCookies, secrets, output, verify,
+    control: action => runGuardedScript("tests/browser/built-customer-control.ts", [action], 30000),
+  })
+  assert.equal((await http(rendererPort, "/", { host: customerJourney.domain, "x-forwarded-proto": "https",
+    "x-siab-origin-verify": env.SIAB_RENDERER_ORIGIN_SECRET })).status, 404)
+  verify("free generated website stays private in the actual public renderer")
   await ownerPage.goto(cmsOrigin + "/profile")
   const changedPassword = "siab-test-" + randomBytes(20).toString("hex"); secrets.add(changedPassword)
   assert.equal((await api(ownerPage, "/api/users/change-password", { currentPassword: fixture.password, newPassword: changedPassword })).status, 200)
@@ -276,6 +334,7 @@ try {
   await ownerPage.reload(); assert.equal(await ownerPage.locator('input[name="title"]').first().inputValue(), marker)
   stored = await storedPage(); assert.equal(stored.title, marker)
   await publishedMarker(marker)
+  await customerJourney.afterRestart()
   verify("same built artifacts restart with real persisted session, document and publication")
   // Deliberately violate the persistence/publication invariant via the actual
   // API's save-without-publish operation. The SAME renderer assertion must fail.
@@ -286,6 +345,9 @@ try {
   verify("negative publication fixture is detected by the real served-marker assertion")
   assert.equal((await api(ownerPage, "/api/page-editor-save", saveBody(negativeStored, marker))).status, 200)
   await publishedMarker(marker)
+  assert.equal((await api(rolePages.get("super-admin"), "/api/customer-accounts/" + customerJourney.accountId,
+    { revokedAt: new Date().toISOString() }, "PATCH")).status, 200)
+  await customerJourney.assertRevoked()
 } catch (error) {
   failure = error
   for (const item of browserContexts) {
@@ -303,6 +365,7 @@ try {
     } catch (error) { failure ??= error }
   }
   try { await browser?.close() } catch (error) { failure ??= error }
+  try { await browserProxy?.close() } catch (error) { failure ??= error }
   for (const server of [gateway, cmsBridge]) if (server) {
     try {
       server.closeAllConnections()
@@ -318,13 +381,20 @@ try {
   }
   try {
     const audits = []
+    const initializedPids = new Set()
     for (const file of (await readdir(env.DATA_DIR)).filter(name => /^network-\d+\.ndjson$/.test(name))) {
-      audits.push(...(await readFile(path.join(env.DATA_DIR, file), "utf8")).trim().split("\n").filter(Boolean).map(line => JSON.parse(line)))
+      const events = (await readFile(path.join(env.DATA_DIR, file), "utf8")).trim().split("\n").filter(Boolean).map(line => JSON.parse(line))
+      audits.push(...events)
+      if (events.some(event => event.kind === "initialized")) initializedPids.add(Number(file.match(/\d+/)[0]))
     }
-    providerAudit = { initializedChildren: audits.filter(event => event.kind === "initialized").length, deniedBackendOperations: audits.filter(event => event.kind === "denied").length }
-    assert(providerAudit.initializedChildren >= 5, "Every fixture/application child must install its explicit provider doubles")
+    providerAudit = { initializedChildren: audits.filter(event => event.kind === "initialized").length,
+      deniedBackendOperations: audits.filter(event => event.kind === "denied").length,
+      controlledMailOperations: audits.filter(event => event.kind === "controlled-mail").length,
+      expectedGuardedChildren: expectedGuardPids.size }
+    for (const pid of expectedGuardPids) assert(initializedPids.has(pid), "Every recorded app/fixture/control process must install its explicit provider doubles")
     assert.equal(providerAudit.deniedBackendOperations, 0, "This journey must not attempt backend provider operations")
-    assert.equal(Number((await database.query("SELECT count(*) AS count FROM mail_logs")).rows[0].count), 0, "No fixture flow may emit mail")
+    assert.equal(Number((await database.query("SELECT count(*) AS count FROM mail_logs")).rows[0].count), providerAudit.controlledMailOperations,
+      "Every recorded mail must belong to the explicit captured transport double")
   } catch (error) { failure ??= error }
   try { await database?.end() } catch (error) { failure ??= error }
   try { await cleanupWorkerStorage(worker) } catch (error) { failure ??= error }
@@ -334,7 +404,8 @@ try {
     sourceDirty: identity?.sourceDirty, cmsBuild: identity, rendererArtifactSha256: rendererHash, rendererBuildSettingsSha256: rendererSettings, edgeCertificatePin: certificatePin,
     providerAudit, verificationRunId: process.env.GITHUB_RUN_ID ?? null, verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     environment: { node: process.versions.node, mode: "production", database: new URL(env.DATABASE_URI).pathname.slice(1),
-      ownershipVerified: true, jobsAutorun: false, ai: "mock", providers: "deny external operations", rendererFixtureMode: false },
+      ownershipVerified: true, jobsAutorun: false, ai: "mock", providers: "deny external operations",
+      mail: "explicit synthetic captured transport", rendererFixtureMode: false },
     browser: browser?.version(), assertions, blockedBrowserReads, status: failure ? "failed" : "passed",
     error: failure ? redact(failure.stack ?? String(failure)) : null,
     limitations: "Built local application/session/persistence/renderer proof; not live provider, production, release or visual regression clearance" }, null, 2) + "\n", { mode: 0o600 }) }

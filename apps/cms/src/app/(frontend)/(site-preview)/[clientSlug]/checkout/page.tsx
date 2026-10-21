@@ -6,7 +6,8 @@ import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { getVerifiedPreviewCustomer } from "@/lib/auth/verifiedPreviewSession"
+import { CustomerAccessNotice } from "@/components/builder/CustomerAccessNotice"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import {
@@ -80,11 +81,10 @@ export default async function PreviewCheckoutPage({
   const locale = await getLocale()
   const headerStore = await headers()
   const callbackPath = `/${normalizedClientSlug}/checkout`
-  const session = await previewAuth.api.getSession({
-    headers: headerStore,
-    query: { disableCookieCache: true },
-  })
-  const customerEmail = session?.user?.email
+  let customer
+  try { customer = await getVerifiedPreviewCustomer(headerStore) }
+  catch (error) { return <CustomerAccessNotice error={error} /> }
+  const customerEmail = customer?.account.email
 
   if (!customerEmail) {
     return (
@@ -101,6 +101,8 @@ export default async function PreviewCheckoutPage({
     const context = await loadPreviewGrantContext({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
+      customerAuthority: customer!.authority,
+      renewExpired: true,
     })
     const oauthEnabled = cloudflareSourceCheckoutEnabled()
     const tenantId = relationshipId(context.tenant)

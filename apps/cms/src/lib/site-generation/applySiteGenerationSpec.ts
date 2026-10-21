@@ -2,7 +2,9 @@ import { createHash } from "node:crypto"
 import { copyFile, mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { Payload, Where } from "payload"
+import type { Payload, PayloadRequest, Where } from "payload"
+import { assertCustomerAccess, withCustomerWorkspace, type CustomerAuthority, type WorkspaceResult } from "@/lib/auth/customerWorkspace"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import {
   BlockSchema,
   SITE_BLOCK_SLUGS,
@@ -80,6 +82,7 @@ export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
   retireUnspecifiedPages?: boolean
   /** Apply and retire only this tenant; refuse slug/domain owned by a different tenant. */
   pinTenantId?: string | number
+  customerAuthority?: CustomerAuthority
 }
 
 /** A local, operator-supplied asset that can be uploaded during a seed/import. */
@@ -472,8 +475,8 @@ const normalizeSettingsData = (tenantId: string | number, settings: GeneratedSit
   }) as Partial<SiteSetting>
 }
 
-const findOne = async <T>(payload: Payload, collection: "tenants" | "pages" | "site-settings" | "media", where: Where): Promise<T | undefined> => {
-  const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true })
+const findOne = async <T>(payload: Payload, collection: "tenants" | "pages" | "site-settings" | "media", where: Where, req?: Partial<PayloadRequest>): Promise<T | undefined> => {
+  const found = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true, req })
   return found.docs[0] as T | undefined
 }
 
@@ -562,12 +565,23 @@ const upsertTenant = async (
   siteManifest: Record<string, unknown>,
   theme: ThemeTokens | null,
   pinTenantId?: string | number,
-) => {
-  const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } })
-  const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } })
+  customerAuthority?: CustomerAuthority,
+  req?: Partial<PayloadRequest>,
+): Promise<WorkspaceResult> => {
+  if (customerAuthority) return withCustomerWorkspace(payload, customerAuthority, (bound, transactionReq) => {
+    if (pinTenantId != null && String(bound?.id) !== String(pinTenantId)) {
+      throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+    }
+    return upsertTenant(payload, spec, siteManifest, theme, bound?.id, undefined, transactionReq)
+  })
+  const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } }, req)
+  const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } }, req)
+  if (req && pinTenantId == null && (bySlug || byDomain)) {
+    throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+  }
   if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
   if (pinTenantId != null) {
-    const pinned = await findOne<Tenant>(payload, "tenants", { id: { equals: pinTenantId } })
+    const pinned = await findOne<Tenant>(payload, "tenants", { id: { equals: pinTenantId } }, req)
     if (!pinned) throw new Error(`Pinned tenant ${pinTenantId} was not found.`)
     if (bySlug && String(bySlug.id) !== String(pinTenantId)) {
       throw new Error(`Generation spec slug "${spec.tenant.slug}" belongs to another tenant.`)
@@ -576,12 +590,12 @@ const upsertTenant = async (
       throw new Error(`Generation spec domain "${spec.tenant.domain}" belongs to another tenant.`)
     }
     const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: pinned.status ?? "provisioning", emailSending: pinned.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
-    return { doc: await payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
+    return { doc: await payload.update({ collection: "tenants", id: pinned.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req }), operation: "updated" as const }
   }
   const existing = bySlug ?? byDomain
   const data = { name: spec.tenant.name, slug: spec.tenant.slug, domain: spec.tenant.domain, status: existing?.status ?? "provisioning", emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain), siteManifest, theme }
-  if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "updated" as const }
-  return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT }), operation: "created" as const }
+  if (existing) return { doc: await payload.update({ collection: "tenants", id: existing.id, data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req }), operation: "updated" as const }
+  return { doc: await payload.create({ collection: "tenants", data, depth: 0, overrideAccess: true, context: DRAFT_IMPORT_CONTEXT, req }), operation: "created" as const }
 }
 
 const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap) => {
@@ -631,6 +645,8 @@ export const retireUnspecifiedPagesForTenant = async (
 }
 
 export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGenerationSpec, options: SiteGenerationApplyOptions = {}): Promise<CmsGenerationApplyResult> {
+  if (options.customerAuthority) await assertCustomerAccess(payload, options.customerAuthority,
+    { intent: "write", tenantId: options.pinTenantId })
   const sourceValidation = validateSiteGenerationSpecForCms(spec, options)
   if (!sourceValidation.valid) return { ok: false, validation: sourceValidation }
   const canonicalSpec = materializeTenantPrivacyDisclosure(canonicalizeSiteGenerationSpecForCms(sourceValidation.data))
@@ -642,7 +658,7 @@ export async function applySiteGenerationSpec(payload: Payload, spec: CmsSiteGen
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const preparedMedia = await prepareMediaAssets(options.mediaAssets)
   try {
-    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId)
+    const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme, options.pinTenantId, options.customerAuthority)
     const tenantId = tenant.doc.id as string | number
     const mediaIds = preparedMedia ? await upsertMediaAssets(payload, tenantId, preparedMedia.assets) : new Map<string, string | number>()
     const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)

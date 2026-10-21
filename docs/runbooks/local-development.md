@@ -342,7 +342,7 @@ public/CI build settings, build ID and immutable artifact-byte receipt. It
 cannot attach to an existing server or silently accept an old build. Both
 applications restart from those same verified artifacts during the journey.
 
-Two synthetic tenants and owners, an unpublished private page and synthetic
+Synthetic tenants, all existing roles, an unpublished private page and synthetic
 legacy routing-adoption fields represent existing supported behavior. These
 fixture fields are not actual entitlement, DNS or Amicare-adoption proof.
 The browser uses genuine password login, cookies, the real editor Save route,
@@ -355,21 +355,36 @@ The same published-marker assertion must also reject a deliberately saved but
 unpublished change through the real API, proving the persistence/publication
 boundary detects a broken result.
 
+The verified-customer extension uses real registration, captured magic-link
+verification and separate browser sessions in NL/EN at phone/desktop viewports.
+It exercises the existing mock generation path and checks one stored account,
+workspace and original verification anchor, including restart, unverified state,
+substituted requests and account revocation. Identity, renewal and historical
+mapping rules remain in the
+[authentication contract](../contracts/authentication.md#verified-customer-workspace-authority).
+
 Production-mode origin/bearer checks stay active. A loopback TLS/edge gateway
-and platform-authority proxy forward actual application responses; Chromium
-trusts only the run's generated certificate key and resolves fixture hosts to
-loopback. Backend fetch/HTTP transports use explicit deny doubles outside
+and an owned CONNECT proxy forward actual application responses, including
+redirects, with the production browser origin intact. Chromium trusts only the
+run's generated certificate key. Proxy authorities are an exact allowlist and
+every tunnel ends at the loopback edge; the runner changes no machine proxy or
+certificate settings. Backend fetch/HTTP transports use explicit deny doubles outside
 loopback. Jobs stay disabled, AI stays mock and inherited provider credentials
-remain forbidden. Only the two exact inline renderer test secrets accept the
-synthetic `siab-test-` prefix with at least 32 characters; secret-file references
-remain forbidden. No email, AI, calendar, payment, domain or production proof is
+remain forbidden. The runner supplies synthetic inline renderer secrets and a
+complete mail-test pair: zero account ID plus a `siab-test-` token of at least
+32 characters. The closed mail double accepts only the synthetic customer's
+verification messages and the fixed synthetic intake's internal notification.
+It stores verification links privately and returns a captured
+receipt without making a Cloudflare request. Other accounts/tokens and all
+secret-file references remain forbidden. Capture counts must match recorded
+mail logs. No live email, AI, calendar, payment, domain or production proof is
 inferred from this journey.
 
 Redacted traces, credential-free screenshots, sanitized server logs and a
 source/artifact/assertion summary go to `apps/cms/test-results/built-browser-*/`.
-Raw traces, synthetic passwords, TLS private keys and projection files stay in
+Raw traces, verification links, synthetic passwords, TLS private keys and projection files stay in
 the private owned worker directory and are removed after owned servers stop.
-Cleanup targets only recorded child processes and that marked worker; it does
+Cleanup targets only recorded child processes, owned tunnels and that marked worker; it does
 not remove the resource authorization or unrelated directories. A failed
 assertion, missing startup or cleanup/evidence failure exits nonzero.
 

@@ -1,4 +1,7 @@
+import "server-only"
 import type { Payload } from "payload"
+import { relationshipId } from "@/lib/relationshipId"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import type { BuilderSession } from "@/payload-types"
 import {
   BuilderFactsSchema,
@@ -56,7 +59,7 @@ const toThread = (doc: BuilderSession): BuilderThread | null => {
   return parsed.success ? parsed.data : null
 }
 
-export async function loadBuilderThread(payload: Payload, email: string): Promise<BuilderThread | null> {
+export async function loadBuilderThread(payload: Payload, email: string, customerAccountId?: number): Promise<BuilderThread | null> {
   const customerEmail = normalizeBuilderEmail(email)
   if (!customerEmail) return null
   const result = await payload.find({
@@ -67,6 +70,12 @@ export async function loadBuilderThread(payload: Payload, email: string): Promis
     overrideAccess: true,
   })
   const doc = result.docs[0] as BuilderSession | undefined
+  if (doc) {
+    const bound = relationshipId(doc.customerAccount)
+    if (bound && bound !== String(customerAccountId)) throw new CustomerIdentityError("E_CUSTOMER_IDENTITY_CONFLICT")
+    if (customerAccountId && !bound) await payload.update({ collection: COLLECTION, id: doc.id,
+      data: { customerAccount: customerAccountId }, depth: 0, overrideAccess: true })
+  }
   return doc ? toThread(doc) : null
 }
 
@@ -78,7 +87,7 @@ export async function upsertBuilderRegistration(
     contactPhone?: string
     legal: BuilderLegal
   },
-): Promise<BuilderThread> {
+): Promise<void> {
   const customerEmail = normalizeBuilderEmail(input.email)
   const legal = BuilderLegalSchema.parse(input.legal)
   if (!legalIsAccepted(legal)) {
@@ -90,33 +99,32 @@ export async function upsertBuilderRegistration(
     limit: 1,
     depth: 0,
     overrideAccess: true,
+    select: { customerEmail: true },
   })
-  const current = existing.docs[0] as BuilderSession | undefined
+  // Registration is not authentication and must neither read private thread
+  // content nor overwrite existing work, names, legal evidence or bindings.
+  if (existing.docs.length) return
   const data = {
     customerEmail,
     displayName: input.displayName.trim(),
-    contactPhone: input.contactPhone?.trim() ?? current?.contactPhone ?? "",
+    contactPhone: input.contactPhone?.trim() ?? "",
     legal,
-    messages: current
-      ? messagesForBuilderSession(
-          parseMessages(current.messages),
-          typeof current.clientSlug === "string" ? current.clientSlug : null,
-        )
-      : defaultBuilderMessages(),
-    facts: current ? parseFacts(current.facts) : null,
-    clientSlug: current?.clientSlug ?? null,
+    messages: defaultBuilderMessages(),
+    facts: null,
+    clientSlug: null,
   }
-  const doc = current
-    ? await payload.update({ collection: COLLECTION, id: current.id, data, depth: 0, overrideAccess: true })
-    : await payload.create({ collection: COLLECTION, data, depth: 0, overrideAccess: true })
-  const thread = toThread(doc as BuilderSession)
-  if (!thread) throw new Error("builder_session_invalid")
-  return thread
+  try { await payload.create({ collection: COLLECTION, data, depth: 0, overrideAccess: true }) }
+  catch (error) {
+    const winner = await payload.find({ collection: COLLECTION, where: { customerEmail: { equals: customerEmail } },
+      limit: 1, depth: 0, overrideAccess: true, select: { customerEmail: true } })
+    if (!winner.docs.length) throw error
+  }
 }
 
 export async function saveBuilderThread(
   payload: Payload,
   thread: BuilderThread,
+  customerAccountId?: number,
 ): Promise<BuilderThread> {
   const parsed = BuilderThreadSchema.parse({
     ...thread,
@@ -131,6 +139,9 @@ export async function saveBuilderThread(
     overrideAccess: true,
   })
   const current = existing.docs[0] as BuilderSession | undefined
+  if (current?.customerAccount && relationshipId(current.customerAccount) !== String(customerAccountId)) {
+    throw new CustomerIdentityError("E_CUSTOMER_IDENTITY_CONFLICT")
+  }
   const data = {
     customerEmail: parsed.customerEmail,
     displayName: parsed.displayName,
@@ -139,6 +150,7 @@ export async function saveBuilderThread(
     messages: parsed.messages,
     facts: parsed.facts,
     clientSlug: parsed.clientSlug,
+    ...(customerAccountId ? { customerAccount: customerAccountId } : {}),
   }
   const doc = current
     ? await payload.update({ collection: COLLECTION, id: current.id, data, depth: 0, overrideAccess: true })

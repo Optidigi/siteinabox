@@ -176,7 +176,7 @@ export function LoginForm({
     }
     const result = await requestUnifiedMagicLinkAction({ ok: false, message: "" }, formData)
     setPending(false)
-    if (result.ok) status.success(result.message || t("magicLinkGenericSuccess"))
+    if (result.ok) status.success(t("magicLinkGenericSuccess"))
     else status.error(result.message || t("magicLinkFailed"))
   }
 

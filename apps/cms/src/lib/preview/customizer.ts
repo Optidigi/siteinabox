@@ -1,4 +1,5 @@
 import "server-only"
+import type { CustomerAuthority } from "@/lib/auth/customerWorkspace"
 import type { Page as ContractPage, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
 import type { Tenant } from "@/payload-types"
 import { asRecord } from "@/lib/record"
@@ -81,6 +82,7 @@ export async function getPreviewCustomizerDataForGrant(input: {
   clientSlug: string
   customerEmail: string
   requestedPage?: string | null
+  customerAuthority?: CustomerAuthority
 }): Promise<PreviewCustomizerData> {
   const {
     clientSlug,
@@ -92,6 +94,8 @@ export async function getPreviewCustomizerDataForGrant(input: {
     clientSlug: input.clientSlug,
     email: input.customerEmail,
     pageSlug: input.requestedPage,
+    customerAuthority: input.customerAuthority,
+    renewExpired: true,
   })
 
   const settingsDoc = await getOrCreateSiteSettings(tenant.id)
@@ -144,10 +148,14 @@ export async function persistPreviewThemeForGrant(input: {
   clientSlug: string
   customerEmail: string
   theme: ThemeTokens
+  customerAuthority?: CustomerAuthority
 }): Promise<ThemeTokens | null> {
   const { payload, tenant } = await loadPreviewGrantContext({
     clientSlug: input.clientSlug,
     email: input.customerEmail,
+    customerAuthority: input.customerAuthority,
+    intent: "write",
+    renewExpired: true,
   })
   const parsed = themeSchema.safeParse(input.theme)
   if (!parsed.success) {
@@ -167,6 +175,7 @@ export async function persistPreviewThemeForGrant(input: {
 export async function approvePreviewForGrant(input: {
   clientSlug: string
   customerEmail: string
+  customerAuthority?: CustomerAuthority
 }): Promise<{
   approval: PreviewApprovalState
   payment: PreviewPaymentState
@@ -174,6 +183,9 @@ export async function approvePreviewForGrant(input: {
   const { payload, run } = await loadPreviewGrantContext({
     clientSlug: input.clientSlug,
     email: input.customerEmail,
+    customerAuthority: input.customerAuthority,
+    intent: "write",
+    renewExpired: true,
   })
 
   const now = new Date().toISOString()

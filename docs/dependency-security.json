@@ -2,9 +2,9 @@
   "schemaVersion": 2,
   "reviewedAt": "2026-10-21T12:12:07.747Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
-  "reviewOwner": "M13 built-app compatibility evidence review (Codex engineering; no risk waiver)",
+  "reviewOwner": "M14 verified-workspace compatibility evidence review (Codex engineering; no risk waiver)",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "dd66222cf8f59ffbb735321c2de500906d29e5748d5bd5819956d0f689f51116",
+  "configurationHash": "4faafb96f441de6a91a5ee5df02ffe73b1d4adac1eeb84105874530cb439447e",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -68,7 +68,7 @@
       "kind": "github-release",
       "url": "https://api.github.com/repos/aquasecurity/trivy/releases/latest",
       "selected": false,
-      "sha256": "3eed1e78d936065db4865bc19c33caf8fbfbaa161f86603b2355ea3cb8dfc95c"
+      "sha256": "2abca6b031934a30113ebb758cb195df4fe0ece7d9a45688589bb04319716ba3"
     },
     {
       "id": "node-releases",
@@ -89,7 +89,7 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/community.json",
       "selected": false,
-      "sha256": "5e9a678dc717dce8d7ee8a1c2f2b9b92d784a9c3593c78b5b964e270a886be4a"
+      "sha256": "af61f6faaacdb1dde98931803811314c7120c6a1aaf41f7761bcb8923d95a39f"
     },
     {
       "id": "go-advisory-index",
@@ -4923,9 +4923,9 @@
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "e2ecf17f76eb87fce17aa8a5777dcc3f3e446282ea4063bbf02932f3bf5d67a1",
+      "fingerprint": "493954e52f05efe1c90f8bb4e74254d1cdac48933931272d6cedd854f8c9baf4",
       "status": "blocked",
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Verified inventory: 255 package records, 73 vulnerability records, 80 native files and 8 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers. Full sharp.versions is captured, but opaque bundled native libraries do not have universal scanner/advisory coverage; independent component qualification remains required. M13 requalifies the eight changed helper bundles from the owning generator with unchanged frozen dependencies and preserved auth/current-password/session controls; the native/OS baseline is unchanged. Fresh hosted bytes must match this fingerprint; local generation alone is not candidate-image proof.",
+      "reason": "CMS privileged migration/auth helpers and image processing remain blocked for the existing unresolved native/OS findings. M14 reviews the eight changed generated helper bundles against actual M13 hosted native inventories and the unchanged frozen dependency graph; populated boot rehearsals preserve credentials and content, while new authority guards reject unsafe mappings. Local helper identities require exact final hosted-image matching and do not establish native security or production compatibility.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
@@ -4942,54 +4942,54 @@
       "reviewedVerificationRunAttempt": "1",
       "bundleQualification": {
         "kind": "local-generator-with-verified-native-baseline",
-        "baselineSourceSHA": "b0b817d410a8256dfdfaf748d17f26e39e3822c6",
-        "baselineImageId": "sha256:5a06123a424a2e5be35375cdf0b6a2f9e574e2e865151558aed6d4a4461117a1",
+        "baselineSourceSHA": "c20bad0970c4ded2abae4e0212f477811a336e1f",
+        "baselineImageId": "sha256:9040b6ba99c97de7008b301fe375ff812c846984dda658cf69038626a758eb07",
         "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
         "node": "24.22.0",
         "pnpm": "12.14.0",
         "bundledScripts": [
           {
             "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
-            "size": 14647592,
-            "sha256": "b12539cfbdc6c7eb508d8ab33a7224a2c36517dd99589839a4fac3374fe4d5ae"
+            "size": 14656944,
+            "sha256": "29627372ce6e07c99537c57731cff0433b868530d24a27fa610998e2db055f27"
           },
           {
             "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
-            "size": 14663805,
-            "sha256": "39732169412db44b7f3e70fee0efaa65a8ca07dd4ee6274c0936755c262012e5"
+            "size": 14673157,
+            "sha256": "94cbf03a032667255a403bf3e6a0d4b964f4315717e9413589206c52dd860773"
           },
           {
             "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
-            "size": 14675686,
-            "sha256": "e1e51dca27c3f487271eb139391461e24b1618cc57bbba3dbbfdc0d085151420"
+            "size": 14685038,
+            "sha256": "de2e8241b7c9e1b3453255de1ac31fbb1c5ae550152bd5a7d48c6d9d2918698a"
           },
           {
             "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
-            "size": 14646473,
-            "sha256": "46ded266196fa5fe5e420fd2b5d44d1d1fbdd2197f25ca8d4686ea600595ecad"
+            "size": 14655825,
+            "sha256": "a60c8d17d51b068d220478253e8a56397fb4a283c07838a64dc416e3b4436d94"
           },
           {
             "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
-            "size": 15491621,
-            "sha256": "e113af46c7d0b3cf39877e580cdbe04588e5049f61d5cce76b5313b057fb4323"
+            "size": 15511486,
+            "sha256": "04817b2e67a0e84a51f6daf342879c466d976a9de540e03c8588907ee0c88581"
           },
           {
             "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
-            "size": 14648407,
-            "sha256": "b2175076fd32eb16322ec50d0c4da672e471a3ac14e7b89fcd122e80e062d247"
+            "size": 14657759,
+            "sha256": "bdf8146af37955044bd5e109e3f7caa407bcce8a13f97ea627d61c12c0b66651"
           },
           {
             "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
-            "size": 14653723,
-            "sha256": "3f0b7c889f0c57ce051be7e22645caa288aa87701d4db8a6f5a2ef224f729cd8"
+            "size": 14663078,
+            "sha256": "17bd9c195aecea3274aab5abdef681fcf22c1b30c3929c8b8d800fffcbfa1eec"
           },
           {
             "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 14742974,
-            "sha256": "d6638999e66bbd0ecd33382d56f9c92eecbb9a0f3c9a1e262b83ae98061f0067"
+            "size": 14757366,
+            "sha256": "a5abb56baf8bacb9237d1447776978cfdd2bbf56ca35164302e773d9b67593fa"
           }
         ],
-        "limitation": "Native baseline plus exact local generated bundle identities; final candidate hosted-image match remains mandatory. All native/security blockers retained."
+        "limitation": "Actual M13 hosted native baseline plus exact M14 locally generated helper hashes; final candidate hosted-image match required. All findings and five blocked native assessments remain."
       }
     },
     {
@@ -5132,12 +5132,12 @@
     },
     {
       "id": "scanner-patch-age-recheck",
-      "classification": "supported_release",
-      "releaseBlocked": false,
+      "classification": "unresolved_blocker",
+      "releaseBlocked": true,
       "affectedSurface": "Isolated advisory scanner",
-      "reason": "Fresh latest metadata identifies Trivy v0.76.1 published 2026-10-21T11:18:34Z, below the 24-hour age floor. Retain independently pinned and verified 0.76.0; latest patch changes AWS, Docker and common dependencies, with no application finding waived.",
-      "reviewOwner": "M13 upstream drift review (Codex engineering; no risk waiver)",
-      "recheck": "At or after 2026-10-22T11:18:34Z, recheck release age and qualify scanner changes before substituting the pinned tool.",
+      "reason": "Fresh publisher v0.76.1 notes now identify certificate-distrust mitigations for the eMudhra CA incident/CVE-2026-111943, including Go 1.27.3 and updated Alpine trust. The patch remains below the 24-hour floor until 2026-10-22T11:18:34Z. Existing 0.76.0 stays pinned for engineering inventory; configured scanner/TLS applicability and compatible replacement remain unqualified release blockers, not an accepted risk.",
+      "reviewOwner": "M14 primary-fact drift review (Codex engineering; no risk waiver)",
+      "recheck": "At or after 2026-10-22T11:18:34Z and before release, qualify the security patch, scanner transport/trust and refreshed inventories; preserve current findings until independently resolved.",
       "expiresAt": "2026-10-22T11:18:34.000Z",
       "sources": [
         "scanner-release",

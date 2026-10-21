@@ -1,3 +1,4 @@
+import { verifiedCustomerFixture } from "../_helpers/verifiedCustomerFixture"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -101,12 +102,8 @@ vi.mock("next-intl/server", () => ({
   }),
 }))
 
-vi.mock("@/lib/preview/betterAuth", () => ({
-  previewAuth: {
-    api: {
-      getSession: mocks.getSession,
-    },
-  },
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({
+  getVerifiedPreviewCustomer: mocks.getSession,
 }))
 
 vi.mock("@/lib/preview/previewAccess", () => ({
@@ -342,7 +339,7 @@ describe("preview checkout domain suggestion action", () => {
     vi.spyOn(console, "info").mockImplementation(() => {})
     vi.spyOn(console, "error").mockImplementation(() => {})
     vi.spyOn(console, "warn").mockImplementation(() => {})
-    mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
+    mocks.getSession.mockResolvedValue(verifiedCustomerFixture())
     mocks.loadPreviewGrantContext.mockResolvedValue({
       payload: { update: mocks.payloadUpdate },
       run: { id: 500, updatedAt: "draft-500" },
@@ -2158,9 +2155,7 @@ describe("preview checkout domain suggestion action", () => {
   })
 
   it("derives period-end cancellation only from authenticated checkout authority", async () => {
-    mocks.getSession.mockResolvedValue({
-      user: { id: "preview-user-7", email: "Customer@Example.com" },
-    })
+    mocks.getSession.mockResolvedValue(verifiedCustomerFixture("customer@example.com", "preview-user-7"))
     const agreement = {
       id: 88,
       state: "active",

@@ -4,7 +4,8 @@ import { getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { PreviewReview } from "@/components/preview/PreviewReview"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { getVerifiedPreviewCustomer } from "@/lib/auth/verifiedPreviewSession"
+import { CustomerAccessNotice } from "@/components/builder/CustomerAccessNotice"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import { submitPreviewReviewAction } from "./actions"
@@ -28,11 +29,10 @@ export default async function PreviewReviewPage({
   const t = await getTranslations("preview")
   const headerStore = await headers()
   const callbackPath = `/${normalizedClientSlug}/review`
-  const session = await previewAuth.api.getSession({
-    headers: headerStore,
-    query: { disableCookieCache: true },
-  })
-  const customerEmail = session?.user?.email
+  let customer
+  try { customer = await getVerifiedPreviewCustomer(headerStore) }
+  catch (error) { return <CustomerAccessNotice error={error} /> }
+  const customerEmail = customer?.account.email
 
   if (!customerEmail) {
     return (
@@ -49,6 +49,8 @@ export default async function PreviewReviewPage({
     const context = await loadPreviewGrantContext({
       clientSlug: normalizedClientSlug,
       email: customerEmail,
+      customerAuthority: customer!.authority,
+      renewExpired: true,
     })
 
     return (

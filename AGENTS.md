@@ -68,6 +68,8 @@ When changing `apps/cms`:
   needing original request data before field-level access can remove it.
 - Preserve password-change session invalidation and one-time bootstrap-token
   behavior.
+- For preview identity, workspace binding or membership changes, read the
+  [authentication authority contract](docs/contracts/authentication.md#verified-customer-workspace-authority).
 - `packages/ui` owns primitives. CMS UI paths are compatibility re-exports;
   application composites remain outside `src/components/ui/`.
 - CMS preview, editor, and public output share the rendering contract. Do not

@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState, useMemo } from "react"
+import { useActionState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2, Mail } from "lucide-react"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { Button } from "@siteinabox/ui/components/button"
@@ -18,10 +19,11 @@ export function BuilderAuthGate({
   intent: "login" | "register"
   localSessionHref?: string | null
 }) {
+  const t = useTranslations("auth")
   const [state, formAction, pending] = useActionState(requestBuilderMagicLinkAction, initialState)
   const isRegister = intent === "register"
   const termsHref = CURRENT_INTAKE_TERMS_ACCEPTANCE.url
-  const title = useMemo(() => (isRegister ? "Maak je builder-account" : "Log in om verder te bouwen"), [isRegister])
+  const title = isRegister ? t("createAccount") : t("signIn")
 
   return (
     <div data-siab-builder className="flex min-h-dvh flex-col bg-[var(--background)] text-[var(--foreground)]">
@@ -36,19 +38,19 @@ export function BuilderAuthGate({
           </p>
           <h1 className="mt-1 text-2xl font-bold text-[var(--card-foreground)]">{title}</h1>
           <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            We sturen een inloglink naar je mail. Geen wachtwoord.
+            {t("createAccountSubtitle")}
           </p>
           <input type="hidden" name="intent" value={intent} />
 
           {isRegister ? (
             <div className="mt-5 grid gap-1.5">
-              <label htmlFor="builder-register-name" className="text-sm font-semibold">Naam</label>
+              <label htmlFor="builder-register-name" className="text-sm font-semibold">{t("name")}</label>
               <Input id="builder-register-name" name="displayName" required minLength={2} autoComplete="name" />
             </div>
           ) : null}
 
           <div className="mt-4 grid gap-1.5">
-            <label htmlFor="builder-register-email" className="text-sm font-semibold">E-mail</label>
+            <label htmlFor="builder-register-email" className="text-sm font-semibold">{t("email")}</label>
             <Input
               id="builder-register-email"
               name="email"
@@ -64,33 +66,33 @@ export function BuilderAuthGate({
             <div className="mt-5 flex flex-col gap-3 border-t-2 border-[var(--border)] pt-4">
               <label className="flex cursor-pointer items-start gap-3 text-sm">
                 <input type="checkbox" name="businessUseAccepted" required className="mt-1 size-4 shrink-0" />
-                <span>Ik vraag dit aan voor een onderneming of bedrijf in oprichting.</span>
+                <span>{t("businessUse")}</span>
               </label>
               <label className="flex cursor-pointer items-start gap-3 text-sm">
                 <input type="checkbox" name="termsAccepted" required className="mt-1 size-4 shrink-0" />
                 <span>
-                  Ik ga akkoord met de{" "}
+                  {t("termsAcceptLead")}{" "}
                   <a className="font-semibold underline" href={termsHref} target="_blank" rel="noopener noreferrer">
-                    algemene voorwaarden
+                    {t("termsLinkLabel")}
                   </a>
                   .
                 </span>
               </label>
               <label className="flex cursor-pointer items-start gap-3 text-sm">
                 <input type="checkbox" name="marketingOptIn" className="mt-1 size-4 shrink-0" />
-                <span className="text-[var(--muted-foreground)]">Stuur mij tips en updates (optioneel).</span>
+                <span className="text-[var(--muted-foreground)]">{t("marketingOptIn")}</span>
               </label>
             </div>
           ) : null}
 
           <Button type="submit" variant="brand" disabled={pending} className="mt-6 w-full">
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />}
-            {isRegister ? "Stuur registratielink" : "Stuur inloglink"}
+            {isRegister ? t("sendRegisterLink") : t("continueWithMagicLink")}
           </Button>
 
           {state.message ? (
-            <p className={`mt-3 text-sm ${state.ok ? "text-[var(--muted-foreground)]" : "text-[var(--destructive)]"}`}>
-              {state.message}
+            <p role={state.ok ? "status" : "alert"} className={`mt-3 text-sm ${state.ok ? "text-[var(--muted-foreground)]" : "text-[var(--destructive)]"}`}>
+              {state.ok ? t("magicLinkGenericSuccess") : state.message}
             </p>
           ) : null}
 
@@ -105,9 +107,9 @@ export function BuilderAuthGate({
           ) : null}
 
           <p className="mt-6 text-sm text-[var(--muted-foreground)]">
-            {isRegister ? "Heb je al een preview?" : "Nog geen account?"}{" "}
+            {isRegister ? t("haveAccount") : t("noAccount")}{" "}
             <a className="font-semibold underline" href={isRegister ? "/login" : "/login?intent=register"}>
-              {isRegister ? "Inloggen" : "Registreren"}
+              {isRegister ? t("signIn") : t("register")}
             </a>
           </p>
         </form>

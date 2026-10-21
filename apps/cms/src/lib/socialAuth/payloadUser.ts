@@ -2,6 +2,7 @@ import { getPayload } from "payload"
 import { APIError } from "better-auth/api"
 import config from "@/payload.config"
 import type { User } from "@/payload-types"
+import { assertPayloadCustomerActive } from "@/lib/auth/payloadCustomerAccess"
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase()
 
@@ -37,6 +38,8 @@ export async function resolvePayloadUserForSocialSignup(user: {
   }
 
   const payloadUser = result.docs[0] as User
+  try { await assertPayloadCustomerActive(payload, payloadUser.id) }
+  catch { throw new APIError("UNAUTHORIZED", { message: "The linked CMS user is not eligible for login." }) }
   if (!hasValidRoleTenantShape(payloadUser)) {
     throw new APIError("UNAUTHORIZED", {
       message: "The linked CMS user is not eligible for login.",

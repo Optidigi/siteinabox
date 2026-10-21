@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { SendHorizontal } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import { Textarea } from "@siteinabox/ui/components/textarea"
@@ -10,6 +11,7 @@ import { BUILDER_CHAT_WELL_CLASS } from "@/lib/builder/thread"
 export function BuilderComposer({
   message,
   busy,
+  error = null,
   layout = "docked",
   placeholder,
   minLength = 2,
@@ -18,12 +20,14 @@ export function BuilderComposer({
 }: {
   message: string
   busy: boolean
+  error?: string | null
   layout?: "stage" | "docked"
   placeholder?: string
   minLength?: number
   onMessageChange: (value: string) => void
   onSend: () => void
 }) {
+  const t = useTranslations("auth")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -48,6 +52,7 @@ export function BuilderComposer({
       }}
     >
       <div className={cn("mx-auto flex w-full flex-col gap-3", BUILDER_CHAT_WELL_CLASS)}>
+        {error ? <p id="builder-request-error" role="alert" className="text-sm text-destructive">{error}</p> : null}
         <div
           className={cn(
             "border-2 border-border bg-card p-2",
@@ -63,6 +68,8 @@ export function BuilderComposer({
             placeholder={placeholder}
             rows={layout === "stage" ? 4 : 3}
             disabled={busy}
+            aria-describedby={error ? "builder-request-error" : undefined}
+            aria-label={t("customerMessage")}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault()
@@ -83,17 +90,17 @@ export function BuilderComposer({
               disabled={busy || message.trim().length < minLength}
             >
               <SendHorizontal className="size-4 shrink-0" />
-              Stuur
+              {t("customerSend")}
             </Button>
           </div>
         </div>
         {layout === "docked" ? (
           <p className="hidden flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] text-muted-foreground lg:flex">
             <kbd className="siab-builder-kbd">Enter</kbd>
-            <span>verzenden</span>
+            <span>{t("customerSend")}</span>
             <span aria-hidden>·</span>
             <kbd className="siab-builder-kbd">Shift+Enter</kbd>
-            <span>nieuwe regel</span>
+            <span>{t("customerNewLine")}</span>
           </p>
         ) : null}
       </div>

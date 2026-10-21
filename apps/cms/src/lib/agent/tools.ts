@@ -1,4 +1,5 @@
 import type { Payload } from "payload"
+import { assertCustomerAccess, type CustomerAuthority } from "@/lib/auth/customerWorkspace"
 import {
   AppointmentScheduleSettingsSchema,
   BACKGROUND_MODE_IDS,
@@ -19,12 +20,16 @@ export type AgentWriteContext = {
   payload: Payload
   tenantId: string | number
   user?: User | null
+  customerAuthority?: CustomerAuthority
 }
 
-const collectionWrite = (ctx: AgentWriteContext): { overrideAccess: boolean; user?: User } =>
-  ctx.user
+const collectionWrite = async (ctx: AgentWriteContext): Promise<{ overrideAccess: boolean; user?: User }> => {
+  if (ctx.customerAuthority) await assertCustomerAccess(ctx.payload, ctx.customerAuthority,
+    { intent: "write", tenantId: ctx.tenantId })
+  return ctx.user
     ? { overrideAccess: false, user: ctx.user }
     : { overrideAccess: true }
+}
 
 const WEEKDAY_WINDOWS = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const
 
@@ -34,7 +39,7 @@ const findTenantSettings = async (ctx: AgentWriteContext): Promise<SiteSetting |
     where: { tenant: { equals: ctx.tenantId } },
     limit: 1,
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
   return found.docs[0] as SiteSetting | undefined
 }
@@ -50,7 +55,7 @@ const findPageBySlug = async (ctx: AgentWriteContext, pageSlug: string): Promise
     },
     limit: 1,
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
   return found.docs[0] as Page | undefined
 }
@@ -90,7 +95,7 @@ export const setAppointments = async (
     id: existing.id,
     data: { appointments: parsed },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
   return parsed
 }
@@ -112,7 +117,7 @@ export const setContact = async (
       },
     },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }
 
@@ -134,7 +139,7 @@ export const updateSectionProps = async (
     id: page.id,
     data: { blocks },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }
 
@@ -149,7 +154,7 @@ export const setHours = async (
     id: existing.id,
     data: { hours },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }
 
@@ -189,7 +194,7 @@ export const replaceSection = async (
     id: page.id,
     data: { blocks },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }
 
@@ -357,7 +362,7 @@ export const patchSection = async (
     id: page.id,
     data: { blocks },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }
 
@@ -395,7 +400,7 @@ export const removeUnavailableBlocks = async (
     id: page.id,
     data: { blocks: next },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
   return { removed, remaining: next.length }
 }
@@ -441,7 +446,7 @@ export const setChrome = async (
       },
     },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }
 
@@ -462,6 +467,6 @@ export const setSeo = async (
       },
     },
     depth: 0,
-    ...collectionWrite(ctx),
+    ...await collectionWrite(ctx),
   })
 }

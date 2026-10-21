@@ -169,6 +169,13 @@
     "signInSubtitle": "Log in om je websites te beheren",
     "resetPasswordTitle": "Wachtwoord resetten",
     "setNewPasswordTitle": "Nieuw wachtwoord instellen",
+    "customerAccessTitle": "Toegang tot de werkruimte niet beschikbaar",
+    "customerMessage": "Bericht over je website",
+    "customerSend": "Stuur",
+    "customerNewLine": "Nieuwe regel",
+    "customerSignOut": "Uitloggen",
+    "customerHistoryUnavailable": "We kunnen dit account niet veilig herstellen. Je opgeslagen werk is bewaard. Neem contact op met ondersteuning voordat je verdergaat.",
+    "customerWorkspaceUnavailable": "Log in bij de werkruimte van je bestaande website. Is je toegang ingetrokken of kan je werk niet worden hersteld? Neem contact op met ondersteuning; opnieuw registreren maakt geen tweede werkruimte.",
     "backToSignIn": "Terug naar inloggen"
   },
   "dashboard": {

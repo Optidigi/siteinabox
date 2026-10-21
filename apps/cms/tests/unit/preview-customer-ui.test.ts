@@ -122,7 +122,8 @@ describe("customer preview UI", () => {
     const route = read("src/app/(payload)/siab-media/[tenantId]/[...path]/route.ts")
     const access = read("src/lib/preview/previewAccess.ts")
 
-    expect(route).toContain("previewAuth.api.getSession")
+    expect(route).toContain("getVerifiedPreviewCustomer")
+    expect(route).toContain("assertCustomerAccess")
     expect(route).toContain("hasActivePreviewGrantForTenant")
     expect(route).toContain("isPreviewMediaHost")
     expect(access).toContain("hasActivePreviewGrantForTenant")
@@ -134,7 +135,7 @@ describe("customer preview UI", () => {
     const review = read("src/components/preview/PreviewReview.tsx")
 
     expect(page).toContain("isPreviewHost")
-    expect(page).toContain("previewAuth.api.getSession")
+    expect(page).toContain("getVerifiedPreviewCustomer")
     expect(action).toContain("clientApproval")
     expect(action).toContain("reviewNotes")
     expect(review).toContain("Textarea")

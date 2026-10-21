@@ -141,6 +141,8 @@ import * as migration_20260902_100000_appointment_effects from './20260902_10000
 import * as migration_20260905_200000_builder_sessions from './20260905_200000_builder_sessions';
 import * as migration_20261020_181335_cms_framework_security from './20261020_181335_cms_framework_security';
 import * as migration_20261020_214100_mail_transport_readiness from './20261020_214100_mail_transport_readiness';
+import * as migration_20261021_144531_customer_workspace_binding from './20261021_144531_customer_workspace_binding';
+import * as migration_20261021_144531_verified_customer_authority from './20261021_144531_verified_customer_authority';
 
 export const migrations = [
   {
@@ -856,6 +858,16 @@ export const migrations = [
   {
     up: migration_20261020_214100_mail_transport_readiness.up,
     down: migration_20261020_214100_mail_transport_readiness.down,
-    name: '20261020_214100_mail_transport_readiness'
+    name: '20261020_214100_mail_transport_readiness',
+  },
+  {
+    up: migration_20261021_144531_customer_workspace_binding.up,
+    down: migration_20261021_144531_customer_workspace_binding.down,
+    name: '20261021_144531_customer_workspace_binding',
+  },
+  {
+    up: migration_20261021_144531_verified_customer_authority.up,
+    down: migration_20261021_144531_verified_customer_authority.down,
+    name: '20261021_144531_verified_customer_authority'
   },
 ];

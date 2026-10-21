@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload"
 import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
+import { relationshipId } from "@/lib/relationshipId"
 
 export const BuilderSessions: CollectionConfig = {
   slug: "builder-sessions",
@@ -9,6 +10,23 @@ export const BuilderSessions: CollectionConfig = {
     plural: { en: "Builder sessions", nl: "Builder-sessies" },
   },
   lockDocuments: false,
+  hooks: { beforeChange: [async ({ data, originalDoc, req }) => {
+    if (!data) return data
+    const original = relationshipId(originalDoc?.customerAccount)
+    if (original && (("customerAccount" in data && relationshipId(data.customerAccount) !== original) ||
+        ("customerEmail" in data && data.customerEmail !== originalDoc.customerEmail))) {
+      throw new Error("A verified workspace binding cannot be replaced.")
+    }
+    const accountId = relationshipId(data.customerAccount) ?? original
+    if (accountId) {
+      const account = await req.payload.findByID({ collection: "customer-accounts", id: accountId,
+        overrideAccess: true, depth: 0, req })
+      if (account.revokedAt || account.email !== (data.customerEmail ?? originalDoc?.customerEmail)) {
+        throw new Error("Verified workspace access is required.")
+      }
+    }
+    return data
+  }] },
   access: {
     create: isSuperAdmin,
     read: isSuperAdmin,
@@ -25,6 +43,8 @@ export const BuilderSessions: CollectionConfig = {
   },
   fields: [
     { name: "customerEmail", type: "email", required: true, unique: true, index: true },
+    { name: "customerAccount", type: "relationship", relationTo: "customer-accounts", unique: true,
+      access: { create: () => false, update: () => false } },
     { name: "displayName", type: "text", required: true },
     { name: "contactPhone", type: "text", defaultValue: "" },
     {

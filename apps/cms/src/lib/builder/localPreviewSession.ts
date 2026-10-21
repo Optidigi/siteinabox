@@ -25,67 +25,27 @@ const LOCAL_LEGAL = {
   marketingOptIn: false,
 } as const
 
-const PREVIEW_AUTH_TABLES_SQL = `
-CREATE TABLE IF NOT EXISTS preview_auth_users (
-  id text PRIMARY KEY NOT NULL,
-  name text NOT NULL,
-  email text NOT NULL UNIQUE,
-  "emailVerified" boolean NOT NULL,
-  image text,
-  "createdAt" timestamptz NOT NULL,
-  "updatedAt" timestamptz NOT NULL
-);
-CREATE TABLE IF NOT EXISTS preview_auth_sessions (
-  id text PRIMARY KEY NOT NULL,
-  "expiresAt" timestamptz NOT NULL,
-  token text NOT NULL UNIQUE,
-  "createdAt" timestamptz NOT NULL,
-  "updatedAt" timestamptz NOT NULL,
-  "ipAddress" text,
-  "userAgent" text,
-  "userId" text NOT NULL REFERENCES preview_auth_users(id) ON DELETE cascade
-);
-CREATE TABLE IF NOT EXISTS preview_auth_accounts (
-  id text PRIMARY KEY NOT NULL,
-  "accountId" text NOT NULL,
-  "providerId" text NOT NULL,
-  "userId" text NOT NULL REFERENCES preview_auth_users(id) ON DELETE cascade,
-  "accessToken" text,
-  "refreshToken" text,
-  "idToken" text,
-  "accessTokenExpiresAt" timestamptz,
-  "refreshTokenExpiresAt" timestamptz,
-  scope text,
-  password text,
-  "createdAt" timestamptz NOT NULL,
-  "updatedAt" timestamptz NOT NULL
-);
-CREATE TABLE IF NOT EXISTS preview_auth_verifications (
-  id text PRIMARY KEY NOT NULL,
-  identifier text NOT NULL,
-  value text NOT NULL,
-  "expiresAt" timestamptz NOT NULL,
-  "createdAt" timestamptz NOT NULL,
-  "updatedAt" timestamptz NOT NULL
-);
-CREATE INDEX IF NOT EXISTS preview_auth_sessions_userId_idx ON preview_auth_sessions ("userId");
-CREATE INDEX IF NOT EXISTS preview_auth_accounts_userId_idx ON preview_auth_accounts ("userId");
-CREATE INDEX IF NOT EXISTS preview_auth_verifications_identifier_idx ON preview_auth_verifications (identifier);
-`
-
-async function ensurePreviewAuthTables(): Promise<void> {
+async function assertPreviewAuthSchema(): Promise<void> {
   const connectionString = process.env.DATABASE_URI
   if (!connectionString) throw new Error("DATABASE_URI is required")
   const pool = new Pool({ connectionString, max: 1 })
   try {
-    await pool.query(PREVIEW_AUTH_TABLES_SQL)
+    const result = await pool.query<{ ready: boolean }>(`SELECT
+      to_regclass('public.customer_accounts') IS NOT NULL AND
+      EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+        AND table_name='preview_auth_users' AND column_name='firstVerifiedAt') AND
+      EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+        AND table_name='preview_auth_users' AND column_name='verificationHistoryUnknown') AND
+      EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=to_regclass('public.preview_auth_users')
+        AND tgname='siab_first_verification' AND NOT tgisinternal AND tgenabled='O') AS ready`)
+    if (result.rows[0]?.ready !== true) throw new Error("Apply the committed CMS migrations before local preview login.")
   } finally {
     await pool.end()
   }
 }
 
 export async function createLocalPreviewSessionCookie(): Promise<LocalPreviewSessionCookie> {
-  await ensurePreviewAuthTables()
+  await assertPreviewAuthSchema()
   const payload = await getPayload({ config })
   await upsertBuilderRegistration(payload, {
     email: LOCAL_BUILDER_EMAIL,

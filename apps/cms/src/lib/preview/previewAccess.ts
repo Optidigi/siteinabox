@@ -4,6 +4,8 @@ import config from "@/payload.config"
 import type { Page, PreviewAccessGrant, SiteGenerationRun, Tenant } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { slugify } from "@/lib/slugify"
+import { assertCustomerAccess, withCustomerWorkspace, type CustomerAuthority } from "@/lib/auth/customerWorkspace"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 
 export const DEFAULT_PREVIEW_GRANT_TTL_DAYS = 14
 
@@ -29,6 +31,9 @@ export type PreviewAccessRequest = {
   email: string
   pageSlug?: string | null
   now?: Date
+  customerAuthority?: CustomerAuthority
+  intent?: "read" | "write" | "purchase"
+  renewExpired?: boolean
 }
 
 const normalizeEmail = (value: string): string => value.trim().toLowerCase()
@@ -157,6 +162,9 @@ export async function loadPreviewGrantAuthority(request: PreviewAccessRequest): 
   const customerEmail = normalizeEmail(request.email)
   const clientSlug = normalizePreviewClientSlug(request.clientSlug)
   if (!customerEmail || !clientSlug) throw new Error("Preview access is not available")
+  const account = request.customerAuthority ? await assertCustomerAccess(payload, request.customerAuthority,
+    { intent: request.intent ?? "read" }) : null
+  if (account && account.email !== customerEmail) throw new CustomerIdentityError("E_CUSTOMER_IDENTITY_CONFLICT")
 
   const grants = await payload.find({
     collection: "preview-access-grants",
@@ -172,7 +180,8 @@ export async function loadPreviewGrantAuthority(request: PreviewAccessRequest): 
     overrideAccess: true,
   })
   const now = request.now ?? new Date()
-  const grant = (grants.docs as PreviewAccessGrant[]).find((entry) => grantIsActive(entry, now))
+  let grant = (grants.docs as PreviewAccessGrant[]).find((entry) => grantIsActive(entry, now) ||
+    (request.renewExpired === true && request.customerAuthority && !entry.revokedAt && Number.isFinite(Date.parse(entry.expiresAt))))
   if (!grant) throw new Error("Preview access is not available")
 
   const tenant = typeof grant.tenant === "object" && grant.tenant ? grant.tenant as Tenant : await payload.findByID({
@@ -204,7 +213,68 @@ export async function loadPreviewGrantAuthority(request: PreviewAccessRequest): 
     throw new Error("Preview run is not available")
   }
 
+  if (account && request.customerAuthority) {
+    if (!relationshipId(account.tenant)) {
+      // A first verified recipient may have a pre-existing site-ready grant.
+      // Only one unambiguous stored tenant can establish the permanent binding;
+      // a caller's slug cannot choose between historical workspaces.
+      const historical = await payload.find({ collection: "preview-access-grants",
+        where: { customerEmail: { equals: customerEmail } }, limit: 101, depth: 0, overrideAccess: true })
+      const tenants = new Set(historical.docs.map(entry => relationshipId(entry.tenant)))
+      if (historical.totalDocs > 100 || tenants.size !== 1 || !tenants.has(String(tenant.id))) {
+        throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+      }
+      await withCustomerWorkspace(payload, request.customerAuthority, async bound => {
+        if (bound && String(bound.id) !== String(tenant.id)) throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+        return { doc: bound ?? tenant, operation: "updated" }
+      })
+    }
+    await assertCustomerAccess(payload, request.customerAuthority, { intent: request.intent ?? "read", tenantId: tenant.id })
+    if (!grantIsActive(grant, now)) {
+      const expired = grant
+      let renewed: PreviewAccessGrant | null = null
+      await withCustomerWorkspace(payload, request.customerAuthority, async (bound, req) => {
+        if (!bound || String(bound.id) !== String(tenant.id)) throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+        const current = await payload.findByID({ collection: "preview-access-grants", id: expired.id,
+          overrideAccess: true, depth: 0, req })
+        if (current.revokedAt || normalizeEmail(current.customerEmail) !== customerEmail ||
+            !sameRelationshipId(current.tenant, tenant.id) || !sameRelationshipId(current.generationRun, run.id)) {
+          throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
+        }
+        renewed = await payload.update({ collection: "preview-access-grants", id: current.id,
+          data: { expiresAt: defaultGrantExpiry() }, overrideAccess: true, depth: 0, req })
+        return { doc: bound, operation: "updated" }
+      }, "read")
+      if (!renewed) throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
+      grant = renewed
+    }
+  }
+
   return { grant, payload, tenant, run, customerEmail, clientSlug }
+}
+
+/** Renewable grant lookup for an actual verified account, never an email hint. */
+export async function loadVerifiedCustomerGrant(input: {
+  payload: Payload
+  email: string
+  authority: CustomerAuthority
+  clientSlug?: string
+}): Promise<PreviewGrantAuthority | null> {
+  if (input.clientSlug) return loadPreviewGrantAuthority({ email: input.email, clientSlug: input.clientSlug,
+    customerAuthority: input.authority, renewExpired: true })
+  const account = await assertCustomerAccess(input.payload, input.authority, { intent: "read" })
+  const tenantId = relationshipId(account.tenant)
+  const results = await input.payload.find({ collection: "preview-access-grants",
+    where: { and: [{ customerEmail: { equals: account.email } }, ...(tenantId ? [{ tenant: { equals: tenantId } }] : [])] },
+    sort: "-updatedAt", limit: 101, depth: 0, overrideAccess: true })
+  if (results.totalDocs > 100) throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_CONFLICT")
+  const grant = results.docs.find(entry => !entry.revokedAt)
+  if (!grant) {
+    if (results.docs.length) throw new CustomerIdentityError("E_CUSTOMER_WORKSPACE_UNAVAILABLE")
+    return null
+  }
+  return loadPreviewGrantAuthority({ email: account.email, clientSlug: grant.clientSlug,
+    customerAuthority: input.authority, renewExpired: true })
 }
 
 export async function loadPreviewGrantContext(request: PreviewAccessRequest): Promise<PreviewGrantContext> {
