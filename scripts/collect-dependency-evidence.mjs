@@ -36,6 +36,20 @@ export async function dependencyIdentities(root) {
   return { graph: await digest(graphFiles), configuration: await digest(configurationFiles) }
 }
 
+/** Public metadata deliberately carries no caller credentials or organization restrictions. */
+export async function readPublicPublisherJSON(url) {
+  const response = await fetch(url, { signal: AbortSignal.timeout(30000), redirect: "error",
+    headers: { Accept: "application/json" } })
+  if (!response.ok) throw new Error("Primary publisher evidence unavailable: HTTP " + response.status)
+  const chunks = []; let size = 0
+  for await (const chunk of response.body) {
+    size += chunk.length
+    if (size > maxOutput) throw new Error("Publisher evidence exceeds its completeness bound")
+    chunks.push(chunk)
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"))
+}
+
 export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
   const url = new URL(descriptor.url)
   if (url.protocol !== "https:" || !["api.github.com", "raw.githubusercontent.com", "registry.npmjs.org", "nodejs.org", "secdb.alpinelinux.org", "vuln.go.dev"].includes(url.hostname) || url.username || url.password || !descriptor.id) {
@@ -46,20 +60,8 @@ export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
     const repository = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/(?:releases\/(?:latest|tags\/.+)|git\/ref\/tags\/.+)$/)?.[1]
     if (!/^\/advisories\/GHSA-[a-z0-9-]+$/.test(url.pathname) && !primaryRepos.has(repository)) throw new Error("Publisher evidence must use a supported public primary API, not account/repository operations")
   }
-  let body
-  if (url.hostname === "api.github.com") {
-    body = readGitHubJSON ? await readGitHubJSON(url.href) : JSON.parse(execFileSync("gh", ["api", url.href], { encoding: "utf8", timeout: 30000, maxBuffer: maxOutput }))
-  } else {
-    const response = await fetch(url, { signal: AbortSignal.timeout(30000), redirect: "error" })
-    if (!response.ok) throw new Error("Primary publisher evidence unavailable: " + descriptor.id + " HTTP " + response.status)
-    const chunks = []; let size = 0
-    for await (const chunk of response.body) {
-      size += chunk.length
-      if (size > maxOutput) throw new Error("Publisher evidence exceeds its completeness bound")
-      chunks.push(chunk)
-    }
-    body = JSON.parse(Buffer.concat(chunks).toString("utf8"))
-  }
+  const body = url.hostname === "api.github.com" && readGitHubJSON
+    ? await readGitHubJSON(url.href) : await readPublicPublisherJSON(url.href)
   // Use selected publisher facts, not changing download counters or presentation.
   let facts = body
   if (descriptor.kind === "github-advisory") {

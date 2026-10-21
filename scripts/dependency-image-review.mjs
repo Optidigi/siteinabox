@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { isDeepStrictEqual } from "node:util"
 import { sha256File } from "./image-artifact.mjs"
-import { validateImageInventory, NativeAnalysisIncompleteError } from "./dependency-image-evidence.mjs"
+import { validateImageInventory, NativeAnalysisIncompleteError, requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { infrastructure } from "./infrastructure-images.mjs"
 import { reviewedBlockers, assertReviewedFindings } from "./dependency-security-policy.mjs"
 
@@ -68,8 +68,7 @@ export async function loadDependencyImages(directory, sourceSHA) {
     try {
       actual = validateImageInventory({ image: { imageId: image.imageId, sourceSHA: image.sourceSHA,
         runtimePlatform: image.runtimePlatform }, report, scanner: image.scanner,
-      requiredTypes: image.application === "cms-cloudflared" ? ["gobinary"] :
-        ["cms", "renderer"].includes(image.application) ? ["alpine", "node-pkg"] : ["alpine"], requiredTargets: image.nativeInventory.goTargets })
+      requiredTypes: requiredImageAnalysisTypes(image.application), requiredTargets: image.nativeInventory.goTargets })
     } catch (error) {
       if (!(error instanceof NativeAnalysisIncompleteError)) throw error
       actual = error.inventory; gaps = { code: error.code, missingTargets: error.missingTargets, missingTypes: error.missingTypes }
@@ -80,9 +79,8 @@ export async function loadDependencyImages(directory, sourceSHA) {
 }
 
 export function nativeReviewFingerprint(image) {
-  // Built JS bundle hashes stay in exact-image evidence; they can include build
-  // revision data. The review binds source configuration plus immutable native bytes.
-  return digest({ runtimePlatform: image.runtimePlatform, files: image.nativeInventory.files, goTargets: image.nativeInventory.goTargets ?? [] })
+  return digest({ runtimePlatform: image.runtimePlatform, files: image.nativeInventory.files,
+    goTargets: image.nativeInventory.goTargets ?? [], bundledScripts: image.nativeInventory.bundledScripts ?? [] })
 }
 
 export function validateImageReview(record, images, release = false) {

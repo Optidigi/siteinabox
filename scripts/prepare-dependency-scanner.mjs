@@ -1,3 +1,4 @@
+import { readPublicPublisherJSON } from "./collect-dependency-evidence.mjs"
 import { execFileSync } from "node:child_process"
 import { mkdir, readFile, writeFile, access, lstat } from "node:fs/promises"
 import { resolve } from "node:path"
@@ -35,7 +36,7 @@ async function prepare(root) {
   const cache = resolve(root, "artifacts/dependency-tools/trivy-cache")
   await ownedDirectory(directory, root, "verified scanner tools")
   await ownedDirectory(cache, root, "scanner advisory database")
-  const release = JSON.parse(execFileSync("gh", ["api", "repos/aquasecurity/trivy/releases/tags/v" + scannerPin.version], { encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024 }))
+  const release = await readPublicPublisherJSON("https://api.github.com/repos/aquasecurity/trivy/releases/tags/v" + scannerPin.version)
   if (release.draft || release.prerelease || release.tag_name !== "v" + scannerPin.version ||
       !Number.isFinite(Date.parse(release.published_at)) || Date.now() - Date.parse(release.published_at) < 1440 * 60000) throw new Error("Scanner publisher release is unavailable or ineligible")
   const archiveName = "trivy_" + scannerPin.version + "_Linux-64bit.tar.gz"

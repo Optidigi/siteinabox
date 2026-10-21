@@ -1,3 +1,4 @@
+import { requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { execFileSync, spawnSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
@@ -185,7 +186,7 @@ try {
   const archiveSha256 = await sha256File(archive)
   const dependencyInventory = await collectImageDependencies({ docker, root: process.cwd(), archive,
     image: { application: app, sourceSHA: revision, imageId, archiveSha256, runtimePlatform },
-    artifactDir, prefix, resourceId, requiredTypes: app === "site" ? ["alpine"] : ["alpine", "node-pkg"] })
+    artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes(app) })
   const infrastructureDependencies = []
   if (app === "cms") {
     for (const key of ["postgres", "cloudflared"]) {
@@ -198,7 +199,7 @@ try {
       infrastructureDependencies.push(await collectImageDependencies({ docker, root: process.cwd(), archive: vendorArchive,
         image: { application: "cms-" + key, candidateSourceSHA: revision, imageId: vendorId,
           archiveSha256: await sha256File(vendorArchive), reference: pin.reference, runtimePlatform: { architecture: vendorArchitecture } },
-        artifactDir, prefix, resourceId, requiredTypes: key === "postgres" ? ["alpine"] : ["gobinary"] }))
+        artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes("cms-" + key) }))
     }
   }
   await writeFile(artifactDir + "/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,

@@ -42,3 +42,22 @@ test("complete evidence-supported clean bundles can qualify without a permanent 
   for (const assessment of record.nativeAssessments) assessment.status = "qualified"
   assert.equal(validateImageReview(record, images, true).releaseBlocked, false)
 })
+
+ test("changed, added and removed bundled scripts invalidate qualified assessments", () => {
+  for (const mutate of [
+    (bundles) => { bundles[0].sha256 = "b".repeat(64) },
+    (bundles) => { bundles.push({ path: "app/dist-runtime/new.mjs", sha256: "c".repeat(64) }) },
+    (bundles) => { bundles.pop() },
+  ]) {
+    const { record, images } = fixture()
+    images[0].inventory.findings = []; record.imageAdvisories = []
+    images[0].nativeInventory.bundledScripts = [{ path: "app/dist-runtime/migrate.mjs", sha256: "a".repeat(64) }]
+    for (const image of images) {
+      const assessment = record.nativeAssessments.find((entry) => entry.application === image.application)
+      assessment.fingerprint = nativeReviewFingerprint(image); assessment.status = "qualified"
+    }
+    assert.equal(validateImageReview(record, images, true).releaseBlocked, false)
+    mutate(images[0].nativeInventory.bundledScripts)
+    assert.throws(() => validateImageReview(record, images, true), /evidence changed or is unreviewed/)
+  }
+})

@@ -68,6 +68,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Retain complete scanner reports and diagnostics after partial failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-diagnostics-${{ matrix.app }}
+          path: |
+            artifacts/siab-verify-*/image-*.json
+            artifacts/siab-verify-*/image-*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   inventory:
     if: ${{ always() && github.ref == 'refs/heads/main' }}
     needs: [source-inventory, packaged-inventory]

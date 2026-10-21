@@ -1,3 +1,11 @@
+/** One analyzer contract for collection, retained-byte rescanning and admission. */
+export function requiredImageAnalysisTypes(application) {
+  const types = { cms: ["alpine", "node-pkg"], renderer: ["alpine", "node-pkg"],
+    site: ["alpine"], "cms-postgres": ["alpine"], "cms-cloudflared": ["gobinary"] }[application]
+  if (!types) throw new Error("Unknown dependency image application")
+  return types
+}
+
 export const scannerPin = {
   version: "0.76.0",
   archiveSha256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7",

@@ -1,3 +1,4 @@
+import { requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
@@ -30,8 +31,7 @@ export async function rescanDependencyImages({ root, directory, archiveDirectory
           candidateSourceSHA: sourceSHA, imageId: record.imageId, archiveSha256: record.archiveSha256,
           runtimePlatform: record.runtimePlatform, reference: record.reference },
         nativeInventory: record.nativeInventory, outputPrefix: resolve(output, "image-" + record.application),
-        requiredTypes: record.application === "cms-cloudflared" ? ["gobinary"] :
-          ["cms", "renderer"].includes(record.application) ? ["alpine", "node-pkg"] : ["alpine"] }))
+        requiredTypes: requiredImageAnalysisTypes(record.application) }))
     }
     const evidence = { ...original, dependencyInventory: rescanned[0], infrastructureDependencies: app === "cms" ? rescanned.slice(1) : [] }
     await writeFile(resolve(output, "image-" + app + ".json"), JSON.stringify(evidence, null, 2) + "\n", { flag: "wx" })

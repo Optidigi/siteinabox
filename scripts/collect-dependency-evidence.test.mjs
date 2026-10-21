@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { mkdtemp, writeFile, mkdir, rm, symlink } from "node:fs/promises"
+import { mkdtemp, writeFile, mkdir, rm, symlink, chmod } from "node:fs/promises"
 import { execFileSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -72,4 +72,21 @@ test("actual GitHub medium severity is valid while private API paths never reach
   assert.equal((await fetchPublisherFact(descriptor, transport)).facts.severity, "medium")
   await assert.rejects(fetchPublisherFact({ ...descriptor, url: "https://api.github.com/user" }, transport), /public primary API/)
   assert.equal(reads, 1)
+})
+
+test("public GitHub facts do not inherit authenticated organization IP restrictions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "siab-public-publisher-"))
+  const originalFetch = globalThis.fetch; const originalPath = process.env.PATH
+  try {
+    await writeFile(join(root, "gh"), '#!/bin/sh\necho "authenticated organization IP denied" >&2\nexit 1\n')
+    await chmod(join(root, "gh"), 0o700); process.env.PATH = root + ":" + originalPath
+    globalThis.fetch = async (url, options) => {
+      assert.equal(String(url), "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0")
+      assert.equal(new Headers(options.headers).has("authorization"), false)
+      assert.equal(options.redirect, "error")
+      return Response.json({ tag_name: "v0.76.0", published_at: "2026-10-14T11:45:44Z", draft: false, prerelease: false, body: "fixture release" })
+    }
+    const fact = await fetchPublisherFact({ id: "public-scanner", kind: "github-release", url: "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0" })
+    assert.equal(fact.facts.tag, "v0.76.0")
+  } finally { globalThis.fetch = originalFetch; process.env.PATH = originalPath; await rm(root, { recursive: true, force: true }) }
 })

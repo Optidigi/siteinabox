@@ -55,9 +55,10 @@ Review duration is at most seven days. Changing an expiry alone is insufficient:
 current inputs, both audits, primary facts and applicable image inventories must
 still match. Any incompatible source/graph/path/severity/fix/native change needs
 fresh review. Publisher floors independently prevent known regressions even when
-an audit database omits a notice. Credentials stay in user scope or the existing
-read-only workflow token; no provider credential or new application startup
-variable is needed.
+an audit database omits a notice. Public publisher metadata is fetched without
+authentication, so organization IP restrictions on workflow tokens do not apply.
+Unavailable or rate-limited metadata still fails closed; no provider credential
+or new application startup variable is needed.
 
 Trivy 0.76.0 is isolated and verified against pinned official asset, checksum and
 binary digests. Collection disables telemetry, inherited scanner overrides and
@@ -72,7 +73,9 @@ The image path exports a never-started, labelled container filesystem. Native
 members and bundled migration code are hashed through tar pipes without host
 extraction, symlink traversal, model calls or application jobs. Node's full
 `process.versions`, CMS's full `sharp.versions`, OS inventories and artifact
-identities remain visible. Independent Go-binary presence must be reconciled
+identities remain visible. Native assessments bind the exact bundled-script
+paths and hashes; changed, added or removed bundles require fresh review, without
+revision normalization. Independent Go-binary presence must be reconciled
 with analyzer coverage. A controlled newer-esbuild probe was not catalogued by
 the selected scanner; this is an explicit analysis blocker, never a zero-finding
 result. Completed image smoke tests do not clear native advisory uncertainty.
