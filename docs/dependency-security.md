@@ -112,20 +112,22 @@ bound to the verified bytes, and publication never rebuilds the candidate.
 ## Current frontier
 
 The current reviewed baseline inventory comes from unpublished source
-`ec50353f6a16dd7b47e93b5a8cc6c586ec97923d` in
-[canonical run 39663238675, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39663238675).
-Its parents are main `d5479b36` and reviewed PR head `6aac6808`. Package/CMS,
-actual built-browser and all three packaged-image jobs passed. The aggregate
-correctly rejected changed advisory provenance; review found 21 fingerprint
-changes across 11 existing CVEs, limited to vendor-severity metadata and
-reference-list changes. Advisory/package/version/path/selected-severity/fix facts remain
-unchanged. All 198 dispositions remain blockers. These baseline identities do
-not replace fresh final-candidate source/run/artifact verification.
+`2d6f863cc2a9932a0ece9349cd49fd9cde0dadfe` in
+[canonical run 39677655252, attempt 3](https://github.com/Optidigi/siteinabox/actions/runs/39677655252).
+Its parents are main `d5479b36` and reviewed M14 PR head `e3e06b03`; its tree
+matches the merged M14 candidate. Package/CMS, actual built-browser, all three
+packaged images and the aggregate passed. The prior provenance review retained
+all 198 blocking dispositions. These baseline identities do not replace fresh
+final-candidate source/run/artifact verification.
 
-M14 preserves the frozen graph. Its eight CMS helper hashes now match actual
-hosted bytes, with all five native fingerprints unchanged. Fresh publisher
-review retains Better Auth 1.7.12, Node 24.22.1 and the scanner security-patch
-qualification blockers, plus the newly listed Alpine musl vendor fix. Release-age
+M15 preserves the frozen graph and rebinds its eight changed owner-generated CMS
+helper bundles to that actual M14 native baseline. Populated old/new boot
+rehearsals preserve credentials, outstanding links, verification history and
+uncertain delivery; local hashes still require exact final hosted matching.
+Fresh source review sees only Composer security-fix additions in the Alpine
+community data; none of the five retained image inventories ships Composer.
+Better Auth 1.7.12, Node 24.22.1, scanner security-patch qualification and the
+Alpine musl vendor fix remain unresolved blockers. Release-age
 recheck deadlines, the original global review expiry and all advisory/native
 blockers remain in force. No metadata refresh qualifies exploitability,
 publisher support or a compatible remediation.
