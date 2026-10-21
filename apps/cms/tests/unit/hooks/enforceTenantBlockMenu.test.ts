@@ -84,13 +84,21 @@ describe("enforceTenantBlockMenu", () => {
     const spy = vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = { tenant: { id: 42 }, blocks: [{ blockType: "hero" }] }
     await enforceTenantBlockMenu(hookArgs({ data, originalDoc: undefined }))
-    expect(spy).toHaveBeenCalledWith(42)
+    expect(spy).toHaveBeenCalledWith(42, {})
   })
 
   it("falls back to originalDoc.tenant when data.tenant is missing", async () => {
     const spy = vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = { blocks: [{ blockType: "hero" }] }
     await enforceTenantBlockMenu(hookArgs({ data, originalDoc: { tenant: 13 } }))
-    expect(spy).toHaveBeenCalledWith(13)
+    expect(spy).toHaveBeenCalledWith(13, {})
   })
+})
+
+
+it("retains the caller transaction when resolving the tenant manifest", async () => {
+  const spy = vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
+  const req = { transactionID: "synthetic-tenant-transaction" }
+  await enforceTenantBlockMenu(hookArgs({ data: { tenant: 42, blocks: [] }, req }))
+  expect(spy).toHaveBeenCalledWith(42, req)
 })

@@ -51,6 +51,7 @@ import { Pages } from "@/collections/Pages"
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { PreviewAccessGrants } from "@/collections/PreviewAccessGrants"
 import { BuilderSessions } from "@/collections/BuilderSessions"
+import { CustomerAccounts } from "@/collections/CustomerAccounts"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
@@ -141,6 +142,7 @@ export default buildConfig({
   }),
   editor: lexicalEditor(),
   collections: [
+    CustomerAccounts,
     Tenants,
     Users,
     Media,

@@ -1,4 +1,5 @@
-import { betterAuth } from "better-auth"
+import { betterAuth, type GenericEndpointContext } from "better-auth"
+import { APIError } from "better-auth/api"
 import { Pool } from "pg"
 import { nextCookies } from "better-auth/next-js"
 import { magicLink } from "better-auth/plugins"
@@ -9,6 +10,7 @@ import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialA
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
 import { sendCmsMagicLinkEmail } from "@/lib/auth/sendCmsMagicLinkEmail"
 import { CMS_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
+import { asRecord } from "@/lib/record"
 
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
@@ -73,6 +75,14 @@ const providerConfig = {
     : {}),
 }
 
+async function authorizeCmsSession(userId: string, requestContext: GenericEndpointContext | null): Promise<void> {
+  const adapter = requestContext?.context.internalAdapter ?? (await auth.$context).internalAdapter
+  const user = await adapter.findUserById(userId)
+  if (!user) throw new APIError("UNAUTHORIZED")
+  const payloadUser = await resolvePayloadUserForSocialSignup(user)
+  if (String(asRecord(user)?.payloadUserId) !== String(payloadUser.id)) throw new APIError("UNAUTHORIZED")
+}
+
 export const auth = betterAuth({
   appName: "SiteInABox",
   baseURL: getBetterAuthBaseURL(),
@@ -117,6 +127,10 @@ export const auth = betterAuth({
   },
   socialProviders: providerConfig,
   databaseHooks: {
+    session: { create: { before: async (session, context) => {
+      await authorizeCmsSession(session.userId, context)
+      return { data: session }
+    } } },
     user: {
       create: {
         before: async (user) => {

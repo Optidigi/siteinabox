@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { getMigrations } from "better-auth/db/migration"
 import type { Payload } from "payload"
+import { sql } from "@payloadcms/db-postgres"
 import { getTestPayload } from "./_helpers"
 
 describe("Better Auth schema compatibility with committed migrations", () => {
@@ -66,6 +67,18 @@ describe("Better Auth schema compatibility with committed migrations", () => {
     await context.internalAdapter.deleteSession(session.token)
     expect(await context.internalAdapter.findSession(session.token)).toBeNull()
   }, 30000)
+
+  it("requires the committed verification trigger before local preview login", async () => {
+    const { createLocalPreviewSessionCookie } = await import("@/lib/builder/localPreviewSession")
+    await payload.db.drizzle.execute(sql`ALTER TABLE preview_auth_users DISABLE TRIGGER siab_first_verification`)
+    try {
+      await expect(createLocalPreviewSessionCookie()).rejects.toThrow("Apply the committed CMS migrations")
+      const { rows } = await payload.db.drizzle.execute(sql`SELECT count(*) AS count FROM preview_auth_users`)
+      expect(Number(rows[0]?.count)).toBe(0)
+    } finally {
+      await payload.db.drizzle.execute(sql`ALTER TABLE preview_auth_users ENABLE TRIGGER siab_first_verification`)
+    }
+  })
 
   it("accepts the existing loopback builder cookie through the real preview SDK", async () => {
     const [{ createLocalPreviewSessionCookie }, { previewAuth }] = await Promise.all([

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { Rocket, Monitor, Tablet, Smartphone, LogOut, MessageSquare } from "lucide-react"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
@@ -54,11 +55,12 @@ const viewportClass: Record<Viewport, string> = {
 const previewOpenedKey = (slug: string) => `siab-builder-preview-opened:${slug}`
 
 function SignOutControl({ iconOnly }: { iconOnly?: boolean }) {
+  const t = useTranslations("auth")
   return (
     <form action={signOutBuilderAction}>
-      <Button type="submit" variant="outline" size={iconOnly ? "icon" : "sm"} aria-label="Uitloggen">
+      <Button type="submit" variant="outline" size={iconOnly ? "icon" : "sm"} aria-label={t("customerSignOut")}>
         <LogOut className="size-4" />
-        {iconOnly ? <span className="sr-only">Uitloggen</span> : "Uitloggen"}
+        {iconOnly ? <span className="sr-only">{t("customerSignOut")}</span> : t("customerSignOut")}
       </Button>
     </form>
   )
@@ -74,7 +76,9 @@ export function BuilderShell({
   initialFacts: BuilderFacts | null
   initialClientSlug: string | null
 }) {
+  const tAuth = useTranslations("auth")
   const [message, setMessage] = useState("")
+  const [accessError, setAccessError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [clientSlug, setClientSlug] = useState<string | null>(initialClientSlug)
   const [messages, setMessages] = useState<BuilderChatMessage[]>(initialMessages)
@@ -216,6 +220,7 @@ export function BuilderShell({
     setMessages((current) => [...current, { role: "user", text: trimmed }])
     setMessage("")
     setBusy(true)
+    setAccessError(null)
     try {
       const response = await fetch("/api/builder/chat", {
         method: "POST",
@@ -223,6 +228,13 @@ export function BuilderShell({
         body: JSON.stringify({ message: trimmed }),
       })
       const body = (await response.json()) as BuilderResponse
+      if (!response.ok) {
+        const message = body.error === "E_CUSTOMER_PROJECTION_PENDING" ? tAuth("customerRefreshPending")
+          : body.error === "E_CUSTOMER_VERIFICATION_HISTORY_REQUIRED"
+            ? tAuth("customerHistoryUnavailable") : tAuth("customerWorkspaceUnavailable")
+        setAccessError(message)
+        return
+      }
       if (Array.isArray(body.messages) && body.messages.length > 0) {
         setMessages(body.messages)
       } else {
@@ -256,6 +268,7 @@ export function BuilderShell({
     <BuilderComposer
       message={message}
       busy={busy}
+      error={accessError}
       layout={agentStage ? "stage" : "docked"}
       placeholder={agentStage ? BUILDER_STAGE_PLACEHOLDER : undefined}
       onMessageChange={setMessage}

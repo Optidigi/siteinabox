@@ -10,6 +10,8 @@ import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 import { buildSuperAdminResetUrl } from "@/lib/auth/passwordRecovery"
 import { changePasswordHandler } from "@/lib/auth/changePassword"
+import { assertPayloadCustomerActive } from "@/lib/auth/payloadCustomerAccess"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { rateLimitForgotPasswordByTargetEmail } from "@/hooks/rateLimitForgotPassword"
 
 // Constant-time string compare. Length-mismatch returns false immediately
@@ -434,6 +436,14 @@ export const Users: CollectionConfig = {
     }
   },
   hooks: {
+    beforeLogin: [async ({ user, req }) => {
+      try { await assertPayloadCustomerActive(req.payload, user.id) }
+      catch (error) {
+        if (error instanceof CustomerIdentityError) throw new Forbidden()
+        throw error
+      }
+      return user
+    }],
     // beforeOperation runs at the earliest collection-level point, BEFORE
     // any field-level access strip. Existing hooks retain their order; all short-circuit
     // on operations they don't care about, so order does not affect

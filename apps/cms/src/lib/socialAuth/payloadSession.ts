@@ -4,9 +4,11 @@ import config from "@/payload.config"
 import type { User } from "@/payload-types"
 import { evaluateGate } from "@/lib/gateDecision"
 import { resolveSiabContextForUser } from "@/lib/context"
+import { assertPayloadCustomerActive } from "@/lib/auth/payloadCustomerAccess"
 
-export async function issuePayloadSessionCookie(payloadUserId: string | number, request: Request): Promise<string> {
+export async function issuePayloadSessionCookie(payloadUserId: string | number, request: Request, verifiedEmail: string): Promise<string> {
   const payload = await getPayload({ config })
+  await assertPayloadCustomerActive(payload, payloadUserId)
   const user = await payload.findByID({
     collection: "users",
     id: payloadUserId,
@@ -16,6 +18,9 @@ export async function issuePayloadSessionCookie(payloadUserId: string | number, 
 
   if (!user?.email) {
     throw new Error("Linked Payload user is missing an email address")
+  }
+  if (user.email.trim().toLowerCase() !== verifiedEmail.trim().toLowerCase()) {
+    throw new Error("The verified CMS identity no longer matches its current binding")
   }
 
   const ctx = await resolveSiabContextForUser(user)

@@ -1,3 +1,4 @@
+import { verifiedCustomerFixture } from "../_helpers/verifiedCustomerFixture"
 import { describe, expect, it, vi } from "vitest"
 import type { ComponentProps } from "react"
 import type { PreviewCheckout } from "@/components/preview/PreviewCheckout"
@@ -48,12 +49,8 @@ vi.mock("@/components/preview/PreviewLoginShell", () => ({
   PreviewLoginShell: vi.fn(() => null),
 }))
 
-vi.mock("@/lib/preview/betterAuth", () => ({
-  previewAuth: {
-    api: {
-      getSession: mocks.getSession,
-    },
-  },
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({
+  getVerifiedPreviewCustomer: mocks.getSession,
 }))
 
 vi.mock("@/lib/preview/previewHost", () => ({
@@ -134,7 +131,7 @@ async function renderCheckoutProps(
   vi.clearAllMocks()
   vi.stubEnv("PAYLOAD_SECRET", "checkout-page-test-secret")
   mocks.isPreviewHost.mockResolvedValue(true)
-  mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
+  mocks.getSession.mockResolvedValue(verifiedCustomerFixture())
   mocks.loadPreviewGrantContext.mockResolvedValue(baseContext(overrides))
   mocks.loadLatestCheckoutProfile.mockResolvedValue(profile)
   mocks.loadCustomerMigrationStatus.mockResolvedValue(null)

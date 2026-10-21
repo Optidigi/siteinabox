@@ -47,6 +47,7 @@ export const validateTenantExists: CollectionBeforeValidateHook = async ({
   try {
     await req.payload.findByID({
       collection: "tenants",
+      req,
       id: targetId,
       overrideAccess: true,
       depth: 0,

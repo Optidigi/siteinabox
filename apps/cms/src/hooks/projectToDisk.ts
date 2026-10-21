@@ -1,3 +1,4 @@
+import { deferCustomerProjection } from "@/lib/projection/customerTransaction"
 import path from "node:path"
 import { promises as fs } from "node:fs"
 import type { CollectionAfterChangeHook, Payload } from "payload"
@@ -149,8 +150,10 @@ const removeProjectedPage = async (tenantId: string, slug: string) => {
   })
 }
 
-export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+export const projectPageToDisk: CollectionAfterChangeHook = async (args) => {
+  const { doc, previousDoc, req } = args
   if (shouldSkipProjection(req)) return doc
+  if (deferCustomerProjection(args, "pages", projectPageToDisk)) return doc
   const tenantId = tenantIdOf(doc as TenantScopedDoc)
   if (!tenantId) return doc
   const tenantDir = path.join(dataDir(), "tenants", tenantId)
@@ -198,8 +201,10 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
   return doc
 }
 
-export const projectSettingsToDisk: CollectionAfterChangeHook = async ({ doc, req }) => {
+export const projectSettingsToDisk: CollectionAfterChangeHook = async (args) => {
+  const { doc, req } = args
   if (shouldSkipProjection(req)) return doc
+  if (deferCustomerProjection(args, "site-settings", projectSettingsToDisk)) return doc
   const tenantId = tenantIdOf(doc as TenantScopedDoc)
   if (!tenantId) return doc
   await writeSiteJson(req.payload, tenantId, doc as SiteSetting)

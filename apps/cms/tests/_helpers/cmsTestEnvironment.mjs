@@ -49,6 +49,13 @@ export function assertDisposableCmsEnvironment(env, resource) {
       if (!value.startsWith("siab-test-") || value.length < 32) throw new Error("Renderer test authentication must be explicitly synthetic: " + name)
       continue
     }
+    if (["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_EMAIL_API_TOKEN"].includes(name)) {
+      if (env.CLOUDFLARE_ACCOUNT_ID !== "0".repeat(32) ||
+          !env.CLOUDFLARE_EMAIL_API_TOKEN?.startsWith("siab-test-") || env.CLOUDFLARE_EMAIL_API_TOKEN.length < 32) {
+        throw new Error(name + " requires the complete synthetic zero-account mail transport double")
+      }
+      continue
+    }
     if (name === "POSTGRES_PASSWORD" && value === decodeURIComponent(uri.password)) continue
     const provider = /^(?:OPENAI|ANTHROPIC|MOLLIE|OPENPROVIDER|CLOUDFLARE|POSTHOG|GOOGLE|MICROSOFT|APPLE|SMTP|AWS|S3|RESEND|SENDGRID)_/.test(name)
     const credential = /(?:KEY|TOKEN|SECRET|PASSWORD)(?:_FILE)?$/.test(name)

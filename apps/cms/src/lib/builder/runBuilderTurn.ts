@@ -1,4 +1,5 @@
 import type { Payload } from "payload"
+import type { CustomerAuthority } from "@/lib/auth/customerWorkspace"
 import { z } from "zod"
 import { runExistingSiteTurn } from "@/lib/agent/siteEditorAgent"
 import { loadTenantById, loadTenantBySlug } from "@/lib/agent/tools"
@@ -27,6 +28,7 @@ export const BuilderChatRequestSchema = z.object({
 })
 
 export type BuilderChatRequest = z.infer<typeof BuilderChatRequestSchema>
+  & { customerAuthority?: CustomerAuthority }
 export type { BuilderChatResult } from "./generatePreview"
 
 export async function runBuilderTurn(payload: Payload, request: BuilderChatRequest): Promise<BuilderChatResult> {
@@ -43,6 +45,7 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
     name: request.contactName,
     email: request.contactEmail.trim().toLowerCase(),
     phone: request.contactPhone,
+    customerAuthority: request.customerAuthority,
   }
   const legal: BuilderLegalAcceptance = request.legal
 
@@ -62,7 +65,7 @@ export async function runBuilderTurn(payload: Payload, request: BuilderChatReque
     }
 
     const edited = await runExistingSiteTurn({
-      ctx: { payload, tenantId: tenant.id },
+      ctx: { payload, tenantId: tenant.id, customerAuthority: request.customerAuthority },
       message: request.message,
       pageSlug: "index",
       selectedBlockIndex: null,

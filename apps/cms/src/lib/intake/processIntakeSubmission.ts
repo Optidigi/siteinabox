@@ -7,6 +7,7 @@ import {
   type ValidationReport,
 } from "@siteinabox/contracts/generation"
 import type { Payload, Where } from "payload"
+import { assertCustomerAccess, type CustomerAuthority } from "@/lib/auth/customerWorkspace"
 import type { Config, IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId } from "@/lib/relationshipId"
@@ -92,10 +93,12 @@ const generateWithRetry = async (
   provider: SiteGenerationProvider,
   request: SiteGenerationProviderRequest,
   maxAttempts: number,
+  authorize?: () => Promise<unknown>,
 ) => {
   let lastError: unknown
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
+      await authorize?.()
       return { attempt, result: await provider.generate(request) }
     } catch (err) {
       lastError = err
@@ -212,6 +215,7 @@ const processStoredIntakeGeneration = async (
     maxGenerationAttempts: number
     retireUnspecifiedPages?: boolean
     pinTenantId?: string | number
+    customerAuthority?: CustomerAuthority
   },
 ): Promise<IntakeProcessingResult> => {
   let intake = input.intake
@@ -244,7 +248,9 @@ const processStoredIntakeGeneration = async (
     run = await setRunStatus(payload, run, "generating", { startedAt: now() })
     intake = await setIntakeStatus(payload, intake, "generating")
 
-    const generated = await generateWithRetry(input.provider, input.providerRequest, input.maxGenerationAttempts)
+    const generated = await generateWithRetry(input.provider, input.providerRequest, input.maxGenerationAttempts,
+      input.customerAuthority ? () => assertCustomerAccess(payload, input.customerAuthority!,
+        { intent: "write", tenantId: input.pinTenantId }) : undefined)
     const providerResult = generated.result
     const sourceSpec = withDerivedTenantPrivacyDisclosure(canonicalSpecFromProviderResult(providerResult, input.normalized))
     const sourceValidation = validateSiteGenerationSpecForCms(sourceSpec, { variantScope: "self-serve" })
@@ -289,6 +295,7 @@ const processStoredIntakeGeneration = async (
       mediaMode,
       ...(input.retireUnspecifiedPages ? { retireUnspecifiedPages: true } : {}),
       ...(input.pinTenantId != null ? { pinTenantId: input.pinTenantId } : {}),
+      ...(input.customerAuthority ? { customerAuthority: input.customerAuthority } : {}),
     })
     if (!applyResult.ok) {
       const failure = { message: "Generated SiteGenerationSpec could not be applied", validation: applyResult.validation }
@@ -416,8 +423,11 @@ export async function processStoredIntakeSubmission(
     maxGenerationAttempts?: number
     retireUnspecifiedPages?: boolean
     pinTenantId?: string | number
+    customerAuthority?: CustomerAuthority
   } = {},
 ): Promise<IntakeProcessingResult> {
+  if (options.customerAuthority) await assertCustomerAccess(payload, options.customerAuthority,
+    { intent: "write", tenantId: options.pinTenantId })
   const mockFixture = options.mockFixture ?? "generic"
   const provider = options.provider ?? resolveSiteGenerationProvider({
     ...options.providerConfig,
@@ -463,6 +473,7 @@ export async function processStoredIntakeSubmission(
     maxGenerationAttempts,
     retireUnspecifiedPages: options.retireUnspecifiedPages,
     pinTenantId: options.pinTenantId,
+    customerAuthority: options.customerAuthority,
   })
 }
 

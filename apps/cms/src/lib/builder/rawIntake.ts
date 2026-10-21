@@ -1,6 +1,7 @@
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { RawIntakeSubmissionSchema, type RawIntakeSubmission } from "@siteinabox/contracts/generation"
 import type { BuilderFacts } from "./facts"
+import type { CustomerAuthority } from "@/lib/auth/customerWorkspace"
 import { BUILDER_DEFAULT_VISUAL_TOKENS } from "./visualDefaults"
 
 export type BuilderLegalAcceptance = {
@@ -13,6 +14,7 @@ export type BuilderContact = {
   name: string
   email: string
   phone: string
+  customerAuthority?: CustomerAuthority
 }
 
 export const BUILDER_LEGAL_STATEMENT_VERSIONS = {

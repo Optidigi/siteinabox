@@ -8,10 +8,11 @@ import { createMastraSiteGenerationProvider } from "@/lib/ai-generation/mastraPr
 import { createSiteGenerationProviderRequest } from "@/lib/ai-generation/providers"
 import { runFirstSiteTurn } from "@/lib/builder/firstSiteAgent"
 import { heuristicExtractBuilderFacts } from "@/lib/builder/facts"
-import { runSiteEditorAgent, streamSiteEditorAgent, streamExistingSiteTurn, type SiteEditorStreamEvent } from "@/lib/agent/siteEditorAgent"
+import { runSiteEditorAgent, runExistingSiteTurn, streamSiteEditorAgent, streamExistingSiteTurn, type SiteEditorStreamEvent } from "@/lib/agent/siteEditorAgent"
 
 const runtime = vi.hoisted(() => ({
   model: undefined as ReturnType<typeof createMockModel> | MastraLanguageModelV2Mock | undefined,
+  customerRevoked: false,
   useConfiguredModel: false,
   agents: [] as Array<{ listErrorProcessors(): Promise<unknown[]> }>,
   configurations: [] as Array<ConstructorParameters<typeof SdkAgent>[0]>,
@@ -35,6 +36,14 @@ vi.mock("@mastra/core/agent", async (importOriginal) => {
   } }
 })
 
+vi.mock("@/lib/auth/customerWorkspace", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/auth/customerWorkspace")>()
+  const { CustomerIdentityError } = await import("@/lib/auth/verifiedCustomer")
+  return { ...actual, assertCustomerAccess: async () => {
+    if (runtime.customerRevoked) throw new CustomerIdentityError("E_CUSTOMER_SESSION_REQUIRED")
+  } }
+})
+
 const normalized = {
   businessName: "Fixture Studio", tenantSlug: "fixture-studio", primaryDomain: "fixture.example.test",
   siteUrl: "https://fixture.example.test", language: "nl", contact: { name: "Fixture", email: "fixture@example.test", phone: "0612345678" },
@@ -53,6 +62,7 @@ const editorInput = () => {
 const firstSite = () => runFirstSiteTurn({ payload: payload() as never, message: "Ik ben ontwerper in Tilburg", previous: null, contact: normalized.contact, legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false } })
 
 beforeEach(() => {
+  runtime.customerRevoked = false
   runtime.agents = []; runtime.configurations = []; runtime.useConfiguredModel = false
   vi.stubEnv("OPENAI_API_KEY", "synthetic-no-network")
   vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Live requests are forbidden in deterministic runtime tests") }))
@@ -188,4 +198,64 @@ describe("installed Mastra compatibility through application callers", () => {
     await expect(createMastraSiteGenerationProvider().generate(request())).rejects.toThrow()
     expect(failure).toHaveBeenCalledTimes(1)
   })
+})
+
+
+it.each(["generate", "stream"] as const)("checks current authority before every real SDK %s model step", async mode => {
+  let modelRequests = 0, completedContextReads = 0
+  const response = () => {
+    modelRequests += 1
+    return { content: modelRequests === 1
+      ? [{ type: "tool-call" as const, toolCallId: "authority-context", toolName: "getSiteContext", input: "{}" }]
+      : [{ type: "text" as const, text: "Must not dispatch this second request" }],
+    finishReason: modelRequests === 1 ? "tool-calls" as const : "stop" as const,
+    usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }, warnings: [] }
+  }
+  runtime.model = new MastraLanguageModelV2Mock({ doGenerate: async () => response(), doStream: async () => {
+    const result = response()
+    return { stream: new ReadableStream({ start(controller) {
+      for (const item of result.content) {
+        if (item.type === "tool-call") controller.enqueue(item)
+        else {
+          controller.enqueue({ type: "text-start", id: "authority-text" })
+          controller.enqueue({ type: "text-delta", id: "authority-text", delta: item.text })
+          controller.enqueue({ type: "text-end", id: "authority-text" })
+        }
+      }
+      controller.enqueue({ type: "finish", finishReason: result.finishReason, usage: result.usage })
+      controller.close()
+    } }) }
+  } })
+  const input = editorInput()
+  input.database.find.mockImplementation(async ({ collection }) => {
+    if (collection === "site-settings") {
+      completedContextReads += 1
+      if (modelRequests === 1) runtime.customerRevoked = true
+    }
+    return { docs: collection === "pages" ? [{ id: 1, slug: "index", title: "Home", blocks: [] }] : [] }
+  })
+  const guarded = { ...input, ctx: { ...input.ctx, customerAuthority: { accountId: 1, previewSessionId: "synthetic-session" } } }
+  const execute = async () => {
+    if (mode === "generate") await runSiteEditorAgent(guarded)
+    else for await (const _event of streamSiteEditorAgent(guarded)) { /* Drain actual SDK until admission rejects the next step. */ }
+  }
+  await expect(execute()).rejects.toThrow()
+  expect(completedContextReads).toBe(2)
+  expect(modelRequests, "Revocation after a completed tool must stop the next provider step").toBe(1)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+
+it("does not replay a maintainer write after a committed projection failure", async () => {
+  const tools = await import("@/lib/agent/tools")
+  const { CustomerProjectionError } = await import("@/lib/projection/customerTransaction")
+  const error = new CustomerProjectionError()
+  const prune = vi.spyOn(tools, "pruneUnavailableBlocksIfPresent").mockRejectedValue(error)
+  runtime.model = createMockModel({ version: "v2", mockText: "De preview is bijgewerkt." })
+  const input = editorInput()
+  try {
+    await expect(runExistingSiteTurn({ ...input, message: "Maak het thema groen en donker.", useMastra: true })).rejects.toBe(error)
+    expect(input.database.update).not.toHaveBeenCalled()
+    expect(input.database.create).not.toHaveBeenCalled()
+  } finally { prune.mockRestore() }
 })

@@ -25,11 +25,12 @@ export const applyMaintainerTurn = async (input: {
   pageSlug?: string | null
   selectedBlockIndex?: number | null
   role?: "super-admin" | "owner" | "editor" | "viewer" | string | null
+  customerAuthority?: AgentWriteContext["customerAuthority"]
   user?: AgentWriteContext["user"]
   intent?: ReturnType<typeof interpretMaintainerIntent>
 }): Promise<{ text: string; applied: boolean; regenerate: boolean }> => {
   const intent = input.intent ?? interpretMaintainerIntent(input.message)
-  const ctx: AgentWriteContext = { payload: input.payload, tenantId: input.tenantId, user: input.user }
+  const ctx: AgentWriteContext = { payload: input.payload, tenantId: input.tenantId, user: input.user, customerAuthority: input.customerAuthority }
   if (intent.kind === "none") {
     return { text: describeMaintainerIntent(intent, input.facts), applied: false, regenerate: false }
   }

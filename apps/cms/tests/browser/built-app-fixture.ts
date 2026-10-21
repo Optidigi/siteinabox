@@ -3,6 +3,7 @@ import path from "node:path"
 import { randomBytes } from "node:crypto"
 import { sql } from "@payloadcms/db-postgres"
 import { getTestPayload } from "../integration/_helpers"
+import { BuilderFactsSchema } from "@/lib/builder/facts"
 
 // The shared helper validates resource/storage ownership before configuration
 // imports, then initializes only that disposable DB using committed migrations.
@@ -41,7 +42,27 @@ try {
     data: { tenant: tenants[0]!.id, title: "Private browser draft", slug: "private-browser-draft", status: "draft",
       blocks: [{ blockType: "hero", variant: "hero-01", heading: "PRIVATE-M13-DRAFT-SECRET",
         body: "Never publish this fixture", primaryAction: { label: "Private", href: "#private" } }] } })
-  await writeFile(path.join(process.env.DATA_DIR!, "browser-fixture.json"), JSON.stringify({ password, tenants, owners, pages, draftId: draft.id }), { mode: 0o600, flag: "wx" })
+  const roles = []
+  for (const role of ["editor", "viewer", "super-admin"] as const) {
+    const user = await payload.create({ collection: "users", overrideAccess: true,
+      data: { name: "Synthetic Amicare-compatible " + role, email: "m14-" + role + "@test.invalid", password, role,
+        ...(role === "super-admin" ? {} : { tenants: [{ tenant: tenants[0]!.id }] }) } })
+    roles.push({ id: user.id, email: user.email, role })
+  }
+  const freeEmail = "m14-free@test.invalid"
+  const facts = BuilderFactsSchema.parse({
+    businessName: "M14 Schilders Breda", intro: "Wij schilderen woningen voor lokale klanten in Breda en omgeving.",
+    offers: [{ value: "Binnenschilderwerk" }, { value: "Buitenschilderwerk" }],
+    audience: "Lokale particuliere klanten in Breda", situation: "Klanten zoeken duidelijke afspraken en zorgvuldig schilderwerk.",
+    approach: "We bespreken de wensen en werken zorgvuldig met een heldere planning.", region: "Breda", notes: "",
+    selectedActions: ["message"], formType: "message", briefStage: "ready", lookConfirmed: true,
+  })
+  await payload.create({ collection: "builder-sessions", overrideAccess: true,
+    data: { customerEmail: freeEmail, displayName: "M14 Free customer",
+      legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
+      facts, messages: [{ role: "user", text: "Synthetic saved brief for this customer." }], clientSlug: null } })
+  await writeFile(path.join(process.env.DATA_DIR!, "browser-fixture.json"), JSON.stringify({ password, tenants, owners, pages,
+    draftId: draft.id, roles, freeEmail }), { mode: 0o600, flag: "wx" })
   console.log("Guarded built-browser fixtures initialized with committed migrations")
 } finally {
   await payload.destroy()

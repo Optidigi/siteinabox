@@ -37,7 +37,8 @@ try {
   const port = listener.address().port
   await new Promise((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()))
   let serverErrors = ""
-  server = spawn(process.execPath, [".next/standalone/apps/cms/server.js"], {
+  server = spawn(process.execPath, ["--import", new URL("../browser/built-app-runtime.mjs", import.meta.url).href,
+    ".next/standalone/apps/cms/server.js"], {
     env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: String(port) }, stdio: ["ignore", "ignore", "pipe"],
   })
   server.stderr.setEncoding("utf8")
@@ -85,6 +86,10 @@ try {
     results.push({ action: entry.exportedName, status: response.status, rejected: true })
   }
   assert.deepEqual(await count(), before, "Denied built actions must not create users or mail records")
+  const transportAudit = (await readFile(`${worker.env.DATA_DIR}/network-${server.pid}.ndjson`, "utf8"))
+    .trim().split("\n").filter(Boolean).map(line => JSON.parse(line))
+  assert(transportAudit.some(event => event.kind === "initialized"), "The invitation server must install its transport doubles")
+  assert.equal(transportAudit.filter(event => event.kind !== "initialized").length, 0, "Anonymous invitation actions must not attempt provider operations")
   await mkdir("test-results", { recursive: true })
   await writeFile("test-results/invitation-actions.json", JSON.stringify({
     evidenceKind: "actual production CMS build and anonymous HTTP server-action negatives; not provider delivery proof",
@@ -92,6 +97,7 @@ try {
     sourceSHA: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     buildId: (await readFile(".next/BUILD_ID", "utf8")).trim(),
     publicActions: results, privilegedHelperExposed: false, userAndMailCountsUnchanged: true,
+    transportGuardVerified: true, providerOperationsAttempted: 0,
     buildIdentity: await captureBuiltCmsIdentity(),
   }, null, 2) + "\n")
   console.log("Built invitation actions reject anonymous forged input; privileged helper is not exposed; no user/mail records created")

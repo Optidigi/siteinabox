@@ -97,25 +97,121 @@ isolated `preview_auth_*` tables, and the `siab-preview-auth` cookie prefix.
 Public builder access starts at `/login`. A first-time register or
 login magic link may be sent without a preview grant when the callback is the
 builder itself. When a `previewClientSlug` is present, the email must still
-have an active `preview-access-grants` row for that slug. Normalized email is
-the lead id. A CMS `tenants` row is created only after the first successful
-Sitegen apply. Builder chat and facts persist in `builder-sessions` keyed by
-email so another device can resume the same thread after a magic link. HMAC
-preview cookies are not used. Payload CMS users are created only after paid
-live handoff, not at preview register.
+have an active `preview-access-grants` row for that slug. Normalized email
+identifies the registration lead; verified account and workspace authority is
+described below. Sitegen claims a tenant during apply, retaining that same
+private workspace for a safe retry if later generation work fails. Builder chat
+and facts persist in `builder-sessions`, bound to the verified account, so another
+device can resume after a magic link. Preview registration does not create a
+Payload CMS user. HMAC preview cookies are not used.
 
 Local development may skip preview magic-link mail: `GET /api/builder/dev-session`
 exists only when `NODE_ENV=development` and the request Host is loopback. It
 sets the same `siab-preview-auth` session cookie a verified magic link would.
 It is not available on production. CMS local login
 uses a seeded password super-admin (`pnpm --dir apps/cms run seed:local-admin`),
-not a preview session.
+not a preview session. The preview helper requires the committed identity schema
+and verification trigger; it reports missing migrations instead of creating an
+alternate set of auth tables.
 
-The session is authorized server-side against the grant before preview data
-loads or mutates. Builder chat patches or regenerates a site only when the
-session email has an active preview grant for that tenant. A revoked grant
-does not fall back to a stored `builder-sessions` slug. Preview `/{clientSlug}`
-routes redirect to `/builder`.
+The session and permanent account binding are authorized server-side against
+the grant before preview data loads or mutates. A revoked grant does not fall
+back to a stored `builder-sessions` slug. Preview `/{clientSlug}` routes redirect
+to `/builder`.
+
+## Verified customer workspace authority
+
+`customer-accounts` holds a stable normalized email, preview SDK user ID,
+original `verifiedAt` instant and permanent workspace/optional Payload-user
+binding. `builder-sessions.customerAccount` attaches the saved brief and chat to
+that identity. Registration creates metadata once; repeated or concurrent
+registration neither reads private thread JSON nor replaces existing work,
+profile, legal evidence or binding. Completing registration is separate from
+email verification and current checkout acceptance.
+
+The committed preview-auth SQL trigger records `firstVerifiedAt` only at a new
+verified user creation or its first unverified-to-verified transition. The
+canonical account copies that instant at Payload's millisecond precision while
+the source instant remains stored. Re-login, grant renewal, retries and later
+verification toggles preserve it. SDK input cannot set the timestamp or its
+history classification. This is an identity anchor, not an implemented AI quota.
+
+`verifiedPreviewSession.ts` obtains the actual SDK session with cookie caching
+disabled. Protected builder, renderer-frame, preview, media, review and checkout
+paths then check the live session, verified source, account revocation and
+matching permanent binding. Email, tenant, slug and session hints in request
+data are not authority. Builder requests accept only the supported message
+field. Unknown builder slugs return to the customer's own workspace.
+
+Short PostgreSQL transactions serialize account/workspace and membership claims
+by normalized email; no provider request belongs inside that transaction. Tenant
+creation uses the bound account and cannot adopt another tenant by model-provided
+slug or domain. Unique normalized-email and single-user-membership constraints
+arbitrate races. Invites may bind the same workspace; conflicting membership
+fails before user creation commits or purchase proceeds. Existing CMS role
+authority remains Payload-owned: owner/editor/viewer have one tenant and
+super-admin remains tenantless. Preview mutations/purchase require owner authority
+when a CMS membership exists; editors/viewers retain their role-appropriate CMS.
+
+Local generation retains the same request transaction through tenant, media, page, settings and retirement work;
+revocation serializes against the complete write. Session expiry is checked
+again against wall time before commit, so expired work rolls back. Provider
+calls and media preparation stay outside that transaction. Maintainer fallbacks
+retain the same authority, including theme updates and snapshot reads. Each local
+maintainer mutation uses that transaction and expiry check. The installed SDK
+pre-step hook validates authority before every model dispatch, including the
+next step after a completed tool; an identity error cannot trigger fallback. Settings/page projection hooks queue their
+work on the server-owned transaction context, discard it on rollback, then
+re-read committed documents and use the existing projection hooks after commit.
+The queue is request-local, not a durable job or a second rendering system.
+
+If post-commit projection fails, the database remains committed. The operation
+reports `E_CUSTOMER_PROJECTION_PENDING` with `committed: true` and logs the
+account, tenant, collection and document ID. Restore the projection storage,
+then repeat the same authenticated, idempotent settings/page save to reconcile
+from committed data. Do not rerun AI generation or a purchase to repair a
+projection. A refresh failure must not be reported as a database rollback or
+complete preview success. The editor keeps a trusted, per-run committed outcome
+outside SDK tool-error serialization, stops subsequent model steps and restores
+that typed outcome before generic terminal/error handling in both SDK modes.
+
+Preview-grant expiry is renewable access, separate from account and session
+revocation. A current verified session may renew its bound, unrevoked grant after
+tenant/run checks; renewal cannot change identity or the anchor. A never-completed
+generation may retry its reserved workspace. A revoked grant cannot become a
+stored-slug fallback. Revoking a linked account atomically removes both SDK
+session namespaces, Payload sessions and API-key material. Login, link dispatch
+and the Payload bridge reject that state. Authorized restoration permits fresh
+sign-in; it does not restore old session/API-key credentials or reset verification
+history. The bridge also requires a currently verified SDK email matching its
+stored Payload-user binding before issuing a new Payload session. Stale or
+substituted mappings stop for review rather than being silently relinked.
+
+### Historical mapping and rollout
+
+The migration marks every pre-existing preview SDK row with unknown verification
+history and leaves its original instant null. Later verification cannot convert
+that unknown history into a new allowance anchor. Those private preview accounts
+require trusted mapping before rollout; account creation, fixture dates, grant
+dates and re-login are insufficient evidence. No Amicare mapping or entitlement
+is inferred. Existing unbound CMS users and supported password, recovery, API-key,
+magic-link and social methods remain effective. An existing CMS membership is
+directed to its existing sign-in rather than assigned a second free identity or
+silently bridged from an independently surviving preview cookie.
+
+Normalized-email collisions or invalid multiple memberships stop migration
+transactionally for a reviewed mapping. Apply committed migrations with push
+disabled; custom identity constraints/triggers are migration-owned. Empty
+downgrade SQL is rehearsed in dependency order. Once identity/verification
+evidence exists, downgrade refuses to discard it; use reviewed forward recovery
+or the separately approved restore procedure. Source merge does not authorize
+production migration or close the final-schema recovery/Amicare gates.
+
+Real SDK/PostgreSQL regressions and the built-app journey cover this authority.
+The [verification matrix](../verification-matrix.md) owns commands and settings;
+the [local runbook](../runbooks/local-development.md#real-built-application-browser-journey)
+owns setup, captured-mail isolation and retained evidence. Live inbox/OAuth and
+production behavior remain separate release proofs.
 
 ## Provider Redirect URLs
 

@@ -1,3 +1,6 @@
+import { CustomerProjectionError } from "@/lib/projection/customerTransaction"
+import { assertCustomerAccess } from "@/lib/auth/customerWorkspace"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
@@ -334,10 +337,28 @@ const SITE_EDITOR_INSTRUCTIONS = [
 ].join(" ")
 
 const createEditorAgent = (input: SiteEditorTurnInput) => {
+  let committedProjectionFailure: CustomerProjectionError | undefined
+  const assertCommittedOutcome = () => {
+    if (committedProjectionFailure) throw committedProjectionFailure
+  }
+  const failSdkRun = (error: unknown): never => {
+    assertCommittedOutcome()
+    if (error instanceof CustomerProjectionError || error instanceof CustomerIdentityError) throw error
+    throw new MastraRunIncompleteError()
+  }
+  const beforeStep = async () => {
+    assertCommittedOutcome()
+    await assertEditorAuthority(input.ctx)
+  }
+  // The installed SDK can serialize tool exceptions or replace their terminal
+  // error. Preserve the trusted committed outcome in this run's own closure.
+  const toolInput = { ...input, ctx: { ...input.ctx, onCommittedProjectionFailure: (error: CustomerProjectionError) => {
+    committedProjectionFailure ??= error
+  } } }
   const effort = defaultMastraMaintainReasoningEffort()
   const providerOptions = mastraOpenAIProviderOptions(effort)
   return {
-    providerOptions,
+    providerOptions, assertCommittedOutcome, failSdkRun, beforeStep,
     agent: new Agent({
       ...mastraCompatibilityOptions,
       id: "siab-site-editor",
@@ -348,7 +369,7 @@ const createEditorAgent = (input: SiteEditorTurnInput) => {
         providerOptions,
       },
       model: defaultMastraModelId(),
-      tools: createSiteEditorTools(input),
+      tools: createSiteEditorTools(toolInput),
     }),
   }
 }
@@ -395,14 +416,22 @@ const iterateTextStream = async function* (stream: AsyncIterable<string>): Async
   }
 }
 
+async function assertEditorAuthority(ctx: AgentWriteContext) {
+  if (ctx.customerAuthority) await assertCustomerAccess(ctx.payload, ctx.customerAuthority,
+    { intent: "write", tenantId: ctx.tenantId })
+}
+
 export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions } = createEditorAgent(input)
+  const { agent, providerOptions, assertCommittedOutcome, failSdkRun, beforeStep } = createEditorAgent(input)
+  await assertEditorAuthority(input.ctx)
   const generated = await agent.generate(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
-  }).catch(() => { throw new MastraRunIncompleteError() })
+    prepareStep: beforeStep,
+  }).catch(failSdkRun)
+  assertCommittedOutcome()
   assertMastraCompleted(generated)
   return resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug)
 }
@@ -410,25 +439,29 @@ export async function runSiteEditorAgent(input: SiteEditorTurnInput): Promise<Si
 export async function* streamSiteEditorAgent(input: SiteEditorTurnInput): AsyncGenerator<SiteEditorStreamEvent> {
   const pageSlug = input.pageSlug.trim() || "index"
   const snapshotBefore = await loadSiteSnapshot(input.ctx, pageSlug)
-  const { agent, providerOptions } = createEditorAgent(input)
+  const { agent, providerOptions, assertCommittedOutcome, failSdkRun, beforeStep } = createEditorAgent(input)
+  await assertEditorAuthority(input.ctx)
   const streamed = await agent.stream(editorPrompt(input, snapshotBefore), {
     toolChoice: "auto",
     providerOptions,
-  }).catch(() => { throw new MastraRunIncompleteError() })
+    prepareStep: beforeStep,
+  }).catch(failSdkRun)
   try {
     for await (const chunk of iterateTextStream(streamed.textStream)) {
       yield { type: "delta", text: chunk }
     }
     const generated = await streamed.getFullOutput()
+    assertCommittedOutcome()
     assertMastraCompleted(generated)
     yield { type: "done", result: await resultFromGenerated(generated, snapshotBefore, input.ctx, pageSlug) }
-  } catch {
+  } catch (error) {
     // Deltas and tool writes may already have escaped. Never run fallback writes.
-    throw new MastraRunIncompleteError()
+    failSdkRun(error)
   }
 }
 
 const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEditorTurnResult> => {
+  await assertEditorAuthority(input.ctx)
   const plan = await planBuilderTurn({
     message: input.message,
     previous: input.facts,
@@ -448,6 +481,7 @@ const regexExistingSiteTurn = async (input: SiteEditorTurnInput): Promise<SiteEd
     selectedBlockIndex: input.selectedBlockIndex,
     role: input.role,
     user: input.ctx.user,
+    customerAuthority: input.ctx.customerAuthority,
     intent: maintainerIntentFromPlan(plan, input.message),
   })
   const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
@@ -469,6 +503,7 @@ const mastraFallbackTurn = async (input: SiteEditorTurnInput): Promise<SiteEdito
     selectedBlockIndex: input.selectedBlockIndex,
     role: input.role,
     user: input.ctx.user,
+    customerAuthority: input.ctx.customerAuthority,
     intent: interpretMaintainerIntent(input.message),
   })
   const snapshot = await loadSiteSnapshot(input.ctx, input.pageSlug.trim() || "index")
@@ -482,7 +517,7 @@ export async function runExistingSiteTurn(input: SiteEditorTurnInput & {
     try {
       return await runSiteEditorAgent(input)
     } catch (error) {
-      if (error instanceof MastraRunIncompleteError) throw error
+      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError || error instanceof CustomerProjectionError) throw error
       return mastraFallbackTurn(input)
     }
   }
@@ -497,7 +532,7 @@ export async function* streamExistingSiteTurn(input: SiteEditorTurnInput & {
       yield* streamSiteEditorAgent(input)
       return
     } catch (error) {
-      if (error instanceof MastraRunIncompleteError) throw error
+      if (error instanceof MastraRunIncompleteError || error instanceof CustomerIdentityError || error instanceof CustomerProjectionError) throw error
       yield { type: "done", result: await mastraFallbackTurn(input) }
       return
     }

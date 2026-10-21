@@ -1,3 +1,4 @@
+import { verifiedCustomerFixture } from "../_helpers/verifiedCustomerFixture"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
 
@@ -21,12 +22,8 @@ vi.mock("next-intl/server", () => ({
   }),
 }))
 
-vi.mock("@/lib/preview/betterAuth", () => ({
-  previewAuth: {
-    api: {
-      getSession: mocks.getSession,
-    },
-  },
+vi.mock("@/lib/auth/verifiedPreviewSession", () => ({
+  getVerifiedPreviewCustomer: mocks.getSession,
 }))
 
 vi.mock("@/lib/preview/previewAccess", () => ({
@@ -48,7 +45,7 @@ vi.mock("@/lib/payments/molliePayments", () => ({
 describe("preview customizer actions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
+    mocks.getSession.mockResolvedValue(verifiedCustomerFixture())
     mocks.loadPreviewGrantContext.mockResolvedValue({
       payload: { id: "payload" },
       run: { id: 500 },
@@ -83,7 +80,8 @@ describe("preview customizer actions", () => {
     expect(saved).toEqual(theme)
     expect(mocks.persistPreviewThemeForGrant).toHaveBeenCalledWith({
       clientSlug: "preview-studio",
-      customerEmail: "Customer@Example.com",
+      customerEmail: "customer@example.com",
+      customerAuthority: verifiedCustomerFixture().authority,
       theme,
     })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
@@ -108,15 +106,18 @@ describe("preview customizer actions", () => {
     })
     expect(mocks.loadPreviewGrantContext).toHaveBeenCalledWith({
       clientSlug: "preview-studio",
-      email: "Customer@Example.com",
+      email: "customer@example.com",
+      customerAuthority: verifiedCustomerFixture().authority,
+      intent: "purchase",
+      renewExpired: true,
     })
     expect(mocks.createMollieCheckoutForGenerationRun).toHaveBeenCalledWith(
       { id: "payload" },
       {
         runId: 500,
-        customerEmail: "Customer@Example.com",
+        customerEmail: "customer@example.com",
         clientSlug: "preview-studio",
-        actor: "Customer@Example.com",
+        actor: "customer@example.com",
       },
     )
   })

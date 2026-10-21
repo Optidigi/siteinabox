@@ -97,6 +97,7 @@ describe("Payload social auth user resolution", () => {
       tenants: [{ tenant: 1 }],
     }
     fakeFind.mockResolvedValueOnce({ totalDocs: 1, docs: [payloadUser] })
+    fakeFind.mockResolvedValueOnce({ totalDocs: 0, docs: [] })
 
     await expect(
       resolvePayloadUserForSocialSignup({ email: " OWNER@EXAMPLE.COM ", emailVerified: true }),
@@ -140,6 +141,7 @@ describe("Payload social auth user resolution", () => {
       tenants: [{ tenant: 1 }],
     }
     fakeFind.mockResolvedValueOnce({ totalDocs: 1, docs: [payloadUser] })
+    fakeFind.mockResolvedValueOnce({ totalDocs: 0, docs: [] })
 
     await expect(resolvePayloadUserForMagicLink(" EDITOR@EXAMPLE.COM ")).resolves.toBe(payloadUser)
     expect(fakeFind).toHaveBeenCalledWith(

@@ -7,8 +7,16 @@ const mocks = vi.hoisted(() => ({
   hasUnvalidatedAuthSignal: vi.fn(),
   loadBuilderThread: vi.fn(),
   saveBuilderThread: vi.fn(),
-  loadLatestActivePreviewGrant: vi.fn(),
+  loadVerifiedCustomerGrant: vi.fn(),
   runBuilderTurn: vi.fn(),
+  resolveVerifiedCustomerAccount: vi.fn(),
+  assertCustomerAccess: vi.fn(),
+}))
+
+vi.mock("@/lib/auth/customerWorkspace", () => ({ assertCustomerAccess: mocks.assertCustomerAccess }))
+vi.mock("@/lib/auth/verifiedCustomer", async importOriginal => ({
+  ...await importOriginal<typeof import("@/lib/auth/verifiedCustomer")>(),
+  resolveVerifiedCustomerAccount: mocks.resolveVerifiedCustomerAccount,
 }))
 
 vi.mock("@/lib/preview/betterAuth", () => ({
@@ -41,7 +49,7 @@ vi.mock("@/lib/builder/sessionStore", () => ({
 }))
 
 vi.mock("@/lib/preview/previewAccess", () => ({
-  loadLatestActivePreviewGrant: mocks.loadLatestActivePreviewGrant,
+  loadVerifiedCustomerGrant: mocks.loadVerifiedCustomerGrant,
 }))
 
 vi.mock("@/lib/builder/runBuilderTurn", () => ({
@@ -69,11 +77,18 @@ const chatReq = () =>
     headers: { "content-type": "application/json" },
   })
 
+const verifiedSession = () => ({
+  user: { id: "customer", email: "anna@example.com", emailVerified: true, firstVerifiedAt: "2026-01-01T00:00:00.000Z" },
+  session: { id: "session", userId: "customer", expiresAt: new Date(Date.now() + 60_000) },
+})
+
 describe("builder chat route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.isPreviewRequestAuthority.mockReturnValue(true)
     mocks.hasUnvalidatedAuthSignal.mockReturnValue(false)
+    mocks.resolveVerifiedCustomerAccount.mockResolvedValue({ id: 1, email: "anna@example.com" })
+    mocks.assertCustomerAccess.mockResolvedValue({ id: 1, email: "anna@example.com" })
     mocks.loadBuilderThread.mockResolvedValue(thread)
     mocks.saveBuilderThread.mockImplementation(async (_payload: unknown, next: typeof thread) => next)
     mocks.runBuilderTurn.mockResolvedValue({
@@ -98,19 +113,29 @@ describe("builder chat route", () => {
     expect(mocks.runBuilderTurn).not.toHaveBeenCalled()
   })
 
+  it("rejects an unverified identity before loading private work or dispatching generation", async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: "unverified", email: "anna@example.com", emailVerified: false } })
+    mocks.loadVerifiedCustomerGrant.mockResolvedValue({ clientSlug: "tilburg-kapper", tenant: 3 })
+    const response = await POST(chatReq())
+    expect(response.status).toBe(403)
+    expect(mocks.loadBuilderThread).not.toHaveBeenCalled()
+    expect(mocks.runBuilderTurn).not.toHaveBeenCalled()
+    expect(mocks.saveBuilderThread).not.toHaveBeenCalled()
+  })
+
   it("does not patch from a stored slug after the grant is revoked", async () => {
-    mocks.getSession.mockResolvedValue({ user: { email: "anna@example.com" } })
-    mocks.loadLatestActivePreviewGrant.mockResolvedValue(null)
+    mocks.getSession.mockResolvedValue(verifiedSession())
+    mocks.loadVerifiedCustomerGrant.mockResolvedValue(null)
     const res = await POST(chatReq())
     expect(res.status).toBe(403)
     expect(mocks.runBuilderTurn).not.toHaveBeenCalled()
   })
 
   it("pins maintainer writes to the grant tenant, not the thread slug", async () => {
-    mocks.getSession.mockResolvedValue({ user: { email: "anna@example.com" } })
-    mocks.loadLatestActivePreviewGrant.mockResolvedValue({
+    mocks.getSession.mockResolvedValue(verifiedSession())
+    mocks.loadVerifiedCustomerGrant.mockResolvedValue({
       clientSlug: "tilburg-kapper",
-      tenant: 3,
+      tenant: { id: 3 },
     })
     const res = await POST(chatReq())
     expect(res.status).toBe(200)
@@ -131,4 +156,16 @@ describe("builder chat route", () => {
     expect(body.applied).toBe(true)
     expect(body.previewSnapshot?.pageId).toBe("1")
   })
+  it("reports committed content separately from a failed preview refresh", async () => {
+    const { CustomerProjectionError } = await import("@/lib/projection/customerTransaction")
+    mocks.getSession.mockResolvedValue(verifiedSession())
+    mocks.loadVerifiedCustomerGrant.mockResolvedValue({ clientSlug: "tilburg-kapper", tenant: { id: 3 } })
+    mocks.runBuilderTurn.mockRejectedValueOnce(new CustomerProjectionError())
+    const response = await POST(chatReq())
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ error: "E_CUSTOMER_PROJECTION_PENDING", committed: true })
+    expect(mocks.runBuilderTurn).toHaveBeenCalledTimes(1)
+    expect(mocks.saveBuilderThread).not.toHaveBeenCalled()
+  })
+
 })

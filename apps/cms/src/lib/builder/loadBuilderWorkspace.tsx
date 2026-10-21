@@ -1,15 +1,15 @@
 import { notFound, redirect } from "next/navigation"
-import { getPayload } from "payload"
 import { headers } from "next/headers"
 import { BuilderAuthGate } from "@/components/builder/BuilderAuthGate"
 import { BuilderShell } from "@/components/builder/BuilderShell"
 import { loadBuilderThread, saveBuilderThread } from "@/lib/builder/sessionStore"
 import { defaultBuilderMessages } from "@/lib/builder/thread"
-import { previewAuth } from "@/lib/preview/betterAuth"
-import { hasActivePreviewGrant, loadLatestActivePreviewGrant } from "@/lib/preview/previewAccess"
+import { getVerifiedPreviewCustomer } from "@/lib/auth/verifiedPreviewSession"
+import { CustomerAccessNotice } from "@/components/builder/CustomerAccessNotice"
+import { loadVerifiedCustomerGrant } from "@/lib/preview/previewAccess"
+import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { isLocalPreviewSessionBypass } from "@/lib/requestAuthority"
-import config from "@/payload.config"
 
 export async function renderBuilderWorkspace({
   intent,
@@ -20,12 +20,10 @@ export async function renderBuilderWorkspace({
 }) {
   if (!(await isPreviewHost())) notFound()
 
-  const session = await previewAuth.api.getSession({
-    headers: await headers(),
-    query: { disableCookieCache: true },
-  })
-  const email = session?.user?.email?.trim().toLowerCase()
-  if (!email) {
+  let customer
+  try { customer = await getVerifiedPreviewCustomer(await headers()) }
+  catch (error) { return <CustomerAccessNotice error={error} /> }
+  if (!customer) {
     const headerStore = await headers()
     if (isLocalPreviewSessionBypass(headerStore)) {
       return <BuilderAuthGate intent={intent} localSessionHref="/api/builder/dev-session" />
@@ -33,17 +31,21 @@ export async function renderBuilderWorkspace({
     redirect(intent === "register" ? "/login?intent=register" : "/login")
   }
 
-  const payload = await getPayload({ config })
-  if (requiredClientSlug) {
-    const allowed = await hasActivePreviewGrant(email, requiredClientSlug, payload)
-    if (!allowed) redirect("/builder")
+  const { payload, account } = customer
+  const email = account.email
+  let preview
+  try {
+    preview = await loadVerifiedCustomerGrant({ payload, email, authority: customer.authority, clientSlug: requiredClientSlug })
+  } catch (error) {
+    if (!(error instanceof CustomerIdentityError) && requiredClientSlug &&
+        error instanceof Error && error.message === "Preview access is not available") redirect("/builder")
+    return <CustomerAccessNotice error={error} />
   }
-
-  let thread = await loadBuilderThread(payload, email)
-  const grant = await loadLatestActivePreviewGrant(email, payload)
-  const clientSlug = requiredClientSlug ?? thread?.clientSlug ?? grant?.clientSlug ?? null
+  let thread = await loadBuilderThread(payload, email, account.id)
+  if (!thread) return <BuilderAuthGate intent="register" />
+  const clientSlug = preview?.clientSlug ?? null
   if (thread && clientSlug && thread.clientSlug !== clientSlug) {
-    thread = await saveBuilderThread(payload, { ...thread, clientSlug })
+    thread = await saveBuilderThread(payload, { ...thread, clientSlug }, account.id)
   }
 
   return (

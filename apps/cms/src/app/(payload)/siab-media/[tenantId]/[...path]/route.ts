@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { nodeErrorCode } from "@/lib/record"
-import { previewAuth } from "@/lib/preview/betterAuth"
+import { getVerifiedPreviewCustomer } from "@/lib/auth/verifiedPreviewSession"
+import { assertCustomerAccess } from "@/lib/auth/customerWorkspace"
 import { isPublicPreviewHostname } from "@/lib/preview/previewHost"
 import { hasActivePreviewGrantForTenant } from "@/lib/preview/previewAccess"
 
@@ -92,12 +93,11 @@ async function mediaResponse(
     }
   } else {
     if (!isPreviewMediaHost(req)) return new NextResponse("unauthorized", { status: 401 })
-    const session = await previewAuth.api.getSession({
-      headers: req.headers,
-      query: { disableCookieCache: true },
-    }).catch(() => null)
-    const email = session?.user?.email
-    if (!email) return new NextResponse("unauthorized", { status: 401 })
+    const customer = await getVerifiedPreviewCustomer(req.headers).catch(() => null)
+    if (!customer) return new NextResponse("unauthorized", { status: 401 })
+    const email = customer.account.email
+    try { await assertCustomerAccess(payload, customer.authority, { intent: "read", tenantId }) }
+    catch { return new NextResponse("forbidden", { status: 403 }) }
     const allowed = await hasActivePreviewGrantForTenant(email, tenantId, payload)
     if (!allowed) return new NextResponse("forbidden", { status: 403 })
   }

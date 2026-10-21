@@ -198,7 +198,9 @@ describe("builder shell chrome", () => {
     expect(composer).not.toContain("neoTray")
     expect(composer).toContain("border-2 border-border bg-card p-2")
     expect(composer).toContain("shadow-none")
-    expect(composer).toContain("Stuur")
+    expect(composer).toContain('t("customerSend")')
+    expect(JSON.parse(read("src/locales/nl.json")).auth.customerSend).toBe("Stuur")
+    expect(JSON.parse(read("src/locales/en.json")).auth.customerSend).toBe("Send")
     expect(composer).toContain('variant="ink"')
     expect(composer).toContain("min-width: 1024px")
     expect(composer).not.toContain('variant="brand"')
@@ -241,7 +243,8 @@ describe("builder shell chrome", () => {
 describe("builder workspace routing", () => {
   it("sends a stale or unknown /builder/:slug back to a fresh /builder instead of 404", () => {
     const workspace = read("src/lib/builder/loadBuilderWorkspace.tsx")
-    expect(workspace).toContain("if (!allowed) redirect(\"/builder\")")
+    expect(workspace).toContain('error.message === "Preview access is not available") redirect("/builder")')
+    expect(workspace).toContain("loadVerifiedCustomerGrant")
     expect(workspace).not.toContain("if (!allowed) notFound()")
   })
 
