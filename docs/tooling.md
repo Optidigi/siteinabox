@@ -145,3 +145,9 @@ or billable probes. The [AI runtime contract](contracts/ai-runtime.md) owns retr
 terminal-output and later metering requirements. Application model configuration
 is separate from agent/MCP tooling selection; changing either does not authorize
 new provider spending.
+
+Dependency collection uses the existing configured `gh`, pinned pnpm and public
+primary HTTPS sources. The isolated scanner is checksum verified; image/native
+collection needs Docker and GNU tar but performs no provider operation. Follow
+the [dependency evidence contract](dependency-security.md) for current commands,
+ownership, freshness, diagnostics and release limitations.

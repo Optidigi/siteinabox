@@ -25,6 +25,18 @@ on:
       - "scripts/image-artifact.mjs"
       - "scripts/check-publication.mjs"
       - "scripts/check-image-workflows.mjs"
+      - "scripts/check-dependency-security.mjs"
+      - "scripts/dependency-security-policy.mjs"
+      - "scripts/collect-dependency-evidence.mjs"
+      - "scripts/collect-image-dependencies.mjs"
+      - "scripts/dependency-image-evidence.mjs"
+      - "scripts/dependency-image-review.mjs"
+      - "scripts/prepare-dependency-scanner.mjs"
+      - "scripts/scan-image-dependencies.mjs"
+      - "scripts/rescan-dependency-images.mjs"
+      - "scripts/inventory-image-native.mjs"
+      - "scripts/image-platform.mjs"
+      - "docs/dependency-security.json"
   push:
     branches: [main]
     paths:
@@ -50,6 +62,18 @@ on:
       - "scripts/image-artifact.mjs"
       - "scripts/check-publication.mjs"
       - "scripts/check-image-workflows.mjs"
+      - "scripts/check-dependency-security.mjs"
+      - "scripts/dependency-security-policy.mjs"
+      - "scripts/collect-dependency-evidence.mjs"
+      - "scripts/collect-image-dependencies.mjs"
+      - "scripts/dependency-image-evidence.mjs"
+      - "scripts/dependency-image-review.mjs"
+      - "scripts/prepare-dependency-scanner.mjs"
+      - "scripts/scan-image-dependencies.mjs"
+      - "scripts/rescan-dependency-images.mjs"
+      - "scripts/inventory-image-native.mjs"
+      - "scripts/image-platform.mjs"
+      - "docs/dependency-security.json"
   workflow_dispatch:
 
 permissions:
@@ -61,6 +85,8 @@ concurrency:
 
 jobs:
   verify:
+    env:
+      GH_TOKEN: ${{ github.token }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -83,3 +109,13 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+      - name: Retain scanner failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-diagnostics-renderer
+          path: |
+            artifacts/siab-verify-*/image-*.json
+            artifacts/siab-verify-*/image-*.log
+          if-no-files-found: ignore
+          retention-days: 7

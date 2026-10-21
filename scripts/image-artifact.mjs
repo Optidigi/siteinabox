@@ -6,3 +6,7 @@ export async function sha256File(path) {
   for await (const chunk of createReadStream(path)) hash.update(chunk)
   return hash.digest("hex")
 }
+
+export function sha256Bytes(value) {
+  return createHash("sha256").update(value).digest("hex")
+}

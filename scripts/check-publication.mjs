@@ -1,9 +1,18 @@
 import { execFileSync } from "node:child_process"
-import { readFile } from "node:fs/promises"
+import { readFile, mkdtemp, readdir, copyFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { expectedHostedJobs } from "./check-required-ci.mjs"
 import { assertImageVerificationEvidence } from "./image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
+import { checkDependencySecurity } from "./check-dependency-security.mjs"
+
+export function assertNoDeclaredDependencyBlockers(record) {
+  if (!Array.isArray(record?.advisories) || !Array.isArray(record.imageAdvisories) || !Array.isArray(record.nativeAssessments) ||
+      record.nativeAssessments.length !== 5 || record.advisories.length || record.imageAdvisories.length ||
+      record.nativeAssessments.some((entry) => entry.status !== "qualified") || (record.deferrals ?? []).some((entry) => entry.releaseBlocked)) {
+    throw new Error("Publication blocked by declared or unavailable dependency review; refresh non-publishing readiness first")
+  }
+}
 
 export function assertPublicationRequest({ event, ref, attempt, sha, image, verificationRunId }) {
   if (event !== "workflow_dispatch" || ref !== "refs/heads/main" || attempt !== "1" ||
@@ -57,6 +66,8 @@ export function publicationRequest(env = process.env) {
 export async function checkPublication() {
   const request = publicationRequest()
   assertPublicationRequest(request)
+  const dependencyPolicy = JSON.parse(await readFile(new URL("../docs/dependency-security.json", import.meta.url), "utf8"))
+  assertNoDeclaredDependencyBlockers(dependencyPolicy)
   const repository = process.env.GITHUB_REPOSITORY
   const runId = process.env.GITHUB_RUN_ID
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? "") || !/^[1-9][0-9]*$/.test(runId ?? "")) {
@@ -79,8 +90,27 @@ export async function checkPublication() {
   const evidence = JSON.parse(await readFile("artifacts/image-" + request.image + ".json", "utf8"))
   const archiveSha256 = await sha256File("artifacts/image-" + request.image + ".tar")
   assertImageArtifact(request, verification, evidence, archiveSha256)
+  // Supplementary archives are read/scanned only. The owner's request still
+  // authorizes publication of exactly request.image, never the other images.
+  const dependencyDirectory = await mkdtemp("artifacts/dependency-candidate-")
+  for (const file of await readdir("artifacts")) {
+    if (file.startsWith("image-" + request.image) && /\.(?:json|tar)$/.test(file)) await copyFile("artifacts/" + file, dependencyDirectory + "/" + file)
+  }
+  for (const image of ["cms", "renderer", "site"].filter((image) => image !== request.image)) {
+    const supplemental = pages("/actions/workflows/build-" + image + "-image.yml/runs?head_sha=" + request.sha + "&branch=main&per_page=100")
+      .flatMap((page) => page.workflow_runs).find((run) => run.status === "completed" && run.conclusion === "success" && ["push", "workflow_dispatch"].includes(run.event))
+    if (!supplemental) throw new Error("Current dependency readiness requires verified archives for every application")
+    const run = api("/actions/runs/" + supplemental.id)
+    const supplementalRequest = { ...request, image, verificationRunId: String(run.id) }
+    assertVerifiedSource(supplementalRequest, run, ci, jobs, expectedJobs)
+    execFileSync("gh", ["run", "download", String(run.id), "--repo", repository, "--name", "image-" + image, "--dir", dependencyDirectory], { timeout: 600000, stdio: "inherit" })
+    const metadata = JSON.parse(await readFile(dependencyDirectory + "/image-" + image + ".json", "utf8"))
+    assertImageVerificationEvidence({ sha: request.sha, runId: String(run.id), attempt: String(run.run_attempt), image }, metadata)
+    if (metadata.archiveSha256 !== await sha256File(dependencyDirectory + "/image-" + image + ".tar")) throw new Error("Supplementary dependency archive bytes changed")
+  }
+  const dependencyReadiness = await checkDependencySecurity(["--release", "--candidate", request.sha, "--images", dependencyDirectory, "--archive-dir", dependencyDirectory])
   console.log("Exact-source image archive, canonical CI and owner publication approval verified")
-  return { request, evidence }
+  return { request, evidence, dependencyReadiness }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await checkPublication()

@@ -1,3 +1,4 @@
+import { requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { execFileSync, spawnSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
@@ -5,6 +6,8 @@ import { setTimeout } from "node:timers/promises"
 import { sha256File } from "./image-artifact.mjs"
 import { infrastructure } from "./infrastructure-images.mjs"
 import { verifyTunnelOffline } from "./verify-tunnel-offline.mjs"
+import { parseOsRelease } from "./image-platform.mjs"
+import { collectImageDependencies } from "./collect-image-dependencies.mjs"
 
 const app = process.argv[2]
 const application = { cms: "cms", renderer: "renderer", site: "landing" }[app]
@@ -30,13 +33,6 @@ function docker(args, capture = false) {
   return execFileSync("docker", args, { encoding: "utf8", stdio: capture ? "pipe" : "inherit" })
 }
 
-function parseOsRelease(text) {
-  const values = Object.fromEntries(text.trim().split("\n").filter((line) => line.includes("=")).map((line) => {
-    const index = line.indexOf("=")
-    return [line.slice(0, index), line.slice(index + 1).replace(/^"|"$/g, "")]
-  }))
-  return { os: values.ID, version: values.VERSION_ID }
-}
 
 async function health(probe) {
   const deadline = Date.now() + 120000
@@ -69,9 +65,10 @@ try {
   let nodeLts = null
   if (app !== "site") {
     const node = JSON.parse(docker(["run", "--rm", "--entrypoint", "node", image, "--eval",
-      'console.log(JSON.stringify({version:process.versions.node,lts:process.release.lts||null,uid:process.getuid(),gid:process.getgid()}))'], true))
+      'console.log(JSON.stringify({version:process.versions.node,lts:process.release.lts||null,uid:process.getuid(),gid:process.getgid(),versions:process.versions}))'], true))
     if (node.version !== expectedNode || !node.lts) throw new Error("Packaged Node must match .nvmrc and actually be LTS")
     if (node.uid !== 1000 || node.gid !== 1000) throw new Error("Packaged Node must preserve deployment UID/GID 1000")
+    runtimePlatform.nodeVersions = node.versions
     runtimePlatform.uid = node.uid
     runtimePlatform.gid = node.gid
     nodeLts = node.lts
@@ -87,7 +84,7 @@ try {
     // then process pixels so missing/incompatible native libraries fail here.
     const sharpPin = (await readFile("pnpm-workspace.yaml", "utf8")).match(/^  sharp: "([^"]+)"$/m)?.[1]
     if (!sharpPin) throw new Error("CMS native smoke requires the governed sharp override")
-    docker(["run", "--rm", "--entrypoint", "node", "--workdir", "/app/apps/cms", image,
+    const nativeSharp = JSON.parse(docker(["run", "--rm", "--network", "none", "--entrypoint", "node", "--workdir", "/app/apps/cms", image,
       "--input-type=module", "--eval", `
         import { createRequire } from "node:module";
         const appRequire = createRequire(process.cwd() + "/server.js");
@@ -97,8 +94,9 @@ try {
         const { info } = await sharp({ create: { width: 2, height: 2, channels: 3, background: "white" } })
           .resize(1, 1).png().toBuffer({ resolveWithObject: true });
         if (info.width !== 1 || info.height !== 1 || info.format !== "png") throw new Error("Packaged native image processing failed");
-        console.log(JSON.stringify({ nativeImageSmoke: "passed", sharp: sharp.versions.sharp, vips: sharp.versions.vips, platform: process.platform, arch: process.arch }));
-      `, sharpPin])
+        console.log(JSON.stringify({ nativeImageSmoke: "passed", versions: sharp.versions, platform: process.platform, arch: process.arch }));
+      `, sharpPin], true))
+    runtimePlatform.sharpVersions = nativeSharp.versions
     docker(["network", "create", "--internal", network])
     docker(["volume", "create", "--label", "siteinabox.verification=" + resourceId, dataVolume], true)
     if (docker(["volume", "inspect", "--format", '{{ index .Labels "siteinabox.verification" }}', dataVolume], true).trim() !== resourceId) {
@@ -186,15 +184,34 @@ try {
   const archive = artifactDir + "/image-" + app + ".tar"
   docker(["save", "--output", archive, image])
   const archiveSha256 = await sha256File(archive)
+  const dependencyInventory = await collectImageDependencies({ docker, root: process.cwd(), archive,
+    image: { application: app, sourceSHA: revision, imageId, archiveSha256, runtimePlatform },
+    artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes(app) })
+  const infrastructureDependencies = []
+  if (app === "cms") {
+    for (const key of ["postgres", "cloudflared"]) {
+      const pin = infrastructure.images[key]
+      const vendorId = docker(["image", "inspect", "--format", "{{.Id}}", pin.reference], true).trim()
+      const vendorArchitecture = docker(["image", "inspect", "--format", "{{.Architecture}}", pin.reference], true).trim()
+      if ("linux/" + vendorArchitecture !== infrastructure.verificationPlatform) throw new Error("Infrastructure image platform differs from its reviewed pin")
+      const vendorArchive = artifactDir + "/image-cms-" + key + ".tar"
+      docker(["save", "--output", vendorArchive, pin.reference])
+      infrastructureDependencies.push(await collectImageDependencies({ docker, root: process.cwd(), archive: vendorArchive,
+        image: { application: "cms-" + key, candidateSourceSHA: revision, imageId: vendorId,
+          archiveSha256: await sha256File(vendorArchive), reference: pin.reference, runtimePlatform: { architecture: vendorArchitecture } },
+        artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes("cms-" + key) }))
+    }
+  }
   await writeFile(artifactDir + "/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,
     imageId, tag: image, archiveSha256,
     verificationRunId: process.env.GITHUB_RUN_ID ?? null,
     verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
     nodeVersion: expectedNode, buildNodeLts: process.release.lts, nodeLts, runtimePlatform, postgresRehearsal, tunnelVerification,
+    dependencyInventory, infrastructureDependencies,
     packagedSmoke: "passed", published: false }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
-    "artifact-path=" + artifactDir + "/image-" + app + ".*\nevidence-path=" + artifactDir + "/image-" + app + ".json\n")
+    "artifact-path=" + artifactDir + "/image-" + app + "*\nevidence-path=" + artifactDir + "/image-" + app + "*.json\n")
   console.log("Verification artifacts: " + artifactDir)
   console.log("Packaged " + app + " image verification passed; no image published")
 } catch (error) {

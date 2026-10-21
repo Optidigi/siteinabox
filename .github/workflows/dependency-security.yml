@@ -1,0 +1,108 @@
+name: dependency-security
+
+on:
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-inventory:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dependency:check
+      - name: Retain inventory and honest readiness status
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-source-evidence
+          path: |
+            artifacts/dependency-source.json
+            artifacts/dependency-readiness.json
+          if-no-files-found: error
+          retention-days: 7
+
+  packaged-inventory:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [cms, renderer, site]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Inventory actual unpublished application and infrastructure bytes
+        id: verify
+        run: pnpm image:verify ${{ matrix.app }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-image-${{ matrix.app }}
+          path: ${{ steps.verify.outputs.evidence-path }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain complete scanner reports and diagnostics after partial failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-diagnostics-${{ matrix.app }}
+          path: |
+            artifacts/siab-verify-*/image-*.json
+            artifacts/siab-verify-*/image-*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  inventory:
+    if: ${{ always() && github.ref == 'refs/heads/main' }}
+    needs: [source-inventory, packaged-inventory]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-source-evidence
+          path: artifacts/dependency-source
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: dependency-image-*
+          merge-multiple: true
+          path: artifacts/ci-images
+      - run: node scripts/check-dependency-security.mjs --source-evidence artifacts/dependency-source/dependency-source.json --images artifacts/ci-images
+      - name: Retain current reviewed inventory verdict
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-readiness
+          path: artifacts/dependency-readiness.json
+          if-no-files-found: error
+          retention-days: 7
