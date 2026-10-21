@@ -416,3 +416,13 @@ pnpm check:toolchain
 `outdated` is an inventory signal, not an upgrade approval. Overrides and
 release-age exclusions should be removed one coherent group at a time, with a
 separate rollbackable PR and an explicit lockfile diff.
+
+## Current release evidence
+
+The [dependency evidence contract](dependency-security.md) and its reviewed JSON
+record own current full/production, publisher and shipped native/OS dispositions.
+Earlier audit totals above are dated milestone evidence, not present clearance.
+Vitest 4.1.12 keeps the qualified runner major while patching the known mocker
+issue; CMS Vite 8.3.4 aligns the already qualified Vite group. Root peer/native
+permissions and release-age policy remain in force. Unknown or unresolved risk
+blocks release; an inventory pass cannot approve a constraint or deployment.

@@ -17,6 +17,7 @@ jobs:
   package-quality:
     runs-on: ubuntu-latest
     env:
+      GH_TOKEN: ${{ github.token }}
       TYPE_SAFETY_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,8 +44,21 @@ jobs:
           pnpm workflow:actions:check
           pnpm infrastructure:check
           pnpm publication:check
+          pnpm dependency:policy:test
           pnpm cms:test:guard
           pnpm ci:policy:check
+      - name: Review current full and production dependency evidence
+        run: pnpm dependency:check
+      - name: Retain source advisory evidence and blocked-readiness diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-source-evidence
+          path: |
+            artifacts/dependency-source.json
+            artifacts/dependency-readiness.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Shared package type checks
         run: pnpm packages:typecheck
       - name: Contract and renderer tests
@@ -199,6 +213,8 @@ jobs:
         run: pnpm --dir apps/renderer test:analytics-browser
 
   image-verification:
+    env:
+      GH_TOKEN: ${{ github.token }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -227,6 +243,15 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Retain scanner failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-dependency-diagnostics-${{ matrix.app }}
+          path: artifacts/siab-verify-*/image-*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   required-ci:
     if: ${{ always() }}
     needs: [package-quality, cms-quality, cms-test, site, renderer, image-verification]
@@ -249,6 +274,11 @@ jobs:
           pattern: ci-image-*
           merge-multiple: true
           path: artifacts/ci-images
+      - name: Download this run's source dependency evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-source-evidence
+          path: artifacts/dependency-source
       - run: node scripts/check-required-ci.mjs
       - name: Retain CI results and honest control diagnostic
         if: always()
@@ -258,5 +288,6 @@ jobs:
           path: |
             artifacts/required-ci.json
             artifacts/delivery-control-readback.json
+            artifacts/dependency-readiness.json
           if-no-files-found: error
           retention-days: 7

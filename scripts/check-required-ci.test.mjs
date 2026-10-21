@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { assertRequiredCiResults, assertRequiredCiWorkflow } from "./check-required-ci.mjs"
@@ -46,4 +47,12 @@ test("the committed CI workflow covers every canonical job and image variant", a
     workflow.replace("  image-verification:\n", "  image-verification:\n    if: false\n")]) {
     assert.throws(() => assertImageMatrix(changed))
   }
+})
+
+test("log-only always diagnostics cannot make verification conditional", async () => {
+  const { assertImageMatrix } = await import("./check-required-ci.mjs")
+  const source = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
+  assertImageMatrix(source)
+  assert.throws(() => assertImageMatrix(source.replace("id: verify\n        run:", "id: verify\n        if: false\n        run:")))
+  assert.throws(() => assertImageMatrix(source.replace("path: artifacts/siab-verify-*/image-*.log", "path: arbitrary-source")))
 })

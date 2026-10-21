@@ -50,6 +50,7 @@ git status --short
 - Preserve existing provider boundaries for domains, DNS/proxy/email, analytics,
   and payments. External writes always require explicit approval.
 - For outbound-mail changes, read `docs/contracts/email.md`.
+- For dependency or publication evidence, read `docs/dependency-security.md`.
 
 ## CMS-specific safety
 

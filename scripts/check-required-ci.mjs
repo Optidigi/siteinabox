@@ -1,5 +1,6 @@
 import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
+import { checkDependencySecurity } from "./check-dependency-security.mjs"
 import { imageApplications, assertImageVerificationEvidence } from "./image-evidence.mjs"
 
 export function expectedCiJobs(matrix) {
@@ -41,11 +42,14 @@ export function expectedHostedJobs(matrix) {
 
 export function assertImageMatrix(source) {
   const block = source.match(/^  image-verification:\s*\n([\s\S]*?)(?=^  [\w-]+:\s*$|(?![\s\S]))/m)?.[1]
+  // This exact log-only upload runs after failures; verification and evidence
+  // steps still cannot acquire skip/conditional behavior.
+  const verification = block?.replace(/      - name: Retain scanner failure diagnostics\n        if: always\(\)\n        uses: actions\/upload-artifact@[a-f0-9]{40}[^\n]*\n        with:\n          name: ci-dependency-diagnostics-\$\{\{ matrix.app \}\}\n          path: artifacts\/siab-verify-\*\/image-\*\.log\n          if-no-files-found: ignore\n          retention-days: 7/, "")
   const triggers = source.split("jobs:")[0]
   if (!block || !triggers.includes("  pull_request:\n") || !triggers.includes("  push:\n") ||
       /paths(?:-ignore)?:|branches-ignore:|pull_request_target:/.test(triggers) ||
       !block.includes("app: [cms, renderer, site]") || !block.includes("fail-fast: false") ||
-      /\bif:|continue-on-error:|exclude:|include:/m.test(block) ||
+      /\bif:|continue-on-error:|exclude:|include:/m.test(verification) ||
       !block.includes("run: pnpm image:verify ${{ matrix.app }}") ||
       !block.includes("name: ci-image-${{ matrix.app }}") || !block.includes("if-no-files-found: error") ||
       /packages:\s*write|login-action|docker\s+push\b|type=registry/.test(source)) {
@@ -70,6 +74,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         attempt: process.env.GITHUB_RUN_ATTEMPT, image }, evidence)
       images.push(evidence)
     }
+    await checkDependencySecurity(["--source-evidence", "artifacts/dependency-source/dependency-source.json", "--images", "artifacts/ci-images"])
     await mkdir("artifacts", { recursive: true })
     await writeFile("artifacts/required-ci.json", JSON.stringify({
       evidenceKind: "canonical CI and unpublished packaged-image verification; not deployment/provider proof",

@@ -1,0 +1,498 @@
+{
+  "schemaVersion": 2,
+  "reviewedAt": "2026-10-21T01:01:28.437Z",
+  "expiresAt": "2026-10-28T01:01:28.437Z",
+  "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+  "graphHash": "028d33494e3744f9bc5c3f136fcf9e844436131dd12b037e74b8a7f0a811947f",
+  "configurationHash": "db3142f8d107059ad416bc0461e74ff2623037fc0e222b577071d407eeef7b9f",
+  "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
+  "publisherFacts": [
+    {
+      "id": "GHSA-rj75-hqrm-r3gf",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-rj75-hqrm-r3gf",
+      "selected": false,
+      "sha256": "344c23cc902a3f0206c764369b863062970bb44c85bc1773c0cee59a93d89b30"
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "selected": false,
+      "sha256": "09de76bb4e3648601e00a1ce11cc8d4790bdb69d061de5cb9b04dfe547f175e1"
+    },
+    {
+      "id": "latest:braces",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/braces/latest",
+      "selected": false,
+      "sha256": "22edba5acaac073d63f91c32e46001a8db59bdb89c72041c021ce379a834cf9e"
+    },
+    {
+      "id": "latest:postcss-selector-parser",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/postcss-selector-parser/latest",
+      "selected": false,
+      "sha256": "f7d77a8e2dc2953eff501c50a5d3d2d3ca136508dac6fe22d56a9e93f824f8d7"
+    },
+    {
+      "id": "latest:@tailwindcss/typography",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/%40tailwindcss%2Ftypography/latest",
+      "selected": false,
+      "sha256": "16747a4c56845cf63f46b136dccc3062e2639f78382b31a8bdad5532555d7bcf"
+    },
+    {
+      "id": "latest:better-auth",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/better-auth/latest",
+      "selected": false,
+      "sha256": "c26577ee7d9b12a744d4109edf9e781d13b3a400f00ca4c20336c86813b9be06"
+    },
+    {
+      "id": "latest:vitest",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/vitest/latest",
+      "selected": false,
+      "sha256": "2dc66588db16ed819f192e16c56eb29d8b0fa4ad324d8bdb9738010699f8db32"
+    },
+    {
+      "id": "scanner-release",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0",
+      "selected": true,
+      "sha256": "a8665d2ac25a31c0a10f66b2702f189a056b1ef49db31899a6ee4ad877e8ff8e"
+    },
+    {
+      "id": "scanner-latest",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/aquasecurity/trivy/releases/latest",
+      "selected": false,
+      "sha256": "a8665d2ac25a31c0a10f66b2702f189a056b1ef49db31899a6ee4ad877e8ff8e"
+    },
+    {
+      "id": "node-releases",
+      "kind": "json",
+      "url": "https://nodejs.org/dist/index.json",
+      "selected": false,
+      "sha256": "4323fc206681fe2444cd344c65fb0bddb7d64ce9827f827fa0eaa05fdb6492b1"
+    },
+    {
+      "id": "alpine-main",
+      "kind": "json",
+      "url": "https://secdb.alpinelinux.org/v3.24/main.json",
+      "selected": false,
+      "sha256": "33db8c1a9fbb16fc5460f83a83f4e530f13440f6abaa5fcd8e39747f88428294"
+    },
+    {
+      "id": "alpine-community",
+      "kind": "json",
+      "url": "https://secdb.alpinelinux.org/v3.24/community.json",
+      "selected": false,
+      "sha256": "5e9a678dc717dce8d7ee8a1c2f2b9b92d784a9c3593c78b5b964e270a886be4a"
+    },
+    {
+      "id": "go-advisory-index",
+      "kind": "json",
+      "url": "https://vuln.go.dev/index/vulns.json",
+      "selected": false,
+      "sha256": "37ce5f50d57fde5df399fd71c95aeb442d9b5d4aa55a95818cfe0e00b0ff8028"
+    },
+    {
+      "id": "selected:next",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/next/16.4.2",
+      "selected": true,
+      "sha256": "01da64432f926adb53f32045daf7e222929b38baf6d272573d69b3eb16afcd70"
+    },
+    {
+      "id": "selected:react",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/react/19.3.1",
+      "selected": true,
+      "sha256": "1581df31e2618982c734317df0e3a89f9d9747affaefabb57a44938499ed2902"
+    },
+    {
+      "id": "selected:react-dom",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/react-dom/19.3.1",
+      "selected": true,
+      "sha256": "7cd7e2390e53ff713169a7ebe53b5cac5f3a10007ebf9f8c5431c08b0858da81"
+    },
+    {
+      "id": "selected:payload",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/payload/3.91.0",
+      "selected": true,
+      "sha256": "31f0c14087e8793a1a4d2c49ff616bff5f65262e1dfcc2ac2914e54f963227de"
+    },
+    {
+      "id": "selected:@payloadcms/next",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/%40payloadcms%2Fnext/3.91.0",
+      "selected": true,
+      "sha256": "c3ae12697e74ff59a9836158672fd7a56646c224e8464a3a55d1ff63293e2089"
+    },
+    {
+      "id": "selected:@payloadcms/db-postgres",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/%40payloadcms%2Fdb-postgres/3.91.0",
+      "selected": true,
+      "sha256": "4a4a9c6ee8763c317c25d8defdbb68fcc8b835f0703d282b7a024a3daf361d56"
+    },
+    {
+      "id": "selected:better-auth",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/better-auth/1.7.11",
+      "selected": true,
+      "sha256": "f6993a74d8f95521857247f74865b0dcfa60d5efed12fcabd42507647a57a115"
+    },
+    {
+      "id": "selected:nodemailer",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/nodemailer/10.1.7",
+      "selected": true,
+      "sha256": "c671c0a6ec08eddce35a8881b8f6697408916253fb70fe3bdc1562c92ba3f668"
+    },
+    {
+      "id": "selected:@mastra/core",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/%40mastra%2Fcore/1.78.0",
+      "selected": true,
+      "sha256": "866e04993b9060e7372c955063d19ccaf4b79b826e050ad9cd789f415b7b86e1"
+    },
+    {
+      "id": "selected:vite",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/vite/8.3.4",
+      "selected": true,
+      "sha256": "6027cf69ceaeecdd477633be8ef2fc1a78d636202eb7d7fd2fb19b3ab347a3a9"
+    },
+    {
+      "id": "selected:vitest",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/vitest/4.1.12",
+      "selected": true,
+      "sha256": "39586d5d6fcd7aeacf226d4e1cb979c8d5c0f1ab6f227aad833d3972b51af417"
+    },
+    {
+      "id": "selected:@vitest/ui",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/%40vitest%2Fui/4.1.12",
+      "selected": true,
+      "sha256": "436e936a6df2687f9723a0c417e2c513dd2a7898d6aa979620c4dfc6ba13fd83"
+    },
+    {
+      "id": "selected:astro",
+      "kind": "npm-version",
+      "url": "https://registry.npmjs.org/astro/7.4.1",
+      "selected": true,
+      "sha256": "95c0364f5071ee4474cada9e639282a968015270531ad57f84f041afbc0b93e7"
+    },
+    {
+      "id": "GHSA-82fw-gwwq-j7x9",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-82fw-gwwq-j7x9",
+      "sha256": "c75f567b76f9de5e347b6e6d9e0ee45821f24f9780b70463adf0879414a1a51b"
+    },
+    {
+      "id": "GHSA-698v-4r3x-3vcv",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-698v-4r3x-3vcv",
+      "sha256": "acd580df37921e2cbcfe81c9e328e17b52cf9de3c01da870d62c31c4a49a1455"
+    },
+    {
+      "id": "GHSA-r825-w8mm-5pxw",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-r825-w8mm-5pxw",
+      "sha256": "ba226d3acf6e45c2922c61020731916f67c1b260322ac0189ed62e187fab5fd1"
+    },
+    {
+      "id": "GHSA-587h-7wmj-h5pm",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-587h-7wmj-h5pm",
+      "sha256": "1ca25cc59f2e9c1e573609f4da1ded1eec9c575b100472106b7aac6a21b83fba"
+    },
+    {
+      "id": "vitest-maintenance-release",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/vitest-dev/vitest/releases/tags/v4.1.12",
+      "selected": true,
+      "sha256": "a54a329f1e044a4bf7b78765e6885ae071139bc31bcf3159a3de0094f2c66a40"
+    }
+  ],
+  "publisherConstraints": [
+    {
+      "package": "next",
+      "manifest": "apps/cms/package.json",
+      "specifier": "16.4.2",
+      "version": "16.4.2",
+      "minimumQualifiedVersion": "16.4.2",
+      "lockedVersions": [
+        "16.4.2"
+      ],
+      "sources": [
+        "selected:next"
+      ]
+    },
+    {
+      "package": "react",
+      "manifest": "apps/cms/package.json",
+      "specifier": "19.3.1",
+      "version": "19.3.1",
+      "minimumQualifiedVersion": "19.3.1",
+      "lockedVersions": [
+        "19.3.1"
+      ],
+      "sources": [
+        "selected:react"
+      ]
+    },
+    {
+      "package": "react-dom",
+      "manifest": "apps/cms/package.json",
+      "specifier": "19.3.1",
+      "version": "19.3.1",
+      "minimumQualifiedVersion": "19.3.1",
+      "lockedVersions": [
+        "19.3.1"
+      ],
+      "sources": [
+        "selected:react-dom"
+      ]
+    },
+    {
+      "package": "payload",
+      "manifest": "apps/cms/package.json",
+      "specifier": "3.91.0",
+      "version": "3.91.0",
+      "minimumQualifiedVersion": "3.91.0",
+      "lockedVersions": [
+        "3.91.0"
+      ],
+      "sources": [
+        "selected:payload"
+      ]
+    },
+    {
+      "package": "@payloadcms/next",
+      "manifest": "apps/cms/package.json",
+      "specifier": "3.91.0",
+      "version": "3.91.0",
+      "minimumQualifiedVersion": "3.91.0",
+      "lockedVersions": [
+        "3.91.0"
+      ],
+      "sources": [
+        "selected:@payloadcms/next"
+      ]
+    },
+    {
+      "package": "@payloadcms/db-postgres",
+      "manifest": "apps/cms/package.json",
+      "specifier": "3.91.0",
+      "version": "3.91.0",
+      "minimumQualifiedVersion": "3.91.0",
+      "lockedVersions": [
+        "3.91.0"
+      ],
+      "sources": [
+        "selected:@payloadcms/db-postgres"
+      ]
+    },
+    {
+      "package": "better-auth",
+      "manifest": "apps/cms/package.json",
+      "specifier": "1.7.11",
+      "version": "1.7.11",
+      "minimumQualifiedVersion": "1.7.11",
+      "lockedVersions": [
+        "1.7.11"
+      ],
+      "sources": [
+        "selected:better-auth"
+      ]
+    },
+    {
+      "package": "nodemailer",
+      "manifest": "apps/cms/package.json",
+      "specifier": "10.1.7",
+      "version": "10.1.7",
+      "minimumQualifiedVersion": "10.1.7",
+      "lockedVersions": [
+        "10.1.7"
+      ],
+      "sources": [
+        "selected:nodemailer"
+      ]
+    },
+    {
+      "package": "@mastra/core",
+      "manifest": "apps/cms/package.json",
+      "specifier": "1.78.0",
+      "version": "1.78.0",
+      "minimumQualifiedVersion": "1.78.0",
+      "lockedVersions": [
+        "1.78.0"
+      ],
+      "sources": [
+        "selected:@mastra/core"
+      ]
+    },
+    {
+      "package": "vite",
+      "manifest": "apps/cms/package.json",
+      "specifier": "8.3.4",
+      "version": "8.3.4",
+      "minimumQualifiedVersion": "8.3.3",
+      "lockedVersions": [
+        "8.3.4"
+      ],
+      "sources": [
+        "selected:vite",
+        "GHSA-698v-4r3x-3vcv",
+        "GHSA-r825-w8mm-5pxw",
+        "GHSA-587h-7wmj-h5pm"
+      ]
+    },
+    {
+      "package": "vitest",
+      "manifest": "apps/cms/package.json",
+      "specifier": "4.1.12",
+      "version": "4.1.12",
+      "minimumQualifiedVersion": "4.1.11",
+      "lockedVersions": [
+        "4.1.12"
+      ],
+      "sources": [
+        "selected:vitest",
+        "GHSA-82fw-gwwq-j7x9",
+        "vitest-maintenance-release"
+      ]
+    },
+    {
+      "package": "@vitest/ui",
+      "manifest": "apps/cms/package.json",
+      "specifier": "4.1.12",
+      "version": "4.1.12",
+      "minimumQualifiedVersion": "4.1.11",
+      "lockedVersions": [
+        "4.1.12"
+      ],
+      "sources": [
+        "selected:@vitest/ui",
+        "GHSA-82fw-gwwq-j7x9",
+        "vitest-maintenance-release"
+      ]
+    },
+    {
+      "package": "astro",
+      "manifest": "apps/landing/package.json",
+      "specifier": "7.4.1",
+      "version": "7.4.1",
+      "minimumQualifiedVersion": "7.4.1",
+      "lockedVersions": [
+        "7.4.1"
+      ],
+      "sources": [
+        "selected:astro"
+      ]
+    }
+  ],
+  "advisories": [
+    {
+      "scope": "full",
+      "id": "GHSA-rj75-hqrm-r3gf",
+      "package": "postcss-selector-parser",
+      "version": "6.0.10",
+      "severity": "moderate",
+      "paths": [
+        "apps__landing>@tailwindcss/typography>postcss-selector-parser"
+      ],
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "recheck": "Before release, changed source/graph/publisher facts, or review expiry",
+      "sources": [
+        "GHSA-rj75-hqrm-r3gf"
+      ],
+      "reason": "Confirmed Tailwind typography build dependency selector-parser 6.0.10. CSS inputs are source-owned and tenant content remains structured; an affected deployment condition is not established. The parent still owns a 6.x contract; a 7.x migration requires compatibility qualification. This remains a release blocker."
+    },
+    {
+      "scope": "full",
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "paths": [
+        "apps__cms>@payloadcms/next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>sass>chokidar>braces"
+      ],
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "recheck": "Before release, changed source/graph/publisher facts, or review expiry",
+      "sources": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ],
+      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. Publisher reports no fixed braces release. Actual hostile-pattern execution in deployment is unproven; no compatibility override or risk waiver is authorized."
+    },
+    {
+      "scope": "production",
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "paths": [
+        "apps__cms>@payloadcms/next>sass>chokidar>braces",
+        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>sass>chokidar>braces"
+      ],
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "recheck": "Before release, changed source/graph/publisher facts, or review expiry",
+      "sources": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ],
+      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. Publisher reports no fixed braces release. Actual hostile-pattern execution in deployment is unproven; no compatibility override or risk waiver is authorized."
+    }
+  ],
+  "imageAdvisories": [],
+  "nativeAssessments": [],
+  "deferrals": [
+    {
+      "id": "vitest-major-qualification",
+      "classification": "supported_release",
+      "releaseBlocked": false,
+      "affectedSurface": "CMS/landing/contracts test runners",
+      "reason": "Vitest 4.1.12 is the current compatible 4.x maintenance/security patch and removes the known mocker advisory. Stable 5.0.5 is a major runner migration not qualified in this bounded patch group; no security finding is waived.",
+      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "recheck": "Before release if 4.x support/advisory facts change; qualify 5.x separately before asserting it is compatible.",
+      "expiresAt": "2026-10-28T00:25:01.977Z",
+      "sources": [
+        "latest:vitest",
+        "selected:vitest",
+        "vitest-maintenance-release"
+      ]
+    },
+    {
+      "id": "better-auth-age-recheck",
+      "classification": "supported_release",
+      "releaseBlocked": false,
+      "affectedSurface": "Configured identity SDK",
+      "reason": "M09 selected and qualified eligible 1.7.11. Published 1.7.12 is not eligible before 2026-10-21T11:59:45Z; retain the current supported patch until the explicit age/compatibility recheck. No advisory is waived.",
+      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "recheck": "At or after 2026-10-21T11:59:45Z, check actual publication time and requalify the compatible patch.",
+      "expiresAt": "2026-10-21T11:59:45.000Z",
+      "sources": [
+        "latest:better-auth",
+        "selected:better-auth"
+      ]
+    }
+  ],
+  "limitations": [
+    "Native and OS evidence is incomplete until all five exact candidate image inventories have been produced and reviewed.",
+    "The historical M11 CMS archive has scanner findings and a newer esbuild qualification probe has a native analyzer coverage gap; neither establishes production exploitability.",
+    "No live provider, deployed Amicare, release, recovery or publication clearance."
+  ]
+}
