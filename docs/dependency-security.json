@@ -4923,9 +4923,9 @@
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "6a9bf9d680d72b9c73133055dc1545e0c27450fc420e7089c8940c54bedaca34",
+      "fingerprint": "d691bc2491b2e4d00029f7b4f40d076f86a8d58de3da675eba4bce50effa0a4f",
       "status": "blocked",
-      "reason": "M15 durable account-link collection hooks, recovery task and additive migration change the eight owner-generated CMS helper bundles on the unchanged frozen graph. Actual M14 final hosted native inventories supply the baseline; real old/new boot preserves content, credentials, links, unknown verification history and uncertainty. Local bundle identities require exact final candidate image matching. All native/OS findings, opaque coverage/support gaps and release blockers remain unresolved.",
+      "reason": "M15 durable account-link hooks/recovery and additive migration are bound to actual CMS packaged bytes. All eight helpers exactly reproduce with the documented repository-root generator command and a separate frozen filtered build. The prior local command ran in apps/cms, changing esbuild source paths/identifiers; its hashes did not qualify the container. Actual native inventories match the unchanged baseline. All unresolved native/OS findings, opaque coverage/support gaps and release blockers remain.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
@@ -4933,64 +4933,64 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "2d6f863cc2a9932a0ece9349cd49fd9cde0dadfe",
-      "reviewedImageId": "sha256:107661203bd7b1ff020cff828005f7ba433ccde598ad83cdf7fcfb1d088b2ac3",
-      "reviewedArchiveSha256": "7bfd890b0349584d5ec69efe789bbc9adb071bec6d3018da4b263e4a1452bb65",
-      "reviewedReportSha256": "98c341d285634685039d998ea76980a6b9717ea8b46be444613765b7e61b4867",
-      "reviewedNativeInventorySha256": "aee436bb0e7d3353426b8f800dbc33a2a316bc2cdd4e452783fdd7ab08e5067a",
+      "reviewedSourceSHA": "068397b789ed6f57e1c550ed5a83ac08dc24ec5c",
+      "reviewedImageId": "sha256:e3c171c0f5dc8f84dd52de7a5b796e6d7a61a67f4f592323dd564ac4f5cdda9e",
+      "reviewedArchiveSha256": "82c912a841ae524b1e430e6491e3f76674a1b83e12b19280dc3a57bf6ec993b9",
+      "reviewedReportSha256": "c715398c6be0f55161ab80e32fddf797e462b7443ada5bf3e1baad706bf831a3",
+      "reviewedNativeInventorySha256": "27ffab0a87aa1304108abe102a75c3a2d585c20dba13c609b0d5b94239850786",
       "bundleQualification": {
-        "kind": "local-generator-with-verified-native-baseline",
-        "baselineSourceSHA": "2d6f863cc2a9932a0ece9349cd49fd9cde0dadfe",
-        "baselineImageId": "sha256:107661203bd7b1ff020cff828005f7ba433ccde598ad83cdf7fcfb1d088b2ac3",
+        "kind": "hosted-exact-bytes-with-root-generator-reproduction",
+        "baselineSourceSHA": "068397b789ed6f57e1c550ed5a83ac08dc24ec5c",
+        "baselineImageId": "sha256:e3c171c0f5dc8f84dd52de7a5b796e6d7a61a67f4f592323dd564ac4f5cdda9e",
         "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
         "node": "24.22.0",
         "pnpm": "12.14.0",
         "bundledScripts": [
           {
             "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
-            "size": 14750699,
-            "sha256": "9f8eb7fe600164b80d00f198691e69ea3bfdd76b3e8347b36967fd8b32ea89ac"
+            "size": 14724170,
+            "sha256": "5a8243fa52793129c1fe3c9cbb0ea8b868e04d64a21c9ae6e77206f336a907a7"
           },
           {
             "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
-            "size": 14766894,
-            "sha256": "7b12e00e339b03a5a0113a81c71eb93d7a57b50362adf9babea91b97ed4233df"
+            "size": 14740383,
+            "sha256": "c28539f50edffa10e443dee3cd6f03b26f2a5262716ce0e56156531afa0678e6"
           },
           {
             "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
-            "size": 14778841,
-            "sha256": "feca7c4cd3952aa0d61e703a122ba4c6b5ca89533302973543d51fcf559cfb44"
+            "size": 14752264,
+            "sha256": "0cb7b31d24dd3445432f1675c0eabae0efe3577d8c57cbd54e1c3bfe5a8f6ad0"
           },
           {
             "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
-            "size": 14749580,
-            "sha256": "2bd1ff5eae8e4efbde45582a4c02f58c6ea6c8e7a9d0d712b57ce748e31cf976"
+            "size": 14723051,
+            "sha256": "8ee20615033077e4d3f1304c3828aa3b4245938a7fb49d6f2a6a69e321af5d0e"
           },
           {
             "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
-            "size": 15614251,
-            "sha256": "6bdd394224d40b971ba495d62fd360c65e9569b88e20581792e13917fd2a81de"
+            "size": 15589072,
+            "sha256": "e7bbd52db68ef40837dfdaacc49da90c064f43705d2c2c28df101bb374331b64"
           },
           {
             "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
-            "size": 14751514,
-            "sha256": "61665dad724acfb301e031915eabbd69f97bb55e383c91cd5386bd357e4e9c05"
+            "size": 14724985,
+            "sha256": "09ddfcae2229093e5f3a824a624ed19e5fd0a688bbfb26e821024c364952f2a7"
           },
           {
             "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
-            "size": 14756946,
-            "sha256": "9adb2e19f89a2bad7eff3e57a5f9df7f1b06045d33d43b1f55b0c6c124b883c3"
+            "size": 14730417,
+            "sha256": "67d06d7d42d228509362d0c368847e3965b0018d96c2e6afb3235d0b44db24fc"
           },
           {
             "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 14847039,
-            "sha256": "d5a00de8e3c6d7525abe15066bd53066b94e03e299598c530e24124bba83323d"
+            "size": 14820501,
+            "sha256": "63e3fdf948b8bdb11219397b437fb970ad6780290015014dd73aecb1369480a0"
           }
         ],
-        "limitation": "Actual M14 canonical run39677655252 attempt3 native baseline plus locally generated M15 helper bytes at reviewed runtime d1170d6b. Exact final hosted match remains required. No native qualification, security waiver or production/release clearance."
+        "limitation": "Canonical run39693531514 attempt1 actual CMS image and all eight root-generated helpers match for reviewed headca12add3/testedmerge068397b7. Aggregate correctly rejected the prior cwd-dependent local hashes. Final policy-head hosted verification still required. All advisory/native blockers remain; no release or production qualification."
       },
-      "reviewedVerificationRunId": "39677655252",
-      "reviewedVerificationRunAttempt": "3"
+      "reviewedVerificationRunId": "39693531514",
+      "reviewedVerificationRunAttempt": "1"
     },
     {
       "application": "cms-postgres",

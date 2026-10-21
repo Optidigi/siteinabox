@@ -112,18 +112,22 @@ bound to the verified bytes, and publication never rebuilds the candidate.
 ## Current frontier
 
 The current reviewed baseline inventory comes from unpublished source
-`2d6f863cc2a9932a0ece9349cd49fd9cde0dadfe` in
-[canonical run 39677655252, attempt 3](https://github.com/Optidigi/siteinabox/actions/runs/39677655252).
-Its parents are main `d5479b36` and reviewed M14 PR head `e3e06b03`; its tree
-matches the merged M14 candidate. Package/CMS, actual built-browser, all three
-packaged images and the aggregate passed. The prior provenance review retained
-all 198 blocking dispositions. These baseline identities do not replace fresh
-final-candidate source/run/artifact verification.
+`068397b789ed6f57e1c550ed5a83ac08dc24ec5c` in
+[canonical run 39693531514, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39693531514).
+Its parents are main `0aeb9566` and reviewed M15 PR head `ca12add3`. All eight
+underlying jobs passed, including 344 CMS test files, the 19-assertion actual
+built-browser journey and all three packaged images. The aggregate correctly
+rejected prior local helper hashes. These baseline identities do not replace
+fresh final-policy-head source/run/artifact verification.
 
-M15 preserves the frozen graph and rebinds its eight changed owner-generated CMS
-helper bundles to that actual M14 native baseline. Populated old/new boot
-rehearsals preserve credentials, outstanding links, verification history and
-uncertain delivery; local hashes still require exact final hosted matching.
+M15 preserves the frozen graph and binds its eight CMS helper bundles to actual
+hosted bytes. The documented `node apps/cms/scripts/build-runtime-bundle.mjs`
+command must run from the repository root, as Docker does. The earlier local
+invocation ran from `apps/cms`; esbuild embedded different source paths and
+identifiers. Root generation and a separate frozen filtered build now reproduce
+all eight hosted sizes/hashes exactly. Populated old/new boot rehearsals preserve
+credentials, outstanding links, verification history and uncertain delivery;
+final policy-head hosted matching remains required.
 Fresh source review sees only Composer security-fix additions in the Alpine
 community data; none of the five retained image inventories ships Composer.
 Better Auth 1.7.12, Node 24.22.1, scanner security-patch qualification and the
