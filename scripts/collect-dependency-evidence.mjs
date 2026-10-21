@@ -36,11 +36,24 @@ export async function dependencyIdentities(root) {
   return { graph: await digest(graphFiles), configuration: await digest(configurationFiles) }
 }
 
-/** Public metadata deliberately carries no caller credentials or organization restrictions. */
+function assertPublicGitHubMetadata(url) {
+  if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash) throw new Error("Publisher evidence must use a supported public primary API")
+  const primaryRepos = new Set(["aquasecurity/trivy", "nodejs/node", "vitest-dev/vitest", "vitejs/vite", "vercel/next.js", "facebook/react", "payloadcms/payload", "withastro/astro", "mastra-ai/mastra", "nodemailer/nodemailer", "better-auth/better-auth", "pnpm/pnpm", "cloudflare/cloudflared", "postgres/postgres", "nginx/nginx"])
+  const repository = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/(?:releases\/(?:latest|tags\/.+)|git\/ref\/tags\/.+)$/)?.[1]
+  if (!/^\/advisories\/GHSA-[a-z0-9-]+$/.test(url.pathname) && !primaryRepos.has(repository)) throw new Error("Publisher evidence must use a supported public primary API, not account/repository operations")
+}
+
+/** Credential-free first; only confirmed quota exhaustion may use existing CLI auth. */
 export async function readPublicPublisherJSON(url) {
+  const parsed = new URL(url)
+  if (parsed.hostname === "api.github.com") assertPublicGitHubMetadata(parsed)
   const response = await fetch(url, { signal: AbortSignal.timeout(30000), redirect: "error",
     headers: { Accept: "application/json" } })
-  if (!response.ok) throw new Error("Primary publisher evidence unavailable: HTTP " + response.status)
+  if (parsed.hostname === "api.github.com" && response.status === 403 && response.headers.get("x-ratelimit-remaining") === "0") {
+    await response.body?.cancel()
+    return JSON.parse(execFileSync("gh", ["api", parsed.href], { encoding: "utf8", timeout: 30000, maxBuffer: maxOutput }))
+  }
+  if (!response.ok) throw new Error("Primary publisher evidence unavailable: " + parsed.href + " HTTP " + response.status)
   const chunks = []; let size = 0
   for await (const chunk of response.body) {
     size += chunk.length
@@ -55,11 +68,7 @@ export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
   if (url.protocol !== "https:" || !["api.github.com", "raw.githubusercontent.com", "registry.npmjs.org", "nodejs.org", "secdb.alpinelinux.org", "vuln.go.dev"].includes(url.hostname) || url.username || url.password || !descriptor.id) {
     throw new Error("Publisher fact must use a supported primary HTTPS source")
   }
-  if (url.hostname === "api.github.com") {
-    const primaryRepos = new Set(["aquasecurity/trivy", "nodejs/node", "vitest-dev/vitest", "vitejs/vite", "vercel/next.js", "facebook/react", "payloadcms/payload", "withastro/astro", "mastra-ai/mastra", "nodemailer/nodemailer", "better-auth/better-auth", "pnpm/pnpm", "cloudflare/cloudflared", "postgres/postgres", "nginx/nginx"])
-    const repository = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/(?:releases\/(?:latest|tags\/.+)|git\/ref\/tags\/.+)$/)?.[1]
-    if (!/^\/advisories\/GHSA-[a-z0-9-]+$/.test(url.pathname) && !primaryRepos.has(repository)) throw new Error("Publisher evidence must use a supported public primary API, not account/repository operations")
-  }
+  if (url.hostname === "api.github.com") assertPublicGitHubMetadata(url)
   const body = url.hostname === "api.github.com" && readGitHubJSON
     ? await readGitHubJSON(url.href) : await readPublicPublisherJSON(url.href)
   // Use selected publisher facts, not changing download counters or presentation.
@@ -67,7 +76,7 @@ export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
   if (descriptor.kind === "github-advisory") {
     if (body.ghsa_id !== url.pathname.split("/").at(-1) || !Number.isFinite(Date.parse(body.updated_at)) ||
         !["low", "medium", "high", "critical", "unknown"].includes(body.severity) || !Array.isArray(body.vulnerabilities) || !body.vulnerabilities.length) {
-      throw new Error("Primary advisory evidence is incomplete")
+      throw new Error("Primary advisory evidence is incomplete: " + descriptor.id)
     }
     facts = { id: body.ghsa_id, updatedAt: body.updated_at, withdrawnAt: body.withdrawn_at, severity: body.severity, vulnerabilities: body.vulnerabilities, cwes: body.cwes }
   } else if (descriptor.kind === "github-release") {

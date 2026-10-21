@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, mkdir, rm, symlink, chmod } from "node:fs/promises"
 import { execFileSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { dependencyIdentities, fetchPublisherFact } from "./collect-dependency-evidence.mjs"
+import { dependencyIdentities, fetchPublisherFact, readPublicPublisherJSON } from "./collect-dependency-evidence.mjs"
 
 const descriptor = { id: "fixture-release", kind: "npm-version", url: "https://registry.npmjs.org/fixture/1.0.0" }
 test("unavailable or malformed primary evidence never produces a successful fact", async () => {
@@ -88,5 +88,19 @@ test("public GitHub facts do not inherit authenticated organization IP restricti
     }
     const fact = await fetchPublisherFact({ id: "public-scanner", kind: "github-release", url: "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0" })
     assert.equal(fact.facts.tag, "v0.76.0")
+  } finally { globalThis.fetch = originalFetch; process.env.PATH = originalPath; await rm(root, { recursive: true, force: true }) }
+})
+
+test("only confirmed anonymous quota exhaustion permits authenticated public metadata fallback", async () => {
+  const root = await mkdtemp(join(tmpdir(), "siab-primary-quota-"))
+  const originalFetch = globalThis.fetch; const originalPath = process.env.PATH
+  try {
+    await writeFile(join(root, "gh"), `#!/bin/sh\nprintf '{"fixture":"authenticated public metadata"}\\n'\n`)
+    await chmod(join(root, "gh"), 0o700); process.env.PATH = root + ":" + originalPath
+    globalThis.fetch = async () => new Response("quota", { status: 403, headers: { "x-ratelimit-remaining": "0" } })
+    assert.deepEqual(await readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test"), { fixture: "authenticated public metadata" })
+    await assert.rejects(readPublicPublisherJSON("https://api.github.com/user"), /public primary API/)
+    globalThis.fetch = async () => new Response("organization access denied", { status: 403 })
+    await assert.rejects(readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test"), /HTTP 403/)
   } finally { globalThis.fetch = originalFetch; process.env.PATH = originalPath; await rm(root, { recursive: true, force: true }) }
 })

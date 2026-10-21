@@ -55,10 +55,11 @@ Review duration is at most seven days. Changing an expiry alone is insufficient:
 current inputs, both audits, primary facts and applicable image inventories must
 still match. Any incompatible source/graph/path/severity/fix/native change needs
 fresh review. Publisher floors independently prevent known regressions even when
-an audit database omits a notice. Public publisher metadata is fetched without
-authentication, so organization IP restrictions on workflow tokens do not apply.
-Unavailable or rate-limited metadata still fails closed; no provider credential
-or new application startup variable is needed.
+an audit database omits a notice. Public metadata uses credential-free HTTPS
+first. Only a GitHub HTTP 403 explicitly reporting exhausted anonymous quota may
+retry through existing CLI authentication, restricted to the same allowlisted
+public metadata paths. Organization-access errors and other failures remain
+blocking; no new provider credential or application startup variable is needed.
 
 Trivy 0.76.0 is isolated and verified against pinned official asset, checksum and
 binary digests. Collection disables telemetry, inherited scanner overrides and
@@ -110,24 +111,44 @@ bound to the verified bytes, and publication never rebuilds the candidate.
 
 ## Current frontier
 
-The compatible Vitest 4.1.12 and CMS Vite 8.3.4 patches remove the known mocker and
-older Vite findings. Full audit still includes the Payload-private braces high
-finding and typography's selector-parser moderate finding; production audit
-includes braces. The retained historical M11 CMS archive also reveals OS and
-bundled npm/Go findings absent from `pnpm audit`, including a scanner-critical Go
-standard-library finding in an esbuild binary. Presence does not establish an
-exploitable deployment condition or what production currently runs.
+The current reviewed inventory comes from unpublished source
+`f81e5dc2ddad9fb6015c3f16a01108c99df7db47` in
+[canonical run 39577255971, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39577255971).
+Its parents are main `3caef2ba` and reviewed PR head `13e50f73`. All application
+packaged checks, populated PostgreSQL replacement/restart and network-disabled
+connector checks passed. These baseline component identities do not replace
+fresh final-candidate source/run/artifact verification.
 
-A read-only diagnostic scan of the pinned cloudflared artifact identifies Go
-stdlib 1.27.2. The newly published
-[GO-2026-6809 advisory](https://pkg.go.dev/vuln/GO-2026-6809) includes that version;
-the scanned database snapshot predates the advisory. An explicit unresolved
-constraint therefore blocks release independently of scanner detection. This
-diagnostic evidence does not replace the five current-candidate inventories.
+| Image role | Package records | Vulnerability records | Native files | Bundled scripts |
+| --- | ---: | ---: | ---: | ---: |
+| CMS | 255 | 73 | 80 | 8 |
+| Renderer | 650 | 13 | 43 | 0 |
+| Site | 72 | 8 | 127 | 0 |
+| PostgreSQL | 57 | 63 | 260 | 0 |
+| Cloudflared | 79 | 40 | 281 | 0 |
 
-Current-candidate native assessments must be completed from hosted artifacts
-before this milestone's inventory is qualified. Missing native records are
-intentional blockers during qualification, not a clean or completed release
-claim. No real provider evaluation, production/Amicare preservation, recovery,
-publication or rollout gate is closed here. Review/remediate actual remaining
-findings and repeat affected evidence before seeking those approvals.
+There are 198 reviewed image dispositions, including the unversioned esbuild
+module, plus five blocked native assessments. Every image disposition remains
+release-blocking. Current primary facts include Go advisory bodies, GitHub
+package advisories and Alpine vendor data. Two GitHub OS records contain only
+advisory metadata without structured package ranges; source-less DSA-6572-1 and
+other incomplete primary/support facts remain explicit analysis gaps. Review
+ownership, affected surfaces, recheck conditions and the unchanged global expiry
+are recorded in the policy JSON.
+
+Compatible Vitest/Vite patches remove their known findings; full/production
+workspace audits retain braces, with selector-parser also in the full graph.
+Image evidence additionally identifies vulnerable global npm packages, OS
+libraries and Go runtimes. Critical CVE-2025-68121 is reported in the CMS's shipped
+esbuild runtime (Go 1.23.12) and PostgreSQL's gosu helper (Go 1.24.6). The current
+cloudflared inventory confirms Go 1.27.2 and
+[GO-2026-6809 / CVE-2026-111943](https://pkg.go.dev/vuln/GO-2026-6809).
+These are affected-package findings; actual deployment exploitability is
+unproven. Full `sharp.versions` and native hashes are retained, but universal
+opaque-binary advisory coverage and publisher-support qualification remain
+incomplete. All these uncertainties continue to block release.
+
+No clean-security, live-provider, production/Amicare preservation, recovery,
+publication or rollout gate is closed. Historical M11 diagnostics remain
+historical. Before release, remediate or obtain separately authorized risk
+constraints, refresh primary facts and verify the exact candidate bytes again.
