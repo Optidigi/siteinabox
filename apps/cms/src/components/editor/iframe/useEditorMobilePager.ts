@@ -41,12 +41,22 @@ export function useEditorMobilePager(initialPane: EditorMobilePane = "preview") 
       return
     }
     const index = Math.max(0, PANES.indexOf(next))
+    const left = index * el.clientWidth
+    const motion = behavior ?? (prefersReducedMotion() ? "auto" : "smooth")
+    // Focus must wait for the animation, including its first browser frame.
+    const moving = motion === "smooth" && Math.abs(el.scrollLeft - left) > 1
+    setPaging(moving)
+    window.clearTimeout(settleTimer.current)
+    if (moving) settleTimer.current = window.setTimeout(() => {
+      setPaging(false)
+      syncPane()
+    }, 140)
     el.scrollTo({
-      left: index * el.clientWidth,
-      behavior: behavior ?? (prefersReducedMotion() ? "auto" : "smooth"),
+      left,
+      behavior: motion,
     })
     setPane(next)
-  }, [])
+  }, [syncPane])
 
   useLayoutEffect(() => {
     const el = pagerRef.current

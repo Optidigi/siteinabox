@@ -287,6 +287,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   // (a ReactNode slot — local UI components render whatever node they get).
   const pageSettings = readOnly ? null : (
     <>
+      {isDesktop === false && (
+        <section className="rounded-md border border-border bg-card p-4">
+          <h2 className="mb-3 text-base font-semibold text-foreground">{t("pageSettings")}</h2>
+          <PageMetaInline control={pageMetaControl} setValue={pageMetaSetValue} getValues={pageMetaGetValues} />
+        </section>
+      )}
       {navCard}
       {seoCard}
     </>

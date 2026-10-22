@@ -33,6 +33,7 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
       await page.locator('[data-editor-pane="inspector"]:not([inert])').waitFor()
       await page.waitForFunction(() => document.activeElement?.getAttribute("data-editor-pane") === "inspector")
       assert.equal(await page.locator('[data-editor-pane="preview"]').getAttribute("inert"), "")
+      await page.getByRole("button", { name: messages.editor.pageSettings, exact: true }).click()
     }
     const title = page.locator('input[name="title"]').first()
     await title.waitFor({ state: "visible" })
@@ -62,7 +63,10 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
       page: { id: target.pageId, data: { title: "Cross tenant", slug: "index", status: "draft", blocks: [] } } })
     assert.equal(crossTenant.status, 403)
     await page.reload()
-    if (width < 500) await page.getByRole("button", { name: messages.common.edit, exact: true }).last().click()
+    if (width < 500) {
+      await page.getByRole("button", { name: messages.common.edit, exact: true }).last().click()
+      await page.getByRole("button", { name: messages.editor.pageSettings, exact: true }).click()
+    }
     assert.equal(await title.inputValue(), marker)
     const staleMarker = "Retain unsaved stale work " + locale
     await title.fill(staleMarker)
