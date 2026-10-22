@@ -131,7 +131,7 @@ export async function EmailPreferencesSection({
                     </label>
                   ))}
                 </div>
-                <Button type="submit" size="sm" variant="outline" className="w-fit">{t("saveMember", { name: member.name })}</Button>
+                <Button type="submit" size="sm" variant="outline" className="w-fit max-w-full max-md:h-auto max-md:min-h-9 max-md:whitespace-normal">{t("saveMember", { name: member.name })}</Button>
               </form>
             ))}
           </CardContent>

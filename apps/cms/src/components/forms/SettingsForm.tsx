@@ -343,6 +343,7 @@ export function SettingsForm({
         <div className="flex items-center justify-between gap-3">
           <SegmentedPill<SectionKey>
             ariaLabel={t("sectionLabel")}
+            labelBreakpoint="md"
             value={section}
             onValueChange={(next) => next && setSection(next)}
             allowDeselect={false}

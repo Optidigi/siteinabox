@@ -107,11 +107,14 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
     const settings = await context.newPage()
     await settings.goto(cmsOrigin + "/settings")
     assert.equal(await settings.locator('input[name="siteUrl"]').inputValue(), "")
+    assert.equal(await settings.evaluate(() => innerWidth), width)
+    assert.equal(await settings.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     assert.equal(await settings.locator('input[name="siteUrl"]').getAttribute("required"), null)
     await settings.locator('input[name="siteName"]').fill("Private settings " + locale)
-    const settingsSaved = settings.waitForResponse(r => new URL(r.url()).pathname.startsWith("/api/site-settings/") && r.request().method() === "PATCH")
-    await settings.getByRole("button", { name: messages.common.save, exact: true }).last().click()
-    const settingsResponse = await settingsSaved
+    const [settingsResponse] = await Promise.all([
+      settings.waitForResponse(r => new URL(r.url()).pathname.startsWith("/api/site-settings/") && r.request().method() === "PATCH"),
+      settings.getByRole("button", { name: messages.common.save, exact: true }).last().click(),
+    ])
     assert.equal(settingsResponse.status(), 200)
     assert.equal(settingsResponse.request().postDataJSON().siteUrl, null)
     await settings.reload()
