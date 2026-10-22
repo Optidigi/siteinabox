@@ -194,6 +194,7 @@ describe("complete migration source acquisition", () => {
       domain: "example.nl",
       provider: "example-provider",
       bindText: BIND_ZONE,
+      validationOptions: { validatorPath: process.env.SIAB_TEST_BIND_VALIDATOR_PATH },
       publicEvidence: {
         ...publicEvidence,
         authoritativeNameservers: ["ns1.changed.example", "ns2.changed.example"],

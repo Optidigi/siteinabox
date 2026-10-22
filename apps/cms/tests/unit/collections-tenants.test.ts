@@ -19,10 +19,10 @@ const groupFields = (group: Field) => {
 describe("Tenants collection config", () => {
   it("uses 'tenants' slug", () => { expect(Tenants.slug).toBe("tenants") })
 
-  it("has unique domain field", () => {
+  it("keeps domains unique while allowing a private workspace without a domain", () => {
     const domain = expectNamedField(Tenants.fields, "domain")
     expect("unique" in domain && domain.unique).toBe(true)
-    expect(fieldRequired(domain)).toBe(true)
+    expect(fieldRequired(domain)).toBe(false)
   })
 
   it("has unique slug field", () => {

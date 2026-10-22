@@ -8,6 +8,7 @@ import {
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import {
   expectNamedField,
+  fieldRequired,
   findNamedSubField,
 } from "../_helpers/payloadFields"
 
@@ -22,7 +23,8 @@ describe("SiteSettings collection config", () => {
   it("keeps the canonical settings fields and owned chrome defaults", () => {
     expect(SiteSettings.slug).toBe("site-settings")
     expect(findField("siteName")).toMatchObject({ type: "text", required: true })
-    expect(findField("siteUrl")).toMatchObject({ type: "text", required: true })
+    expect(findField("siteUrl")).toMatchObject({ type: "text" })
+    expect(fieldRequired(findField("siteUrl"))).toBe(false)
     expect(findField("language")).toMatchObject({ type: "text", defaultValue: "nl" })
 
     const chrome = findField("chrome")

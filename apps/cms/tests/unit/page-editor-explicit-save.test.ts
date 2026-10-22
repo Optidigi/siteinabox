@@ -17,7 +17,8 @@ describe("page editor explicit-save contract", () => {
     expect(source).toContain("siteDesign.navigation = navSnapshot")
     expect(source).toContain('fetch("/api/page-editor-save"')
     expect(source).toContain("expectedUpdatedAt: baselineUpdatedAtRef.current")
-    expect(source).toContain("publish: true")
+    expect(source).toContain("const onSubmit = (values: PageEditorFormValues) => submitPage(values, false)")
+    expect(source).toContain("form.handleSubmit(values => submitPage(values, true), onInvalid)")
     expect(source).toContain("baselineUpdatedAtRef.current = result.page.updatedAt")
 
     const toggleNavStart = source.indexOf("const toggleNav = useCallback(")
