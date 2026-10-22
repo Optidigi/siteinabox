@@ -956,6 +956,7 @@
     "draftDiscarded": "Draft discarded",
     "draftRestoreFailed": "Recovered draft could not be restored",
     "restoreDraftTitle": "Restore unsaved draft?",
+    "restoreDraftServerChanged": "This page was also saved elsewhere. Restore your local draft to review it before saving, or discard it to keep the current saved page.",
     "restoreDraftWithDate": "A local draft from {date} was recovered after the page reloaded.",
     "restoreDraft": "A local draft was recovered after the page reloaded.",
     "restoreDraftAction": "Restore draft",

@@ -27,6 +27,10 @@ is no alternate CMS block renderer or canvas/source tree.
   Old interactive collection-save clients receive a reload instruction before
   projection instead of implicitly publishing. There is no autosave; IndexedDB
   retains unsaved work and rejected/stale submissions for recovery.
+  A valid local draft remains recoverable even when its timestamp predates a
+  newer server revision. Recovery requires an explicit restore/discard choice;
+  the dialog warns when the server baseline changed before restoring local
+  values for review. Private customer settings also accept an absent public URL.
 - Page, theme and navigation writes share one transaction and tenant lock.
   Page revisions are checked under that lock; theme changes also compare the
   client's normalized baseline. Navigation membership merges current rows under

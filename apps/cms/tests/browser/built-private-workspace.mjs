@@ -70,6 +70,19 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
     assert.equal(await title.inputValue(), marker)
     const staleMarker = "Retain unsaved stale work " + locale
     await title.fill(staleMarker)
+    // Persist B's actual local draft before A's server commit. This exercises
+    // recovery when the draft timestamp is older than the server revision.
+    await page.waitForFunction(marker => new Promise(resolve => {
+      const request = indexedDB.open("siab-editor-drafts")
+      request.onerror = () => resolve(false)
+      request.onsuccess = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains("page-drafts")) { db.close(); resolve(false); return }
+        const rows = db.transaction("page-drafts").objectStore("page-drafts").getAll()
+        rows.onerror = () => { db.close(); resolve(false) }
+        rows.onsuccess = () => { const found = rows.result.some(row => row.formValues?.title === marker); db.close(); resolve(found) }
+      }
+    }), staleMarker)
     // Another genuine API save invalidates the loaded editor revision.
     const latest = await api(page, "/api/pages/" + target.pageId)
     assert.equal((await api(page, "/api/page-editor-save", { tenantId: target.tenantId, publish: false,
@@ -79,8 +92,31 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
     await title.press("ControlOrMeta+s")
     assert.equal((await stale).status(), 409)
     assert.equal(await title.inputValue(), staleMarker)
+    await page.reload()
+    const recovery = page.getByRole("dialog", { name: messages.editor.restoreDraftTitle })
+    await recovery.waitFor()
+    await recovery.getByText(messages.editor.restoreDraftServerChanged, { exact: true }).waitFor()
+    await recovery.getByRole("button", { name: messages.editor.restoreDraftAction, exact: true }).click()
+    if (width < 500) {
+      await page.getByRole("button", { name: messages.common.edit, exact: true }).last().click()
+      await page.getByRole("button", { name: messages.editor.pageSettings, exact: true }).click()
+    }
+    assert.equal(await title.inputValue(), staleMarker)
     await state()
     await page.screenshot({ path: path.join(output, "private-workspace-" + locale + ".png") })
+    const settings = await context.newPage()
+    await settings.goto(cmsOrigin + "/settings")
+    assert.equal(await settings.locator('input[name="siteUrl"]').inputValue(), "")
+    assert.equal(await settings.locator('input[name="siteUrl"]').getAttribute("required"), null)
+    await settings.locator('input[name="siteName"]').fill("Private settings " + locale)
+    const settingsSaved = settings.waitForResponse(r => new URL(r.url()).pathname.startsWith("/api/site-settings/") && r.request().method() === "PATCH")
+    await settings.getByRole("button", { name: messages.common.save, exact: true }).last().click()
+    const settingsResponse = await settingsSaved
+    assert.equal(settingsResponse.status(), 200)
+    assert.equal(settingsResponse.request().postDataJSON().siteUrl, null)
+    await settings.reload()
+    assert.equal(await settings.locator('input[name="siteName"]').inputValue(), "Private settings " + locale)
+    await state()
   }
   for (const person of target.roles) {
     const context = await newContext("paid-private-" + person.role)
@@ -93,5 +129,5 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
   }
   await state()
   verify("paid-private NL/EN desktop/phone saves persist content, theme and navigation without a domain or public snapshot")
-  verify("private editor keyboard focus, stale-work recovery, role, cross-tenant and first-activation boundaries hold")
+  verify("private editor keyboard focus, stale-work reload recovery, domainless settings, role, cross-tenant and first-activation boundaries hold")
 }

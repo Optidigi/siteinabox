@@ -86,7 +86,7 @@ export function BuilderShell({
   const [previewRevision, setPreviewRevision] = useState(0)
   const [frameReady, setFrameReady] = useState(false)
   const [frameError, setFrameError] = useState(false)
-  const [previewPage, setPreviewPage] = useState({ pageSlug: "index", hash: "" })
+  const [previewPage, setPreviewPage] = useState({ pageSlug: "", hash: "" })
   const [previewOpened, setPreviewOpened] = useState(false)
   const [splitReady, setSplitReady] = useState(() => Boolean(initialClientSlug))
   const previewWasOff = useRef(!initialClientSlug)
@@ -217,18 +217,18 @@ export function BuilderShell({
   const frameSrc = useMemo(
     () => {
       if (!clientSlug) return null
-      const path = `/renderer-frame/preview/${encodeURIComponent(clientSlug)}/${encodeURIComponent(previewPage.pageSlug)}`
+      const path = `/renderer-frame/preview/${encodeURIComponent(clientSlug)}${previewPage.pageSlug ? `/${encodeURIComponent(previewPage.pageSlug)}` : ""}`
       return `${path}?rev=${previewRevision}${previewPage.hash}`
     },
     [clientSlug, previewRevision, previewPage],
   )
+  const frameDocumentSrc = frameSrc?.split("#")[0] ?? null
 
   useEffect(() => {
     setFrameReady(false)
     setFrameError(false)
     revisionRef.current = 1
-    if (!frameSrc) return
-  }, [frameSrc])
+  }, [frameDocumentSrc])
 
   useEffect(() => {
     if (!frameSrc || frameReady || frameError) return

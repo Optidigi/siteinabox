@@ -13,12 +13,10 @@ import {
   editorInsertBlockAt,
   editorRemoveBlock,
   editorReorderBlocks,
-  isPageDraftStaleAgainstServer,
   pageEditorDefaultValues,
   pageEditorHasRecoverableDraftWork,
   selectElementPath,
 } from "@/lib/editor/pageEditorCore"
-import type { PageEditorDraft } from "@/lib/editor/pageDraftStore"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
 const hero = (id: string): EditorBlock =>
@@ -30,27 +28,6 @@ describe("buildPageDraftKey", () => {
       "page:12:34:%2Ft%2Facme%2Fpages",
     )
     expect(buildPageDraftKey("t-1", undefined, "/pages")).toBe("page:t-1:new:%2Fpages")
-  })
-})
-describe("isPageDraftStaleAgainstServer", () => {
-  const draft = (savedAt: number): PageEditorDraft => ({
-    version: 1,
-    key: "k",
-    savedAt,
-    baselineUpdatedAt: null,
-    formValues: {},
-    theme: null,
-  })
-
-  it("treats drafts saved before server updatedAt as stale", () => {
-    const updatedAt = "2026-01-02T00:00:00.000Z"
-    const serverMs = Date.parse(updatedAt)
-    expect(isPageDraftStaleAgainstServer(draft(serverMs), updatedAt)).toBe(true)
-    expect(isPageDraftStaleAgainstServer(draft(serverMs + 1), updatedAt)).toBe(false)
-  })
-
-  it("does not stale-check when server baseline is missing", () => {
-    expect(isPageDraftStaleAgainstServer(draft(1), null)).toBe(false)
   })
 })
 describe("dirty derivation", () => {

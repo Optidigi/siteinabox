@@ -44,9 +44,10 @@ import type { RtManifest } from "@/lib/richText/manifest"
 // authority on shape; this gives the user immediate inline feedback for
 // the obvious failures (empty siteName, malformed contactEmail, malformed
 // hex color) without waiting for a server round-trip.
-const createSettingsSchema = (t: (key: string, values?: Record<string, string | number | Date>) => string) => z.object({
+export const createSettingsSchema = (t: (key: string, values?: Record<string, string | number | Date>) => string) => z.object({
   siteName: z.string().min(1, t("validation.siteNameRequired")),
-  siteUrl: z.string().url(t("validation.siteUrlInvalid")),
+  siteUrl: z.union([z.string().url(t("validation.siteUrlInvalid")), z.literal(""), z.null()])
+    .optional().transform(value => value || null),
   contactEmail: z.union([
     z.string().email(t("validation.emailInvalid")),
     z.literal(""),
@@ -216,7 +217,7 @@ export function SettingsForm({
 
   const generalFields = [
     { name: "siteName", type: "text", label: t("siteName"), required: true },
-    { name: "siteUrl", type: "url", label: t("siteUrl"), required: true },
+    { name: "siteUrl", type: "url", label: t("siteUrl") },
     settingsContract.general.description
       ? {
           name: "description",

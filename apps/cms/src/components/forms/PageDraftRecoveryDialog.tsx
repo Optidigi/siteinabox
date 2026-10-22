@@ -13,11 +13,12 @@ import { useLocale, useTranslations } from "next-intl"
 type Props = {
   open: boolean
   savedAt: number | null
+  serverChanged?: boolean
   onRestore: () => void
   onDiscard: () => void
 }
 
-export function PageDraftRecoveryDialog({ open, savedAt, onRestore, onDiscard }: Props) {
+export function PageDraftRecoveryDialog({ open, savedAt, serverChanged, onRestore, onDiscard }: Props) {
   const t = useTranslations("editor")
   const locale = useLocale()
   const savedLabel = savedAt
@@ -41,6 +42,7 @@ export function PageDraftRecoveryDialog({ open, savedAt, onRestore, onDiscard }:
               ? t("restoreDraftWithDate", { date: savedLabel })
               : t("restoreDraft")}
           </DialogDescription>
+          {serverChanged && <p className="text-sm text-muted-foreground">{t("restoreDraftServerChanged")}</p>}
         </DialogHeader>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDiscard}>

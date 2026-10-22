@@ -956,6 +956,7 @@
     "draftDiscarded": "Concept weggegooid",
     "draftRestoreFailed": "Hersteld concept kon niet worden teruggezet",
     "restoreDraftTitle": "Niet-opgeslagen concept herstellen?",
+    "restoreDraftServerChanged": "Deze pagina is ook ergens anders opgeslagen. Herstel je lokale concept om het te controleren voordat je opslaat, of verwijder het om de huidige opgeslagen pagina te behouden.",
     "restoreDraftWithDate": "Er is een lokaal concept van {date} teruggevonden nadat de pagina opnieuw laadde.",
     "restoreDraft": "Er is een lokaal concept teruggevonden nadat de pagina opnieuw laadde.",
     "restoreDraftAction": "Concept herstellen",

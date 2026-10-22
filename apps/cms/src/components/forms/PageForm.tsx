@@ -663,6 +663,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         <PageDraftRecoveryDialog
           open={draftCandidate !== null}
         savedAt={draftCandidate?.savedAt ?? null}
+        serverChanged={draftCandidate != null && draftCandidate.baselineUpdatedAt !== (initial?.updatedAt ?? null)}
         onRestore={restorePageDraft}
         onDiscard={discardPageDraft}
       />

@@ -9,7 +9,7 @@ export function builderPreviewNavigation(href: string, clientSlug: string, origi
   const prefix = prefixes.find(value => path.startsWith(value))
   if (prefix) path = path.slice(prefix.length)
   let pageSlug: string
-  try { pageSlug = decodeURIComponent(path.replace(/^\/+|\/+$/g, "")) || "index" } catch { return null }
-  if (!/^[a-z0-9-]{1,150}$/.test(pageSlug)) return null
+  try { pageSlug = decodeURIComponent(path.replace(/^\/+|\/+$/g, "")) } catch { return null }
+  if (pageSlug !== "" && !/^[a-z0-9-]{1,150}$/.test(pageSlug)) return null
   return { pageSlug, hash: url.hash }
 }

@@ -30,7 +30,6 @@ import {
   editorInsertBlockAt,
   editorRemoveBlock,
   editorReorderBlocks,
-  isPageDraftStaleAgainstServer,
   normalizeWatchedBlocks,
   pageEditorDefaultValues,
   pageEditorHasRecoverableDraftWork,
@@ -273,7 +272,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     void readPageEditorDraft(pageDraftKey).then((draft) => {
       if (cancelled || !draft) return
       const parsed = schema.safeParse(draft.formValues)
-      if (!parsed.success || isPageDraftStaleAgainstServer(draft, baselineUpdatedAt)) {
+      if (!parsed.success) {
         void deletePageEditorDraft(pageDraftKey)
         return
       }

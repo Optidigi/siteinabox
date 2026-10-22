@@ -53,7 +53,7 @@ export default async function RendererPreviewFramePage({ params }: { params: Pro
     customerEmail,
     requestedPage: requestedPageSlug(pageSlug),
     customerAuthority: customer!.authority,
-  })
+  }).catch(() => notFound())
 
   return (
     <RendererFrameRuntime
