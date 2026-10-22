@@ -8,7 +8,7 @@ describe("CMS agent panel chrome", () => {
     const panel = read("src/components/layout/CmsAgentPanel.tsx")
     const css = read("src/styles/siab.css")
     const composer = read("src/components/builder/BuilderComposer.tsx")
-    const button = read("../../packages/ui/src/components/button.tsx")
+    const button = [read("../../packages/ui/src/components/button.tsx"), read("../../packages/ui/src/lib/button-control.tsx")].join("\n")
 
     expect(panel).toContain("data-siab-agent-chat")
     expect(panel).toContain("BuilderComposer")
@@ -38,7 +38,7 @@ describe("CMS agent panel chrome", () => {
     expect(button).toContain("asChild")
     expect(button).toContain("blurAfterPointerClick")
     expect(button).toContain("handlePointerUp")
-    expect(button).toContain("{ onPointerUp }")
+    expect(button).toContain("asChild ? Slot.Root : ButtonControl")
   })
 
   it("shares workspace chrome between the builder and CMS agent drawer with a neo close tile", () => {

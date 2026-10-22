@@ -774,7 +774,8 @@
       "publishingAndSiteStatus": "Publishing and site status",
       "domainAndDns": "Domain, DNS and email provisioning",
       "billingAndPayments": "Billing and payments",
-      "teamAndAccess": "Team and access changes"
+      "teamAndAccess": "Team and access changes",
+      "appointmentBookings": "Appointment bookings"
     }
   },
   "settings": {

@@ -774,7 +774,8 @@
       "publishingAndSiteStatus": "Publicatie- en sitestatus",
       "domainAndDns": "Domein-, DNS- en e-mailinrichting",
       "billingAndPayments": "Facturatie en betalingen",
-      "teamAndAccess": "Team- en toegangswijzigingen"
+      "teamAndAccess": "Team- en toegangswijzigingen",
+      "appointmentBookings": "Afspraakboekingen"
     }
   },
   "settings": {

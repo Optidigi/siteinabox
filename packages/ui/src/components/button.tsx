@@ -3,7 +3,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
 
 import { cn } from "../lib/utils"
-import { blurAfterPointerClick, neoFocus, neoPress } from "../lib/retro"
+import { neoFocus, neoPress } from "../lib/retro"
+import { ButtonControl } from "../lib/button-control"
 
 const NEO_PRESS_VARIANTS = new Set([
   "default",
@@ -62,20 +63,14 @@ function Button({
   size = "default",
   asChild = false,
   type,
-  onPointerUp,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  const Comp = asChild ? Slot.Root : "button"
+  const Comp = asChild ? Slot.Root : ButtonControl
   const resolvedType = type ?? (asChild ? undefined : "button")
   const pressClass = variant && NEO_PRESS_VARIANTS.has(variant) ? neoPress : undefined
-  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
-    onPointerUp?.(event)
-    if (event.defaultPrevented) return
-    blurAfterPointerClick(event)
-  }
 
   return (
     <Comp
@@ -85,11 +80,6 @@ function Button({
       type={resolvedType}
       className={cn(buttonVariants({ variant, size }), pressClass, className)}
       {...props}
-      {...(asChild
-        ? onPointerUp
-          ? { onPointerUp }
-          : {}
-        : { onPointerUp: handlePointerUp })}
     />
   )
 }

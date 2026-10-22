@@ -50,6 +50,8 @@ keeps a 5px offset and does not translate. Keyboard focus uses `focus-visible`
 only so mouse clicks do not leave a stuck ring. Buttons and toggles defer blur
 until after `click` on mouse/pen up (not when they own a popup). Select and
 dropdown menus do not auto-refocus the trigger after a pointer close.
+Native button pointer behavior lives behind a client boundary so server-rendered
+forms can use the shared Button. Variant class generation remains server-usable.
 
 Button roles: `default`/`brand` = primary (yellow tile, `--neo-slab` drop);
 `ink` = inverted fill with the same drop; `outline`/`secondary` = neo control
