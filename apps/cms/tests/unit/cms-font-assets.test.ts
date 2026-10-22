@@ -28,8 +28,18 @@ describe("preserved CMS font assets", () => {
     // Independent golden receipt from the successful b2b54f43 build, before
     // vendoring. Includes the actual font-byte hashes and both Arial metrics.
     expect(hash(JSON.stringify(faces))).toBe("31d4a42b09815e2932df1beaea4786e709509a3223978cfad4e6be92de95f972")
-    expect(css).toContain('--font-sans: "Inter", "Inter Fallback";')
-    expect(css).toContain('--font-mono: "JetBrains Mono", "JetBrains Mono Fallback";')
+    const remainder = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/@font-face\s*\{[^}]+\}/g, "").trim()
+    const variables = remainder.match(/^\.cms-fonts\s*\{([^}]+)\}$/)?.[1]
+    expect(variables).toBeDefined()
+    const entries = variables!.split(";").map(value => value.trim()).filter(Boolean).map(value => {
+      const colon = value.indexOf(":")
+      return [value.slice(0, colon).trim(), value.slice(colon + 1).split(",").map(family => family.trim().replace(/^"|"$/g, ""))] as const
+    })
+    expect(entries).toHaveLength(2)
+    expect(Object.fromEntries(entries)).toEqual({
+      "--font-sans": ["Inter", "Inter Fallback"],
+      "--font-mono": ["JetBrains Mono", "JetBrains Mono Fallback"],
+    })
   })
 
   it("binds every font and complete license to retained provenance", () => {

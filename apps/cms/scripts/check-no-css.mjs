@@ -19,6 +19,8 @@ const UI_PACKAGE_SRC = join(PLATFORM_ROOT, "packages/ui/src")
 const ALLOWED_CSS_FILES = new Set([
   "src/styles/generated-site-renderer.css",
   "src/styles/globals.css",
+  // Reviewed font-only declarations; cms-font-assets.test.ts constrains contents.
+  "src/styles/fonts.css",
   "src/styles/shadcn.css",
   "src/styles/site-renderer-preview.css",
   "src/styles/siab.css",

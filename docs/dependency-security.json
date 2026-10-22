@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-22T22:33:12.798Z",
+  "reviewedAt": "2026-10-22T22:40:49.804Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M16 workspace engineering and independent Standards/Spec review; no release waiver",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "6f7cfc0150896a6e6ae5cb43544925aebcc5971deb51309d9df98affab91a728",
+  "configurationHash": "e60d0209db2a1917e85f917d20795c2c769b3115c0c44b905c3d5021f669370b",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
