@@ -4,6 +4,8 @@ import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { inviteTemplate } from "@/lib/email/templates/invite"
 import { siteLiveNoticeTemplate } from "@/lib/email/templates/siteLiveNotice"
 import { verifyPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
+import { relationshipId } from "@/lib/relationshipId"
+import { AccountLinkError } from "@/lib/auth/accountLinkTypes"
 
 async function getMailPayload() {
   const [{ getPayload }, configModule] = await Promise.all([
@@ -37,9 +39,29 @@ const privilegedMetadataMatchesRequest = (metadata: unknown, email: string, url:
   }
 }
 
-export async function sendCmsMagicLinkEmail(input: { email: string; url: string; metadata: unknown }) {
-  await resolvePayloadUserForMagicLink(input.email)
+export async function authorizeCmsMagicLink(input: { email: string; url: string; metadata?: unknown }) {
+  const user = await resolvePayloadUserForMagicLink(input.email)
+  const tenantId = relationshipId(user.tenants?.[0]?.tenant)
+  if (tenantId) {
+    const tenant = await (await getMailPayload()).findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true })
+    // Suspended owners still need primary re-entry for billing/domain recovery.
+    // Capability restrictions belong after login; archive handling is unchanged.
+    if (tenant.status === "archived") throw new AccountLinkError("E_ACCOUNT_LINK_TARGET")
+  }
   const intent = metadataText(input.metadata, "intent")
+  if (intent && intent !== "user_invite" && intent !== "site_live_handoff") throw new AccountLinkError("E_ACCOUNT_LINK_PURPOSE")
+  if (intent === "user_invite" || intent === "site_live_handoff") {
+    if (!verifyPrivilegedMagicLinkMetadata(input.metadata, intent) ||
+      !privilegedMetadataMatchesRequest(input.metadata, input.email, input.url)) throw new AccountLinkError("E_ACCOUNT_LINK_AUTHORITY")
+    const tenant = user.tenants?.[0]?.tenant
+    if (!tenant || relationshipId(tenant) !== String(metadataTenant(input.metadata)) ||
+      (intent === "user_invite" && user.role !== metadataText(input.metadata, "role"))) throw new AccountLinkError("E_ACCOUNT_LINK_TARGET")
+  }
+  return { user, intent }
+}
+
+export async function sendCmsMagicLinkEmail(input: { email: string; url: string; metadata?: unknown; locale?: "nl" | "en" }) {
+  const { intent } = await authorizeCmsMagicLink(input)
 
   if (intent === "user_invite") {
     if (!verifyPrivilegedMagicLinkMetadata(input.metadata, "user_invite") ||
@@ -95,7 +117,7 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
     return
   }
 
-  const message = magicLinkTemplate({ loginUrl: input.url })
+  const message = magicLinkTemplate({ loginUrl: input.url, locale: input.locale })
   await sendEmail({
     to: input.email,
     subject: message.subject,

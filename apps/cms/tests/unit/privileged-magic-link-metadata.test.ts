@@ -36,8 +36,8 @@ describe("privileged CMS magic-link metadata", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.BETTER_AUTH_SECRET = secret
-    mocks.getPayload.mockResolvedValue({ create: vi.fn() })
-    mocks.resolvePayloadUserForMagicLink.mockResolvedValue({ id: 1 })
+    mocks.getPayload.mockResolvedValue({ create: vi.fn(), findByID: vi.fn().mockResolvedValue({ status: "active" }) })
+    mocks.resolvePayloadUserForMagicLink.mockResolvedValue({ id: 1, role: "viewer", tenants: [{ tenant: 1 }] })
     mocks.sendEmail.mockResolvedValue({ provider: "test" })
   })
 
@@ -86,6 +86,7 @@ describe("privileged CMS magic-link metadata", () => {
   })
 
   it("executes a valid internally signed live handoff through the Cloudflare-backed mail service", async () => {
+    mocks.resolvePayloadUserForMagicLink.mockResolvedValue({ id: 2, role: "owner", tenants: [{ tenant: 2 }] })
     const metadata = signPrivilegedMagicLinkMetadata("site_live_handoff", {
       recipientEmail: "owner@example.com",
       tenantId: "2",
@@ -129,7 +130,7 @@ describe("privileged CMS magic-link metadata", () => {
       email: "member@example.com",
       url: "https://admin.example.nl/api/auth/magic-link/verify?token=secret",
       metadata,
-    })).rejects.toThrow("Unsigned or invalid privileged")
+    })).rejects.toThrow("E_ACCOUNT_LINK_AUTHORITY")
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
 
@@ -147,12 +148,12 @@ describe("privileged CMS magic-link metadata", () => {
       email: "other@example.com",
       url: "https://admin.example.nl/api/auth/magic-link/verify?token=secret",
       metadata,
-    })).rejects.toThrow("Unsigned or invalid privileged")
+    })).rejects.toThrow("E_ACCOUNT_LINK_AUTHORITY")
     await expect(sendCmsMagicLinkEmail({
       email: "member@example.com",
       url: "https://admin.other.example/api/auth/magic-link/verify?token=secret",
       metadata,
-    })).rejects.toThrow("Unsigned or invalid privileged")
+    })).rejects.toThrow("E_ACCOUNT_LINK_AUTHORITY")
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
 

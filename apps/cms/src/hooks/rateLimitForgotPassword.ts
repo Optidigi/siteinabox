@@ -1,7 +1,8 @@
 import { APIError, type CollectionBeforeOperationHook } from "payload"
+import { PASSWORD_RESET_RATE_LIMIT } from "@/lib/auth/magicLinkRateLimit"
 
-const FORGOT_PASSWORD_POINTS = 3
-const FORGOT_PASSWORD_DURATION_SECONDS = 60 * 60
+const FORGOT_PASSWORD_POINTS = PASSWORD_RESET_RATE_LIMIT.max
+const FORGOT_PASSWORD_DURATION_SECONDS = PASSWORD_RESET_RATE_LIMIT.window
 const FORGOT_PASSWORD_DURATION_MS = FORGOT_PASSWORD_DURATION_SECONDS * 1000
 
 type Bucket = { count: number; resetAt: number }

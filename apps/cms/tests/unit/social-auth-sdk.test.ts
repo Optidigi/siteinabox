@@ -3,10 +3,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { betterAuth, type BetterAuthOptions } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
 
-const { findPayloadUsers, sendCms } = vi.hoisted(() => ({ findPayloadUsers: vi.fn(), sendCms: vi.fn(async (_input: { url: string }) => {}) }))
+const { findPayloadUsers } = vi.hoisted(() => ({ findPayloadUsers: vi.fn() }))
 vi.mock("payload", () => ({ getPayload: vi.fn(async () => ({ find: findPayloadUsers })) }))
 vi.mock("@/payload.config", () => ({ default: {} }))
-vi.mock("@/lib/auth/sendCmsMagicLinkEmail", () => ({ sendCmsMagicLinkEmail: sendCms }))
 
 const origin = "https://admin.siteinabox.nl"
 const callbackURL = "/api/siab-auth/complete?next=%2Fsites"
@@ -52,18 +51,14 @@ async function fixture(provider: Provider, verified = true, seedExisting = true)
   }
   const auth = betterAuth({ ...configuredOptions, advanced: { ...configuredOptions.advanced, disableOriginCheck: false, disableCSRFCheck: false }, database: memoryAdapter(store) })
   findPayloadUsers.mockResolvedValue({ totalDocs: 1, docs: [{ id: 42, email: "invited@example.test", role: "owner", tenants: [{ tenant: 7 }] }] })
-  // Existing-identity cases use primary magic-link login. First-social cases
-  // begin without SDK users/accounts and send the actual UI's requestSignUp flag.
+  // This provider-adapter fixture starts with a signed-out SDK identity created
+  // through its real eligibility hook. Durable primary magic-link issuance and
+  // sign-out are exercised on PostgreSQL in integration/better-auth-sdk.test.ts.
+  // First-social cases still begin without SDK users/accounts and use the UI flag.
   if (seedExisting) {
-    const issueLink = await auth.handler(new Request(`${origin}/api/auth/sign-in/magic-link`, {
-      method: "POST", headers: headers(), body: JSON.stringify({ email: "invited@example.test" }),
-    }))
-    expect(issueLink.status).toBe(200)
-    const link = sendCms.mock.calls.at(-1)?.[0].url
-    if (!link) throw new Error("SDK did not issue the synthetic CMS link")
-    const verifiedLink = await auth.handler(new Request(link, { headers: headers() }))
-    expect(verifiedLink.status).toBe(302)
-    await auth.api.signOut({ headers: new Headers(headers(cookieHeader(verifiedLink))) })
+    await (await auth.$context).internalAdapter.createUser({ email: "invited@example.test", name: "Invited fixture",
+      emailVerified: true, payloadUserId: "42" }, { method: "test" })
+    expect(store.better_auth_users).toEqual([expect.objectContaining({ payloadUserId: "42" })])
     expect(store.better_auth_sessions).toHaveLength(0)
   }
   let nonce = ""

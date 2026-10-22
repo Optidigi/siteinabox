@@ -1,5 +1,6 @@
 const DEFAULT_MAGIC_LINK_RATE_LIMIT_WINDOW_SECONDS = 60
 const DEFAULT_MAGIC_LINK_RATE_LIMIT_MAX = 10
+export const PASSWORD_RESET_RATE_LIMIT = { window: 3600, max: 3 } as const
 
 const boundedInt = (value: string | undefined, fallback: number, min: number, max: number) => {
   const parsed = Number(value)

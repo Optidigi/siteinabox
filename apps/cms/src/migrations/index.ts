@@ -143,6 +143,7 @@ import * as migration_20261020_181335_cms_framework_security from './20261020_18
 import * as migration_20261020_214100_mail_transport_readiness from './20261020_214100_mail_transport_readiness';
 import * as migration_20261021_144531_customer_workspace_binding from './20261021_144531_customer_workspace_binding';
 import * as migration_20261021_144531_verified_customer_authority from './20261021_144531_verified_customer_authority';
+import * as migration_20261021_225131_account_link_dispatch from './20261021_225131_account_link_dispatch';
 
 export const migrations = [
   {
@@ -868,6 +869,11 @@ export const migrations = [
   {
     up: migration_20261021_144531_verified_customer_authority.up,
     down: migration_20261021_144531_verified_customer_authority.down,
-    name: '20261021_144531_verified_customer_authority'
+    name: '20261021_144531_verified_customer_authority',
+  },
+  {
+    up: migration_20261021_225131_account_link_dispatch.up,
+    down: migration_20261021_225131_account_link_dispatch.down,
+    name: '20261021_225131_account_link_dispatch'
   },
 ];
