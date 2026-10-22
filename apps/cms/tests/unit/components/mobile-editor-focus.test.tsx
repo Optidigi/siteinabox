@@ -24,7 +24,7 @@ describe("mobile editor keyboard navigation", () => {
     const pager = container.querySelector<HTMLElement>("[data-siab-editor-pager]")!
     const inspector = container.querySelector<HTMLElement>('[data-editor-pane="inspector"]')!
     const preview = container.querySelector<HTMLElement>('[data-editor-pane="preview"]')!
-    const edit = screen.getByRole("button", { name: messages.common.edit, exact: true })
+    const edit = screen.getByRole("button", { name: messages.common.edit })
     edit.focus()
     fireEvent.click(edit)
     expect(document.activeElement).toBe(edit)
