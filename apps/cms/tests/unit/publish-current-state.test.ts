@@ -21,14 +21,12 @@ import {
 } from "@/lib/publish/currentState"
 import { asPayload } from "../_helpers/mockPayload"
 
-const payload = (tenant: { id: number; slug: string; domain: string }) =>
-  Object.assign(asPayload({
-    findByID: vi.fn(async () => tenant),
-    find: vi.fn(async () => ({ docs: [] })),
-  }), {
-    findByID: vi.fn(async () => tenant),
-    find: vi.fn(async () => ({ docs: [] })),
-  })
+const payload = (tenant: { id: number; slug: string; domain: string }) => asPayload({
+  findByID: vi.fn(async () => ({ ...tenant, status: "active" })),
+  find: vi.fn(async ({ collection }: { collection: string }) => collection === "customer-accounts"
+    ? { docs: [], totalDocs: 0 }
+    : { docs: [{ id: 10, tenant: tenant.id, domain: tenant.domain, status: "active" }], totalDocs: 1 }),
+})
 
 describe("publish current tenant state", () => {
   beforeEach(() => {

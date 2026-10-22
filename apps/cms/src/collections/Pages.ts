@@ -8,6 +8,7 @@ import { ensureUniqueTenantSlug } from "@/hooks/ensureUniqueTenantSlug"
 import { enforceTenantBlockMenu } from "@/hooks/enforceTenantBlockMenu"
 import { adminValidationText } from "@/lib/payloadAdminI18n"
 import { publishPageAfterUserSave } from "@/hooks/publishPageAfterUserSave"
+import { requireManualWorkspace } from "@/hooks/requireManualWorkspace"
 
 // FN-2026-0004 — same client-server validation gap as Tenants.slug. Direct
 // PATCH /api/pages/:id bypassed the form's zod regex; persisted "BAD SLUG!"
@@ -45,12 +46,13 @@ export const Pages: CollectionConfig = {
       admin: { readOnly: true, hidden: false } }
   ],
   hooks: {
+    beforeOperation: [requireManualWorkspace],
     beforeValidate: [validateTenantExists, ensureUniqueTenantSlug, enforceTenantBlockMenu],
     beforeChange: [({ data, req }) => {
       if (req.user) data.updatedBy = req.user.id
       return data
     }],
-    afterChange: [projectPageToDisk, publishPageAfterUserSave],
+    afterChange: [publishPageAfterUserSave, projectPageToDisk],
     afterDelete: [deletePageFile]
   }
 }

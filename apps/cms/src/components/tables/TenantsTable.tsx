@@ -89,6 +89,7 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
     {
       accessorKey: "domain",
       header: tTable("domain"),
+      cell: ({ row }) => row.original.domain || t("privateWorkspace"),
       meta: { mobilePriority: "secondary" }
     },
     {
@@ -168,9 +169,9 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
           title={t("deleteTitle", { name: target.name })}
           description={
             counts ? (
-              t("deleteDescription", { name: target.name, domain: target.domain, pages: counts.pages, media: counts.media, forms: counts.forms })
+              t("deleteDescription", { name: target.name, domain: target.domain || t("privateWorkspace"), pages: counts.pages, media: counts.media, forms: counts.forms })
             ) : (
-              t("deleteDescriptionLoading", { name: target.name, domain: target.domain })
+              t("deleteDescriptionLoading", { name: target.name, domain: target.domain || t("privateWorkspace") })
             )
           }
           confirmPhrase={target.slug}

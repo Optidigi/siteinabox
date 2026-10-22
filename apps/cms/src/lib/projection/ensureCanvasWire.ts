@@ -44,10 +44,16 @@ export function sanitizeCanvasWireBlock(block: unknown): Block {
   return previewFallbackBlock(block)
 }
 
-export function ensureCanvasWireSettings(settings: unknown): SiteSettings {
+export function ensureCanvasWireSettings(settings: unknown, options: { privateSiteUrl?: string } = {}): SiteSettings {
   const record = asRecord(settings) ?? {}
+  // An unassigned public URL must not discard valid private navigation/chrome.
+  // This wire-only address comes from the platform, never a fabricated domain
+  // persisted on the tenant. Public snapshots validate their own real host.
+  const privateUrl = options.privateSiteUrl
   const candidate = {
     ...record,
+    ...((record.siteUrl == null || record.siteUrl === "") && privateUrl && /^https?:\/\//.test(privateUrl)
+      ? { siteUrl: privateUrl } : {}),
     language: typeof record.language === "string" && record.language.trim() ? record.language.trim() : "nl",
   }
   const parsed = SiteSettingsSchema.safeParse(candidate)

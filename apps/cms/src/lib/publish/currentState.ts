@@ -4,6 +4,7 @@ import type { Payload, PayloadRequest } from "payload"
 import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 import { publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
 import { assertTenantPublicationAllowed, recordQualifyingContinuedUse } from "@/lib/legal/customerRequirements"
+import { canRepublishWorkspace } from "@/lib/workspace/manualAccess"
 
 type PublishCurrentStateUser = {
   id?: string | number | null
@@ -22,7 +23,7 @@ const userTenantIds = (user: PublishCurrentStateUser): Set<string> =>
   relationshipIdSet((user.tenants ?? []).map((membership) => membership.tenant))
 
 export async function canPublishCurrentTenantState(
-  _payload: Payload,
+  payload: Payload,
   user: PublishCurrentStateUser | null | undefined,
   tenantId: string | number | null | undefined,
 ): Promise<boolean> {
@@ -30,7 +31,8 @@ export async function canPublishCurrentTenantState(
   if (user.role === "super-admin") return true
   if (user.role !== "owner" && user.role !== "editor") return false
   const targetTenantId = relationshipId(tenantId)
-  return targetTenantId != null && userTenantIds(user).has(targetTenantId)
+  return targetTenantId != null && userTenantIds(user).has(targetTenantId) &&
+    await canRepublishWorkspace(payload, targetTenantId)
 }
 
 export async function publishCurrentTenantState(

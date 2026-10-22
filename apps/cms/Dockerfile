@@ -42,7 +42,8 @@ ENV DATABASE_URI=postgres://placeholder@placeholder/placeholder
 # Locally they exist from prior dev runs; in CI we must produce both before
 # `next build`. Neither command queries the DB — they walk the config —
 # so the placeholder DATABASE_URI suffices.
-RUN pnpm --filter siab-payload payload generate:types \
+# Dependencies are already installed; compilation uses only committed inputs.
+RUN --network=none pnpm --filter siab-payload payload generate:types \
  && pnpm --filter siab-payload payload generate:importmap \
  && pnpm --filter siab-payload build \
  && node apps/cms/scripts/build-runtime-bundle.mjs

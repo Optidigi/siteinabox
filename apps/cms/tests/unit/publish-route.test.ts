@@ -37,8 +37,10 @@ const req = (body: unknown) =>
 describe("publish route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.payload.findByID.mockResolvedValue({ id: 7, slug: "ami-care", domain: "ami-care.nl" })
-    mocks.payload.find.mockResolvedValue({ docs: [] })
+    mocks.payload.findByID.mockResolvedValue({ id: 7, slug: "ami-care", domain: "ami-care.nl", status: "active" })
+    mocks.payload.find.mockImplementation(async ({ collection }) => collection === "published-site-snapshots"
+      ? { totalDocs: 1, docs: [{ id: 8, tenant: 7, status: "active", domain: "ami-care.nl" }] }
+      : { totalDocs: 0, docs: [] })
     mocks.publishSiteSnapshot.mockResolvedValue({
       activated: false,
       snapshot: { id: 10, status: "drafted", version: 1, domain: "example.test" },
@@ -126,6 +128,14 @@ describe("publish route", () => {
       includeAllPublishedPages: true,
       activate: true,
     }))).status).toBe(403)
+    expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
+  })
+
+  it("denies first publication without an existing active snapshot", async () => {
+    mocks.payload.auth.mockResolvedValue({ user: { id: 2, role: "owner", tenants: [{ tenant: 7 }] } })
+    mocks.payload.find.mockResolvedValue({ totalDocs: 0, docs: [] })
+    const res = await POST(req({ tenantId: 7, includeAllPublishedPages: true, activate: true }))
+    expect(res.status).toBe(403)
     expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
   })
 

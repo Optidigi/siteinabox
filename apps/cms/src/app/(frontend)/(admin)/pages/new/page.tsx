@@ -1,3 +1,7 @@
+import { getPayload } from "payload"
+import config from "@/payload.config"
+import { canRepublishWorkspace } from "@/lib/workspace/manualAccess"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { PageForm } from "@/components/forms/PageForm"
@@ -24,15 +28,16 @@ export default async function NewTenantPage() {
         <PageHeader title={t("new")} />
       </div>
       <PageForm
+        canPublish={await canRepublishWorkspace(await getPayload({ config }), String(ctx.tenant.id))}
         tenantId={ctx.tenant.id}
         tenantSlug={ctx.tenant.slug}
         tenantDomain={ctx.tenant.domain}
         baseHref="/pages"
-        tenantOrigin={`https://${ctx.tenant.domain}`}
+        tenantOrigin={(ctx.tenant.domain ? `https://${ctx.tenant.domain}` : platformCmsOrigin())}
         manifest={manifest}
         theme={normalizeThemeForSave(ctx.tenant.theme)}
         siteSettings={settings}
-        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
+        rendererNavPages={rendererNavPages.map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canEditSettings={user.role === "owner" || user.role === "super-admin"}
       />
     </div>

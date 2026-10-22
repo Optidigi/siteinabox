@@ -29,6 +29,15 @@ CTAs, checked controls, selected nav, and chart highlight — not page, card,
 sidebar, select, table hover, or header chrome. Do not invent a second gold.
 Builder does not override this palette.
 
+CMS typography uses the unchanged licensed Inter and JetBrains Mono assets in
+`apps/cms/public/fonts/cms`, with provenance and licenses recorded by
+`apps/cms/src/styles/font-assets.json`. `fonts.css` preserves the reviewed
+weights, Unicode subsets, fallback metrics and font variables. The two Latin
+preloads remain explicit; hashed font URLs receive immutable caching. CMS
+compilation does not fetch font providers, and the image compile step has no
+network access. Font integrity and the actual anonymous font responses are
+verified separately from tenant renderer typography.
+
 Chrome slabs (`neoPress`) use `--neo-slab` (near-black in light, white in
 dark). Single-line inputs and select triggers sit on that slab so they match
 default buttons. `neoField` / `Textarea` stay border-only — chat composers
@@ -50,6 +59,8 @@ keeps a 5px offset and does not translate. Keyboard focus uses `focus-visible`
 only so mouse clicks do not leave a stuck ring. Buttons and toggles defer blur
 until after `click` on mouse/pen up (not when they own a popup). Select and
 dropdown menus do not auto-refocus the trigger after a pointer close.
+Native button pointer behavior lives behind a client boundary so server-rendered
+forms can use the shared Button. Variant class generation remains server-usable.
 
 Button roles: `default`/`brand` = primary (yellow tile, `--neo-slab` drop);
 `ink` = inverted fill with the same drop; `outline`/`secondary` = neo control
@@ -58,6 +69,21 @@ fill. Header sparkle matches the other outline chrome tiles (theme toggle,
 account, site switcher).
 
 Landing keeps `apps/landing/src/components/ui/*`. Payload `/admin` CSS is out of scope.
+
+## Workspace chrome
+
+`WorkspaceHeader` is a CMS-local presentational row shared by builder, site
+header and the agent drawer. Callers retain their own identity, authorized
+navigation/actions and account controls; admin sidebar/selection providers and
+builder chat/preview state stay in their existing shells. Both use the shared
+renderer described in [canvas](canvas.md).
+
+On phones, offscreen chat, preview and inspector panes are inert and excluded
+from the accessibility tree. Settled pane changes move focus to the active
+region or composer. Builder frame messages require the expected source window,
+same origin and canonical protocol; navigation selects only an owned preview
+page, and loading failures provide a localized retry. UI labels support NL/EN;
+customer conversation content is preserved verbatim.
 
 ## Paths
 

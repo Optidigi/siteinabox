@@ -12,6 +12,7 @@ import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { sameRelationshipId } from "@/lib/relationshipId"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { loadPreviewGrantContext } from "@/lib/preview/previewAccess"
 import { DEFAULT_MANIFEST } from "@/lib/richText/loadManifest"
@@ -122,7 +123,7 @@ export async function getPreviewCustomizerDataForGrant(input: {
   const consentAvailable = Boolean(
     consentPresentation?.visible !== false,
   )
-  const settings = ensureCanvasWireSettings(stripCanvasConsent(projectedSettings, { hidePresentation: false }))
+  const settings = ensureCanvasWireSettings(stripCanvasConsent(projectedSettings, { hidePresentation: false }), { privateSiteUrl: platformCmsOrigin() })
 
   return {
     access: { type: "grant", clientSlug },

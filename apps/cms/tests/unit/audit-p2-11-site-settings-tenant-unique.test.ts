@@ -25,11 +25,12 @@ vi.mock("@/payload.config", () => ({ default: {} }))
 // and `create` are vitest mocks. Each test resets the mocks in beforeEach.
 const fakeFind = vi.fn()
 const fakeCreate = vi.fn()
+const fakeFindByID = vi.fn()
 vi.mock("payload", async () => {
   const actual = await vi.importActual<typeof import("payload")>("payload")
   return {
     ...actual,
-    getPayload: vi.fn(async () => ({ find: fakeFind, create: fakeCreate })),
+    getPayload: vi.fn(async () => ({ find: fakeFind, create: fakeCreate, findByID: fakeFindByID })),
   }
 })
 
@@ -39,6 +40,7 @@ import * as migration from "@/migrations/20260509_site_settings_tenant_unique"
 beforeEach(() => {
   fakeFind.mockReset()
   fakeCreate.mockReset()
+  fakeFindByID.mockReset().mockImplementation(async ({ id }) => ({ id, domain: null }))
 })
 
 // REAL production unique-violation shape. `@payloadcms/drizzle@3.84.1` does
@@ -94,6 +96,7 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
     expect(result).toEqual(created)
     expect(fakeFind).toHaveBeenCalledTimes(1)
     expect(fakeCreate).toHaveBeenCalledTimes(1)
+    expect(fakeCreate.mock.calls[0]![0].data.siteUrl).toBeNull()
     // The find query must scope by tenant (per-tenant singleton).
     const findArgs = fakeFind.mock.calls[0]![0]
     expect(findArgs.collection).toBe("site-settings")

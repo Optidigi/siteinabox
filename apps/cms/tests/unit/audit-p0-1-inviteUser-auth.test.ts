@@ -78,7 +78,7 @@ beforeEach(() => {
   }
   fakePayload.auth.mockReset()
   fakePayload.create.mockReset()
-  fakePayload.find.mockReset().mockResolvedValue({ docs: [] })
+  fakePayload.find.mockReset().mockResolvedValue({ docs: [], totalDocs: 0 })
   fakePayload.findByID.mockReset()
   fakePayload.forgotPassword.mockReset()
   mocks.signInMagicLink.mockReset()

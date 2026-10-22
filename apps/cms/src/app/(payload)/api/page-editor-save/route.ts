@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { CustomerProjectionTask } from "@/lib/projection/customerTransaction"
 import { relationshipId, relationshipValue } from "@/lib/relationshipId"
+import { hasManualWorkspaceAccess, canRepublishWorkspace } from "@/lib/workspace/manualAccess"
 import {
   DEFER_PAGE_AUTO_PUBLISH_HEADER,
   hasPageEditorSiteDesign,
@@ -13,7 +15,9 @@ import {
 } from "@/lib/publish/pageEditorSaveContract"
 import {
   assertPageRevisionFresh,
+  lockPageEditorWorkspace,
   PageSaveConflictError,
+  SiteDesignSaveConflictError,
   persistPageDocument,
   persistSiteDesign,
   publishTenantSnapshot,
@@ -42,6 +46,12 @@ export async function POST(request: NextRequest) {
   if (!userCanEditTenantPages(user, tenantId)) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 })
   }
+  if (user.role !== "super-admin" && !await hasManualWorkspaceAccess(payload, tenantId)) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 })
+  }
+  if (resolvePageEditorPublish(publish) && user.role !== "super-admin" && !await canRepublishWorkspace(payload, tenantId)) {
+    return NextResponse.json({ message: "Forbidden: first activation requires its own authority" }, { status: 403 })
+  }
 
   const siteDesignRequested = hasPageEditorSiteDesign(siteDesign)
   if (
@@ -55,7 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     await assertPageRevisionFresh(payload, page, tenantId, user)
   } catch (error) {
-    if (error instanceof PageSaveConflictError) {
+    if (error instanceof PageSaveConflictError || error instanceof SiteDesignSaveConflictError) {
       const conflict: PageEditorSaveConflictResponse = {
         ok: false,
         error: "conflict",
@@ -79,16 +89,19 @@ export async function POST(request: NextRequest) {
 
   const headers = new Headers(request.headers)
   headers.set(DEFER_PAGE_AUTO_PUBLISH_HEADER, "1")
+  const projections: CustomerProjectionTask[] = []
   const req: PageEditorTransactionReq = {
     transactionID,
     user,
     payload,
     headers,
-    context: { pageEditorSave: true },
+    context: { pageEditorSave: true, customerProjectionQueue: task => { projections.push(task) } },
   }
   let stage: PageEditorSaveStage = "page"
 
   try {
+    await lockPageEditorWorkspace(payload, tenantId, req)
+    await assertPageRevisionFresh(payload, page, tenantId, user, req)
     const savedPage = await persistPageDocument(payload, { tenantId, page, user, req })
     const savedTenantId = relationshipValue(savedPage.tenant)
     if (savedTenantId == null || relationshipId(savedTenantId) !== tenantId) {
@@ -138,9 +151,25 @@ export async function POST(request: NextRequest) {
       ...(snapshot ? { snapshot } : {}),
       ...(savedTheme ? { theme: savedTheme } : {}),
     }
-    return NextResponse.json(response)
+    // Database work is committed. Projection cannot be rolled back with it;
+    // attempt every queued refresh and report a recoverable committed outcome.
+    let projectionPending = false
+    for (const task of projections) {
+      try { await task.run() }
+      catch {
+        projectionPending = true
+        payload.logger.error({ code: "E_CUSTOMER_PROJECTION_PENDING", committed: true,
+          tenantId, collection: task.collection, documentId: task.documentId }, "[page-editor-save] saved content needs projection refresh")
+      }
+    }
+    return NextResponse.json({ ...response, ...(projectionPending ? { warning: "E_CUSTOMER_PROJECTION_PENDING" } : {}) })
   } catch (error) {
     await payload.db.rollbackTransaction(transactionID).catch(() => undefined)
+    if (error instanceof PageSaveConflictError || error instanceof SiteDesignSaveConflictError) {
+      const conflict: PageEditorSaveConflictResponse = { ok: false, error: "conflict", code: error.code,
+        message: error.message, expectedUpdatedAt: error.expectedUpdatedAt, actualUpdatedAt: error.actualUpdatedAt }
+      return NextResponse.json(conflict, { status: 409 })
+    }
     const message = error instanceof Error ? error.message : "Save failed"
     payload.logger.error({ stage, tenantId, userId: user.id, message }, "[page-editor-save] transaction failed")
     const failure: PageEditorSaveFailureResponse = { ok: false, stage, message }

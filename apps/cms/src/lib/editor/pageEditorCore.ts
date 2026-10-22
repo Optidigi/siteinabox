@@ -17,7 +17,6 @@ import {
   removeEditorBlock,
   reorderEditorBlocks,
 } from "@/lib/editor/pageEditorCommands"
-import type { PageEditorDraft } from "@/lib/editor/pageDraftStore"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { countLeafDirty } from "@/lib/countLeafDirty"
@@ -60,14 +59,6 @@ export const buildPageDraftKey = (
   ["page", String(tenantId), initial ? String(initial.id) : "new", baseHref]
     .map(encodeURIComponent)
     .join(":")
-
-export const isPageDraftStaleAgainstServer = (
-  draft: PageEditorDraft,
-  baselineUpdatedAt: string | null,
-): boolean => {
-  const serverUpdatedAt = baselineUpdatedAt ? Date.parse(baselineUpdatedAt) : 0
-  return serverUpdatedAt > 0 && draft.savedAt <= serverUpdatedAt
-}
 
 export const deriveThemeDirty = (
   themeState: ThemeTokens | null,

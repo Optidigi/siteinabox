@@ -23,7 +23,7 @@ vi.mock("payload", async () => {
   const actual = await vi.importActual<typeof import("payload")>("payload")
   return {
     ...actual,
-    getPayload: vi.fn(async () => ({ auth: fakeAuth, update: fakeUpdate })),
+    getPayload: vi.fn(async () => ({ auth: fakeAuth, update: fakeUpdate, find: async () => ({ totalDocs: 0, docs: [] }) })),
   }
 })
 

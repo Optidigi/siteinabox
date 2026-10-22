@@ -48,7 +48,9 @@ const validateSlug = (val: unknown, { req }: { req?: PayloadRequest }) => {
 const DOMAIN_REGEX = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const validateDomain = (val: unknown, { req }: { req?: PayloadRequest }) => {
   const language = req?.i18n?.language
-  if (val == null || val === "") return adminValidationText(language, "Domain is required", "Domein is verplicht")
+  // Private workspaces can exist before domain selection/activation. Public
+  // routing and publication must independently require an actual verified host.
+  if (val == null || val === "") return true
   if (typeof val !== "string") return adminValidationText(language, "Domain must be text", "Domein moet tekst zijn")
   if (val.length > 253) return adminValidationText(language, "Domain is too long (maximum 253 characters)", "Domein is te lang (maximaal 253 tekens)")
   if (!DOMAIN_REGEX.test(val)) {
@@ -159,7 +161,7 @@ export const protectPreCommerceRoutingAdoption: CollectionBeforeChangeHook = ({
     | undefined
   const originalState = originalAdoption?.state ?? "not_adopted"
   const originalDomain = normalizedTenantDomain(originalDoc?.domain)
-  const nextDomain = normalizedTenantDomain(data.domain ?? originalDoc?.domain)
+  const nextDomain = normalizedTenantDomain(Object.hasOwn(data, "domain") ? data.domain : originalDoc?.domain)
   if (
     operation === "update" &&
     (originalState === "adopted" || originalState === "revoked") &&
@@ -276,7 +278,8 @@ export const Tenants: CollectionConfig = {
     { name: "name", type: "text", required: true },
     { name: "slug", type: "text", required: true, unique: true, validate: validateSlug,
       admin: { description: adminText("URL-safe ID used in super-admin URLs (/sites/<slug>).", "URL-veilige ID voor superbeheerder-URL's (/sites/<slug>).")} },
-    { name: "domain", type: "text", required: true, unique: true, validate: validateDomain,
+    { name: "domain", type: "text", unique: true, validate: validateDomain,
+      hooks: { beforeValidate: [({ value }) => typeof value === "string" && !value.trim() ? null : value] },
       admin: { description: adminText("Production domain, e.g. clientasite.nl. Resolved from the Host header.", "Productiedomein, bijv. clientasite.nl. Wordt opgezocht via de Host-header.") } },
     { name: "status", type: "select", required: true, defaultValue: "provisioning",
       options: [

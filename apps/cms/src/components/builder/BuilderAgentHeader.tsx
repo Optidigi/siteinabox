@@ -10,6 +10,8 @@ import {
   type BuilderBusyPhase,
 } from "@/components/builder/builderPresence"
 import type { BuilderMobilePane } from "@/components/builder/useBuilderMobilePager"
+import { WorkspaceHeader } from "@/components/layout/WorkspaceHeader"
+import { useTranslations } from "next-intl"
 
 export function BuilderAgentHeader({
   email,
@@ -35,26 +37,25 @@ export function BuilderAgentHeader({
   mobileSignOut: ReactNode
 }) {
   const status = builderAgentStatus(busy, hasPreview, phase)
+  const t = useTranslations("auth")
 
   return (
-    <header className="flex w-full shrink-0 items-center gap-3 border-b-2 border-border bg-card px-4 py-3">
-      <div className="flex min-w-0 flex-1 items-center">
+    <WorkspaceHeader identity={<>
         <BuilderLogo
           title={email}
           imgClassName="h-8 max-w-[11rem] sm:h-9 sm:max-w-[14rem]"
         />
         <span className="sr-only" data-siab-builder-status={status} aria-live="polite">
-          {status}
+          {t(busy ? phase === "leest" ? "workspaceReading" : phase === "bouwt" ? "workspaceBuilding" : "workspaceWriting" : hasPreview ? "workspacePreviewReady" : "workspaceReady")}
         </span>
-      </div>
-      <div className="flex items-center gap-2">
+      </>} actions={<>
         {hasPreview ? (
           <Button
             type="button"
             variant="outline"
             size="icon"
             className="relative lg:hidden"
-            aria-label="Toon sitevoorbeeld"
+            aria-label={t("workspaceShowPreview")}
             aria-current={pane === "preview" ? "true" : undefined}
             onClick={onShowPreview}
           >
@@ -73,7 +74,6 @@ export function BuilderAgentHeader({
           <div className="hidden lg:block">{desktopSignOut}</div>
         ) : null}
         <div className="lg:hidden">{mobileSignOut}</div>
-      </div>
-    </header>
+      </>} />
   )
 }

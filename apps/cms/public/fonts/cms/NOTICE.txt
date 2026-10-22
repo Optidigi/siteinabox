@@ -1,0 +1,12 @@
+CMS font assets are redistributed unchanged under the SIL Open Font License 1.1.
+
+Inter 4.001;git-66647c0bb
+Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
+The Google Fonts distribution license additionally records Copyright 2020 The Inter Project Authors. Both complete license files accompany these assets.
+
+JetBrains Mono 2.211
+Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+See the complete OFL-JetBrains-Mono.txt license.
+
+No Arial font is distributed. Arial is referenced only as a system fallback.
+Binary source URLs were not retained by the original build. Source-build identity, per-file SHA-256, embedded versions and preserved declarations are recorded in src/styles/font-assets.json and src/styles/fonts.css.

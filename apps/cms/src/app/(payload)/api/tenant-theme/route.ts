@@ -4,6 +4,7 @@ import config from "@/payload.config"
 import type { User } from "@/payload-types"
 import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 import { themeSchema } from "@/lib/theme/schema"
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -42,6 +43,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "tenantId is required" }, { status: 400 })
   }
   if (!auth.user || !canUpdateTenantTheme(auth.user, tenantId)) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 })
+  }
+  if (auth.user.role !== "super-admin" && !await hasManualWorkspaceAccess(payload, tenantId)) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 })
   }
 

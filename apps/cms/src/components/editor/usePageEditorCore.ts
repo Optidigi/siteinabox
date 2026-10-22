@@ -30,7 +30,6 @@ import {
   editorInsertBlockAt,
   editorRemoveBlock,
   editorReorderBlocks,
-  isPageDraftStaleAgainstServer,
   normalizeWatchedBlocks,
   pageEditorDefaultValues,
   pageEditorHasRecoverableDraftWork,
@@ -134,6 +133,7 @@ export type PageEditorCoreApi = {
   discardPageDraft: () => void
   guard: ReturnType<typeof useNavigationGuard>
   triggerSave: () => void
+  triggerPublish: () => void
   retry: () => void
   jumpToError: () => void
   onSubmit: (values: PageEditorFormValues) => Promise<void>
@@ -272,7 +272,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     void readPageEditorDraft(pageDraftKey).then((draft) => {
       if (cancelled || !draft) return
       const parsed = schema.safeParse(draft.formValues)
-      if (!parsed.success || isPageDraftStaleAgainstServer(draft, baselineUpdatedAt)) {
+      if (!parsed.success) {
         void deletePageEditorDraft(pageDraftKey)
         return
       }
@@ -420,9 +420,9 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
 
   const guard = useNavigationGuard(!readOnly && (isDirty || pending))
 
-  const onSubmit = async (values: PageEditorFormValues) => {
+  const submitPage = async (values: PageEditorFormValues, publish: boolean) => {
     if (readOnly) return
-    const savedValues: PageEditorFormValues = { ...values, status: "published" }
+    const savedValues: PageEditorFormValues = { ...values, status: publish ? "published" : values.status }
     const saveStartedAt = performance.now()
     setPending(true)
     setSubmitError(null)
@@ -443,13 +443,17 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
         ? { ...savedValues.seo, ogImage: normalizeUploadId(savedValues.seo.ogImage) }
         : savedValues.seo,
     }
+    let refreshPending = false
     let createdPage: PageEditorSaveResult["page"] = null
     const siteDesign: NonNullable<PageEditorSaveRequest["siteDesign"]> = {}
-    if (themeWasDirty && normalizedThemeSnapshot) siteDesign.theme = normalizedThemeSnapshot
+    if (themeWasDirty && normalizedThemeSnapshot) {
+      siteDesign.theme = normalizedThemeSnapshot
+      siteDesign.expectedTheme = normalizeThemeForSave(themeBaseline)
+    }
     if (navWasDirty) siteDesign.navigation = navSnapshot
     const saveBody: PageEditorSaveRequest = {
       tenantId,
-      publish: true,
+      publish,
       page: {
         id: initial?.id,
         data: pageData,
@@ -473,6 +477,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
         const message = typeof result?.message === "string" ? result.message : `HTTP ${response.status}`
         throw new Error(localizePageEditorSaveError(message, t))
       }
+      refreshPending = result?.warning === "E_CUSTOMER_PROJECTION_PENDING"
       createdPage = result?.page?.id == null ? null : result.page
       if (typeof result?.page?.updatedAt === "string") {
         baselineUpdatedAtRef.current = result.page.updatedAt
@@ -507,7 +512,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       return
     }
     setPending(false)
-    setSubmitError(null)
+    setSubmitError(refreshPending ? t("saveRefreshPending") : null)
     form.reset(savedValues)
     cancelScheduledDraftWrite()
     setShowSaved(true)
@@ -524,6 +529,8 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     await deletePageEditorDraft(pageDraftKey)
     await onSaveSuccess({ savedValues, createdPage, initial })
   }
+
+  const onSubmit = (values: PageEditorFormValues) => submitPage(values, false)
 
   const onInvalid = (errors: FieldErrors<PageEditorFormValues>) => {
     scrollToFirstError(errors as Record<string, unknown>)
@@ -544,6 +551,10 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     if (readOnly) return
     form.handleSubmit(onSubmit, onInvalid)()
   }, [form, onInvalid, onSubmit, readOnly])
+  const triggerPublish = () => {
+    if (readOnly) return
+    void form.handleSubmit(values => submitPage(values, true), onInvalid)()
+  }
 
   const jumpToError = () =>
     scrollToFirstError(form.formState.errors as Record<string, unknown>)
@@ -706,6 +717,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     discardPageDraft,
     guard,
     triggerSave,
+    triggerPublish,
     retry,
     jumpToError,
     onSubmit,

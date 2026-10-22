@@ -109,6 +109,25 @@
     "languageUpdateFailed": "Taal bijwerken mislukt"
   },
   "auth": {
+    "workspaceShowPreview": "Toon voorbeeld",
+    "workspaceChat": "Toon chat",
+    "workspacePreview": "Websitevoorbeeld",
+    "workspaceDesktop": "Desktop",
+    "workspaceTablet": "Tablet",
+    "workspacePhone": "Telefoon",
+    "workspaceCheckout": "Afrekenen",
+    "workspacePreviewLoading": "Je privévoorbeeld laden…",
+    "workspacePreviewError": "Je voorbeeld kon niet laden. Je opgeslagen werk blijft beschikbaar.",
+    "workspaceRetry": "Opnieuw proberen",
+    "workspaceNetworkError": "De verbinding is mislukt. Je bericht staat klaar om opnieuw te proberen.",
+    "workspaceHeadline": "Wat gaan we bouwen?",
+    "workspacePlaceholder": "Bijv: Ik ben kapper in Tilburg, ik doe knippen, kleur en baard.",
+    "workspaceYou": "Jij",
+    "workspaceReading": "Leest…",
+    "workspaceWriting": "Schrijft…",
+    "workspaceBuilding": "Bouwt de homepage…",
+    "workspaceReady": "Klaar voor je eerste site",
+    "workspacePreviewReady": "Voorbeeld staat klaar",
     "email": "E-mail",
     "password": "Wachtwoord",
     "newPassword": "Nieuw wachtwoord",
@@ -431,6 +450,7 @@
     "when": "Wanneer"
   },
   "sites": {
+    "privateWorkspace": "Privéwerkruimte",
     "delete": "Website verwijderen",
     "deleteTitle": "{name} verwijderen",
     "deleted": "{name} verwijderd",
@@ -711,6 +731,7 @@
     "removedFromZone": "Verwijderd uit {zone}"
   },
   "onboarding": {
+    "privateWorkspace": "Privéwerkruimte",
     "title": "Inrichting",
     "subtitle": "Automatische inrichtingsstatus voor {domain}.",
     "siteRecordCreated": "Website aangemaakt",
@@ -753,7 +774,8 @@
       "publishingAndSiteStatus": "Publicatie- en sitestatus",
       "domainAndDns": "Domein-, DNS- en e-mailinrichting",
       "billingAndPayments": "Facturatie en betalingen",
-      "teamAndAccess": "Team- en toegangswijzigingen"
+      "teamAndAccess": "Team- en toegangswijzigingen",
+      "appointmentBookings": "Afspraakboekingen"
     }
   },
   "settings": {
@@ -873,6 +895,12 @@
     "restriction": "Deze beperking voorkomt dat permanente credentials buiten het superbeheerderpad worden aangemaakt of geroteerd."
   },
   "editor": {
+    "saveConflict": "Deze pagina is in een andere sessie gewijzigd. Je niet-opgeslagen werk blijft bewaard; herlaad en controleer voordat je opnieuw opslaat.",
+    "saveThemeConflict": "Het websitethema is in een andere sessie gewijzigd. Je niet-opgeslagen werk blijft bewaard; herlaad en controleer het huidige thema.",
+    "saveReloadRequired": "Herlaad de editor om privé op te slaan of expliciet te publiceren.",
+    "saveRefreshPending": "De wijzigingen zijn opgeslagen, maar het voorbeeld kon niet vernieuwen. Je opgeslagen inhoud is veilig; herlaad om het voorbeeld opnieuw te laden.",
+    "publish": "Publiceren",
+    "privateSaveHelp": "Opslaan bewaart je wijzigingen privé. Alleen Publiceren werkt de openbare site bij.",
     "ctaLabelPlaceholder": "Contact",
     "editorSurfaceFailed": "Het editorvenster kon niet worden weergegeven.",
     "editorFrameTimeout": "Het editorframe is niet op tijd geladen. Probeer het frame opnieuw.",
@@ -929,6 +957,7 @@
     "draftDiscarded": "Concept weggegooid",
     "draftRestoreFailed": "Hersteld concept kon niet worden teruggezet",
     "restoreDraftTitle": "Niet-opgeslagen concept herstellen?",
+    "restoreDraftServerChanged": "Deze pagina is ook ergens anders opgeslagen. Herstel je lokale concept om het te controleren voordat je opslaat, of verwijder het om de huidige opgeslagen pagina te behouden.",
     "restoreDraftWithDate": "Er is een lokaal concept van {date} teruggevonden nadat de pagina opnieuw laadde.",
     "restoreDraft": "Er is een lokaal concept teruggevonden nadat de pagina opnieuw laadde.",
     "restoreDraftAction": "Concept herstellen",

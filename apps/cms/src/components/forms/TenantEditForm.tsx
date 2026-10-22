@@ -37,7 +37,7 @@ import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
 const createSchema = (t: (key: string) => string) => z.object({
   name: z.string().min(2, t("validation.nameMin")),
   slug: z.string().regex(/^[a-z0-9-]+$/, t("validation.slug")),
-  domain: z.string().min(3, t("validation.domain")),
+  domain: z.string().refine(value => value === "" || value.length >= 3, t("validation.domain")),
   status: z.enum(["provisioning", "active", "suspended", "archived"], {
     message: t("validation.status")
   }),
@@ -87,7 +87,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
     defaultValues: {
       name: tenant.name,
       slug: tenant.slug,
-      domain: tenant.domain,
+      domain: tenant.domain ?? "",
       status: tenant.status,
       siteRepo: tenant.siteRepo ?? "",
       notes: tenant.notes ?? "",
@@ -207,7 +207,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
           the header on desktop and the bottom action bar on phone. */}
       <PageHeader
         title={t("edit")}
-        subtitle={`${tenant.name} · ${tenant.domain}`}
+        subtitle={`${tenant.name} · ${tenant.domain || t("privateWorkspace")}`}
         beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
         action={
           <div className="hidden items-center gap-2 md:flex">
@@ -343,7 +343,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
       <section className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
         <h2 className="text-sm font-semibold text-foreground">{t("dangerZone")}</h2>
         <p className="mt-2 text-sm text-foreground">
-          {t("deleteDescription", { name: tenant.name, domain: tenant.domain, pages: counts.pages, media: counts.media, forms: counts.forms })}
+          {t("deleteDescription", { name: tenant.name, domain: tenant.domain || t("privateWorkspace"), pages: counts.pages, media: counts.media, forms: counts.forms })}
         </p>
         <Button
           type="button"
@@ -359,7 +359,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={t("deleteTitle", { name: tenant.name })}
-        description={t("deleteDescription", { name: tenant.name, domain: tenant.domain, pages: counts.pages, media: counts.media, forms: counts.forms })}
+        description={t("deleteDescription", { name: tenant.name, domain: tenant.domain || t("privateWorkspace"), pages: counts.pages, media: counts.media, forms: counts.forms })}
         confirmPhrase={tenant.slug}
         confirmLabel={t("delete")}
         onConfirm={onDelete}

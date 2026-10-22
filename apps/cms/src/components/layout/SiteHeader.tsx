@@ -8,6 +8,7 @@ import { useCmsAgentSelectionState } from "./CmsAgentSelection"
 import type { User } from "@/payload-types"
 import { usePathname } from "next/navigation"
 import { SiteSwitcher, type SiteSwitcherSite } from "@/components/layout/SiteSwitcher"
+import { WorkspaceHeader } from "./WorkspaceHeader"
 
 export function isPageEditorPath(pathname: string) {
   return /^\/pages\/(?:new|\d+|edit\/[^/]+)$/.test(pathname)
@@ -36,7 +37,7 @@ export function SiteHeader({
     : null
 
   return (
-    <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b-2 border-border bg-background px-4 md:px-5">
+    <WorkspaceHeader data-siab-cms-sticky-chrome className="sticky top-0 z-30 h-16 gap-2 bg-background py-0 md:px-5" identity={<>
       {!onPageEditor ? (
         <SidebarTrigger variant="outline" className="md:hidden" />
       ) : null}
@@ -45,7 +46,7 @@ export function SiteHeader({
           <SiteSwitcher current={currentSite} sites={sites} />
         </div>
       ) : null}
-      <div className="flex-1" />
+      </>} actions={<>
       {tenantSlug ? (
         <div className={onPageEditor ? "hidden min-[1280px]:block" : undefined}>
           <CmsAgentDrawer
@@ -60,6 +61,6 @@ export function SiteHeader({
         <ThemeToggle />
       </div>
       <UserMenu user={{ email: user.email, name: user.name ?? null, role: user.role }} />
-    </header>
+      </>} />
   )
 }

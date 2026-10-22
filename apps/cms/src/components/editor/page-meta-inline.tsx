@@ -69,6 +69,7 @@ export function PageMetaInline({ control, setValue, getValues }: Props) {
             <FormControl>
               <Input
                 placeholder={t("pageTitle")}
+                aria-label={t("pageTitle")}
                 {...field}
                 value={field.value ?? ""}
                 onBlur={(e) => {
@@ -118,6 +119,7 @@ export function PageMetaInline({ control, setValue, getValues }: Props) {
                       if (typeof field.ref === "function") field.ref(el)
                     }}
                     placeholder="slug"
+                    aria-label={t("slugTitle")}
                     value={field.value ?? ""}
                     aria-invalid={fieldState.invalid || undefined}
                     inputMode="url"

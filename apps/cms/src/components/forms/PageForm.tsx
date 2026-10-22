@@ -19,7 +19,7 @@ import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
 import { usePageEditorCore } from "@/components/editor/usePageEditorCore"
 import { parsePayloadError } from "@/lib/api"
-import { ChevronLeft, Trash2, ExternalLink, Copy } from "lucide-react"
+import { ChevronLeft, Trash2, ExternalLink, Copy, Globe } from "lucide-react"
 import Link from "next/link"
 import type { Page, SiteSetting } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
@@ -29,6 +29,7 @@ import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/prese
 import { PageEditorFrameHost } from "@/components/editor/iframe/PageEditorFrameHost"
 import { MobilePageEditorShell } from "@/components/editor/iframe/MobilePageEditorShell"
 import { ensureCanvasWirePage, ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import { settingsToJsonWithoutAnalytics } from "@/lib/projection/settingsToJsonCore"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -58,7 +59,7 @@ import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
 
 export { useRtManifest }
 
-export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inNavbarNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: SiteSetting | null; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inNavbarNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, canPublish = false, inNavbarNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: SiteSetting | null; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; canPublish?: boolean; inNavbarNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const router = useRouter()
   const status = useStatusFeedback()
@@ -127,6 +128,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     discardPageDraft,
     guard,
     triggerSave,
+    triggerPublish,
     retry,
     jumpToError,
     onSubmit,
@@ -285,6 +287,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   // (a ReactNode slot — local UI components render whatever node they get).
   const pageSettings = readOnly ? null : (
     <>
+      {isDesktop === false && (
+        <section className="rounded-md border border-border bg-card p-4">
+          <h2 className="mb-3 text-base font-semibold text-foreground">{t("pageSettings")}</h2>
+          <PageMetaInline control={pageMetaControl} setValue={pageMetaSetValue} getValues={pageMetaGetValues} />
+        </section>
+      )}
       {navCard}
       {seoCard}
     </>
@@ -343,9 +351,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     />
   )
 
-  // View-live + copy-URL affordances. Page editor saves publish page rows
-  // internally; the status field is no longer an editor-facing control.
-  const liveLinks = form.watch("slug") ? (
+  // Public links are meaningful only for an already public workspace. Private
+  // saves retain the page's readiness status without changing its snapshot.
+  const liveLinks = canPublish && tenantDomain && form.watch("slug") ? (
     <>
       <Button variant="ghost" size="icon" type="button" asChild title={t("liveLink")}>
         <a href={`${tenantOrigin}/${form.watch("slug")}`} target="_blank" rel="noopener noreferrer" aria-label={t("liveLink")}>
@@ -388,7 +396,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [initial?.id, initial?.updatedAt, pageTitle, watchedSlug, watchedBlocks, watchedSeo, iframeAnalyticsContext],
   )
   const frameSettings = siteSettingsState
-    ? ensureCanvasWireSettings(settingsToJsonWithoutAnalytics(siteSettingsState, rendererNavPages)) as ContractSiteSettings
+    ? ensureCanvasWireSettings(settingsToJsonWithoutAnalytics(siteSettingsState, rendererNavPages), { privateSiteUrl: platformCmsOrigin() }) as ContractSiteSettings
     : null
   const frameTheme = useMemo(() => normalizeThemeForSave(themeState), [themeState])
   const frameEditorLayout = isDesktop === false ? "mobile" : "desktop"
@@ -428,6 +436,16 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     </p>
   )
 
+  const saveNotice = <>
+{!readOnly ? <p className="px-4 py-2 text-xs text-muted-foreground" role="note">{t("privateSaveHelp")}</p> : null}
+
+          {submitError ? (
+            <p className="mx-4 mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+              {submitError}
+            </p>
+          ) : null}
+  </>
+
   return (
     <RtManifestProvider manifest={manifest}>
     <Form {...form}>
@@ -456,16 +474,15 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
               {!readOnly && (
                 <div className="ml-auto flex items-end gap-2">
                   <SaveButton pending={pending} isDirty={isDirty} errorCount={errorCount} dirtyCount={dirtyCount} />
+                  {canPublish ? <Button type="button" variant="outline" onClick={triggerPublish} disabled={pending || errorCount > 0}>
+                    <Globe className="size-4" aria-hidden />{t("publish")}
+                  </Button> : null}
                 </div>
               )}
             </header>
           )}
 
-          {submitError ? (
-            <p className="mx-4 mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-              {submitError}
-            </p>
-          ) : null}
+          {isDesktop ? saveNotice : null}
 
           {/* Editor-owned theme toolbar — centered over the canvas column, never inside the renderer frame. */}
           {!readOnly && isDesktop && (
@@ -492,6 +509,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             <MobileMediaSheetProvider>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
                 <MobilePageEditorShell
+                  notice={saveNotice}
+                  publish={canPublish ? <Button type="button" variant="outline" size="icon" aria-label={t("publish")}
+                    onClick={triggerPublish} disabled={pending || errorCount > 0}><Globe className="size-4" aria-hidden /></Button> : undefined}
                   selected={selected}
                   onExit={() => guard.guardedNavigate(() => router.push(baseHref))}
                   save={{
@@ -643,6 +663,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         <PageDraftRecoveryDialog
           open={draftCandidate !== null}
         savedAt={draftCandidate?.savedAt ?? null}
+        serverChanged={draftCandidate != null && draftCandidate.baselineUpdatedAt !== (initial?.updatedAt ?? null)}
         onRestore={restorePageDraft}
         onDiscard={discardPageDraft}
       />

@@ -1,3 +1,7 @@
+import { getPayload } from "payload"
+import config from "@/payload.config"
+import { canRepublishWorkspace } from "@/lib/workspace/manualAccess"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import type { Metadata } from "next"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getPageBySlug, listPages } from "@/lib/queries/pages"
@@ -27,7 +31,7 @@ export async function generateMetadata(
 export default async function EditPageBySlug({ params }: { params: Promise<{ slug: string; pageSlug: string }> }) {
   const { slug, pageSlug } = await params
   const { user, ctx, tenant } = await requireSuperAdminSelectedSite(slug)
-  const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
+  const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? (tenant.domain ? `https://${tenant.domain}` : platformCmsOrigin())
   const [page, manifest, settings, rendererNavPages] = await Promise.all([
     getPageBySlug(tenant.id, decodeURIComponent(pageSlug)).catch(() => null),
     loadTenantManifest(tenant.id),
@@ -48,6 +52,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         />
       </div>
       <PageForm
+        canPublish={await canRepublishWorkspace(await getPayload({ config }), String(tenant.id))}
         initial={page}
         tenantId={tenant.id}
         tenantSlug={tenant.slug}
@@ -57,7 +62,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         manifest={manifest}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
-        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
+        rendererNavPages={rendererNavPages.map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav
         canEditSettings
         inNavbarNav={inNavbar}

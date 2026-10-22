@@ -2,6 +2,7 @@
 import { headers } from "next/headers"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 import { themeSchema } from "@/lib/theme/schema"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
@@ -45,6 +46,10 @@ export const setTenantTheme = async (
     ((role === "owner" || role === "editor") && isMemberOfTarget)
   if (!isAuthorized) {
     throw new Error("Forbidden: not authorized to update this tenant's theme")
+  }
+
+  if (role !== "super-admin" && !await hasManualWorkspaceAccess(payload, String(tenantId))) {
+    throw new Error("Forbidden: manual workspace access required")
   }
 
   await payload.update({

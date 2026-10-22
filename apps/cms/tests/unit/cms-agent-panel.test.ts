@@ -8,7 +8,7 @@ describe("CMS agent panel chrome", () => {
     const panel = read("src/components/layout/CmsAgentPanel.tsx")
     const css = read("src/styles/siab.css")
     const composer = read("src/components/builder/BuilderComposer.tsx")
-    const button = read("../../packages/ui/src/components/button.tsx")
+    const button = [read("../../packages/ui/src/components/button.tsx"), read("../../packages/ui/src/lib/button-control.tsx")].join("\n")
 
     expect(panel).toContain("data-siab-agent-chat")
     expect(panel).toContain("BuilderComposer")
@@ -38,12 +38,13 @@ describe("CMS agent panel chrome", () => {
     expect(button).toContain("asChild")
     expect(button).toContain("blurAfterPointerClick")
     expect(button).toContain("handlePointerUp")
-    expect(button).toContain("{ onPointerUp }")
+    expect(button).toContain("asChild ? Slot.Root : ButtonControl")
   })
 
-  it("clones the builder chat header onto the CMS agent drawer with a neo close tile", () => {
+  it("shares workspace chrome between the builder and CMS agent drawer with a neo close tile", () => {
     const drawer = read("src/components/layout/CmsAgentDrawer.tsx")
     const header = read("src/components/builder/BuilderAgentHeader.tsx")
+    const workspaceHeader = read("src/components/layout/WorkspaceHeader.tsx")
 
     expect(drawer).toContain("showCloseButton={false}")
     expect(drawer).toContain("BuilderLogo")
@@ -53,9 +54,10 @@ describe("CMS agent panel chrome", () => {
     expect(drawer).toContain('variant="outline"')
     expect(drawer).toContain('size="icon"')
     expect(drawer).toContain("sm:max-w-[32rem]")
-    expect(drawer).toContain("border-b-2 border-border bg-card px-4 py-3")
+    expect(drawer).toContain("<WorkspaceHeader")
+    expect(workspaceHeader).toContain("border-b-2 border-border bg-card px-4 py-3")
     expect(drawer).toContain('imgClassName="h-8 max-w-[11rem] sm:h-9 sm:max-w-[14rem]"')
-    expect(header).toContain("border-b-2 border-border bg-card px-4 py-3")
+    expect(header).toContain("<WorkspaceHeader")
     expect(header).toContain('imgClassName="h-8 max-w-[11rem] sm:h-9 sm:max-w-[14rem]"')
     expect(drawer).not.toContain("absolute top-4 right-4")
     expect(drawer).not.toContain("XIcon")

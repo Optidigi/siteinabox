@@ -8,6 +8,9 @@ import {
 import { evaluateGate } from "@/lib/gateDecision"
 import { headers } from "next/headers"
 import type { User } from "@/payload-types"
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
+import { getPayload } from "payload"
+import config from "@/payload.config"
 
 export type GateResult = { user: User; ctx: SiabContext }
 
@@ -31,6 +34,10 @@ export const requireAuth = async (): Promise<GateResult> => {
   if (!decision.allow) {
     if (decision.reason === "no-user") redirect("/login")
     redirect(`/login?error=${decision.reason}`)
+  }
+
+  if (ctx.mode === "tenant" && !await hasManualWorkspaceAccess(await getPayload({ config }), String(ctx.tenant.id))) {
+    redirect("/builder")
   }
 
   return { user, ctx }

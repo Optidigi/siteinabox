@@ -16,6 +16,7 @@ import { resolveSettingsContract } from "@/lib/settingsContract"
 import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import type { Tenant } from "@/payload-types"
 
 type RouteParams = {
@@ -128,7 +129,7 @@ export default async function EditorFramePage({
       page={framePage}
       settings={ensureCanvasWireSettings(stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
         settingsContract: resolveSettingsContract(tenant.siteManifest ?? null),
-      }) as ContractSiteSettings))}
+      }) as ContractSiteSettings), { privateSiteUrl: platformCmsOrigin() })}
       theme={normalizeThemeForSave(tenant.theme as ThemeTokens | null | undefined)}
       tenantId={tenant.id}
       tenantSlug={tenant.slug}

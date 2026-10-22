@@ -29,7 +29,7 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
       <PageHeader
         title={t("title")}
         beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
-        subtitle={t("subtitle", { domain: tenant.domain })}
+        subtitle={t("subtitle", { domain: tenant.domain || t("privateWorkspace") })}
       />
       <OnboardingChecklist
         tenant={{ id: tenant.id, domain: tenant.domain ?? "" }}

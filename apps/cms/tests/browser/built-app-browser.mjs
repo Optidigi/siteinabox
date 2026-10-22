@@ -13,6 +13,7 @@ import { chromium } from "playwright"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, assertCmsTestPrerequisites, createWorkerStorage,
   cleanupWorkerStorage, applyCmsTestEnvironment, readEffectiveTestEnvironment, assertDisposableCmsEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
 import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
+import { runPrivateWorkspaceJourney } from "./built-private-workspace.mjs"
 import { runVerifiedCustomerJourney } from "./built-customer-journey.mjs"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
 import { cookieCredentials } from "./built-app-credentials.mjs"
@@ -223,6 +224,23 @@ try {
   const denialBody = { tenantId: fixture.tenants[0].id, publish: true, page: { id: fixture.pages[0].id, data: { title: "forged", slug: "index", status: "published", blocks: [] } } }
   assert.equal((await api(guestPage, "/api/page-editor-save", denialBody)).status, 403)
   verify("anonymous protected page and real save endpoint deny")
+  const cmsFonts = JSON.parse(await readFile(path.join(cmsRoot, "src/styles/font-assets.json"), "utf8"))
+  await guestPage.goto(cmsOrigin + "/login")
+  for (const asset of cmsFonts.assets) {
+    const font = await guestPage.evaluate(async file => {
+      const response = await fetch("/fonts/cms/" + file)
+      const bytes = await response.arrayBuffer()
+      const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(value => value.toString(16).padStart(2, "0")).join("")
+      return { status: response.status, type: response.headers.get("content-type"), cache: response.headers.get("cache-control"), size: bytes.byteLength, digest }
+    }, asset.file)
+    assert.equal(font.status, 200)
+    assert.match(font.type, /^font\/woff2/)
+    assert.equal(font.cache, "public, max-age=31536000, immutable")
+    assert.equal(font.size, asset.size); assert.equal(font.digest, asset.sha256)
+  }
+  const fontPreloads = await guestPage.locator('link[rel="preload"][as="font"]').evaluateAll(links => links.map(link => new URL(link.href).pathname).sort())
+  assert.deepEqual(fontPreloads, cmsFonts.assets.filter(asset => asset.preload).map(asset => "/fonts/cms/" + asset.file).sort())
+  verify("CMS typography serves original licensed local font bytes with preserved preloads and immutable caches")
   async function login(page, person = fixture.owners[0], target = ownedPath) {
     const loginResponse = await page.goto(cmsOrigin + "/login?next=" + encodeURIComponent(target))
     assert.equal((await loginResponse.serverAddr()).ipAddress, "127.0.0.1", "Credentials must stay on the owned loopback gateway")
@@ -259,9 +277,16 @@ try {
     assert.equal(response.status(), 200, "Actual renderer must serve the published tenant")
     if (!(await publicPage.title()).includes(expected)) throw new Error("E_PUBLISHED_MARKER_MISMATCH: real renderer did not serve the stored marker")
   }
+  await publishedMarker(fixture.pages[0].title)
+  verify("real editor Save persists privately while the live snapshot remains unchanged")
+  const published = ownerPage.waitForResponse(r => new URL(r.url()).pathname === "/api/page-editor-save" && r.request().method() === "POST")
+  await ownerPage.getByRole("button", { name: /^(Publish|Publiceren)$/ }).first().click()
+  const publishedResponse = await published
+  assert.equal(publishedResponse.status(), 200)
+  assert.equal((await publishedResponse.json()).snapshot.status, "active")
   await publishedMarker(marker)
   assert.equal((await publicPage.content()).includes(env.SIAB_RENDERER_API_TOKEN), false)
-  verify("real editor Save persists, reloads and reaches actual renderer")
+  verify("separate explicit Publish reaches the actual renderer")
   await ownerPage.screenshot({ path: path.join(output, "owned-page.png") })
   await publicPage.screenshot({ path: path.join(output, "published-page.png") })
   const privateResponse = await ownerPage.goto(cmsOrigin + "/pages/" + fixture.draftId)
@@ -310,6 +335,7 @@ try {
   assert.equal((await api(rolePages.get("viewer"), "/api/page-editor-save", saveBody(afterEditor, "Viewer must not write", false))).status, 403)
   assert.deepEqual(await storedPage(fixture.draftId), afterEditor)
   verify("synthetic Amicare-compatible owner/editor/viewer access and tenantless super-admin remain effective")
+  await runPrivateWorkspaceJourney({ newContext, login, cmsOrigin, cmsRoot, fixture, database, api, verify, output })
   const customerJourney = await runVerifiedCustomerJourney({ newContext, cmsOrigin, cmsRoot, env, fixture, database, api,
     rememberCookies, secrets, output, verify,
     control: action => runGuardedScript("tests/browser/built-customer-control.ts", [action], 30000),

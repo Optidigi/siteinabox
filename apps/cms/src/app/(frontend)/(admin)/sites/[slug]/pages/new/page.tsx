@@ -1,3 +1,7 @@
+import { getPayload } from "payload"
+import config from "@/payload.config"
+import { canRepublishWorkspace } from "@/lib/workspace/manualAccess"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import { requireSuperAdminSelectedSite } from "@/lib/routePolicy"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"
@@ -26,18 +30,19 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
         />
       </div>
       <PageForm
+        canPublish={await canRepublishWorkspace(await getPayload({ config }), String(tenant.id))}
         tenantId={tenant.id}
         tenantSlug={tenant.slug}
         tenantDomain={tenant.domain}
         baseHref={`/sites/${slug}/pages`}
         // FN-2026-0047 — see /pages/[id]/page.tsx for the env override note.
         tenantOrigin={
-          process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
+          process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? (tenant.domain ? `https://${tenant.domain}` : platformCmsOrigin())
         }
         manifest={manifest}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
-        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
+        rendererNavPages={rendererNavPages.map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canEditSettings
       />
     </div>

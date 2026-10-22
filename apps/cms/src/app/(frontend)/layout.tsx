@@ -14,8 +14,9 @@
 //   const nonce = (await headers()).get("x-csp-nonce") ?? undefined
 //   <Script id="..." nonce={nonce}>...</Script>
 import "@/styles/globals.css"
+import "@/styles/fonts.css"
+import fontAssets from "@/styles/font-assets.json"
 import type { Metadata } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
 import { cookies, headers } from "next/headers"
 import { NextIntlClientProvider } from "next-intl"
 import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"
@@ -23,12 +24,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { StatusFeedbackProvider } from "@/components/status-feedback"
 import { defaultLocale, localeCookieName, resolveLocale } from "@/i18n/config"
 import { loadMessages } from "@/i18n/messages"
-
-// Checkout typography follows the Inter treatment in the launch-workspace
-// prototype. Loading the 800 face keeps the prototype's 730–780 emphasis
-// crisp instead of asking the browser to synthesize it from 700.
-const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-sans" })
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" })
 
 // WCAG 2.4.2 (Page Titled, Level A) — every route gets a non-empty <title>.
 // Pages without a `metadata.title` export inherit `default`. Pages with one
@@ -54,7 +49,12 @@ export default async function FrontendLayout({ children }: { children: React.Rea
   )
   const messages = await loadMessages(locale)
   return (
-    <html lang={locale} suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html lang={locale} suppressHydrationWarning className="cms-fonts">
+      <head>
+        {fontAssets.assets.filter(asset => asset.preload).map(asset => (
+          <link key={asset.file} rel="preload" href={`/fonts/cms/${asset.file}`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        ))}
+      </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <CspNonceProvider nonce={nonce}>

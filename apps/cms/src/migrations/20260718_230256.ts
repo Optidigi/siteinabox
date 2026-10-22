@@ -340,7 +340,9 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
       snapshotKey: `${tenant.slug}-v${snapshotVersion}-${snapshotHash.slice(0, 12)}`,
       version: snapshotVersion,
       status: "drafted",
-      domain: tenant.domain,
+      // This historical migration runs while domain is still NOT NULL. Keep
+      // its emitted operation unchanged as today's generated Tenant widens.
+      domain: tenant.domain as string,
       snapshotHash,
       snapshot,
       publishedAt: now,
