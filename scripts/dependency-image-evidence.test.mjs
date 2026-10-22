@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { validateImageInventory } from "./dependency-image-evidence.mjs"
+import { validateImageInventory, imageInventoryStatus } from "./dependency-image-evidence.mjs"
 
 const now = Date.parse("2026-10-21T00:00:00Z")
 const sha = "a".repeat(40)
@@ -76,8 +76,32 @@ test("Go database findings without PrimaryURL retain canonical advisory source a
   assert.equal(inventory.findings[0].severity, "unknown")
   finding.References = ["https://example.test/not-the-advisory"]
   assert.equal(validateImageInventory(input).findings[0].sourceStatus, "unresolved")
+  assert.equal(imageInventoryStatus(validateImageInventory(input), null), "incomplete")
   finding.PrimaryURL = 123
   assert.throws(() => validateImageInventory(input), /malformed|unknown schema/)
+})
+
+test("missing advisory details require matching unresolved UNKNOWN findings", async () => {
+  const { validateScannerDiagnostics } = await import("./scan-image-dependencies.mjs")
+  const input = fixture()
+  const finding = input.report.Results[0].Vulnerabilities[0]
+  Object.assign(finding, { VulnerabilityID: "CVE-2026-107891", PkgName: "musl", Severity: "UNKNOWN",
+    DataSource: { ID: "alpine", URL: "https://secdb.alpinelinux.org/" }, References: [] })
+  delete finding.PrimaryURL
+  delete finding.Title
+  delete finding.Description
+  const diagnostic = '2026-10-22T19:14:00Z\tWARN\tUnable to get vulnerability details (CVE may be rejected)\terr.message="failed to get vulnerability" err.err="failed to get vulnerability: no vulnerability details" err.context.vuln_id="CVE-2026-107891"'
+  assert.equal(validateScannerDiagnostics(diagnostic, input.report)[0].code, "ADVISORY_DETAILS_UNAVAILABLE")
+  assert.equal(validateImageInventory(input).findings[0].sourceStatus, "unresolved")
+  for (const report of [undefined, { Results: [] }, structuredClone(input.report)]) {
+    if (report?.Results?.length) report.Results[0].Vulnerabilities[0].Severity = "HIGH"
+    assert.throws(() => validateScannerDiagnostics(diagnostic, report), /completeness requires review/)
+  }
+  finding.PrimaryURL = "https://example.test/recorded-advisory"
+  assert.throws(() => validateScannerDiagnostics(diagnostic, input.report), /completeness requires review/)
+  delete finding.PrimaryURL
+  assert.throws(() => validateScannerDiagnostics(diagnostic.replace('107891"', '107892"'), input.report), /completeness requires review/)
+  assert.throws(() => validateScannerDiagnostics(diagnostic + '\n2026-10-22T19:14:00Z\tWARN\tFailed to analyze a binary', input.report), /completeness requires review/)
 })
 
 test("an advisory with unresolved source metadata remains explicit blocked evidence", () => {

@@ -98,6 +98,19 @@ sandbox and approval policy instead.
 Never install components, mutate providers, change database state, publish,
 deploy, rotate, provision, or delete anything merely as an availability test.
 
+For remote providers, verify configuration, tool loading, client authentication,
+and a bounded account-specific read separately. Successful OAuth or a stored
+credential does not establish that the MCP server can authenticate to its
+upstream provider. The hosted Openprovider service uses the same linked reseller
+credentials for OAuth and MCP API-key callers; switching caller authentication
+does not repair an upstream login failure. See its
+[authentication contract](https://mcp.openprovider.com/docs#authentication).
+When that route is unavailable, authorized control-panel reads or bounded reads
+through the application's existing server-side provider integration can supply
+evidence. Keep application credentials and tokens on their owning host; never
+copy them into an investigative MCP. Label the actual route and limitations,
+and retain separate approval for real provider mutations.
+
 ### PostgreSQL MCP precondition
 
 The `postgres` server is disabled until an owner creates a dedicated local or

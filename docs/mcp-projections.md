@@ -38,12 +38,13 @@ secret-forwarding, and disabled semantics are represented here.
   Cursor; OpenCode does not receive that key.
 - `posthog` uses OAuth and sends `x-posthog-read-only: true`, which PostHog
   applies server-side. OpenCode also asks before every PostHog tool call.
-- The generator emits a broad `deny` for `openprovider_*` followed by `allow`
-  rules for the reviewed read-only tool allowlist. New or unreviewed tools stay
+- The generator emits a broad `deny` for `openprovider_*` followed by `ask`
+  rules for the reviewed read-only tool allowlist, preserving the registry's
+  separate approval requirement. New or unreviewed tools stay
   denied. Compare the allowlist with the provider's live `tools/list` catalog
   whenever the provider changes.
 - Prompt-mode servers without an allowlist, currently Cloudflare and PostHog,
-  receive an `ask` permission rule. OpenCode's base policy allows by default, so
+  receive a broad `ask` permission rule. OpenCode's base policy allows by default, so
   the generated rule is the client-side approval boundary.
 - `defaultEnabled: false` becomes `disabled: true`. Secret headers become
   `{env:NAME}` references. OAuth is disabled only for a header-authenticated
@@ -72,7 +73,7 @@ The executable check currently proves:
 | Executable safety | Dynamic executable versions fail validation. |
 | Target enforcement | A target that cannot preserve mandatory policy fails closed, and declared server enforcement must be represented in transport. |
 | Client projection | Codex receives policy fields; Cursor receives enabled servers and permissions; OpenCode receives V2 `mcp.servers` plus ordered permission rules. |
-| OpenCode read-only policy | Openprovider is deny-by-default with a reviewed read-only allowlist; Cloudflare and PostHog ask before tool calls; PostHog retains its server-side read-only header. |
+| OpenCode read-only policy | Openprovider is deny-by-default and asks for its complete reviewed read-only allowlist; Cloudflare and PostHog ask before tool calls; PostHog retains its server-side read-only header. |
 | OpenCode authentication isolation | OpenCode-specific OAuth overrides do not alter Codex/Cursor header projections; secret headers never become literal values. |
 | GitHub least privilege | GitHub projections retain the official server-side least-privilege policy. |
 | Database safety | PostgreSQL remains disabled with generated DBHub guardrails. |
@@ -90,7 +91,7 @@ The audit command was run on 2026-10-22:
 pnpm mcp:check
 ```
 
-Result: 15 registry/projection tests passed and `MCP registry is valid and
+Result: 16 registry/projection tests passed and `MCP registry is valid and
 projections are current.`
 
 The owning implementation is `scripts/sync-mcp-config.mjs`; its tests are

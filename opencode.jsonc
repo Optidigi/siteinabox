@@ -14,187 +14,187 @@
     {
       "action": "openprovider_check_domain",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_decode_csr",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_contact",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_customer",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_dmarc",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_dns_template",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_dns_zone",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_domain",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_domain_price",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_nameserver",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_ns_group",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_plesk_license",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_spam_experts_domain",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_ssl_approver_emails",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_ssl_order",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_ssl_product",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_get_tld",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_contacts",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_customers",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_dmarc_subscriptions",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_dns_templates",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_dns_zone_records",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_dns_zones",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_domains",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_email_templates",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_email_verification_domains",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_license_items",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_license_prices",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_nameservers",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_ns_groups",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_pending_confirmations",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_plesk_licenses",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_ssl_orders",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_ssl_products",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_tags",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_list_tlds",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "openprovider_suggest_domain",
       "resource": "*",
-      "effect": "allow"
+      "effect": "ask"
     },
     {
       "action": "posthog_*",

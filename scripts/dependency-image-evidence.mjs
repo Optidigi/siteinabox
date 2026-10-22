@@ -27,6 +27,11 @@ export class NativeAnalysisIncompleteError extends Error {
   }
 }
 
+export function imageInventoryStatus(inventory, analysisGaps) {
+  return analysisGaps || inventory.findings.some((finding) => finding.sourceStatus === "unresolved")
+    ? "incomplete" : "collected"
+}
+
 /** Validate collected inventory, not advisory disposition or release clearance. */
 export function validateImageInventory({ image, report, scanner, requiredTypes, requiredTargets = [], now = Date.now() }) {
   const database = scanner?.database

@@ -199,15 +199,34 @@ test("OpenCode receives V2 provider servers with read-only controls", () => {
   const denyIndex = config.permissions.findIndex((rule) => rule.action === "openprovider_*")
   const allowIndex = config.permissions.findIndex((rule) => rule.action === "openprovider_list_dns_zones")
   assert.equal(config.permissions[denyIndex].effect, "deny")
-  assert.equal(config.permissions[allowIndex].effect, "allow")
+  assert.equal(config.permissions[allowIndex].effect, "ask")
   assert(allowIndex > denyIndex, "OpenCode allow rules must follow the broad Openprovider deny")
   for (const tool of ["list_dns_zones", "list_domains", "get_domain", "check_domain", "suggest_domain"]) {
-    assert(config.permissions.some((rule) => rule.action === `openprovider_${tool}` && rule.effect === "allow"), `OpenCode must allow ${tool}`)
+    assert(config.permissions.some((rule) => rule.action === `openprovider_${tool}` && rule.effect === "ask"), `OpenCode must require approval for ${tool}`)
   }
   for (const tool of ["create_dns_zone", "update_domain", "delete_domain", "confirm_pending", "get_domain_authcode", "get_plesk_key", "dmarc_sso_login"]) {
     assert(!config.permissions.some((rule) => rule.action === `openprovider_${tool}` && rule.effect === "allow"), `OpenCode must not allow ${tool}`)
   }
   assert(!JSON.stringify(config).includes("OPENPROVIDER_MCP_AUTHORIZATION"))
+})
+
+test("OpenCode preserves approval for the complete reviewed Openprovider read allowlist", () => {
+  const expectedTools = [
+    "check_domain", "decode_csr", "get_contact", "get_customer", "get_dmarc",
+    "get_dns_template", "get_dns_zone", "get_domain", "get_domain_price", "get_nameserver",
+    "get_ns_group", "get_plesk_license", "get_ssl_approver_emails", "get_ssl_order", "get_ssl_product",
+    "get_spam_experts_domain", "get_tld", "list_contacts", "list_customers", "list_dmarc_subscriptions",
+    "list_dns_templates", "list_dns_zone_records", "list_dns_zones", "list_domains", "list_email_templates",
+    "list_email_verification_domains", "list_license_items", "list_license_prices", "list_nameservers",
+    "list_ns_groups", "list_pending_confirmations", "list_plesk_licenses", "list_ssl_orders",
+    "list_ssl_products", "list_tags", "list_tlds", "suggest_domain",
+  ].sort((a, b) => a.localeCompare(b))
+  const config = openCodeConfig(clone())
+  const rules = config.permissions.filter((rule) => rule.action.startsWith("openprovider_"))
+  assert.deepEqual(rules, [
+    { action: "openprovider_*", resource: "*", effect: "deny" },
+    ...expectedTools.map((tool) => ({ action: `openprovider_${tool}`, resource: "*", effect: "ask" })),
+  ])
 })
 
 test("OpenCode secret-header fallback retains user-scope token forwarding", () => {

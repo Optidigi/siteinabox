@@ -341,7 +341,7 @@ function openCodePermissions(registry) {
     if (policy?.toolAllowlist?.required) {
       rules.push({ action: `${name}_*`, resource: "*", effect: "deny" })
       for (const tool of [...policy.toolAllowlist.values].sort((a, b) => a.localeCompare(b))) {
-        rules.push({ action: `${name}_${tool}`, resource: "*", effect: "allow" })
+        rules.push({ action: `${name}_${tool}`, resource: "*", effect: server.clientPolicy.approval.required ? "ask" : "allow" })
       }
     } else if (server.clientPolicy.approval.required) {
       rules.push({ action: `${name}_*`, resource: "*", effect: "ask" })
