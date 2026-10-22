@@ -11,4 +11,8 @@ describe("customer settings validation", () => {
     expect(schema.parse({ siteName: "Live site", siteUrl: "https://example.test" }).siteUrl).toBe("https://example.test")
     expect(schema.safeParse({ siteName: "Private site", siteUrl: "invalid" }).success).toBe(false)
   })
+  it("accepts the absent optional disclosure JSON returned for a newly created workspace", () => {
+    expect(schema.safeParse({ siteName: "Private workspace", siteUrl: null,
+      privacyDisclosure: { enabled: false, mode: "template", contactMethods: null } }).success).toBe(true)
+  })
 })

@@ -97,7 +97,7 @@ export const createSettingsSchema = (t: (key: string, values?: Record<string, st
         enabled: z.boolean().optional(),
         mode: z.enum(["direct", "forwarded", "cms"]).nullish(),
       }).passthrough().optional(),
-    }).passthrough().optional(),
+    }).passthrough().nullish(),
   }).passthrough().optional(),
 }).passthrough()
 
