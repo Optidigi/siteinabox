@@ -109,6 +109,25 @@
     "languageUpdateFailed": "Could not update language"
   },
   "auth": {
+    "workspaceShowPreview": "Show preview",
+    "workspaceChat": "Show chat",
+    "workspacePreview": "Website preview",
+    "workspaceDesktop": "Desktop",
+    "workspaceTablet": "Tablet",
+    "workspacePhone": "Phone",
+    "workspaceCheckout": "Checkout",
+    "workspacePreviewLoading": "Loading your private preview…",
+    "workspacePreviewError": "Your preview could not load. Your saved work is still available.",
+    "workspaceRetry": "Try again",
+    "workspaceNetworkError": "The connection failed. Your message is ready to retry.",
+    "workspaceHeadline": "What shall we build?",
+    "workspacePlaceholder": "For example: I am a hairdresser in Tilburg offering cuts, colour and beard trims.",
+    "workspaceYou": "You",
+    "workspaceReading": "Reading…",
+    "workspaceWriting": "Writing…",
+    "workspaceBuilding": "Building the homepage…",
+    "workspaceReady": "Ready for your first site",
+    "workspacePreviewReady": "Preview is ready",
     "email": "Email",
     "password": "Password",
     "newPassword": "New password",
@@ -431,6 +450,7 @@
     "when": "When"
   },
   "sites": {
+    "privateWorkspace": "Private workspace",
     "delete": "Delete site",
     "deleteTitle": "Delete {name}",
     "deleted": "Deleted {name}",
@@ -711,6 +731,7 @@
     "removedFromZone": "Removed from {zone} navigation"
   },
   "onboarding": {
+    "privateWorkspace": "Private workspace",
     "title": "Onboarding",
     "subtitle": "Automatic provisioning status for {domain}.",
     "siteRecordCreated": "Site record created",
@@ -873,6 +894,12 @@
     "restriction": "This restriction prevents persistent header-based credentials from being established or rotated outside the super-admin path."
   },
   "editor": {
+    "saveConflict": "This page changed in another session. Your unsaved work is retained; reload and review before saving again.",
+    "saveThemeConflict": "The site theme changed in another session. Your unsaved work is retained; reload and review the current theme.",
+    "saveReloadRequired": "Reload the editor to save privately or publish explicitly.",
+    "saveRefreshPending": "Changes were saved, but the preview could not refresh. Your saved content is safe; reload to retry the preview.",
+    "publish": "Publish",
+    "privateSaveHelp": "Save keeps your changes private. Only Publish updates the public site.",
     "ctaLabelPlaceholder": "Contact",
     "editorSurfaceFailed": "Editor surface failed to render.",
     "editorFrameTimeout": "The editor frame did not finish loading. Retry the frame.",

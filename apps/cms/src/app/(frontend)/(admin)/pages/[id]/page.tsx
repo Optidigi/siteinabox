@@ -1,3 +1,7 @@
+import { getPayload } from "payload"
+import config from "@/payload.config"
+import { canRepublishWorkspace } from "@/lib/workspace/manualAccess"
+import { platformCmsOrigin } from "@/lib/hostToTenant"
 import { notFound, redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { getPageById, listPages } from "@/lib/queries/pages"
@@ -15,7 +19,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   if (ctx.mode === "super-admin") redirect("/sites")
   const readOnly = user.role === "viewer"
   const { id } = await params
-  const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${ctx.tenant.domain}`
+  const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? (ctx.tenant.domain ? `https://${ctx.tenant.domain}` : platformCmsOrigin())
   const [page, manifest, settings, rendererNavPages] = await Promise.all([
     getPageById(Number(id)).catch(() => null),
     loadTenantManifest(ctx.tenant.id),
@@ -34,6 +38,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
         <PageHeader title={page.title} />
       </div>
       <PageForm
+        canPublish={await canRepublishWorkspace(await getPayload({ config }), String(ctx.tenant.id))}
         initial={page}
         tenantId={ctx.tenant.id}
         tenantSlug={ctx.tenant.slug}
@@ -43,7 +48,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
         manifest={manifest}
         theme={normalizeThemeForSave(ctx.tenant.theme)}
         siteSettings={settings}
-        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
+        rendererNavPages={rendererNavPages.map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav={canManageNav}
         canEditSettings={canManageNav}
         inNavbarNav={inNavbar}

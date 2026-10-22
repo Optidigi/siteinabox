@@ -20,20 +20,35 @@ is no alternate CMS block renderer or canvas/source tree.
   membership, theme dirty tracking, selection, draft recovery, and save
   orchestration. `PageForm` composes the shared core with desktop and mobile
   shells (inspector, theme bar, and layout chrome).
-- Explicit save (**Opslaan**) posts to `/api/page-editor-save` with
-  `publish: true`. There is no operator draft/publish split and no autosave.
-  The only “draft” is browser IndexedDB recovery when leaving before a
-  successful save. Page writes may include `expectedUpdatedAt` for optimistic
-  concurrency; stale clients receive a conflict response instead of silently
-  overwriting.
-- A successful explicit save commits the page, related theme/navigation writes,
-  and one validated active current-state snapshot through one database
-  transaction. A validation or publication failure rolls the transaction back
-  and the editor shows the failing stage and localized server message. For
-  tenants that are already `active`, content republish does not re-require
-  domain verification; first go-live still does. An authenticated page write
-  from an older already-loaded editor client invokes the server-side
-  publication fallback instead of leaving live output stale.
+- **Save / Opslaan** persists page, theme and navigation privately through
+  `/api/page-editor-save` with `publish: false`; omitted intent is also private.
+  **Publish / Publiceren** is separate and requires server-authorized republish
+  capability. Neither AI changes nor ordinary saves replace the live snapshot.
+  Old interactive collection-save clients receive a reload instruction before
+  projection instead of implicitly publishing. There is no autosave; IndexedDB
+  retains unsaved work and rejected/stale submissions for recovery.
+- Page, theme and navigation writes share one transaction and tenant lock.
+  Page revisions are checked under that lock; theme changes also compare the
+  client's normalized baseline. Navigation membership merges current rows under
+  the same lock. A stale request returns 409 and rolls back its database work.
+  Hook-owned file projection runs after commit. A refresh failure returns a
+  successful persisted page with `E_CUSTOMER_PROJECTION_PENDING`; the editor
+  keeps an explicit localized saved-but-refresh-pending warning.
+- Paid pre-live workspaces may have `Tenant.domain` and `SiteSettings.siteUrl`
+  set to null. The private iframe uses the configured platform origin only for
+  its wire contract; it does not persist a fictitious public domain. Public
+  routing and snapshots retain their domain requirements. Rolling the nullable
+  migration down requires resolving null private records first; otherwise the
+  database rejects the rollback without deleting them.
+- Bound free workspaces have AI, private preview and checkout access. Manual
+  routes, collection operations and action boundaries require persisted
+  financial authority: a linked paid order and financially secured first
+  payment attempt. Role or browser flags alone cannot grant this capability.
+  Existing operator-provisioned CMS tenants without a customer-account binding
+  retain their access as legacy compatibility, not newly inferred payment.
+  Owner/editor/viewer rules still apply independently. Republish additionally
+  requires an active tenant, actual domain and matching active snapshot; first
+  activation and the payment-to-workspace transition remain separate authority.
 - The editor iframe owns rendering and event-delegated selection only. It does
   not mutate fields, render gutters, reorder blocks, or substitute block DOM.
   Canvas clicks select blocks/fields; editing happens only in the parent

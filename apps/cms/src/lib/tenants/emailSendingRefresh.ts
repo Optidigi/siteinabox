@@ -37,14 +37,15 @@ export async function refreshTenantEmailSendingFromCloudflare(
   payload: Payload,
   tenant: Tenant,
 ): Promise<Tenant> {
-  if (!canRefreshCloudflareSubdomain(tenant.emailSending)) return tenant
+  const domain = cleanText(tenant.domain)
+  if (!domain || !canRefreshCloudflareSubdomain(tenant.emailSending)) return tenant
 
   const zoneId = cleanText(tenant.emailSending.cloudflareZoneId)!
   const subdomainId = cleanText(tenant.emailSending.cloudflareSubdomainId)!
   try {
     const subdomain = await getCloudflareEmailSendingSubdomain(zoneId, subdomainId)
     const emailSending = buildTenantEmailSendingFromCloudflareSubdomain(
-      tenant.domain,
+      domain,
       zoneId,
       subdomain,
       { lastError: null },
@@ -109,10 +110,11 @@ export async function reconcileTenantEmailSending(
   const now = input.now ?? new Date()
 
   for (const candidate of tenants.docs as Tenant[]) {
+    const domain = cleanText(candidate.domain)
     const zoneId = cleanText(candidate.emailSending?.cloudflareZoneId)
     const sendingDomain =
       cleanText(candidate.emailSending?.sendingDomain)?.toLowerCase() ??
-      `mail.${candidate.domain.trim().toLowerCase()}`
+      (domain ? `mail.${domain.toLowerCase()}` : "")
     const alert = {
       payload,
       source: "domains" as const,
@@ -120,21 +122,21 @@ export async function reconcileTenantEmailSending(
       subjectId: candidate.id,
       now: now.toISOString(),
     }
-    if (!zoneId) {
+    if (!zoneId || !domain) {
       result.failed += 1
       await recordCommerceAdminException({
         ...alert,
         tenant: candidate.id,
         severity: "warning",
         message:
-          "Optional tenant-branded email cannot be reconciled without a Cloudflare zone reference; platform mail remains active.",
+          "Optional tenant-branded email requires an assigned domain and Cloudflare zone reference; platform mail remains active.",
       })
       continue
     }
     try {
       const subdomain = await createOrReuse(zoneId, sendingDomain)
       const emailSending = buildTenantEmailSendingFromCloudflareSubdomain(
-        candidate.domain,
+        domain,
         zoneId,
         subdomain,
         { now: now.toISOString(), lastError: null },

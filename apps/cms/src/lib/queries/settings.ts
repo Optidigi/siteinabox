@@ -70,11 +70,12 @@ export async function getOrCreateSiteSettings(
     ...request,
   })
   if (found.docs.length) return found.docs[0]!
+  const tenant = await payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true, ...request })
   try {
     return await payload.create({
       collection: "site-settings",
       overrideAccess: true,
-      data: { tenant: Number(tenantId), siteName: "Untitled", siteUrl: "https://example.com" } as SiteSetting,
+      data: { tenant: Number(tenantId), siteName: "Untitled", siteUrl: tenant.domain ? `https://${tenant.domain}` : null } as SiteSetting,
       ...request,
     })
   } catch (err) {

@@ -3,6 +3,7 @@ import { adminText } from "@/lib/payloadAdminI18n"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { BLOCKS } from "@/blocks/registry"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
+import { requireManualWorkspace } from "@/hooks/requireManualWorkspace"
 
 /**
  * Block presets — tenant-scoped, reusable templates for one configured block.
@@ -88,6 +89,7 @@ export const BlockPresets: CollectionConfig = {
     }
   ],
   hooks: {
+    beforeOperation: [requireManualWorkspace],
     beforeValidate: [validateTenantExists],
     beforeChange: [
       ({ data, req, operation }) => {

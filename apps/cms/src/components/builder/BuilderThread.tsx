@@ -1,9 +1,10 @@
 "use client"
 
 import type { ReactNode, RefObject } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { BUILDER_PHASE_COPY, type BuilderBusyPhase } from "@/components/builder/builderPresence"
+import { type BuilderBusyPhase } from "@/components/builder/builderPresence"
 import { splitBuilderSpeech } from "@/lib/builder/chatSpeech"
 import { BUILDER_CHAT_WELL_CLASS, OPEN_PREVIEW_ACTION_ID, type BuilderChatMessage } from "@/lib/builder/thread"
 
@@ -26,11 +27,12 @@ function ThreadTurn({
   role: "assistant" | "user"
   children: ReactNode
 }) {
+  const t = useTranslations("auth")
   const isUser = role === "user"
   return (
     <div
       className={cn("flex w-full", isUser ? "justify-end" : "items-start")}
-      aria-label={isUser ? "Jij" : "SIAB"}
+      aria-label={isUser ? t("workspaceYou") : "SIAB"}
     >
       <div
         className={cn(
@@ -61,7 +63,8 @@ export function BuilderThread({
   onChoice: (label: string) => void
   onOpenPreview?: () => void
 }) {
-  const phaseCopy = BUILDER_PHASE_COPY[phase ?? "schrijft"]
+  const t = useTranslations("auth")
+  const phaseCopy = t(phase === "leest" ? "workspaceReading" : phase === "bouwt" ? "workspaceBuilding" : "workspaceWriting")
 
   return (
     <div
@@ -105,8 +108,7 @@ export function BuilderThread({
                     disabled={busy}
                     onClick={onOpenPreview}
                   >
-                    {entry.actions.find((action) => action.id === OPEN_PREVIEW_ACTION_ID)?.label
-                      ?? "Bekijk je site"}
+                    {t("workspaceShowPreview")}
                   </Button>
                 </div>
               ) : null}

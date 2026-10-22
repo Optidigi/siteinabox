@@ -19,6 +19,7 @@ export function useBuilderMobilePager() {
   const pagerRef = useRef<HTMLDivElement>(null)
   const [pane, setPane] = useState<BuilderMobilePane>("chat")
   const [paging, setPaging] = useState(false)
+  const [desktop, setDesktop] = useState(false)
   const settleTimer = useRef<number>(0)
 
   const syncPane = useCallback(() => {
@@ -31,11 +32,20 @@ export function useBuilderMobilePager() {
   const scrollToPane = useCallback((next: BuilderMobilePane) => {
     const el = pagerRef.current
     if (!el || isDesktopViewport()) return
+    if (Math.abs(el.scrollLeft - (next === "preview" ? el.clientWidth : 0)) < 1) return
+    setPaging(true)
     el.scrollTo({
       left: next === "preview" ? el.clientWidth : 0,
       behavior: prefersReducedMotion() ? "auto" : "smooth",
     })
     setPane(next)
+  }, [])
+
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_QUERY)
+    const sync = () => setDesktop(query.matches)
+    sync(); query.addEventListener("change", sync)
+    return () => query.removeEventListener("change", sync)
   }, [])
 
   useEffect(() => {
@@ -67,5 +77,5 @@ export function useBuilderMobilePager() {
     }
   }, [syncPane])
 
-  return { pagerRef, pane, paging, scrollToPane }
+  return { pagerRef, pane, paging, scrollToPane, desktop }
 }

@@ -148,7 +148,11 @@ Public funnel (before checkout):
 4. CMS/preview already running: `pnpm --dir apps/cms dev` → `http://localhost:3000`
 
 Do not start `apps/renderer` to review the draft canvas; the builder
-iframe is `renderer-frame` inside CMS.
+iframe is `renderer-frame` inside CMS. Manual paid-private fixtures and live
+Save/Publish use the [canvas capability contract](../contracts/canvas.md).
+The canonical built-browser journey covers those modes on this checkout's
+built CMS and renderer, using isolated payment records and captured mail; it
+does not perform the real M19 payment transition or activate a provider domain.
 
 Magic-link mail is not required for local builder work. On development
 loopback only, open http://localhost:3000/api/builder/dev-session (or the

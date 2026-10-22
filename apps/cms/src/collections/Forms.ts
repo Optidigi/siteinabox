@@ -9,6 +9,7 @@ import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
 import { getPlatformMailSender } from "@/lib/email/sendEmail"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
+import { requireManualWorkspace } from "@/hooks/requireManualWorkspace"
 
 // Audit-p1 #5 sub-fix 2 (T4) — payload-size DoS cap on the public-create
 // surface. The audit's suggested cap is ~32 KB, sized for typical contact-
@@ -268,6 +269,7 @@ export const Forms: CollectionConfig = {
       access: { read: ({ req }) => req.user?.role === "super-admin" || req.user?.role === "owner" } }
   ],
   hooks: {
+    beforeOperation: [requireManualWorkspace],
     // FN-2026-0060 (audit-4 sister regression of FN-2026-0058) — same
     // cross-tenant FK 500→400 fix shape that fn-batch-7 wired into Pages,
     // Media, SiteSettings. Forms was missed. Translates the missing-

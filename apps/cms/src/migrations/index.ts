@@ -144,6 +144,7 @@ import * as migration_20261020_214100_mail_transport_readiness from './20261020_
 import * as migration_20261021_144531_customer_workspace_binding from './20261021_144531_customer_workspace_binding';
 import * as migration_20261021_144531_verified_customer_authority from './20261021_144531_verified_customer_authority';
 import * as migration_20261021_225131_account_link_dispatch from './20261021_225131_account_link_dispatch';
+import * as migration_20261022_002807_private_workspace_domain from './20261022_002807_private_workspace_domain';
 
 export const migrations = [
   {
@@ -874,6 +875,11 @@ export const migrations = [
   {
     up: migration_20261021_225131_account_link_dispatch.up,
     down: migration_20261021_225131_account_link_dispatch.down,
-    name: '20261021_225131_account_link_dispatch'
+    name: '20261021_225131_account_link_dispatch',
+  },
+  {
+    up: migration_20261022_002807_private_workspace_domain.up,
+    down: migration_20261022_002807_private_workspace_domain.down,
+    name: '20261022_002807_private_workspace_domain'
   },
 ];

@@ -16,6 +16,8 @@ export function MobilePageEditorShell({
   onExit,
   save,
   selected,
+  publish,
+  notice,
 }: {
   preview: ReactNode
   inspector: ReactNode
@@ -23,6 +25,8 @@ export function MobilePageEditorShell({
   onExit: () => void
   save: SaveButtonProps
   selected: ElementPath | null
+  publish?: ReactNode
+  notice?: ReactNode
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
@@ -32,6 +36,13 @@ export function MobilePageEditorShell({
     ? `${selected.blockIndex}.${selected.field}.${selected.itemIndex ?? ""}.${selected.subField ?? ""}`
     : ""
   const previousSelectionKey = useRef(selectionKey)
+  const previousPane = useRef(pane)
+  useEffect(() => {
+    if (paging || previousPane.current === pane) return
+    previousPane.current = pane
+    const region = pagerRef.current?.querySelector<HTMLElement>(`[data-editor-pane="${pane}"]`)
+    region?.focus({ preventScroll: true })
+  }, [pagerRef, pane, paging])
 
   useEffect(() => {
     const changed = selectionKey !== "" && selectionKey !== previousSelectionKey.current
@@ -44,6 +55,7 @@ export function MobilePageEditorShell({
       data-siab-mobile-page-editor
       className="-mx-4 -mt-4 -mb-4 flex h-[calc(100dvh-4rem)] min-h-0 flex-col md:-mx-6 md:-mt-6 md:-mb-6"
     >
+      {notice}
       <div
         ref={pagerRef}
         data-siab-editor-pager
@@ -52,6 +64,9 @@ export function MobilePageEditorShell({
         <section
           className="flex h-full w-full min-w-full shrink-0 snap-start snap-always flex-col overflow-hidden"
           aria-label={t("agentPane")}
+          data-editor-pane="agent"
+          tabIndex={-1}
+          inert={pane !== "agent"}
           aria-hidden={pane !== "agent"}
         >
           {agent}
@@ -59,6 +74,9 @@ export function MobilePageEditorShell({
         <section
           className="flex h-full w-full min-w-full shrink-0 snap-start snap-always flex-col overflow-hidden bg-muted"
           aria-label={t("previewPane")}
+          data-editor-pane="preview"
+          tabIndex={-1}
+          inert={pane !== "preview"}
           aria-hidden={pane !== "preview"}
         >
           <div className={cn("flex min-h-0 flex-1 flex-col", !previewInteractive && "pointer-events-none")}>
@@ -68,6 +86,9 @@ export function MobilePageEditorShell({
         <section
           className="flex h-full w-full min-w-full shrink-0 snap-start snap-always flex-col overflow-hidden bg-card"
           aria-label={t("inspectorPane")}
+          data-editor-pane="inspector"
+          tabIndex={-1}
+          inert={pane !== "inspector"}
           aria-hidden={pane !== "inspector"}
         >
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -113,8 +134,9 @@ export function MobilePageEditorShell({
         >
           <Pencil className="h-4 w-4" />
         </Button>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <SaveButton {...save} />
+          {publish}
         </div>
       </div>
     </div>

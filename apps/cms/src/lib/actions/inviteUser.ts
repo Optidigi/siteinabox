@@ -1,4 +1,5 @@
 "use server"
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 import { getPayload, type Payload } from "payload"
 import { asRecord } from "@/lib/record"
 import { headers } from "next/headers"
@@ -82,6 +83,9 @@ async function sendInviteMagicLink(payload: Payload, input: {
       (caller.role === "owner" && (caller.tenants?.length !== 1 || String(ownerTenantId(caller)) !== String(input.tenantId)))) {
     throw new Error("Forbidden: invitation authority changed")
   }
+  if (caller.role !== "super-admin" && !await hasManualWorkspaceAccess(payload, String(input.tenantId))) {
+    throw new Error("Forbidden: manual workspace access required")
+  }
   const recipient = await payload.findByID({ collection: "users", id: input.userId,
     depth: 0, user: caller, overrideAccess: false })
   if (!matchingMembership(recipient, input.tenantId, input.expectedRole) ||
@@ -147,6 +151,9 @@ export async function inviteUser(input: {
     }
   }
 
+  if (caller.role !== "super-admin" && !await hasManualWorkspaceAccess(payload, String(input.tenantId))) {
+    throw new Error("Forbidden: manual workspace access required")
+  }
   await loadInviteTenant(payload, input.tenantId)
 
   const findExisting = async () => (await payload.find({ collection: "users", user: caller, overrideAccess: false,
@@ -236,6 +243,9 @@ export async function resendUserInvitation(input: {
   const parsed = resendSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: "Invalid invitation details." }
   input = parsed.data
+  if (caller.role !== "super-admin" && !await hasManualWorkspaceAccess(payload, String(input.tenantId))) {
+    throw new Error("Forbidden: manual workspace access required")
+  }
   await loadInviteTenant(payload, input.tenantId)
   const invited = await payload.findByID({
     collection: "users",

@@ -59,6 +59,21 @@ account, site switcher).
 
 Landing keeps `apps/landing/src/components/ui/*`. Payload `/admin` CSS is out of scope.
 
+## Workspace chrome
+
+`WorkspaceHeader` is a CMS-local presentational row shared by builder, site
+header and the agent drawer. Callers retain their own identity, authorized
+navigation/actions and account controls; admin sidebar/selection providers and
+builder chat/preview state stay in their existing shells. Both use the shared
+renderer described in [canvas](canvas.md).
+
+On phones, offscreen chat, preview and inspector panes are inert and excluded
+from the accessibility tree. Settled pane changes move focus to the active
+region or composer. Builder frame messages require the expected source window,
+same origin and canonical protocol; navigation selects only an owned preview
+page, and loading failures provide a localized retry. UI labels support NL/EN;
+customer conversation content is preserved verbatim.
+
 ## Paths
 
 - `packages/ui/src/components/` owns shadcn primitive source.

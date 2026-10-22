@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     findByID: vi.fn(),
     logger: { error: vi.fn() },
     db: {
+      sessions: { "tx-1": { db: { execute: vi.fn() } } },
       beginTransaction: vi.fn(),
       commitTransaction: vi.fn(),
       rollbackTransaction: vi.fn(),
@@ -72,7 +73,7 @@ describe("page editor transactional save route", () => {
           id: 24,
           tenant: 7,
           updatedAt:
-            pagesFindByIdCalls === 1
+            pagesFindByIdCalls <= 2
               ? "2026-07-19T10:00:00.000Z"
               : "2026-07-19T10:05:00.000Z",
         }
@@ -88,8 +89,8 @@ describe("page editor transactional save route", () => {
     mocks.publish.mockResolvedValue({ activated: true, snapshot: { id: 134, version: 113, status: "active" } })
   })
 
-  it("defaults publish to operator-compatible behavior when omitted", () => {
-    expect(DEFAULT_PAGE_EDITOR_PUBLISH).toBe(true)
+  it("defaults omitted publication intent to a private save", () => {
+    expect(DEFAULT_PAGE_EDITOR_PUBLISH).toBe(false)
   })
 
   it("commits page, related state, and publication through one transaction request", async () => {

@@ -13,6 +13,7 @@ import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 import { richBlockField } from "@/lib/richText/payloadFields"
+import { requireManualWorkspace } from "@/hooks/requireManualWorkspace"
 
 // HH:MM 24h matcher. Accepts 00:00–23:59.
 const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -272,7 +273,8 @@ export const SiteSettings: CollectionConfig = {
   admin: { useAsTitle: "siteName", description: adminText("One record per tenant.", "Eén record per klantomgeving.") },
   fields: [
     { name: "siteName", type: "text", required: true },
-    { name: "siteUrl", type: "text", required: true,
+    { name: "siteUrl", type: "text",
+      hooks: { beforeValidate: [({ value }) => typeof value === "string" && !value.trim() ? null : value] },
       admin: { description: adminText("Public URL of the SSR site (e.g. https://clientasite.nl).", "Openbare URL van de SSR-site (bijv. https://clientasite.nl).") } },
     { name: "description", type: "textarea",
       admin: { description: adminText("One-paragraph site description (used in metadata and footers).", "Sitebeschrijving van één alinea (gebruikt in metadata en voetteksten).") } },
@@ -494,6 +496,7 @@ export const SiteSettings: CollectionConfig = {
       ] }
   ],
   hooks: {
+    beforeOperation: [requireManualWorkspace],
     beforeValidate: [
       validateTenantExists,
       normalizeSiteSettingsAliases,

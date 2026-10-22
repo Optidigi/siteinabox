@@ -6,6 +6,7 @@ import { Rocket, Monitor, Tablet, Smartphone, LogOut, MessageSquare } from "luci
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
   IFRAME_EDITOR_PROTOCOL_VERSION,
+  validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -17,10 +18,9 @@ import { BuilderThread } from "@/components/builder/BuilderThread"
 import { useBuilderBusyPhase } from "@/components/builder/builderPresence"
 import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { useBuilderMobilePager } from "@/components/builder/useBuilderMobilePager"
+import { builderPreviewNavigation } from "@/lib/builder/previewNavigation"
 import type { BuilderFacts } from "@/lib/builder/facts"
 import {
-  BUILDER_LANDING_OPENER,
-  BUILDER_STAGE_PLACEHOLDER,
   isBuilderAgentStage,
   withOpenPreviewAction,
   type BuilderChatMessage,
@@ -85,14 +85,19 @@ export function BuilderShell({
   const [viewport, setViewport] = useState<Viewport>("desktop")
   const [previewRevision, setPreviewRevision] = useState(0)
   const [frameReady, setFrameReady] = useState(false)
+  const [frameError, setFrameError] = useState(false)
+  const [previewPage, setPreviewPage] = useState({ pageSlug: "index", hash: "" })
   const [previewOpened, setPreviewOpened] = useState(false)
   const [splitReady, setSplitReady] = useState(() => Boolean(initialClientSlug))
   const previewWasOff = useRef(!initialClientSlug)
   const chatListRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const chatPaneRef = useRef<HTMLElement>(null)
+  const previewPaneRef = useRef<HTMLElement>(null)
+  const previousPane = useRef<"chat" | "preview">("chat")
   const revisionRef = useRef(1)
   const pendingSnapshotRef = useRef<BuilderPreviewSnapshot | null>(null)
-  const { pagerRef, pane, paging, scrollToPane } = useBuilderMobilePager()
+  const { pagerRef, pane, paging, scrollToPane, desktop } = useBuilderMobilePager()
   const hasPreview = Boolean(clientSlug)
   const agentStage = isBuilderAgentStage(messages, clientSlug)
   const threadMessages = withOpenPreviewAction(messages, hasPreview)
@@ -188,31 +193,58 @@ export function BuilderShell({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return
-      const data = event.data as { protocol?: unknown; type?: unknown }
-      if (data?.protocol !== IFRAME_EDITOR_PROTOCOL_NAME || data.type !== "renderer.ready") return
-      setFrameReady(true)
-      if (pendingSnapshotRef.current) postSnapshot(pendingSnapshotRef.current)
+      if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return
+      const parsed = validateIframeEditorMessage(event.data)
+      if (!parsed.ok) return
+      const data = parsed.message
+      if (data.type === "renderer.ready") {
+        setFrameReady(true)
+        setFrameError(false)
+        if (pendingSnapshotRef.current) postSnapshot(pendingSnapshotRef.current)
+      } else if (data.type === "error") {
+        setFrameError(true)
+      } else if (data.type === "navigation.requested" && data.href && clientSlug) {
+        const destination = builderPreviewNavigation(data.href, clientSlug, window.location.origin)
+        if (!destination) return
+        pendingSnapshotRef.current = null
+        setPreviewPage(destination)
+      }
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [postSnapshot])
+  }, [clientSlug, postSnapshot])
 
   const frameSrc = useMemo(
     () => {
       if (!clientSlug) return null
-      const path = `/renderer-frame/preview/${encodeURIComponent(clientSlug)}`
-      return previewRevision > 0 ? `${path}?rev=${previewRevision}` : path
+      const path = `/renderer-frame/preview/${encodeURIComponent(clientSlug)}/${encodeURIComponent(previewPage.pageSlug)}`
+      return `${path}?rev=${previewRevision}${previewPage.hash}`
     },
-    [clientSlug, previewRevision],
+    [clientSlug, previewRevision, previewPage],
   )
 
   useEffect(() => {
     setFrameReady(false)
+    setFrameError(false)
     revisionRef.current = 1
+    if (!frameSrc) return
   }, [frameSrc])
 
-  const previewInteractive = pane === "preview" && !paging
+  useEffect(() => {
+    if (!frameSrc || frameReady || frameError) return
+    const timeout = window.setTimeout(() => setFrameError(true), 12000)
+    return () => window.clearTimeout(timeout)
+  }, [frameSrc, frameReady, frameError])
+
+  useEffect(() => {
+    if (desktop || paging || previousPane.current === pane) return
+    previousPane.current = pane
+    const region = pane === "chat" ? chatPaneRef.current : previewPaneRef.current
+    const target = pane === "chat" ? region?.querySelector("textarea") : region?.querySelector("button")
+    ;(target ?? region)?.focus({ preventScroll: true })
+  }, [desktop, paging, pane])
+
+  const previewInteractive = desktop || (pane === "preview" && !paging)
 
   const send = async (raw?: string) => {
     const trimmed = (raw ?? message).trim()
@@ -229,6 +261,7 @@ export function BuilderShell({
       })
       const body = (await response.json()) as BuilderResponse
       if (!response.ok) {
+        setMessage(trimmed)
         const message = body.error === "E_CUSTOMER_PROJECTION_PENDING" ? tAuth("customerRefreshPending")
           : body.error === "E_CUSTOMER_VERIFICATION_HISTORY_REQUIRED"
             ? tAuth("customerHistoryUnavailable") : tAuth("customerWorkspaceUnavailable")
@@ -240,7 +273,10 @@ export function BuilderShell({
       } else {
         setMessages((current) => [...current, { role: "assistant", text: body.text }])
       }
-      if (body.previewSnapshot) {
+      if (body.previewSnapshot && previewPage.pageSlug !== "index") {
+        pendingSnapshotRef.current = null
+        setPreviewRevision((current) => current + 1)
+      } else if (body.previewSnapshot) {
         const sameSlug = Boolean(clientSlug && body.clientSlug === clientSlug)
         if (sameSlug && frameReady) {
           postSnapshot(body.previewSnapshot)
@@ -255,10 +291,8 @@ export function BuilderShell({
       }
       if (body.clientSlug) setClientSlug(body.clientSlug)
     } catch {
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", text: "Er ging iets mis. Probeer het zo opnieuw." },
-      ])
+      setMessage(trimmed)
+      setAccessError(tAuth("workspaceNetworkError"))
     } finally {
       setBusy(false)
     }
@@ -270,7 +304,7 @@ export function BuilderShell({
       busy={busy}
       error={accessError}
       layout={agentStage ? "stage" : "docked"}
-      placeholder={agentStage ? BUILDER_STAGE_PLACEHOLDER : undefined}
+      placeholder={agentStage ? tAuth("workspacePlaceholder") : undefined}
       onMessageChange={setMessage}
       onSend={() => void send()}
     />
@@ -294,6 +328,11 @@ export function BuilderShell({
         )}
       >
         <section
+          ref={chatPaneRef}
+          tabIndex={-1}
+          aria-label={tAuth("workspaceChat")}
+          inert={hasPreview && !desktop && pane !== "chat"}
+          aria-hidden={hasPreview && !desktop && pane !== "chat"}
           className={cn(
             "flex h-full min-h-0 flex-col overflow-hidden",
             hasPreview
@@ -339,7 +378,7 @@ export function BuilderShell({
                 )}
               >
                 <BuilderThread
-                  messages={agentStage ? BUILDER_LANDING_OPENER : threadMessages}
+                  messages={agentStage ? [{ role: "assistant", text: tAuth("workspaceHeadline") }] : threadMessages}
                   busy={!agentStage && busy}
                   phase={phase}
                   listRef={chatListRef}
@@ -354,14 +393,14 @@ export function BuilderShell({
         </section>
 
         {hasPreview ? (
-          <section className="relative flex h-full w-full min-w-full shrink-0 snap-start snap-always flex-col overflow-hidden bg-muted p-3 lg:min-w-0 lg:w-auto lg:p-5">
+          <section ref={previewPaneRef} tabIndex={-1} aria-label={tAuth("workspacePreview")} inert={!desktop && pane !== "preview"} aria-hidden={!desktop && pane !== "preview"} className="relative flex h-full w-full min-w-full shrink-0 snap-start snap-always flex-col overflow-hidden bg-muted p-3 lg:min-w-0 lg:w-auto lg:p-5">
             <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 className="lg:hidden"
-                aria-label="Toon chat"
+                aria-label={tAuth("workspaceChat")}
                 aria-current={pane === "chat" ? "true" : undefined}
                 onClick={() => scrollToPane("chat")}
               >
@@ -369,9 +408,9 @@ export function BuilderShell({
               </Button>
               <div className={cn(FLOATING_PILL_CLASS, "inline-flex items-center gap-1.5")}>
                 {([
-                  ["desktop", Monitor, "Desktop"],
-                  ["tablet", Tablet, "Tablet"],
-                  ["phone", Smartphone, "Telefoon"],
+                  ["desktop", Monitor, tAuth("workspaceDesktop")],
+                  ["tablet", Tablet, tAuth("workspaceTablet")],
+                  ["phone", Smartphone, tAuth("workspacePhone")],
                 ] as const).map(([id, Icon, label]) => (
                   <Button
                     key={id}
@@ -391,7 +430,7 @@ export function BuilderShell({
                   <Button asChild variant="secondary" size="sm">
                     <a href={`/${clientSlug}/checkout`}>
                       <Rocket className="size-4 shrink-0" />
-                      Ga live
+                      {tAuth("workspaceCheckout")}
                     </a>
                   </Button>
                 ) : null}
@@ -401,10 +440,15 @@ export function BuilderShell({
               </div>
             </div>
             {frameSrc ? (
-              <div className="flex min-h-0 flex-1 justify-center">
+              <div className="relative flex min-h-0 flex-1 justify-center" aria-busy={!frameReady && !frameError}>
+                {(!frameReady || frameError) ? <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background p-4 text-center" role={frameError ? "alert" : "status"}>
+                  <p>{tAuth(frameError ? "workspacePreviewError" : "workspacePreviewLoading")}</p>
+                  {frameError ? <Button type="button" variant="outline" onClick={() => setPreviewRevision(current => current + 1)}>{tAuth("workspaceRetry")}</Button> : null}
+                </div> : null}
                 <iframe
                   ref={frameRef}
-                  title="Websitevoorbeeld"
+                  title={tAuth("workspacePreview")}
+                  tabIndex={previewInteractive && frameReady && !frameError ? 0 : -1}
                   src={frameSrc}
                   className={cn(
                     viewportClass[viewport],

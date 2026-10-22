@@ -6,6 +6,7 @@ import { errLike } from "../_helpers/cast"
 const mocks = vi.hoisted(() => ({
   payload: {
     auth: vi.fn(),
+    find: vi.fn(async () => ({ totalDocs: 0, docs: [] })),
     update: vi.fn(),
   },
 }))

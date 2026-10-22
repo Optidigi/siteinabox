@@ -108,6 +108,24 @@ export async function runVerifiedCustomerJourney(harness) {
       assert.equal(state.tenant_id, original.tenant_id)
       await page.getByText(marker, { exact: true }).waitFor()
     }
+    const frame = page.locator("iframe")
+    if (width < 500) {
+      const showPreview = page.getByRole("button", { name: messages.auth.workspaceShowPreview, exact: true }).first()
+      await showPreview.focus(); await page.keyboard.press("Enter")
+      await page.waitForFunction(() => document.querySelector('[data-siab-builder-chat]')?.closest('section')?.inert === true)
+      await page.waitForFunction(() => document.activeElement?.closest('section')?.querySelector('iframe') !== null)
+    }
+    await frame.waitFor({ state: "visible" })
+    await page.frameLocator("iframe").locator("body").waitFor()
+    assert((await frame.getAttribute("src")).startsWith("/renderer-frame/preview/" + original.client_slug + "/"))
+    await page.evaluate(() => window.postMessage({ protocol: "siab.iframe-editor", schemaVersion: 3,
+      type: "error", messageId: "forged-parent-error", code: "forged", message: "forged failure" }, window.location.origin))
+    assert.equal(await page.getByRole("alert").filter({ hasText: messages.auth.workspacePreviewError }).count(), 0)
+    if (width < 500) {
+      await page.getByRole("button", { name: messages.auth.workspaceChat, exact: true }).click()
+      await page.waitForFunction(() => document.activeElement?.tagName === "TEXTAREA")
+      assert.equal(await frame.getAttribute("tabindex"), "-1")
+    }
     await page.screenshot({ path: path.join(output, "identity-workspace-" + locale + "-" + width + ".png") })
     pages.push({ page, context })
   }
@@ -121,7 +139,11 @@ export async function runVerifiedCustomerJourney(harness) {
   await pages[0].page.getByText(marker, { exact: true }).waitFor()
   assert.equal((await pages[0].page.locator("body").innerText()).includes(fixture.pages[1].title), false)
   verify("verified free account resumes one private workspace and original anchor across NL/EN desktop/phone sessions")
+  assert([403, 404].includes((await api(pages[0].page, "/renderer-frame/preview/m13-two")).status))
+  assert.equal((await api(pages[0].page, "/api/page-editor-save", { tenantId: original.tenant_id, paid: true,
+    publish: true, page: { data: { title: "Free account must not gain manual controls", slug: "index", blocks: [] } } })).status, 403)
   verify("unverified and substituted identity/tenant requests deny before private mutation or generation")
+  verify("free NL/EN phone preview focus, source-window checks and guessed-frame/manual-control denials hold")
   return {
     accountId: original.id,
     tenantId: original.tenant_id,

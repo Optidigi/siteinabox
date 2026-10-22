@@ -5,7 +5,10 @@ import type { Page, SiteSetting, User } from "@/payload-types"
 import { relationshipId, relationshipIdSet, relationshipValue } from "@/lib/relationshipId"
 import { navEntryPageId } from "@/lib/nav/membership"
 import { publishCurrentTenantState } from "@/lib/publish/currentState"
+import { sql, type PostgresAdapter } from "@payloadcms/db-postgres"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { ThemeTokens } from "@/lib/theme/schema"
+import type { CustomerProjectionTask } from "@/lib/projection/customerTransaction"
 import {
   PAGE_EDITOR_SAVE_CONFLICT_CODE,
   type PageEditorPageSection,
@@ -19,7 +22,7 @@ export type PageEditorTransactionReq = {
   user: User
   payload: Payload
   headers: Headers
-  context: { pageEditorSave: true }
+  context: { pageEditorSave: true; customerProjectionQueue?: (task: CustomerProjectionTask) => void }
 }
 
 type NavRow = {
@@ -29,6 +32,13 @@ type NavRow = {
   url?: string | null
   label?: string | null
   external?: boolean | null
+}
+
+export class SiteDesignSaveConflictError extends Error {
+  readonly code = "SITE_DESIGN_STALE" as const
+  readonly expectedUpdatedAt = undefined
+  readonly actualUpdatedAt = undefined
+  constructor() { super("Site theme was updated elsewhere; reload and try again."); this.name = "SiteDesignSaveConflictError" }
 }
 
 export class PageSaveConflictError extends Error {
@@ -76,13 +86,29 @@ const navRowsWithPage = (
     : withoutPage
 }
 
+/** Serialize page and shared theme/navigation changes for one workspace. */
+export async function lockPageEditorWorkspace(payload: Payload, tenantId: string, req: PageEditorTransactionReq): Promise<void> {
+  const adapter = payload.db as unknown as Pick<PostgresAdapter, "sessions">
+  const database = adapter.sessions[req.transactionID]?.db
+  if (!database) throw new Error("Workspace save requires an active transaction")
+  await database.execute(sql`SELECT id FROM tenants WHERE id=${tenantId} FOR UPDATE`)
+}
+
 export async function assertPageRevisionFresh(
   payload: Payload,
   page: Pick<PageEditorPageSection, "id" | "expectedUpdatedAt">,
   tenantId: string,
   user: User,
+  req?: PageEditorTransactionReq,
 ): Promise<void> {
   if (page.id == null || page.expectedUpdatedAt == null) return
+
+  if (req) {
+    const adapter = payload.db as unknown as Pick<PostgresAdapter, "sessions">
+    const database = adapter.sessions[req.transactionID]?.db
+    if (!database) throw new Error("Page revision requires the active save transaction")
+    await database.execute(sql`SELECT id FROM pages WHERE id=${page.id} AND tenant_id=${tenantId} FOR UPDATE`)
+  }
 
   const existing = await payload.findByID({
     collection: "pages",
@@ -90,6 +116,7 @@ export async function assertPageRevisionFresh(
     depth: 0,
     user,
     overrideAccess: false,
+    ...(req ? { req: payloadReq(req) } : {}),
   })
   const existingTenantId = relationshipId(existing.tenant)
   if (existingTenantId == null || existingTenantId !== tenantId) {
@@ -155,6 +182,13 @@ export async function persistSiteDesign(
   let savedTheme: ThemeTokens | undefined
 
   if (siteDesign.theme != null) {
+    if (siteDesign.expectedTheme !== undefined) {
+      const current = await payload.findByID({ collection: "tenants", id: tenantId, depth: 0,
+        overrideAccess: true, req: payloadReq(req) })
+      if (JSON.stringify(normalizeThemeForSave(current.theme)) !== JSON.stringify(normalizeThemeForSave(siteDesign.expectedTheme))) {
+        throw new SiteDesignSaveConflictError()
+      }
+    }
     await payload.update({
       collection: "tenants",
       id: tenantId,

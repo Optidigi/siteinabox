@@ -1,9 +1,12 @@
 /**
  * Map known English publish/activation gate reasons (thrown from
  * `canActivatePublishedSnapshot` / page-editor-save) to editor i18n keys.
- * Keep Opslaan = live publish; only the operator-facing copy is localized.
+ * Saving is private; publication requires the separate explicit action.
  */
 export const PUBLISH_GATE_ERROR_KEYS: Record<string, string> = {
+  "Page was updated elsewhere; reload and try again.": "saveConflict",
+  "Site theme was updated elsewhere; reload and try again.": "saveThemeConflict",
+  "Reload the editor to save privately or publish explicitly.": "saveReloadRequired",
   "Activation requires verified domain ownership.": "publishErrorDomain",
   "Cannot activate a suspended or archived tenant.": "publishErrorSuspended",
   "Generated-site activation requires verified tenant email sending.": "publishErrorEmail",

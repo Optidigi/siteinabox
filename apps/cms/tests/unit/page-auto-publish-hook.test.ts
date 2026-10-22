@@ -23,20 +23,12 @@ const invoke = (overrides: Record<string, unknown> = {}) => publishPageAfterUser
   ...overrides,
 }))
 
-describe("page save publication fallback", () => {
+describe("legacy page saves remain private", () => {
   beforeEach(() => mocks.publishCurrentTenantState.mockReset())
 
-  it("publishes authenticated legacy editor saves", async () => {
-    await invoke()
-
-    expect(mocks.publishCurrentTenantState).toHaveBeenCalledWith(
-      payload,
-      {
-        tenantId: "7",
-        user,
-        reason: "auto-publish current CMS state after page 24 save",
-      },
-    )
+  it("does not publish authenticated legacy editor saves", async () => {
+    await expect(invoke()).rejects.toThrow("Reload the editor")
+    expect(mocks.publishCurrentTenantState).not.toHaveBeenCalled()
   })
 
   it("defers current editor saves until related writes finish", async () => {

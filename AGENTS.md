@@ -72,6 +72,8 @@ When changing `apps/cms`:
   [authentication authority contract](docs/contracts/authentication.md#verified-customer-workspace-authority).
 - `packages/ui` owns primitives. CMS UI paths are compatibility re-exports;
   application composites remain outside `src/components/ui/`.
+- For workspace capabilities, private saves or publication intent, read
+  [the canvas contract](docs/contracts/canvas.md).
 - CMS preview, editor, and public output share the rendering contract. Do not
   introduce a second block renderer or iframe DOM/geometry synchronization.
 - Rich text remains structured `RtRoot` JSONB, never stored HTML or an opaque

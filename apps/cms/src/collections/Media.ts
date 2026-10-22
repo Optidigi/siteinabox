@@ -6,6 +6,7 @@ import { deleteMediaFile } from "@/hooks/deleteFileFromDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { ensureUniqueTenantFilename } from "@/hooks/ensureUniqueTenantFilename"
 import { forceTenantMediaUploadFilename, rewriteTenantMediaUrl } from "@/hooks/mediaTenantUrls"
+import { requireManualWorkspace } from "@/hooks/requireManualWorkspace"
 
 export const Media: CollectionConfig = {
   slug: "media",
@@ -25,7 +26,7 @@ export const Media: CollectionConfig = {
     { name: "caption", type: "text" }
   ],
   hooks: {
-    beforeOperation: [forceTenantMediaUploadFilename],
+    beforeOperation: [requireManualWorkspace, forceTenantMediaUploadFilename],
     beforeValidate: [validateTenantExists, ensureUniqueTenantFilename],
     afterRead: [rewriteTenantMediaUrl],
     afterChange: [projectMediaToDisk],

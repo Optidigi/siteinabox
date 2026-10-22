@@ -13,6 +13,7 @@ import { changePasswordHandler } from "@/lib/auth/changePassword"
 import { assertPayloadCustomerActive } from "@/lib/auth/payloadCustomerAccess"
 import { CustomerIdentityError } from "@/lib/auth/verifiedCustomer"
 import { rateLimitForgotPasswordByTargetEmail } from "@/hooks/rateLimitForgotPassword"
+import { requireManualWorkspaceUserManagement } from "@/hooks/requireManualWorkspace"
 import { preparePasswordResetDispatch, stagePasswordResetDispatch, authorizePasswordResetConsumption } from "@/lib/auth/passwordResetDispatch"
 
 // Constant-time string compare. Length-mismatch returns false immediately
@@ -471,6 +472,7 @@ export const Users: CollectionConfig = {
       authorizePasswordResetConsumption,
       // Reject original owner role/membership intent before fields can hide it.
       rejectUnsafeOwnerUserCreate,
+      requireManualWorkspaceUserManagement,
     ],
     afterOperation: [stagePasswordResetDispatch],
     // beforeValidate (collection) fires on update for both the regular

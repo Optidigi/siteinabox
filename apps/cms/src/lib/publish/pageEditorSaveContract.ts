@@ -4,10 +4,9 @@ import { themeSchema } from "@/lib/theme/schema"
 export const DEFER_PAGE_AUTO_PUBLISH_HEADER = "x-siab-defer-page-auto-publish"
 
 /**
- * When omitted, page editor saves still publish after a successful save
- * (operator-compatible default).
+ * Publication requires explicit intent. Omitted intent always saves privately.
  */
-export const DEFAULT_PAGE_EDITOR_PUBLISH = true
+export const DEFAULT_PAGE_EDITOR_PUBLISH = false
 
 export const PAGE_EDITOR_SAVE_CONFLICT_CODE = "PAGE_STALE" as const
 
@@ -27,6 +26,7 @@ const navigationMembershipSchema = z.object({
 const siteDesignSectionSchema = z
   .object({
     theme: themeSchema.optional(),
+    expectedTheme: themeSchema.nullable().optional(),
     navigation: navigationMembershipSchema.optional(),
   })
   .strict()
@@ -46,6 +46,7 @@ export type PageEditorSiteDesignSection = z.infer<typeof siteDesignSectionSchema
 
 export type PageEditorSaveSuccessResponse = {
   ok: true
+  warning?: "E_CUSTOMER_PROJECTION_PENDING"
   page: { id: string | number; slug?: string | null; updatedAt?: string }
   snapshot?: { id: string | number; version: number; status: string }
   theme?: z.infer<typeof themeSchema>
@@ -60,14 +61,14 @@ export type PageEditorSaveFailureResponse = {
 export type PageEditorSaveConflictResponse = {
   ok: false
   error: "conflict"
-  code: typeof PAGE_EDITOR_SAVE_CONFLICT_CODE
+  code: typeof PAGE_EDITOR_SAVE_CONFLICT_CODE | "SITE_DESIGN_STALE"
   message: string
-  expectedUpdatedAt: string
-  actualUpdatedAt: string
+  expectedUpdatedAt?: string
+  actualUpdatedAt?: string
 }
 
 export const resolvePageEditorPublish = (publish: boolean | undefined): boolean =>
-  publish !== false
+  publish ?? DEFAULT_PAGE_EDITOR_PUBLISH
 
 export const hasPageEditorSiteDesign = (
   siteDesign: PageEditorSiteDesignSection | undefined,
