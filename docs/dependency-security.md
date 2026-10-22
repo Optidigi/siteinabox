@@ -131,6 +131,14 @@ incomplete evidence under the rules above, never suppressed or treated as CVE
 rejection. Final-candidate image reports and independent review remain required;
 the original global review expiry is unchanged.
 
+[Tooling qualification run 39845654818, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39845654818)
+retains 208 image findings: the prior 198 plus eight UNKNOWN musl rows and two
+shipped `ip-address` findings covered by its owner's advisory. None disappear.
+All five native assessments remain blocked. Four native fingerprints are
+unchanged; CMS changes only BIND executables/libraries to 9.20.30 and retains
+identical bytes for all eight helper bundles. These reviewed baseline receipts
+still require final-policy-head verification and never authorize release.
+
 The current reviewed baseline inventory comes from unpublished source
 `068397b789ed6f57e1c550ed5a83ac08dc24ec5c` in
 [canonical run 39693531514, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39693531514).
