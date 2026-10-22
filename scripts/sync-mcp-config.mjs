@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const registryPath = resolve(root, "mcp.registry.json")
-const TARGETS = new Set(["codex", "cursor", "genericJson", "genericToml"])
+const TARGETS = new Set(["codex", "cursor", "genericJson", "genericToml", "opencode"])
 const SERVER_FIELDS = new Set([
   "purpose", "transport", "command", "args", "url", "workingDirectory", "implementation", "requiredEnv", "staticEnv",
   "staticHeaders", "secretHeaders", "serverPolicy", "clientPolicy", "preconditions", "projectionTargets", "fallback",
@@ -12,7 +12,11 @@ const SERVER_FIELDS = new Set([
 ])
 const IMPLEMENTATION_FIELDS = new Set(["kind", "identifier", "version", "digest", "reviewedAt", "unpinnedReason"])
 const SERVER_POLICY_FIELDS = new Set(["readOnly", "toolsets", "toolAllowlist"])
-const CLIENT_POLICY_FIELDS = new Set(["defaultEnabled", "approval", "enabledTools", "disabledTools"])
+const CLIENT_POLICY_FIELDS = new Set(["defaultEnabled", "approval", "enabledTools", "disabledTools", "opencode"])
+const OPENCODE_POLICY_FIELDS = new Set(["auth", "toolAllowlist"])
+const OPENCODE_AUTH_FIELDS = new Set(["kind", "scope"])
+const OPENCODE_AUTH_KINDS = new Set(["oauth"])
+const OPENCODE_TOOL_NAME = /^[a-z0-9_-]+$/
 const CONTROL_FIELDS = new Set(["required", "values", "enforcement"])
 const APPROVAL_MODES = new Set(["auto", "prompt", "writes", "approve"])
 
@@ -46,6 +50,31 @@ function validateControl(control, location, hasValues, requireEnforcement = true
   assert(!requireEnforcement || !control.required || control.enforcement, `${location} requires an enforcement mechanism`)
 }
 
+function validateOpenCodePolicy(server, location) {
+  const policy = server.clientPolicy.opencode
+  assert(policy && typeof policy === "object" && !Array.isArray(policy), `${location} must be an object`)
+  rejectUnknownKeys(policy, OPENCODE_POLICY_FIELDS, location)
+  if (Object.hasOwn(policy, "auth")) {
+    const auth = policy.auth
+    assert(auth && typeof auth === "object" && !Array.isArray(auth), `${location}.auth must be an object`)
+    rejectUnknownKeys(auth, OPENCODE_AUTH_FIELDS, `${location}.auth`)
+    assert(OPENCODE_AUTH_KINDS.has(auth.kind), `${location}.auth.kind is invalid`)
+    assert(server.transport === "http", `${location}.auth OAuth requires HTTP transport`)
+    if (Object.hasOwn(auth, "scope")) {
+      assert(typeof auth.scope === "string" && auth.scope.trim().length > 0, `${location}.auth.scope must be a non-empty string`)
+    }
+  }
+  if (Object.hasOwn(policy, "toolAllowlist")) {
+    validateControl(policy.toolAllowlist, `${location}.toolAllowlist`, true, false)
+    if (policy.toolAllowlist.required) {
+      assert(policy.toolAllowlist.values.length > 0, `${location}.toolAllowlist.values must not be empty when required`)
+    }
+    for (const [index, tool] of policy.toolAllowlist.values.entries()) {
+      assert(OPENCODE_TOOL_NAME.test(tool), `${location}.toolAllowlist.values[${index}] is not a stable tool name`)
+    }
+  }
+}
+
 function validateNoCredentialUrls(value, location = "registry") {
   if (typeof value === "string") {
     const urls = value.match(/[a-z][a-z0-9+.-]*:\/\/[^\s"']+/ig) ?? []
@@ -68,10 +97,13 @@ function validateNoEmbeddedSecret(value, location) {
 
 function targetSupports(server, target) {
   const policy = server.clientPolicy
-  if (!policy.defaultEnabled && target !== "codex") return false
-  // Cursor approximates approval via generated .cursor/permissions.json; other non-Codex
-  // targets cannot preserve prompt-mode approval and must omit those servers.
-  if (policy.approval.required && target !== "codex" && target !== "cursor") return false
+  // OpenCode encodes disabled servers explicitly instead of omitting them.
+  if (!policy.defaultEnabled && target !== "codex" && target !== "opencode") return false
+  // Cursor approximates approval via generated .cursor/permissions.json; OpenCode
+  // encodes prompt-mode approval as an ordered permissions rule.
+  if (policy.approval.required && target !== "codex" && target !== "cursor" && target !== "opencode") return false
+  // Per-tool Codex controls are not represented in the OpenCode projection; OpenCode
+  // uses its own reviewed allowlist under clientPolicy.opencode.toolAllowlist.
   if ((policy.enabledTools.required || policy.disabledTools.required) && target !== "codex") return false
   if (server.requiredEnv.length > 0 && (target === "genericJson" || target === "genericToml")) return false
   if (server.workingDirectory && target !== "codex") return false
@@ -221,11 +253,15 @@ export function validateRegistry(registry) {
     assert(APPROVAL_MODES.has(server.clientPolicy.approval.mode), `${location}.clientPolicy.approval.mode is invalid`)
     validateControl(server.clientPolicy.enabledTools, `${location}.clientPolicy.enabledTools`, true, false)
     validateControl(server.clientPolicy.disabledTools, `${location}.clientPolicy.disabledTools`, true, false)
+    if (Object.hasOwn(server.clientPolicy, "opencode")) validateOpenCodePolicy(server, `${location}.clientPolicy.opencode`)
 
     validateStringArray(server.preconditions, `${location}.preconditions`)
     if (server.runtimeConfig) validateRuntimeConfig(server, location)
     validateStringArray(server.projectionTargets, `${location}.projectionTargets`)
     assert(server.projectionTargets.length > 0, `${location}.projectionTargets must not be empty`)
+    if (Object.hasOwn(server.clientPolicy, "opencode")) {
+      assert(server.projectionTargets.includes("opencode"), `${location}.clientPolicy.opencode requires the opencode projection target`)
+    }
     for (const target of server.projectionTargets) {
       assert(TARGETS.has(target), `${location}.projectionTargets contains unknown target ${target}`)
       assert(targetSupports(server, target), `${location} cannot preserve mandatory policy in ${target}; omit that target`)
@@ -271,6 +307,60 @@ function baseJsonServer(server, target) {
   }
   if (Object.keys(headers).length > 0) projected.headers = headers
   return projected
+}
+
+function openCodeServer(server) {
+  const policy = server.clientPolicy.opencode ?? {}
+  let projected
+  if (server.transport === "stdio") {
+    projected = { type: "local", command: [server.command, ...server.args] }
+    const environment = { ...server.staticEnv }
+    for (const envName of server.requiredEnv) environment[envName] = `{env:${envName}}`
+    if (Object.keys(environment).length > 0) projected.environment = environment
+  } else {
+    projected = { type: "remote", url: server.url }
+    if (policy.auth?.kind === "oauth") {
+      if (Object.keys(server.staticHeaders).length > 0) projected.headers = { ...server.staticHeaders }
+      if (policy.auth.scope) projected.oauth = { scope: policy.auth.scope }
+    } else {
+      const headers = { ...server.staticHeaders }
+      for (const [header, envName] of Object.entries(server.secretHeaders)) headers[header] = `{env:${envName}}`
+      if (Object.keys(headers).length > 0) projected.headers = headers
+      if (Object.keys(server.secretHeaders).length > 0) projected.oauth = false
+    }
+  }
+  if (!server.clientPolicy.defaultEnabled) projected.disabled = true
+  return projected
+}
+
+function openCodePermissions(registry) {
+  const rules = []
+  for (const [name, server] of Object.entries(registry.servers).sort(([a], [b]) => a.localeCompare(b))) {
+    if (!server.projectionTargets.includes("opencode")) continue
+    const policy = server.clientPolicy.opencode
+    if (policy?.toolAllowlist?.required) {
+      rules.push({ action: `${name}_*`, resource: "*", effect: "deny" })
+      for (const tool of [...policy.toolAllowlist.values].sort((a, b) => a.localeCompare(b))) {
+        rules.push({ action: `${name}_${tool}`, resource: "*", effect: server.clientPolicy.approval.required ? "ask" : "allow" })
+      }
+    } else if (server.clientPolicy.approval.required) {
+      rules.push({ action: `${name}_*`, resource: "*", effect: "ask" })
+    }
+  }
+  return rules
+}
+
+function openCodeConfig(registry) {
+  const servers = Object.fromEntries(Object.entries(registry.servers)
+    .filter(([, server]) => server.projectionTargets.includes("opencode"))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, server]) => [name, openCodeServer(server)]))
+  const permissions = openCodePermissions(registry)
+  return `${JSON.stringify({
+    "$schema": "https://opencode.ai/config.json",
+    ...(permissions.length > 0 ? { permissions } : {}),
+    mcp: { servers },
+  }, null, 2)}\n`
 }
 
 function tomlServer(name, server, target) {
@@ -337,6 +427,7 @@ export function renderProjections(registry) {
     [resolve(root, ".codex/mcp.toml"), tomlFor("codex")],
     [resolve(root, ".cursor/mcp.json"), jsonFor("cursor")],
     [resolve(root, ".cursor/permissions.json"), cursorPermissions(registry)],
+    [resolve(root, "opencode.jsonc"), openCodeConfig(registry)],
     [resolve(root, postgres.path), dbhub],
   ])
 }

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { isDeepStrictEqual } from "node:util"
 import { sha256File } from "./image-artifact.mjs"
-import { validateImageInventory, NativeAnalysisIncompleteError, requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
+import { validateImageInventory, imageInventoryStatus, NativeAnalysisIncompleteError, requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { infrastructure } from "./infrastructure-images.mjs"
 import { reviewedBlockers, assertReviewedFindings } from "./dependency-security-policy.mjs"
 
@@ -75,7 +75,8 @@ export async function loadDependencyImages(directory, sourceSHA) {
       if (!(error instanceof NativeAnalysisIncompleteError)) throw error
       actual = error.inventory; gaps = { code: error.code, missingTargets: error.missingTargets, missingTypes: error.missingTypes }
     }
-    if (!isDeepStrictEqual(actual, image.inventory) || !isDeepStrictEqual(gaps, image.analysisGaps)) throw new Error("Image analysis metadata does not match retained report bytes")
+    if (!isDeepStrictEqual(actual, image.inventory) || !isDeepStrictEqual(gaps, image.analysisGaps) ||
+        image.inventoryStatus !== imageInventoryStatus(actual, gaps)) throw new Error("Image analysis metadata does not match retained report bytes")
   }
   return results
 }
