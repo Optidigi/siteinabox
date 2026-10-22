@@ -29,6 +29,15 @@ CTAs, checked controls, selected nav, and chart highlight — not page, card,
 sidebar, select, table hover, or header chrome. Do not invent a second gold.
 Builder does not override this palette.
 
+CMS typography uses the unchanged licensed Inter and JetBrains Mono assets in
+`apps/cms/public/fonts/cms`, with provenance and licenses recorded by
+`apps/cms/src/styles/font-assets.json`. `fonts.css` preserves the reviewed
+weights, Unicode subsets, fallback metrics and font variables. The two Latin
+preloads remain explicit; hashed font URLs receive immutable caching. CMS
+compilation does not fetch font providers, and the image compile step has no
+network access. Font integrity and the actual anonymous font responses are
+verified separately from tenant renderer typography.
+
 Chrome slabs (`neoPress`) use `--neo-slab` (near-black in light, white in
 dark). Single-line inputs and select triggers sit on that slab so they match
 default buttons. `neoField` / `Textarea` stay border-only — chat composers

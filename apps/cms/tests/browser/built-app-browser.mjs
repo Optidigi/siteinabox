@@ -224,6 +224,23 @@ try {
   const denialBody = { tenantId: fixture.tenants[0].id, publish: true, page: { id: fixture.pages[0].id, data: { title: "forged", slug: "index", status: "published", blocks: [] } } }
   assert.equal((await api(guestPage, "/api/page-editor-save", denialBody)).status, 403)
   verify("anonymous protected page and real save endpoint deny")
+  const cmsFonts = JSON.parse(await readFile(path.join(cmsRoot, "src/styles/font-assets.json"), "utf8"))
+  await guestPage.goto(cmsOrigin + "/login")
+  for (const asset of cmsFonts.assets) {
+    const font = await guestPage.evaluate(async file => {
+      const response = await fetch("/fonts/cms/" + file)
+      const bytes = await response.arrayBuffer()
+      const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(value => value.toString(16).padStart(2, "0")).join("")
+      return { status: response.status, type: response.headers.get("content-type"), cache: response.headers.get("cache-control"), size: bytes.byteLength, digest }
+    }, asset.file)
+    assert.equal(font.status, 200)
+    assert.match(font.type, /^font\/woff2/)
+    assert.equal(font.cache, "public, max-age=31536000, immutable")
+    assert.equal(font.size, asset.size); assert.equal(font.digest, asset.sha256)
+  }
+  const fontPreloads = await guestPage.locator('link[rel="preload"][as="font"]').evaluateAll(links => links.map(link => new URL(link.href).pathname).sort())
+  assert.deepEqual(fontPreloads, cmsFonts.assets.filter(asset => asset.preload).map(asset => "/fonts/cms/" + asset.file).sort())
+  verify("CMS typography serves original licensed local font bytes with preserved preloads and immutable caches")
   async function login(page, person = fixture.owners[0], target = ownedPath) {
     const loginResponse = await page.goto(cmsOrigin + "/login?next=" + encodeURIComponent(target))
     assert.equal((await loginResponse.serverAddr()).ipAddress, "127.0.0.1", "Credentials must stay on the owned loopback gateway")

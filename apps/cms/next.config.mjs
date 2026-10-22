@@ -1,9 +1,11 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { readFileSync } from "node:fs"
 import { withPayload } from "@payloadcms/next/withPayload"
 import createNextIntlPlugin from "next-intl/plugin"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const cmsFontAssets = JSON.parse(readFileSync(new URL("./src/styles/font-assets.json", import.meta.url), "utf8"))
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 const defaultAllowedDevOrigins = [
   "admin.siteinabox.nl",
@@ -41,6 +43,12 @@ const nextConfig = {
     tsconfigPath: "./tsconfig.build.json",
   },
   transpilePackages: ["@siteinabox/ui", "@siteinabox/contracts", "@siteinabox/site-renderer"],
+  async headers() {
+    return cmsFontAssets.assets.map(asset => ({
+      source: `/fonts/cms/${asset.file}`,
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+    }))
+  },
   async redirects() {
     return [
       { source: "/generation-runs/submissions/:id", destination: "/operations/intakes/:id", permanent: true },

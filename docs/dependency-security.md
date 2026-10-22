@@ -127,6 +127,13 @@ three source findings, every existing disposition and the original October 28
 expiry. Source configuration was rechecked for the independently reviewed
 private-workspace implementation; this does not qualify deferred upgrades.
 
+Final PR qualification reproduced an upstream Next font URL-parser build
+failure after all 351 CMS test files and 2,711 tests passed. CMS font bytes and
+face declarations are now retained locally with their licenses and original
+metrics. The image compile step disables networking. This leaves the dependency
+graph and native helpers unchanged; final-head image and browser checks must
+verify the new packaging. This is not an advisory remediation or release waiver.
+
 Unpublished source `8830859fe07785b42735c9ac94060af44cf1317c` passed the existing
 verify-only workflows for [CMS](https://github.com/Optidigi/siteinabox/actions/runs/39858729434),
 [renderer](https://github.com/Optidigi/siteinabox/actions/runs/39858733547) and
