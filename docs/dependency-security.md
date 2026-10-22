@@ -120,6 +120,33 @@ bound to the verified bytes, and publication never rebuilds the candidate.
 
 ## Current frontier
 
+### M16 workspace qualification
+
+M16 preserves the frozen dependency graph, all 109 current publisher facts,
+three source findings, every existing disposition and the original October 28
+expiry. Source configuration was rechecked for the independently reviewed
+private-workspace implementation; this does not qualify deferred upgrades.
+
+Unpublished source `8830859fe07785b42735c9ac94060af44cf1317c` passed the existing
+verify-only workflows for [CMS](https://github.com/Optidigi/siteinabox/actions/runs/39858729434),
+[renderer](https://github.com/Optidigi/siteinabox/actions/runs/39858733547) and
+[site](https://github.com/Optidigi/siteinabox/actions/runs/39858737791), each at
+attempt 1. Retained raw reports reconstruct exactly the same 208 image findings,
+including identities, paths, severities and evidence hashes. All five inventories
+remain incomplete, and all five native assessments remain blocked.
+
+OS/native files and Go targets are unchanged. The CMS fingerprint changes only
+for its eight shared-configuration helper bundles; their actual paths, sizes and
+hashes exactly reproduce with the repository-root generator. The new boot bundle
+passed old/new empty, populated and idempotent migration rehearsals with all rows,
+the active snapshot and credentials preserved. Legacy down succeeds; down with
+unresolved null-domain data refuses without loss. Fresh final-policy-head
+canonical CI, packaged-image verification and independent evidence review remain
+required. These baseline receipts authorize no release, publication or provider
+operation.
+
+### Tooling recovery baseline
+
 The tooling recovery rechecked the unchanged dependency graph and current
 publisher inputs after the Node/scanner release-age deadlines. Those patches
 are now eligible, but remain unqualified release blockers. Current Alpine main

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-22T19:59:29.337Z",
+  "reviewedAt": "2026-10-22T21:50:39.345Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
-  "reviewOwner": "Tooling recovery review (Codex engineering; independent Standards/Spec review; no release waiver)",
+  "reviewOwner": "M16 workspace engineering and independent Standards/Spec review; no release waiver",
   "graphHash": "68fd349875e7e548e2355225b109b5d170449d260bd26d89f6a537cce0ca594b",
-  "configurationHash": "5236fcaa68221261fab9c927c6e9e5e410fc329c163a9b9a0dd5e6057792b7ac",
+  "configurationHash": "f34943b0f763a019c0e36227e91859f65c6f671df66c1e548921aab274b242c9",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -5120,73 +5120,73 @@
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "c5918e1c2494285198ffec08b744c0b933c8d74706a37f8fa3b1fb5117a9de5e",
+      "fingerprint": "391790c138ed607a179a19f122c4ffefca2d389023a47ca59f6b3d6f6eb534f3",
       "status": "blocked",
-      "reason": "M15 durable account-link hooks/recovery and additive migration are bound to actual CMS packaged bytes. All eight helpers exactly reproduce with the documented repository-root generator command and a separate frozen filtered build. The prior local command ran in apps/cms, changing esbuild source paths/identifiers; its hashes did not qualify the container. Actual native inventories match the unchanged baseline. All unresolved native/OS findings, opaque coverage/support gaps and release blockers remain. Fresh tooling qualification changes only BIND native bytes to 9.20.30; all eight helper bundle hashes match the prior reviewed bytes. This remains a blocked assessment.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
+      "reason": "M16 private workspace capabilities, transactional private saves and nullable-domain migration change the shared CMS configuration embedded in all eight helper bundles. Actual hosted helper paths, sizes and hashes exactly match the repository-root generator output; the new migration bundle passed actual old/new empty, populated, idempotent and guarded rollback rehearsals, preserving all rows, active snapshot and credentials. OS/native files and Go targets remain byte-identical to the tooling baseline. Application browser, authority and source reviews remain separate evidence. All unresolved native/OS findings, opaque coverage/support gaps and release blockers remain; this is a blocked assessment.",
+      "reviewOwner": "M16 native evidence engineering review; no risk waiver",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
         "scanner-release",
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "85634007a63d080fea6881f1ac2c4e7e875adf29",
-      "reviewedImageId": "sha256:318d0f600a41c7a940a27ab238d02193c0392e0c9367409d49239b9c0cdac10a",
-      "reviewedArchiveSha256": "84f7273509ce1d14746eef828ebef056b519e9bc80f1db75532f0523f0c5f739",
-      "reviewedReportSha256": "5297a5c754406705809baf68b5af80de2e193fcc046c7412ac2a6ade092f680f",
-      "reviewedNativeInventorySha256": "86983a8c38cad8c20c42b18133ef4bf209c9ef24d3c30be0e9a24a0af702410a",
+      "reviewedSourceSHA": "8830859fe07785b42735c9ac94060af44cf1317c",
+      "reviewedImageId": "sha256:248b4e9ea95edd6f8384091a7fbe768558a769ed7185d490285c7d9de4732638",
+      "reviewedArchiveSha256": "50a9619e092e8ef445ea0c07ffc1137dcb6157088a920b13e5a6401e98e515dc",
+      "reviewedReportSha256": "0104e108535f1c1a596346a70c34a8a786f3bb8ab14d1e8077da53939c7515a1",
+      "reviewedNativeInventorySha256": "89ea45001acb53eb286b0c57e547327379cad262ff1814b600a8adbb6725315a",
       "bundleQualification": {
-        "kind": "hosted-exact-bytes-with-root-generator-reproduction",
-        "baselineSourceSHA": "068397b789ed6f57e1c550ed5a83ac08dc24ec5c",
-        "baselineImageId": "sha256:e3c171c0f5dc8f84dd52de7a5b796e6d7a61a67f4f592323dd564ac4f5cdda9e",
+        "kind": "hosted-exact-bytes-with-root-generator-and-migration-rehearsal",
+        "baselineSourceSHA": "8830859fe07785b42735c9ac94060af44cf1317c",
+        "baselineImageId": "sha256:248b4e9ea95edd6f8384091a7fbe768558a769ed7185d490285c7d9de4732638",
         "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
         "node": "24.22.0",
         "pnpm": "12.14.0",
         "bundledScripts": [
           {
             "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
-            "size": 14724170,
-            "sha256": "5a8243fa52793129c1fe3c9cbb0ea8b868e04d64a21c9ae6e77206f336a907a7"
+            "size": 14720677,
+            "sha256": "032aa4ad35c6365aaa1e14315e2d2f19b411e06e08bacb52cc807fa5d827eca0"
           },
           {
             "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
-            "size": 14740383,
-            "sha256": "c28539f50edffa10e443dee3cd6f03b26f2a5262716ce0e56156531afa0678e6"
+            "size": 14736889,
+            "sha256": "6ee52349362998efcc1fb75020bcd13b6591ea93dc18caa2eafb646f89fea275"
           },
           {
             "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
-            "size": 14752264,
-            "sha256": "0cb7b31d24dd3445432f1675c0eabae0efe3577d8c57cbd54e1c3bfe5a8f6ad0"
+            "size": 14748805,
+            "sha256": "193fd108c83a21665f52fb552cb64a2a953262f102f5a395b0d5a3960646dbd5"
           },
           {
             "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
-            "size": 14723051,
-            "sha256": "8ee20615033077e4d3f1304c3828aa3b4245938a7fb49d6f2a6a69e321af5d0e"
+            "size": 14719558,
+            "sha256": "d01c1b6d3e1d28af01fb97c4032401712e6cf57a0fda32c0196e22ff97b5ebc5"
           },
           {
             "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
-            "size": 15589072,
-            "sha256": "e7bbd52db68ef40837dfdaacc49da90c064f43705d2c2c28df101bb374331b64"
+            "size": 15586343,
+            "sha256": "be6b88fc2b6d8a6e1f937282c43714662b157f098bb87aab0b657a6e09e8b67b"
           },
           {
             "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
-            "size": 14724985,
-            "sha256": "09ddfcae2229093e5f3a824a624ed19e5fd0a688bbfb26e821024c364952f2a7"
+            "size": 14721492,
+            "sha256": "40f09d40cdd6c6aab1ae132ec1fd5bb64aa425ea66bc53e3fcce3563fe756882"
           },
           {
             "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
-            "size": 14730417,
-            "sha256": "67d06d7d42d228509362d0c368847e3965b0018d96c2e6afb3235d0b44db24fc"
+            "size": 14726911,
+            "sha256": "5fe8e9d578a25efea021e8976ec1320fa183b10e7fa1eccaca829c11d093d207"
           },
           {
             "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 14820501,
-            "sha256": "63e3fdf948b8bdb11219397b437fb970ad6780290015014dd73aecb1369480a0"
+            "size": 14817042,
+            "sha256": "0bbbe188451bf6a6eb76512060f8c8263d3d3669f00aacc37a00a45717a4c782"
           }
         ],
-        "limitation": "Canonical run39693531514 attempt1 actual CMS image and all eight root-generated helpers match for reviewed headca12add3/testedmerge068397b7. Aggregate correctly rejected the prior cwd-dependent local hashes. Final policy-head hosted verification still required. All advisory/native blockers remain; no release or production qualification."
+        "limitation": "Unpublished workflow39858729434 attempt1 at source8830859f matches all eight root-generated helpers. Actual migration rehearsal preserves populated rows, active snapshot and password/cookie/API-key behavior; empty/idempotent/legacy down pass and null-private down refuses without loss. Final policy-head canonical CI and image verification remain required. No universal native, release, real Amicare, production or provider clearance."
       },
-      "reviewedVerificationRunId": "39845654818",
+      "reviewedVerificationRunId": "39858729434",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5201,12 +5201,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "85634007a63d080fea6881f1ac2c4e7e875adf29",
+      "reviewedSourceSHA": "8830859fe07785b42735c9ac94060af44cf1317c",
       "reviewedImageId": "sha256:c293117fcecda7344b5480222e813b9f673d7abd69b1dd95eff239b768b04f59",
-      "reviewedArchiveSha256": "b9b61d35d82caecd9c179d60714f3aa5f9f05b44f90fd15dd07e40257f9a98ad",
-      "reviewedReportSha256": "ee17a87d5efcc08184a5bb95e562d9fe381cb89b634db5b911739e6abfe1c6a7",
-      "reviewedNativeInventorySha256": "bcce0708b9b23d38d0fa48571c47e8a1354d02a747d374da435dbd9854211c52",
-      "reviewedVerificationRunId": "39845654818",
+      "reviewedArchiveSha256": "ab81fde1bb41e24c3c6a177d9264b14b7400186e1a02ceaa3a3bdcfd0df771e6",
+      "reviewedReportSha256": "699474c186659dbe1255045217ae479b1633cb42f5cace70db94c27c2db84bc2",
+      "reviewedNativeInventorySha256": "74ff5c78796012f5535be1568ec707aedee700496c878f631e6da6a192ac39fa",
+      "reviewedVerificationRunId": "39858729434",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5219,12 +5219,12 @@
       "sources": [
         "scanner-release"
       ],
-      "reviewedSourceSHA": "85634007a63d080fea6881f1ac2c4e7e875adf29",
+      "reviewedSourceSHA": "8830859fe07785b42735c9ac94060af44cf1317c",
       "reviewedImageId": "sha256:08f1d1bdeb589c853ed8cf38de0bc9027eefbbc5f49bb31933e3f54560e0aea1",
-      "reviewedArchiveSha256": "e89e94f917f9c03c1904ebb6704bd522a941f7d215daeab89af19482b12e6073",
-      "reviewedReportSha256": "b970b5eacd0f1727ede33a00a337292d8a260aaf58d3a56c15a73f086fe3e249",
-      "reviewedNativeInventorySha256": "b4e9625d38ee4705d726d51273bc205dd65149c6b3bc4163131dd1b8fc81c58b",
-      "reviewedVerificationRunId": "39845654818",
+      "reviewedArchiveSha256": "81b4b1b3ff4675c1dc10024ecbece2bd990bc50652b4751430921bb9f79003b4",
+      "reviewedReportSha256": "fef4735ae385839b3d2b3629cbba936e09a421333556e3f0d815b9a6ce0a5129",
+      "reviewedNativeInventorySha256": "f9fdb5779b49d9ff95c7645480293b6a9081e80094d02e862e9422f93f6fb973",
+      "reviewedVerificationRunId": "39858729434",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5239,12 +5239,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "85634007a63d080fea6881f1ac2c4e7e875adf29",
-      "reviewedImageId": "sha256:4e89ca98f7cb7e0f9afd275438c8e158d1baa431e04e7d6f037c5c9ca669223e",
-      "reviewedArchiveSha256": "7a2f660e0ac72bf20548fba54ce0b13b1b575197604125030696a47a3a67c201",
-      "reviewedReportSha256": "8de1c6690faa27ed7d7490ad1c3cb60bd4a24774a1f0b51bcc07d7f7671cc105",
-      "reviewedNativeInventorySha256": "c9881c358cc918138fe947ac29bbd6237f0c60aae106cd0c4c5d67b8d94fc070",
-      "reviewedVerificationRunId": "39845654818",
+      "reviewedSourceSHA": "8830859fe07785b42735c9ac94060af44cf1317c",
+      "reviewedImageId": "sha256:26f32a5853406ee130ddd2d91c1d6b1ab03b2e0c84fd8aec84685aa21195b374",
+      "reviewedArchiveSha256": "dda01b2bd8900e16f2532eea90ac8db51a901ce848fdf007f572fb7ccbe6aa77",
+      "reviewedReportSha256": "dba8ad9292200487583a7c7eef775a787bd96543243534e42d06b9168f2785f4",
+      "reviewedNativeInventorySha256": "4d5f9c670ca83806c8e0f6485f490e15265fecef512fbda658332dbfffab0ff0",
+      "reviewedVerificationRunId": "39858733547",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5259,12 +5259,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "85634007a63d080fea6881f1ac2c4e7e875adf29",
-      "reviewedImageId": "sha256:b93600b8d90fa7f472729f2d3cae79a1e7ec9a9c3015523f7e45914dbf76b0fa",
-      "reviewedArchiveSha256": "d9f7afd308d85202a8deeb9f465e56b39eb8cac60454298ca4a7c48692f20bd1",
-      "reviewedReportSha256": "e1ab2d510d3c854cb7ed3828a18986788ed9548b1b0b95123a321a2ff7bc04ac",
-      "reviewedNativeInventorySha256": "b4223b9e21d54b497a3e5bc12f1c6ab5cd783f76977d7133e2bab15c7304ef70",
-      "reviewedVerificationRunId": "39845654818",
+      "reviewedSourceSHA": "8830859fe07785b42735c9ac94060af44cf1317c",
+      "reviewedImageId": "sha256:55dcbae48ec819393f9a1f5315a5eb258f02b017e1f9e07dab1d8909f571ba24",
+      "reviewedArchiveSha256": "91a2d76d657b3dd4852b7715e4207c391bd83c33c3908832c2f0cd2002a90dc2",
+      "reviewedReportSha256": "54bf3fc54e31749cbeec20f4eee356d54f6df93c35329e8c42b6e0d6ce931b36",
+      "reviewedNativeInventorySha256": "abd459628447db153c93602f5ae77c6feede072802a1ffa45ce92885e90e2dc8",
+      "reviewedVerificationRunId": "39858737791",
       "reviewedVerificationRunAttempt": "1"
     }
   ],
