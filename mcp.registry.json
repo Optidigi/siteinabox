@@ -39,7 +39,7 @@
         "kind": "remote",
         "identifier": "https://mcp.cloudflare.com/mcp",
         "version": "provider-managed",
-        "reviewedAt": "2026-07-18",
+        "reviewedAt": "2026-10-22",
         "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
       },
       "requiredEnv": [],
@@ -55,10 +55,16 @@
         "defaultEnabled": true,
         "approval": { "required": true, "mode": "prompt" },
         "enabledTools": { "required": false, "values": [] },
-        "disabledTools": { "required": false, "values": [] }
+        "disabledTools": { "required": false, "values": [] },
+        "opencode": {
+          "auth": { "kind": "oauth", "scope": "user:read account:read" }
+        }
       },
-      "preconditions": ["Authenticate in user scope only after an approved provider investigation requires it."],
-      "projectionTargets": ["codex", "cursor"],
+      "preconditions": [
+        "Authenticate in user scope only after an approved provider investigation requires it.",
+        "At OAuth consent, grant only read permissions. The OpenCode projection requests user:read and account:read; reauthorize with additional optional scopes only for an approved investigation."
+      ],
+      "projectionTargets": ["codex", "cursor", "opencode"],
       "fallback": "Use repository configuration and Cloudflare primary documentation; do not mutate the provider."
     },
     "context7": {
@@ -180,7 +186,7 @@
         "kind": "remote",
         "identifier": "https://mcp.openprovider.com/mcp",
         "version": "provider-managed",
-        "reviewedAt": "2026-08-02",
+        "reviewedAt": "2026-10-22",
         "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
       },
       "requiredEnv": ["OPENPROVIDER_MCP_AUTHORIZATION"],
@@ -198,13 +204,60 @@
         "defaultEnabled": true,
         "approval": { "required": true, "mode": "prompt" },
         "enabledTools": { "required": false, "values": [] },
-        "disabledTools": { "required": false, "values": [] }
+        "disabledTools": { "required": false, "values": [] },
+        "opencode": {
+          "auth": { "kind": "oauth", "scope": "mcp:read" },
+          "toolAllowlist": {
+            "required": true,
+            "values": [
+              "check_domain",
+              "decode_csr",
+              "get_contact",
+              "get_customer",
+              "get_dmarc",
+              "get_dns_template",
+              "get_dns_zone",
+              "get_domain",
+              "get_domain_price",
+              "get_nameserver",
+              "get_ns_group",
+              "get_plesk_license",
+              "get_ssl_approver_emails",
+              "get_ssl_order",
+              "get_ssl_product",
+              "get_spam_experts_domain",
+              "get_tld",
+              "list_contacts",
+              "list_customers",
+              "list_dmarc_subscriptions",
+              "list_dns_templates",
+              "list_dns_zone_records",
+              "list_dns_zones",
+              "list_domains",
+              "list_email_templates",
+              "list_email_verification_domains",
+              "list_license_items",
+              "list_license_prices",
+              "list_nameservers",
+              "list_ns_groups",
+              "list_pending_confirmations",
+              "list_plesk_licenses",
+              "list_ssl_orders",
+              "list_ssl_products",
+              "list_tags",
+              "list_tlds",
+              "suggest_domain"
+            ]
+          }
+        }
       },
       "preconditions": [
-        "Set user-local OPENPROVIDER_MCP_AUTHORIZATION to Bearer <op_live_…> from https://mcp.openprovider.com/dashboard (API keys); do not use application OPENPROVIDER_* credentials or commit the key.",
+        "Set user-local OPENPROVIDER_MCP_AUTHORIZATION to Bearer <op_live_…> from https://mcp.openprovider.com/dashboard (API keys) only for the Codex and Cursor projections; do not use application OPENPROVIDER_* credentials or commit the key.",
+        "OpenCode uses the Openprovider OAuth flow with the server-enforced mcp:read scope instead of the API key; complete browser sign-in from the user-scope MCP interface.",
+        "The OpenCode projection denies every tool outside the reviewed read-only allowlist. Review that allowlist against the live tools/list catalog whenever the provider changes.",
         "Use read-only inspection first. Any external-provider write, including DNS, domain, SSL, customer, contact, email, or license changes, requires explicit approval."
       ],
-      "projectionTargets": ["codex", "cursor"],
+      "projectionTargets": ["codex", "cursor", "opencode"],
       "fallback": "Use the repository Openprovider integration and Openprovider primary documentation; do not mutate the provider."
     },
     "postgres": {
@@ -268,15 +321,20 @@
         "kind": "remote",
         "identifier": "https://mcp.posthog.com/mcp",
         "version": "provider-managed",
-        "reviewedAt": "2026-07-18",
+        "reviewedAt": "2026-10-22",
         "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
       },
       "requiredEnv": [],
       "staticEnv": {},
-      "staticHeaders": {},
+      "staticHeaders": {
+        "x-posthog-read-only": "true"
+      },
       "secretHeaders": {},
       "serverPolicy": {
-        "readOnly": { "required": false, "enforcement": null },
+        "readOnly": {
+          "required": true,
+          "enforcement": { "kind": "header", "value": "x-posthog-read-only" }
+        },
         "toolsets": { "required": false, "values": [], "enforcement": null },
         "toolAllowlist": { "required": false, "values": [], "enforcement": null }
       },
@@ -286,8 +344,11 @@
         "enabledTools": { "required": false, "values": [] },
         "disabledTools": { "required": false, "values": [] }
       },
-      "preconditions": ["Authenticate in user scope only after an approved provider investigation requires it."],
-      "projectionTargets": ["codex", "cursor"],
+      "preconditions": [
+        "Authenticate in user scope only after an approved provider investigation requires it.",
+        "At OAuth consent, grant read-only scopes when offered. The x-posthog-read-only header is server-enforced; the OpenCode projection also asks before every PostHog tool call."
+      ],
+      "projectionTargets": ["codex", "cursor", "opencode"],
       "fallback": "Use repository analytics contracts and PostHog primary documentation; do not mutate the provider."
     },
     "sequential-thinking": {

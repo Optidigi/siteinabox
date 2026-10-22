@@ -48,7 +48,10 @@
     },
     "posthog": {
       "type": "http",
-      "url": "https://mcp.posthog.com/mcp"
+      "url": "https://mcp.posthog.com/mcp",
+      "headers": {
+        "x-posthog-read-only": "true"
+      }
     },
     "sequential-thinking": {
       "command": "npx",

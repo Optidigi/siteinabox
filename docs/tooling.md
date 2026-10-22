@@ -29,6 +29,17 @@ A declaration proves policy, not startup, authentication, or effective runtime
 permission. Inspect the generated target and the server's advertised tools
 before relying on it.
 
+OpenCode receives a separate provider-only projection in `opencode.jsonc`
+(OpenCode V2 `mcp.servers`). It includes `cloudflare-api`, `openprovider`, and
+`posthog`; it does not include local stdio, Docker, or PostgreSQL servers.
+Cloudflare and Openprovider use read-only OAuth scopes, PostHog sends the
+server-enforced `x-posthog-read-only` header, and Openprovider is
+deny-by-default with a reviewed read-only tool allowlist. Cloudflare and
+PostHog prompt before each tool call. The generated file is for sessions opened
+at the repository root; a T3/OpenCode session outside it needs the same
+`mcp.servers` and `permissions` in the user-scope config, never a committed
+copy.
+
 Cursor receives the same enabled Codex MCP set (`better-auth`, `cloudflare-api`,
 `context7`, `github`, `openprovider`, `posthog`, `sequential-thinking`,
 `shadcn`). Cursor cannot encode Codex `default_tools_approval_mode` or
@@ -42,18 +53,26 @@ personal paths remain in user scope.
 Authenticate remote provider MCPs in user scope only after an approved
 investigation needs them:
 
-- `cloudflare-api` and `posthog` — complete the Cursor OAuth connect flow from
-  Settings → MCP (or the needs-auth prompt). Do not put provider tokens in the
-  committed projection.
-- `openprovider` — set user-local `OPENPROVIDER_MCP_AUTHORIZATION` to
-  `Bearer op_live_…` from https://mcp.openprovider.com/dashboard (API keys
-  page; shown once). Do not use application `OPENPROVIDER_*` credentials.
-  The Cursor projection sends it as
-  `Authorization: ${env:OPENPROVIDER_MCP_AUTHORIZATION}`.
+- `cloudflare-api` — complete OAuth in the user-scope MCP interface (Cursor
+  Settings → MCP, or OpenCode `/mcps`). Grant only read permissions; the
+  OpenCode projection requests `user:read account:read`. Reauthorize with
+  additional optional scopes only for an approved investigation. Do not put
+  provider tokens in the committed projection.
+- `posthog` — complete OAuth in the same user-scope interface and keep the
+  generated `x-posthog-read-only: true` header. The OpenCode projection also
+  asks before every PostHog tool call. Do not replace this with a
+  project-scoped API key for OpenCode.
+- `openprovider` — Codex and Cursor use user-local
+  `OPENPROVIDER_MCP_AUTHORIZATION` set to `Bearer op_live_…` from
+  https://mcp.openprovider.com/dashboard (API keys page; shown once). OpenCode
+  instead uses browser OAuth with the server-enforced `mcp:read` scope and
+  never receives that key. Do not use application `OPENPROVIDER_*`
+  credentials.
 
 `docker` and `postgres` remain disabled Codex-only projections. Cursor has no
-disabled-server field; projecting them would start them enabled and weaken the
-reviewed policy. `docker` stays disabled until a least-privilege
+disabled-server field, and neither integration is in the reviewed OpenCode
+provider subset; projecting them would start them enabled or expand the
+approved tool surface. `docker` stays disabled until a least-privilege
 inspection-only replacement exists. Use Docker or Podman CLI under the normal
 sandbox and approval policy instead.
 
@@ -61,6 +80,9 @@ sandbox and approval policy instead.
 
 - Inventory availability before relying on a server and use read-only
   operations first.
+- OpenCode provider access is read-only-first: use the reviewed Openprovider
+  allowlist, the read-only OAuth scopes, and the PostHog read-only header. Do
+  not reauthorize with write scopes or add tools without explicit approval.
 - Credentials, OAuth sessions, and personal paths remain in user scope.
 - Cloudflare, PostHog, GitHub, database, container, and other external writes
   require explicit approval.
