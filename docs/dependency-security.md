@@ -73,6 +73,15 @@ severity selection is retained as provenance, along with severity-source/vendor
 fields and raw diagnostics; it does not suppress findings. See the publisher’s
 [severity-selection contract](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection).
 
+The pinned scanner can also report a missing vulnerability-detail record while
+retaining vendor package/fix evidence. Collection accepts that exact diagnostic
+only when its CVE matches retained package findings with `UNKNOWN` severity and
+unresolved advisory metadata. It preserves the warning and every finding and
+labels the inventory `incomplete`. Admission recomputes that label from the raw
+report. Such rows require explicit reviewed dispositions and still block release;
+they are not evidence of CVE rejection or safe packages. Missing/mismatched rows,
+other warnings and operational errors still fail collection.
+
 The image path exports a never-started, labelled container filesystem. Native
 magic is inspected for every regular member, regardless of name or permissions.
 Detected native members and bundled migration code are hashed through tar pipes without host
@@ -110,6 +119,25 @@ retained with the immutable publication result. The loaded archive/image ID stay
 bound to the verified bytes, and publication never rebuilds the candidate.
 
 ## Current frontier
+
+The tooling recovery rechecked the unchanged dependency graph and current
+publisher inputs after the Node/scanner release-age deadlines. Those patches
+are now eligible, but remain unqualified release blockers. Current Alpine main
+also adds BIND and nginx fix rows; the retained CMS validator predates the BIND
+fix and needs fresh qualification. New Docker/Compose/buildx community rows do
+not match packages in the retained inventories. A fresh isolated rescan still
+reports missing musl advisory details. These UNKNOWN findings are retained as
+incomplete evidence under the rules above, never suppressed or treated as CVE
+rejection. Final-candidate image reports and independent review remain required;
+the original global review expiry is unchanged.
+
+[Tooling qualification run 39845654818, attempt 1](https://github.com/Optidigi/siteinabox/actions/runs/39845654818)
+retains 208 image findings: the prior 198 plus eight UNKNOWN musl rows and two
+shipped `ip-address` findings covered by its owner's advisory. None disappear.
+All five native assessments remain blocked. Four native fingerprints are
+unchanged; CMS changes only BIND executables/libraries to 9.20.30 and retains
+identical bytes for all eight helper bundles. These reviewed baseline receipts
+still require final-policy-head verification and never authorize release.
 
 The current reviewed baseline inventory comes from unpublished source
 `068397b789ed6f57e1c550ed5a83ac08dc24ec5c` in

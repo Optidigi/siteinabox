@@ -3,10 +3,10 @@ import { createHash } from "node:crypto"
 import { open, readFile, writeFile, stat, lstat } from "node:fs/promises"
 import { resolve } from "node:path"
 import { prepareDependencyScanner } from "./prepare-dependency-scanner.mjs"
-import { validateImageInventory, NativeAnalysisIncompleteError } from "./dependency-image-evidence.mjs"
+import { validateImageInventory, imageInventoryStatus, NativeAnalysisIncompleteError } from "./dependency-image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 
-export function validateScannerDiagnostics(diagnostics) {
+export function validateScannerDiagnostics(diagnostics, report) {
   // Trivy's documented cross-vendor severity selection is provenance, not a
   // failed analyzer. Recognize only the exact notice from the pinned scanner.
   const documentation = "https://trivy.dev/docs/v0.76/guide/scanner/vulnerability#severity-selection"
@@ -15,8 +15,27 @@ export function validateScannerDiagnostics(diagnostics) {
   for (const line of diagnostics.split("\n")) {
     if (!/(?:^|\t)(?:WARN|ERROR|FATAL)(?:\t|\s)/.test(line)) continue
     const warning = line.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\tWARN\t(.*)$/)
-    if (warning?.[1] !== message) throw new Error("Scanner reported analysis warnings/errors; inventory completeness requires review")
-    notices.push({ code: "VENDOR_SEVERITY_FALLBACK", diagnostic: line, documentation })
+    if (warning?.[1] === message) {
+      notices.push({ code: "VENDOR_SEVERITY_FALLBACK", diagnostic: line, documentation })
+      continue
+    }
+    // A missing detail-bucket entry is not a rejected CVE or a clean scan.
+    // Retain the exact warning only when its package findings still exist as
+    // unresolved UNKNOWN evidence; ordinary review and release rejection apply.
+    const missingDetails = warning?.[1].startsWith("Unable to get vulnerability details (CVE may be rejected)\t") &&
+      line.includes('err.message="failed to get vulnerability"') &&
+      line.includes('err.err="failed to get vulnerability: no vulnerability details"') &&
+      line.match(/(?:\s|^)err\.context\.vuln_id="(CVE-\d{4}-\d{4,})"(?:\s|$)/)
+    const findings = missingDetails && report?.Results?.flatMap((result) => result.Vulnerabilities ?? [])
+      .filter((finding) => finding.VulnerabilityID === missingDetails[1])
+    if (findings?.length && findings.every((finding) => finding.Severity === "UNKNOWN" &&
+        typeof finding.PkgName === "string" && finding.PkgName && typeof finding.InstalledVersion === "string" && finding.InstalledVersion &&
+        finding.DataSource?.ID && !finding.PrimaryURL && !finding.Title && !finding.Description && !finding.References?.length)) {
+      notices.push({ code: "ADVISORY_DETAILS_UNAVAILABLE", advisoryId: missingDetails[1],
+        affectedFindings: findings.length, diagnostic: line })
+      continue
+    }
+    throw new Error("Scanner reported analysis warnings/errors; inventory completeness requires review")
   }
   return notices
 }
@@ -48,10 +67,10 @@ export async function scanImageDependencies({ root, archive, image, nativeInvent
     throw new Error("Image scanner output exceeded its completeness bound")
   }
   const diagnostics = await readFile(stderrFile, "utf8")
-  const scannerNotices = validateScannerDiagnostics(diagnostics)
+  const report = JSON.parse(await readFile(reportFile, "utf8"))
+  const scannerNotices = validateScannerDiagnostics(diagnostics, report)
   if (await sha256File(archive) !== image.archiveSha256 || await sha256File(scanner.databaseFile) !== scanner.evidence.databaseSha256 ||
       await sha256File(scanner.metadataFile) !== scanner.evidence.metadataSha256) throw new Error("Archive or advisory database changed during scanning")
-  const report = JSON.parse(await readFile(reportFile, "utf8"))
   let inventory
   let analysisGaps = null
   try {
@@ -67,7 +86,7 @@ export async function scanImageDependencies({ root, archive, image, nativeInvent
     imageId: image.imageId, archiveSha256: image.archiveSha256,
     collectedAt: new Date().toISOString(), scanner: scanner.evidence, reportSha256: await sha256File(reportFile),
     stdoutSha256: await sha256File(stdoutFile), stderrSha256: await sha256File(stderrFile),
-    scannerNotices, inventoryStatus: analysisGaps ? "incomplete" : "collected", analysisGaps,
+    scannerNotices, inventoryStatus: imageInventoryStatus(inventory, analysisGaps), analysisGaps,
     nativeInventory, nativeInventorySha256: createHash("sha256").update(JSON.stringify(nativeInventory)).digest("hex"), inventory,
     releaseCleared: false, limitation: "Inventory collection is not advisory disposition or release clearance" }
   await writeFile(outputPrefix + ".dependencies.json", JSON.stringify(evidence, null, 2) + "\n", { flag: "wx" })

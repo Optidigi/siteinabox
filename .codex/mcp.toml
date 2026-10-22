@@ -54,6 +54,7 @@ url = "https://mcp.posthog.com/mcp"
 enabled = true
 required = false
 default_tools_approval_mode = "prompt"
+http_headers = { "x-posthog-read-only" = "true" }
 
 [mcp_servers.sequential-thinking]
 command = "npx"
