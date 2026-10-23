@@ -1,6 +1,7 @@
 import { verifiedCustomerFixture } from "../_helpers/verifiedCustomerFixture"
 import { describe, expect, it, vi } from "vitest"
-import type { ComponentProps } from "react"
+import type { ComponentProps, ReactElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import type { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { buildCheckoutQuote, sealCheckoutQuote } from "@/lib/checkout/checkoutQuote"
 
@@ -107,7 +108,7 @@ type PreviewCheckoutProps = ComponentProps<typeof PreviewCheckout>
 const baseContext = (overrides: Record<string, unknown> = {}) => ({
   customerEmail: "customer@example.com",
   clientSlug: "ami-care",
-  payload: {},
+  payload: { find: vi.fn(async () => ({ docs: [] })) },
   tenant: {
     id: 12,
     name: "Ami Care",
@@ -122,12 +123,13 @@ const baseContext = (overrides: Record<string, unknown> = {}) => ({
   },
 })
 
-async function renderCheckoutProps(
+async function renderCheckoutPage(
   overrides: Record<string, unknown> = {},
   profile: Record<string, unknown> | null = null,
   paymentReturn = false,
   acceptedResume: Record<string, unknown> | null = null,
-): Promise<PreviewCheckoutProps> {
+  legalLocale: "nl" | "en" = "nl",
+): Promise<ReactElement> {
   vi.clearAllMocks()
   vi.stubEnv("PAYLOAD_SECRET", "checkout-page-test-secret")
   mocks.isPreviewHost.mockResolvedValue(true)
@@ -143,14 +145,28 @@ async function renderCheckoutProps(
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")
   const element = await PreviewCheckoutPage({
     params: Promise.resolve({ clientSlug: "AMI-CARE" }),
-    searchParams: Promise.resolve(paymentReturn ? { payment: "return" } : {}),
+    searchParams: Promise.resolve({ ...(paymentReturn ? { payment: "return" } : {}), legalLocale }),
   })
 
   expect(element).toBeTruthy()
-  return (element as { props: PreviewCheckoutProps }).props
+  return element
+}
+
+async function renderCheckoutProps(...args: Parameters<typeof renderCheckoutPage>): Promise<PreviewCheckoutProps> {
+  return (await renderCheckoutPage(...args) as { props: PreviewCheckoutProps }).props
 }
 
 describe("preview checkout page domain initialization", () => {
+  it("offers an explicit Dutch choice when approved English policies are unavailable", async () => {
+    const html = renderToStaticMarkup(await renderCheckoutPage({}, null, false, null, "en"))
+    expect(html).toContain("checkoutLegalUnavailable")
+    expect(html).toContain('/ami-care/checkout?legalLocale=nl')
+    expect(html).not.toContain('name="termsAcceptance"')
+    expect(mocks.startPaymentAction).not.toHaveBeenCalled()
+    const selected = await renderCheckoutProps()
+    expect(selected.legalLocale).toBe("nl")
+    expect(selected.termsStatement).toBe("Ik ga akkoord met de algemene voorwaarden.")
+  })
   it("passes the selected-domain quote as a serializable bound server action", async () => {
     const props = await renderCheckoutProps()
     const formData = new FormData()
