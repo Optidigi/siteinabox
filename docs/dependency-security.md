@@ -46,13 +46,21 @@ expiry; they cannot override an advisory blocker.
 The October 23 cohesion refresh reconciles the withdrawn braces advisory:
 GitHub records withdrawal at 12:53:02 UTC and fresh full/production npm audits
 now omit it. Its two current dispositions are removed only after that agreement;
-Git history and the retained publisher fact preserve the earlier evidence. One
-source finding, seven blocked deferrals, 210 image dispositions and five blocked
+Git history and the retained publisher fact preserve the earlier evidence. Three
+source findings, seven blocked deferrals, 210 image dispositions and five blocked
 native assessments remain, with the original October 28 expiry. New Alpine
 libraw/libde265/nsd entries are absent from the retained OS package inventories;
 bundled/native qualification and final-candidate image checks remain blocked and
 mandatory respectively. No ignore, waiver, dependency upgrade or expiry extension
 is introduced.
+
+The current npm inventory additionally reports GHSA-mrhx-c7xc-m3w5 in Zod 4.4.3
+for both full and production scopes. Its retained primary advisory marks versions
+below 4.6.6 affected by memory exhaustion and identifies 4.6.6 as fixed. Both
+exact-path dispositions are high severity and release-blocking; configured
+reachability and compatible remediation remain unqualified. No dependency version
+is changed or finding suppressed. Fresh packaged reports retain the same 210
+findings and all five native fingerprints.
 
 Final cohesion inventory retains all 208 prior identities/severities/paths,
 refreshes 103 reference/vendor-severity fact hashes and adds two high-severity

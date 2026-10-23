@@ -765,6 +765,13 @@
       "url": "https://api.github.com/advisories/GHSA-rxp7-6hxx-x8q5",
       "selected": false,
       "sha256": "5f2ee26cb3554465be125c4cf0ea6d26a6df7689676a959d619785d37c288902"
+    },
+    {
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+      "selected": false,
+      "sha256": "0e96f5b6803293a587933a3b383b70f272f8b450642d16892161a740f20b7ae2"
     }
   ],
   "publisherConstraints": [
@@ -963,6 +970,62 @@
         "GHSA-rj75-hqrm-r3gf"
       ],
       "reason": "Confirmed Tailwind typography build dependency selector-parser 6.0.10. CSS inputs are source-owned and tenant content remains structured; an affected deployment condition is not established. The parent still owns a 6.x contract; a 7.x migration requires compatibility qualification. This remains a release blocker."
+    },
+    {
+      "scope": "full",
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "package": "zod",
+      "version": "4.4.3",
+      "severity": "high",
+      "paths": [
+        "apps__cms>@better-auth/infra>better-call>zod",
+        "apps__cms>@better-auth/infra>zod",
+        "apps__cms>@hookform/resolvers>zod",
+        "apps__cms>@mastra/core>@ai-sdk/provider-utils>zod",
+        "apps__cms>@mastra/core>@mastra/schema-compat>zod",
+        "apps__cms>@mastra/core>@mastra/schema-compat>zod-from-json-schema>zod",
+        "apps__cms>@mastra/core>chat>zod",
+        "apps__cms>@mastra/core>hono-openapi>@standard-community/standard-json>zod",
+        "apps__cms>@mastra/core>hono-openapi>@standard-community/standard-openapi>@standard-community/standard-json>zod",
+        "apps__cms>@mastra/core>hono-openapi>@standard-community/standard-openapi>zod",
+        "apps__cms>@mastra/core>zod",
+        "apps__cms>zod",
+        "apps__landing>@astrojs/sitemap>zod",
+        "packages__contracts>zod"
+      ],
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Workflow cohesion primary advisory review; no waiver",
+      "recheck": "Before release, qualify publisher-fixed Zod 4.6.6 or later compatible version and exact consuming paths; inspect request admission and configured reachability.",
+      "sources": [
+        "GHSA-mrhx-c7xc-m3w5"
+      ],
+      "reason": "Current npm audit reports high-severity GHSA-mrhx-c7xc-m3w5 in Zod 4.4.3 across the retained exact paths. Primary advisory reports memory exhaustion while parsing oversized collections and affects versions below 4.6.6; the publisher fix is 4.6.6. Configured reachability and mitigations are unproven; do not infer safety from schema limits. Keep release blocked pending dedicated compatible remediation."
+    },
+    {
+      "scope": "production",
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "package": "zod",
+      "version": "4.4.3",
+      "severity": "high",
+      "paths": [
+        "apps__cms>@better-auth/infra>zod",
+        "apps__cms>@mastra/core>@ai-sdk/provider-utils>zod",
+        "apps__cms>@mastra/core>@mastra/schema-compat>zod",
+        "apps__cms>@mastra/core>@mastra/schema-compat>zod-from-json-schema>zod",
+        "apps__cms>@mastra/core>zod",
+        "apps__cms>zod",
+        "apps__landing>@astrojs/sitemap>zod",
+        "packages__contracts>zod"
+      ],
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Workflow cohesion primary advisory review; no waiver",
+      "recheck": "Before release, qualify publisher-fixed Zod 4.6.6 or later compatible version and exact consuming paths; inspect request admission and configured reachability.",
+      "sources": [
+        "GHSA-mrhx-c7xc-m3w5"
+      ],
+      "reason": "Current npm audit reports high-severity GHSA-mrhx-c7xc-m3w5 in Zod 4.4.3 across the retained exact paths. Primary advisory reports memory exhaustion while parsing oversized collections and affects versions below 4.6.6; the publisher fix is 4.6.6. Configured reachability and mitigations are unproven; do not infer safety from schema limits. Keep release blocked pending dedicated compatible remediation."
     }
   ],
   "imageAdvisories": [
