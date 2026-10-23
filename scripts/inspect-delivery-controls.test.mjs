@@ -22,14 +22,20 @@ test("control readback distinguishes missing, differing, unreadable and matching
 })
 
 test("the proposal binds canonical contexts to the observed Actions app and main without bypass", async () => {
-  const { expectedHostedJobs } = await import("./check-required-ci.mjs")
+  const { expectedHostedJobs, expectedCiJobs, assertRequiredCiWorkflow } = await import("./check-required-ci.mjs")
   const matrix = JSON.parse(readFileSync(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
   assert.deepEqual(proposal.conditions, { ref_name: { include: ["refs/heads/main"], exclude: [] } })
   assert.deepEqual(proposal.bypass_actors, [])
   assert.equal(proposal.enforcement, "active")
   const checks = proposal.rules.find((rule) => rule.type === "required_status_checks").parameters
   assert.equal(checks.strict_required_status_checks_policy, true)
-  const direct = expectedHostedJobs(matrix).filter((name) => !name.startsWith("image-verification ("))
+  // Browser and image work remain mandatory through the installed required-ci
+  // aggregate. Splitting execution must not require changing live branch rules.
+  const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
+  assertRequiredCiWorkflow(workflow, expectedCiJobs(matrix))
+  assert(expectedCiJobs(matrix).includes("cms-browser"))
+  assert.throws(() => assertRequiredCiWorkflow(workflow.replace("cms-test, cms-browser,", "cms-test,"), expectedCiJobs(matrix)))
+  const direct = expectedHostedJobs(matrix).filter((name) => !name.startsWith("image-verification (") && name !== "cms-browser")
   assert.deepEqual(checks.required_status_checks.map((check) => check.context).sort(), direct)
   assert.ok(checks.required_status_checks.every((check) => check.integration_id === 15368))
 })

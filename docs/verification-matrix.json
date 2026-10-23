@@ -67,6 +67,39 @@
       "image-cms",
       "image-renderer",
       "image-site"
+    ],
+    "cms-fast": [
+      "cms-no-css",
+      "cms-ui-boundary",
+      "cms-ui-composition",
+      "cms-responsive"
+    ],
+    "preflight": [
+      "cms-no-css",
+      "cms-ui-boundary",
+      "cms-ui-composition",
+      "cms-responsive",
+      "mcp-check",
+      "docs-check",
+      "type-safety",
+      "toolchain-contract",
+      "environment-check",
+      "workflow-actions-check",
+      "infrastructure-pins",
+      "packages-typecheck",
+      "static-deployment-parity",
+      "workflow-path-matrix",
+      "cms-test-guard",
+      "publication-check",
+      "dependency-policy",
+      "required-ci-policy"
+    ],
+    "renderer-fast": [
+      "renderer-deploy-contract",
+      "renderer-typecheck"
+    ],
+    "site-fast": [
+      "site-test"
     ]
   },
   "checks": [
@@ -461,7 +494,7 @@
         "test:invitation-actions"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-test",
+      "ciJob": "cms-browser",
       "prerequisites": [
         "pnpm install --frozen-lockfile",
         "explicit M02 disposable PostgreSQL/storage authorization",
@@ -480,7 +513,7 @@
         "--reuse-built"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-test",
+      "ciJob": "cms-browser",
       "prerequisites": [
         "pnpm install --frozen-lockfile",
         "explicit M02 disposable PostgreSQL/storage authorization",
@@ -502,7 +535,7 @@
         "test:checkout-browser"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-test",
+      "ciJob": "cms-browser",
       "prerequisites": [
         "pnpm install --frozen-lockfile",
         "PostgreSQL 18 service",

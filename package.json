@@ -10,7 +10,7 @@
   "scripts": {
     "check:ci": "node scripts/run-verification.mjs ci",
     "check:fast": "node scripts/run-verification.mjs fast",
-    "check:toolchain": "node --test scripts/check-toolchain.test.mjs scripts/run-verification.test.mjs && node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
+    "check:toolchain": "node --test scripts/check-toolchain.test.mjs scripts/run-verification.test.mjs scripts/check-affected.test.mjs && node scripts/check-toolchain.mjs && node scripts/run-verification.mjs --check",
     "environment:check": "node --test scripts/check-environment-contract.test.mjs && node scripts/check-environment-inventory.mjs",
     "workflow:check": "node --test scripts/workflow-path-parser.test.mjs && node scripts/check-workflow-path-matrix.mjs",
     "workflow:actions:check": "node scripts/check-workflow-actions.mjs",
@@ -47,10 +47,15 @@
     "delivery:inspect": "node scripts/inspect-delivery-controls.mjs",
     "infrastructure:check": "node --test scripts/infrastructure-images.test.mjs",
     "infrastructure:tunnel": "node scripts/verify-tunnel-offline.mjs",
-    "dependency:policy:test": "node --test scripts/*dependency*.test.mjs scripts/inventory-image-native.test.mjs",
+    "dependency:policy:test": "node --test scripts/*dependency*.test.mjs scripts/inventory-image-native.test.mjs scripts/inspect-ci-evidence.test.mjs",
     "dependency:inventory": "node scripts/collect-dependency-evidence.mjs",
     "dependency:check": "node scripts/check-dependency-security.mjs",
-    "dependency:release": "node scripts/check-dependency-security.mjs --release"
+    "dependency:release": "node scripts/check-dependency-security.mjs --release",
+    "check:preflight": "node scripts/run-verification.mjs preflight",
+    "check:cms-fast": "node scripts/run-verification.mjs cms-fast",
+    "check:affected": "node scripts/check-affected.mjs",
+    "dependency:compare": "node scripts/compare-dependency-evidence.mjs",
+    "ci:receipts": "node scripts/inspect-ci-evidence.mjs"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

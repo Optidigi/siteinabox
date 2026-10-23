@@ -43,6 +43,14 @@ expiry; they cannot override an advisory blocker.
 
 ## Identity and freshness
 
+The workflow-efficiency refresh retains the October 28 expiry, every advisory and
+all five blocked native assessments. The changed Alpine main feed adds Node
+24.22.1-r0 security entries and CVE-2026-111497 under its unresolved zero entry.
+The existing blocked Node patch qualification now records these vendor facts;
+upstream release metadata does not prove applicability or remediation of official
+image binaries. No runtime pin or release decision changes. Final candidate raw
+inventories remain required; comparison/receipt tools do not grant clearance.
+
 Graph identity covers all tracked workspace manifests, both lockfile documents
 and workspace policy. Configuration identity covers tracked application/package,
 build, workflow, infrastructure and checker inputs. The review file itself is

@@ -4,11 +4,27 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { hashBuiltTree, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
+import { hashBuiltTree, buildEnvironmentFingerprint, assertDiagnosticIdentity } from "./built-app-artifacts.mjs"
 import { createServer, connect } from "node:net"
 import { once } from "node:events"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
 import { cookieCredentials } from "./built-app-credentials.mjs"
+
+test("diagnostic driver edits cannot reuse changed runtime, guard, environment or artifact bytes", () => {
+  const identity = { sourceSHA: "a".repeat(40), sourceDirty: false, configurationHash: "a".repeat(64),
+    diagnosticInputsHash: "b".repeat(64), artifactSha256: "c".repeat(64), buildEnvironmentSha256: "d".repeat(64) }
+  const changed = { ...identity, sourceSHA: "b".repeat(40), sourceDirty: true, configurationHash: "e".repeat(64) }
+  const paths = ["apps/cms/tests/browser/built-private-workspace.mjs"]
+  assertDiagnosticIdentity(identity, changed, paths, [])
+  for (const key of ["diagnosticInputsHash", "artifactSha256", "buildEnvironmentSha256"]) {
+    assert.throws(() => assertDiagnosticIdentity(identity, { ...changed, [key]: "f".repeat(64) }, paths, []))
+  }
+  for (const file of ["apps/cms/src/payload.config.ts", "apps/cms/tests/browser/built-app-runtime.mjs", "docs/dependency-security.json"]) {
+    assert.throws(() => assertDiagnosticIdentity(identity, changed, [file], []))
+  }
+  assert.throws(() => assertDiagnosticIdentity(identity, changed, paths, ["unknown.ts"]))
+  assert.throws(() => assertDiagnosticIdentity({ ...identity, sourceDirty: true }, changed, paths, []))
+})
 
 test("build identity retains dangling internal links, detects bytes and rejects outside links", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "siab-build-identity-"))

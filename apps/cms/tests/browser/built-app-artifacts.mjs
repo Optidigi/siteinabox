@@ -10,6 +10,8 @@ export const cmsRoot = path.resolve(import.meta.dirname, "../..")
 export const repositoryRoot = path.resolve(cmsRoot, "../..")
 export const standaloneRoot = path.join(cmsRoot, ".next/standalone")
 export const cmsEntry = path.join(standaloneRoot, "apps/cms/server.js")
+const diagnosticDriverPaths = new Set(["apps/cms/tests/browser/built-app-browser.mjs",
+  "apps/cms/tests/browser/built-private-workspace.mjs", "apps/cms/tests/browser/built-app-options.mjs"])
 
 export async function prepareBuiltCmsAssets() {
   // Match the production Dockerfile's copies; standalone output does not include
@@ -62,6 +64,7 @@ export async function captureBuiltCmsIdentity() {
   return { sourceSHA: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim(),
     sourceDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: repositoryRoot, encoding: "utf8" }).trim()),
     graphHash: inputs.graph.sha256, configurationHash: inputs.configuration.sha256, node: process.versions.node,
+    diagnosticInputsHash: createHash("sha256").update(JSON.stringify(inputs.configuration.files.filter(file => !diagnosticDriverPaths.has(file.path)))).digest("hex"),
     buildEnvironmentSha256: buildEnvironmentFingerprint(process.env),
     buildId: (await readFile(path.join(cmsRoot, ".next/BUILD_ID"), "utf8")).trim(), artifactSha256: await hashBuiltTree(standaloneRoot) }
 }
@@ -70,5 +73,24 @@ export async function assertBuiltCmsIdentity(expected, allowDirty = false) {
   const actual = await captureBuiltCmsIdentity()
   if (!allowDirty) assert.equal(actual.sourceDirty, false, "Build reuse requires a clean checkout")
   assert.deepEqual(actual, expected, "Built browser requires this checkout's unchanged source and artifact bytes")
+  return actual
+}
+
+/** Diagnostic driver edits never become full-qualification build reuse. */
+export function assertDiagnosticIdentity(expected, actual, changedPaths, untrackedPaths) {
+  assert.equal(expected.sourceDirty, false, "Diagnostic reuse starts from a clean built checkpoint")
+  assert(untrackedPaths.length === 0 && changedPaths.every(file => diagnosticDriverPaths.has(file)),
+    "Diagnostic reuse permits only the three named browser driver files; runtime/guard/unknown edits require a build")
+  assert(/^[a-f0-9]{64}$/.test(expected.diagnosticInputsHash), "Rebuild to capture diagnostic input identity")
+  const runtime = ({ sourceSHA, sourceDirty, configurationHash, ...identity }) => identity
+  assert.deepEqual(runtime(actual), runtime(expected), "Diagnostic runtime inputs, environment or built bytes changed")
+}
+
+export async function assertDiagnosticBuiltCmsIdentity(expected) {
+  assert(/^[a-f0-9]{40}$/.test(expected?.sourceSHA), "Diagnostic build receipt needs a full source SHA")
+  const actual = await captureBuiltCmsIdentity()
+  const gitPaths = args => execFileSync("git", args, { cwd: repositoryRoot, encoding: "utf8" }).split("\0").filter(Boolean)
+  assertDiagnosticIdentity(expected, actual, gitPaths(["diff", "--name-only", "-z", expected.sourceSHA, "--"]),
+    gitPaths(["ls-files", "--others", "--exclude-standard", "-z"]))
   return actual
 }

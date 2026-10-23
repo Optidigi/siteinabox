@@ -36,8 +36,19 @@ test("matrix admission preserves actual CI arguments and per-check settings", ()
     const executed = run("ci")
     assert.equal(executed.status, 0, executed.stderr)
     assert.deepEqual(JSON.parse(readFileSync(join(root, "result.json"), "utf8")), { args: ["--expected"], ci: "true", setting: "1" })
+    const combined = JSON.parse(readFileSync(matrixPath, "utf8"))
+    combined.profiles.local = ["probe"]
+    writeFileSync(matrixPath, JSON.stringify(combined))
+    writeFileSync(join(root, "probe.mjs"), 'import {appendFileSync} from "node:fs"; appendFileSync("invocations", "one\\n")')
+    assert.equal(run("ci,local").status, 0)
+    assert.equal(readFileSync(join(root, "invocations"), "utf8"), "one\n", "combined profiles execute a shared command once")
+    const timing = JSON.parse(readFileSync(join(root, "artifacts/verification.json"), "utf8"))
+    assert.equal(timing.checks.length, 1)
+    assert.equal(timing.checks[0].status, 0)
+    assert(timing.checks[0].elapsedMs >= 0)
     writeFileSync(join(root, "probe.mjs"), "process.exit(7)")
     assert.equal(run("ci").status, 7, "a failed check must fail the profile")
+    assert.equal(JSON.parse(readFileSync(join(root, "artifacts/verification.json"), "utf8")).checks[0].status, 7)
     const matrixCheck = { ...check, command: "pnpm probe cms", run: ["pnpm", "probe", "cms"], env: {} }
     matrix.checks = [matrixCheck]
     matrix.profileEnv = { ci: { CI: "true" } }

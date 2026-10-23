@@ -86,8 +86,10 @@ When changing `apps/cms`:
 
 - Make the smallest coherent change; do not create a framework for one case or
   another source of truth.
-- One agent normally owns investigation through handoff. Use additional agents
-  only for bounded read-only research or genuinely independent review.
+- One agent owns implementation through handoff. Keep one compact ignored task
+  record with outcome, invariants, receipts and next action. Use additional agents
+  only for bounded research or independent review; pass exact base/head and the
+  relevant delta instead of replaying unrelated history.
 - MCPs are repository tools. Inventory availability before relying on them,
   use read-only operations first, and keep credentials in user scope. Follow
   `docs/tooling.md`.
@@ -104,8 +106,10 @@ When changing `apps/cms`:
 - For CI aggregation, protection diagnostics or delivery settings, read
   `docs/runbooks/protected-delivery.md`.
 
-- Run the narrowest check first, then the broader package and CI-equivalent
-  checks justified by the changed surface.
+- Before a build, run the owning cheap gates. After a slow failure, isolate its
+  symptom before repeating qualification. Use the profiles and diagnostic/evidence
+  commands in [fast feedback](docs/runbooks/fast-feedback.md); diagnostics never
+  replace required CI.
 - Stop expanding verification when the changed surface and triggered risk are
   proven. Documentation-only changes do not require application builds, image
   publication, or deployment; test-only changes do not require deployment
