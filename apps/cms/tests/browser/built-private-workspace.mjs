@@ -2,6 +2,35 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 
+/** Serializable read-only diagnostic; every IndexedDB outcome is bounded. */
+export function readDraftDiagnostics(indexedDB = globalThis.indexedDB, timeoutMs = 2000) {
+  return new Promise(resolve => {
+    let db, settled = false
+    const finish = value => {
+      if (settled) return
+      settled = true; clearTimeout(timer)
+      try { db?.close() } catch { /* Preserve the original journey failure. */ }
+      resolve(value)
+    }
+    const timer = setTimeout(() => finish({ error: "draft read timed out" }), timeoutMs)
+    try {
+      const request = indexedDB.open("siab-editor-drafts")
+      request.onerror = () => finish({ error: "database unavailable" })
+      request.onblocked = () => finish({ error: "database blocked" })
+      request.onsuccess = () => {
+        db = request.result
+        if (settled) { db.close(); return }
+        try {
+          if (!db.objectStoreNames.contains("page-drafts")) { finish({ error: "draft store missing" }); return }
+          const rows = db.transaction("page-drafts").objectStore("page-drafts").getAll()
+          rows.onerror = () => finish({ error: "draft read failed" })
+          rows.onsuccess = () => finish(rows.result.map(row => ({ key: row.key, title: row.formValues?.title })))
+        } catch { finish({ error: "draft store unavailable" }) }
+      }
+    } catch { finish({ error: "database unavailable" }) }
+  })
+}
+
 /** The canonical runner owns these servers, fixtures and genuine sessions. */
 export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin, cmsRoot, fixture, database, api, verify, output }) {
   const target = fixture.privateWorkspace
@@ -98,16 +127,12 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
     await page.reload()
     const recovery = page.getByRole("dialog", { name: messages.editor.restoreDraftTitle })
     try { await recovery.waitFor() } catch (error) {
-      const draftState = await page.evaluate(() => new Promise(resolve => {
-        const request = indexedDB.open("siab-editor-drafts")
-        request.onerror = () => resolve({ error: "database unavailable" })
-        request.onsuccess = () => {
-          const db = request.result
-          const rows = db.transaction("page-drafts").objectStore("page-drafts").getAll()
-          rows.onerror = () => { db.close(); resolve({ error: "draft read failed" }) }
-          rows.onsuccess = () => { const values = rows.result.map(row => ({ key: row.key, title: row.formValues?.title })); db.close(); resolve(values) }
-        }
-      }))
+      let timeout
+      let draftState
+      try {
+        draftState = await Promise.race([page.evaluate(readDraftDiagnostics).catch(() => ({ error: "page unavailable" })),
+          new Promise(resolve => { timeout = setTimeout(() => resolve({ error: "page diagnostic timed out" }), 3000) })])
+      } finally { clearTimeout(timeout) }
       throw new Error("Draft recovery failed for " + locale + ": " + JSON.stringify(draftState), { cause: error })
     }
     await recovery.getByText(messages.editor.restoreDraftServerChanged, { exact: true }).waitFor()

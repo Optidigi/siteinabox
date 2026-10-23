@@ -9,6 +9,18 @@ import { createServer, connect } from "node:net"
 import { once } from "node:events"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
 import { cookieCredentials } from "./built-app-credentials.mjs"
+import { readDraftDiagnostics } from "./built-private-workspace.mjs"
+
+test("draft diagnostics settle when stores are missing, callbacks throw or IndexedDB stalls", async () => {
+  let closed = 0
+  for (const exists of [false, true]) {
+    const request = { result: { objectStoreNames: { contains: () => exists }, close: () => { closed += 1 }, transaction: () => { throw new Error("unavailable") } } }
+    const indexedDB = { open: () => { queueMicrotask(() => request.onsuccess()); return request } }
+    assert.deepEqual(await readDraftDiagnostics(indexedDB), { error: exists ? "draft store unavailable" : "draft store missing" })
+  }
+  assert.equal(closed, 2)
+  assert.deepEqual(await readDraftDiagnostics({ open: () => ({}) }, 10), { error: "draft read timed out" })
+})
 
 test("diagnostic driver edits cannot reuse changed runtime, guard, environment or artifact bytes", () => {
   const identity = { sourceSHA: "a".repeat(40), sourceDirty: false, configurationHash: "a".repeat(64),

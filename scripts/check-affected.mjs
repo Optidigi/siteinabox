@@ -20,7 +20,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   assert(args.length === 2 && args[0] === "--base" && /^[a-f0-9]{40}$/.test(args[1]), "Usage: check:affected --base FULL_SHA [--plan]")
   const root = fileURLToPath(new URL("..", import.meta.url))
   const git = args => execFileSync("git", args, { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean)
-  const paths = [...new Set([...git(["diff", "--name-only", "-z", args[1], "--"]), ...git(["ls-files", "--others", "--exclude-standard", "-z"])])]
+  const paths = [...new Set([...git(["diff", "--no-renames", "--name-only", "-z", args[1], "--"]), ...git(["ls-files", "--others", "--exclude-standard", "-z"])])]
   const profiles = affectedProfiles(paths)
   console.log(JSON.stringify({ profiles, changedPaths: paths.length, scope: "Local preflight only; add focused regressions and required CI for the task's risk" }))
   if (!plan) {
