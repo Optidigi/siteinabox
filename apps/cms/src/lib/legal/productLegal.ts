@@ -1,4 +1,5 @@
-import "server-only"
+// Payload jobs/CLI and Next server routes share this Node module. Operator
+// authentication below applies independently of React's module conditions.
 import { isDeepStrictEqual } from "node:util"
 import type { Payload } from "payload"
 import type { LegalDocument, User } from "@/payload-types"
