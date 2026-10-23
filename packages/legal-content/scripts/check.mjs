@@ -1,13 +1,15 @@
 import { validateBusinessUseDeclarations, validateLegalReleases } from '../src/index.js'
 import { execFileSync } from 'node:child_process'
+import { validateProductLegalReleases } from '../src/product.js'
 
 function findModifiedPublishedDocuments() {
   const baseRef = process.env.LEGAL_BASE_REF
+  const paths = ['packages/legal-content/documents', 'packages/legal-content/product-documents']
   const args = baseRef
-    ? ['diff', '--name-status', `${baseRef}...HEAD`, '--', 'packages/legal-content/documents']
+    ? ['diff', '--name-status', `${baseRef}...HEAD`, '--', ...paths]
     : process.env.CI
-      ? ['diff', '--name-status', 'HEAD^', 'HEAD', '--', 'packages/legal-content/documents']
-    : ['diff', '--name-status', '--', 'packages/legal-content/documents']
+      ? ['diff', '--name-status', 'HEAD^', 'HEAD', '--', ...paths]
+    : ['diff', '--name-status', '--', ...paths]
 
   try {
     return execFileSync('git', args, { cwd: new URL('../../..', import.meta.url), encoding: 'utf8' })
@@ -24,6 +26,7 @@ function findModifiedPublishedDocuments() {
 const errors = [
   ...validateLegalReleases(),
   ...validateBusinessUseDeclarations(),
+  ...validateProductLegalReleases(),
   ...findModifiedPublishedDocuments(),
 ]
 

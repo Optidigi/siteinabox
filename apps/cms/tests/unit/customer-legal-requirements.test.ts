@@ -42,7 +42,8 @@ const createPayload = () => {
   const find = vi.fn(async ({ collection, where }: MockFindArgs) => ({
     docs: (collection === "legal-requirements" ? requirements : acceptances).filter((doc) => matches(doc, where)),
   }))
-  const findByID = vi.fn(async ({ id: requested }: { id: number | string }) => requirements.find((item) => String(item.id) === String(requested)))
+  const findByID = vi.fn(async ({ collection, id: requested }: { collection?: string; id: number | string }) =>
+    collection === "legal-documents" && String(requested) === String(document.id) ? document : requirements.find((item) => String(item.id) === String(requested)))
   const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
     const record = { id: id++, ...data }
     if (collection === "agreement-acceptances") acceptances.push(record)

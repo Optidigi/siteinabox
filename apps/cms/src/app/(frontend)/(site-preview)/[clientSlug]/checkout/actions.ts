@@ -5,7 +5,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { getLocale, getTranslations } from "next-intl/server"
-import { getCurrentLegalDocument } from "@siteinabox/legal-content"
+import { checkoutLegalDocuments, checkoutLegalIdentity, CheckoutLegalConflictError } from "@/lib/legal/checkoutLegal"
 import {
   COMMERCIAL_CATALOG,
   COMMERCIAL_CATALOG_VERSION,
@@ -1358,14 +1358,21 @@ export async function startPreviewCheckoutPaymentAction(
   if (expectedProfileVersion == null || !expectedProfileKey) {
     return checkoutProfileConflict(t("checkoutProfileRequired"))
   }
-  const currentTerms = getCurrentLegalDocument("platform-terms", "nl")
-  const currentPrivacy = getCurrentLegalDocument("platform-privacy", "nl")
+  const submittedLegalLocale = formData.get("legalLocale")
+  if (submittedLegalLocale !== null && submittedLegalLocale !== "nl" && submittedLegalLocale !== "en") return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
+  const selectedLegalLocale = submittedLegalLocale === "nl" || submittedLegalLocale === "en" ? submittedLegalLocale : (await getLocale()) === "en" ? "en" : "nl"
+  const selectedLegal = await checkoutLegalDocuments(context.payload, selectedLegalLocale)
+  if (!selectedLegal) return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
+  const { terms: currentTerms, privacy: currentPrivacy } = selectedLegal
+  if (selectedLegal.product && (String(formData.get("expectedTermsHash") ?? "") !== currentTerms.contentHash ||
+      String(formData.get("expectedPrivacyHash") ?? "") !== currentPrivacy.contentHash)) return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
   if (
     String(formData.get("expectedTermsVersion") ?? "") !== currentTerms.documentVersion ||
     String(formData.get("expectedPrivacyVersion") ?? "") !== currentPrivacy.documentVersion
   ) {
     return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
   }
+  const expectedLegal = checkoutLegalIdentity(selectedLegal)
   const billingPeriodValue = String(formData.get("billingPeriod") ?? "")
   if (billingPeriodValue !== "monthly" && billingPeriodValue !== "annual") {
     return { ok: false, message: t("checkoutBillingPeriodRequired") }
@@ -1701,6 +1708,7 @@ export async function startPreviewCheckoutPaymentAction(
       requestId: audit.requestId,
     })
     const legalEvidence = await createOrderAndAcceptanceEvidence({
+      expectedLegal,
       payload: context.payload,
       run: readyRun,
       tenant: context.tenant,
@@ -1776,10 +1784,11 @@ export async function startPreviewCheckoutPaymentAction(
   } catch (error) {
     logPreviewCheckoutTiming("payment_total", totalStart, { clientSlug: context.clientSlug, domain }, {
       ok: false,
-      status: error instanceof Error && error.message === "Payment gate is already satisfied."
+      status: error instanceof CheckoutLegalConflictError ? "version_conflict" : error instanceof Error && error.message === "Payment gate is already satisfied."
         ? "payment_complete"
         : domainErrorStatus(error),
     })
+    if (error instanceof CheckoutLegalConflictError) return checkoutVersionConflict(t("checkoutLegalVersionConflict"))
     if (error instanceof Error && error.message === "Payment gate is already satisfied.") {
       return { ok: false, status: "payment_complete", message: t("checkoutPaymentAlreadyComplete") }
     }

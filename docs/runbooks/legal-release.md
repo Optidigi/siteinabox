@@ -2,6 +2,11 @@
 
 ## Preparing A Release
 
+For the governed product bundle, source completion is allowed while legal facts
+remain unresolved. The checked-in M17 bundle is explicitly a non-public draft;
+engineering review/merge does not constitute owner legal review or activation.
+The following legacy release procedure does not publish that product bundle.
+
 1. Create a new immutable Markdown version under `packages/legal-content`.
 2. Add release metadata with the previous version, effective time, change
    summary, category, customer action, consent action, and audience.
@@ -18,6 +23,32 @@
   acceptance reference the same current release state.
 - Never activate a release when the public version hash differs from Payload.
 - Correct an incorrect release with a new version.
+
+## Product Bundle Review And Activation
+
+1. Complete actual issuer/controller/provider and retention facts, lifecycle proof,
+   translation review and owner decisions about materiality, audience and notice.
+   Resolve every source blocker in a separately reviewed version; never invent
+   facts or remove markers solely to enable a button.
+2. Verify the exact source bundle/hash and all NL/EN terms/privacy text using the
+   owning legal checks and rendered journeys. Keep legacy landing bytes unchanged.
+3. Obtain scoped owner legal approval. In `/legal/product-drafts/[key]`, a genuine
+   platform operator records its reference, ISO dates with timezone and explicit
+   existing tenant IDs. An empty audience targets no existing tenants.
+4. Obtain separate publication authorization for that exact bundle and environment.
+   Activate through the same operator surface; deployment/synchronization alone
+   does not do this. No production or provider operation follows automatically.
+5. Read back the public product manifest and permanent NL/EN routes, verify hashes,
+   publication/effective boundaries and checkout statement versions. Reconcile
+   audience requirements/notices and separately approved consent renewal; check
+   retry identity and historical acceptance/order preservation.
+
+Registration can be retried after a partial failure; the final review and activation
+anchors prevent partial copies becoming public. Notification failures remain
+retryable after publication. Immutable legal records cannot be rolled back by
+editing their content or deleting acceptances. On a release fault, fail closed and
+prepare a new reviewed corrective version and any separately approved operational
+containment; reverting application source is not a revocation of recorded approval.
 
 ## Deployment Verification
 

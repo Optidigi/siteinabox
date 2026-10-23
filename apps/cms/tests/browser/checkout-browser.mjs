@@ -887,7 +887,18 @@ try {
     )
     process.stdout.write(`Checkout visual evidence written to ${visualMatrixRoot}.\n`)
   }
-  process.stdout.write("Checkout Chromium contract passed.\n")
+  for (const locale of ["nl", "en"]) {
+    const legalPage = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    await legalPage.goto(`${origin}?scenario=review-ready&legal=product&locale=${locale}`, { waitUntil: "networkidle" })
+    await legalPage.getByText(`Synthetic governed acceptance ${locale}`, { exact: true }).waitFor()
+    assert.equal(await legalPage.locator('input[name="legalLocale"]').inputValue(), locale)
+    assert.equal(await legalPage.locator(`a[href="/policies/${locale}/platform-terms/2026-10-23.99"]`).count(), 1)
+    assert.equal(await legalPage.locator(`a[href="/policies/${locale}/platform-privacy/2026-10-23.99"]`).count(), 1)
+    await legalPage.locator("#checkout-terms").check()
+    assert.equal(await legalPage.locator("#checkout-terms").isChecked(), true)
+    await legalPage.close()
+  }
+  process.stdout.write("Checkout Chromium contract passed, including governed NL/EN statement and version links.\n")
 } finally {
   await browser?.close()
   await server.close()

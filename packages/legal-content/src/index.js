@@ -64,6 +64,15 @@ function listMarkdownFiles(directory) {
 export function hashLegalContent(content) {
   return `sha256:${createHash('sha256').update(content).digest('hex')}`
 }
+export function renderLegalContent(content) { return marked.parse(content, { async: false, gfm: true }) }
+
+export function validateLegalChangeDecision(release) {
+  const errors = [], identity = `${release.documentType}:${release.locale}:${release.documentVersion}`
+  if (!customerActionsByCategory[release.change.category]?.includes(release.change.customerAction)) errors.push(`Invalid customer action for ${identity}`)
+  if (!consentActionsByCategory[release.change.category]?.includes(release.change.consentAction)) errors.push(`Invalid consent action for ${identity}`)
+  if (!release.change.summary.trim() || !release.change.rationale.trim()) errors.push(`Missing change explanation for ${identity}`)
+  return errors
+}
 
 export function loadLegalDocument(release, suppliedMarkdown) {
   const markdown = suppliedMarkdown ?? readFileSync(documentUrl(release), 'utf8')

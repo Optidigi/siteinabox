@@ -29,7 +29,9 @@ import { normalizeDomainRegistrantDetails } from "@/lib/domains/orderState"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { legalStatements } from "@/lib/legal/statements"
+import { legalAcceptanceStatement, isProductLegalKey } from "./productLegal"
 import { relationshipId } from "@/lib/relationshipId"
+import { CheckoutLegalConflictError, checkoutLegalIdentity, type CheckoutLegalIdentity } from "./checkoutLegal"
 
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)
@@ -155,6 +157,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
   domainRegistrant: Record<string, unknown>
   domain: string
   requestId: string
+  expectedLegal: CheckoutLegalIdentity
   ipAddress?: string | null
   userAgent?: string | null
   now?: Date
@@ -168,10 +171,16 @@ export async function createOrderAndAcceptanceEvidence(input: {
     throw new Error("Accepted checkout quote does not match the domain, profile, or acceptance time.")
   }
   const [terms, privacy] = await Promise.all([
-    getCurrentLegalDocumentRecord(input.payload, "platform-terms", "nl", now),
-    getCurrentLegalDocumentRecord(input.payload, "platform-privacy", "nl", now),
+    getCurrentLegalDocumentRecord(input.payload, "platform-terms", input.expectedLegal.locale, now),
+    getCurrentLegalDocumentRecord(input.payload, "platform-privacy", input.expectedLegal.locale, now),
   ])
   if (!terms.acceptanceVersion) throw new Error("Current platform terms are missing an acceptance version.")
+  const termsStatement = await legalAcceptanceStatement(input.payload, terms, now)
+  const authority = checkoutLegalIdentity({ locale: input.expectedLegal.locale, terms, privacy, statement: termsStatement })
+  if (input.expectedLegal.terms.id == null || input.expectedLegal.privacy.id == null ||
+      stableStringify(authority) !== stableStringify(input.expectedLegal)) {
+    throw new CheckoutLegalConflictError("Legal authority changed after checkout confirmation")
+  }
 
   businessUseDeclarationAcceptanceSchema.parse({
     declarationVersion: BUSINESS_USE_DECLARATION_VERSION,
@@ -211,6 +220,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
       registrantPrerequisites.reason,
     )
   }
+  const productTerms = isProductLegalKey(terms.releaseKey)
   const initialAuthority = {
     schemaVersion: 1,
     generationRunId: String(input.run.id),
@@ -227,11 +237,13 @@ export async function createOrderAndAcceptanceEvidence(input: {
       actorEmail: input.approval.actorEmail,
     },
     terms: {
+      ...(productTerms ? { locale: terms.locale, statementVersion: termsStatement.version, statementText: termsStatement.text } : {}),
       documentVersion: terms.documentVersion,
       acceptanceVersion: terms.acceptanceVersion,
       contentHash: terms.contentHash,
     },
     privacy: {
+      ...(productTerms ? { locale: privacy.locale } : {}),
       documentVersion: privacy.documentVersion,
       contentHash: privacy.contentHash,
     },
@@ -438,8 +450,8 @@ export async function createOrderAndAcceptanceEvidence(input: {
         documentVersion: terms.documentVersion,
         acceptanceVersion: terms.acceptanceVersion,
         contentHash: terms.contentHash,
-        statementVersion: legalStatements.termsAcceptance.version,
-        statementText: legalStatements.termsAcceptance.text,
+        statementVersion: termsStatement.version,
+        statementText: termsStatement.text,
         actorEmail: input.checkoutProfile.customerEmail.trim().toLowerCase(),
         acceptedAt,
         requestId: input.requestId,

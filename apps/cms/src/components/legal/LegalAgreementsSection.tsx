@@ -88,7 +88,7 @@ export async function LegalAgreementsSection({
               {requirement.requiresAcceptance ? (
                 <label className="flex items-start gap-3 text-sm leading-6">
                   <input name="acceptance" value="accepted" type="checkbox" className="mt-1 size-4 rounded border-input accent-primary" required />
-                  <span>{t("acceptanceConfirmation")}</span>
+                  <span lang={requirement.acceptanceStatement ? requirement.documentLocale : undefined}>{requirement.acceptanceStatement ?? t("acceptanceConfirmation")}</span>
                 </label>
               ) : <input type="hidden" name="acceptance" value="accepted" />}
               <div className="flex flex-wrap items-center gap-2">

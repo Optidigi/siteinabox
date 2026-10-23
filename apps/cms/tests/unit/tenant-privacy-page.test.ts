@@ -88,6 +88,21 @@ const spec = (): SiteGenerationSpec => cast<SiteGenerationSpec>({
 })
 
 describe("tenant privacy document materialization", () => {
+  it("materializes English and appointment facts without overwriting custom documents", () => {
+    const input = spec()
+    input.settings.language = "en"
+    input.settings.privacyDisclosure!.contactMethods = { forms: { enabled: true, mode: "cms", retention: { kind: "days", days: 90 } },
+      appointments: { enabled: true, retentionDays: 120, calendarProviders: ["google"] } }
+    const disclosure = materializeTenantPrivacyDisclosure(input).settings.privacyDisclosure!
+    expect(disclosure.templateVersion).toBe("tenant-privacy-template-en-2026-10-23.1")
+    const text = JSON.stringify(disclosure.body)
+    expect(text).toContain("1. Controller")
+    expect(text).toContain("90 days")
+    expect(text).toContain("120 days")
+    expect(text).toContain("google")
+    const custom = { ...input, settings: { ...input.settings, privacyDisclosure: { ...disclosure, mode: "custom" as const } } }
+    expect(materializeTenantPrivacyDisclosure(custom).settings.privacyDisclosure).toEqual(custom.settings.privacyDisclosure)
+  })
   it("derives controller facts before generation validation", () => {
     const result = withDerivedTenantPrivacyDisclosure(spec())
     expect(result.settings.privacyDisclosure).toBeDefined()

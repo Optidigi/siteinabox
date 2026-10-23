@@ -5,6 +5,7 @@ import { LegalReleasesTable, LegalRouteTabs } from "@/components/legal-operation
 import { requireRole } from "@/lib/authGate"
 import { listLegalReleases } from "@/lib/queries/legalOperations"
 import { getAdminTranslations } from "@/i18n/admin"
+import { productLegalReleases } from "@siteinabox/legal-content/product"
 
 const PAGE_SIZE = 20
 export const dynamic = "force-dynamic"
@@ -17,6 +18,8 @@ export default async function LegalReleasesPage({ searchParams }: { searchParams
   return <div className="flex flex-col gap-4">
     <PageHeader title={t("pages.releases.title")} subtitle={t("pages.releases.subtitle")} />
     <LegalRouteTabs activePath="/legal/releases" />
+    <nav aria-label="Governed product policy drafts" className="flex flex-wrap gap-3">{productLegalReleases.map(release =>
+      <a key={release.releaseKey} className="underline" href={`/legal/product-drafts/${release.releaseKey}`}>Product policy · {release.releaseKey}</a>)}</nav>
     <ListSearch placeholder={t("pages.releases.search")} />
     <LegalReleasesTable rows={result.docs} />
     <ListPagination page={result.page} totalPages={result.totalPages} total={result.totalDocs} pageSize={PAGE_SIZE} />

@@ -3,6 +3,7 @@ import type { Payload, PayloadRequest } from "payload"
 import type { AgreementAcceptance, LegalDocument, LegalRequirement } from "@/payload-types"
 import { relationshipId } from "@/lib/relationshipId"
 import { asRecord } from "@/lib/record"
+import { isProductLegalKey, productDocumentPublication, productLegalHref, legalAcceptanceStatement, equivalentProductDocumentIds } from "./productLegal"
 
 type RequirementDocument = Pick<
   LegalDocument,
@@ -14,6 +15,7 @@ type RequirementDocument = Pick<
   | "changeSummary"
   | "effectiveAt"
   | "replaces"
+  | "id" | "locale" | "publishedAt" | "content"
 >
 
 const isActionableStatus = (status: LegalRequirement["status"]): status is (typeof actionableStatuses)[number] =>
@@ -66,6 +68,8 @@ export type CustomerLegalRequirement = {
   isInitialRelease: boolean
   requiresAcceptance: boolean
   overdue: boolean
+  documentLocale?: string
+  acceptanceStatement?: string
 }
 
 export type CustomerLegalAcceptance = {
@@ -99,12 +103,13 @@ export async function getTenantLegalAcceptanceHistory(
       acceptanceVersion: String(acceptance.acceptanceVersion),
       acceptedAt: String(acceptance.acceptedAt),
       actorEmail: String(acceptance.actorEmail),
-      href: legalDocumentHref(String(documentRecord.documentType ?? ""), String(acceptance.documentVersion)),
+      href: legalDocumentHref(String(documentRecord.documentType ?? ""), String(acceptance.documentVersion), documentRecord.locale, documentRecord.releaseKey),
     }]
   })
 }
 
-export const legalDocumentHref = (documentType: string, documentVersion: string): string => {
+export const legalDocumentHref = (documentType: string, documentVersion: string, locale = "nl", key = ""): string => {
+  if (isProductLegalKey(key)) return productLegalHref(documentType, locale, documentVersion)
   const publicBase = process.env.NEXT_PUBLIC_SIAB_SITE_URL ?? "https://www.siteinabox.nl"
   if (documentType === "platform-terms") return `${publicBase}/juridisch/algemene-voorwaarden/${documentVersion}`
   if (documentType === "platform-privacy") return `${publicBase}/juridisch/privacy-en-cookieverklaring/${documentVersion}`
@@ -115,6 +120,7 @@ export async function getTenantLegalRequirements(
   payload: Payload,
   tenantId: string | number,
   now = new Date(),
+  preferredLocale = "nl",
 ): Promise<CustomerLegalRequirement[]> {
   const result = await payload.find({
     collection: "legal-requirements",
@@ -130,7 +136,17 @@ export async function getTenantLegalRequirements(
     overrideAccess: true,
   })
 
-  const projected = result.docs.flatMap((requirement: LegalRequirement) => {
+  const visible = await Promise.all(result.docs.map(async (requirement: LegalRequirement) => {
+    const document = documentRecord(requirement)
+    return !document || !isProductLegalKey(document.releaseKey) || Boolean(await productDocumentPublication(payload, document, now))
+  }))
+  const statements = await Promise.all(result.docs.map(async (requirement: LegalRequirement, index) => {
+    const document = documentRecord(requirement)
+    if (!visible[index] || !document || document.documentType !== "platform-terms") return undefined
+    return isProductLegalKey(document.releaseKey) ? (await legalAcceptanceStatement(payload, document, now)).text : CUSTOMER_REACCEPTANCE_STATEMENT
+  }))
+  const projected = result.docs.flatMap((requirement: LegalRequirement, index) => {
+    if (!visible[index]) return []
     if (["publish_notice", "direct_notice"].includes(requirement.action) && requirement.status === "notified") return []
     const document = documentRecord(requirement)
     const documentId = relationshipId(requirement.document)
@@ -150,18 +166,24 @@ export async function getTenantLegalRequirements(
       resolutionBasis: typeof requirement.resolutionBasis === "string" ? requirement.resolutionBasis : null,
       canObject: action === noticeAndUseAction && requirement.status === "notified" && !requirement.objectedAt,
       documentId,
+      documentLocale: document.locale ?? "nl",
+      acceptanceStatement: statements[index],
+      equivalenceKey: isProductLegalKey(document.releaseKey) ? `${document.releaseKey.split(":")[1]}:${document.documentType}:${document.acceptanceVersion ?? document.documentVersion}:${action}` : `${documentId}:${action}`,
       documentType: String(document.documentType),
       documentVersion: String(document.documentVersion),
       acceptanceVersion: typeof document.acceptanceVersion === "string" ? document.acceptanceVersion : null,
       changeSummary: String(document.changeSummary ?? ""),
       effectiveAt: String(document.effectiveAt),
-      href: legalDocumentHref(String(document.documentType), String(document.documentVersion)),
+      href: legalDocumentHref(String(document.documentType), String(document.documentVersion), document.locale, document.releaseKey),
       isInitialRelease: document.replaces == null,
       requiresAcceptance,
       overdue: Boolean(action === "mandatory_reaccept" && enforceAt && new Date(enforceAt) <= now),
     }]
   })
-  return [...new Map(projected.map((item) => [`${item.documentId}:${item.action}`, item])).values()]
+  projected.sort((a, b) => Number(a.documentLocale !== preferredLocale) - Number(b.documentLocale !== preferredLocale))
+  const unique = new Map<string, (typeof projected)[number]>()
+  for (const item of projected) if (!unique.has(item.equivalenceKey)) unique.set(item.equivalenceKey, item)
+  return [...unique.values()].map(({ equivalenceKey, ...item }) => item)
 }
 
 export async function acceptCustomerLegalRequirement(input: {
@@ -194,6 +216,11 @@ export async function acceptCustomerLegalRequirement(input: {
   if (!document || documentId == null || documentValue == null || tenantValue == null || !document.acceptanceVersion) {
     throw new Error("The legal document is not available for acceptance.")
   }
+  const product = isProductLegalKey(document.releaseKey)
+  if (product && !await productDocumentPublication(input.payload, document, input.now ?? new Date())) throw new Error("Unpublished product terms cannot be accepted")
+  const statement = product ? await legalAcceptanceStatement(input.payload, document, input.now ?? new Date()) :
+    { version: CUSTOMER_REACCEPTANCE_STATEMENT_VERSION, text: CUSTOMER_REACCEPTANCE_STATEMENT }
+  const equivalentIds = product ? await equivalentProductDocumentIds(input.payload, document, input.now ?? new Date()) : null
 
   const evidenceKey = `${requirement.requirementKey}:acceptance:${document.acceptanceVersion}`
   const existing = await input.payload.find({
@@ -216,8 +243,8 @@ export async function acceptCustomerLegalRequirement(input: {
           documentVersion: document.documentVersion ?? undefined,
           acceptanceVersion: document.acceptanceVersion ?? undefined,
           contentHash: document.contentHash ?? undefined,
-          statementVersion: CUSTOMER_REACCEPTANCE_STATEMENT_VERSION,
-          statementText: CUSTOMER_REACCEPTANCE_STATEMENT,
+          statementVersion: statement.version,
+          statementText: statement.text,
           actorUser: Number(input.actorUserId),
           actorEmail: input.actorEmail,
           acceptedAt,
@@ -246,7 +273,7 @@ export async function acceptCustomerLegalRequirement(input: {
     where: {
       and: [
         { tenant: { equals: input.tenantId } },
-        { document: { equals: documentId } },
+        equivalentIds ? { document: { in: equivalentIds } } : { document: { equals: documentId } },
         { action: { equals: requirement.action } },
         { status: { in: [...actionableStatuses] } },
       ],
@@ -314,12 +341,14 @@ export async function satisfyRequirementsFromTransaction(input: {
   acceptanceId: string | number
   acceptedAt: string
 }) {
+  const acceptedDocument = await input.payload.findByID({ collection: "legal-documents", id: input.documentId, depth: 0, overrideAccess: true })
+  const equivalentIds = isProductLegalKey(acceptedDocument.releaseKey) ? await equivalentProductDocumentIds(input.payload, acceptedDocument, new Date(input.acceptedAt)) : null
   const result = await input.payload.find({
     collection: "legal-requirements",
     where: {
       and: [
         { tenant: { equals: input.tenantId } },
-        { document: { equals: input.documentId } },
+        equivalentIds ? { document: { in: equivalentIds } } : { document: { equals: input.documentId } },
         { action: { in: [...acceptanceActions] } },
         { status: { in: [...actionableStatuses] } },
       ],

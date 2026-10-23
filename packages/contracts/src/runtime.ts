@@ -311,7 +311,12 @@ const FooterCompositionColumnSchema: z.ZodType<FooterCompositionColumn> = strict
   items: z.array(FooterCompositionItemSchema).nullable().optional(),
 })
 
+export const PrivacyAppointmentDisclosureSchema = strictObject({
+  enabled: z.boolean(), retentionDays: z.number().int().min(30).max(730).nullable().optional(),
+  calendarProviders: z.array(z.enum(["google", "microsoft"])).max(2).nullable().optional(),
+})
 export const TenantPrivacyDisclosureSchema: z.ZodType<NonNullable<SiteSettings["privacyDisclosure"]>> = strictObject({
+  templateVersion: nullableString,
   enabled: z.boolean().nullable().optional(),
   mode: z.enum(["template", "custom"]).nullable().optional(),
   title: nullableString,
@@ -327,6 +332,7 @@ export const TenantPrivacyDisclosureSchema: z.ZodType<NonNullable<SiteSettings["
     address: nullableString,
   }),
   contactMethods: strictObject({
+    appointments: PrivacyAppointmentDisclosureSchema.nullable().optional(),
     email: z.boolean().nullable().optional(),
     phone: z.boolean().nullable().optional(),
     whatsapp: z.boolean().nullable().optional(),

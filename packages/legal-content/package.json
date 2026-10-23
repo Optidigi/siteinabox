@@ -15,6 +15,10 @@
     "./consent-approval": {
       "types": "./src/consent-approval.d.ts",
       "default": "./src/consent-approval.js"
+    },
+    "./product": {
+      "types": "./src/product.d.ts",
+      "default": "./src/product.js"
     }
   },
   "dependencies": {

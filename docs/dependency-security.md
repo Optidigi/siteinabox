@@ -161,7 +161,51 @@ bound to the verified bytes, and publication never rebuilds the candidate.
 
 ## Current frontier
 
-### M16 workspace qualification
+### M17 product policy qualification
+
+Source `b3cfc4a2d78702f3381dce404231d452ba97c842` adds the separate governed
+product-policy draft and locale-bound consumers. Fresh full/production audits and
+all 110 publisher facts match the prior reviewed findings/facts. Graph and source
+configuration bindings change; the runtime/dependency pins do not.
+
+Unpublished workflows [CMS 40038419830](https://github.com/Optidigi/siteinabox/actions/runs/40038419830),
+[renderer 40038422502](https://github.com/Optidigi/siteinabox/actions/runs/40038422502)
+and [site 40038425132](https://github.com/Optidigi/siteinabox/actions/runs/40038425132)
+at attempt 1 retain exact-source inventories. All 210 image rows, including their
+facts hashes, are unchanged. Four native fingerprints are unchanged. CMS native
+files and Go targets are also unchanged; its eight bundled helper scripts match
+the actual local output of the owning pinned generator byte for byte. Their new
+paths, sizes, hashes and hosted source/image/archive/report/native receipts are
+recorded in the policy. The archive hashes are hosted receipts, not a claim of
+local archive extraction or release qualification.
+
+The actual compiled CMS/browser/renderer journey at source `393a9b99` passes 27 boundary assertions,
+including the private blocked NL/EN source draft and separate synthetic review
+and publication states; the checkout Chromium journey verifies exact locale-bound
+statements and version links. The guarded environment supplies the same legal
+asset root as Docker, and build reuse binds that root. No SQL schema migration is
+introduced. M16's populated migration rehearsal remains historical evidence.
+
+The checkout follow-up copies the validated scalar legal identity before
+asynchronous work and rejects a changed ID/version/hash/statement before order or
+acceptance writes. All 52 focused checkout/service/action regressions pass;
+publication changes require fresh confirmation instead of silently substituting
+unseen terms. The later source changes no UI components or renderer code.
+
+The separately invoked invitation build and browser reuse stages share one owned
+legal-asset environment constructor. Ten focused harness/option tests pass,
+including matching producer/consumer fingerprints and rejection of a different
+legal root. This test-only correction changes no shipped runtime/helper bytes;
+final canonical CI must prove the actual two-step build/reuse sequence.
+
+All three source findings, seven blocked deferrals, 210 image findings and five
+blocked native assessments remain. All five inventories remain incomplete, and
+the original October 28 expiry is unchanged. Actual issuer/controller/provider
+facts, legal approval, activation and privacy assurance remain separate gates.
+These source-candidate receipts do not replace final-policy-head canonical CI
+and image admission; require those fresh final receipts before protected merge.
+
+### M16 workspace qualification (historical baseline)
 
 M16 preserves the frozen dependency graph, all 109 current publisher facts,
 three source findings, every existing disposition and the original October 28

@@ -22,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const tenant = ctx.mode === "tenant" ? ctx.tenant : null
   const analyticsVisible = tenant ? tenantAnalyticsDashboardVisible(tenant.siteManifest) : true
   const legalRequirements = tenant
-    ? await getTenantLegalRequirements(await getPayload({ config }), tenant.id)
+    ? await getTenantLegalRequirements(await getPayload({ config }), tenant.id, new Date(), locale)
     : []
   const sites = tenant
     ? [{ name: tenant.name, slug: tenant.slug }]

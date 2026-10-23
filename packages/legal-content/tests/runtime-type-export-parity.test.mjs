@@ -4,6 +4,7 @@ import test from 'node:test'
 
 import * as legalContent from '../src/index.js'
 import * as consentApproval from '../src/consent-approval.js'
+import * as product from '../src/product.js'
 
 function declaredValueExports(declarationPath) {
   const declaration = readFileSync(new URL(declarationPath, import.meta.url), 'utf8')
@@ -28,4 +29,8 @@ test('consent approval value exports match its declaration', () => {
     runtimeValueExports(consentApproval),
     declaredValueExports('../src/consent-approval.d.ts'),
   )
+})
+
+test('product legal value exports match its declaration', () => {
+  assert.deepEqual(runtimeValueExports(product), declaredValueExports('../src/product.d.ts'))
 })

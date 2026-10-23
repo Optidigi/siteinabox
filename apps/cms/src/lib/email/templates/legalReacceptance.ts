@@ -1,3 +1,4 @@
+import { englishLegalNotice } from "./legalNoticeEnglish"
 import { renderEmailLayout } from "@/lib/email/emailLayout"
 
 const escapeHtml = (value: string) => value
@@ -8,9 +9,15 @@ const escapeHtml = (value: string) => value
   .replace(/'/g, "&#39;")
 
 export const LEGAL_REACCEPTANCE_TEMPLATE_VERSION = "legal-reacceptance-2026-07-11.1"
+export const LEGAL_REACCEPTANCE_TEMPLATE_VERSION_EN = "legal-reacceptance-en-2026-10-23.1"
+export function legalNotificationTemplateVersion(locale = "nl") {
+  if (!["nl", "en"].includes(locale)) throw new Error("Unsupported legal notification locale")
+  return locale === "en" ? LEGAL_REACCEPTANCE_TEMPLATE_VERSION_EN : LEGAL_REACCEPTANCE_TEMPLATE_VERSION
+}
 const headerText = (value: string) => value.replace(/[\r\n]+/g, " ").trim()
 
 export function legalReacceptanceTemplate(input: {
+  locale?: "nl" | "en"
   tenantName: string
   changeSummary: string
   documentVersion: string
@@ -21,6 +28,7 @@ export function legalReacceptanceTemplate(input: {
   mandatory: boolean
   kind?: "initial" | "reminder" | "enforcement"
 }) {
+  if (input.locale === "en") return englishLegalNotice({ ...input, mode: "reaccept" })
   const date = (value: string) => new Intl.DateTimeFormat("nl-NL", { dateStyle: "long", timeZone: "Europe/Amsterdam" }).format(new Date(value))
   const tenantName = escapeHtml(input.tenantName)
   const summary = escapeHtml(input.changeSummary)
@@ -71,12 +79,14 @@ export function legalReacceptanceTemplate(input: {
 }
 
 export function legalDirectNoticeTemplate(input: {
+  locale?: "nl" | "en"
   tenantName: string
   changeSummary: string
   documentVersion: string
   effectiveAt: string
   documentUrl: string
 }) {
+  if (input.locale === "en") return englishLegalNotice({ ...input, mode: "direct" })
   const tenantName = escapeHtml(input.tenantName)
   const documentUrl = escapeHtml(input.documentUrl)
   const effectiveAt = new Intl.DateTimeFormat("nl-NL", { dateStyle: "long", timeZone: "Europe/Amsterdam" }).format(new Date(input.effectiveAt))
@@ -111,6 +121,7 @@ export function legalDirectNoticeTemplate(input: {
 }
 
 export function legalContinuedUseNoticeTemplate(input: {
+  locale?: "nl" | "en"
   tenantName: string
   changeSummary: string
   effectiveAt: string
@@ -120,6 +131,7 @@ export function legalContinuedUseNoticeTemplate(input: {
   documentContent: string
   kind?: "initial" | "reminder"
 }) {
+  if (input.locale === "en") return englishLegalNotice({ ...input, mode: "continued" })
   const date = (value: string) => new Intl.DateTimeFormat("nl-NL", { dateStyle: "long", timeZone: "Europe/Amsterdam" }).format(new Date(value))
   const tenantName = escapeHtml(input.tenantName)
   const settingsUrl = escapeHtml(input.settingsUrl)

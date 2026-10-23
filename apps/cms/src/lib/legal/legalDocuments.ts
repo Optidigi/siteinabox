@@ -12,6 +12,9 @@ import {
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId } from "@/lib/relationshipId"
 import { asRecord } from "@/lib/record"
+import { isProductLegalKey, productDocumentPublication, hasProductLegalActivation } from "./productLegal"
+
+export class NoEffectiveLegalDocumentError extends Error {}
 
 const releaseKey = (release: Pick<LegalDocument, "documentType" | "locale" | "documentVersion">) =>
   `${release.documentType}:${release.locale}:${release.documentVersion}`
@@ -51,8 +54,10 @@ export async function ensureLegalRequirementsForRelease(
   payload: Payload,
   document: LegalDocumentDoc,
   release: LegalDocument,
+  productAudience?: number[],
 ) {
   if (release.change.customerAction === "none" || release.change.customerAction === "publish_notice") return []
+  if (productAudience && productAudience.length === 0) return []
   const ownerDocs: User[] = []
   for (let page = 1; ; page += 1) {
     const users = await payload.find({
@@ -69,10 +74,13 @@ export async function ensureLegalRequirementsForRelease(
   const requirements: LegalRequirement[] = []
   for (const user of ownerDocs) {
     if (typeof user.email !== "string") continue
+    if (productAudience && (user.language === "en" ? "en" : "nl") !== release.locale) continue
     for (const membership of user.tenants ?? []) {
       const tenantId = relationshipId(membership?.tenant)
       if (!tenantId) continue
-      const key = `${releaseKey(release)}:user:${user.id}:tenant:${tenantId}:${release.change.customerAction}`
+      if (productAudience && !productAudience.includes(Number(tenantId))) continue
+      const scope = productAudience ? `product:${document.releaseKey.split(":")[1]}:${document.documentType}:${document.acceptanceVersion ?? document.documentVersion}` : releaseKey(release)
+      const key = `${scope}:user:${user.id}:tenant:${tenantId}:${release.change.customerAction}`
       let requirement = await findOneDoc(payload, "legal-requirements", { requirementKey: { equals: key } })
       if (!requirement) {
         requirement = await payload.create({
@@ -109,12 +117,17 @@ export async function ensureConsentRenewalsForRelease(
   payload: Payload,
   release: LegalDocument,
   at = new Date(),
+  productAudience?: number[],
 ) {
   if (!["renew_analytics", "renew_all_optional"].includes(release.change.consentAction)) return []
   if (release.change.audience === "siteinabox_visitors") return []
   if (new Date(release.effectiveAt) > at) return []
 
-  const consentVersion = analyticsConsentVersionForRelease(release)
+  // Translations describe one approved scope. Reconciliation of the second
+  // language must not rotate consent back and forth on every sync.
+  const consentVersion = productAudience
+    ? `legal:product:${release.documentType}:${release.documentVersion}`
+    : analyticsConsentVersionForRelease(release)
   const renewed = []
   for (let page = 1; ; page += 1) {
     const tenants = await payload.find({
@@ -125,6 +138,7 @@ export async function ensureConsentRenewalsForRelease(
       overrideAccess: true,
     })
     for (const tenant of tenants.docs) {
+      if (productAudience && !productAudience.includes(tenant.id)) continue
       const manifest = asRecord(tenant.siteManifest)
       const consent = asRecord(manifest?.analyticsConsent)
       if (!manifest || !consent || consent.enabled === false) continue
@@ -241,6 +255,8 @@ export async function syncLegalDocuments(input: {
     documents.push(document)
   }
 
+  const { syncProductLegalRequirements } = await import("./productRequirements")
+  await syncProductLegalRequirements(input.payload, now)
   return { documents, synchronized: documents.length }
 }
 
@@ -261,11 +277,15 @@ export async function getCurrentLegalDocumentRecord(
       ],
     },
     sort: "-effectiveAt",
-    limit: 1,
+    limit: 100,
     depth: 0,
     overrideAccess: true,
   })
-  const document = result.docs[0]
-  if (!document) throw new Error(`No effective ${documentType}/${locale} legal document is registered.`)
+  let document: LegalDocumentDoc | undefined
+  for (const candidate of result.docs) {
+    if (!isProductLegalKey(candidate.releaseKey) || await productDocumentPublication(payload, candidate, at)) { document = candidate; break }
+    if (await hasProductLegalActivation(payload, candidate.releaseKey)) throw new Error("Activated product legal evidence is inconsistent; no legacy downgrade allowed")
+  }
+  if (!document) throw new NoEffectiveLegalDocumentError(`No effective ${documentType}/${locale} legal document is registered.`)
   return document
 }

@@ -205,6 +205,7 @@ export type AnalyticsConsentSettings = {
 }
 
 export type TenantPrivacyDisclosure = {
+  templateVersion?: string | null
   enabled?: boolean | null
   mode?: "template" | "custom" | null
   title?: string | null
@@ -231,6 +232,7 @@ export type TenantPrivacyDisclosure = {
         | { kind: "active_agreement" }
         | null
     } | null
+    appointments?: { enabled: boolean; retentionDays?: number | null; calendarProviders?: Array<'google' | 'microsoft'> | null } | null
   } | null
   marketingTechnologies?: Array<{
     name: string

@@ -3,6 +3,7 @@ import type { CollectionBeforeValidateHook, CollectionConfig, PayloadRequest } f
 import { ValidationError } from "payload"
 import {
   AppointmentScheduleSettingsSchema,
+  PrivacyAppointmentDisclosureSchema,
   CONSENT_VARIANTS,
   DEFAULT_CONSENT_VARIANT,
   normalizePublicDomainHost,
@@ -50,6 +51,11 @@ export const enforceSiteSettingsCapabilities: CollectionBeforeValidateHook = ({ 
   const disclosure = isRecord(record?.privacyDisclosure) ? record.privacyDisclosure : null
   const controller = isRecord(disclosure?.controller) ? disclosure.controller : null
   const errors: Array<{ path: string; message: string }> = []
+  const contactMethods = isRecord(disclosure?.contactMethods) ? disclosure.contactMethods : null
+  if (contactMethods?.appointments != null && !PrivacyAppointmentDisclosureSchema.safeParse(contactMethods.appointments).success) {
+    errors.push({ path: "privacyDisclosure.contactMethods.appointments", message: adminValidationText(req.i18n?.language,
+      "Use valid appointment disclosure settings and a 30–730 day retention period.", "Gebruik geldige afspraakgegevens en een bewaartermijn van 30–730 dagen.") })
+  }
   if (maintenance?.enabled && !nonEmpty(maintenance.message)) {
     errors.push({ path: "maintenance.message", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires a message.", "Ingeschakelde onderhoudsmodus vereist een bericht.") })
   }

@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { hashBuiltTree, buildEnvironmentFingerprint, assertDiagnosticIdentity } from "./built-app-artifacts.mjs"
+import { hashBuiltTree, buildEnvironmentFingerprint, builtCmsTestEnvironment, repositoryRoot, assertDiagnosticIdentity } from "./built-app-artifacts.mjs"
 import { createServer, connect } from "node:net"
 import { once } from "node:events"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
@@ -133,7 +133,19 @@ test("build reuse binds public/CI settings while worker storage stays runtime-ow
   const fingerprint = buildEnvironmentFingerprint(settings)
   assert.notEqual(buildEnvironmentFingerprint({ ...settings, NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: "other.test" }), fingerprint)
   assert.notEqual(buildEnvironmentFingerprint({ ...settings, CI: "false" }), fingerprint)
+  assert.notEqual(buildEnvironmentFingerprint({ ...settings, SIAB_LEGAL_CONTENT_ROOT: "/different/legal/source" }), fingerprint)
   assert.equal(buildEnvironmentFingerprint({ ...settings, DATA_DIR: "/different/owned/worker" }), fingerprint)
+})
+
+test("separate producer and reuse stages bind the same owned legal assets", () => {
+  const initial = { CI: "true", NODE_ENV: "development" }
+  const producer = builtCmsTestEnvironment(initial)
+  const reuse = builtCmsTestEnvironment({ ...initial, DATA_DIR: "/different/owned/worker" })
+  assert.equal(producer.SIAB_LEGAL_CONTENT_ROOT, path.join(repositoryRoot, "packages/legal-content"))
+  assert.equal(producer.NODE_ENV, "production")
+  assert.equal(buildEnvironmentFingerprint(producer), buildEnvironmentFingerprint(reuse))
+  assert.notEqual(buildEnvironmentFingerprint({ ...reuse, SIAB_LEGAL_CONTENT_ROOT: "/different/legal/root" }), buildEnvironmentFingerprint(producer))
+  assert.equal(initial.NODE_ENV, "development")
 })
 
 

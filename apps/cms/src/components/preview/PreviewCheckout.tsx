@@ -228,6 +228,10 @@ type PreviewCheckoutProps = {
     previousState: PreviewCheckoutCancellationState,
     formData: FormData,
   ) => Promise<PreviewCheckoutCancellationState>
+  legalLocale?: "nl" | "en"
+  termsContentHash?: string
+  privacyContentHash?: string
+  termsStatement?: string
   termsHref: string
   privacyHref: string
   termsVersion: string
@@ -429,6 +433,10 @@ export function PreviewCheckout({
   recollectAcceptedMigrationInputAction,
   submitMigrationTransferCodeAction,
   scheduleCancellationAction,
+  legalLocale = "nl",
+  termsContentHash,
+  privacyContentHash,
+  termsStatement,
   termsHref,
   privacyHref,
   termsVersion,
@@ -3014,6 +3022,9 @@ export function PreviewCheckout({
                 )}
                 <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
+                <input type="hidden" name="legalLocale" value={legalLocale} />
+                <input type="hidden" name="expectedTermsHash" value={termsContentHash ?? ""} />
+                <input type="hidden" name="expectedPrivacyHash" value={privacyContentHash ?? ""} />
                 <input type="hidden" name="expectedTermsVersion" value={termsVersion} />
                 <input type="hidden" name="expectedPrivacyVersion" value={privacyVersion} />
               </form>
@@ -3035,7 +3046,7 @@ export function PreviewCheckout({
                   checked={termsAccepted}
                   onCheckedChange={setTermsAccepted}
                   title={t("checkoutTermsPrivacyTitle")}
-                  label={t.rich("checkoutTermsAcceptanceLabel", {
+                  label={termsStatement ? <span lang={legalLocale}>{termsStatement}</span> : t.rich("checkoutTermsAcceptanceLabel", {
                     terms: (chunks) => (
                       <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
                         {chunks}
@@ -3043,13 +3054,13 @@ export function PreviewCheckout({
                     ),
                     version: termsVersion,
                   })}
-                  help={t.rich("checkoutPrivacyDisclosure", {
+                  help={<>{termsStatement && <><a href={termsHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{t("checkoutTermsVersionLink", { version: termsVersion })}</a>{" "}</>}{t.rich("checkoutPrivacyDisclosure", {
                     privacy: (chunks) => (
                       <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                        {chunks}
+                        {chunks}{termsStatement ? ` (${privacyVersion})` : null}
                       </a>
                     ),
-                  })}
+                  })}</>}
                   requiredLabel={t("checkoutRequiredLabel")}
                   describedBy={legalSubmitRequested && !termsAccepted ? "checkout-declarations-error" : undefined}
                   invalid={legalSubmitRequested && !termsAccepted}

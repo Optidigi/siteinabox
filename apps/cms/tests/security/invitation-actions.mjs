@@ -9,9 +9,9 @@ import { setTimeout } from "node:timers/promises"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, createWorkerStorage, cleanupWorkerStorage,
   applyCmsTestEnvironment, assertEmptyTestDatabase } from "../_helpers/cmsTestEnvironment.mjs"
 
-import { prepareBuiltCmsAssets, captureBuiltCmsIdentity } from "../browser/built-app-artifacts.mjs"
+import { prepareBuiltCmsAssets, captureBuiltCmsIdentity, builtCmsTestEnvironment } from "../browser/built-app-artifacts.mjs"
 
-const context = await loadCmsTestEnvironment({ ...process.env, NODE_ENV: "production" })
+const context = await loadCmsTestEnvironment(builtCmsTestEnvironment())
 await assertDatabaseOwnership(context.env, context.resource)
 const worker = await createWorkerStorage(context.env, context.resource)
 applyCmsTestEnvironment(worker.env, context.resource)

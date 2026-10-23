@@ -47,11 +47,21 @@ export const rejectRecordMutation: CollectionBeforeChangeHook = ({ data, operati
 
 const appendOnlyHooks = { beforeChange: [rejectRecordMutation] }
 
+export const guardProductLegalEvidence: CollectionBeforeChangeHook = ({ data, req }) => {
+  const key = data?.releaseKey ?? data?.eventKey
+  if (typeof key === "string" && key.startsWith("product:") &&
+      (req.context?.governedProductLegal !== true || req.user?.role !== "super-admin")) {
+    throw new Error("Product legal evidence requires the governed owner-review/publication service.")
+  }
+  return data
+}
+const governedDocumentHooks = { beforeChange: [rejectRecordMutation, guardProductLegalEvidence] }
+
 export const LegalDocuments: CollectionConfig = {
   slug: "legal-documents",
   labels: { singular: { en: "Legal document", nl: "Juridisch document" }, plural: { en: "Legal documents", nl: "Juridische documenten" } },
   access: appendOnlyAccess,
-  hooks: appendOnlyHooks,
+  hooks: governedDocumentHooks,
   admin: {
     useAsTitle: "releaseKey",
     defaultColumns: ["releaseKey", "documentType", "locale", "documentVersion", "effectiveAt"],
@@ -84,7 +94,7 @@ export const LegalPublicationEvents: CollectionConfig = {
   slug: "legal-publication-events",
   labels: { singular: { en: "Legal publication event", nl: "Juridische publicatiegebeurtenis" }, plural: { en: "Legal publication events", nl: "Juridische publicatiegebeurtenissen" } },
   access: appendOnlyAccess,
-  hooks: appendOnlyHooks,
+  hooks: governedDocumentHooks,
   admin: { useAsTitle: "eventKey", defaultColumns: ["eventKey", "document", "eventType", "occurredAt"] },
   fields: [
     { name: "eventKey", type: "text", required: true, unique: true, index: true },

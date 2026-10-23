@@ -12,9 +12,10 @@ import { setTimeout as delay } from "node:timers/promises"
 import { chromium } from "playwright"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, assertCmsTestPrerequisites, createWorkerStorage,
   cleanupWorkerStorage, applyCmsTestEnvironment, readEffectiveTestEnvironment, assertDisposableCmsEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
-import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, assertDiagnosticBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
+import { cmsRoot, cmsEntry, repositoryRoot, builtCmsTestEnvironment, hashBuiltTree, assertBuiltCmsIdentity, assertDiagnosticBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
 import { runPrivateWorkspaceJourney } from "./built-private-workspace.mjs"
 import { runVerifiedCustomerJourney } from "./built-customer-journey.mjs"
+import { runProductLegalJourney } from "./built-product-legal.mjs"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
 import { cookieCredentials } from "./built-app-credentials.mjs"
 import { builtBrowserOptions } from "./built-app-options.mjs"
@@ -22,7 +23,7 @@ import { builtBrowserOptions } from "./built-app-options.mjs"
 const { reuse, scenario, qualification } = builtBrowserOptions(process.argv.slice(2))
 const focused = qualification === "diagnostic"
 const startedAt = performance.now()
-const context = await loadCmsTestEnvironment({ ...process.env, NODE_ENV: "production" })
+const context = await loadCmsTestEnvironment(builtCmsTestEnvironment())
 await assertDatabaseOwnership(context.env, context.resource)
 await assertCmsTestPrerequisites(context.env)
 assert.equal(process.versions.node, (await readFile(path.join(repositoryRoot, ".nvmrc"), "utf8")).trim(), "Pinned Node is required")
@@ -353,6 +354,8 @@ try {
   assert.equal((await http(rendererPort, "/", { host: customerJourney.domain, "x-forwarded-proto": "https",
     "x-siab-origin-verify": env.SIAB_RENDERER_ORIGIN_SECRET })).status, 404)
   verify("free generated website stays private in the actual public renderer")
+  await runProductLegalJourney({ newContext, login, cmsOrigin, fixture, verify, api,
+    control: action => runGuardedScript("tests/browser/built-legal-control.ts", [action], 30000) })
   await ownerPage.goto(cmsOrigin + "/profile")
   const changedPassword = "siab-test-" + randomBytes(20).toString("hex"); secrets.add(changedPassword)
   assert.equal((await api(ownerPage, "/api/users/change-password", { currentPassword: fixture.password, newPassword: changedPassword })).status, 200)

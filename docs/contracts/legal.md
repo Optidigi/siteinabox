@@ -59,6 +59,48 @@ an audience, and an enforcement policy.
 
 ## Publication And Deployment
 
+### Governed product policies (M17)
+
+The product NL/EN bundle is separate from the immutable legacy landing registry.
+`packages/legal-content/product-documents` and its `product-releases.json` own
+the draft text, hashes, locale-bound statements and unresolved review blockers.
+Source merge, dates and ordinary legacy synchronization cannot activate it.
+The current bundle remains a draft until actual issuer/controller/provider facts,
+implemented lifecycle evidence and owner legal/translation/change decisions are
+reviewed. Available integrations do not establish actual processing or suppliers.
+
+An authenticated platform operator uses `/legal/product-drafts/[key]` to record
+an owner review reference, explicit publication/effective dates and tenant audience.
+Empty audience means new customers only. The service rechecks the persisted
+operator role, validates all four documents and notice periods, and writes the
+immutable document copies before a final bundle review event. A separate
+publication authorization writes the activation event. Retries preserve existing
+identities; partial registration is not publication. Actual legal approval and
+publication authority are prerequisites, not facts inferred by the application.
+
+Only separately activated, hash-bound documents appear at
+`/policies/[locale]/[documentType]/[version]` and in
+`/api/legal/product-manifest`. Publication permits advance reading; `effectiveAt`
+still controls current checkout selection. Draft and review-only records are
+excluded from public routes, requirements, notices and consent effects. A broken
+activated identity fails closed rather than downgrading to legacy terms.
+
+Checkout displays and freezes the selected locale, document hashes/versions and
+exact statement. The validated scalar identity is copied before asynchronous
+checkout work; the evidence writer rechecks it before creating order/acceptance
+records and rejects changed authority rather than substituting unseen documents.
+English has no implicit Dutch fallback: customers may explicitly
+choose the existing Dutch legal flow while an approved English bundle is absent.
+Existing Dutch order/acceptance identities remain unchanged. Reviewed translations
+of the same contractual acceptance version can satisfy equivalent tenant
+requirements, while the acceptance itself retains the actual document and language.
+Notices and historical links retain their original locale/version. Consent renewal
+is separately scoped to the approved tenant audience and one language-independent
+product scope version, so translated reconciliation cannot repeatedly rotate it.
+
+The following deployment order continues to describe the legacy landing releases;
+M17 adds no landing publication or marketing changes.
+
 The public landing image contains current and historical legal routes plus a
 machine-readable hash manifest. CMS legal synchronization is idempotent and may
 only activate a release after the permanent public route exposes the expected

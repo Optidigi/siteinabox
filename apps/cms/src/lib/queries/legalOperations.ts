@@ -14,6 +14,8 @@ import type {
   TenantNotificationSubscription,
 } from "@/payload-types"
 import { normalisePagination, type PayloadFindResult } from "./paginate"
+import { isProductLegalKey, productLegalGovernance, productDocumentPublication } from "@/lib/legal/productLegal"
+import { productLegalReleases } from "@siteinabox/legal-content/product"
 
 type RecordLike = Record<string, unknown>
 type Tone = "neutral" | "info" | "success" | "warning" | "destructive"
@@ -343,11 +345,25 @@ export async function listLegalReleases(options: LegalListOptions = {}, payload?
     overrideAccess: true,
   })
   const now = new Date()
+  const states = new Map<number, string>()
+  for (const item of result.docs) {
+    if (!isProductLegalKey(item.releaseKey)) continue
+    const key = item.releaseKey.split(":")[1]
+    let state = "draft"
+    if (key && productLegalReleases.some(release => release.releaseKey === key)) {
+      const governance = await productLegalGovernance(client, key)
+      state = governance.state
+      if (state === "active") state = await productDocumentPublication(client, item, now)
+        ? new Date(item.effectiveAt) > now ? "scheduled" : "active"
+        : "reviewed"
+    }
+    states.set(item.id, state)
+  }
   return mapResult(result, (item): LegalReleaseRow => ({
     id: String(item.id), title: documentLabel(item), documentType: text(item.documentType), locale: text(item.locale),
     documentVersion: text(item.documentVersion), changeCategory: text(item.changeCategory), customerAction: text(item.customerAction),
     publishedAt: text(item.publishedAt), effectiveAt: text(item.effectiveAt),
-    state: new Date(item.effectiveAt) > now ? "scheduled" : "active", sourceCommit: text(item.sourceCommit), href: `/legal/releases/${item.id}`,
+    state: states.get(item.id) ?? (new Date(item.effectiveAt) > now ? "scheduled" : "active"), sourceCommit: text(item.sourceCommit), href: `/legal/releases/${item.id}`,
   }))
 }
 
