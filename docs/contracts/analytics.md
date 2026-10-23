@@ -170,7 +170,9 @@ Privacy rules:
 The governance policy requires no direct identifiers and defines a 13-month
 retention target. Provider-managed retention at or below the accepted 84-month
 unenforced ceiling is an external constraint; see SIAB-002. As of 2026-08-07 the
-live project reports 12 months with enforcement disabled.
+live project reported 12 months with enforcement disabled. That dated value is
+not a fallback for missing current API data; current query-window readback does
+not establish provider-enforced deletion.
 
 ## Public runtime behavior
 

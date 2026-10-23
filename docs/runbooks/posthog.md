@@ -81,15 +81,21 @@ privacy baseline:
 - `autocapture_opt_out: true`
 - `cookieless_server_hash_mode: 1` (stateless)
 
-Event retention is audited by the same command, but current PostHog project and
-environment APIs expose `event_retention_months` and
-`events_retention_enforced` as plan-derived read-only values. A personal API
-key, including one with `project:write`, cannot change them. If the audit shows
-retention drift, compare it with the accepted provider constraint in SIAB-002.
-Retention at or below the accepted 84-month ceiling with enforcement disabled
-is owner-accepted; a value beyond that or a newly available 13-month
-enforcement control reopens review. Do not treat the 30-day session-recording
-retention control as event retention.
+Event-window retention is audited by the same command. Legacy project fields
+may be absent. The checker then uses the read-only
+[events-retention endpoint](https://posthog.com/docs/api/events-retention), with
+project:read access, independently of the organization-scoped settings endpoint.
+It accepts an explicitly returned positive month count within the owner-accepted
+84-month ceiling. Missing/null/unbounded/invalid values, inaccessible readback and
+values above the ceiling fail; historical or plan-default values are never filled in.
+
+The endpoint reports [queryable event history](https://posthog.com/docs/data/events-retention),
+not deletion. Enforcement remains unknown when not exposed; a passing check verifies
+mutable settings and the accepted provider window, not provider-enforced deletion
+or the 13-month enforced governance target. SIAB-002 remains an accepted external
+constraint. Retention fields never enter PATCH; no plan/configuration change is
+performed by --check. Requests time out after15seconds, and the scheduled job is
+bounded to5minutes. Do not substitute session-recording retention for event history.
 
 Run with `--dry-run` to inspect the PATCH payload.
 
