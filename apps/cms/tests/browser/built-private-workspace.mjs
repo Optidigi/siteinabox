@@ -91,10 +91,25 @@ export async function runPrivateWorkspaceJourney({ newContext, login, cmsOrigin,
     const stale = page.waitForResponse(r => new URL(r.url()).pathname === "/api/page-editor-save" && r.request().method() === "POST")
     await title.press("ControlOrMeta+s")
     assert.equal((await stale).status(), 409)
+    // A response event precedes the editor's async failure handling. Follow the
+    // visible reload instruction only after that user-facing state is ready.
+    await page.getByText(messages.editor.saveConflict, { exact: true }).first().waitFor({ state: "visible" })
     assert.equal(await title.inputValue(), staleMarker)
     await page.reload()
     const recovery = page.getByRole("dialog", { name: messages.editor.restoreDraftTitle })
-    await recovery.waitFor()
+    try { await recovery.waitFor() } catch (error) {
+      const draftState = await page.evaluate(() => new Promise(resolve => {
+        const request = indexedDB.open("siab-editor-drafts")
+        request.onerror = () => resolve({ error: "database unavailable" })
+        request.onsuccess = () => {
+          const db = request.result
+          const rows = db.transaction("page-drafts").objectStore("page-drafts").getAll()
+          rows.onerror = () => { db.close(); resolve({ error: "draft read failed" }) }
+          rows.onsuccess = () => { const values = rows.result.map(row => ({ key: row.key, title: row.formValues?.title })); db.close(); resolve(values) }
+        }
+      }))
+      throw new Error("Draft recovery failed for " + locale + ": " + JSON.stringify(draftState), { cause: error })
+    }
     await recovery.getByText(messages.editor.restoreDraftServerChanged, { exact: true }).waitFor()
     await recovery.getByRole("button", { name: messages.editor.restoreDraftAction, exact: true }).click()
     if (width < 500) {

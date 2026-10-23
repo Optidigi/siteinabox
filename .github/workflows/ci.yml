@@ -142,6 +142,8 @@ jobs:
         run: |
           node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"
           echo "SIAB_TEST_RESOURCE_FILE=$RUNNER_TEMP/siab-test-cms/resource.json" >> "$GITHUB_ENV"
+      - name: Install CMS verification prerequisite browser
+        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
       - name: Generate Payload types
         run: |
           pnpm --dir apps/cms payload generate:types
