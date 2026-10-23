@@ -341,7 +341,7 @@ describe("preview checkout domain suggestion action", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {})
     mocks.getSession.mockResolvedValue(verifiedCustomerFixture())
     mocks.loadPreviewGrantContext.mockResolvedValue({
-      payload: { update: mocks.payloadUpdate },
+      payload: { update: mocks.payloadUpdate, find: vi.fn(async () => ({ docs: [] })) },
       run: { id: 500, updatedAt: "draft-500" },
       tenant: { id: 12, name: "Ami Care" },
       pages: [],
@@ -349,7 +349,7 @@ describe("preview checkout domain suggestion action", () => {
       clientSlug: "ami-care",
     })
     mocks.loadPreviewGrantAuthority.mockResolvedValue({
-      payload: { update: mocks.payloadUpdate },
+      payload: { update: mocks.payloadUpdate, find: vi.fn(async () => ({ docs: [] })) },
       run: { id: 500, updatedAt: "draft-500" },
       tenant: { id: 12, name: "Ami Care" },
       customerEmail: "customer@example.com",
@@ -690,6 +690,15 @@ describe("preview checkout domain suggestion action", () => {
 
     const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
     expect(result).toMatchObject({ ok: false, message: "checkoutTermsAcceptanceRequired" })
+  })
+
+  it("asks for fresh legal confirmation when authority changes during checkout", async () => {
+    const { CheckoutLegalConflictError } = await import("@/lib/legal/checkoutLegal")
+    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+    mocks.createOrderAndAcceptanceEvidence.mockRejectedValueOnce(new CheckoutLegalConflictError("Changed legal release"))
+    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, validPaymentForm())
+    expect(result).toMatchObject({ ok: false, status: "version_conflict", message: "checkoutLegalVersionConflict" })
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
 

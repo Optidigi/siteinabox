@@ -86,7 +86,10 @@ excluded from public routes, requirements, notices and consent effects. A broken
 activated identity fails closed rather than downgrading to legacy terms.
 
 Checkout displays and freezes the selected locale, document hashes/versions and
-exact statement. English has no implicit Dutch fallback: customers may explicitly
+exact statement. The validated scalar identity is copied before asynchronous
+checkout work; the evidence writer rechecks it before creating order/acceptance
+records and rejects changed authority rather than substituting unseen documents.
+English has no implicit Dutch fallback: customers may explicitly
 choose the existing Dutch legal flow while an approved English bundle is absent.
 Existing Dutch order/acceptance identities remain unchanged. Reviewed translations
 of the same contractual acceptance version can satisfy equivalent tenant

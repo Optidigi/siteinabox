@@ -4,6 +4,8 @@ import {
   createSiteApprovalEvidence,
   verifyCheckoutEvidence,
 } from "@/lib/legal/checkoutEvidence"
+import { checkoutLegalIdentity, CheckoutLegalConflictError } from "@/lib/legal/checkoutLegal"
+import { legalStatements } from "@/lib/legal/statements"
 import { buildCheckoutQuote } from "@/lib/checkout/checkoutQuote"
 import type { CheckoutProfile } from "@/payload-types"
 
@@ -97,7 +99,30 @@ const createPayload = () => {
   return { payload: asPayload({ find, create, findByID }), stores }
 }
 
+const displayedLegal = (stores: Record<string, MockDoc[]>) => checkoutLegalIdentity({ locale: "nl",
+  terms: cast(stores["legal-documents"]![0]), privacy: cast(stores["legal-documents"]![1]), statement: legalStatements.termsAcceptance })
+
 describe("checkout legal evidence", () => {
+  it.each(["terms", "privacy", "statement"] as const)("rejects changed %s authority before order or acceptance creation", async changed => {
+    const { payload, stores } = createPayload()
+    const expectedLegal = displayedLegal(stores)
+    if (changed === "statement") expectedLegal.statement.text = "Different wording shown before the asynchronous boundary"
+    else {
+      const index = changed === "terms" ? 0 : 1
+      stores["legal-documents"]!.push({ ...stores["legal-documents"]![index], id: 90,
+        documentVersion: "2026-07-26.99", contentHash: "sha256:new-authorized-release",
+        publishedAt: "2026-07-26T00:00:00Z", effectiveAt: "2026-07-26T00:00:00Z" })
+    }
+    const now = new Date("2026-07-27T12:00:00Z")
+    const quote = buildCheckoutQuote({ billingPeriod: "annual", providerOperationPriceNetMinor: 1000, selectedDomain: "demo.nl",
+      providerQuotedAt: "2026-07-27T11:55:00Z", profileVersion: 1, draftVersion: "draft-30", now })
+    await expect(createOrderAndAcceptanceEvidence({ payload, expectedLegal,
+      run: asGenerationRun({ id: 30 }), tenant: asTenant({ id: 10 }), approval: cast({ id: 50 }),
+      checkoutProfile: cast<CheckoutProfile>({ profileVersion: 1 }), quote, domainRegistrant: completeRegistrant,
+      domain: "demo.nl", requestId: "synthetic-legal-boundary-race", now })).rejects.toBeInstanceOf(CheckoutLegalConflictError)
+    expect(stores.orders).toHaveLength(0)
+    expect(stores["agreement-acceptances"]).toHaveLength(0)
+  })
   it("freezes review, approval, order, documents, and terms acceptance idempotently", async () => {
     const { payload, stores } = createPayload()
     const run = asGenerationRun({ id: 30, specHash: "spec", updatedAt: "2026-07-10T10:00:00.000Z" })
@@ -110,6 +135,7 @@ describe("checkout legal evidence", () => {
       payload, run, tenant, pages, domain: "demo.nl", actorEmail: "Client@Example.com", requestId: "req-1",
     })
     const first = await createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       payload,
       run,
       tenant,
@@ -143,6 +169,7 @@ describe("checkout legal evidence", () => {
       now: new Date("2026-07-27T12:00:00.000Z"),
     })
     const second = await createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       payload,
       run,
       tenant,
@@ -278,21 +305,25 @@ describe("checkout legal evidence", () => {
       now: new Date("2026-07-28T12:00:00.000Z"),
     }
     await createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       ...common,
       requestId: "req-first",
     })
 
     await expect(createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       ...common,
       domainRegistrant: { ...common.domainRegistrant, email: "other@example.com" },
       requestId: "req-registrant-changed",
     })).rejects.toThrow("different immutable initial-order authority")
     await expect(createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       ...common,
       approval: cast({ ...approval.approval, snapshotHash: "changed-snapshot" }),
       requestId: "req-approval-changed",
     })).rejects.toThrow("different immutable initial-order authority")
     await expect(createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       ...common,
       quote: {
         ...quote,
@@ -344,6 +375,7 @@ describe("checkout legal evidence", () => {
     })
 
     await expect(createOrderAndAcceptanceEvidence({
+      expectedLegal: displayedLegal(stores),
       payload,
       run,
       tenant,
