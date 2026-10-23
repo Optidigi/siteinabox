@@ -51,7 +51,12 @@ export async function reviewProductLegalRelease(input: { payload: Payload; actor
     if (!category || !consentAction) throw new Error("Legal change decision is invalid")
     let stored = (await input.payload.find({ collection: "legal-documents", where: { releaseKey: { equals: key } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
     if (stored) {
-      if (stored.contentHash !== doc.contentHash || stored.content !== doc.markdown || stored.publishedAt !== new Date(input.publishedAt).toISOString() || stored.effectiveAt !== new Date(input.effectiveAt).toISOString()) throw new Error("Reviewed legal identity already has different immutable content/dates")
+      if (stored.contentHash !== doc.contentHash || stored.content !== doc.markdown || stored.publishedAt !== new Date(input.publishedAt).toISOString() || stored.effectiveAt !== new Date(input.effectiveAt).toISOString() ||
+          stored.documentType !== doc.documentType || stored.locale !== doc.locale || stored.documentVersion !== doc.documentVersion ||
+          (stored.acceptanceVersion ?? null) !== (doc.acceptanceVersion ?? null) || (stored.replaces ?? null) !== (doc.replaces ?? null) ||
+          stored.changeCategory !== category || stored.customerAction !== doc.change.customerAction || stored.consentAction !== consentAction ||
+          stored.changeSummary !== doc.change.summary || stored.changeRationale !== doc.change.rationale || stored.audience !== doc.change.audience ||
+          (stored.noticeDays ?? 0) !== (doc.change.noticeDays ?? 0)) throw new Error("Reviewed legal identity already has different immutable content/dates/decisions")
     } else stored = await input.payload.create({ collection: "legal-documents", req, overrideAccess: true, depth: 0,
       data: { releaseKey: key, documentType: doc.documentType, locale: doc.locale, documentVersion: doc.documentVersion,
         acceptanceVersion: doc.acceptanceVersion, replaces: doc.replaces, content: doc.markdown, contentHash: doc.contentHash,
@@ -85,12 +90,16 @@ export async function activateProductLegalRelease(input: { payload: Payload; act
   if (!metadata || metadata.bundleHash !== release.bundleHash || input.expectedBundleHash !== release.bundleHash ||
       !nonEmpty(metadata.approvalRef) || !nonEmpty(input.authorizationRef)) throw new Error("Matching owner review and separate publication authorization are required")
   const documents = Array.isArray(metadata.documents) ? metadata.documents : []
-  if (documents.length !== 4) throw new Error("Reviewed translated bundle is incomplete")
+  if (documents.length !== 4 || new Set(documents.map(value => { const doc = asRecord(value); return `${doc?.documentType}:${doc?.locale}` })).size !== 4) throw new Error("Reviewed translated bundle is incomplete")
   for (const value of documents) {
     const doc = asRecord(value), id = metadataId(doc?.id)
     if (!doc || !id) throw new Error("Reviewed legal document is missing")
     const stored = await input.payload.findByID({ collection: "legal-documents", id, depth: 0, overrideAccess: true })
-    if (stored.contentHash !== doc.contentHash || hashLegalContent(stored.content) !== stored.contentHash || stored.publishedAt !== metadata.publishedAt || stored.effectiveAt !== metadata.effectiveAt) throw new Error("Reviewed legal bytes changed")
+    const source = release.documents.find(source => source.documentType === doc.documentType && source.locale === doc.locale && source.documentVersion === doc.documentVersion)
+    if (!source || stored.documentType !== source.documentType || stored.locale !== source.locale || stored.documentVersion !== source.documentVersion ||
+        (stored.acceptanceVersion ?? null) !== (source.acceptanceVersion ?? null) || (doc.acceptanceVersion ?? null) !== (source.acceptanceVersion ?? null) ||
+        !isDeepStrictEqual(doc.statement, source.documentType === "platform-terms" ? getProductLegalStatement(source.statementVersion ?? "", source.locale) : null) ||
+        stored.content !== source.markdown || stored.contentHash !== source.contentHash || stored.contentHash !== doc.contentHash || hashLegalContent(stored.content) !== stored.contentHash || stored.publishedAt !== metadata.publishedAt || stored.effectiveAt !== metadata.effectiveAt) throw new Error("Reviewed legal bytes changed")
   }
   const existing = await oneEvent(input.payload, eventKey(release.releaseKey, "activated"))
   if (existing) {

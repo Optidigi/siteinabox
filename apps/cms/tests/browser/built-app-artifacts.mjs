@@ -53,7 +53,7 @@ export async function hashBuiltTree(directory) {
 
 export function buildEnvironmentFingerprint(environment) {
   const values = Object.entries(environment).filter(([name]) => /^(?:NEXT_PUBLIC_|PUBLIC_)/.test(name) ||
-    ["NODE_ENV", "CI", "SITE_URL", "PAYLOAD_DISABLE_JOBS_AUTORUN", "SITE_GENERATION_PROVIDER"].includes(name)).sort(([a], [b]) => a.localeCompare(b))
+    ["NODE_ENV", "CI", "SITE_URL", "SIAB_LEGAL_CONTENT_ROOT", "PAYLOAD_DISABLE_JOBS_AUTORUN", "SITE_GENERATION_PROVIDER"].includes(name)).sort(([a], [b]) => a.localeCompare(b))
   return createHash("sha256").update(JSON.stringify(values)).digest("hex")
 }
 

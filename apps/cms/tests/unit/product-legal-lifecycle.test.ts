@@ -74,6 +74,13 @@ describe("product legal lifecycle and consumers", () => {
     await expect(f.activate()).rejects.toThrow(/bytes changed/)
     expect(f.events).toHaveLength(1)
   })
+  it("refuses different acceptance decisions after partial registration", async () => {
+    const f = fixture(); await f.review()
+    f.events.length = 0 // Model document copies surviving a failed final anchor.
+    f.documents[0]!.acceptanceVersion = "different-unapproved-version"
+    await expect(f.review()).rejects.toThrow(/immutable/)
+    expect(f.events).toHaveLength(0)
+  })
   it("serves exact NL/EN checkout statements and only explicitly approved equivalent terms", async () => {
     const f = fixture(); await f.review(); await f.activate()
     for (const locale of ["nl", "en"] as const) {

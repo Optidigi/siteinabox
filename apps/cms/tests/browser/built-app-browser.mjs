@@ -32,6 +32,7 @@ execFileSync("openssl", ["version"], { stdio: "ignore", timeout: 5000 })
 execFileSync(process.execPath, ["--test", "tests/browser/built-app-harness.test.mjs", "tests/browser/built-app-options.test.mjs"], { cwd: cmsRoot, stdio: "inherit" })
 const worker = await createWorkerStorage(context.env, context.resource)
 const env = { ...worker.env, NODE_ENV: "production", PAYLOAD_DB_PUSH: "false", NEXT_TELEMETRY_DISABLED: "1", ASTRO_TELEMETRY_DISABLED: "1",
+  SIAB_LEGAL_CONTENT_ROOT: path.join(repositoryRoot, "packages/legal-content"),
   SIAB_RENDERER_API_TOKEN: "siab-test-browser-renderer-" + randomBytes(16).toString("hex"),
   SIAB_RENDERER_ORIGIN_SECRET: "siab-test-browser-origin-" + randomBytes(16).toString("hex"),
   CLOUDFLARE_ACCOUNT_ID: "0".repeat(32), CLOUDFLARE_EMAIL_API_TOKEN: "siab-test-mail-" + randomBytes(16).toString("hex"),

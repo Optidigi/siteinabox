@@ -133,6 +133,7 @@ test("build reuse binds public/CI settings while worker storage stays runtime-ow
   const fingerprint = buildEnvironmentFingerprint(settings)
   assert.notEqual(buildEnvironmentFingerprint({ ...settings, NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: "other.test" }), fingerprint)
   assert.notEqual(buildEnvironmentFingerprint({ ...settings, CI: "false" }), fingerprint)
+  assert.notEqual(buildEnvironmentFingerprint({ ...settings, SIAB_LEGAL_CONTENT_ROOT: "/different/legal/source" }), fingerprint)
   assert.equal(buildEnvironmentFingerprint({ ...settings, DATA_DIR: "/different/owned/worker" }), fingerprint)
 })
 

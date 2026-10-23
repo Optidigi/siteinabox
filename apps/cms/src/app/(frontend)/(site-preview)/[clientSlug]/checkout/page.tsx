@@ -289,7 +289,7 @@ export default async function PreviewCheckoutPage({
         legalLocale={legalLocale}
         termsContentHash={terms.contentHash}
         privacyContentHash={privacy.contentHash}
-        termsStatement={legal.product ? legal.statement.text : undefined}
+        termsStatement={legal.statement.text}
         termsVersion={terms.documentVersion}
         privacyVersion={privacy.documentVersion}
         locale={locale}

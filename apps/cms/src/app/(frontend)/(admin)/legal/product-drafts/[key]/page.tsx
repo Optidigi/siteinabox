@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getProductLegalRelease } from "@siteinabox/legal-content/product"
+import { getProductLegalRelease, productLegalReleases } from "@siteinabox/legal-content/product"
 import { requireRole } from "@/lib/authGate"
 import { getPayload } from "payload"
 import config from "@/payload.config"
@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic"
 export default async function ProductDraftPage({ params }: { params: Promise<{ key: string }> }) {
   await requireRole(["super-admin"])
   const { key } = await params
-  let release
-  try { release = getProductLegalRelease(key) } catch { notFound() }
+  if (!productLegalReleases.some(release => release.releaseKey === key)) notFound()
+  const release = getProductLegalRelease(key)
   const { state } = await productLegalGovernance(await getPayload({ config }), key)
   const blocked = release.draftBlockers.length > 0
   return <main className="space-y-6">
