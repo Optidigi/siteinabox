@@ -7,7 +7,7 @@ import { request } from "node:http"
 import { once } from "node:events"
 import { setTimeout } from "node:timers/promises"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, createWorkerStorage, cleanupWorkerStorage,
-  applyCmsTestEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
+  applyCmsTestEnvironment, assertEmptyTestDatabase } from "../_helpers/cmsTestEnvironment.mjs"
 
 import { prepareBuiltCmsAssets, captureBuiltCmsIdentity } from "../browser/built-app-artifacts.mjs"
 
@@ -20,6 +20,16 @@ const database = new Client({ connectionString: context.resource.databaseUri, op
 const email = "built-action-negative@test.local"
 let server
 try {
+  await database.connect()
+  const schema = await database.query("SELECT to_regclass('public.users') AS users")
+  if (!schema.rows[0].users) {
+    // The independent browser CI job starts empty. Initialize only an admitted
+    // empty disposable DB; never reset an existing populated test schema here.
+    await assertEmptyTestDatabase(database)
+    execFileSync(process.execPath, ["--import", "tsx", "--import", new URL("../browser/built-app-runtime.mjs", import.meta.url).href,
+      "tests/security/prepare-invitation-database.ts"],
+    { stdio: "inherit", env: process.env, timeout: 180000 })
+  }
   execFileSync("pnpm", ["payload", "generate:importmap"], { stdio: "inherit", env: process.env })
   execFileSync("pnpm", ["build"], { stdio: "inherit", env: process.env })
   await prepareBuiltCmsAssets()
@@ -28,7 +38,6 @@ try {
   const actions = Object.entries({ ...manifest.node, ...manifest.edge })
     .filter(([, entry]) => entry.filename?.endsWith("/lib/actions/inviteUser.ts"))
   assert.deepEqual(actions.map(([, entry]) => entry.exportedName).sort(), ["inviteUser", "resendUserInvitation"])
-  await database.connect()
   const count = async () => (await database.query("SELECT (SELECT count(*) FROM users WHERE email = $1)::int AS users, (SELECT count(*) FROM mail_logs WHERE recipient = $1)::int AS mail", [email])).rows[0]
   const before = await count()
   const listener = createServer()

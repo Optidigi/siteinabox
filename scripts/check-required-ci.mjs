@@ -22,6 +22,18 @@ export function assertRequiredCiWorkflow(source, jobs) {
       !block.includes("CI_JOB_RESULTS: ${{ toJSON(needs) }}")) {
     throw new Error("required-ci must check authentic dependency results")
   }
+  if (jobs.includes("cms-browser")) {
+    for (const job of ["cms-test", "cms-browser"]) {
+      const owned = source.match(new RegExp("^  " + job + ":\\s*\\n([\\s\\S]*?)(?=^  [\\w-]+:\\s*$|(?![\\s\\S]))", "m"))?.[1]
+      if (!owned || /^    (?:if:|needs:)/m.test(owned) ||
+          !owned.includes("    services:\n      postgres:") ||
+          !owned.includes('PAYLOAD_DISABLE_JOBS_AUTORUN: "1"') || !owned.includes("SITE_GENERATION_PROVIDER: mock") ||
+          !owned.includes('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"') ||
+          !owned.includes("pnpm --dir apps/cms exec playwright install --with-deps chromium")) {
+        throw new Error("Parallel CMS jobs require independent owned PostgreSQL, guard settings and actual prerequisites: " + job)
+      }
+    }
+  }
 }
 
 export function assertRequiredCiResults(results, jobs) {

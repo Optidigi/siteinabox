@@ -12,22 +12,23 @@ import { setTimeout as delay } from "node:timers/promises"
 import { chromium } from "playwright"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, assertCmsTestPrerequisites, createWorkerStorage,
   cleanupWorkerStorage, applyCmsTestEnvironment, readEffectiveTestEnvironment, assertDisposableCmsEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
-import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
+import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, assertDiagnosticBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
 import { runPrivateWorkspaceJourney } from "./built-private-workspace.mjs"
 import { runVerifiedCustomerJourney } from "./built-customer-journey.mjs"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
 import { cookieCredentials } from "./built-app-credentials.mjs"
+import { builtBrowserOptions } from "./built-app-options.mjs"
 
-const args = process.argv.slice(2)
-assert(args.length === 0 || args.length === 1 && args[0] === "--reuse-built", "Usage: test:built-browser [--reuse-built]")
-const reuse = args.length === 1
+const { reuse, scenario, qualification } = builtBrowserOptions(process.argv.slice(2))
+const focused = qualification === "diagnostic"
+const startedAt = performance.now()
 const context = await loadCmsTestEnvironment({ ...process.env, NODE_ENV: "production" })
 await assertDatabaseOwnership(context.env, context.resource)
 await assertCmsTestPrerequisites(context.env)
 assert.equal(process.versions.node, (await readFile(path.join(repositoryRoot, ".nvmrc"), "utf8")).trim(), "Pinned Node is required")
 execFileSync("python3", ["--version"], { stdio: "ignore", timeout: 5000 })
 execFileSync("openssl", ["version"], { stdio: "ignore", timeout: 5000 })
-execFileSync(process.execPath, ["--test", "tests/browser/built-app-harness.test.mjs"], { cwd: cmsRoot, stdio: "inherit" })
+execFileSync(process.execPath, ["--test", "tests/browser/built-app-harness.test.mjs", "tests/browser/built-app-options.test.mjs"], { cwd: cmsRoot, stdio: "inherit" })
 const worker = await createWorkerStorage(context.env, context.resource)
 const env = { ...worker.env, NODE_ENV: "production", PAYLOAD_DB_PUSH: "false", NEXT_TELEMETRY_DISABLED: "1", ASTRO_TELEMETRY_DISABLED: "1",
   SIAB_RENDERER_API_TOKEN: "siab-test-browser-renderer-" + randomBytes(16).toString("hex"),
@@ -137,7 +138,8 @@ try {
     assert.equal(receipt.userAndMailCountsUnchanged, true)
     assert.equal(receipt.transportGuardVerified, true)
     assert.equal(receipt.providerOperationsAttempted, 0)
-    identity = await assertBuiltCmsIdentity(receipt.buildIdentity)
+    identity = focused ? receipt.buildIdentity : await assertBuiltCmsIdentity(receipt.buildIdentity)
+    if (focused) await assertDiagnosticBuiltCmsIdentity(identity)
   }
   runGuardedScript("tests/browser/built-app-fixture.ts")
   fixture = JSON.parse(await readFile(path.join(env.DATA_DIR, "browser-fixture.json"), "utf8")); secrets.add(fixture.password)
@@ -149,8 +151,10 @@ try {
   const rendererBuildEnv = await readEffectiveTestEnvironment(env, rendererRoot)
   assertDisposableCmsEnvironment(rendererBuildEnv, context.resource)
   rendererSettings = buildEnvironmentFingerprint(rendererBuildEnv)
-  execFileSync("pnpm", ["build"], { cwd: rendererRoot, env: rendererBuildEnv, stdio: "inherit", timeout: 300000 })
-  rendererHash = await hashBuiltTree(path.join(rendererRoot, "dist"))
+  if (!focused) {
+    execFileSync("pnpm", ["build"], { cwd: rendererRoot, env: rendererBuildEnv, stdio: "inherit", timeout: 300000 })
+    rendererHash = await hashBuiltTree(path.join(rendererRoot, "dist"))
+  }
   const { Client } = createRequire(import.meta.url)("pg")
   database = new Client({ connectionString: context.resource.databaseUri, options: "-c default_transaction_read_only=on", connectionTimeoutMillis: 5000, query_timeout: 5000 })
   await database.connect()
@@ -164,9 +168,10 @@ try {
   const cmsEnv = { ...env, HOSTNAME: "127.0.0.1", PORT: String(cmsPort) }
   const rendererEnv = { ...rendererBuildEnv, HOST: "127.0.0.1", PORT: String(rendererPort), SIAB_CMS_URL: "http://127.0.0.1:" + bridgePort, SIAB_RENDERER_FIXTURE_MODE: "" }
   cms = start(cmsEntry, cmsRoot, cmsEnv, "cms")
-  renderer = start(path.join(rendererRoot, "dist/server/entry.mjs"), rendererRoot, rendererEnv, "renderer")
-  await ready(cms, cmsPort, "/api/health", 200); await ready(renderer, rendererPort, "/", 404)
-  verify("actual built CMS and production renderer became ready")
+  if (!focused) renderer = start(path.join(rendererRoot, "dist/server/entry.mjs"), rendererRoot, rendererEnv, "renderer")
+  await ready(cms, cmsPort, "/api/health", 200)
+  if (!focused) await ready(renderer, rendererPort, "/", 404)
+  verify(focused ? "actual built CMS became ready for workspace diagnosis" : "actual built CMS and production renderer became ready")
   // Production's CMS URL has platform authority. Model that internal hop on
   // loopback without DNS/CA/global environment changes or injected API auth.
   cmsBridge = createHttpServer((incoming, outgoing) => {
@@ -177,8 +182,10 @@ try {
   assert.equal((await http(bridgePort, "/api/renderer/snapshot?host=" + fixture.tenants[0].domain)).status, 401)
 
   assert.equal((await http(cmsPort, "/api/renderer/snapshot?host=" + fixture.tenants[0].domain, { host: cmsHost })).status, 401)
+  if (!focused) {
   assert.equal((await http(rendererPort, "/", { host: fixture.tenants[0].domain, "x-forwarded-proto": "https" })).status, 404)
   verify("snapshot bearer and direct-origin protections deny anonymous access")
+  }
   // A loopback-only TLS/edge double preserves the real production HTTPS
   // authority and origin guards. It forwards actual app responses unchanged.
   const keyFile = path.join(env.DATA_DIR, "edge-key.pem"), certFile = path.join(env.DATA_DIR, "edge-cert.pem")
@@ -189,7 +196,7 @@ try {
     const host = incoming.headers.host
     const isCms = host === cmsHost
     const isPublic = host === fixture.tenants[0].domain + ":" + edgePort
-    if ((!isCms && !isPublic) || !incoming.url.startsWith("/")) { outgoing.writeHead(404); outgoing.end(); return }
+    if ((!isCms && (!isPublic || focused)) || !incoming.url.startsWith("/")) { outgoing.writeHead(404); outgoing.end(); return }
     forwardApplication(incoming, outgoing, isCms ? cmsPort : rendererPort, isCms ? cmsHost : host,
       isPublic ? env.SIAB_RENDERER_ORIGIN_SECRET : undefined)
   })
@@ -214,11 +221,27 @@ try {
     await current.tracing.start({ screenshots: true, snapshots: true, sources: false })
     browserContexts.push({ context: current, name }); return current
   }
+  const ownedPath = "/pages/" + fixture.pages[0].id
+  async function login(page, person = fixture.owners[0], target = ownedPath) {
+    const loginResponse = await page.goto(cmsOrigin + "/login?next=" + encodeURIComponent(target))
+    assert.equal((await loginResponse.serverAddr()).ipAddress, "127.0.0.1", "Credentials must stay on the owned loopback gateway")
+    await page.getByRole("button", { name: /password|wachtwoord/i }).click()
+    await page.locator('input[name="email"]').fill(person.email)
+    await page.locator('input[name="password"]').fill(fixture.password)
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === "/api/users/login" && r.request().method() === "POST")
+    await page.locator('form').filter({ has: page.locator('input[name="password"]') }).locator('button[type="submit"]').click()
+    assert.equal((await response).status(), 200)
+    await page.waitForURL(url => url.pathname === target)
+    if (target === ownedPath && person.role !== "viewer") await page.locator('input[name="title"]').first().waitFor({ state: "visible" })
+    await rememberCookies(page.context())
+  }
+  if (focused) {
+    await runPrivateWorkspaceJourney({ newContext, login, cmsOrigin, cmsRoot, fixture, database, api, verify, output })
+  } else {
   const anonymous = await newContext("anonymous"), owner = await newContext("owner"), stolen = await newContext("revoked-session")
   const publicContext = await newContext("published-renderer")
   const guestPage = await anonymous.newPage(), ownerPage = await owner.newPage(), stolenPage = await stolen.newPage(), publicPage = await publicContext.newPage()
   for (const page of [guestPage, ownerPage, stolenPage, publicPage]) page.setDefaultTimeout(20000)
-  const ownedPath = "/pages/" + fixture.pages[0].id
   await guestPage.goto(cmsOrigin + ownedPath)
   assert.equal(new URL(guestPage.url()).pathname, "/login")
   const denialBody = { tenantId: fixture.tenants[0].id, publish: true, page: { id: fixture.pages[0].id, data: { title: "forged", slug: "index", status: "published", blocks: [] } } }
@@ -241,19 +264,6 @@ try {
   const fontPreloads = await guestPage.locator('link[rel="preload"][as="font"]').evaluateAll(links => links.map(link => new URL(link.href).pathname).sort())
   assert.deepEqual(fontPreloads, cmsFonts.assets.filter(asset => asset.preload).map(asset => "/fonts/cms/" + asset.file).sort())
   verify("CMS typography serves original licensed local font bytes with preserved preloads and immutable caches")
-  async function login(page, person = fixture.owners[0], target = ownedPath) {
-    const loginResponse = await page.goto(cmsOrigin + "/login?next=" + encodeURIComponent(target))
-    assert.equal((await loginResponse.serverAddr()).ipAddress, "127.0.0.1", "Credentials must stay on the owned loopback gateway")
-    await page.getByRole("button", { name: /password|wachtwoord/i }).click()
-    await page.locator('input[name="email"]').fill(person.email)
-    await page.locator('input[name="password"]').fill(fixture.password)
-    const response = page.waitForResponse(r => new URL(r.url()).pathname === "/api/users/login" && r.request().method() === "POST")
-    await page.locator('form').filter({ has: page.locator('input[name="password"]') }).locator('button[type="submit"]').click()
-    assert.equal((await response).status(), 200)
-    await page.waitForURL(url => url.pathname === target)
-    if (target === ownedPath && person.role !== "viewer") await page.locator('input[name="title"]').first().waitFor({ state: "visible" })
-    await rememberCookies(page.context())
-  }
   await login(ownerPage); await login(stolenPage)
   verify("two genuine password logins establish real Payload sessions")
   const marker = "M13 saved " + randomUUID().slice(0, 8)
@@ -374,6 +384,7 @@ try {
   assert.equal((await api(rolePages.get("super-admin"), "/api/customer-accounts/" + customerJourney.accountId,
     { revokedAt: new Date().toISOString() }, "PATCH")).status, 200)
   await customerJourney.assertRevoked()
+  }
 } catch (error) {
   failure = error
   for (const item of browserContexts) {
@@ -401,6 +412,12 @@ try {
   for (const owned of processes) {
     try { await stop(owned) } catch (error) { failure ??= error }
   }
+  try {
+    if (identity) {
+      if (focused && reuse) await assertDiagnosticBuiltCmsIdentity(identity)
+      else await assertBuiltCmsIdentity(identity, !reuse)
+    }
+  } catch (error) { failure ??= error }
   for (const owned of processes) {
     try { await writeFile(path.join(output, owned.role + ".log"), redact(owned.log), { mode: 0o600 }) }
     catch (error) { failure ??= error }
@@ -426,16 +443,17 @@ try {
   try { await cleanupWorkerStorage(worker) } catch (error) { failure ??= error }
   // Evidence failures must not interrupt teardown, and a passing receipt must
   // include successful shutdown/owned-storage cleanup in its final verdict.
-  try { await writeFile(path.join(output, "summary.json"), JSON.stringify({ sourceSHA: identity?.sourceSHA,
-    sourceDirty: identity?.sourceDirty, cmsBuild: identity, rendererArtifactSha256: rendererHash, rendererBuildSettingsSha256: rendererSettings, edgeCertificatePin: certificatePin,
+  try { await writeFile(path.join(output, "summary.json"), JSON.stringify({ scenario, qualification, elapsedMs: Math.round(performance.now() - startedAt), sourceSHA: identity?.sourceSHA,
+    sourceDirty: identity?.sourceDirty, diagnosticDriverSource: focused ? { sourceSHA: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim(), sourceDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: repositoryRoot, encoding: "utf8" }).trim()) } : null, cmsBuild: identity, rendererArtifactSha256: rendererHash, rendererBuildSettingsSha256: rendererSettings, edgeCertificatePin: certificatePin,
     providerAudit, verificationRunId: process.env.GITHUB_RUN_ID ?? null, verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     environment: { node: process.versions.node, mode: "production", database: new URL(env.DATABASE_URI).pathname.slice(1),
       ownershipVerified: true, jobsAutorun: false, ai: "mock", providers: "deny external operations",
       mail: "explicit synthetic captured transport", rendererFixtureMode: false },
     browser: browser?.version(), assertions, blockedBrowserReads, status: failure ? "failed" : "passed",
     error: failure ? redact(failure.stack ?? String(failure)) : null,
-    limitations: "Built local application/session/persistence/renderer proof; not live provider, production, release or visual regression clearance" }, null, 2) + "\n", { mode: 0o600 }) }
+    limitations: focused ? "Workspace/settings diagnostic only; excludes renderer, full session/restart, release and provider qualification" :
+      "Built local application/session/persistence/renderer proof; not live provider, production, release or visual regression clearance" }, null, 2) + "\n", { mode: 0o600 }) }
   catch (error) { failure ??= error }
 }
 if (failure) { console.error(redact(failure.stack ?? String(failure))); process.exitCode = 1 }
-else console.log("Real built CMS/browser/renderer journey passed: " + assertions.length + " boundary assertions; redacted evidence in " + path.relative(cmsRoot, output))
+else console.log((focused ? "Diagnostic workspace/settings journey passed: " : "Real built CMS/browser/renderer journey passed: ") + assertions.length + " boundary assertions; redacted evidence in " + path.relative(cmsRoot, output))

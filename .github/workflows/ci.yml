@@ -82,6 +82,15 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Responsive canvas contract
+        run: pnpm --dir apps/cms check:responsive
+      - name: Frontend boundary contract
+        run: pnpm --dir apps/cms lint:ui-boundary
+      - name: Frontend composition contract
+        run: pnpm --dir apps/cms lint:ui-composition
+      - name: Lint (no-css)
+        run: pnpm --dir apps/cms lint:no-css
+
       - name: Generate Payload types
         run: |
           pnpm --dir apps/cms payload generate:types
@@ -93,16 +102,57 @@ jobs:
         run: pnpm --dir apps/cms payload:contract
       - name: Type check
         run: pnpm --dir apps/cms typecheck
-      - name: Responsive canvas contract
-        run: pnpm --dir apps/cms check:responsive
-      - name: Frontend boundary contract
-        run: pnpm --dir apps/cms lint:ui-boundary
-      - name: Frontend composition contract
-        run: pnpm --dir apps/cms lint:ui-composition
-      - name: Lint (no-css)
-        run: pnpm --dir apps/cms lint:no-css
 
   cms-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_USER: payload
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      PAYLOAD_SECRET: siab-test-ci-synthetic-secret
+      DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
+      PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
+      SITE_GENERATION_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install authoritative DNS validation tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends bind9-utils
+      - name: Authorize only the fresh CI PostgreSQL resource
+        run: |
+          node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"
+          echo "SIAB_TEST_RESOURCE_FILE=$RUNNER_TEMP/siab-test-cms/resource.json" >> "$GITHUB_ENV"
+      - name: Install CMS verification prerequisite browser
+        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
+      - name: Generate Payload types
+        run: |
+          pnpm --dir apps/cms payload generate:types
+      - name: Commerce failure rehearsals and staged release gate
+        run: pnpm --dir apps/cms check:commerce-release
+      - name: Run vitest (unit + integration)
+        run: pnpm --dir apps/cms test
+
+  cms-browser:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -146,10 +196,6 @@ jobs:
       - name: Generate Payload types
         run: |
           pnpm --dir apps/cms payload generate:types
-      - name: Commerce failure rehearsals and staged release gate
-        run: pnpm --dir apps/cms check:commerce-release
-      - name: Run vitest (unit + integration)
-        run: pnpm --dir apps/cms test
       - name: Verify actual built invitation action boundaries
         run: pnpm --dir apps/cms test:invitation-actions
       - name: Retain built invitation action evidence
@@ -266,7 +312,7 @@ jobs:
 
   required-ci:
     if: ${{ always() }}
-    needs: [package-quality, cms-quality, cms-test, site, renderer, image-verification]
+    needs: [package-quality, cms-quality, cms-test, cms-browser, site, renderer, image-verification]
     runs-on: ubuntu-latest
     env:
       CI_JOB_RESULTS: ${{ toJSON(needs) }}

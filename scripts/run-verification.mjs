@@ -1,5 +1,5 @@
-import { access, readFile } from "node:fs/promises"
-import { spawnSync } from "node:child_process"
+import { access, readFile, mkdir, writeFile } from "node:fs/promises"
+import { spawnSync, execFileSync } from "node:child_process"
 import { resolve } from "node:path"
 
 import { indentation, stripYamlComment } from "./workflow-path-parser.mjs"
@@ -10,6 +10,7 @@ const matrix = JSON.parse(await readFile(matrixPath, "utf8"))
 const rootPackage = JSON.parse(await readFile(resolve(repoRoot, "package.json"), "utf8"))
 const ciSource = await readFile(resolve(repoRoot, ".github/workflows/ci.yml"), "utf8")
 const requestedProfile = process.argv[2]
+const requestedProfiles = requestedProfile?.split(",") ?? []
 
 function fail(message) {
   throw new Error("Verification matrix invalid: " + message)
@@ -269,21 +270,35 @@ if (requestedProfile === "--check") {
   process.exit(0)
 }
 
-if (!requestedProfile || !matrix.profiles[requestedProfile]) {
+if (!requestedProfile || requestedProfiles.some(profile => !matrix.profiles[profile])) {
   throw new Error("Usage: node scripts/run-verification.mjs <" + Object.keys(matrix.profiles).join("|") + ">")
 }
 
+let source = { sourceSHA: null, sourceDirty: null }
+try {
+  source = { sourceSHA: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(),
+    sourceDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim()) }
+} catch { /* Temporary CLI contract fixtures may not be Git repositories. */ }
+const report = { ...source, qualification: "local-profile-only", profiles: requestedProfiles, startedAt: new Date().toISOString(), checks: [] }
+const startedAt = performance.now()
+async function retainReport() {
+  await mkdir(resolve(repoRoot, "artifacts"), { recursive: true })
+  await writeFile(resolve(repoRoot, "artifacts/verification.json"), JSON.stringify({ ...report, elapsedMs: Math.round(performance.now() - startedAt) }, null, 2) + "\n")
+}
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
-for (const id of matrix.profiles[requestedProfile]) {
+for (const id of new Set(requestedProfiles.flatMap(profile => matrix.profiles[profile]))) {
   const check = checks.get(id)
   console.log("\n[verification:" + requestedProfile + "] " + check.id + ": " + check.command)
   const env = { ...process.env, ...(matrix.profileEnv?.[requestedProfile] ?? {}), ...(check.env ?? {}) }
   const [command, ...args] = check.run
+  const checkStartedAt = performance.now()
   const result = spawnSync(command === "pnpm" ? pnpm : command, args, {
     cwd: repoRoot,
     env,
     stdio: "inherit",
   })
+  report.checks.push({ id, command: check.command, elapsedMs: Math.round(performance.now() - checkStartedAt), status: result.status ?? 1 })
+  await retainReport()
   if (result.error) throw result.error
   if (result.status !== 0) process.exit(result.status ?? 1)
 }

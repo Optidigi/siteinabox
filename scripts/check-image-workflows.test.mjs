@@ -10,5 +10,10 @@ test("automatic image verification cannot log in, publish, or export a registry 
     "run: docker push example", "cache-to: type=registry,ref=example", "run: node scripts/publish-image.mjs"]) {
     assert.throws(() => assertVerificationWorkflow(source + "\n" + unsafe, "cms"))
   }
-  assert.throws(() => assertVerificationWorkflow(source.replace("  pull_request:", "  pull_request_target:"), "cms"))
+  assert.throws(() => assertVerificationWorkflow(source.replace("  push:", "  pull_request:\n  push:"), "cms"))
+})
+
+test("archive workflows reject untrusted PR-target triggers", () => {
+  const source = readFileSync(new URL("../.github/workflows/build-cms-image.yml", import.meta.url), "utf8")
+  assert.throws(() => assertVerificationWorkflow(source.replace("  push:", "  pull_request_target:\n  push:"), "cms"))
 })

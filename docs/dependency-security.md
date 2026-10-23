@@ -43,6 +43,21 @@ expiry; they cannot override an advisory blocker.
 
 ## Identity and freshness
 
+The workflow-efficiency refresh retains the October 28 expiry, every advisory and
+all five blocked native assessments. The changed Alpine main feed adds Node
+24.22.1-r0 security entries and CVE-2026-111497 under its unresolved zero entry.
+The existing blocked Node patch qualification now records these vendor facts;
+upstream release metadata does not prove applicability or remediation of official
+image binaries. No runtime pin or release decision changes. Final candidate raw
+inventories remain required; comparison/receipt tools do not grant clearance.
+Current canonical reports retain the same 208 identities/severities/paths and all
+five native fingerprints; refreshed references/vendor-severity provenance update
+100 facts hashes. The feed also records Brotli 1.2.1-r0 for CVE-2026-111497:
+retained PostgreSQL/landing inventories ship brotli-libs 1.2.0-r1, while current
+scanner reports omit that entry. An explicit unresolved deferral and both blocked
+native reasons retain this gap. Tomcat-native feed additions are absent from the
+retained application/infrastructure inventories. No expiry or blocker is waived.
+
 Graph identity covers all tracked workspace manifests, both lockfile documents
 and workspace policy. Configuration identity covers tracked application/package,
 build, workflow, infrastructure and checker inputs. The review file itself is

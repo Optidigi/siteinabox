@@ -75,6 +75,10 @@ Practical stopping rules:
 
 ## Flow
 
+For command selection, focused browser diagnosis, incremental review and evidence
+reuse, follow [fast feedback](runbooks/fast-feedback.md). A milestone is a delivery
+goal; separate independent maintenance instead of growing one diagnostic loop.
+
 1. Record branch, exact SHA, and dirty state; protect unrelated work.
 2. Read the applicable current sources and identify owners, callers, data flow,
    contracts, tests, and release path.
