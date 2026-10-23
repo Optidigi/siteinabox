@@ -43,6 +43,17 @@ expiry; they cannot override an advisory blocker.
 
 ## Identity and freshness
 
+The October 23 cohesion refresh reconciles the withdrawn braces advisory:
+GitHub records withdrawal at 12:53:02 UTC and fresh full/production npm audits
+now omit it. Its two current dispositions are removed only after that agreement;
+Git history and the retained publisher fact preserve the earlier evidence. One
+source finding, seven blocked deferrals, 208 image dispositions and five blocked
+native assessments remain, with the original October 28 expiry. New Alpine
+libraw/libde265/nsd entries are absent from the retained OS package inventories;
+bundled/native qualification and final-candidate image checks remain blocked and
+mandatory respectively. No ignore, waiver, dependency upgrade or expiry extension
+is introduced.
+
 The workflow-efficiency refresh retains the October 28 expiry, every advisory and
 all five blocked native assessments. The changed Alpine main feed adds Node
 24.22.1-r0 security entries and CVE-2026-111497 under its unresolved zero entry.

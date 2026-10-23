@@ -28,7 +28,7 @@ function run({ settings = baseline, retention = { retention_months: 12, retained
       };`)
     const result = spawnSync(process.execPath, ["--import", preload, script, ...args], {
       encoding: "utf8", timeout: 5000,
-      env: { PATH: process.env.PATH, POSTHOG_HOST: "https://posthog.test", POSTHOG_PROJECT_ID: "193842",
+      env: { POSTHOG_HOST: "https://posthog.test", POSTHOG_PROJECT_ID: "193842",
         POSTHOG_PERSONAL_API_KEY: "synthetic-private-key", ...(organization ? { POSTHOG_ORGANIZATION_ID: "owned-org" } : {}) },
     })
     if (result.error) throw result.error

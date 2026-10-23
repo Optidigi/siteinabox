@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M16 workspace engineering and independent Standards/Spec review; no release waiver",
   "graphHash": "e0b8ebbad81d7856b7f7b566e188489488f03a4d8bb9b03b2da3810021b38133",
-  "configurationHash": "71e19f594e160d2a2d1392ad58a944b622cea3a2668171738fd8efc6f1a0bfe6",
+  "configurationHash": "1d1cc22b58a3a3bd03503525e69eb8398b123ba69c4ec5cafe4f15415d51d029",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -82,14 +82,14 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/main.json",
       "selected": false,
-      "sha256": "78b63ecf2c06c3aa7eb8b23eef092b210f8cbd1113f661c839f40a396f706cf0"
+      "sha256": "0597231a9ee2066187b7e28ca99d6f8c1b37bf7bccfafcbeba3080f4ed078b82"
     },
     {
       "id": "alpine-community",
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/community.json",
       "selected": false,
-      "sha256": "5d5de8c84f1f865f4919008a8e919888131d051f6533311572aa93bf2b9f1fcf"
+      "sha256": "73d8519b58b43a6a0907af953231f7ad87ef51067631db4229902a7bee41fc4f"
     },
     {
       "id": "go-advisory-index",
@@ -963,44 +963,6 @@
         "GHSA-rj75-hqrm-r3gf"
       ],
       "reason": "Confirmed Tailwind typography build dependency selector-parser 6.0.10. CSS inputs are source-owned and tenant content remains structured; an affected deployment condition is not established. The parent still owns a 6.x contract; a 7.x migration requires compatibility qualification. This remains a release blocker."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-vfj7-8cjw-p6xm",
-      "package": "braces",
-      "version": "3.0.3",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@payloadcms/next>sass>chokidar>braces",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>sass>chokidar>braces"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed source/graph/publisher facts, or review expiry",
-      "sources": [
-        "GHSA-vfj7-8cjw-p6xm"
-      ],
-      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. GitHub withdrew this advisory at 2026-10-23T12:53:02Z; current npm full/production audits still report it. Retain the scanner finding and release blocker until fresh audit and primary-source evidence reconcile; the withdrawal is recorded without a suppression, applicability claim or risk waiver."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-vfj7-8cjw-p6xm",
-      "package": "braces",
-      "version": "3.0.3",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@payloadcms/next>sass>chokidar>braces",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>sass>chokidar>braces"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed source/graph/publisher facts, or review expiry",
-      "sources": [
-        "GHSA-vfj7-8cjw-p6xm"
-      ],
-      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. GitHub withdrew this advisory at 2026-10-23T12:53:02Z; current npm full/production audits still report it. Retain the scanner finding and release blocker until fresh audit and primary-source evidence reconcile; the withdrawal is recorded without a suppression, applicability claim or risk waiver."
     }
   ],
   "imageAdvisories": [

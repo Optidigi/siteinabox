@@ -94,8 +94,8 @@ not deletion. Enforcement remains unknown when not exposed; a passing check veri
 mutable settings and the accepted provider window, not provider-enforced deletion
 or the 13-month enforced governance target. SIAB-002 remains an accepted external
 constraint. Retention fields never enter PATCH; no plan/configuration change is
-performed by --check. Requests time out after15seconds, and the scheduled job is
-bounded to5minutes. Do not substitute session-recording retention for event history.
+performed by --check. Requests time out after 15 seconds, and the scheduled job is
+bounded to 5 minutes. Do not substitute session-recording retention for event history.
 
 Run with `--dry-run` to inspect the PATCH payload.
 
@@ -103,6 +103,13 @@ Run with `--dry-run` to inspect the PATCH payload.
 
 This section is external-state evidence, not an executable repository fact.
 Re-run the read-only check before relying on it.
+
+On 2026-10-23, read-only [workflow verification](https://github.com/Optidigi/siteinabox/actions/runs/40020252173)
+found legacy retention fields absent and the supported events-retention endpoint
+returned no active window. Mutable privacy settings matched. The accepted finite
+ceiling therefore remains unverified; the audit correctly fails closed. This
+does not establish the lifetime of stored data or deletion enforcement. No
+provider configuration was changed. The dated evidence below remains historical.
 
 PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
 (`193842`) is configured with:

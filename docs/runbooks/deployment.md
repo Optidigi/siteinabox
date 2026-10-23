@@ -211,10 +211,12 @@ pnpm --dir apps/cms posthog:check-settings
 
 The sync enforces IP anonymization, disables project-level browser autocapture,
 console capture, session recording, heatmaps and dead-click capture, and audits
-the 13-month event-retention target. PostHog exposes a plan-managed read-only event query window, so the command cannot enforce deletion. The daily
+the 13-month event-retention target. PostHog exposes a plan-managed read-only
+event query window, so the command cannot enforce deletion. The daily
 `.github/workflows/posthog-privacy-audit.yml` check fails on mutable privacy
-drift or retention above the SIAB-002 accepted 84-month ceiling, or when the window is missing, unbounded or unverifiable. It otherwise logs the
-governance gap. The 12-month legacy readback was historical evidence from August7,
+drift or retention above the SIAB-002 accepted 84-month ceiling, or when the
+window is missing, unbounded or unverifiable. It otherwise logs the governance
+gap. The 12-month legacy readback was historical evidence from August 7,
 not a current fallback; see SIAB-002 and the PostHog runbook.
 
 Keep Payload job autorun enabled in the long-lived CMS process. Setting
