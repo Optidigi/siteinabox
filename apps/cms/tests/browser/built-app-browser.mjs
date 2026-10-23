@@ -12,7 +12,7 @@ import { setTimeout as delay } from "node:timers/promises"
 import { chromium } from "playwright"
 import { loadCmsTestEnvironment, assertDatabaseOwnership, assertCmsTestPrerequisites, createWorkerStorage,
   cleanupWorkerStorage, applyCmsTestEnvironment, readEffectiveTestEnvironment, assertDisposableCmsEnvironment } from "../_helpers/cmsTestEnvironment.mjs"
-import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, assertDiagnosticBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
+import { cmsRoot, cmsEntry, repositoryRoot, builtCmsTestEnvironment, hashBuiltTree, assertBuiltCmsIdentity, assertDiagnosticBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
 import { runPrivateWorkspaceJourney } from "./built-private-workspace.mjs"
 import { runVerifiedCustomerJourney } from "./built-customer-journey.mjs"
 import { runProductLegalJourney } from "./built-product-legal.mjs"
@@ -23,7 +23,7 @@ import { builtBrowserOptions } from "./built-app-options.mjs"
 const { reuse, scenario, qualification } = builtBrowserOptions(process.argv.slice(2))
 const focused = qualification === "diagnostic"
 const startedAt = performance.now()
-const context = await loadCmsTestEnvironment({ ...process.env, NODE_ENV: "production" })
+const context = await loadCmsTestEnvironment(builtCmsTestEnvironment())
 await assertDatabaseOwnership(context.env, context.resource)
 await assertCmsTestPrerequisites(context.env)
 assert.equal(process.versions.node, (await readFile(path.join(repositoryRoot, ".nvmrc"), "utf8")).trim(), "Pinned Node is required")
@@ -32,7 +32,6 @@ execFileSync("openssl", ["version"], { stdio: "ignore", timeout: 5000 })
 execFileSync(process.execPath, ["--test", "tests/browser/built-app-harness.test.mjs", "tests/browser/built-app-options.test.mjs"], { cwd: cmsRoot, stdio: "inherit" })
 const worker = await createWorkerStorage(context.env, context.resource)
 const env = { ...worker.env, NODE_ENV: "production", PAYLOAD_DB_PUSH: "false", NEXT_TELEMETRY_DISABLED: "1", ASTRO_TELEMETRY_DISABLED: "1",
-  SIAB_LEGAL_CONTENT_ROOT: path.join(repositoryRoot, "packages/legal-content"),
   SIAB_RENDERER_API_TOKEN: "siab-test-browser-renderer-" + randomBytes(16).toString("hex"),
   SIAB_RENDERER_ORIGIN_SECRET: "siab-test-browser-origin-" + randomBytes(16).toString("hex"),
   CLOUDFLARE_ACCOUNT_ID: "0".repeat(32), CLOUDFLARE_EMAIL_API_TOKEN: "siab-test-mail-" + randomBytes(16).toString("hex"),

@@ -192,6 +192,12 @@ acceptance writes. All 52 focused checkout/service/action regressions pass;
 publication changes require fresh confirmation instead of silently substituting
 unseen terms. The later source changes no UI components or renderer code.
 
+The separately invoked invitation build and browser reuse stages share one owned
+legal-asset environment constructor. Ten focused harness/option tests pass,
+including matching producer/consumer fingerprints and rejection of a different
+legal root. This test-only correction changes no shipped runtime/helper bytes;
+final canonical CI must prove the actual two-step build/reuse sequence.
+
 All three source findings, seven blocked deferrals, 210 image findings and five
 blocked native assessments remain. All five inventories remain incomplete, and
 the original October 28 expiry is unchanged. Actual issuer/controller/provider

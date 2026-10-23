@@ -10,6 +10,11 @@ export const cmsRoot = path.resolve(import.meta.dirname, "../..")
 export const repositoryRoot = path.resolve(cmsRoot, "../..")
 export const standaloneRoot = path.join(cmsRoot, ".next/standalone")
 export const cmsEntry = path.join(standaloneRoot, "apps/cms/server.js")
+// Both standalone invitation verification and browser reuse load the same
+// owned legal assets, matching Docker's explicit runtime-root configuration.
+export function builtCmsTestEnvironment(environment = process.env) {
+  return { ...environment, NODE_ENV: "production", SIAB_LEGAL_CONTENT_ROOT: path.join(repositoryRoot, "packages/legal-content") }
+}
 const diagnosticDriverPaths = new Set(["apps/cms/tests/browser/built-app-browser.mjs",
   "apps/cms/tests/browser/built-private-workspace.mjs", "apps/cms/tests/browser/built-app-options.mjs"])
 

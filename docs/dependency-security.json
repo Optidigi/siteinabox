@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-23T23:20:23.759Z",
+  "reviewedAt": "2026-10-23T23:24:57.827Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M17 engineering evidence reconciliation (Codex; independent PR review; no legal approval or risk waiver)",
   "graphHash": "b7768b5ac48c193a776faeff313755cf38e608f8470a8c6b2644beb3b5f3716d",
-  "configurationHash": "9fd97ddce7c5e80713af2a2a8a5a6cb8fd840f3afb7c7b5a415ce558c7071953",
+  "configurationHash": "eb131251648677db26dbd1328712a05805d09883327765022c273597f31722a1",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
