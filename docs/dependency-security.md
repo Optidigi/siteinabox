@@ -47,26 +47,33 @@ The October 23 cohesion refresh reconciles the withdrawn braces advisory:
 GitHub records withdrawal at 12:53:02 UTC and fresh full/production npm audits
 now omit it. Its two current dispositions are removed only after that agreement;
 Git history and the retained publisher fact preserve the earlier evidence. One
-source finding, seven blocked deferrals, 208 image dispositions and five blocked
+source finding, seven blocked deferrals, 210 image dispositions and five blocked
 native assessments remain, with the original October 28 expiry. New Alpine
 libraw/libde265/nsd entries are absent from the retained OS package inventories;
 bundled/native qualification and final-candidate image checks remain blocked and
 mandatory respectively. No ignore, waiver, dependency upgrade or expiry extension
 is introduced.
 
-The workflow-efficiency refresh retains the October 28 expiry, every advisory and
-all five blocked native assessments. The changed Alpine main feed adds Node
+Final cohesion inventory retains all 208 prior identities/severities/paths,
+refreshes 103 reference/vendor-severity fact hashes and adds two high-severity
+CVE-2026-111497 rows for PostgreSQL/landing brotli-libs. This is the already
+recorded unresolved publisher issue, now enumerated by the scanner. Native
+fingerprints remain unchanged; all 210 rows and five native assessments remain
+release-blocking. Raw-report admission and the original expiry stay mandatory.
+
+The earlier workflow-efficiency refresh retained the October 28 expiry, every
+advisory and all five blocked native assessments. Its Alpine main feed added Node
 24.22.1-r0 security entries and CVE-2026-111497 under its unresolved zero entry.
 The existing blocked Node patch qualification now records these vendor facts;
 upstream release metadata does not prove applicability or remediation of official
 image binaries. No runtime pin or release decision changes. Final candidate raw
 inventories remain required; comparison/receipt tools do not grant clearance.
-Current canonical reports retain the same 208 identities/severities/paths and all
-five native fingerprints; refreshed references/vendor-severity provenance update
+That baseline retained the same 208 identities/severities/paths and all five
+native fingerprints; refreshed references/vendor-severity provenance updated
 100 facts hashes. The feed also records Brotli 1.2.1-r0 for CVE-2026-111497:
-retained PostgreSQL/landing inventories ship brotli-libs 1.2.0-r1, while current
-scanner reports omit that entry. An explicit unresolved deferral and both blocked
-native reasons retain this gap. Tomcat-native feed additions are absent from the
+retained PostgreSQL/landing inventories ship brotli-libs 1.2.0-r1, while those
+scanner reports omitted that entry. An explicit unresolved deferral and both
+blocked native reasons retained this gap. Tomcat-native feed additions were absent from the
 retained application/infrastructure inventories. No expiry or blocker is waived.
 
 Graph identity covers all tracked workspace manifests, both lockfile documents
