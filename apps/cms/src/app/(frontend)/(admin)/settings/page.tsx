@@ -37,7 +37,7 @@ export default async function TenantSettingsPage({
   const isOwner = user.role === "owner"
   const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers, managedDomains, billingAgreements] = await Promise.all([
     isOwner ? getOrCreateSiteSettings(ctx.tenant.id) : Promise.resolve(null),
-    isOwner ? payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id)) : Promise.resolve([]),
+    isOwner ? payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id, new Date(), resolveLocale(user.language))) : Promise.resolve([]),
     isOwner ? payloadPromise.then((payload) => getTenantLegalAcceptanceHistory(payload, ctx.tenant.id)) : Promise.resolve([]),
     searchParams,
     payloadPromise.then((payload) => findCommunicationPreference(payload, user.email)),

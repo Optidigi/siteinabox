@@ -1,11 +1,12 @@
 import type { Payload } from "payload"
 import type { LegalDocument, LegalNotificationDelivery, LegalRequirement, Tenant } from "@/payload-types"
 import { MailSendError, asMailLogPayload, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
-import { LEGAL_REACCEPTANCE_TEMPLATE_VERSION, legalContinuedUseNoticeTemplate, legalDirectNoticeTemplate, legalReacceptanceTemplate } from "@/lib/email/templates/legalReacceptance"
+import { LEGAL_REACCEPTANCE_TEMPLATE_VERSION, legalNotificationTemplateVersion, legalContinuedUseNoticeTemplate, legalDirectNoticeTemplate, legalReacceptanceTemplate } from "@/lib/email/templates/legalReacceptance"
 import { relationshipId } from "@/lib/relationshipId"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 import { asRecord } from "@/lib/record"
 import { platformCmsOrigin } from "@/lib/hostToTenant"
+import { isProductLegalKey, productDocumentPublication, productLegalHref } from "@/lib/legal/productLegal"
 
 type RequirementDoc = LegalRequirement & {
   tenant?: Tenant | number | null
@@ -23,7 +24,9 @@ const PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SIAB_SITE_URL ?? "https://www.si
 const relation = <T extends object>(value: unknown): T | null =>
   value && typeof value === "object" ? value as T : null
 const tenantAdminUrl = (_tenant: Tenant) => platformCmsOrigin()
-const documentUrl = (document: LegalDocument) => document.documentType === "platform-terms"
+const documentUrl = (document: LegalDocument) => isProductLegalKey(document.releaseKey)
+  ? productLegalHref(document.documentType, document.locale, document.documentVersion)
+  : document.documentType === "platform-terms"
   ? `${PUBLIC_SITE_URL}/juridisch/algemene-voorwaarden/${document.documentVersion}`
   : `${PUBLIC_SITE_URL}/juridisch/privacy-en-cookieverklaring/${document.documentVersion}`
 const retryAt = (now: Date, attemptCount: number) =>
@@ -55,7 +58,7 @@ export const dueFollowupKindForRequirement = (requirement: RequirementDoc, now: 
 }
 
 export const legalNotificationKey = (requirement: RequirementDoc, kind: NotificationKind = "initial") =>
-  `${requirement.requirementKey}:${kind}:${LEGAL_REACCEPTANCE_TEMPLATE_VERSION}`
+  `${requirement.requirementKey}:${kind}:${legalNotificationTemplateVersion(relation<LegalDocument>(requirement.document)?.locale ?? "nl")}`
 
 async function findDelivery(payload: Payload, notificationKey: string) {
   const result = await payload.find({
@@ -81,7 +84,7 @@ async function ensureDelivery(payload: Payload, requirement: RequirementDoc, now
         tenant: Number(relationshipId(requirement.tenant)),
         recipient: requirement.subjectEmail,
         kind,
-        templateVersion: LEGAL_REACCEPTANCE_TEMPLATE_VERSION,
+        templateVersion: legalNotificationTemplateVersion(relation<LegalDocument>(requirement.document)?.locale ?? "nl"),
         status: "queued",
         attemptCount: 0,
         nextAttemptAt: now.toISOString(),
@@ -208,6 +211,7 @@ export async function processLegalRequirementNotifications(input: {
       continue
     }
 
+    if (isProductLegalKey(document.releaseKey) && !await productDocumentPublication(input.payload, document, now)) { skipped += 1; continue }
     const initial = await ensureDelivery(input.payload, requirement, now, "initial")
     if (initial.status === "sent") {
       await markRequirementNotified(input.payload, requirement, String(initial.sentAt ?? now.toISOString()))
@@ -246,7 +250,9 @@ export async function processLegalRequirementNotifications(input: {
       continue
     }
 
+    if (delivery.templateVersion !== legalNotificationTemplateVersion(document.locale ?? "nl")) throw new Error("Frozen legal notification template is unavailable")
     const commonMessage = {
+      locale: document.locale === "en" ? "en" as const : "nl" as const,
       tenantName: String(tenant.name ?? tenant.domain),
       changeSummary: String(document.changeSummary ?? "De juridische informatie voor de Site in a Box-dienstverlening is bijgewerkt."),
       documentVersion: String(document.documentVersion),

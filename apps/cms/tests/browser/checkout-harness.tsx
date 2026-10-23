@@ -404,6 +404,12 @@ createRoot(document.getElementById("root")!).render(
       privacyHref="https://www.siteinabox.nl/privacy"
       termsVersion="2026-07-07.1"
       privacyVersion="2026-07-18.1"
+      {...(searchParams.get("legal") === "product" ? {
+        legalLocale: harnessLocale, termsStatement: `Synthetic governed acceptance ${harnessLocale}`,
+        termsHref: `/policies/${harnessLocale}/platform-terms/2026-10-23.99`,
+        privacyHref: `/policies/${harnessLocale}/platform-privacy/2026-10-23.99`,
+        termsVersion: "2026-10-23.99", privacyVersion: "2026-10-23.99",
+      } : {})}
       locale="en-NL"
     />
     </ThemeProvider>

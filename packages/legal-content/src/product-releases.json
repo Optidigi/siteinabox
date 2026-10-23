@@ -1,0 +1,94 @@
+[
+  {
+    "releaseKey": "product-2026-10-23.1",
+    "draftBlockers": [
+      "verified_issuer_and_controller",
+      "verified_processors_and_retention",
+      "implemented_lifecycle_evidence",
+      "owner_materiality_audience_and_notice_decision",
+      "owner_legal_and_translation_review"
+    ],
+    "documents": [
+      {
+        "documentType": "platform-terms",
+        "locale": "nl",
+        "title": "Productvoorwaarden",
+        "slug": "terms",
+        "documentVersion": "2026-10-23.1",
+        "acceptanceVersion": "product-terms-2026-10-23.1",
+        "statementVersion": "product-terms-acceptance-nl-2026-10-23.1",
+        "replaces": null,
+        "contentHash": "sha256:065831f804f8b2e6b130cab4b8901335ba2f1835eb1408e5773410e62b2f94fc",
+        "change": {
+          "category": "contract_material",
+          "summary": "Goedgekeurd productaanbod en levenscyclus; concept ter beoordeling.",
+          "rationale": "M17 owner review required before publication.",
+          "customerAction": "reaccept_on_next_transaction",
+          "consentAction": "none",
+          "audience": "owner_review_required",
+          "noticeDays": 30
+        }
+      },
+      {
+        "documentType": "platform-terms",
+        "locale": "en",
+        "title": "Product terms",
+        "slug": "terms",
+        "documentVersion": "2026-10-23.1",
+        "acceptanceVersion": "product-terms-2026-10-23.1",
+        "statementVersion": "product-terms-acceptance-en-2026-10-23.1",
+        "replaces": null,
+        "contentHash": "sha256:84692e1e46482060f531a417e6f56c02c68a133b9cffb94507c9543d0ace1d6f",
+        "change": {
+          "category": "contract_material",
+          "summary": "Approved product offer and lifecycle; draft for review.",
+          "rationale": "M17 owner review required before publication.",
+          "customerAction": "reaccept_on_next_transaction",
+          "consentAction": "none",
+          "audience": "owner_review_required",
+          "noticeDays": 30
+        }
+      },
+      {
+        "documentType": "platform-privacy",
+        "locale": "nl",
+        "title": "Productprivacy-informatie",
+        "slug": "privacy",
+        "documentVersion": "2026-10-23.1",
+        "acceptanceVersion": null,
+        "statementVersion": null,
+        "replaces": null,
+        "contentHash": "sha256:e0f75402b8cb290c659806476c6ec4e6deae2f993b8fdc7ffa57053e7778f389",
+        "change": {
+          "category": "privacy_material",
+          "summary": "Goedgekeurd productaanbod en levenscyclus; concept ter beoordeling.",
+          "rationale": "M17 owner review required before publication.",
+          "customerAction": "direct_notice",
+          "consentAction": "none",
+          "audience": "owner_review_required",
+          "noticeDays": 30
+        }
+      },
+      {
+        "documentType": "platform-privacy",
+        "locale": "en",
+        "title": "Product privacy information",
+        "slug": "privacy",
+        "documentVersion": "2026-10-23.1",
+        "acceptanceVersion": null,
+        "statementVersion": null,
+        "replaces": null,
+        "contentHash": "sha256:5cd351990467926bcf8ba4a575e7f4ab6914280de082cd95d74e8b849fa6dc0f",
+        "change": {
+          "category": "privacy_material",
+          "summary": "Approved product offer and lifecycle; draft for review.",
+          "rationale": "M17 owner review required before publication.",
+          "customerAction": "direct_notice",
+          "consentAction": "none",
+          "audience": "owner_review_required",
+          "noticeDays": 30
+        }
+      }
+    ]
+  }
+]

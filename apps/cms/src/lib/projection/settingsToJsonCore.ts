@@ -2,7 +2,7 @@ import { resolveNav, type NavPage } from "@/lib/projection/resolveNav"
 import { normalizeFooterColumns } from "@/lib/footerComposition"
 import { isSafeHref } from "@/lib/security/safeHref"
 import { mediaToJson } from "@/lib/projection/media"
-import { materializeTenantPrivacyDisclosureValue } from "@/lib/legal/tenantPrivacyPage"
+import { materializeLocalizedTenantPrivacyDisclosure } from "@/lib/legal/tenantPrivacyPage"
 import {
   DEFAULT_CLIENT_SETTINGS_CONTRACT,
   type SettingsContract,
@@ -50,7 +50,7 @@ const announcementToJson = (announcement: unknown) => {
   }
 }
 
-const privacyDisclosureToJson = (value: unknown) => {
+const privacyDisclosureToJson = (value: unknown, locale: string) => {
   const record = asRecord(value)
   if (!record || record.enabled !== true) return undefined
   const controller = asRecord(record.controller)
@@ -75,7 +75,7 @@ const privacyDisclosureToJson = (value: unknown) => {
     additionalProcessors: record.additionalProcessors,
   })
   if (!parsed.success) return undefined
-  return materializeTenantPrivacyDisclosureValue(parsed.data)
+  return materializeLocalizedTenantPrivacyDisclosure(parsed.data, locale)
 }
 
 const appointmentsToJson = (value: unknown) => {
@@ -162,7 +162,7 @@ export function settingsToJsonWithoutAnalytics(
       enabled: !!doc.maintenance.enabled,
       message: doc.maintenance.message,
     } : undefined,
-    privacyDisclosure: privacyDisclosureToJson(doc.privacyDisclosure),
+    privacyDisclosure: privacyDisclosureToJson(doc.privacyDisclosure, doc.language ?? "nl"),
     appointments: appointmentsToJson((doc as SiteSetting & { appointments?: unknown }).appointments),
     contact: contact && (
       contract.details.contact.phone ||

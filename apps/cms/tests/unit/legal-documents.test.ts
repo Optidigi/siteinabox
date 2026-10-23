@@ -215,6 +215,24 @@ describe("legal document synchronization", () => {
     expect(payload.update).not.toHaveBeenCalled()
   })
 
+  it("reconciles product translations once for only the approved tenant audience", async () => {
+    const tenants = [7, 8].map(id => ({ id, siteManifest: { analyticsConsent: { enabled: true, consentVersion: "old" } } }))
+    const update = vi.fn(async ({ id, data }: MockCreateArgs & { id?: number | string }) => {
+      const tenant = tenants.find(tenant => tenant.id === Number(id))!
+      tenant.siteManifest = data.siteManifest as typeof tenant.siteManifest
+      return tenant
+    })
+    const payload = asPayload({ find: vi.fn(async () => ({ docs: tenants, hasNextPage: false })), update })
+    const nl = asLegalRelease(release("direct_notice", "renew_analytics"))
+    const en = { ...nl, locale: "en" }
+    const at = new Date("2026-08-03T00:00:00Z")
+    await ensureConsentRenewalsForRelease(payload, nl, at, [7])
+    await ensureConsentRenewalsForRelease(payload, en, at, [7])
+    await ensureConsentRenewalsForRelease(payload, nl, at, [7])
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(tenants[1]!.siteManifest.analyticsConsent.consentVersion).toBe("old")
+  })
+
   it("keeps landing-only analytics renewal out of tenant manifests", async () => {
     const payload = asPayload({ find: vi.fn(), update: vi.fn() })
     const landingRelease = asLegalRelease(release("publish_notice", "renew_analytics"))

@@ -72,6 +72,8 @@ export function validateBusinessUseDeclarations(): string[]
 
 export const legalReleases: readonly LegalRelease[]
 export function hashLegalContent(content: string | Uint8Array): `sha256:${string}`
+export function renderLegalContent(content: string): string
+export function validateLegalChangeDecision(release: Pick<LegalRelease, 'documentType' | 'locale' | 'documentVersion' | 'change'>): string[]
 export function loadLegalDocument(release: LegalRelease, suppliedMarkdown?: string): LegalDocument
 export function getLegalReleases(filters?: {
   documentType?: LegalDocumentType

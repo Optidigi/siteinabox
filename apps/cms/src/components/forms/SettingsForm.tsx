@@ -25,7 +25,7 @@ import { DEFAULT_CLIENT_SETTINGS_CONTRACT, type SettingsContract } from "@/lib/s
 import { useStatusFeedback } from "@/components/status-feedback"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
 import type { SiteSetting } from "@/payload-types"
-import { MediaRefSchema } from "@siteinabox/contracts"
+import { MediaRefSchema, PrivacyAppointmentDisclosureSchema } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 
 // OBS-81 — Settings is client-facing and intentionally slim by default:
@@ -90,6 +90,7 @@ export const createSettingsSchema = (t: (key: string, values?: Record<string, st
       address: z.string().nullish(),
     }).passthrough().optional(),
     contactMethods: z.object({
+      appointments: PrivacyAppointmentDisclosureSchema.nullish(),
       email: z.boolean().optional(),
       phone: z.boolean().optional(),
       whatsapp: z.boolean().optional(),

@@ -14,7 +14,7 @@ changes.
 | CMS form submissions | 90-day recommended default, disclosed per tenant | Configured scheduled purge and customer deletion |
 | Appointment booking records | 90 days after appointment end by default; tenant-configurable from 30 to 730 days | Daily CMS purge using the tenant schedule; notification/calendar outboxes and appointment-linked mail metadata cascade with the appointment |
 | Appointment calendar OAuth state | 10 minutes | Daily CMS purge of expired correlation records; state is single-use and marked consumed |
-| Backups | Rolling, normally at most 90 days | Infrastructure backup policy |
+| Backups | Approved product target: encrypted off-host rolling 30 days | Actual infrastructure retention and restore/deletion proof require separate verification; target is not an enforcement claim |
 | Security/access logs | Normally 6-12 months | Logging platform retention |
 | PostHog identifiable/pseudonymous analytics | At most 13 months | PostHog project retention verification |
 | Google Analytics 4 landing analytics | At most 13 months; prefer the available 2-month setting | GA4 property retention verification |
@@ -28,6 +28,16 @@ available during the active agreement, while the implementation purges them
 after 90 days. Before the first legal publication, the public statement and
 product setting must be made identical. The recommended product default is 90
 days with a clear tenant-facing disclosure and deletion/export controls.
+
+M17's separate NL/EN product draft records the approved future lifecycle: free
+cleanup after 30 meaningful inactive days plus a delivered seven-day warning;
+normal cancellation at paid coverage end plus 30 recovery/export days; overdue
+service restrictions at days 0/14/30, followed by recovery and ordinary purge no
+earlier than day 60. Domain custody and mail DNS remain protected. These are
+source policy targets pending the owning lifecycle implementation and qualification,
+not proof that existing scheduled jobs already enforce the complete sequence.
+The draft remains unavailable publicly until actual retention/provider facts and
+owner review/activation gates are satisfied. Historical legal versions remain intact.
 
 Appointment retention is a separate tenant setting because appointment data
 contains visitor contact details and scheduling context. The product default is

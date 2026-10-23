@@ -15,6 +15,7 @@ import { loadCmsTestEnvironment, assertDatabaseOwnership, assertCmsTestPrerequis
 import { cmsRoot, cmsEntry, repositoryRoot, hashBuiltTree, assertBuiltCmsIdentity, assertDiagnosticBuiltCmsIdentity, buildEnvironmentFingerprint } from "./built-app-artifacts.mjs"
 import { runPrivateWorkspaceJourney } from "./built-private-workspace.mjs"
 import { runVerifiedCustomerJourney } from "./built-customer-journey.mjs"
+import { runProductLegalJourney } from "./built-product-legal.mjs"
 import { createBuiltAppTunnel } from "./built-app-tunnel.mjs"
 import { cookieCredentials } from "./built-app-credentials.mjs"
 import { builtBrowserOptions } from "./built-app-options.mjs"
@@ -353,6 +354,8 @@ try {
   assert.equal((await http(rendererPort, "/", { host: customerJourney.domain, "x-forwarded-proto": "https",
     "x-siab-origin-verify": env.SIAB_RENDERER_ORIGIN_SECRET })).status, 404)
   verify("free generated website stays private in the actual public renderer")
+  await runProductLegalJourney({ newContext, login, cmsOrigin, fixture, verify, api,
+    control: action => runGuardedScript("tests/browser/built-legal-control.ts", [action], 30000) })
   await ownerPage.goto(cmsOrigin + "/profile")
   const changedPassword = "siab-test-" + randomBytes(20).toString("hex"); secrets.add(changedPassword)
   assert.equal((await api(ownerPage, "/api/users/change-password", { currentPassword: fixture.password, newPassword: changedPassword })).status, 200)

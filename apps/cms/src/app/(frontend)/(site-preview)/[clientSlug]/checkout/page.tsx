@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
-import { getCurrentLegalDocument } from "@siteinabox/legal-content"
+import { checkoutLegalDocuments } from "@/lib/legal/checkoutLegal"
 import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
@@ -62,7 +62,7 @@ export default async function PreviewCheckoutPage({
   params: Promise<{ clientSlug: string }>
   searchParams?: Promise<{
     payment?: string | string[]
-    cloudflareSource?: string | string[]
+    legalLocale?: string; cloudflareSource?: string | string[]
   }>
 }) {
   if (!(await isPreviewHost())) notFound()
@@ -129,8 +129,15 @@ export default async function PreviewCheckoutPage({
       ? context.run.payment as { status?: string | null }
       : null
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
-    const terms = getCurrentLegalDocument("platform-terms", "nl")
-    const privacy = getCurrentLegalDocument("platform-privacy", "nl")
+    const requestedLegalLocale = resolvedSearchParams?.legalLocale
+    if (requestedLegalLocale != null && requestedLegalLocale !== "nl" && requestedLegalLocale !== "en") notFound()
+    const legalLocale = requestedLegalLocale === "nl" || requestedLegalLocale === "en" ? requestedLegalLocale : locale === "en" ? "en" : "nl"
+    const legal = await checkoutLegalDocuments(context.payload, legalLocale)
+    if (!legal) return <section className="mx-auto max-w-xl space-y-4 p-6" role="status">
+      <h1 className="text-xl font-bold">{t("checkoutLegalUnavailable")}</h1>
+      <a href={`/${context.clientSlug}/checkout?legalLocale=nl`} className="underline">{t("checkoutLegalDutchChoice")}</a>
+    </section>
+    const { terms, privacy } = legal
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
       run: context.run,
     })
@@ -277,8 +284,12 @@ export default async function PreviewCheckoutPage({
             context.clientSlug,
           )
         }
-        termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
-        privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}
+        termsHref={legal.termsHref}
+        privacyHref={legal.privacyHref}
+        legalLocale={legalLocale}
+        termsContentHash={terms.contentHash}
+        privacyContentHash={privacy.contentHash}
+        termsStatement={legal.product ? legal.statement.text : undefined}
         termsVersion={terms.documentVersion}
         privacyVersion={privacy.documentVersion}
         locale={locale}
