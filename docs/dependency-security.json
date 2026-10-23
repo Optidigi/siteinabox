@@ -19,7 +19,7 @@
       "kind": "github-advisory",
       "url": "https://api.github.com/advisories/GHSA-vfj7-8cjw-p6xm",
       "selected": false,
-      "sha256": "09de76bb4e3648601e00a1ce11cc8d4790bdb69d061de5cb9b04dfe547f175e1"
+      "sha256": "050e047b54e135bf7d7755b12b5623178f8969bfe8e103a8dd6ceb8fe2248079"
     },
     {
       "id": "latest:braces",
@@ -981,7 +981,7 @@
       "sources": [
         "GHSA-vfj7-8cjw-p6xm"
       ],
-      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. Publisher reports no fixed braces release. Actual hostile-pattern execution in deployment is unproven; no compatibility override or risk waiver is authorized."
+      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. GitHub withdrew this advisory at 2026-10-23T12:53:02Z; current npm full/production audits still report it. Retain the scanner finding and release blocker until fresh audit and primary-source evidence reconcile; the withdrawal is recorded without a suppression, applicability claim or risk waiver."
     },
     {
       "scope": "production",
@@ -1000,7 +1000,7 @@
       "sources": [
         "GHSA-vfj7-8cjw-p6xm"
       ],
-      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. Publisher reports no fixed braces release. Actual hostile-pattern execution in deployment is unproven; no compatibility override or risk waiver is authorized."
+      "reason": "Confirmed Payload-private Sass 1.77.4 -> chokidar -> braces 3.0.3 path. GitHub withdrew this advisory at 2026-10-23T12:53:02Z; current npm full/production audits still report it. Retain the scanner finding and release blocker until fresh audit and primary-source evidence reconcile; the withdrawal is recorded without a suppression, applicability claim or risk waiver."
     }
   ],
   "imageAdvisories": [
