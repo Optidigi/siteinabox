@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M16 workspace engineering and independent Standards/Spec review; no release waiver",
   "graphHash": "e0b8ebbad81d7856b7f7b566e188489488f03a4d8bb9b03b2da3810021b38133",
-  "configurationHash": "485aea39a326658e41806f6b6308cc573f6db4c87b63c37ac46949e0935f7a11",
+  "configurationHash": "e365371679275bd0461ef5397108d79aadedc499c9cdfc7338cab8d692334948",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -82,14 +82,14 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/main.json",
       "selected": false,
-      "sha256": "210e20f2c46daf3c14bf6e51b7da890452ba442ea369d12f122e21a2d1c6aac3"
+      "sha256": "78b63ecf2c06c3aa7eb8b23eef092b210f8cbd1113f661c839f40a396f706cf0"
     },
     {
       "id": "alpine-community",
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/community.json",
       "selected": false,
-      "sha256": "af53d0dc0f09d1260851b13b5531cbf05e2fcce0a37a9fc2c9c31e8d37d42daf"
+      "sha256": "5d5de8c84f1f865f4919008a8e919888131d051f6533311572aa93bf2b9f1fcf"
     },
     {
       "id": "go-advisory-index",
@@ -1146,7 +1146,7 @@
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "98f28bc7d8e8e94c47446770d17acc3653fc353b05238d2b1f1a724c205c7758",
+      "factsHash": "b6c6f881b661e4e740a1019f8a00a3bfebf597a3eaabccb2e5d8c36ad586d548",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records stdlib v1.27.2 with CVE-2026-111943 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -1166,7 +1166,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "775b164084e6659d3b7329cc3b69538166a63fc26497b2ed319685b5221daae5",
+      "factsHash": "ea628798af1aa7b75cbd364a817bf732de5f9a740842c63fa6b73b5af283c86b",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-18374 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1204,7 +1204,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "3d64510e5d1d95e5607d474f1f8af3cdcd75c88ea71efc6deca9d83c41890b9c",
+      "factsHash": "298edf9ecef3a9e9c8360e49a7a9ea80a85e4de9bcf69fd92cc4a7b6f52f4ef7",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-19542 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1300,7 +1300,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "68b916e8df8e8fa2638c22a47bc792f2457e60d7bb8cb9b4cbb844380212b937",
+      "factsHash": "d82d7d0b3d755ceb23039c8af1c2d045015e7954b853a82789d4c256c92c1700",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-5435 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1376,7 +1376,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "272844bffd1a88326d859227d7e947c0bc35acdc7a9a6fa448022a594bf8c0aa",
+      "factsHash": "d3075d0802324a487cf0bf1546eed04d05e92d2d6de0e885ea1bb0c79f1f7a63",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-6238 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1415,7 +1415,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "7371f1c2599660ec0a0b1911b28edb380e3cc9d2d4f084108e3511f885b9b0de",
+      "factsHash": "de4c3ad1e9b111763f3fcd52d8e3fd4ccac11ff7d5e5d4792be0320add910679",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-6368 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1434,7 +1434,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "ed08017cc7e4acbb6a55a9fd01b0f76997034b6abff340665987cfa61b9327e6",
+      "factsHash": "9adaa9c923ae7d0c7545773aea800a7ed87fbe59537035f56ebd4510b80346ac",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-6791 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1529,7 +1529,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5c91dbfda710b292857aa577e939609359dcd71453e7ae8486ef5da6abaa3881",
+      "factsHash": "2205ee46f376d99199d7a933e365f4a56a70483e7d14155dcf20cf2c4e8c6f69",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-77117 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1567,7 +1567,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "f67cf17f13da174fdfdedd3a1b262bbc214e3ec398e7f5d8bcf4fb924bdeec85",
+      "factsHash": "a50d8aefdf4710a4b180a39c459f0e81372d9a81d4d550e03d3a87295d0772d8",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-80489 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1586,7 +1586,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "c93c637c2afb8e7320794dd8302cdf67d5d8e6c23af9e3b8a98b670360e039e1",
+      "factsHash": "ce984d3fa0bafd7b09f121312c45e5af9961bbc133e9f310218193cc6d4cd38d",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libssl3t64 3.5.7-1~deb13u2 with CVE-2026-84782 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1624,7 +1624,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5a75d987f1403340dca4839409db2ec5a4bfeaf2dbb9cf2d221463aac9973836",
+      "factsHash": "ca86df8ead8eb6e4fda9fcf9a6d4cea4de9ef1dc4864feb7f9abb502b291d70a",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-85091 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -1797,7 +1797,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "7e38fe3b4fd742f0578289a547afc2dacd6477a9ae7f2c35bc14120f43fa86af",
+      "factsHash": "6fb3133748cae630a622950502a4917af2467b0162857ff92147ab9b45b156bd",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-58183 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -1977,7 +1977,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "b5a952e5ceaaec950f7519ab60817fd5b010d9345d940be1db5f5fd49aed7959",
+      "factsHash": "e669b1daea616b047f1fe69fbea4d3899e0cd2de43674573063236210f244b3e",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61726 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2017,7 +2017,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "3d050942592c4da2f8d2ae0c22ad6bf700e529177d568f9cd26c1a82eb78a30a",
+      "factsHash": "cdd8e27bca7e7db7a90c211d6db6c71c27889cffa7e4935b27abc37bd6d89f77",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61728 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2037,7 +2037,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "1dec36c0df797b301b5ceaa1bfe72811f666311834488ca272ee23e528857cbf",
+      "factsHash": "2109f5c8dde327e352ba14132ae5760a2f551772078355e8b99e19a1d86a73d7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61729 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2057,7 +2057,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "06d0bb6744aa6588c50b81c2f89dffdcd43020343b1645acda0c514c136d6fed",
+      "factsHash": "ccea102a25c7682da49253ac781a4ed411c320e38841e58da10646b2dd15b0bf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61730 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2077,7 +2077,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "d6b8a90534cdc2e3b06625fba6757f7596393877f22877b892cfb00b688bcc60",
+      "factsHash": "450f6d3c19aabb68acd95f2f2f3bcd728c703ad8e43660ed3f38f53b84e3b69c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-68121 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2135,7 +2135,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "98f28bc7d8e8e94c47446770d17acc3653fc353b05238d2b1f1a724c205c7758",
+      "factsHash": "b6c6f881b661e4e740a1019f8a00a3bfebf597a3eaabccb2e5d8c36ad586d548",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-111943 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2155,7 +2155,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "1cbee94ab4e0f6a2b750d7ab1cfad70042ec5be989f5678db444ced0375c007e",
+      "factsHash": "154c727f53f68121885dbbae236227415ddde23d0223b44f71527f358cf6c29d",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-25679 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2215,7 +2215,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "98cdae801ed2766248014f5cc8c3f7e6004edfe3490e4ae143d626cbda7139fa",
+      "factsHash": "68eb8195409402b0bc9bb89f98ccef83d9265723c4f74e4383b47656f0cb774e",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-27145 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2235,7 +2235,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "161b169d1d67445e264fcc3c133d1b0ae9be8356be436b72e15598ea68ef3174",
+      "factsHash": "b995b9082e5550fa8bc0a7deaa35efb0dd7e53e04167f23b87bff8d22f8c7ddc",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-32280 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2255,7 +2255,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "254413e358a54d3da4330a3efd3e3f2b2212f12ab1384de75820668a10569dbf",
+      "factsHash": "b4cdb9546a384509b38a37e8971b1f4da12c18df34e517c920ac4f4b597e31dd",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-32281 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2275,7 +2275,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "13ec55b6cc7d4954844f0d8b9829f1c9a13f24338ec1e3fcea76e151940cda0f",
+      "factsHash": "b9b3494c1762113bdd598ac0d3c1ae065ad6b5d7a9a54debd2275a5269645ef5",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-32282 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2295,7 +2295,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "c2bf55870e1e1c6b68cd0e479d4c0b6ef2a9d02ea9cb722ba93bc7147a4338e8",
+      "factsHash": "4ecf007e6ab2e435911256d34d170971dbad0a582e00db3800de34e3e9f70040",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-32283 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2355,7 +2355,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "ff098700b302d01a0bef7408592218e7d194d29d1685074c6d8931362569acba",
+      "factsHash": "395b3587e5a2db7bef2b00841148c0746a24795149adf0fde1b14012ed1f1fff",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-33811 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2375,7 +2375,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "4eaf2f9c31cb4a5ff0629e1275011d33fa6aeed7d0bdbd00427218984378ef28",
+      "factsHash": "3a5d314019f40c440eaa788917403ad61e834d733c4ba5164cc5cb46d2a5430f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-33814 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2395,7 +2395,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "e7eae3aa0134f1362232f70e30418f8bddd1eb2a5f808d719b7fa155fc92213d",
+      "factsHash": "f20b19a409a22439edc8e04a56c1430148d76d74e0b7858ecf8ee867a5ed0866",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-33818 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2415,7 +2415,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "07a8052df576600221daa709517b0ebb1841a05b69726c48bfab22a1cb1026c8",
+      "factsHash": "25c611f85e9d44e934de27dd099f971749d0f32de7ed85184a8b7abb273cf8bc",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39820 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2435,7 +2435,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "b9024803f91fd360895217667cdd7facac4022520d5f4d9412d155240d070981",
+      "factsHash": "10eddeb5ef9616e96823eafb6d5e9f6a8e513a21a7eecef55bd6e244ba165890",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39821 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2455,7 +2455,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "68fbedcfc571b7f676f9f34a5bdafed9a0ded915f6e086125d68802fcee3e1ae",
+      "factsHash": "0317c5d55badd4ac3e884ee2baedad794997e0adb2f55caa83b3c099e1a0151f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39822 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2475,7 +2475,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "28e826720f6ebe155f984888b9e24a60c4f79ec07fbda99623428e1a8e608897",
+      "factsHash": "e694be952afd752aac76a7e9edbc9c9966145176d8f3f1ea2719b727560d8de7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39823 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2515,7 +2515,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "53843bdd96b089df42ace5a38bd8f0c7a158ef47255a71c579547581914006e3",
+      "factsHash": "02afb6387747cdf12eba803023d2fe2c13f3ae967f415f1589801e43574395a5",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39825 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2535,7 +2535,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "06a5c455176c5d92508aa91042eb097a63c2e992dbd1f7fc6010103a4b270b2c",
+      "factsHash": "7fdf9d719f8f2a1026dacfd033f1865d9095dcb00c59f116fd4204dd0e9059bf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39826 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2555,7 +2555,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "9d475254c41cd8715e775cdb38dba5bd000280f798c04ad8074fb44fe1cc2284",
+      "factsHash": "1039406519b08a22af742b1ec15c39f8791eff7fb040e353c6a24789cce56f92",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39836 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2575,7 +2575,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "7439a6f994648d176f21e9f41e2088cb3af4892e1e09381b3c98987938d90715",
+      "factsHash": "8a4aed080b151589f7c35835c1bf5d92c620b4e71e32dea16ae8c768433df69a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-42499 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2595,7 +2595,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "81b54796f155529208db458d161ef09641b7cb0181bce3f234ba5698e4a1e717",
+      "factsHash": "f308e8849e5917874e3f4a4ac6a1c0ba02d136076b7155626149a0cc513516cd",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-42504 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2615,7 +2615,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "2ce19adca7638470ea9ffcd61cc16f38e4c8bdd8e5148a8547efec648ca394b4",
+      "factsHash": "fbf42e3f4f164e61bb4d3706571f5c8b8e2086bf42334471a83afecfa86fb47c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-42505 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2635,7 +2635,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "5fa5aefdc5b2b921d291311572241de1f19ddb787b85fc49795de19c26ac9654",
+      "factsHash": "73659d4571f1e391119db570fdbdeb32dab6af38146a38e7cd5d68c182156bad",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-42507 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2655,7 +2655,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "9d7ed7ef7f6b4e434b913e5152d9eec4aa5ca92c234d472328ed796ad7ab5433",
+      "factsHash": "41e99f4dab3e1c39ec18b89de94bde32f638828dc2a866225fadca1eb75ad385",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56853 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2695,7 +2695,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "fce97b3ec3570bbf180cecf3c0c0dcf8937acc9708dc55f810523694b2cd3ce0",
+      "factsHash": "73d02b1cb3d983a99ff0607937535f3cf59294535184e0d563c47c03600d9bb2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56858 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2715,7 +2715,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "7a099aa88af49512528698c6b5580bba835d1ca7570155bf84f239513d5052da",
+      "factsHash": "ce3e10ce30f852816c478a98dff2947d2d42fb7b6a7e29b4e3c44c3093ec1c4f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56859 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2735,7 +2735,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "2d19f236f2099c1530834023169f98021c34bd4b911a35d0bcfde65265a8438f",
+      "factsHash": "df47c371ba2f23ae0fe13121bd9e07718cea6c97c978823f5ee69f30596b9400",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56860 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2755,7 +2755,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "583c611bb763cc40ce8fa0de4dee0586fe0d2d9bb47f233a2b82c25c8adc4c33",
+      "factsHash": "f2389456c1ace7406a6c8081cdcadb8ae895cb06bc3f2f15895ae728c0db0113",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56862 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2795,7 +2795,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "44f7e2d0978e3bb629559eac552348a6564f6637ae3e8e7feb813a189104793d",
+      "factsHash": "8625559753be4adefa7b95818cebf9c3f0e6f2f007285af48f2df82dc2248876",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records nghttp2-libs 1.69.0-r0 with CVE-2026-58055 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2836,7 +2836,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "247895d1894da3d64982021f2c88b6318c942681f5dfc0947dd134a68410562e",
+      "factsHash": "85f7995f25c4b0743bfa611902135c8abb7bddbb6747878e002482ceaf9769fa",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78659 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2856,7 +2856,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "92b26772e4a971c68dbf2a9f96e8351eb204b746b97f5700bb64e838ae75f346",
+      "factsHash": "73c88b9adaf76b36c561fb246895f105ca7d6f4597e66575c8ddec96d58bad1c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78660 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2896,7 +2896,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "d3b7fd08ac0e24af5ccfec36130b25d95303bb65def550f7b601e32f3ca1e120",
+      "factsHash": "6a9b7a03b954c7acd3ad2c496e52b181ef05379eb0dc12cec17044ce7477dd83",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78667 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2916,7 +2916,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "d9a032d05ad6e3877496d7f367a884c53cb924b17c1f9b4985e0d8efd0f1d3bc",
+      "factsHash": "59e7cb4adbc3a5acc406a5d2baa3c42b45640bbfec1f9a775461669818f6d2ad",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78669 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2936,7 +2936,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "83b0c27c62fd7aeb791ec2d945635f26537d94d2fd211eab24f8a33ccaa35db6",
+      "factsHash": "eab14632eb243e74d7b7c69c5c0e2e2018788476da6bd2d152fb094176b7af29",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records zlib 1.3.2-r0 with CVE-2026-85091 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2976,7 +2976,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "b8d291e63dda2bb6d41545a3be69a1f6a6353fcb90e9b4f2cd956412062a965b",
+      "factsHash": "4cddb35747eee362e260342b618dca1f63338cdf0dcd2b5bf5edbc5e39662e4a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-94440 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3016,7 +3016,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "9f78ac85c715b32ff0a84376d0e0ed185688a7b6e1e133c3e156c61b5805fe5a",
+      "factsHash": "4f7f9995101d4872230bd4e692e82365a767de21d7c39006f1a9685a5ba796d2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-97030 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3036,7 +3036,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "c3504722bf483daf5ef53e59d4aafa948e738aafd9c0c548722c80a1d163f62d",
+      "factsHash": "c69e63e7f48a8d37849adf05c80dd1460818fab594a62e84c5783e87b5897928",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-97031 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3096,7 +3096,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "7e38fe3b4fd742f0578289a547afc2dacd6477a9ae7f2c35bc14120f43fa86af",
+      "factsHash": "6fb3133748cae630a622950502a4917af2467b0162857ff92147ab9b45b156bd",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58183 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3276,7 +3276,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "b5a952e5ceaaec950f7519ab60817fd5b010d9345d940be1db5f5fd49aed7959",
+      "factsHash": "e669b1daea616b047f1fe69fbea4d3899e0cd2de43674573063236210f244b3e",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61726 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3316,7 +3316,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "3d050942592c4da2f8d2ae0c22ad6bf700e529177d568f9cd26c1a82eb78a30a",
+      "factsHash": "cdd8e27bca7e7db7a90c211d6db6c71c27889cffa7e4935b27abc37bd6d89f77",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61728 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3336,7 +3336,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "1dec36c0df797b301b5ceaa1bfe72811f666311834488ca272ee23e528857cbf",
+      "factsHash": "2109f5c8dde327e352ba14132ae5760a2f551772078355e8b99e19a1d86a73d7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61729 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3356,7 +3356,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "06d0bb6744aa6588c50b81c2f89dffdcd43020343b1645acda0c514c136d6fed",
+      "factsHash": "ccea102a25c7682da49253ac781a4ed411c320e38841e58da10646b2dd15b0bf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61730 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3376,7 +3376,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "d6b8a90534cdc2e3b06625fba6757f7596393877f22877b892cfb00b688bcc60",
+      "factsHash": "450f6d3c19aabb68acd95f2f2f3bcd728c703ad8e43660ed3f38f53b84e3b69c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-68121 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3594,7 +3594,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "98f28bc7d8e8e94c47446770d17acc3653fc353b05238d2b1f1a724c205c7758",
+      "factsHash": "b6c6f881b661e4e740a1019f8a00a3bfebf597a3eaabccb2e5d8c36ad586d548",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-111943 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3614,7 +3614,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/ip-address/package.json"
       ],
-      "factsHash": "1c88f094d3075a8fc193aace5b524dca2ab45bff70bb1f541008c79e3cc03f67",
+      "factsHash": "9fd60403b039c159c7d1c7f8fb66c396ad73e0882ed4565b51ee5b85a891c3d5",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "The shipped ip-address 10.5.0 package precedes the upstream 10.7.4 fix recorded by its owner advisory. The package finding remains release-blocking; configured reachability is not established by this inventory.",
@@ -3653,7 +3653,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/undici/package.json"
       ],
-      "factsHash": "2f4b84aeeca8669d9ba82634982d6f2192ab1dce189838b296ec7c08a6a27517",
+      "factsHash": "3c6d6fced1859e119f561cbc70b7485030585c5163a9640460698cad3512bd4f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records undici 6.28.0 with CVE-2026-19534 at the retained exact paths. Findings are under the base image global npm installation, outside the workspace pnpm graph. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3673,7 +3673,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "1cbee94ab4e0f6a2b750d7ab1cfad70042ec5be989f5678db444ced0375c007e",
+      "factsHash": "154c727f53f68121885dbbae236227415ddde23d0223b44f71527f358cf6c29d",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-25679 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3733,7 +3733,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "98cdae801ed2766248014f5cc8c3f7e6004edfe3490e4ae143d626cbda7139fa",
+      "factsHash": "68eb8195409402b0bc9bb89f98ccef83d9265723c4f74e4383b47656f0cb774e",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-27145 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3753,7 +3753,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "161b169d1d67445e264fcc3c133d1b0ae9be8356be436b72e15598ea68ef3174",
+      "factsHash": "b995b9082e5550fa8bc0a7deaa35efb0dd7e53e04167f23b87bff8d22f8c7ddc",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32280 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3773,7 +3773,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "254413e358a54d3da4330a3efd3e3f2b2212f12ab1384de75820668a10569dbf",
+      "factsHash": "b4cdb9546a384509b38a37e8971b1f4da12c18df34e517c920ac4f4b597e31dd",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32281 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3793,7 +3793,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "13ec55b6cc7d4954844f0d8b9829f1c9a13f24338ec1e3fcea76e151940cda0f",
+      "factsHash": "b9b3494c1762113bdd598ac0d3c1ae065ad6b5d7a9a54debd2275a5269645ef5",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32282 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3813,7 +3813,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "c2bf55870e1e1c6b68cd0e479d4c0b6ef2a9d02ea9cb722ba93bc7147a4338e8",
+      "factsHash": "4ecf007e6ab2e435911256d34d170971dbad0a582e00db3800de34e3e9f70040",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32283 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3873,7 +3873,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "ff098700b302d01a0bef7408592218e7d194d29d1685074c6d8931362569acba",
+      "factsHash": "395b3587e5a2db7bef2b00841148c0746a24795149adf0fde1b14012ed1f1fff",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33811 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3893,7 +3893,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "4eaf2f9c31cb4a5ff0629e1275011d33fa6aeed7d0bdbd00427218984378ef28",
+      "factsHash": "3a5d314019f40c440eaa788917403ad61e834d733c4ba5164cc5cb46d2a5430f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33814 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3913,7 +3913,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "e7eae3aa0134f1362232f70e30418f8bddd1eb2a5f808d719b7fa155fc92213d",
+      "factsHash": "f20b19a409a22439edc8e04a56c1430148d76d74e0b7858ecf8ee867a5ed0866",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33818 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3933,7 +3933,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "07a8052df576600221daa709517b0ebb1841a05b69726c48bfab22a1cb1026c8",
+      "factsHash": "25c611f85e9d44e934de27dd099f971749d0f32de7ed85184a8b7abb273cf8bc",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39820 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3953,7 +3953,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "b9024803f91fd360895217667cdd7facac4022520d5f4d9412d155240d070981",
+      "factsHash": "10eddeb5ef9616e96823eafb6d5e9f6a8e513a21a7eecef55bd6e244ba165890",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39821 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3973,7 +3973,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "68fbedcfc571b7f676f9f34a5bdafed9a0ded915f6e086125d68802fcee3e1ae",
+      "factsHash": "0317c5d55badd4ac3e884ee2baedad794997e0adb2f55caa83b3c099e1a0151f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39822 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3993,7 +3993,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "28e826720f6ebe155f984888b9e24a60c4f79ec07fbda99623428e1a8e608897",
+      "factsHash": "e694be952afd752aac76a7e9edbc9c9966145176d8f3f1ea2719b727560d8de7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39823 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4033,7 +4033,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "53843bdd96b089df42ace5a38bd8f0c7a158ef47255a71c579547581914006e3",
+      "factsHash": "02afb6387747cdf12eba803023d2fe2c13f3ae967f415f1589801e43574395a5",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39825 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4053,7 +4053,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "06a5c455176c5d92508aa91042eb097a63c2e992dbd1f7fc6010103a4b270b2c",
+      "factsHash": "7fdf9d719f8f2a1026dacfd033f1865d9095dcb00c59f116fd4204dd0e9059bf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39826 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4073,7 +4073,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "9d475254c41cd8715e775cdb38dba5bd000280f798c04ad8074fb44fe1cc2284",
+      "factsHash": "1039406519b08a22af742b1ec15c39f8791eff7fb040e353c6a24789cce56f92",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39836 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4093,7 +4093,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "7439a6f994648d176f21e9f41e2088cb3af4892e1e09381b3c98987938d90715",
+      "factsHash": "8a4aed080b151589f7c35835c1bf5d92c620b4e71e32dea16ae8c768433df69a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42499 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4113,7 +4113,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "81b54796f155529208db458d161ef09641b7cb0181bce3f234ba5698e4a1e717",
+      "factsHash": "f308e8849e5917874e3f4a4ac6a1c0ba02d136076b7155626149a0cc513516cd",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42504 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4133,7 +4133,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "2ce19adca7638470ea9ffcd61cc16f38e4c8bdd8e5148a8547efec648ca394b4",
+      "factsHash": "fbf42e3f4f164e61bb4d3706571f5c8b8e2086bf42334471a83afecfa86fb47c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42505 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4153,7 +4153,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "5fa5aefdc5b2b921d291311572241de1f19ddb787b85fc49795de19c26ac9654",
+      "factsHash": "73659d4571f1e391119db570fdbdeb32dab6af38146a38e7cd5d68c182156bad",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42507 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4173,7 +4173,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "9d7ed7ef7f6b4e434b913e5152d9eec4aa5ca92c234d472328ed796ad7ab5433",
+      "factsHash": "41e99f4dab3e1c39ec18b89de94bde32f638828dc2a866225fadca1eb75ad385",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56853 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4213,7 +4213,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "fce97b3ec3570bbf180cecf3c0c0dcf8937acc9708dc55f810523694b2cd3ce0",
+      "factsHash": "73d02b1cb3d983a99ff0607937535f3cf59294535184e0d563c47c03600d9bb2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56858 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4233,7 +4233,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "7a099aa88af49512528698c6b5580bba835d1ca7570155bf84f239513d5052da",
+      "factsHash": "ce3e10ce30f852816c478a98dff2947d2d42fb7b6a7e29b4e3c44c3093ec1c4f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56859 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4253,7 +4253,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "2d19f236f2099c1530834023169f98021c34bd4b911a35d0bcfde65265a8438f",
+      "factsHash": "df47c371ba2f23ae0fe13121bd9e07718cea6c97c978823f5ee69f30596b9400",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56860 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4273,7 +4273,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "583c611bb763cc40ce8fa0de4dee0586fe0d2d9bb47f233a2b82c25c8adc4c33",
+      "factsHash": "f2389456c1ace7406a6c8081cdcadb8ae895cb06bc3f2f15895ae728c0db0113",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56862 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4313,7 +4313,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "247895d1894da3d64982021f2c88b6318c942681f5dfc0947dd134a68410562e",
+      "factsHash": "85f7995f25c4b0743bfa611902135c8abb7bddbb6747878e002482ceaf9769fa",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78659 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4333,7 +4333,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "92b26772e4a971c68dbf2a9f96e8351eb204b746b97f5700bb64e838ae75f346",
+      "factsHash": "73c88b9adaf76b36c561fb246895f105ca7d6f4597e66575c8ddec96d58bad1c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78660 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4373,7 +4373,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "d3b7fd08ac0e24af5ccfec36130b25d95303bb65def550f7b601e32f3ca1e120",
+      "factsHash": "6a9b7a03b954c7acd3ad2c496e52b181ef05379eb0dc12cec17044ce7477dd83",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78667 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4393,7 +4393,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "d9a032d05ad6e3877496d7f367a884c53cb924b17c1f9b4985e0d8efd0f1d3bc",
+      "factsHash": "59e7cb4adbc3a5acc406a5d2baa3c42b45640bbfec1f9a775461669818f6d2ad",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78669 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4433,7 +4433,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "83b0c27c62fd7aeb791ec2d945635f26537d94d2fd211eab24f8a33ccaa35db6",
+      "factsHash": "eab14632eb243e74d7b7c69c5c0e2e2018788476da6bd2d152fb094176b7af29",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records zlib 1.3.2-r0 with CVE-2026-85091 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4492,7 +4492,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "b8d291e63dda2bb6d41545a3be69a1f6a6353fcb90e9b4f2cd956412062a965b",
+      "factsHash": "4cddb35747eee362e260342b618dca1f63338cdf0dcd2b5bf5edbc5e39662e4a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94440 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4532,7 +4532,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "9f78ac85c715b32ff0a84376d0e0ed185688a7b6e1e133c3e156c61b5805fe5a",
+      "factsHash": "4f7f9995101d4872230bd4e692e82365a767de21d7c39006f1a9685a5ba796d2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97030 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4552,7 +4552,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "c3504722bf483daf5ef53e59d4aafa948e738aafd9c0c548722c80a1d163f62d",
+      "factsHash": "c69e63e7f48a8d37849adf05c80dd1460818fab594a62e84c5783e87b5897928",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97031 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4809,7 +4809,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/ip-address/package.json"
       ],
-      "factsHash": "1c88f094d3075a8fc193aace5b524dca2ab45bff70bb1f541008c79e3cc03f67",
+      "factsHash": "9fd60403b039c159c7d1c7f8fb66c396ad73e0882ed4565b51ee5b85a891c3d5",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "The shipped ip-address 10.5.0 package precedes the upstream 10.7.4 fix recorded by its owner advisory. The package finding remains release-blocking; configured reachability is not established by this inventory.",
@@ -4848,7 +4848,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/undici/package.json"
       ],
-      "factsHash": "2f4b84aeeca8669d9ba82634982d6f2192ab1dce189838b296ec7c08a6a27517",
+      "factsHash": "3c6d6fced1859e119f561cbc70b7485030585c5163a9640460698cad3512bd4f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Renderer image: published snapshot server and shipped global npm tooling. Scanner records undici 6.28.0 with CVE-2026-19534 at the retained exact paths. Findings are under the base image global npm installation, outside the workspace pnpm graph. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4888,7 +4888,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "83b0c27c62fd7aeb791ec2d945635f26537d94d2fd211eab24f8a33ccaa35db6",
+      "factsHash": "eab14632eb243e74d7b7c69c5c0e2e2018788476da6bd2d152fb094176b7af29",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Renderer image: published snapshot server and shipped global npm tooling. Scanner records zlib 1.3.2-r0 with CVE-2026-85091 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4927,7 +4927,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "2d467c2b75d15dd9e0451c70ac8b92cf01e438bfad3b1f0c3c29dba5fbd8b667",
+      "factsHash": "55e154ee6bff6309b93776f0c49d3614a9ea3392f7bc3341c72e699ff8474e05",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Static landing image: Nginx and its installed OS libraries. Scanner records libexpat 2.8.5-r0 with CVE-2026-102633 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4985,7 +4985,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "97b339d47dd44fb49622dbc30956b9ebea5fbbcd60ff9991ce2694455f9cc99d",
+      "factsHash": "871f19eabd81640e1399c803d00337d80cd98473fe390bda0b6ea273636ff55e",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Static landing image: Nginx and its installed OS libraries. Scanner records libexpat 2.8.5-r0 with CVE-2026-77214 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5005,7 +5005,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "83b0c27c62fd7aeb791ec2d945635f26537d94d2fd211eab24f8a33ccaa35db6",
+      "factsHash": "eab14632eb243e74d7b7c69c5c0e2e2018788476da6bd2d152fb094176b7af29",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Static landing image: Nginx and its installed OS libraries. Scanner records zlib 1.3.2-r0 with CVE-2026-85091 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5193,7 +5193,7 @@
       "application": "cms-postgres",
       "fingerprint": "253059a4453b305928553569c735ec3b5fcd866ac40e88dffab58443cfdc8cbd",
       "status": "blocked",
-      "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Verified inventory: 57 package records, 63 vulnerability records, 260 native files and 0 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers.",
+      "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Verified inventory: 57 package records, 63 vulnerability records, 260 native files and 0 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers. Current Alpine publisher evidence adds CVE-2026-111497 for Brotli; retained brotli-libs 1.2.0-r1 predates vendor 1.2.1-r0. The scanner currently omits this entry; applicability/reachability and remediation remain unresolved release blockers.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
@@ -5251,7 +5251,7 @@
       "application": "site",
       "fingerprint": "f7e5b818617aca5c959523ba3736f673efb76e3aa2f93ee2c91e588044f1a5cb",
       "status": "blocked",
-      "reason": "Static landing image: Nginx and its installed OS libraries. Verified inventory: 72 package records, 8 vulnerability records, 127 native files and 0 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers.",
+      "reason": "Static landing image: Nginx and its installed OS libraries. Verified inventory: 72 package records, 8 vulnerability records, 127 native files and 0 bundled scripts. All component paths/hashes and runtime versions are bound; known findings and unresolved primary/support/reachability facts remain release blockers. Current Alpine publisher evidence adds CVE-2026-111497 for Brotli; retained brotli-libs 1.2.0-r1 predates vendor 1.2.1-r0. The scanner currently omits this entry; applicability/reachability and remediation remain unresolved release blockers.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
@@ -5318,7 +5318,7 @@
       "classification": "unresolved_blocker",
       "releaseBlocked": true,
       "affectedSurface": "Node runtime and all consuming images",
-      "reason": "Rechecked official Node v24.22.1 security-release evidence after its 24-hour floor: the release body is unchanged and the patch is now eligible. Pinned 24.22.0 remains unchanged in this tooling repair; compatible runtime/consuming-image qualification is still an explicit unresolved release blocker. No security acceptance or risk waiver is granted. October 23 vendor recheck: Alpine nodejs secfixes adds nine CVEs under 24.22.1-r0 and CVE-2026-111497 under the unresolved zero entry. The retained official Node security release already lists the Brotli fix; vendor grouping alone does not establish applicability or remediation of these official-image binaries. Preserve the unresolved vendor entry and qualify exact runtime/consuming bytes before release; no waiver.",
+      "reason": "Rechecked official Node v24.22.1 security-release evidence after its 24-hour floor: the release body is unchanged and the patch is now eligible. Pinned 24.22.0 remains unchanged in this tooling repair; compatible runtime/consuming-image qualification is still an explicit unresolved release blocker. No security acceptance or risk waiver is granted. October 23 vendor recheck: Alpine nodejs secfixes adds nine CVEs under 24.22.1-r0 and CVE-2026-111497 under the unresolved zero entry. The retained official Node security release already lists the Brotli fix; vendor grouping alone does not establish applicability or remediation of these official-image binaries. Preserve the unresolved vendor entry and qualify exact runtime/consuming bytes before release; no waiver. The canonical CI vendor refresh also records the Brotli 1.2.1-r0 entry for CVE-2026-111497; exact shipped/bundled applicability remains blocked pending runtime qualification.",
       "reviewOwner": "M13 upstream drift review (Codex engineering; no risk waiver)",
       "recheck": "At or after 2026-10-22T10:38:25Z and before release, qualify the eligible security patch and exact consuming images against current primary security facts.",
       "expiresAt": "2026-10-28T01:01:28.437Z",
@@ -5366,6 +5366,20 @@
       "expiresAt": "2026-10-28T01:01:28.437Z",
       "sources": [
         "alpine-main"
+      ]
+    },
+    {
+      "id": "brotli-vendor-advisory-reconciliation",
+      "classification": "unresolved_blocker",
+      "releaseBlocked": true,
+      "affectedSurface": "Brotli in PostgreSQL/landing native inventories and bundled Node runtime",
+      "reason": "Current Alpine Brotli 1.2.1-r0 publisher evidence lists CVE-2026-111497; the exact retained PostgreSQL and landing inventories ship brotli-libs 1.2.0-r1. Node publisher evidence separately records its bundled Brotli fix. Current Trivy reports do not enumerate this advisory. Preserve this explicit blocker without fabricating a scanner row or claiming configured exploitability.",
+      "reviewOwner": "Workflow dependency evidence review; no waiver",
+      "recheck": "Before release, reconcile current primary advisory ranges with exact OS/bundled runtime bytes, qualify remediation and independently review fresh inventories.",
+      "expiresAt": "2026-10-28T01:01:28.437Z",
+      "sources": [
+        "alpine-main",
+        "node-maintenance-release"
       ]
     }
   ],

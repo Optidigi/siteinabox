@@ -16,6 +16,9 @@ main/manual archives for promotion and do not duplicate PR builds. CMS unit test
 and the compiled browser seam run in parallel jobs with separately owned databases;
 `required-ci` additionally requires `cms-browser`. The existing required context
 names remain intact and skipped/cancelled/failed browser work still blocks merge.
+Invitation-action verification initializes committed migrations when its separately
+authorized browser database is empty; it admits emptiness before initialization
+and preserves existing populated test schemas.
 Failures, cancellation, missing results and skipped requirements fail the
 aggregate. All three image records must match the tested source and current
 run/attempt. `required-ci-evidence` retains results and image identities for

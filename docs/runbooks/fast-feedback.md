@@ -19,6 +19,8 @@ After an expensive failure, isolate its exact symptom at the smallest existing
 unit, component, real-database or focused browser seam. Reuse successful evidence
 only while its inputs and risk boundaries are unchanged. Qualify a coherent working
 candidate instead of repeating the full journey after each diagnostic patch.
+When splitting CI jobs, prove startup against a fresh owned resource; a warm local
+database does not prove that the new lane initializes its own schema/prerequisites.
 
 ## Diagnose workspace/settings
 

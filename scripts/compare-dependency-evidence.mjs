@@ -38,6 +38,15 @@ export function compareSourceEvidence(before, after) {
     publisherVersions: changedRows(before.publisherVersions, after.publisherVersions, row => JSON.stringify([row.manifest, row.package])) }
 }
 
+export function compareImageInventories(left, right) {
+  const native = image => ({ application: image.application, fingerprint: nativeReviewFingerprint(image),
+    inventoryStatus: image.inventoryStatus, analysisGaps: image.analysisGaps })
+  return { native: changedRows(left.map(native), right.map(native), row => row.application),
+    scanner: changedRows(left.map(image => ({ application: image.application, scanner: image.scanner })),
+      right.map(image => ({ application: image.application, scanner: image.scanner })), row => row.application),
+    advisories: changedRows(imageReviewFindings(left), imageReviewFindings(right), row => JSON.stringify([row.scope, row.id, row.package, row.version])) }
+}
+
 export async function compareEvidenceFiles(beforeFile, afterFile, beforeImages, afterImages) {
   const read = async file => JSON.parse(await readFile(file, "utf8"))
   const before = await read(beforeFile), after = await read(afterFile)
@@ -48,10 +57,7 @@ export async function compareEvidenceFiles(beforeFile, afterFile, beforeImages, 
   if (beforeImages) {
     const left = await loadDependencyImages(beforeImages, before.sourceSHA)
     const right = await loadDependencyImages(afterImages, after.sourceSHA)
-    const native = image => ({ application: image.application, fingerprint: nativeReviewFingerprint(image),
-      inventoryStatus: image.inventoryStatus, analysisGaps: image.analysisGaps, scanner: image.scanner })
-    result.images = { native: changedRows(left.map(native), right.map(native), row => row.application),
-      advisories: changedRows(imageReviewFindings(left), imageReviewFindings(right), row => JSON.stringify([row.scope, row.id, row.package, row.version])) }
+    result.images = compareImageInventories(left, right)
   }
   return result
 }
@@ -63,6 +69,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   await mkdir("artifacts", { recursive: true })
   await writeFile("artifacts/dependency-comparison.json", JSON.stringify(result, null, 2) + "\n")
   console.log(JSON.stringify({ sourceChanges: Object.fromEntries(Object.entries(result.source).map(([key, value]) => [key, Array.isArray(value) ? value.length : Number(Boolean(value))])),
-    imageChanges: result.images && { native: result.images.native.length, advisories: result.images.advisories.length },
+    imageChanges: result.images && { native: result.images.native.length, scanner: result.images.scanner.length, advisories: result.images.advisories.length },
     report: "artifacts/dependency-comparison.json", releaseCleared: false }))
 }
