@@ -20,7 +20,8 @@
       "cms-test-guard",
       "publication-check",
       "dependency-policy",
-      "required-ci-policy"
+      "required-ci-policy",
+      "cms-posthog-privacy"
     ],
     "ci": [
       "mcp-check",
@@ -66,7 +67,8 @@
       "required-ci-policy",
       "image-cms",
       "image-renderer",
-      "image-site"
+      "image-site",
+      "cms-posthog-privacy"
     ],
     "cms-fast": [
       "cms-no-css",
@@ -92,7 +94,8 @@
       "cms-test-guard",
       "publication-check",
       "dependency-policy",
-      "required-ci-policy"
+      "required-ci-policy",
+      "cms-posthog-privacy"
     ],
     "renderer-fast": [
       "renderer-deploy-contract",
@@ -804,6 +807,21 @@
         "exact .nvmrc Node LTS and packageManager pnpm",
         "current reviewed dependency policy",
         "primary advisory/registry access through configured gh and HTTPS"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-posthog-privacy",
+      "command": "node --test apps/cms/tests/unit/posthog-settings-privacy.test.mjs",
+      "run": [
+        "node",
+        "--test",
+        "apps/cms/tests/unit/posthog-settings-privacy.test.mjs"
+      ],
+      "owner": "cms",
+      "ciJob": "package-quality",
+      "prerequisites": [
+        "Pinned Node runtime; synthetic intercepted HTTP; no provider credentials or database"
       ],
       "risk": "high"
     }

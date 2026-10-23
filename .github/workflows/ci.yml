@@ -47,6 +47,7 @@ jobs:
           pnpm dependency:policy:test
           pnpm cms:test:guard
           pnpm ci:policy:check
+          node --test apps/cms/tests/unit/posthog-settings-privacy.test.mjs
       - name: Review current full and production dependency evidence
         run: pnpm dependency:check
       - name: Retain source advisory evidence and blocked-readiness diagnostics

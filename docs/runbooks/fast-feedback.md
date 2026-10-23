@@ -44,7 +44,8 @@ browser, renderer, release or publication clearance.
 
 ## Review and context
 
-High-risk work retains independent Standards and Spec reviews. Give reviewers a
+Every PR receives independent Standards and Spec review at the delivery boundary;
+Routine implementation may use self-review before that boundary. Give reviewers a
 fixed base/head, acceptance criteria, risk, relevant validation and prior findings.
 Run the formal pair on a coherent candidate after relevant checks pass; use early
 architecture review when needed. Follow-ups inspect the new delta, affected callers

@@ -34,15 +34,18 @@ constraints here even after the related issue is closed.
 
 ## SIAB-002 — PostHog retention exceeds the governance target
 
-- **Classification:** Accepted external constraint / closed; **confidence:**
-  high as of the recorded provider verification.
+- **Classification:** Accepted external constraint; current ceiling verification
+  unresolved. Historical provider-readback confidence does not establish current state.
 - **Scope:** Analytics privacy and operations.
 - **Evidence:** PostHog MCP and API verification on 2026-08-07 found event
   retention set to 12 months with enforcement disabled (previously 84 months
   on 2026-07-11). Repository governance requires 13 months with enforcement.
-  The privacy audit logs this governance gap and fails only when provider
-  retention exceeds the accepted 84-month ceiling or mutable privacy settings
-  drift.
+  The privacy audit logs this governance gap and fails when the provider window
+  exceeds the accepted 84-month ceiling, cannot be verified, or mutable privacy
+  settings drift. Current readback uses the dedicated events-retention endpoint
+  when legacy project fields are absent; a query window is not deletion proof.
+  On 2026-10-23 the supported endpoint reported no active window, so the current
+  finite ceiling is unverified and the daily read-only audit fails closed.
 - **Disposition:** On 2026-07-18, the owner explicitly accepted plan-derived,
   unenforced provider retention as an external constraint within an 84-month
   ceiling. No implementation action remains while retention stays at or below

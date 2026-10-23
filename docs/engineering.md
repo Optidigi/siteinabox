@@ -44,6 +44,12 @@ review against the policy here. Directory-wide exclusions are not allowed.
 | Significant | Several modules, uncertain cause, contract/concurrency/generated surface, broad visual or compatibility effect | Short plan, isolated worktree when useful, focused and broader checks, fresh review across risk boundaries |
 | High | Authentication/authorization, secrets, migrations/data integrity, destructive work, deployment/release, external writes, legal/privacy, uncertain compatibility removal | Plan with invariants, tests, rollback and approvals; isolated worktree; production-equivalent rehearsal where possible; independent review |
 
+These tiers govern implementation and local verification. Routine self-review
+does not waive the delivery requirement: every PR receives independent Standards
+and Spec review under [protected delivery](runbooks/protected-delivery.md).
+Follow-ups carry unchanged coverage forward and inspect the new delta, affected
+callers and unresolved findings; they do not automatically repeat the full review.
+
 ## Proportional verification and release
 
 Verification follows the changed surface as well as its risk. Start narrow and

@@ -92,19 +92,19 @@ const endpoint = organizationId
   ? `${host}/api/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/`
   : `${host}/api/projects/${encodeURIComponent(projectId)}/`
 
-const request = async (method, body) => {
-  const response = await fetch(endpoint, {
+const request = async (method, body, url = endpoint) => {
+  const response = await fetch(url, {
     method,
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(15000),
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`${method} ${endpoint} failed: ${response.status} ${text.slice(0, 500)}`)
+    throw new Error(`${method} ${url} failed: HTTP ${response.status}`)
   }
 
   return response.json()
@@ -128,13 +128,46 @@ const patch = {
   cookieless_server_hash_mode: 1,
 }
 
-// PostHog exposes these values in project/environment responses, but its
-// current API schema marks both as plan-derived read-only fields. Keep them in
-// the audit contract without pretending a successful project PATCH changed
-// them.
+// Legacy fields are optional. The dedicated endpoint reports a read-only query
+// window; neither response is proof of deletion or a writable retention control.
 const retentionBaseline = {
   event_retention_months: retentionMonths,
   events_retention_enforced: true,
+}
+
+const auditRetention = async (settings) => {
+  const legacy = Object.hasOwn(settings, "event_retention_months")
+  let months = settings.event_retention_months
+  if (!legacy) {
+    try {
+      const retention = await request("GET", undefined,
+        `${host}/api/projects/${encodeURIComponent(projectId)}/events_retention/`)
+      months = retention.retention_months
+      if (months === null && retention.retained_from === null) {
+        throw new Error("no retention window applies; the accepted finite ceiling is unverified")
+      }
+      if (typeof retention.retained_from !== "string" || !Number.isFinite(Date.parse(retention.retained_from))) {
+        throw new Error("missing or invalid retained_from")
+      }
+    } catch (error) {
+      throw new Error(`PostHog retention could not be verified: ${error.message}`)
+    }
+  }
+  if (!Number.isInteger(months) || months < 1) {
+    throw new Error("PostHog retention could not be verified: missing, invalid or unbounded event window")
+  }
+  if (months > ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX) {
+    throw new Error(`PostHog privacy drift: event query window ${months} months exceeds the SIAB-002 accepted ceiling of ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months`)
+  }
+  console.log(`PostHog event query window: ${months} months (${legacy ? "legacy project fields" : "events_retention endpoint"})`)
+  if (!legacy || typeof settings.events_retention_enforced !== "boolean") {
+    console.log("PostHog deletion enforcement: unknown; the query-window readback does not establish deletion")
+  } else {
+    console.log(`PostHog legacy retention enforcement reported: ${settings.events_retention_enforced}; this is not deletion proof`)
+  }
+  if (!legacy || months !== retentionMonths || settings.events_retention_enforced !== true) {
+    console.log(`SIAB-002 accepted provider constraint: window within ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months; the ${retentionMonths}-month enforced governance target is not established`)
+  }
 }
 
 if (checkOnly) {
@@ -145,33 +178,14 @@ if (checkOnly) {
     JSON.stringify(comparable(key, current[key])) !== JSON.stringify(comparable(key, expected)),
   )
   const mutableDrift = drifted(patch)
-  const retentionDrift = drifted(retentionBaseline)
   if (mutableDrift.length > 0) {
     for (const [key, expected] of mutableDrift) {
       console.error(`PostHog privacy drift: ${key} expected=${JSON.stringify(expected)} actual=${JSON.stringify(current[key])}`)
     }
     process.exit(1)
   }
-  if (retentionDrift.length > 0) {
-    for (const [key, expected] of retentionDrift) {
-      console.error(`PostHog privacy drift: ${key} expected=${JSON.stringify(expected)} actual=${JSON.stringify(current[key])}`)
-    }
-    const actualMonths = current.event_retention_months
-    const withinAcceptedCeiling = Number.isInteger(actualMonths)
-      && actualMonths >= 1
-      && actualMonths <= ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX
-    if (!withinAcceptedCeiling) {
-      console.error(
-        `PostHog retention exceeds the SIAB-002 accepted provider ceiling of ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months.`,
-      )
-      process.exit(1)
-    }
-    console.log(
-      `PostHog retention remains outside the ${retentionMonths}-month governance target `
-      + `(SIAB-002 accepted provider constraint; ceiling ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months).`,
-    )
-  }
-  console.log(`PostHog privacy baseline verified for project ${projectId}`)
+  await auditRetention(current)
+  console.log(`PostHog mutable privacy baseline and accepted provider window verified for project ${projectId}`)
 } else if (dryRun) {
   console.log(JSON.stringify({ endpoint, patch, readOnlyAudit: retentionBaseline }, null, 2))
 } else {
@@ -186,18 +200,7 @@ if (checkOnly) {
   console.log(`  Heatmaps: ${updated.heatmaps_opt_in === false ? "disabled" : "unknown"}`)
   console.log(`  Dead clicks: ${updated.capture_dead_clicks === false ? "disabled" : "unknown"}`)
   console.log(`  Cookieless hashing: ${updated.cookieless_server_hash_mode === 1 ? "stateless" : "unknown"}`)
-  console.log(`  Event retention: ${updated.event_retention_months ?? "unknown"} months`)
-  console.log(`  Retention enforcement: ${updated.events_retention_enforced === true ? "enabled" : "disabled"}`)
   console.log(`  App URLs: ${appUrls.length}`)
   for (const url of appUrls) console.log(`    ${url}`)
-  const retentionMatches = updated.event_retention_months === retentionMonths
-    && updated.events_retention_enforced === true
-  if (!retentionMatches) {
-    console.error(
-      `PostHog retention remains plan-managed: expected ${retentionMonths} months with enforcement; `
-      + `actual ${updated.event_retention_months ?? "unknown"} months with enforcement `
-      + `${updated.events_retention_enforced === true ? "enabled" : "disabled"}. Contact PostHog support or change the project plan.`,
-    )
-    process.exitCode = 1
-  }
+  await auditRetention(updated)
 }
