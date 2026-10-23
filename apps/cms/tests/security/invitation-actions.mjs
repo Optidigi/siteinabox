@@ -27,7 +27,7 @@ try {
     // empty disposable DB; never reset an existing populated test schema here.
     await assertEmptyTestDatabase(database)
     execFileSync(process.execPath, ["--import", "tsx", "--import", new URL("../browser/built-app-runtime.mjs", import.meta.url).href,
-      "--input-type=module", "-e", 'const {getTestPayload} = await import("./tests/integration/_helpers.ts"); const payload = await getTestPayload(); await payload.destroy();'],
+      "tests/security/prepare-invitation-database.ts"],
     { stdio: "inherit", env: process.env, timeout: 180000 })
   }
   execFileSync("pnpm", ["payload", "generate:importmap"], { stdio: "inherit", env: process.env })

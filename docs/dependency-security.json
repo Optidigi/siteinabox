@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "M16 workspace engineering and independent Standards/Spec review; no release waiver",
   "graphHash": "e0b8ebbad81d7856b7f7b566e188489488f03a4d8bb9b03b2da3810021b38133",
-  "configurationHash": "e365371679275bd0461ef5397108d79aadedc499c9cdfc7338cab8d692334948",
+  "configurationHash": "23397136d965b7be784733ad469ae9fe89bf64abd5714845c13eb85047ae6559",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
