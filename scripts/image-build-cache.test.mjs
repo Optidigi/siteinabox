@@ -32,3 +32,8 @@ test("cache setup refuses symlinks and arbitrary image scopes", async () => {
     await assert.rejects(prepareImageBuildCache(root,"../../outside"),/Unknown/)
   } finally { await rm(root,{recursive:true}) }
 })
+
+test("CI cache and archive roots cannot enter application build contexts", async () => {
+  const ignore = await readFile(new URL("../.dockerignore", import.meta.url),"utf8")
+  assert(ignore.split(/\r?\n/).includes("artifacts"))
+})
