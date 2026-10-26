@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-26T21:08:22.376Z",
+  "reviewedAt": "2026-10-26T21:50:18.173Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Microsoft mail source evidence reconciliation (Codex engineering; independent review; no release waiver)",
   "graphHash": "76e8d6e67c9b11eabccd46e4aa7886ebb7ed10a3900a73918eaa942dd65ed0b6",
@@ -814,6 +814,27 @@
       "url": "https://registry.npmjs.org/jose/6.2.13",
       "selected": false,
       "sha256": "f4f4bb22996e8179fe73d25fcc5859b7a55085ed12cb55fcf07ecc7b6848f03b"
+    },
+    {
+      "id": "GHSA-j6qf-3m9c-vwj3",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-j6qf-3m9c-vwj3",
+      "sha256": "515c0c7f592095616ca1b05653c562ee918bb3db77e2b0273a6ddddb191e2e4b",
+      "selected": false
+    },
+    {
+      "id": "GHSA-xjj6-f33q-929c",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-xjj6-f33q-929c",
+      "sha256": "57dd0b7b5bebfe59d58b79ea0765a070a0d70374520387284e44dd06faee8271",
+      "selected": false
+    },
+    {
+      "id": "GHSA-4qv8-2p9j-2685",
+      "kind": "github-advisory",
+      "url": "https://api.github.com/advisories/GHSA-4qv8-2p9j-2685",
+      "sha256": "e472071324ad3a1249d701af8264f8a75a8a9fbc73a92720b3b59f87f737e5c8",
+      "selected": false
     }
   ],
   "publisherConstraints": [
@@ -1547,11 +1568,11 @@
       "id": "CVE-2026-111943",
       "package": "stdlib",
       "version": "v1.27.2",
-      "severity": "high",
+      "severity": "moderate",
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "4cb0045c0e96edf5ad5522af7c0f77c8fd792bc3503f8ecb30f5afab95e85a56",
+      "factsHash": "3ea7d037bd9c7ae1ab3dabfdce49f3cbe9bf454812e86cb9e141299cb433df97",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records stdlib v1.27.2 with CVE-2026-111943 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -1561,6 +1582,25 @@
         "GO-2026-6809",
         "scanner-release"
       ]
+    },
+    {
+      "scope": "image:cms-cloudflared",
+      "id": "CVE-2026-114437",
+      "package": "github.com/go-chi/chi/v5",
+      "version": "v5.3.1",
+      "severity": "moderate",
+      "paths": [
+        "usr/local/bin/cloudflared"
+      ],
+      "factsHash": "b2d1aeea8ec4a37bbd958a2e6ba3f100cbd86f715a502ae5e9c42df07f37473a",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "GHSA-j6qf-3m9c-vwj3"
+      ],
+      "reason": "Current upstream advisory affects chi/v5 through5.3.2, fixed5.4.0. The pinned cloudflared binary contains5.3.1. Actual request reachability and provider-supported image remediation remain unqualified; this finding remains release-blocking.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
     },
     {
       "scope": "image:cms-cloudflared",
@@ -1839,7 +1879,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "3ef4d416cc6513a5c26e30e31204e1c2490dd03406837bdf8238591644904140",
+      "factsHash": "5c6f650e9990c1f3b46a3f928b9b46a9985decabe807f33254afe7bb5c0cc115",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned cloudflared image: tunnel connector and installed Debian libraries. Scanner records libc6 2.41-12+deb13u4 with CVE-2026-6791 at the retained exact paths. Independent package-specific primary-advisory/range or source metadata remains incomplete; this is an analysis gap, not a clean result. Release remains blocked; no waiver or global suppression.",
@@ -2382,7 +2422,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "c84a4de429d24ff43aaf0df7ae92f96046aae6dbba3bd5549d2eb024141e42c4",
+      "factsHash": "e8950e8e1565735acf5deadd467ee64cbde3e634f978971e8b2564a8e3077398",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61726 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2422,7 +2462,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "ae3d39fde55a583a10e8a80415eea0ba019ffb541f5e02f1e86a9471e29f0a3a",
+      "factsHash": "a935698f86ad0af39d0db7f271d0694475c5a12e2f10c01485d90ca216694c4c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61728 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2462,7 +2502,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "06d0bb6744aa6588c50b81c2f89dffdcd43020343b1645acda0c514c136d6fed",
+      "factsHash": "ccea102a25c7682da49253ac781a4ed411c320e38841e58da10646b2dd15b0bf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2025-61730 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2502,7 +2542,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -2521,7 +2561,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -2533,14 +2573,71 @@
     },
     {
       "scope": "image:cms-postgres",
+      "id": "CVE-2026-107928",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "146dc1355c1f236abcea8921970e048474599ba581e60c95a73066602af8495e",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-107929",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "8b97906cd167e4f33fbe081e56d4d4318f909d64e680a6f4c97da206f50efc17",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-111497",
+      "package": "brotli-libs",
+      "version": "1.2.0-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "99fd2bbdf1ff249ad00ae476d4b456bf6e8fb493c7766f5cf4c0a6597db606b7",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Workflow cohesion retained-byte advisory review; no waiver",
+      "recheck": "Before release, qualify the publisher fix against exact shipped bytes and review configured reachability and fresh inventories.",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Retained raw reports enumerate high-severity CVE-2026-111497 in brotli-libs 1.2.0-r1, older than the Alpine 1.2.1-r0 fix. Configured exploitability and remediation remain unproven; this adds the scanner row for the already recorded unresolved Brotli blocker without clearance."
+    },
+    {
+      "scope": "image:cms-postgres",
       "id": "CVE-2026-111943",
       "package": "stdlib",
       "version": "v1.24.6",
-      "severity": "high",
+      "severity": "moderate",
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "4cb0045c0e96edf5ad5522af7c0f77c8fd792bc3503f8ecb30f5afab95e85a56",
+      "factsHash": "3ea7d037bd9c7ae1ab3dabfdce49f3cbe9bf454812e86cb9e141299cb433df97",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-111943 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2560,7 +2657,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "ed329290cb9cb8e94e164a5f42af86d9b8de6a0c75254e04e4c2d8f57b2a0c9d",
+      "factsHash": "e2b8499c6a506ea9b877dcb4c6509d1fdc9d6bacefaa968a0ed23f8851f10ef2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-25679 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2720,7 +2817,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "91267dee885c8ba7c5e63dc35f48ca03bce2badfaa3479a1219e77349d35898e",
+      "factsHash": "c1cb0fefbf7df6d44fbf865986ec98bd09d0202b86c01eb47c37bc98fef5667a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-32288 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2740,7 +2837,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "fc5b930fc9b33cb4e022086c0d0778a790f0d803702de990f49c3d87bfd70182",
+      "factsHash": "7ee7ea04779dded6e750276961e40b1e5e2e8e85a40ab39833e1e0f5fc210c95",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-32289 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2760,7 +2857,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "958d20964552aa07619e9d7e75f523120a7c7b6dc80e52ea11111f4970a7a7fc",
+      "factsHash": "87eff92e10e0d6bb3d53df7946db748d65666f7cfeaf144c6c0931357c7a55f3",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-33811 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2820,7 +2917,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "d58214770ff1b06d775e9efd802e6d0a94f33cb23d4540ae2935ea83f65d2641",
+      "factsHash": "34e824fb8ff85f9041ba8eb4911ca0240cf140bdbf845d8dd45b724aaf6b2bae",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39820 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2860,7 +2957,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "828297a06eefda898e08c8be956619272183393260a07e0c6feac085bc291111",
+      "factsHash": "ede66eebb6b30658991f78dff9a4b2b0d08624432e9d8b730215503bc6dae385",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-39822 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -2980,7 +3077,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "afbbce6171fbfa57e5f2b58a65f8ab6c6c758fbe22a7db5d11c265f82e24d726",
+      "factsHash": "fdca64a0d15f63d423f4cde0fa7bcec62dc03ebff2b4a733ca02fb6f3b091e2a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-42499 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3020,7 +3117,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "2ce19adca7638470ea9ffcd61cc16f38e4c8bdd8e5148a8547efec648ca394b4",
+      "factsHash": "017e5acce747e417571845f4a6e730b42d5edb0a78b97f235fb5f26541764aa2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-42505 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3160,7 +3257,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "56f32fa7e9df9f12859c1d09bc331291a8597dbd9943c1d4f235bee2ae78db42",
+      "factsHash": "726986d444f8ca3b93922b5f94338c3f028cf33810ad77b2c2537f50ee77c2d3",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56862 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3180,7 +3277,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "e5e33b7dddef7598fa38ea4a77c9f64944f27e3669cd03fa5d6eb4379bdb3043",
+      "factsHash": "469c139df8ce1c402d2e2d45a8840a42e3af8577b7488e6a623d55c1ece8afee",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-56866 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3200,7 +3297,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "f93a33a472de4cdb5d13bf198fb8ef018b5f1e5d7d6181ea1180e9a6a52726b7",
+      "factsHash": "b83fcd73e80548aac793046502a5b40c80684a0e7c49d38d634dde38ced9b4a0",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records nghttp2-libs 1.69.0-r0 with CVE-2026-58055 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3221,7 +3318,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "d5585b97cc9d7ac181fc6bdf261ad060306ec18e3950d3ccdaea2e7bda9a9016",
+      "factsHash": "8d40777bbea9287185a84688228e17fe532cf3c4e096dae59d606499d794665f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records github.com/moby/sys/user v0.1.0 with CVE-2026-61801 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3241,7 +3338,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "75c92962f1edae6f5bea536f8f36e661ccc1852cfbcc726ad9f6c3f437fb86db",
+      "factsHash": "e5d57c61ba4ad8f22b47f311f7916d8b879445c49a4d28f8b31170573f5c63b2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78659 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3261,7 +3358,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "64fccdb13e41ae7de9788ddc2eb4bbef39a13f3f60b2417a8cd2e2ab01d037eb",
+      "factsHash": "6ce031aa6f28f27ef16b7616c89eaadf08333825b6a163d38b7b141a60a4b485",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78660 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3281,7 +3378,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "17fe9d08cdd8682b6ac2fadb2abfed8166016be28e6806aa8cda7466575fb2ed",
+      "factsHash": "aa375b2e78e7592f33c516eea760242b924b5008fe0c20cd74d6765aa0cdaca2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78663 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3301,7 +3398,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "7e6c74200ba1287689304e6e697bd0d60888df3e66cfff01ee27186e3a7b8c3e",
+      "factsHash": "25975e3b48c25f0c3891bf4ce28383f479092cb355f8eba2b49ef6eeaac58e32",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78667 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3321,7 +3418,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "b50529d7ddb49713e6ecde98fff51e7d0806d0ab9ca5c3827a6048e4993cd8ee",
+      "factsHash": "8e07e08a687a6a1c3d64e969c3557a52d06a31032d597dc8b0655797de492e1a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-78669 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3354,6 +3451,424 @@
     },
     {
       "scope": "image:cms-postgres",
+      "id": "CVE-2026-86409",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "641531cf76b212f9a2e68dcae03e1b54ba6058e844cbf507c562cb974b9e4c4c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-86410",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "62d20fd9939069277658ae44cf2da0adef419057249a5cbb99881ab86105355b",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-86411",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "6acdf37039b5408c1607104e3ee21134cd05b205f63f40d4ba77b8c29e08705c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-86412",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "9979d1e0ebae03a102c1fbe24d9aa781086eaf9f39d7a95dcf7d20913035e4ec",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-86413",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f96d42c271f75f2c8cb2317cc902473c45c347f4d6889426cd052a0650c3fa8d",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-86414",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "ccb7c0f2361dc8fede530ca4b7e36b202201dfa5ea91a6f243e7eaa4e0dbc49b",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-86415",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "c6aeda03e46db3f56e5f738796224402c0259becad870942662e1e0f1ab1f7db",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-87861",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "3706c4f58d19aa33e6ab682680674cdf5dd0e697d66ad4b50ee01d187eb60c1e",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-87862",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "cb3349601e46f1edf29e49136b0354caf96135511ce4b9223db98410a7dfbd29",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-87863",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be70444a41403c2cc4f737a96eb4209491d1dd5cbf3a2b8d5286680bc50bab33",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-87864",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "cb251808f6046f56a65f67373931c0e9e59cbfec94becf5bda21d9f2a74e5e72",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-87865",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "65fc594247c1c674a7fc2531dc731c1c1055632183afd651015da7fb1db215b8",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-87866",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "dc492871438ad2164c77add06bbbe37f373363ea34b6168652a9ad20f379a32f",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92386",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "c5a23baf1332e8465b267312785c0d01c36f30e67b72f7fd3736c26385339d1f",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92387",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a14e00d3f94509338822f1a84153e5e327a265754a57ff2af69ca130e74c507",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92388",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "65bf701b26e7b450f8ea7ab17c5198bef6945a8523b79a4d0d5030765c991733",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92389",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "b9a30e9c2fd40faf6ee0ca912dc7ecdf439b559a10ac971d903fcfd0c0a84fe7",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92390",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "00f722e309167cc70dcb6b5fea32606df8460c89d75f42882e84185377f38fd4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92391",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "a6bf53e8f7972f22c02fb0075a1151db38705389ac96bb4a73ea6ac9576cb131",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-92392",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "b81ca8b881849a34449cd2865c971172ae55fca38c0f9818488ae074ed59cf4c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-94265",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "387d9a83100993af839b7627075f2493f9360f1d8fae6b9248177101228b62e9",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
+      "id": "CVE-2026-94266",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "7a73173ad1e2253cd408085f4b1e5f1384f31a9aa611a31ed89946f0b1c25dc4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms-postgres",
       "id": "CVE-2026-94439",
       "package": "stdlib",
       "version": "v1.24.6",
@@ -3361,7 +3876,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "27c2222e2c6999b18416f8313f5628f88c9cb3b87d9c72f7ba2f9e871c0c5706",
+      "factsHash": "16a8aa78d6ad124212363fe3b0726cc5ce508304d0abf59f5a20301e9cc2225f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-94439 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3381,7 +3896,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "8f32aaa3aeb1c94bcad20f4f8559a74026e6c88d8fde4820aa8ab4e62bf08695",
+      "factsHash": "9b4e7c9b666fccc3f0b32ef67cb9ff432f34c5c775c70aee1427615507fcaaa7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-94440 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3401,7 +3916,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "b798722968028ea9c934c5b4648c8c26b8aa52793e0d666833447fe16e2a847d",
+      "factsHash": "9ac686505636f45e8b5fd5e2da478eb95297dfaef805c075e5a9c18c08756761",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-94448 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3421,7 +3936,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "19467ff31592e6aff2200a7a4569443adb17a55d3ba7baea395989521b7b0e63",
+      "factsHash": "971abd8b2ea4521465bf4e87c8a9a7c0cd2c098c65869cf890aca2c6f2cb7daa",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-97030 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3441,7 +3956,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "d053b5c1accc8950b8f26ce5c04ae241ab238b508473475ba939c1d1c676c15a",
+      "factsHash": "3e983be766c644a9f5b518665fdf739aad7eaeec91ba2c93fd9a877cd70a4a19",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-97031 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3461,7 +3976,7 @@
       "paths": [
         "usr/local/bin/gosu"
       ],
-      "factsHash": "61b0639db19f8521b040a45edcc3d0585083286feaea598a0d33f96749f63199",
+      "factsHash": "9e771e1d3a2000208ddac179b5e3a5ff9a09af6d9a8258ba9e92a066dbccb62c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Pinned PostgreSQL image: database runtime and gosu privilege-setup helper. Scanner records stdlib v1.24.6 with CVE-2026-97032 at the retained exact paths. The affected Go runtime is linked into gosu, which participates in privilege setup; affected library API reachability is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3681,7 +4196,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "c84a4de429d24ff43aaf0df7ae92f96046aae6dbba3bd5549d2eb024141e42c4",
+      "factsHash": "e8950e8e1565735acf5deadd467ee64cbde3e634f978971e8b2564a8e3077398",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61726 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3721,7 +4236,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "ae3d39fde55a583a10e8a80415eea0ba019ffb541f5e02f1e86a9471e29f0a3a",
+      "factsHash": "a935698f86ad0af39d0db7f271d0694475c5a12e2f10c01485d90ca216694c4c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61728 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3761,7 +4276,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "06d0bb6744aa6588c50b81c2f89dffdcd43020343b1645acda0c514c136d6fed",
+      "factsHash": "ccea102a25c7682da49253ac781a4ed411c320e38841e58da10646b2dd15b0bf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61730 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3881,7 +4396,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json"
       ],
-      "factsHash": "d55ec2b3b0eae3aa00f91e1cf82191479f591f8cccfaed739149b832bbe5f8c2",
+      "factsHash": "26d989e271cf255e26805547c2205f37eba86ada17915dee5ef425892e4a68d3",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records brace-expansion 5.0.9 with CVE-2026-102276 at the retained exact paths. Findings are under the base image global npm installation, outside the workspace pnpm graph. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3941,7 +4456,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/postcss-selector-parser/package.json"
       ],
-      "factsHash": "fe1b1e33df0d53bde6095ed2a686a8d0b1775c3872345456ac951544c6d3f963",
+      "factsHash": "def014ad2d0dc82f0ec84dddb90dbd8e3d0658621f372589efaa82282b0105cf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records postcss-selector-parser 7.1.4 with CVE-2026-104844 at the retained exact paths. Findings are under the base image global npm installation, outside the workspace pnpm graph. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -3961,7 +4476,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -3980,7 +4495,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -3992,14 +4507,52 @@
     },
     {
       "scope": "image:cms",
+      "id": "CVE-2026-109869",
+      "package": "undici",
+      "version": "6.28.0",
+      "severity": "high",
+      "paths": [
+        "usr/local/lib/node_modules/npm/node_modules/undici/package.json"
+      ],
+      "factsHash": "8b55be6001a21d1734bda222faee54b19d88033e5f02e71e5d98fdea48f7fe18",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "GHSA-xjj6-f33q-929c"
+      ],
+      "reason": "Current upstream advisory includes undici6.28.0 in the affected6.x range and identifies6.29.1 as remediation. This copy ships with global npm in the exact CMS/renderer image; it is not established to be absent from relevant workflows. Configured reachability and exact-image remediation remain unqualified; release stays blocked.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms",
+      "id": "CVE-2026-109924",
+      "package": "undici",
+      "version": "6.28.0",
+      "severity": "moderate",
+      "paths": [
+        "usr/local/lib/node_modules/npm/node_modules/undici/package.json"
+      ],
+      "factsHash": "ccd2101e56955e2e702f263d1fca684b6b4c28923a731654b6a8fe7461d666e4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "GHSA-4qv8-2p9j-2685"
+      ],
+      "reason": "Current upstream advisory includes undici6.28.0 in the affected6.x range and identifies6.29.1 as remediation. This copy ships with global npm in the exact CMS/renderer image; it is not established to be absent from relevant workflows. Configured reachability and exact-image remediation remain unqualified; release stays blocked.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:cms",
       "id": "CVE-2026-111943",
       "package": "stdlib",
       "version": "v1.23.12",
-      "severity": "high",
+      "severity": "moderate",
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "4cb0045c0e96edf5ad5522af7c0f77c8fd792bc3503f8ecb30f5afab95e85a56",
+      "factsHash": "3ea7d037bd9c7ae1ab3dabfdce49f3cbe9bf454812e86cb9e141299cb433df97",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-111943 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4078,7 +4631,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "ed329290cb9cb8e94e164a5f42af86d9b8de6a0c75254e04e4c2d8f57b2a0c9d",
+      "factsHash": "e2b8499c6a506ea9b877dcb4c6509d1fdc9d6bacefaa968a0ed23f8851f10ef2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-25679 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4238,7 +4791,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "91267dee885c8ba7c5e63dc35f48ca03bce2badfaa3479a1219e77349d35898e",
+      "factsHash": "c1cb0fefbf7df6d44fbf865986ec98bd09d0202b86c01eb47c37bc98fef5667a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32288 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4258,7 +4811,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "fc5b930fc9b33cb4e022086c0d0778a790f0d803702de990f49c3d87bfd70182",
+      "factsHash": "7ee7ea04779dded6e750276961e40b1e5e2e8e85a40ab39833e1e0f5fc210c95",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32289 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4278,7 +4831,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "958d20964552aa07619e9d7e75f523120a7c7b6dc80e52ea11111f4970a7a7fc",
+      "factsHash": "87eff92e10e0d6bb3d53df7946db748d65666f7cfeaf144c6c0931357c7a55f3",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33811 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4338,7 +4891,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "d58214770ff1b06d775e9efd802e6d0a94f33cb23d4540ae2935ea83f65d2641",
+      "factsHash": "34e824fb8ff85f9041ba8eb4911ca0240cf140bdbf845d8dd45b724aaf6b2bae",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39820 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4378,7 +4931,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "828297a06eefda898e08c8be956619272183393260a07e0c6feac085bc291111",
+      "factsHash": "ede66eebb6b30658991f78dff9a4b2b0d08624432e9d8b730215503bc6dae385",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39822 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4498,7 +5051,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "afbbce6171fbfa57e5f2b58a65f8ab6c6c758fbe22a7db5d11c265f82e24d726",
+      "factsHash": "fdca64a0d15f63d423f4cde0fa7bcec62dc03ebff2b4a733ca02fb6f3b091e2a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42499 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4538,7 +5091,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "2ce19adca7638470ea9ffcd61cc16f38e4c8bdd8e5148a8547efec648ca394b4",
+      "factsHash": "017e5acce747e417571845f4a6e730b42d5edb0a78b97f235fb5f26541764aa2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42505 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4678,7 +5231,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "56f32fa7e9df9f12859c1d09bc331291a8597dbd9943c1d4f235bee2ae78db42",
+      "factsHash": "726986d444f8ca3b93922b5f94338c3f028cf33810ad77b2c2537f50ee77c2d3",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56862 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4698,7 +5251,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "e5e33b7dddef7598fa38ea4a77c9f64944f27e3669cd03fa5d6eb4379bdb3043",
+      "factsHash": "469c139df8ce1c402d2e2d45a8840a42e3af8577b7488e6a623d55c1ece8afee",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56866 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4718,7 +5271,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "75c92962f1edae6f5bea536f8f36e661ccc1852cfbcc726ad9f6c3f437fb86db",
+      "factsHash": "e5d57c61ba4ad8f22b47f311f7916d8b879445c49a4d28f8b31170573f5c63b2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78659 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4738,7 +5291,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "64fccdb13e41ae7de9788ddc2eb4bbef39a13f3f60b2417a8cd2e2ab01d037eb",
+      "factsHash": "6ce031aa6f28f27ef16b7616c89eaadf08333825b6a163d38b7b141a60a4b485",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78660 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4758,7 +5311,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "17fe9d08cdd8682b6ac2fadb2abfed8166016be28e6806aa8cda7466575fb2ed",
+      "factsHash": "aa375b2e78e7592f33c516eea760242b924b5008fe0c20cd74d6765aa0cdaca2",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78663 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4778,7 +5331,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "7e6c74200ba1287689304e6e697bd0d60888df3e66cfff01ee27186e3a7b8c3e",
+      "factsHash": "25975e3b48c25f0c3891bf4ce28383f479092cb355f8eba2b49ef6eeaac58e32",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78667 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4798,7 +5351,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "b50529d7ddb49713e6ecde98fff51e7d0806d0ab9ca5c3827a6048e4993cd8ee",
+      "factsHash": "8e07e08a687a6a1c3d64e969c3557a52d06a31032d597dc8b0655797de492e1a",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78669 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4877,7 +5430,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "27c2222e2c6999b18416f8313f5628f88c9cb3b87d9c72f7ba2f9e871c0c5706",
+      "factsHash": "16a8aa78d6ad124212363fe3b0726cc5ce508304d0abf59f5a20301e9cc2225f",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94439 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4897,7 +5450,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "8f32aaa3aeb1c94bcad20f4f8559a74026e6c88d8fde4820aa8ab4e62bf08695",
+      "factsHash": "9b4e7c9b666fccc3f0b32ef67cb9ff432f34c5c775c70aee1427615507fcaaa7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94440 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4917,7 +5470,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "b798722968028ea9c934c5b4648c8c26b8aa52793e0d666833447fe16e2a847d",
+      "factsHash": "9ac686505636f45e8b5fd5e2da478eb95297dfaef805c075e5a9c18c08756761",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94448 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4937,7 +5490,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "19467ff31592e6aff2200a7a4569443adb17a55d3ba7baea395989521b7b0e63",
+      "factsHash": "971abd8b2ea4521465bf4e87c8a9a7c0cd2c098c65869cf890aca2c6f2cb7daa",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97030 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4957,7 +5510,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "d053b5c1accc8950b8f26ce5c04ae241ab238b508473475ba939c1d1c676c15a",
+      "factsHash": "3e983be766c644a9f5b518665fdf739aad7eaeec91ba2c93fd9a877cd70a4a19",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97031 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -4977,7 +5530,7 @@
       "paths": [
         "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
       ],
-      "factsHash": "61b0639db19f8521b040a45edcc3d0585083286feaea598a0d33f96749f63199",
+      "factsHash": "9e771e1d3a2000208ddac179b5e3a5ff9a09af6d9a8258ba9e92a066dbccb62c",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97032 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5096,7 +5649,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json"
       ],
-      "factsHash": "d55ec2b3b0eae3aa00f91e1cf82191479f591f8cccfaed739149b832bbe5f8c2",
+      "factsHash": "26d989e271cf255e26805547c2205f37eba86ada17915dee5ef425892e4a68d3",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Renderer image: published snapshot server and shipped global npm tooling. Scanner records brace-expansion 5.0.9 with CVE-2026-102276 at the retained exact paths. Findings are under the base image global npm installation, outside the workspace pnpm graph. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5156,7 +5709,7 @@
       "paths": [
         "usr/local/lib/node_modules/npm/node_modules/postcss-selector-parser/package.json"
       ],
-      "factsHash": "fe1b1e33df0d53bde6095ed2a686a8d0b1775c3872345456ac951544c6d3f963",
+      "factsHash": "def014ad2d0dc82f0ec84dddb90dbd8e3d0658621f372589efaa82282b0105cf",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Renderer image: published snapshot server and shipped global npm tooling. Scanner records postcss-selector-parser 7.1.4 with CVE-2026-104844 at the retained exact paths. Findings are under the base image global npm installation, outside the workspace pnpm graph. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5176,7 +5729,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -5195,7 +5748,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -5204,6 +5757,44 @@
       "sources": [
         "alpine-main"
       ]
+    },
+    {
+      "scope": "image:renderer",
+      "id": "CVE-2026-109869",
+      "package": "undici",
+      "version": "6.28.0",
+      "severity": "high",
+      "paths": [
+        "usr/local/lib/node_modules/npm/node_modules/undici/package.json"
+      ],
+      "factsHash": "8b55be6001a21d1734bda222faee54b19d88033e5f02e71e5d98fdea48f7fe18",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "GHSA-xjj6-f33q-929c"
+      ],
+      "reason": "Current upstream advisory includes undici6.28.0 in the affected6.x range and identifies6.29.1 as remediation. This copy ships with global npm in the exact CMS/renderer image; it is not established to be absent from relevant workflows. Configured reachability and exact-image remediation remain unqualified; release stays blocked.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:renderer",
+      "id": "CVE-2026-109924",
+      "package": "undici",
+      "version": "6.28.0",
+      "severity": "moderate",
+      "paths": [
+        "usr/local/lib/node_modules/npm/node_modules/undici/package.json"
+      ],
+      "factsHash": "ccd2101e56955e2e702f263d1fca684b6b4c28923a731654b6a8fe7461d666e4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "GHSA-4qv8-2p9j-2685"
+      ],
+      "reason": "Current upstream advisory includes undici6.28.0 in the affected6.x range and identifies6.29.1 as remediation. This copy ships with global npm in the exact CMS/renderer image; it is not established to be absent from relevant workflows. Configured reachability and exact-image remediation remain unqualified; release stays blocked.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
     },
     {
       "scope": "image:renderer",
@@ -5332,7 +5923,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "6812c26a33d9abf98825a50a3f767d32e8e476c1328bbe7bf6306a16ad1174f0",
+      "factsHash": "95b5bee00bfda5df8e757e234f7f0d35193a8452243b539b87eb022c7aab9974",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Static landing image: Nginx and its installed OS libraries. Scanner records libexpat 2.8.5-r0 with CVE-2026-102633 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5352,7 +5943,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -5371,7 +5962,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a36ddba4517e232cf19b5cb96cbd9781711c53f5f92c5615ddcefb3a456353b9",
+      "factsHash": "50e795b8a71557f1fa70ea86e28f588e67a46d8bc2c9c1a5c9f8c646a47c7ad3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Pinned scanner retains vendor musl/musl-utils package and fix evidence but cannot resolve the CVE detail bucket. UNKNOWN severity and missing advisory provenance remain explicit analysis/release blockers; this is not evidence of rejection or safe installed bytes.",
@@ -5383,6 +5974,101 @@
     },
     {
       "scope": "image:site",
+      "id": "CVE-2026-107928",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "146dc1355c1f236abcea8921970e048474599ba581e60c95a73066602af8495e",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-107928",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "146dc1355c1f236abcea8921970e048474599ba581e60c95a73066602af8495e",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-107929",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "8b97906cd167e4f33fbe081e56d4d4318f909d64e680a6f4c97da206f50efc17",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-107929",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "8b97906cd167e4f33fbe081e56d4d4318f909d64e680a6f4c97da206f50efc17",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-111497",
+      "package": "brotli-libs",
+      "version": "1.2.0-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "99fd2bbdf1ff249ad00ae476d4b456bf6e8fb493c7766f5cf4c0a6597db606b7",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Workflow cohesion retained-byte advisory review; no waiver",
+      "recheck": "Before release, qualify the publisher fix against exact shipped bytes and review configured reachability and fresh inventories.",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Retained raw reports enumerate high-severity CVE-2026-111497 in brotli-libs 1.2.0-r1, older than the Alpine 1.2.1-r0 fix. Configured exploitability and remediation remain unproven; this adds the scanner row for the already recorded unresolved Brotli blocker without clearance."
+    },
+    {
+      "scope": "image:site",
       "id": "CVE-2026-77214",
       "package": "libexpat",
       "version": "2.8.5-r0",
@@ -5390,7 +6076,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "d7bd6adbb50db4d80f757b8e77388d6a467826ed2bb0877e26c81e732c1321c5",
+      "factsHash": "c5aa3ecf5846d0da23bc6f893776e1a32c6b72c4b43314052dd496f0728c8eb7",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Static landing image: Nginx and its installed OS libraries. Scanner records libexpat 2.8.5-r0 with CVE-2026-77214 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5423,6 +6109,500 @@
     },
     {
       "scope": "image:site",
+      "id": "CVE-2026-86409",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "641531cf76b212f9a2e68dcae03e1b54ba6058e844cbf507c562cb974b9e4c4c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86409",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "641531cf76b212f9a2e68dcae03e1b54ba6058e844cbf507c562cb974b9e4c4c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86410",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "62d20fd9939069277658ae44cf2da0adef419057249a5cbb99881ab86105355b",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86410",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "62d20fd9939069277658ae44cf2da0adef419057249a5cbb99881ab86105355b",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86411",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "6acdf37039b5408c1607104e3ee21134cd05b205f63f40d4ba77b8c29e08705c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86411",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "6acdf37039b5408c1607104e3ee21134cd05b205f63f40d4ba77b8c29e08705c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86412",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "9979d1e0ebae03a102c1fbe24d9aa781086eaf9f39d7a95dcf7d20913035e4ec",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86412",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "9979d1e0ebae03a102c1fbe24d9aa781086eaf9f39d7a95dcf7d20913035e4ec",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86413",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f96d42c271f75f2c8cb2317cc902473c45c347f4d6889426cd052a0650c3fa8d",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86413",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f96d42c271f75f2c8cb2317cc902473c45c347f4d6889426cd052a0650c3fa8d",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86414",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "ccb7c0f2361dc8fede530ca4b7e36b202201dfa5ea91a6f243e7eaa4e0dbc49b",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86414",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "ccb7c0f2361dc8fede530ca4b7e36b202201dfa5ea91a6f243e7eaa4e0dbc49b",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86415",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "c6aeda03e46db3f56e5f738796224402c0259becad870942662e1e0f1ab1f7db",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-86415",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "c6aeda03e46db3f56e5f738796224402c0259becad870942662e1e0f1ab1f7db",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87861",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "3706c4f58d19aa33e6ab682680674cdf5dd0e697d66ad4b50ee01d187eb60c1e",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87861",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "3706c4f58d19aa33e6ab682680674cdf5dd0e697d66ad4b50ee01d187eb60c1e",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87862",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "cb3349601e46f1edf29e49136b0354caf96135511ce4b9223db98410a7dfbd29",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87862",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "cb3349601e46f1edf29e49136b0354caf96135511ce4b9223db98410a7dfbd29",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87863",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be70444a41403c2cc4f737a96eb4209491d1dd5cbf3a2b8d5286680bc50bab33",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87863",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be70444a41403c2cc4f737a96eb4209491d1dd5cbf3a2b8d5286680bc50bab33",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87864",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "cb251808f6046f56a65f67373931c0e9e59cbfec94becf5bda21d9f2a74e5e72",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87864",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "cb251808f6046f56a65f67373931c0e9e59cbfec94becf5bda21d9f2a74e5e72",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87865",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "65fc594247c1c674a7fc2531dc731c1c1055632183afd651015da7fb1db215b8",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87865",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "65fc594247c1c674a7fc2531dc731c1c1055632183afd651015da7fb1db215b8",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87866",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "dc492871438ad2164c77add06bbbe37f373363ea34b6168652a9ad20f379a32f",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87866",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "dc492871438ad2164c77add06bbbe37f373363ea34b6168652a9ad20f379a32f",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
       "id": "CVE-2026-88806",
       "package": "libx11",
       "version": "1.8.13-r0",
@@ -5430,7 +6610,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "6ecd49bf7241583d2c497a89460b67c3f50e6e4686d52d3fbfdb810fbae0f19a",
+      "factsHash": "ffcf4f514f2a6b3f8ace78a9c27dc813f5d19675bf16697bd7865aa087430fcc",
       "classification": "affected_package_condition_unproven",
       "releaseBlocked": true,
       "reason": "Static landing image: Nginx and its installed OS libraries. Scanner records libx11 1.8.13-r0 with CVE-2026-88806 at the retained exact paths. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
@@ -5440,6 +6620,348 @@
         "alpine-main",
         "scanner-release"
       ]
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92386",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "c5a23baf1332e8465b267312785c0d01c36f30e67b72f7fd3736c26385339d1f",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92386",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "c5a23baf1332e8465b267312785c0d01c36f30e67b72f7fd3736c26385339d1f",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92387",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a14e00d3f94509338822f1a84153e5e327a265754a57ff2af69ca130e74c507",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92387",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a14e00d3f94509338822f1a84153e5e327a265754a57ff2af69ca130e74c507",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92388",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "65bf701b26e7b450f8ea7ab17c5198bef6945a8523b79a4d0d5030765c991733",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92388",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "65bf701b26e7b450f8ea7ab17c5198bef6945a8523b79a4d0d5030765c991733",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92389",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "b9a30e9c2fd40faf6ee0ca912dc7ecdf439b559a10ac971d903fcfd0c0a84fe7",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92389",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "b9a30e9c2fd40faf6ee0ca912dc7ecdf439b559a10ac971d903fcfd0c0a84fe7",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92390",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "00f722e309167cc70dcb6b5fea32606df8460c89d75f42882e84185377f38fd4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92390",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "00f722e309167cc70dcb6b5fea32606df8460c89d75f42882e84185377f38fd4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92391",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "a6bf53e8f7972f22c02fb0075a1151db38705389ac96bb4a73ea6ac9576cb131",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92391",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "a6bf53e8f7972f22c02fb0075a1151db38705389ac96bb4a73ea6ac9576cb131",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92392",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "b81ca8b881849a34449cd2865c971172ae55fca38c0f9818488ae074ed59cf4c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-92392",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "b81ca8b881849a34449cd2865c971172ae55fca38c0f9818488ae074ed59cf4c",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-94265",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "387d9a83100993af839b7627075f2493f9360f1d8fae6b9248177101228b62e9",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-94265",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "387d9a83100993af839b7627075f2493f9360f1d8fae6b9248177101228b62e9",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-94266",
+      "package": "curl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "7a73173ad1e2253cd408085f4b1e5f1384f31a9aa611a31ed89946f0b1c25dc4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-94266",
+      "package": "libcurl",
+      "version": "8.22.0-r0",
+      "severity": "low",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "7a73173ad1e2253cd408085f4b1e5f1384f31a9aa611a31ed89946f0b1c25dc4",
+      "classification": "affected_package_condition_unproven",
+      "releaseBlocked": true,
+      "reviewOwner": "Microsoft mail exact-image inventory reconciliation; independent engineering review; no risk waiver",
+      "sources": [
+        "alpine-main"
+      ],
+      "reason": "Current Alpine security feed records this curl/libcurl advisory with8.23.0-r0 remediation; this exact inventory ships8.22.0-r0. The scanner now enumerates the retained OS package finding. Deployment reachability and compatible image remediation remain unqualified; preserve this as a release blocker.",
+      "recheck": "Before release, qualify supported remediation against these exact native/package paths and verify fresh final candidate image evidence."
     },
     {
       "scope": "image:site",
@@ -5520,116 +7042,78 @@
         "alpine-main",
         "scanner-release"
       ]
-    },
-    {
-      "scope": "image:cms-postgres",
-      "id": "CVE-2026-111497",
-      "package": "brotli-libs",
-      "version": "1.2.0-r1",
-      "severity": "high",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "03e09c727d5a975963d16de8c1d392fbbd7354d415df845273437652ee8e6636",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Workflow cohesion retained-byte advisory review; no waiver",
-      "recheck": "Before release, qualify the publisher fix against exact shipped bytes and review configured reachability and fresh inventories.",
-      "sources": [
-        "alpine-main"
-      ],
-      "reason": "Retained raw reports enumerate high-severity CVE-2026-111497 in brotli-libs 1.2.0-r1, older than the Alpine 1.2.1-r0 fix. Configured exploitability and remediation remain unproven; this adds the scanner row for the already recorded unresolved Brotli blocker without clearance."
-    },
-    {
-      "scope": "image:site",
-      "id": "CVE-2026-111497",
-      "package": "brotli-libs",
-      "version": "1.2.0-r1",
-      "severity": "high",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "03e09c727d5a975963d16de8c1d392fbbd7354d415df845273437652ee8e6636",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Workflow cohesion retained-byte advisory review; no waiver",
-      "recheck": "Before release, qualify the publisher fix against exact shipped bytes and review configured reachability and fresh inventories.",
-      "sources": [
-        "alpine-main"
-      ],
-      "reason": "Retained raw reports enumerate high-severity CVE-2026-111497 in brotli-libs 1.2.0-r1, older than the Alpine 1.2.1-r0 fix. Configured exploitability and remediation remain unproven; this adds the scanner row for the already recorded unresolved Brotli blocker without clearance."
     }
   ],
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "c0ba083a6ac50ec1cfd4257a99ccad592f2d01b1700692e60a1994d5aa722674",
+      "fingerprint": "d1a66651f973e852da6d062b3377eb8269cb14006889a89b3a267bccd65d124a",
       "status": "blocked",
-      "reason": "M16 private workspace capabilities, transactional private saves and nullable-domain migration change the shared CMS configuration embedded in all eight helper bundles. Actual hosted helper paths, sizes and hashes exactly match the repository-root generator output; the new migration bundle passed actual old/new empty, populated, idempotent and guarded rollback rehearsals, preserving all rows, active snapshot and credentials. OS/native files and Go targets remain byte-identical to the tooling baseline. Application browser, authority and source reviews remain separate evidence. All unresolved native/OS findings, opaque coverage/support gaps and release blockers remain; this is a blocked assessment.",
-      "reviewOwner": "M17 source/helper qualification (Codex engineering; no risk waiver)",
+      "reason": "Microsoft mail schema, job and configuration imports change all eight CMS runtime helper bundles. Each actual hosted helper path, size and SHA256 exactly matches the repository-root owning generator output at this source. Restoring the prior helper list reproduces the prior native fingerprint, proving OS/native files and Go targets are unchanged. Canonical source tests, migration and compiled-browser checks passed in the same run. All native/OS findings, opaque coverage/support gaps and release blockers remain; this is a blocked assessment, not release qualification.",
+      "reviewOwner": "Microsoft mail exact helper/image inventory review; independent engineering evidence; no waiver",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
         "scanner-release",
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "b3cfc4a2d78702f3381dce404231d452ba97c842",
-      "reviewedImageId": "sha256:f30002290e70eef86b1c6609f7d1f49f52a7287b7dea37f53ec8741a7d5940c6",
-      "reviewedArchiveSha256": "c9ade67f5865ba7eb8a9b75ca94996d0ef3cb5ebd45a28d114c3154e825291ab",
-      "reviewedReportSha256": "4d82c8aaf672cb035c2f61d37d71a26da8298e1c2ff116af7db5099bd8e4f4de",
-      "reviewedNativeInventorySha256": "6716581f61b6f4f1c0aa54503dad5586d55c6a8ad49012f70932db599ee26eac",
+      "reviewedSourceSHA": "7c19493ba5395218e721a66d6e206ccfabc5b4bb",
+      "reviewedImageId": "sha256:6c36e08535d0a75635d640b2a7562b8a9d96268cb7afe8b1035dab943cc21bf7",
+      "reviewedArchiveSha256": "bd99d4e75d9a86f47908583e974c0084a8fa62a4ca8e0a6a0173f70ec550ed99",
+      "reviewedReportSha256": "a3734492b6b1855dc7af13f6fdc6af9624011c7e5a5191deed8103eb5d7ebfe7",
+      "reviewedNativeInventorySha256": "36a40a573392ceac10ccb1b047fce5d7260bc89b634e02a9cb95102c92125568",
       "bundleQualification": {
-        "kind": "hosted-exact-bytes-with-root-generator-and-legal-browser",
-        "baselineSourceSHA": "b3cfc4a2d78702f3381dce404231d452ba97c842",
-        "baselineImageId": "sha256:f30002290e70eef86b1c6609f7d1f49f52a7287b7dea37f53ec8741a7d5940c6",
+        "kind": "hosted-exact-bytes-with-root-generator-and-canonical-tests",
+        "baselineSourceSHA": "7c19493ba5395218e721a66d6e206ccfabc5b4bb",
+        "baselineImageId": "sha256:6c36e08535d0a75635d640b2a7562b8a9d96268cb7afe8b1035dab943cc21bf7",
         "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
         "node": "24.22.0",
         "pnpm": "12.14.0",
         "bundledScripts": [
           {
             "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
-            "size": 14743793,
-            "sha256": "8e99049b994ed71f89aa38ca3dbbc19ce29ca5d46185e0789d821a3f7437f39f"
+            "size": 14905332,
+            "sha256": "5f911bc9fb354791aa8b77cf6904668021fa4ab751ea6698c3ab7088e060b68e"
           },
           {
             "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
-            "size": 14760005,
-            "sha256": "93afa57001b7b120e40190b5a573888c3e148c791a41566ab7aebfdc085f0ba1"
+            "size": 14921544,
+            "sha256": "49bf803f43939066816f40743a7fb76d1e8c1f3f018f558a999b66ffbad5aadc"
           },
           {
             "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
-            "size": 14771912,
-            "sha256": "1ac222c21a4a529725e4de580a28aca298af5c91edf30b1001ed8d12e6c5f32a"
+            "size": 14933423,
+            "sha256": "3a55efad2316c9f2746c25e54a1b9498bcfa1af99eb4ca52e0a8e0831aaa41bc"
           },
           {
             "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
-            "size": 14742674,
-            "sha256": "c80596fc4c75ceadb163ca40b4612f6a080e0e5420ad59d7b36d2f27041f01fe"
+            "size": 14904213,
+            "sha256": "a7d388029a6d60d7fc2c60a8b18fefe2eaf2dcade0a9a9346142927726a801d3"
           },
           {
             "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
-            "size": 15609295,
-            "sha256": "c4e560a845c177bc8d896d319e35f1375259483375fc00d38a276d8ca3bbb998"
+            "size": 15792115,
+            "sha256": "7914e6d6a253cb9d7be3e4e7232855133fd2205ccc908be777216fd22a98b9f6"
           },
           {
             "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
-            "size": 14744608,
-            "sha256": "fcab3b975f745ffabce4797a6ac9e6fba0498d40bcd5056456d37f27756d65e4"
+            "size": 14906147,
+            "sha256": "4c04d86148dd73bdb4edf25f8c6871ce1b40ac54c4ee7cb61b15762f825299ed"
           },
           {
             "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
-            "size": 14750042,
-            "sha256": "28099dccf6184f5d7402d745b149be459f903f6e26ad9201cd4f2e63de7dea65"
+            "size": 14911554,
+            "sha256": "b7b50f8ae2e601ccf4bd9256b2ae94b3ab931f993b8a7141fb0602aeb7070732"
           },
           {
             "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 14840242,
-            "sha256": "43e69485a69c3750d0747f42b582bb989b94de2f9896605753c1b309c98e23a3"
+            "size": 15001751,
+            "sha256": "466c288e1b23d1189df2fdb85a714e7f255c7365e902ef3c646c56a475361dd3"
           }
         ],
-        "limitation": "M17 follow-up unpublished workflow40038419830 attempt1 at sourceb3cfc4a2 matches all eight pinned root-generated helpers. Native files and Go targets are unchanged.52 focused checkout/service/action regressions prove validated legal IDs, locale, versions, hashes and exact statement survive asynchronous work or reject before order/acceptance writes. Prior compiled CMS/browser/renderer source393a9b99 proof has27 assertions with no later UI/renderer changes. Actual b3 packaged startup passes. No SQL schema changes; M16 migration rehearsal stays historical. Fresh final-policy-head canonical browser/image receipts remain required; no legal/provider/publication/production or security release clearance."
+        "behaviorQualification": "Canonical CMS source tests, migration tests, built application browser and all three packaged-image startup checks passed in run40404485218 attempt1. Actual provider E2E, security release clearance, publication and deployment remain deferred."
       },
-      "reviewedVerificationRunId": "40038419830",
+      "reviewedVerificationRunId": "40404485218",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5644,12 +7128,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "b3cfc4a2d78702f3381dce404231d452ba97c842",
+      "reviewedSourceSHA": "7c19493ba5395218e721a66d6e206ccfabc5b4bb",
       "reviewedImageId": "sha256:c293117fcecda7344b5480222e813b9f673d7abd69b1dd95eff239b768b04f59",
-      "reviewedArchiveSha256": "248ffe349cbb6f67fdad8e8b868cf83b646d42f5709f5f0ce35068eb31ba65fc",
-      "reviewedReportSha256": "bf5842c0ecef5ae2e16b11b4768331510de394a3c61db34f122ff8645a9689c3",
-      "reviewedNativeInventorySha256": "65ac2fcbed304a6a510c0a431936d526df767a7493bc2cf3ac95e6fe0c41791d",
-      "reviewedVerificationRunId": "40038419830",
+      "reviewedArchiveSha256": "101bba82d24e7fcd2b0e0388c272e6fc24814d832c82c58970da08c68472a8ec",
+      "reviewedReportSha256": "a84405991c4e683a39cf8a2a7c7c2059ef894da6514c5d6aeff3314a3dd6d036",
+      "reviewedNativeInventorySha256": "cd34d8240c3fb72d32407dfe6d40f7bade2833e750d31b836f2c43909cb74baf",
+      "reviewedVerificationRunId": "40404485218",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5662,12 +7146,12 @@
       "sources": [
         "scanner-release"
       ],
-      "reviewedSourceSHA": "b3cfc4a2d78702f3381dce404231d452ba97c842",
+      "reviewedSourceSHA": "7c19493ba5395218e721a66d6e206ccfabc5b4bb",
       "reviewedImageId": "sha256:08f1d1bdeb589c853ed8cf38de0bc9027eefbbc5f49bb31933e3f54560e0aea1",
-      "reviewedArchiveSha256": "cbc21939836f7b720b1faa7f859dfed6da6aba9e4b14211d73b1596212633230",
-      "reviewedReportSha256": "c39aaddbab6f700f2cd8262cae804a11e75fc28c9e6a7ec4fba6404247e90b42",
-      "reviewedNativeInventorySha256": "c91a0e8d0922175aed043bc39cd07bda043d7e324953722370314f803713e8ac",
-      "reviewedVerificationRunId": "40038419830",
+      "reviewedArchiveSha256": "1e88dddfaaf97bdf8a8745e76922ff960dfcb5336aa2d452054af113208b8638",
+      "reviewedReportSha256": "507183a900ec6031ecc6da776b7d41a97ff1fde66640ef0adfed787a8e43c96b",
+      "reviewedNativeInventorySha256": "eca25be8107a677fb41ee38c4532da50a95b97a7d5ce530b7c2ee24a0402f513",
+      "reviewedVerificationRunId": "40404485218",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5682,12 +7166,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "b3cfc4a2d78702f3381dce404231d452ba97c842",
-      "reviewedImageId": "sha256:ce945a0ce11ead7ee8bc43e89a053a082c8a467d4c8628d41beace77afe90e61",
-      "reviewedArchiveSha256": "abfa35e71bff7587d04d73441393291f68c4c86963404605f282f6a432fffa65",
-      "reviewedReportSha256": "08569b4e433d396211199ff599794a22b93ce76934f32caf5367e087a37af2c2",
-      "reviewedNativeInventorySha256": "fde27297671bb15fe01f95c1ce34b814622d066692a12a78b59ece6b75233151",
-      "reviewedVerificationRunId": "40038422502",
+      "reviewedSourceSHA": "7c19493ba5395218e721a66d6e206ccfabc5b4bb",
+      "reviewedImageId": "sha256:d3847996e30488d5699d9ed3b21897341758c33889ecf6230e26e265a1260057",
+      "reviewedArchiveSha256": "7f4438f8513727af31654d321d57169876412404d0680466dbfd4f533a0b7562",
+      "reviewedReportSha256": "e90728b23e9d0c60c3130886ae3c8c7ac3c5c9ba1e9729e1b10def34e82e6962",
+      "reviewedNativeInventorySha256": "c0481f4ed3764a49d7a1c8620387ad6d19f813141119103e748d14c02f3db3e4",
+      "reviewedVerificationRunId": "40404485218",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -5702,12 +7186,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "b3cfc4a2d78702f3381dce404231d452ba97c842",
-      "reviewedImageId": "sha256:11e29607b0afd60d9a418674123264ab12fd13cce7bd2445ff58a9b63d1da3ad",
-      "reviewedArchiveSha256": "7e8db18eed88b207b7029555f8aa9f18d0313e1a3224ca32ce9a162f1a727da5",
-      "reviewedReportSha256": "0e8a71934ac4aa003b100fdca1a1bb031acc7341273331e66bf343f534cca216",
-      "reviewedNativeInventorySha256": "120e7d1df2c5b04acc8e3e576e24bfde03d84eb4f22ca087a863bc36691a64c5",
-      "reviewedVerificationRunId": "40038425132",
+      "reviewedSourceSHA": "7c19493ba5395218e721a66d6e206ccfabc5b4bb",
+      "reviewedImageId": "sha256:189a94a0927da40ef5205d3c088cade44397b2c236b22792a1be57400299fe68",
+      "reviewedArchiveSha256": "6ee7dbb3da17ac04c2bb8c22e3966323924fa79f533530b0894ea10f22828603",
+      "reviewedReportSha256": "e9c8904f8e841aa4459facc37d2d7131f4b128147f6901c176518afd8e8e3174",
+      "reviewedNativeInventorySha256": "884f36a8b97b4a91b80aa690e0ffaeaa220066eb93acc2c0c827958389327fd3",
+      "reviewedVerificationRunId": "40404485218",
       "reviewedVerificationRunAttempt": "1"
     }
   ],
@@ -5834,6 +7318,7 @@
     "No live-provider, production/Amicare, recovery, publication or deployment gate is cleared.",
     "Tooling recovery reviewed four changed publisher hashes: Node/scanner release eligibility only; Alpine main adds BIND and nginx fix rows, and community adds Docker/Compose/buildx rows. Retained CMS BIND is explicitly deferred; retained site nginx is 1.31.7-r1, so the 1.30.6 maintenance-branch fix does not alone establish applicability. Docker/Compose/buildx packages are absent from the retained image inventories. Fresh final-candidate scans remain required.",
     "Canonical tooling qualification 39845654818 attempt 1 retains 208 image findings: the prior 198 plus eight UNKNOWN musl rows and two ip-address findings. No findings disappear. Existing package/version/path/fix/selected-severity facts are unchanged; changed fingerprints concern reference lists, vendor-severity provenance and three modified timestamps. All five native assessments remain blocked. Four native fingerprints are unchanged; CMS changes only BIND executables/libraries to 9.20.30, with all eight helper hashes unchanged.",
-    "Microsoft mail review adds the exact jose6.2.13 dependency and records ten newly enumerated full/production fast-uri/happy-dom findings. Existing source findings, all210 image dispositions, all five blocked native assessments and the October28 expiry remain. Native helper changes require exact-image qualification; this source review grants no release clearance."
+    "Microsoft mail review adds the exact jose6.2.13 dependency and records ten newly enumerated full/production fast-uri/happy-dom findings. Existing source findings, all210 image dispositions, all five blocked native assessments and the October28 expiry remain. Native helper changes require exact-image qualification; this source review grants no release clearance.",
+    "PR126 exact-image reconciliation: run40404485218 attempt1, source7c19493ba5395218e721a66d6e206ccfabc5b4bb, retains all210 previous image findings and adds77 current scanner findings (curl/libcurl, global-npm undici, cloudflared chi). Three Go CVE-2026-111943 scanner-selected labels changed high to moderate; all raw multi-vendor provenance and release blockers remain. All five native assessments remain blocked, with only CMS helper bytes changing and matching the root generator. Source review expiry and every deferred release control remain unchanged."
   ]
 }
