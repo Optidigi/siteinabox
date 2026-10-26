@@ -19,11 +19,12 @@ vi.mock("@/payload.config", () => ({ default: {} }))
 
 const fakeAuth = vi.fn()
 const fakeUpdate = vi.fn()
+const fakeFindTenant = vi.fn()
 vi.mock("payload", async () => {
   const actual = await vi.importActual<typeof import("payload")>("payload")
   return {
     ...actual,
-    getPayload: vi.fn(async () => ({ auth: fakeAuth, update: fakeUpdate, find: async () => ({ totalDocs: 0, docs: [] }) })),
+    getPayload: vi.fn(async () => ({ auth: fakeAuth, update: fakeUpdate, findByID: fakeFindTenant, find: async () => ({ totalDocs: 0, docs: [] }) })),
   }
 })
 
@@ -37,6 +38,7 @@ import { setTenantTheme } from "@/lib/actions/setTenantTheme"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 beforeEach(() => {
+  fakeFindTenant.mockReset().mockResolvedValue({ id: 42, status: "active", enabledServices: ["website"] })
   fakeAuth.mockReset()
   fakeUpdate.mockReset()
   fakeUpdate.mockResolvedValue({ id: 1 })
@@ -125,4 +127,11 @@ describe("setTenantTheme — OBS-64 authorization boundary", () => {
     expect(fakeUpdate.mock.calls[0]![0].overrideAccess).toBe(true)
     expect(fakeUpdate.mock.calls[0]![0].user).toBeUndefined()
   })
+  it("denies email-only owners before changing a website theme", async () => {
+    userOf("owner", [{ tenant: 42 }])
+    fakeFindTenant.mockResolvedValue({ id: 42, status: "active", enabledServices: ["email"] })
+    await expect(setTenantTheme(42, minimalTheme)).rejects.toThrow(/workspace access required/)
+    expect(fakeUpdate).not.toHaveBeenCalled()
+  })
+
 })

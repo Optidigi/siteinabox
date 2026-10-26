@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
     find: vi.fn(),
     update: vi.fn(),
+    findByID: vi.fn(),
   },
   runExistingSiteTurn: vi.fn(),
   streamExistingSiteTurn: vi.fn(),
@@ -40,7 +41,10 @@ const req = (body: unknown, accept?: string) =>
 describe("cms agent route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.payload.find.mockResolvedValue({ docs: [{ id: 7, slug: "fixture-care" }] })
+    mocks.payload.findByID.mockResolvedValue({ id: 7, status: "active", enabledServices: ["website"] })
+    mocks.payload.find.mockImplementation(async ({ collection }: { collection: string }) => collection === "tenants"
+      ? { totalDocs: 1, docs: [{ id: 7, slug: "fixture-care" }] }
+      : { totalDocs: 0, docs: [] })
     mocks.runExistingSiteTurn.mockResolvedValue({
       text: "Thema gezet.",
       applied: true,
@@ -133,4 +137,13 @@ describe("cms agent route", () => {
     expect(mocks.runExistingSiteTurn).not.toHaveBeenCalled()
     expect(mocks.streamExistingSiteTurn).toHaveBeenCalled()
   })
+  it("denies email-only owners before invoking a website model", async () => {
+    mocks.payload.auth.mockResolvedValue({ user: { id: 2, role: "owner", tenants: [{ tenant: 7 }] } })
+    mocks.payload.findByID.mockResolvedValue({ id: 7, status: "active", enabledServices: ["email"] })
+    const response = await POST(req({ message: "Change website theme", tenantSlug: "fixture-care" }))
+    expect(response.status).toBe(403)
+    expect(mocks.runExistingSiteTurn).not.toHaveBeenCalled()
+    expect(mocks.streamExistingSiteTurn).not.toHaveBeenCalled()
+  })
+
 })

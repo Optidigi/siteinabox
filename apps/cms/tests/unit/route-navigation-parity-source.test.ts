@@ -49,8 +49,9 @@ describe("OBS-103 route and navigation parity source checks", () => {
 
   it("does not expose selected-site team links to editor/viewer sidebar roles", () => {
     const sidebar = read("src/components/layout/AppSidebar.tsx")
-    expect(sidebar).toContain('const showTeam = showContent && (inTenantView || role === "owner")')
-    expect(sidebar).toContain("const showSettings = showContent")
+    expect(sidebar).toContain('const showTeam = showSettings && (inTenantView || role === "owner")')
+    expect(sidebar).toContain('const showSettings = mode === "tenant" || inTenantView')
+    expect(sidebar).toContain('const showContent = websiteEnabled && (mode === "tenant" || inTenantView)')
   })
 
   it("keeps team owner-only while tenant settings expose personal preferences", () => {

@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Microsoft mail source evidence reconciliation (Codex engineering; independent review; no release waiver)",
   "graphHash": "76e8d6e67c9b11eabccd46e4aa7886ebb7ed10a3900a73918eaa942dd65ed0b6",
-  "configurationHash": "5f045d56c256fc8859612395d7dc8fc1dc22d900be62013378cd24b7517e6833",
+  "configurationHash": "5a249b157231289be05407ad64c25d9e3ca9af2945683b0bfd068e57b49d9d10",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
