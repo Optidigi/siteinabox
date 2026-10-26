@@ -1,6 +1,8 @@
 # Workflow ownership
 
-`workflow-path-matrix.json` declares one canonical image producer: `ci.yml`.
+`workflow-path-matrix.json` declares one canonical PR/main-push qualification
+and promotion-archive producer: `ci.yml`. Scheduled/manual security inventory
+uses the same verifier for fresh scans and is not a promotion source.
 Every pull request, main push and manual verification runs the CMS, renderer and
 landing image matrix. There are no image path filters and no duplicate automatic
 archive workflows. Shared contracts, UI, legal content, install inputs and

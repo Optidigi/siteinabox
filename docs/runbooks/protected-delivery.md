@@ -11,7 +11,7 @@ requirements with actual identities; agent reports do not satisfy them.
 `required-ci` depends on every canonical job and the complete image matrix.
 Every PR receives actual unpublished builds and startup checks for CMS,
 renderer and landing, including shared contracts, renderer, UI and legal inputs.
-Canonical CI is the sole PR/main image producer and retains trusted main archives
+Canonical CI is the sole PR/main-push promotion producer and retains trusted main archives
 for later approved promotion. CMS test partitions and the compiled browser seam
 run in parallel jobs with separately owned databases;
 `required-ci` additionally requires `cms-browser`. The existing required context

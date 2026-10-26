@@ -63,10 +63,12 @@ infrastructure inventory. The aggregate retains these and renders a job summary.
 Compare cold/warm end-to-end critical path and runner-seconds; do not infer savings
 from cache presence alone. Existing advisory/native blockers remain blockers.
 
-## One image producer and a separate release decision
+## One promotion producer and a separate release decision
 
-Canonical CI is the sole automatic main image producer. PR runs retain JSON/raw
-scanner evidence. Only trusted main runs retain `image-cms`, `image-renderer` and
+Canonical CI is the sole push-triggered main image and promotion-archive
+producer. Scheduled/manual `dependency-security.yml` still uses the same verifier
+to rebuild for fresh advisory inventories; it retains metadata only and is not
+an eligible promotion source. PR runs retain JSON/raw scanner evidence. Only trusted main runs retain `image-cms`, `image-renderer` and
 `image-site` TAR archives for seven days. Landing receives the existing public
 analytics build token only on trusted main; synthetic-input archives remain
 unpublishable. Removing the three duplicate archive producers does not publish
