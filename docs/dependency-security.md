@@ -5,6 +5,15 @@ facts, graph/configuration identities, review ownership and expiry. It is not a
 blanket acceptance of risk. The October 7 candidate reviewed until October 14 is
 historical; its dates and findings were not copied forward as current evidence.
 
+The October26 Microsoft mail refresh requalifies the changed source graph and
+configuration, including the exact jose6.2.13 publisher identity. Fresh audits
+retain the three prior source findings and add ten full/production fast-uri and
+happy-dom findings, for13 source dispositions. All remain release-blocking.
+The210 image dispositions, five blocked native assessments, seven deferrals and
+original October28 expiry are retained. This refresh qualifies source inventory
+only; final candidate image evidence and production-release clearance remain
+separate. Independent review found no waived findings or weakened controls.
+
 ## Commands and scope
 
 Use the exact project Node LTS and pinned pnpm from the repository root:
@@ -46,9 +55,9 @@ expiry; they cannot override an advisory blocker.
 The October 23 cohesion refresh reconciles the withdrawn braces advisory:
 GitHub records withdrawal at 12:53:02 UTC and fresh full/production npm audits
 now omit it. Its two current dispositions are removed only after that agreement;
-Git history and the retained publisher fact preserve the earlier evidence. Three
+Git history and the retained publisher fact preserve the earlier evidence. At that point three
 source findings, seven blocked deferrals, 210 image dispositions and five blocked
-native assessments remain, with the original October 28 expiry. New Alpine
+native assessments remained, with the original October28 expiry. New Alpine
 libraw/libde265/nsd entries are absent from the retained OS package inventories;
 bundled/native qualification and final-candidate image checks remain blocked and
 mandatory respectively. No ignore, waiver, dependency upgrade or expiry extension
