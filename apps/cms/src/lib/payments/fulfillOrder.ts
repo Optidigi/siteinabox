@@ -38,6 +38,14 @@ export async function fulfillPaidOrder(
   payload: Payload,
   input: { orderId: string | number; paymentAttemptId: string | number },
 ): Promise<FulfillOrderResult> {
+  const order = await payload.findByID({ collection: "orders", id: input.orderId, depth: 0, overrideAccess: true })
+  if (["microsoft_mail_initial", "microsoft_mail_seats", "microsoft_mail_renewal"].includes(order.orderKind ?? "")) {
+    const attempt = await payload.findByID({ collection: "payment-attempts", id: input.paymentAttemptId, depth: 0, overrideAccess: true })
+    if (!sameRelationshipId(attempt.order, order.id)) throw new Error("Payment attempt does not belong to the fulfillment order.")
+    if (!initialPaymentIsFinanciallySecured(order, attempt)) return { status: "waiting", orderId: order.id, message: "Email fulfillment requires a settled payment." }
+    const { fulfillMicrosoftMailOrder } = await import("@/lib/microsoftMailProvisioning/fulfillment")
+    return fulfillMicrosoftMailOrder(payload, order, attempt)
+  }
   return withCommerceOrderLock(payload, input.orderId, () =>
     fulfillPaidOrderLocked(payload, input),
   )

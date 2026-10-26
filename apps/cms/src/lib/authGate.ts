@@ -11,6 +11,7 @@ import type { User } from "@/payload-types"
 import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { hasWorkspaceService } from "@/lib/tenants/services"
 
 export type GateResult = { user: User; ctx: SiabContext }
 
@@ -36,7 +37,7 @@ export const requireAuth = async (): Promise<GateResult> => {
     redirect(`/login?error=${decision.reason}`)
   }
 
-  if (ctx.mode === "tenant" && !await hasManualWorkspaceAccess(await getPayload({ config }), String(ctx.tenant.id))) {
+  if (ctx.mode === "tenant" && !hasWorkspaceService(ctx.tenant, "email") && !await hasManualWorkspaceAccess(await getPayload({ config }), String(ctx.tenant.id))) {
     redirect("/builder")
   }
 

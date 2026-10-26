@@ -836,6 +836,7 @@ export const PaymentAttempts: CollectionConfig = {
       index: true,
     },
     { name: "providerPaymentId", type: "text", unique: true, index: true },
+    { name: "providerMode", type: "select", options: ["test", "live", "manual"], admin: { readOnly: true } },
     { name: "providerStatus", type: "text", index: true },
     { name: "checkoutUrl", type: "text" },
     { name: "currency", type: "text", required: true, defaultValue: "EUR" },

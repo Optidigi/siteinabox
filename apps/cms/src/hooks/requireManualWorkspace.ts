@@ -1,6 +1,6 @@
 import { Forbidden, type CollectionBeforeOperationHook } from "payload"
 import { relationshipId } from "@/lib/relationshipId"
-import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
+import { hasManualWorkspaceAccess, hasWorkspaceAccountAccess } from "@/lib/workspace/manualAccess"
 import { asRecord } from "@/lib/record"
 
 export const requireManualWorkspace: CollectionBeforeOperationHook = async ({ args, req, overrideAccess }) => {
@@ -20,6 +20,8 @@ export const requireManualWorkspaceUserManagement: CollectionBeforeOperationHook
   // Creating or managing another team identity is a manual workspace control.
   if (req.user?.role !== "owner" || !["create", "update", "delete"].includes(operation)) return args
   if (operation === "update" && String(asRecord(args)?.id) === String(req.user.id)) return args
-  await requireManualWorkspace(input)
+  const memberships = req.user.tenants ?? []
+  const tenantId = relationshipId(memberships[0]?.tenant)
+  if (memberships.length !== 1 || !tenantId || !await hasWorkspaceAccountAccess(req.payload, tenantId, req)) throw new Forbidden()
   return args
 }

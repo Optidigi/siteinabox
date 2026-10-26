@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
-import { requireAuth } from "@/lib/authGate"
+import { requireWebsiteAccess as requireAuth } from "@/lib/workspace/websiteAccess"
 import { AppointmentConflictError, AppointmentInputError, AppointmentManagementNotFoundError, AppointmentUnavailableError, updateAppointmentStatus } from "@/lib/appointments/service"
 
 const allowedStatuses = ["cancelled", "completed", "no_show"] as const

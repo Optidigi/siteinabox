@@ -20,9 +20,11 @@ const RESERVED_SITES_SEGMENTS = new Set(["new"])
 export function SiteHeader({
   user,
   sites = [],
+  workspaceName,
 }: {
   user: Pick<User, "email" | "name" | "role">
   sites?: SiteSwitcherSite[]
+  workspaceName?: string
 }) {
   const pathname = usePathname() ?? "/"
   const selection = useCmsAgentSelectionState()
@@ -41,6 +43,7 @@ export function SiteHeader({
       {!onPageEditor ? (
         <SidebarTrigger variant="outline" className="md:hidden" />
       ) : null}
+      {workspaceName ? <span className="truncate text-sm font-medium">{workspaceName}</span> : null}
       {currentSite && !onPageEditor ? (
         <div className="min-w-0">
           <SiteSwitcher current={currentSite} sites={sites} />

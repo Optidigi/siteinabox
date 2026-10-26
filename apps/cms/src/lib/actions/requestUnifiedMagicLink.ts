@@ -14,7 +14,7 @@ import { normalizeBuilderEmail } from "@/lib/builder/thread"
 import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
 import type { User } from "@/payload-types"
 import config from "@/payload.config"
-import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
+import { hasWorkspaceAccountAccess } from "@/lib/workspace/manualAccess"
 
 export async function requestUnifiedMagicLinkAction(
   _state: RequestBuilderMagicLinkState,
@@ -83,7 +83,7 @@ const loadEligibleCmsUser = async (email: string): Promise<User | null> => {
   if (tenants.length !== 1) return null
   const tenant = tenants[0]?.tenant
   const tenantId = typeof tenant === "object" && tenant ? String(tenant.id) : String(tenant ?? "")
-  if (!tenantId || !await hasManualWorkspaceAccess(payload, tenantId)) return null
+  if (!tenantId || !await hasWorkspaceAccountAccess(payload, tenantId)) return null
   return user
 }
 

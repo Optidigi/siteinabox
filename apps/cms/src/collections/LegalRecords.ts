@@ -345,6 +345,9 @@ export const Orders: CollectionConfig = {
       type: "select",
       options: selectOptions([
         "initial_subscription",
+        "microsoft_mail_initial",
+        "microsoft_mail_seats",
+        "microsoft_mail_renewal",
         "subscription_renewal",
         "domain_renewal",
         "migration_supplemental",

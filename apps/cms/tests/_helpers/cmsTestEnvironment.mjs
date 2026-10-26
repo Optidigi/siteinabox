@@ -57,7 +57,7 @@ export function assertDisposableCmsEnvironment(env, resource) {
       continue
     }
     if (name === "POSTGRES_PASSWORD" && value === decodeURIComponent(uri.password)) continue
-    const provider = /^(?:OPENAI|ANTHROPIC|MOLLIE|OPENPROVIDER|CLOUDFLARE|POSTHOG|GOOGLE|MICROSOFT|APPLE|SMTP|AWS|S3|RESEND|SENDGRID)_/.test(name)
+    const provider = /^(?:OPENAI|ANTHROPIC|MOLLIE|PAX8|EXCHANGE|OPENPROVIDER|CLOUDFLARE|POSTHOG|GOOGLE|MICROSOFT|APPLE|SMTP|AWS|S3|RESEND|SENDGRID)_/.test(name)
     const credential = /(?:KEY|TOKEN|SECRET|PASSWORD)(?:_FILE)?$/.test(name)
     const harness = /^(?:GITHUB|GH|T3|CODEX)_/.test(name)
     if (provider || credential && !harness ||

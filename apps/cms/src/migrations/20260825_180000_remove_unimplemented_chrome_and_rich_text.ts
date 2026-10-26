@@ -1,6 +1,6 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
-import { materializeLegacyPrivacyDisclosure, normalizeLegacySnapshot, normalizeLegacyStoredJson } from "./sitegenLegacyData"
+import { materializeLegacyPrivacyDisclosure, normalizeLegacySnapshot, normalizeLegacyStoredJson } from "../lib/migrations/sitegenLegacyData"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)

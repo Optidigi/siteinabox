@@ -73,6 +73,7 @@ import { inviteUser, resendUserInvitation } from "@/lib/actions/inviteUser"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
 
 beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_SUPER_ADMIN_DOMAIN", "siteinabox.nl")
   if (!Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = vi.fn()
   }

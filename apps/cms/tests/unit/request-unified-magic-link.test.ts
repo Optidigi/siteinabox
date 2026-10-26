@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     "x-forwarded-proto": "https",
   }),
   findUsers: vi.fn(),
+  findTenant: vi.fn(),
   findAccounts: vi.fn(),
   findOrders: vi.fn(),
   cmsSignInMagicLink: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("next/headers", () => ({
 
 vi.mock("payload", () => ({
   getPayload: vi.fn(async () => ({
+    findByID: mocks.findTenant,
     find: ({ collection }: { collection: string }) => {
       if (collection === "users") return mocks.findUsers()
       if (collection === "customer-accounts") return mocks.findAccounts()
@@ -51,6 +53,8 @@ vi.mock("@/lib/builder/sendBuilderMagicLink", async (importOriginal) => {
 describe("requestUnifiedMagicLinkAction", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("NEXT_PUBLIC_SUPER_ADMIN_DOMAIN", "siteinabox.nl")
+    mocks.findTenant.mockResolvedValue({ id: 1, status: "active", enabledServices: ["website"] })
     mocks.findAccounts.mockResolvedValue({ totalDocs: 0, docs: [] })
     mocks.findOrders.mockResolvedValue({ totalDocs: 0, docs: [] })
     mocks.builderAction.mockResolvedValue({
@@ -112,4 +116,14 @@ describe("requestUnifiedMagicLinkAction", () => {
     expect(mocks.cmsSignInMagicLink).not.toHaveBeenCalled()
     expect(mocks.builderAction).toHaveBeenCalledTimes(1)
   })
+  it("lets an email-only team member sign in without website payment", async () => {
+    mocks.findTenant.mockResolvedValue({ id: 1, status: "active", enabledServices: ["email"] })
+    mocks.findUsers.mockResolvedValue({ totalDocs: 1, docs: [{ id: 7, email: "email-member@fixture.test", role: "editor", tenants: [{ tenant: { id: 1, status: "active" } }] }] })
+    const { requestUnifiedMagicLinkAction } = await import("@/lib/actions/requestUnifiedMagicLink")
+    const form = new FormData(); form.set("email", "email-member@fixture.test")
+    await requestUnifiedMagicLinkAction({ ok: false, message: "" }, form)
+    expect(mocks.cmsSignInMagicLink).toHaveBeenCalledTimes(1)
+    expect(mocks.builderAction).not.toHaveBeenCalled()
+  })
+
 })

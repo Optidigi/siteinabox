@@ -1,3 +1,4 @@
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import type { User } from "@/payload-types"
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const tenant = await loadTenantBySlug(payload, tenantSlug)
   const user = auth.user
-  if (!user || !tenant || !canUseCmsAgent(user, tenant.id)) {
+  if (!user || !tenant || !canUseCmsAgent(user, tenant.id) || user.role !== "super-admin" && !await hasManualWorkspaceAccess(payload, String(tenant.id))) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 })
   }
 

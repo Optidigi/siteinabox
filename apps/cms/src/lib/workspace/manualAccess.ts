@@ -3,8 +3,12 @@ import type { Payload, PayloadRequest } from "payload"
 import { relationshipId } from "@/lib/relationshipId"
 import { initialPaymentIsFinanciallySecured } from "@/lib/payments/initialPaymentPolicy"
 import { normalizePublicDomainHost } from "@siteinabox/contracts"
+import { hasWorkspaceService, platformFeesExempt } from "@/lib/tenants/services"
 
 export async function hasManualWorkspaceAccess(payload: Payload, tenantId: string, req?: Partial<PayloadRequest>): Promise<boolean> {
+  const tenant = await payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true, req })
+  if (!hasWorkspaceService(tenant, "website")) return false
+  if (tenant.status === "active" && platformFeesExempt(tenant.platformPricing)) return true
   const accounts = await payload.find({ collection: "customer-accounts", overrideAccess: true, req,
     depth: 0, limit: 1, where: { tenant: { equals: tenantId } } })
   // Preserve existing operator-provisioned CMS access. A verified builder
@@ -13,6 +17,7 @@ export async function hasManualWorkspaceAccess(payload: Payload, tenantId: strin
   if (accounts.totalDocs === 0) return true
   const orders = await payload.find({ collection: "orders", overrideAccess: true, req, depth: 0, limit: 100,
     where: { and: [{ tenant: { equals: tenantId } }, { paymentStatus: { equals: "paid" } },
+      { or: [{ orderKind: { equals: "initial_subscription" } }, { orderKind: { exists: false } }] },
       { state: { in: ["fulfillment_pending", "fulfilled"] } }] } })
   if (orders.totalDocs > 100) return false
   for (const order of orders.docs) {
@@ -25,6 +30,11 @@ export async function hasManualWorkspaceAccess(payload: Payload, tenantId: strin
       initialPaymentIsFinanciallySecured(order, attempt)) return true
   }
   return false
+}
+
+export async function hasWorkspaceAccountAccess(payload: Payload, tenantId: string, req?: Partial<PayloadRequest>): Promise<boolean> {
+  const tenant = await payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true, req })
+  return hasWorkspaceService(tenant, "email") || hasManualWorkspaceAccess(payload, tenantId, req)
 }
 
 export async function canRepublishWorkspace(payload: Payload, tenantId: string, req?: Partial<PayloadRequest>): Promise<boolean> {

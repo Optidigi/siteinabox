@@ -55,6 +55,8 @@ export async function resetTestData(payload: Payload) {
   // Wipe collections in dependency order to satisfy FKs. Integration outboxes
   // reference appointments/connections, and appointments reference tenants.
   for (const slug of [
+    "microsoft-partner-connections",
+    "microsoft-mail-services",
     "appointment-calendar-events",
     "appointment-notification-deliveries",
     "appointment-calendar-oauth-states",

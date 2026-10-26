@@ -52,7 +52,7 @@ test("configuration resolves before validation, retaining shell precedence witho
   const fromFile = effectiveTestEnvironment(safe, ["OPENAI_API_KEY=sk-real-looking\nPAYLOAD_DISABLE_JOBS_AUTORUN=0"])
   assert.equal(fromFile.PAYLOAD_DISABLE_JOBS_AUTORUN, "1")
   assert.throws(() => assertDisposableCmsEnvironment(fromFile, resource), /OPENAI_API_KEY/)
-  for (const name of ["MOLLIE_API_KEY", "OPENPROVIDER_PASSWORD", "CLOUDFLARE_EMAIL_API_TOKEN", "POSTHOG_PERSONAL_API_KEY", "GOOGLE_CLIENT_SECRET", "MICROSOFT_CLIENT_SECRET", "TURNSTILE_SECRET_KEY", "SIAB_RENDERER_API_TOKEN_FILE", "PGSERVICE", "PGOPTIONS"]) {
+  for (const name of ["PAX8_CLIENT_SECRET", "EXCHANGE_WORKER_SHARED_SECRET", "MOLLIE_API_KEY", "OPENPROVIDER_PASSWORD", "CLOUDFLARE_EMAIL_API_TOKEN", "POSTHOG_PERSONAL_API_KEY", "GOOGLE_CLIENT_SECRET", "MICROSOFT_CLIENT_SECRET", "TURNSTILE_SECRET_KEY", "SIAB_RENDERER_API_TOKEN_FILE", "PGSERVICE", "PGOPTIONS"]) {
     assert.throws(() => assertDisposableCmsEnvironment({ ...safe, [name]: "real-looking-value" }, resource), new RegExp(name))
   }
   assert.throws(() => assertDisposableCmsEnvironment(effectiveTestEnvironment({}, ["DATABASE_URI=" + uri]), resource))

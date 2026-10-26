@@ -1,4 +1,5 @@
 import "server-only"
+import { assertPlatformCollectionAllowed } from "@/lib/tenants/platformBilling"
 
 import {
   addBillingPeriod,
@@ -1060,6 +1061,7 @@ export async function createMollieCheckoutForGenerationRun(
     orderId: input.orderId,
     customerEmail: email,
   })
+  await assertPlatformCollectionAllowed(payload, order)
   assertInitialOrderPaymentPolicy(order)
   const clientSlug = input.clientSlug ||
     previewClientSlugFromDomain(tenant.domain, String(tenant.slug ?? tenant.name ?? ""))
@@ -1187,6 +1189,7 @@ export async function createApplicationRecurringMolliePayment(
     throw new Error("Recurring order and billing agreement belong to different tenants.")
   }
   const purpose = input.purpose ?? "recurring"
+  await assertPlatformCollectionAllowed(payload, order)
   const attemptNumber = input.attemptNumber ?? 1
   if (!Number.isSafeInteger(attemptNumber) || attemptNumber < 1) {
     throw new Error("Recurring Mollie attempt number must be a positive safe integer.")
@@ -1818,6 +1821,7 @@ const assertProviderPaymentAuthority = async (
   payment: MolliePayment,
 ): Promise<void> => {
   const strictAuthority = /:authority-v(?:2|3)(?::|$)/.test(attempt.idempotencyKey)
+  if (attempt.providerMode && payment.mode !== attempt.providerMode) await rejectProviderAuthorityMismatch(payload, attempt, "Mollie payment mode does not match the frozen attempt.")
   if (!sameRelationshipId(attempt.order, payment.metadata?.orderId as string | number | undefined)) {
     await rejectProviderAuthorityMismatch(
       payload,

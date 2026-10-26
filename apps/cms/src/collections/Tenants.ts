@@ -12,6 +12,7 @@ import {
 import { tenantEmailSendingStatuses } from "@/lib/tenants/emailSending"
 import { manifestSchema } from "@/lib/richText/manifest"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
+import { protectTenantCommercialPolicy } from "@/lib/tenants/commercialPolicy"
 import {
   PRE_COMMERCE_ROUTING_EVIDENCE_VERSION,
 } from "@/lib/domains/preCommerceRoutingAdoption"
@@ -276,6 +277,16 @@ export const Tenants: CollectionConfig = {
   },
   fields: [
     { name: "name", type: "text", required: true },
+    { name: "enabledServices", type: "select", hasMany: true, defaultValue: ["website"],
+      options: [{ label: "Website", value: "website" }, { label: "Email", value: "email" }],
+      admin: { readOnly: true, description: "Managed through customer account controls." } },
+    { name: "platformPricing", type: "group", access: { read: ({ req }) => req.user?.role === "super-admin" }, fields: [
+      { name: "mode", type: "select", defaultValue: "standard", options: ["standard", "exempt"] },
+      { name: "reason", type: "textarea" },
+      { name: "expiresAt", type: "date" },
+    ], admin: { readOnly: true, description: "Platform charges only. Microsoft licenses and domain costs remain payable." } },
+    { name: "commercialPolicyHistory", type: "json", access: { read: ({ req }) => req.user?.role === "super-admin" }, admin: { readOnly: true } },
+    { name: "emailPaymentMethod", type: "select", defaultValue: "mollie", options: ["mollie", "manual"], access: { read: ({ req }) => req.user?.role === "super-admin" }, admin: { readOnly: true } },
     { name: "slug", type: "text", required: true, unique: true, validate: validateSlug,
       admin: { description: adminText("URL-safe ID used in super-admin URLs (/sites/<slug>).", "URL-veilige ID voor superbeheerder-URL's (/sites/<slug>).")} },
     { name: "domain", type: "text", unique: true, validate: validateDomain,
@@ -423,7 +434,12 @@ export const Tenants: CollectionConfig = {
     },
   ],
   hooks: {
+    beforeDelete: [async ({ id, req }) => {
+      const services = await req.payload.find({ collection: "microsoft-mail-services", where: { tenant: { equals: id } }, limit: 1, depth: 0, overrideAccess: true, req })
+      if (services.docs[0]) throw new Error("Archive this customer instead of deleting its email service and provider records.")
+    }],
     beforeChange: [
+      protectTenantCommercialPolicy,
       protectBillingSuspensionMetadata,
       protectPreCommerceRoutingAdoption,
     ],

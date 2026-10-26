@@ -1,3 +1,4 @@
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 import "server-only"
 
 import { createHash, randomBytes } from "node:crypto"
@@ -632,7 +633,7 @@ export async function completeCalendarAuthorization(input: {
       String(actor.id) === userId &&
       (actor.role === "super-admin" || (actor.role === "owner" && actorTenantId === tenantId)),
   )
-  if (!authorized) throw new AppointmentCalendarError("Calendar authorisation is no longer valid.", 403)
+  if (!authorized || actor?.role !== "super-admin" && !await hasManualWorkspaceAccess(input.payload, tenantId)) throw new AppointmentCalendarError("Calendar authorisation is no longer valid.", 403)
 
   const verifier = openAppointmentSecret(verifierEncrypted, "appointment-calendar-code-verifier", env)
   const token = await oauthToken(provider, {
