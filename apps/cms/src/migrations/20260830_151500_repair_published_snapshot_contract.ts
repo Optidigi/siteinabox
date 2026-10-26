@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
-import { normalizeLegacySnapshot } from "./sitegenLegacyData"
+import { normalizeLegacySnapshot } from "../lib/migrations/sitegenLegacyData"
 
 type JsonRecord = Record<string, unknown>
 type SnapshotRow = { id: string | number; snapshot: unknown }

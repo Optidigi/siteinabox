@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
     find: vi.fn(async () => ({ totalDocs: 0, docs: [] })),
     update: vi.fn(),
+    findByID: vi.fn(),
   },
 }))
 
@@ -31,6 +32,7 @@ const req = (body: unknown) =>
 describe("tenant theme route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.payload.findByID.mockResolvedValue({ id: 7, status: "active", enabledServices: ["website"] })
     mocks.payload.update.mockResolvedValue({ id: 7 })
   })
 
@@ -106,4 +108,12 @@ describe("tenant theme route", () => {
     expect((await invalid.json()).message).toContain("Invalid theme data")
     expect(mocks.payload.update).not.toHaveBeenCalled()
   })
+  it("denies website theme changes for an email-only owner", async () => {
+    mocks.payload.auth.mockResolvedValue({ user: { id: 2, role: "owner", tenants: [{ tenant: 7 }] } })
+    mocks.payload.findByID.mockResolvedValue({ id: 7, status: "active", enabledServices: ["email"] })
+    const response = await POST(req({ tenantId: 7, theme: DEFAULT_THEME_TOKEN_SPEC }))
+    expect(response.status).toBe(403)
+    expect(mocks.payload.update).not.toHaveBeenCalled()
+  })
+
 })

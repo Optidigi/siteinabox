@@ -26,6 +26,10 @@ import {
   AppointmentNotificationDeliveries,
 } from "@/collections/AppointmentIntegrations"
 import { DomainMigrations } from "@/collections/DomainMigrations"
+import { MicrosoftMailProvisioningRuns } from "@/collections/MicrosoftMailProvisioningRuns"
+import { MicrosoftMailServices } from "@/collections/MicrosoftMailServices"
+import { MicrosoftPartnerConnections } from "@/collections/MicrosoftPartnerConnections"
+import { MicrosoftMailSetupTokens } from "@/collections/MicrosoftMailSetupTokens"
 import { CheckoutProgressDrafts } from "@/collections/CheckoutProgressDrafts"
 import { MigrationCheckoutSecrets } from "@/collections/MigrationCheckoutSecrets"
 import { MigrationSourceAuthorizations } from "@/collections/MigrationSourceAuthorizations"
@@ -64,6 +68,9 @@ import { prepareDomainTransferOutTask } from "@/lib/jobs/prepareDomainTransferOu
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { deliverCommerceNotificationTask } from "@/lib/jobs/deliverCommerceNotificationTask"
 import { accountLinkDispatchTask } from "@/lib/jobs/accountLinkDispatchTask"
+import { purgeMicrosoftMailSetupSecretsTask } from "@/lib/jobs/purgeMicrosoftMailSetupSecretsTask"
+import { reconcileMicrosoftMailTask } from "@/lib/jobs/reconcileMicrosoftMailTask"
+import { reconcileMicrosoftMailRenewalsTask } from "@/lib/jobs/reconcileMicrosoftMailRenewalsTask"
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
 import { renewDomainTask } from "@/lib/jobs/renewDomainTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
@@ -172,6 +179,10 @@ export default buildConfig({
     ManagedDomains,
     DomainRenewalCycles,
     DomainMigrations,
+    MicrosoftMailProvisioningRuns,
+    MicrosoftMailServices,
+    MicrosoftPartnerConnections,
+    MicrosoftMailSetupTokens,
     MigrationCheckoutSecrets,
     MigrationSourceAuthorizations,
     AccountingDocuments,
@@ -214,6 +225,9 @@ export default buildConfig({
       reconcileCommerceTask,
       deliverCommerceNotificationTask,
       accountLinkDispatchTask,
+      purgeMicrosoftMailSetupSecretsTask,
+      reconcileMicrosoftMailTask,
+      reconcileMicrosoftMailRenewalsTask,
       requestMollieRefundTask,
     ],
     enableConcurrencyControl: true,

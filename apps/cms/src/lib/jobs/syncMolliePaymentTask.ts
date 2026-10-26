@@ -1,3 +1,4 @@
+import { relationshipId } from "@/lib/relationshipId"
 import type { Payload, TaskConfig } from "payload"
 import { queueOrderFulfillment } from "@/lib/jobs/fulfillOrderTask"
 
@@ -47,6 +48,12 @@ export const syncMolliePaymentTask: TaskConfig<{
     } = await import("@/lib/payments/molliePayments")
     try {
       const result = await synchronizeMolliePayment(req.payload, input.paymentId)
+      if (["refund_pending", "partially_refunded", "refunded", "chargeback"].includes(result.state)) {
+        const order = await req.payload.findByID({ collection: "orders", id: result.orderId, depth: 0, overrideAccess: true })
+        if (["microsoft_mail_initial", "microsoft_mail_seats", "microsoft_mail_renewal"].includes(order.orderKind ?? "")) await (await import("@/lib/commerce/alerts")).recordCommerceAdminException({ payload: req.payload, source: "payments", code: "microsoft_mail_payment_adjustment_requires_review",
+          message: "An email payment was reversed or adjusted. Reconcile the supplier commitment and paid coverage before changing service; no supplier cancellation is inferred from a refund.",
+          tenant: Number(relationshipId(order.tenant)), subjectId: order.id, now: new Date().toISOString() })
+      }
       if (result.fulfillmentRequired) {
         await queueOrderFulfillment(req.payload, result)
       }

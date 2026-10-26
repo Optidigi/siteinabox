@@ -145,6 +145,11 @@ import * as migration_20261021_144531_customer_workspace_binding from './2026102
 import * as migration_20261021_144531_verified_customer_authority from './20261021_144531_verified_customer_authority';
 import * as migration_20261021_225131_account_link_dispatch from './20261021_225131_account_link_dispatch';
 import * as migration_20261022_002807_private_workspace_domain from './20261022_002807_private_workspace_domain';
+import * as migration_20261026_121459_microsoft_mail_provisioning_runs from './20261026_121459_microsoft_mail_provisioning_runs';
+import * as migration_20261026_124946_microsoft_mail_setup_tokens from './20261026_124946_microsoft_mail_setup_tokens';
+import * as migration_20261026_130054_microsoft_mail_provisioning_run_leases from './20261026_130054_microsoft_mail_provisioning_run_leases';
+import * as migration_20261026_185822_microsoft_mail_paid_orders from './20261026_185822_microsoft_mail_paid_orders';
+import * as migration_20261026_190140_mail_workspace_defaults from './20261026_190140_mail_workspace_defaults';
 
 export const migrations = [
   {
@@ -880,6 +885,31 @@ export const migrations = [
   {
     up: migration_20261022_002807_private_workspace_domain.up,
     down: migration_20261022_002807_private_workspace_domain.down,
-    name: '20261022_002807_private_workspace_domain'
+    name: '20261022_002807_private_workspace_domain',
+  },
+  {
+    up: migration_20261026_121459_microsoft_mail_provisioning_runs.up,
+    down: migration_20261026_121459_microsoft_mail_provisioning_runs.down,
+    name: '20261026_121459_microsoft_mail_provisioning_runs',
+  },
+  {
+    up: migration_20261026_124946_microsoft_mail_setup_tokens.up,
+    down: migration_20261026_124946_microsoft_mail_setup_tokens.down,
+    name: '20261026_124946_microsoft_mail_setup_tokens',
+  },
+  {
+    up: migration_20261026_130054_microsoft_mail_provisioning_run_leases.up,
+    down: migration_20261026_130054_microsoft_mail_provisioning_run_leases.down,
+    name: '20261026_130054_microsoft_mail_provisioning_run_leases',
+  },
+  {
+    up: migration_20261026_185822_microsoft_mail_paid_orders.up,
+    down: migration_20261026_185822_microsoft_mail_paid_orders.down,
+    name: '20261026_185822_microsoft_mail_paid_orders',
+  },
+  {
+    up: migration_20261026_190140_mail_workspace_defaults.up,
+    down: migration_20261026_190140_mail_workspace_defaults.down,
+    name: '20261026_190140_mail_workspace_defaults'
   },
 ];

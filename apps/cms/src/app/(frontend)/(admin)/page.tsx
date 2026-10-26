@@ -1,4 +1,6 @@
 import { requireAuth } from "@/lib/authGate"
+import { redirect } from "next/navigation"
+import { hasWorkspaceService } from "@/lib/tenants/services"
 import { getTranslations } from "next-intl/server"
 import { resolveLocale } from "@/i18n/config"
 import { getRecentActivity, getDashboardStats, getEditsTimeseries } from "@/lib/activity"
@@ -27,6 +29,7 @@ export default async function DashboardPage({
   searchParams?: Promise<{ error?: string }>
 }) {
   const { user, ctx } = await requireAuth()
+  if (ctx.mode === "tenant" && !hasWorkspaceService(ctx.tenant, "website")) redirect(user.role === "owner" ? "/email" : "/settings")
   const t = await getTranslations({ locale: resolveLocale(user.language), namespace: "dashboard" })
   const tenantId = ctx.mode === "tenant" ? ctx.tenant.id : null
   const params = (await searchParams) ?? {}

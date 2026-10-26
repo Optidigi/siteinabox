@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList, Scale, CalendarDays } from "lucide-react"
+import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList, Scale, CalendarDays, Mail } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import {
   Sidebar, SidebarCollapseTrigger, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -14,7 +14,7 @@ import {
 type Mode = "super-admin" | "tenant"
 type Role = "super-admin" | "owner" | "editor" | "viewer"
 
-export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode; role: Role; analyticsVisible?: boolean }) {
+export function AppSidebar({ mode, role, analyticsVisible = true, websiteEnabled = true, emailEnabled = true }: { mode: Mode; role: Role; analyticsVisible?: boolean; websiteEnabled?: boolean; emailEnabled?: boolean }) {
   const pathname = usePathname() ?? "/"
   const t = useTranslations("app")
   const tCommon = useTranslations("common")
@@ -57,14 +57,16 @@ export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode
   // would resolve to a top-level route that just redirects to /sites — dead
   // ends. Hide the group entirely; the user picks a site from the Overview
   // group's Sites link instead.
-  const showContent = mode === "tenant" || inTenantView
+  const showContent = websiteEnabled && (mode === "tenant" || inTenantView)
   const analyticsHref = inTenantView ? `${base}/analytics` : "/analytics"
   const settingsHref = `${base}/settings`
   const teamHref = `${base}/users`
+  const emailHref = "/email"
   // Every tenant member can manage their own email preferences on Settings.
   // Website/legal controls on that page remain owner-only.
-  const showSettings = showContent
-  const showTeam = showContent && (inTenantView || role === "owner")
+  const showSettings = mode === "tenant" || inTenantView
+  const showTeam = showSettings && (inTenantView || role === "owner")
+  const showEmail = emailEnabled && mode === "tenant" && role === "owner"
 
   return (
     <Sidebar
@@ -101,7 +103,7 @@ export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/")} tooltip={t("dashboard")}><Link href="/"><LayoutDashboard /> {t("dashboard")}</Link></SidebarMenuButton></SidebarMenuItem>
-              {(mode === "super-admin" || analyticsVisible) && (
+              {(mode === "super-admin" || (websiteEnabled && analyticsVisible)) && (
                 <SidebarMenuItem className="max-md:hidden"><SidebarMenuButton asChild isActive={isActive(analyticsHref)} tooltip={t("analytics")}><Link href={analyticsHref}><BarChart3 /> {t("analytics")}</Link></SidebarMenuButton></SidebarMenuItem>
               )}
               {showSettings && (
@@ -110,8 +112,12 @@ export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode
               {showTeam && (
                 <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(teamHref)} tooltip={t("team")}><Link href={teamHref}><Users /> {t("team")}</Link></SidebarMenuButton></SidebarMenuItem>
               )}
+              {showEmail && (
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(emailHref)} tooltip={t("email")}><Link href={emailHref}><Mail /> {t("email")}</Link></SidebarMenuButton></SidebarMenuItem>
+              )}
               {mode === "super-admin" && !inTenantView && (
                 <>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/accounts")}><Link href="/accounts"><Users /> {t("accounts")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/sites")} tooltip={t("sites")}><Link href="/sites"><Globe /> {t("sites")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/operations")} tooltip={t("operations")}><Link href="/operations"><ClipboardList /> {t("operations")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/legal")} tooltip={t("legal")}><Link href="/legal"><Scale /> {t("legal")}</Link></SidebarMenuButton></SidebarMenuItem>

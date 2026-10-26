@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { hasWorkspaceService } from "@/lib/tenants/services"
 import { requireAuth } from "@/lib/authGate"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { SettingsForm } from "@/components/forms/SettingsForm"
@@ -35,8 +36,9 @@ export default async function TenantSettingsPage({
   const t = await getAdminTranslations(user, "app")
   const payloadPromise = getPayload({ config })
   const isOwner = user.role === "owner"
+  const websiteEnabled = hasWorkspaceService(ctx.tenant, "website")
   const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers, managedDomains, billingAgreements] = await Promise.all([
-    isOwner ? getOrCreateSiteSettings(ctx.tenant.id) : Promise.resolve(null),
+    isOwner && websiteEnabled ? getOrCreateSiteSettings(ctx.tenant.id) : Promise.resolve(null),
     isOwner ? payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id, new Date(), resolveLocale(user.language))) : Promise.resolve([]),
     isOwner ? payloadPromise.then((payload) => getTenantLegalAcceptanceHistory(payload, ctx.tenant.id)) : Promise.resolve([]),
     searchParams,
@@ -74,7 +76,7 @@ export default async function TenantSettingsPage({
   ])
 
   const payload = await payloadPromise
-  const manifest = isOwner ? await loadTenantManifest(ctx.tenant.id) : null
+  const manifest = isOwner && websiteEnabled ? await loadTenantManifest(ctx.tenant.id) : null
   const members: TenantNotificationMemberView[] = await Promise.all(tenantMembers.docs
     .filter((member: User) => member.role === "owner" || member.role === "editor" || member.role === "viewer")
     .map(async (member) => {

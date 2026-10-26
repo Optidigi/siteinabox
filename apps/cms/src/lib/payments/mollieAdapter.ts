@@ -17,6 +17,7 @@ export type MolliePaymentStatus =
 
 export type MolliePayment = {
   id: string
+  mode?: "test" | "live"
   status: MolliePaymentStatus | string
   amount?: MollieAmount
   amountRefunded?: MollieAmount

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
-import { requireAuth } from "@/lib/authGate"
+import { requireWebsiteAccess as requireAuth } from "@/lib/workspace/websiteAccess"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { AppointmentScheduleSettingsSchema } from "@siteinabox/contracts"
 

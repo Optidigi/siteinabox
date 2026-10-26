@@ -1,6 +1,6 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
-import { dropLegacyBlockStage, removeLegacyPrivacyPages, restoreLegacyRelationalBlocks } from "./sitegenLegacyData"
+import { dropLegacyBlockStage, removeLegacyPrivacyPages, restoreLegacyRelationalBlocks } from "../lib/migrations/sitegenLegacyData"
 
 /** Adds the two optional consent labels used by the first-party consent rail. */
 export async function up({ db }: MigrateUpArgs): Promise<void> {

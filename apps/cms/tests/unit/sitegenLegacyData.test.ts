@@ -3,7 +3,7 @@ import {
   legacyPlainText,
   normalizeLegacySnapshot,
   normalizeLegacyStoredJson,
-} from "@/migrations/sitegenLegacyData"
+} from "@/lib/migrations/sitegenLegacyData"
 
 describe("Sitegen legacy data normalization", () => {
   it("preserves spaces between inline rich-text nodes", () => {

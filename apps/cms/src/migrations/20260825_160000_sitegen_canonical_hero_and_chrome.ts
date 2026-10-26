@@ -6,7 +6,7 @@ import {
   normalizeLegacyManifest,
   normalizeLegacySnapshot,
   normalizeLegacyStoredJson,
-} from "./sitegenLegacyData"
+} from "../lib/migrations/sitegenLegacyData"
 
 type JsonRecord = Record<string, unknown>
 

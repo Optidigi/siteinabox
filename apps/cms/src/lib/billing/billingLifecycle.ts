@@ -1,4 +1,5 @@
 import "server-only"
+import { assertPlatformCollectionAllowed, PlatformPricingExemptError } from "@/lib/tenants/platformBilling"
 
 import {
   addBillingPeriod,
@@ -511,6 +512,13 @@ export async function processBillingAgreement(input: {
   const now = nowDate.toISOString()
   let agreement = input.agreement
   const origin = await loadOriginatingOrder(input.payload, agreement)
+  try { await assertPlatformCollectionAllowed(input.payload, origin) }
+  catch (error) {
+    if (!(error instanceof PlatformPricingExemptError)) throw error
+    await recordCommerceAdminException({ payload: input.payload, source: "payments", code: "platform_pricing_managed_account",
+      message: "Platform charges are held by the customer pricing policy. Provider renewals require separate paid coverage.", tenant: agreement.tenant, subjectId: agreement.id, now })
+    return { status: "platform_pricing_managed", paymentRequested: false }
+  }
   if (agreement.state === "cancelled") {
     await reconcileCancelledAgreement({
       payload: input.payload,

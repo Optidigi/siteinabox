@@ -135,4 +135,24 @@ describe("commerce order advisory lock", () => {
       await Promise.all([applicationPool.end(), dedicatedLockPool.end()])
     }
   }, 10_000)
+  it("runs independent nested mail jobs with one lock connection per customer", async () => {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URI, max: 2, connectionTimeoutMillis: 1_000 })
+    let arrived = 0
+    let release!: () => void
+    const bothHaveService = new Promise<void>(resolve => { release = resolve })
+    const job = (tenant: number) => withCommerceOrderLock(payload, `mail-service:${tenant}`, async () => {
+      arrived++; if (arrived === 2) release()
+      await bothHaveService
+      return withCommerceOrderLock(payload, `order:${tenant}`, () =>
+        withCommerceOrderLock(payload, `run:${tenant}`, () =>
+          withCommerceOrderLock(payload, "partner-token", async () => tenant, pool), pool), pool)
+    }, pool)
+    try {
+      expect(await Promise.all([job(901),job(902)])).toEqual([901,902])
+      expect(pool.totalCount).toBe(2)
+      await expect(withCommerceOrderLock(payload,"throws", () => withCommerceOrderLock(payload,"nested",async()=>{ throw new Error("synthetic operation failure") },pool),pool)).rejects.toThrow("synthetic operation failure")
+      expect(await withCommerceOrderLock(payload,"nested",async()=>"released",pool)).toBe("released")
+    } finally { await pool.end() }
+  }, 5_000)
+
 })

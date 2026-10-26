@@ -1,5 +1,5 @@
 import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
-import { clearLegacyRelationalBlocks, stageLegacyRelationalBlocks } from './sitegenLegacyData'
+import { clearLegacyRelationalBlocks, stageLegacyRelationalBlocks } from '../lib/migrations/sitegenLegacyData'
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   // The generated DDL below drops legacy block tables and removes columns

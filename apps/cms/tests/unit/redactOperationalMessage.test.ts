@@ -10,6 +10,11 @@ describe("redactOperationalMessage", () => {
     "APPOINTMENT_CALENDAR_ENCRYPTION_KEY",
     "APPOINTMENT_MANAGEMENT_ENCRYPTION_KEY",
     "SIAB_OPERATIONAL_HASH_KEY",
+    "PAX8_CLIENT_SECRET",
+    "EXCHANGE_WORKER_SHARED_SECRET",
+    "MICROSOFT_PARTNER_TOKEN_ENCRYPTION_KEY",
+    "MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY",
+    "MICROSOFT_PARTNER_APP_CLIENT_SECRET",
   ])("redacts %s values", (name) => {
     const secret = "sensitive-value-123"
     const redacted = redactOperationalMessage(`${name}=${secret}`)

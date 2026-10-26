@@ -1,3 +1,4 @@
+import { hasManualWorkspaceAccess } from "@/lib/workspace/manualAccess"
 import type { Payload } from "payload"
 import type { User } from "@/payload-types"
 import { relationshipId } from "@/lib/relationshipId"
@@ -34,5 +35,6 @@ export async function requireAppointmentCalendarAdmin(input: {
   if (!tenantId) throw new AppointmentCalendarAdminError("A valid tenant is required.", 403)
   const tenant = await input.payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true }).catch(() => null)
   if (!tenant) throw new AppointmentCalendarAdminError("The selected tenant was not found.", 404)
+  if (user.role !== "super-admin" && !await hasManualWorkspaceAccess(input.payload, String(tenantId))) throw new AppointmentCalendarAdminError("Website access is required for calendar connections.", 403)
   return { user, tenantId }
 }
