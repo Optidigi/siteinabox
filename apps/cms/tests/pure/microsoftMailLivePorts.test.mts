@@ -47,6 +47,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     const workerOperations: string[] = []
     const sent: Array<{ to: string | string[]; html: string }> = []
     const graphUserPasswords: string[] = []
+    let dkimReady = false
     let userSequence = 0
     const users = new Map<string, Record<string, unknown>>()
     const env: NodeJS.ProcessEnv = {
@@ -122,6 +123,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
       if (url.hostname === "exchange-worker.internal") {
         const job = JSON.parse(String(init?.body ?? "{}")) as { operation: string }
         workerOperations.push(job.operation)
+        if (job.operation === "enable_dkim" && !dkimReady) { dkimReady = true; return response({ operation: job.operation, completed: true, dkimEnabled: false, dkimDnsReady: false }) }
         if (job.operation === "verify_access") return response({ operation: job.operation, completed: true, accessVerified: true })
         if (job.operation === "verify_mailboxes") return response({ operation: job.operation, completed: true, mailboxesReady: true })
         if (job.operation === "ensure_info_forward") return response({ operation: job.operation, completed: true, sharedMailbox: "info@tap2case.nl", forwardingAddress: "info@amapromotions.nl" })
@@ -192,7 +194,11 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     const cutoverConfirmed = await store.update(run.id, {
       data: { ...cutoverReview.data, dnsCutoverConfirmed: true },
     })
-    const finished = await advanceMicrosoftMailProvisioning({ run: cutoverConfirmed, store, ports })
+    const propagating = await advanceMicrosoftMailProvisioning({ run: cutoverConfirmed, store, ports })
+    assert.equal(propagating.state, "exchange_pending")
+    assert.equal(propagating.issueCode, "DKIM_DNS_PROPAGATING")
+    assert.equal(sent.length, 0)
+    const finished = await advanceMicrosoftMailProvisioning({ run: propagating, store, ports })
     assert.equal(finished.state, "ready", `Issue: ${finished.issueCode}`)
     assert.equal(finished.data.infoForwardTo, "info@amapromotions.nl")
     assert.equal(finished.data.dkimEnabled, true)

@@ -4,7 +4,7 @@ import type { Payload } from "payload"
 import type { Order, PaymentAttempt } from "@/payload-types"
 import { relationshipId } from "../relationshipId"
 import { withCommerceOrderLock } from "../commerce/orderLock"
-import { assertPaidMailOrder, mailQuoteSchema } from "./quote"
+import { mailProviderAnnualCostMinor, assertPaidMailOrder, mailQuoteSchema } from "./quote"
 import { loadMailService, mailOrderContext, mailServiceContext } from "./commerce"
 import { PayloadMicrosoftMailProvisioningStore } from "./payloadStore"
 import { createPax8MailClient } from "./pax8Preflight"
@@ -126,7 +126,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const annual = rows.find(row => row.billingTerm === "Annual" && row.commitmentTerm === "1-Year")
         const rates = Array.isArray(annual?.rates) ? annual.rates.map(record) : []
         const rate = rates.filter(value => Number(value.startQuantityRange ?? 0) <= quote.targetQuantity && (value.endQuantityRange == null || Number(value.endQuantityRange) >= quote.targetQuantity)).sort((a,b) => Number(b.startQuantityRange ?? 0) - Number(a.startQuantityRange ?? 0))[0]
-        if (!rate || Math.ceil(Number(rate.partnerBuyRate) * 100) > quote.providerAnnualUnitCostMinor) throw new Error("PAX8_COST_CHANGED_AFTER_PAYMENT")
+        if (!rate || mailProviderAnnualCostMinor(rate.partnerBuyRate) > quote.providerAnnualUnitCostMinor) throw new Error("PAX8_COST_CHANGED_AFTER_PAYMENT")
         await save({ data: { ...run.data, pax8QuantityUpdateState: "started" } })
         const changed = await client.updateSubscriptionQuantity(service.pax8SubscriptionId, quote.targetQuantity)
         if (changed.quantity !== quote.targetQuantity) throw new Pax8IndeterminateWriteError("subscription quantity confirmation")
@@ -143,7 +143,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const annual = rows.find(row => row.billingTerm === "Annual" && row.commitmentTerm === "1-Year")
         const rates = Array.isArray(annual?.rates) ? annual.rates.map(record) : []
         const rate = rates.filter(value => Number(value.startQuantityRange ?? 0) <= quote.quantity && (value.endQuantityRange == null || Number(value.endQuantityRange) >= quote.quantity)).sort((a,b) => Number(b.startQuantityRange ?? 0) - Number(a.startQuantityRange ?? 0))[0]
-        if (!rate || Math.ceil(Number(rate.partnerBuyRate) * 100) > quote.providerAnnualUnitCostMinor) throw new Error("PAX8_COST_CHANGED_AFTER_PAYMENT")
+        if (!rate || mailProviderAnnualCostMinor(rate.partnerBuyRate) > quote.providerAnnualUnitCostMinor) throw new Error("PAX8_COST_CHANGED_AFTER_PAYMENT")
         const consent = record(run.data.customerConsent)
         const details: Record<string, string> = {
           msCustExists: service.microsoftTenantId ? "Yes, the customer has and can log into their Microsoft account" : "No, the customer does not have a Microsoft account",

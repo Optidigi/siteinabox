@@ -44,3 +44,10 @@ export function assertPaidMailOrder(input: {
     throw new Error("Email provisioning requires the matching settled order and payment.")
   }
 }
+
+export function mailProviderAnnualCostMinor(value: unknown): number {
+  if (typeof value !== "number" && typeof value !== "string" || typeof value === "string" && !value.trim()) throw new Error("PAX8_CURRENT_COST_INVALID")
+  const minor = Math.ceil(Number(value) * 100)
+  if (!Number.isSafeInteger(minor) || minor <= 0) throw new Error("PAX8_CURRENT_COST_INVALID")
+  return minor
+}

@@ -1,7 +1,7 @@
 import { requireLiveMailWritesAllowed } from "../../src/lib/microsoftMailProvisioning/writeGate.ts"
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { mailPrice, assertPaidMailOrder } from "../../src/lib/microsoftMailProvisioning/quote.ts"
+import { mailProviderAnnualCostMinor, mailPrice, assertPaidMailOrder } from "../../src/lib/microsoftMailProvisioning/quote.ts"
 import { hasWorkspaceService, platformFeesExempt } from "../../src/lib/tenants/services.ts"
 import { inspectExistingMailRouting } from "../../src/lib/microsoftMailProvisioning/infoRouting.ts"
 
@@ -67,4 +67,9 @@ it("honors disabled and shadow global stops even when the mail feature is enable
   assert.doesNotThrow(() => requireLiveMailWritesAllowed(env))
   for (const stage of ["disabled","shadow","sandbox",""]) assert.throws(() => requireLiveMailWritesAllowed({ ...env, COMMERCE_RELEASE_STAGE: stage }))
   assert.throws(() => requireLiveMailWritesAllowed({ ...env, COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "0" }))
+})
+
+it("rejects missing, malformed and unsafe current supplier costs before a billable write", () => {
+  for (const value of [undefined,null,"", "NaN", NaN, Infinity, -1,0,Number.MAX_SAFE_INTEGER]) assert.throws(() => mailProviderAnnualCostMinor(value))
+  assert.equal(mailProviderAnnualCostMinor("49.32"),4932)
 })

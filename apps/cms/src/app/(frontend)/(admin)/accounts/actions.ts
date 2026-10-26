@@ -62,11 +62,11 @@ export async function saveCustomerPolicy(form: FormData) {
 }
 
 export async function createCustomerWorkspace(form: FormData) {
-  await requireRole(["super-admin"])
+  const { user } = await requireRole(["super-admin"])
   const payload = await getPayload({ config })
   const name = String(form.get("name") ?? "").trim()
   const slug = String(form.get("slug") ?? "").trim().toLowerCase()
   if (name.length < 2 || !/^[a-z0-9-]+$/.test(slug)) throw new Error("Enter a customer name and URL-safe identifier.")
-  const tenant = await payload.create({ collection: "tenants", data: { name, slug, domain: null, status: "active", enabledServices: ["email"] }, overrideAccess: true })
+  const tenant = await payload.create({ collection: "tenants", data: { name, slug, domain: null, status: "active", enabledServices: ["email"] }, user, overrideAccess: false })
   redirect(`/accounts/${tenant.id}`)
 }

@@ -443,6 +443,7 @@ export function createMicrosoftMailLivePorts(input: {
       if (!organizationDomain) return { kind: "manual_review", code: "MICROSOFT_INITIAL_DOMAIN_MISSING" }
       const accessToken = await tokenProvider({ tenantId, resource: "exchange" })
       const result = await exchange.execute({ operation: "enable_dkim", customerTenantId: tenantId, customerOrganizationDomain: organizationDomain, accessToken, partnerUserPrincipalName: await partnerUpn(), domain: request.domain })
+      if (result.dkimEnabled === false && result.dkimDnsReady === false) return pause({ code: "DKIM_DNS_PROPAGATING", state: "exchange_pending", message: "Waiting for the DKIM selector records to resolve before enabling signing." })
       return complete({ dkimEnabled: result.dkimEnabled === true, microsoftDkimRecords: result.dkimRecords ?? [] })
     },
     sendSetupEmail: async ({ run, request, user }) => {

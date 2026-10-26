@@ -34,7 +34,11 @@ $job = $base.Clone(); $job.operation = 'ensure_info_alias'; $job.infoAddress = '
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'info_alias_conflict'
 if ($script:mailboxWrites) { throw 'Conflicting alias was modified' }
 $job = $base.Clone(); $job.operation = 'enable_dkim'
-Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'dkim_dns_not_ready'
+$result = Invoke-ExchangeJob ([pscustomobject]$job)
+if ($result.dkimEnabled -or $result.dkimDnsReady -or -not $result.completed) { throw 'DNS propagation must be a safe waiting result' }
+function dig { return $null }
+$result = Invoke-ExchangeJob ([pscustomobject]$job)
+if ($result.dkimEnabled -or $result.dkimDnsReady -or -not $result.completed) { throw 'Empty DNS response must wait' }
 if ($script:dkimWrites) { throw 'DKIM was enabled before DNS resolved' }
 $job = $base.Clone(); $job.operation = 'verify_mailboxes'; $job.mailboxAddresses = @('user@other.test')
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'invalid_mailbox_verification'

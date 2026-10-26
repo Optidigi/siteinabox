@@ -24,6 +24,7 @@ export type ExchangeWorkerResult = {
   aliasTarget?: string
   mailboxesReady?: boolean
   accessVerified?: boolean
+  dkimDnsReady?: boolean
   dkimEnabled?: boolean
   dkimRecords?: Array<{ selector: string; target: string }>
 }
@@ -124,7 +125,7 @@ export class ExchangeWorkerClient {
       request.operation === "ensure_info_forward" && (result.sharedMailbox !== request.infoAddress || result.forwardingAddress !== request.forwardTo) ||
       request.operation === "verify_mailboxes" && typeof result.mailboxesReady !== "boolean" ||
       request.operation === "verify_access" && result.accessVerified !== true ||
-      request.operation === "enable_dkim" && result.dkimEnabled !== true ||
+      request.operation === "enable_dkim" && !(result.dkimEnabled === true || result.dkimEnabled === false && result.dkimDnsReady === false) ||
       request.operation === "get_dkim_targets" && (!Array.isArray(result.dkimRecords) || result.dkimRecords.length !== 2 || !["selector1", "selector2"].every(selector =>
         (result.dkimRecords as unknown[]).some(value => value && typeof value === "object" && "selector" in value && value.selector === selector && "target" in value && typeof value.target === "string" && /^[a-z0-9_.-]{1,253}$/i.test(value.target))))) {
       throw new ExchangeWorkerIndeterminateWriteError(request.operation)

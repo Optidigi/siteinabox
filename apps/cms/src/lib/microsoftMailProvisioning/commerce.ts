@@ -1,3 +1,4 @@
+import { mailProviderAnnualCostMinor } from "./quote"
 import { requireCommerceProviderWritesAllowed } from "../commerce/releaseGate"
 import "server-only"
 import { createHash, randomUUID } from "node:crypto"
@@ -82,7 +83,7 @@ export async function prepareMailQuote(payload: Payload, tenant: Tenant, request
   const rates = Array.isArray(row?.rates) ? row.rates.map(asRecord) : []
   const applicableRate = rates.filter(rate => Number(rate.startQuantityRange ?? 0) <= targetQuantity &&
     (rate.endQuantityRange == null || Number(rate.endQuantityRange) >= targetQuantity)).sort((a, b) => Number(b.startQuantityRange ?? 0) - Number(a.startQuantityRange ?? 0))[0]
-  const providerAnnualUnitCostMinor = Math.ceil(Number(applicableRate?.partnerBuyRate) * 100)
+  const providerAnnualUnitCostMinor = mailProviderAnnualCostMinor(applicableRate?.partnerBuyRate)
   const annualUnitNetMinor = Number(env.MICROSOFT_MAIL_ANNUAL_SEAT_NET_MINOR)
   const platformNetMinor = Number(env["MICROSOFT_MAIL_PLATFORM_FEE_NET_MINOR"] ?? "0")
   if (env.MICROSOFT_MAIL_CURRENCY !== "EUR" || !Number.isSafeInteger(annualUnitNetMinor) || !Number.isSafeInteger(providerAnnualUnitCostMinor)) throw new Error("Email pricing is not configured.")

@@ -98,8 +98,8 @@ function Invoke-ExchangeJob($Job) {
         return @{ operation = $Job.operation; completed = $true; dkimEnabled = [bool]$config.Enabled; dkimRecords = $records }
       }
       foreach ($record in $records) {
-        $resolved = (& dig +short CNAME "$($record.selector)._domainkey.$domain" 2>$null | Select-Object -First 1).Trim().TrimEnd('.').ToLowerInvariant()
-        if ($resolved -ne ([string]$record.target).Trim().TrimEnd('.').ToLowerInvariant()) { throw 'dkim_dns_not_ready' }
+        $resolved = ([string](& dig +short CNAME "$($record.selector)._domainkey.$domain" 2>$null | Select-Object -First 1)).Trim().TrimEnd('.').ToLowerInvariant()
+        if ($resolved -ne ([string]$record.target).Trim().TrimEnd('.').ToLowerInvariant()) { return @{ operation = $Job.operation; completed = $true; dkimEnabled = $false; dkimDnsReady = $false; dkimRecords = $records } }
       }
       if (-not $config.Enabled) { Set-DkimSigningConfig -Identity $domain -Enabled $true }
       return @{ operation = $Job.operation; completed = $true; dkimEnabled = $true; dkimRecords = $records }
