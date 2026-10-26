@@ -267,7 +267,7 @@ use a later `DATA_DIR` value to remove another directory. Only the current run's
 storage is removed. Preserve the resource file/root for the next approved run.
 
 - **Pure safety fixtures:** `pnpm cms:test:guard` (no PostgreSQL/provider connection).
-- **CMS unit/integration tests:** `pnpm --dir apps/cms test` (authorized environment required).
+- **CMS unit/integration tests:** `pnpm --dir apps/cms test` (authorized environment required). Canonical CI partitions the same inventory across separately owned services; see [canonical CI](ci-canonical.md). Do not run local partitions concurrently against one database.
 - **Focused integration:** `pnpm --dir apps/cms test tests/integration/`.
 - **Typecheck:** `pnpm --dir apps/cms typecheck` (runs owning Next type generation).
 - **Historical scratch cleanup:** `pnpm cms:cleanup-test-data` inventories older

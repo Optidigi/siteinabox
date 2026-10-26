@@ -27,17 +27,18 @@ test("publication binds the smoke evidence and image archive to the selected sou
   assert.throws(() => assertImageArtifact(request, run, evidence, "d".repeat(64)))
 })
 
-const verification = { head_sha: sha, head_branch: "main", event: "push", status: "completed", conclusion: "success", path: ".github/workflows/build-cms-image.yml" }
+const verification = { id: 42, head_sha: sha, head_branch: "main", event: "push", status: "completed", conclusion: "success", path: ".github/workflows/ci.yml" }
 const ci = { ...verification, path: ".github/workflows/ci.yml" }
 const jobs = [{ name: "package-quality", status: "completed", conclusion: "success" }]
 
 test("publication requires the selected main image run and every exact-source canonical CI job", () => {
   assertVerifiedSource(request, verification, ci, jobs, ["package-quality"])
-  for (const change of [{ head_sha: "b".repeat(40) }, { head_branch: "feature" }, { event: "pull_request" },
-    { conclusion: "failure" }, { status: "in_progress" }, { path: ".github/workflows/other.yml" }]) {
+  for (const change of [{ id: 43 }, { head_sha: "b".repeat(40) }, { head_branch: "feature" }, { event: "pull_request" },
+    { conclusion: "failure" }, { status: "in_progress" }, { path: ".github/workflows/other.yml" }, { path: ".github/workflows/build-cms-image.yml" }]) {
     assert.throws(() => assertVerifiedSource(request, { ...verification, ...change }, ci, jobs, ["package-quality"]))
   }
   assert.throws(() => assertVerifiedSource(request, verification, { ...ci, head_sha: "b".repeat(40) }, jobs, ["package-quality"]))
+  assert.throws(() => assertVerifiedSource(request, verification, { ...ci, id: 43 }, jobs, ["package-quality"]))
   assert.throws(() => assertVerifiedSource(request, verification, ci, [], ["package-quality"]))
   for (const conclusion of ["skipped", "cancelled", "failure", null]) {
     assert.throws(() => assertVerifiedSource(request, verification, ci, [{ ...jobs[0], conclusion }], ["package-quality"]))

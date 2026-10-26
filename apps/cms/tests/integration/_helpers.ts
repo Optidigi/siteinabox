@@ -16,7 +16,9 @@ let cachedPayload: Payload | null = null
 // migrateFresh drops everything and reapplies all committed migrations.
 // Equivalent to a fresh-DB `migrate()` in CI, and forces local devs onto
 // the same code path. Cached behind `cachedPayload`, runs once per process
-// (vitest.config.ts pins maxWorkers: 1 so this is one run per `pnpm test`).
+// within one isolated file context. Vitest isolates modules between files, so
+// each integration file still receives real fresh-schema migration coverage.
+// Parallel CI partitions use separate, explicitly owned PostgreSQL services.
 //
 // resetTestData() still wipes data between tests for isolation — it works
 // on tables, not schema, so the two concerns layer cleanly.

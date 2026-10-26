@@ -52,3 +52,21 @@ test("every Action invocation uses its reviewed release commit", () => {
     }
   }
 })
+
+test("CI browser and BuildKit are immutable verification-only tools, separate from production bases", () => {
+  const browser = infrastructure.ciBrowser, buildkit = infrastructure.ciBuildkit
+  assert.equal(browser.verificationOnly,true); assert.equal(buildkit.verificationOnly,true)
+  assert.match(browser.reference, new RegExp("^mcr\\.microsoft\\.com/playwright:v" + browser.version.replaceAll(".","\\.") + "-noble@sha256:[a-f0-9]{64}$"))
+  assert.match(buildkit.reference,/^docker\.io\/moby\/buildkit:v[\d.]+@sha256:[a-f0-9]{64}$/)
+  assert(Date.now()-Date.parse(browser.createdAt)>=1440*60000)
+  assert(Date.now()-Date.parse(buildkit.publishedAt)>=1440*60000)
+  const workflow=source(".github/workflows/ci.yml")
+  for(const name of ["cms-tests","cms-browser","site","renderer"]) {
+    const block=workflow.match(new RegExp("^  "+name+":\\n([\\s\\S]*?)(?=^  [\\w-]+:|(?![\\s\\S]))","m"))?.[1]
+    assert(block?.includes(browser.reference),name)
+    assert(!block.includes("playwright install --with-deps"),"Image must provide browser OS dependencies")
+  }
+  for(const app of ["cms","landing","renderer"]) assert.equal(JSON.parse(source("apps/"+app+"/package.json")).devDependencies?.playwright?.replace(/^[~^]/,"")??JSON.parse(source("apps/"+app+"/package.json")).dependencies?.playwright?.replace(/^[~^]/,""),browser.version)
+  assert(source("scripts/verify-image.mjs").includes('"--driver", "docker-container"'))
+  assert(source("scripts/verify-image.mjs").includes('"image=" + infrastructure.ciBuildkit.reference'))
+})

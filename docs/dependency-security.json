@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-26T21:50:18.173Z",
+  "reviewedAt": "2026-10-26T23:33:43.258Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
-  "reviewOwner": "Microsoft mail source evidence reconciliation (Codex engineering; independent review; no release waiver)",
-  "graphHash": "76e8d6e67c9b11eabccd46e4aa7886ebb7ed10a3900a73918eaa942dd65ed0b6",
-  "configurationHash": "5a249b157231289be05407ad64c25d9e3ca9af2945683b0bfd068e57b49d9d10",
+  "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
+  "graphHash": "031fdecbea994a9895ed17921c52fbf5449e7d3cc6958680afd2598623298377",
+  "configurationHash": "3ea88ab1d98d393f66d67010405e2a5c7e427bf3f6f62eb810848413ab9ffc08",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -82,7 +82,7 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/main.json",
       "selected": false,
-      "sha256": "b9be5c7625787887c80fc63b3879a3da0fb3d5ba25d26c3343b592bdd0a23609"
+      "sha256": "d27f8a9a438e7fbbc3b4b5640b2bcddb3dc4b502c08109a30d0c1eafee418d2c"
     },
     {
       "id": "alpine-community",
@@ -7319,6 +7319,7 @@
     "Tooling recovery reviewed four changed publisher hashes: Node/scanner release eligibility only; Alpine main adds BIND and nginx fix rows, and community adds Docker/Compose/buildx rows. Retained CMS BIND is explicitly deferred; retained site nginx is 1.31.7-r1, so the 1.30.6 maintenance-branch fix does not alone establish applicability. Docker/Compose/buildx packages are absent from the retained image inventories. Fresh final-candidate scans remain required.",
     "Canonical tooling qualification 39845654818 attempt 1 retains 208 image findings: the prior 198 plus eight UNKNOWN musl rows and two ip-address findings. No findings disappear. Existing package/version/path/fix/selected-severity facts are unchanged; changed fingerprints concern reference lists, vendor-severity provenance and three modified timestamps. All five native assessments remain blocked. Four native fingerprints are unchanged; CMS changes only BIND executables/libraries to 9.20.30, with all eight helper hashes unchanged.",
     "Microsoft mail review adds the exact jose6.2.13 dependency and records ten newly enumerated full/production fast-uri/happy-dom findings. Existing source findings, all210 image dispositions, all five blocked native assessments and the October28 expiry remain. Native helper changes require exact-image qualification; this source review grants no release clearance.",
-    "PR126 exact-image reconciliation: run40404485218 attempt1, source7c19493ba5395218e721a66d6e206ccfabc5b4bb, retains all210 previous image findings and adds77 current scanner findings (curl/libcurl, global-npm undici, cloudflared chi). Three Go CVE-2026-111943 scanner-selected labels changed high to moderate; all raw multi-vendor provenance and release blockers remain. All five native assessments remain blocked, with only CMS helper bytes changing and matching the root generator. Source review expiry and every deferred release control remain unchanged."
+    "PR126 exact-image reconciliation: run40404485218 attempt1, source7c19493ba5395218e721a66d6e206ccfabc5b4bb, retains all210 previous image findings and adds77 current scanner findings (curl/libcurl, global-npm undici, cloudflared chi). Three Go CVE-2026-111943 scanner-selected labels changed high to moderate; all raw multi-vendor provenance and release blockers remain. All five native assessments remain blocked, with only CMS helper bytes changing and matching the root generator. Source review expiry and every deferred release control remain unchanged.",
+    "Canonical CI consolidation rebinds source graph/configuration identity without package-version upgrades. Current Alpine publisher change adds Ruby3.4.12-r0 security fixes; retained production image package inventories contain no Ruby package. All13 source dispositions,287 image dispositions,five blocked native assessments,seven deferrals and the October28 expiry remain unchanged. CI-only Playwright/BuildKit/cache Action pins are reviewed infrastructure inputs, not production base upgrades or release clearance. Exact final hosted qualification remains required."
   ]
 }

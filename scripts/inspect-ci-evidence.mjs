@@ -8,6 +8,8 @@ import { dependencyIdentities } from "./collect-dependency-evidence.mjs"
 import { validateDependencyReview, validatePublisherConstraints } from "./dependency-security-policy.mjs"
 import { loadDependencyImages, validateImageReview } from "./dependency-image-review.mjs"
 import { assertImageVerificationEvidence } from "./image-evidence.mjs"
+import { assertCmsTestReceipts } from "./check-cms-test-results.mjs"
+import { cmsTestPlan } from "../apps/cms/tests/_helpers/testPlan.mjs"
 import { expectedCiJobs, assertRequiredCiResults } from "./check-required-ci.mjs"
 
 export function assertReceiptIdentity({ receipt, source, readiness, sourceBytes, policyBytes, head, run, attempt, jobs }) {
@@ -38,6 +40,7 @@ export async function inspectCiEvidence(directory, expected) {
   const source = JSON.parse(sourceBytes), policy = JSON.parse(policyBytes)
   const matrix = await read(join(root, "docs/verification-matrix.json"))
   assertReceiptIdentity({ receipt, source, readiness, sourceBytes, policyBytes, ...expected, jobs: expectedCiJobs(matrix) })
+  assertCmsTestReceipts(receipt.cmsTests, cmsTestPlan(join(root, "apps/cms")), { sourceSHA: receipt.sourceSHA, runId: expected.run, runAttempt: expected.attempt })
   const inputs = await dependencyIdentities(root)
   assert.equal(source.graphHash, inputs.graph.sha256); assert.equal(source.configurationHash, inputs.configuration.sha256)
   validatePublisherConstraints(policy, source.publisherVersions)

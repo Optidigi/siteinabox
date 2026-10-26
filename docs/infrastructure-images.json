@@ -370,6 +370,12 @@
       "commit": "ea17c68df8912ef543352723c149a84f56e3d413",
       "releaseUrl": "https://github.com/pnpm/action-setup/releases/tag/v6.1.0",
       "publishedAt": "2026-09-05T07:31:28Z"
+    },
+    "actions/cache": {
+      "version": "v6.1.0",
+      "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+      "releaseUrl": "https://github.com/actions/cache/releases/tag/v6.1.0",
+      "publishedAt": "2026-06-26T19:17:06Z"
     }
   },
   "deferred": [
@@ -386,5 +392,35 @@
       "reason": "under the approved 1440-minute release-age window at selection",
       "recheckAt": "2026-10-21T09:17:30Z"
     }
-  ]
+  ],
+  "ciBrowser": {
+    "version": "1.62.1",
+    "reference": "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
+    "verificationOnly": true,
+    "manifestUrl": "https://mcr.microsoft.com/v2/playwright/manifests/v1.62.1-noble",
+    "platforms": [
+      {
+        "digest": "sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac",
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        }
+      },
+      {
+        "digest": "sha256:941cc91e5022880ac1d14ae90b476b624deb6399dbbc28d612d5d5bd7928fcbd",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      }
+    ],
+    "createdAt": "2026-07-30T17:32:20.775419212Z"
+  },
+  "ciBuildkit": {
+    "version": "0.34.1",
+    "reference": "docker.io/moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c",
+    "verificationOnly": true,
+    "releaseUrl": "https://github.com/moby/buildkit/releases/tag/v0.34.1",
+    "publishedAt": "2026-10-20T22:04:56Z"
+  }
 }

@@ -51,6 +51,10 @@
       "cms-ui-composition",
       "cms-no-css",
       "cms-commerce-release",
+      "cms-unit-1",
+      "cms-unit-2",
+      "cms-integration-1",
+      "cms-integration-2",
       "cms-test",
       "cms-checkout-browser",
       "cms-invitation-actions",
@@ -68,7 +72,12 @@
       "image-cms",
       "image-renderer",
       "image-site",
-      "cms-posthog-privacy"
+      "cms-posthog-privacy",
+      "cms-test-plan",
+      "image-security",
+      "browser-runtime-cms",
+      "browser-runtime-landing",
+      "browser-runtime-renderer"
     ],
     "cms-fast": [
       "cms-no-css",
@@ -320,7 +329,7 @@
         "generate:types"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-quality",
+      "ciJob": "cms-preflight",
       "env": {
         "PAYLOAD_SECRET": "ci-placeholder",
         "DATABASE_URI": "postgres://placeholder@placeholder/placeholder"
@@ -342,7 +351,7 @@
         "generate:importmap"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-quality",
+      "ciJob": "cms-preflight",
       "env": {
         "PAYLOAD_SECRET": "ci-placeholder",
         "DATABASE_URI": "postgres://placeholder@placeholder/placeholder"
@@ -460,32 +469,28 @@
         "check:commerce-release"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-test",
+      "ciJob": "cms-tests",
       "prerequisites": [
         "pnpm install --frozen-lockfile",
         "disposable PostgreSQL 18 service"
       ],
-      "risk": "high"
+      "risk": "high",
+      "ciContext": "cms-tests (unit-1)"
     },
     {
       "id": "cms-test",
-      "command": "pnpm --dir apps/cms test",
+      "command": "node scripts/check-cms-test-results.mjs",
       "run": [
-        "pnpm",
-        "--dir",
-        "apps/cms",
-        "test"
+        "node",
+        "scripts/check-cms-test-results.mjs"
       ],
       "owner": "apps/cms",
       "ciJob": "cms-test",
       "prerequisites": [
-        "pnpm install --frozen-lockfile",
-        "PostgreSQL 18 service",
-        "DATABASE_URI",
-        "PAYLOAD_SECRET",
-        "bind9-utils"
+        "All four exact-source CMS partition receipts"
       ],
-      "risk": "high"
+      "risk": "high",
+      "ciContext": "cms-test"
     },
     {
       "id": "cms-invitation-actions",
@@ -824,6 +829,192 @@
         "Pinned Node runtime; synthetic intercepted HTTP; no provider credentials or database"
       ],
       "risk": "high"
+    },
+    {
+      "id": "cms-unit-1",
+      "command": "node scripts/run-cms-tests.mjs unit-1",
+      "run": [
+        "node",
+        "scripts/run-cms-tests.mjs",
+        "unit-1"
+      ],
+      "owner": "cms",
+      "ciJob": "cms-tests",
+      "ciContext": "cms-tests (unit-1)",
+      "env": {
+        "NODE_COMPILE_CACHE": "/tmp/siab-ci-v8"
+      },
+      "prerequisites": [
+        "Frozen dependencies",
+        "Own fresh PostgreSQL and storage authorization",
+        "Governed browser and BIND prerequisites",
+        "Payload generated types"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-unit-2",
+      "command": "node scripts/run-cms-tests.mjs unit-2",
+      "run": [
+        "node",
+        "scripts/run-cms-tests.mjs",
+        "unit-2"
+      ],
+      "owner": "cms",
+      "ciJob": "cms-tests",
+      "ciContext": "cms-tests (unit-2)",
+      "env": {
+        "NODE_COMPILE_CACHE": "/tmp/siab-ci-v8"
+      },
+      "prerequisites": [
+        "Frozen dependencies",
+        "Own fresh PostgreSQL and storage authorization",
+        "Governed browser and BIND prerequisites",
+        "Payload generated types"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-integration-1",
+      "command": "node scripts/run-cms-tests.mjs integration-1",
+      "run": [
+        "node",
+        "scripts/run-cms-tests.mjs",
+        "integration-1"
+      ],
+      "owner": "cms",
+      "ciJob": "cms-tests",
+      "ciContext": "cms-tests (integration-1)",
+      "env": {
+        "NODE_COMPILE_CACHE": "/tmp/siab-ci-v8"
+      },
+      "prerequisites": [
+        "Frozen dependencies",
+        "Own fresh PostgreSQL and storage authorization",
+        "Governed browser and BIND prerequisites",
+        "Payload generated types"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-integration-2",
+      "command": "node scripts/run-cms-tests.mjs integration-2",
+      "run": [
+        "node",
+        "scripts/run-cms-tests.mjs",
+        "integration-2"
+      ],
+      "owner": "cms",
+      "ciJob": "cms-tests",
+      "ciContext": "cms-tests (integration-2)",
+      "env": {
+        "NODE_COMPILE_CACHE": "/tmp/siab-ci-v8"
+      },
+      "prerequisites": [
+        "Frozen dependencies",
+        "Own fresh PostgreSQL and storage authorization",
+        "Governed browser and BIND prerequisites",
+        "Payload generated types"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-test-plan",
+      "command": "node scripts/check-cms-test-plan.mjs",
+      "run": [
+        "node",
+        "scripts/check-cms-test-plan.mjs"
+      ],
+      "owner": "cms",
+      "ciJob": "cms-preflight",
+      "prerequisites": [
+        "Frozen dependencies"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "image-security",
+      "command": "node scripts/check-dependency-security.mjs --source-evidence artifacts/dependency-source/dependency-source.json --images artifacts/ci-images",
+      "run": [
+        "node",
+        "scripts/check-dependency-security.mjs",
+        "--source-evidence",
+        "artifacts/dependency-source/dependency-source.json",
+        "--images",
+        "artifacts/ci-images"
+      ],
+      "owner": "repository",
+      "ciJob": "image-security",
+      "prerequisites": [
+        "Current-run source and all packaged-image evidence"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "browser-runtime-cms",
+      "command": "node scripts/check-browser-runtime.mjs cms --dns",
+      "run": [
+        "node",
+        "scripts/check-browser-runtime.mjs",
+        "cms",
+        "--dns"
+      ],
+      "owner": "cms",
+      "ciJob": "cms-browser",
+      "prerequisites": [
+        "Digest-pinned governed Playwright container",
+        "Frozen dependencies",
+        "Exact Node LTS"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "browser-runtime-landing",
+      "command": "node scripts/check-browser-runtime.mjs landing",
+      "run": [
+        "node",
+        "scripts/check-browser-runtime.mjs",
+        "landing"
+      ],
+      "owner": "landing",
+      "ciJob": "site",
+      "prerequisites": [
+        "Digest-pinned governed Playwright container",
+        "Frozen dependencies",
+        "Exact Node LTS"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "browser-runtime-renderer",
+      "command": "node scripts/check-browser-runtime.mjs renderer",
+      "run": [
+        "node",
+        "scripts/check-browser-runtime.mjs",
+        "renderer"
+      ],
+      "owner": "renderer",
+      "ciJob": "renderer",
+      "prerequisites": [
+        "Digest-pinned governed Playwright container",
+        "Frozen dependencies",
+        "Exact Node LTS"
+      ],
+      "risk": "high"
     }
+  ],
+  "cmsTestPartitions": [
+    "unit-1",
+    "unit-2",
+    "integration-1",
+    "integration-2"
+  ],
+  "protectionContexts": [
+    "cms-quality",
+    "cms-test",
+    "package-quality",
+    "renderer",
+    "required-ci",
+    "site"
   ]
 }

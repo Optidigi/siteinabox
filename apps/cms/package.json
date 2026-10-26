@@ -11,7 +11,7 @@
     "payload": "payload",
     "generate:types": "payload generate:types",
     "test": "pnpm test:mail-provisioning:mock && vitest run",
-    "test:mail-provisioning:mock": "node --conditions=react-server --test tests/pure/microsoftMailProvisioningModel.test.mts tests/pure/microsoftMailProvisioningState.test.mts tests/pure/pax8Client.test.mts tests/pure/microsoftMailClient.test.mts tests/pure/microsoftMailDns.test.mts tests/pure/cloudflareMailDnsClient.test.mts tests/pure/microsoftMailWorkflow.test.mts tests/pure/microsoftMailLivePorts.test.mts tests/pure/exchangeWorkerClient.test.mts tests/pure/microsoftMailAuth.test.mts tests/pure/microsoftMailSetupCrypto.test.mts tests/pure/microsoftMailReadiness.test.mts tests/pure/microsoftMailCommerce.test.mts tests/pure/microsoftPartnerConnection.test.mts",
+    "test:mail-provisioning:mock": "node --conditions=react-server --test tests/pure/*.test.mts",
     "test:checkout-browser": "node tests/browser/checkout-browser.mjs",
     "test:watch": "vitest",
     "check:responsive": "node src/scripts/check-responsive.mjs --mode=payload",

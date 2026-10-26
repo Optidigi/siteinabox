@@ -19,7 +19,9 @@ describe("explicit disposable test ownership", () => {
     const directory = await mkdtemp(path.join(env.DATA_DIR, "siab-test-refusal-"))
     try {
       const childEnv = { ...process.env }
-      delete childEnv.DATA_DIR
+      // Override dotenv defaults so the child reaches the database-refusal
+      // boundary with storage scoped to its candidate resource.
+      childEnv.DATA_DIR = directory
       const script = fileURLToPath(new URL("../../../../scripts/authorize-cms-test-resource.mjs", import.meta.url))
       const child = spawnSync(process.execPath, [script, "--create-database", directory], { env: childEnv, encoding: "utf8", timeout: 10_000 })
       expect(child.status).toBe(1)

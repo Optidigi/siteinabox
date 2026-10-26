@@ -42,13 +42,13 @@ test("the committed CI workflow covers every canonical job and image variant", a
   const workflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
   assertRequiredCiWorkflow(workflow, expectedCiJobs(matrix))
   for (const changed of [workflow.replace("  cms-browser:\n", "  cms-browser:\n    if: false\n"),
-    workflow.replace("name: Install CMS verification prerequisite browser\n        run: pnpm --dir apps/cms exec playwright install --with-deps chromium", "name: Missing prerequisite\n        run: echo missing"),
+    workflow.replace("node scripts/check-browser-runtime.mjs cms --dns", "echo missing-browser"),
     workflow.replace('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"', "echo missing-ownership")]) {
     assert.throws(() => assertRequiredCiWorkflow(changed, expectedCiJobs(matrix)))
   }
   assertImageMatrix(workflow)
   for (const changed of [workflow.replace("app: [cms, renderer, site]", "app: [cms, renderer]"),
-    workflow.replace("fail-fast: false", "fail-fast: true"),
+    workflow.replaceAll("fail-fast: false", "fail-fast: true"),
     workflow.replace("  image-verification:\n", "  image-verification:\n    if: false\n")]) {
     assert.throws(() => assertImageMatrix(changed))
   }

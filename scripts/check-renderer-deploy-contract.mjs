@@ -12,7 +12,7 @@ const rendererDockerfilePath = resolve(repoRoot, "apps/renderer/Dockerfile")
 const rendererPackagePath = resolve(repoRoot, "apps/renderer/package.json")
 const cmsComposePath = resolve(repoRoot, "apps/cms/docker-compose.yml")
 const landingComposePath = resolve(repoRoot, "apps/landing/compose.yml")
-const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-renderer-image.yml")
+const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 const traefikAopConfigPath = resolve(repoRoot, "ops/traefik/cloudflare-aop.dynamic.yml")
 const traefikAopComposePath = resolve(repoRoot, "ops/traefik/compose.cloudflare-aop.yml")
@@ -53,22 +53,9 @@ const errors = []
 const rendererPackage = JSON.parse(await readFile(rendererPackagePath, "utf8"))
 const buildRendererWorkflow = await readFile(buildRendererWorkflowPath, "utf8")
 if (rendererPackage.dependencies?.["@siteinabox/legal-content"]?.startsWith("workspace:")) {
-  const legalContentWorkflowPath = "packages/legal-content/**"
-  const legalContentOnlyFixture = "packages/legal-content/src/documents/privacy.md"
-  const workflowPaths = buildRendererWorkflow
-    .split("\n")
-    .map((line) => line.trim().match(/^- "([^"]+)"$/)?.[1])
-    .filter(Boolean)
-  const selectsLegalContentFixture = workflowPaths.some((pattern) =>
-    pattern.endsWith("/**")
-      ? legalContentOnlyFixture.startsWith(pattern.slice(0, -2))
-      : legalContentOnlyFixture === pattern,
-  )
-
-  if (!workflowPaths.includes(legalContentWorkflowPath) || !selectsLegalContentFixture) {
-    errors.push(
-      `${formatPath(buildRendererWorkflowPath)} must select ${legalContentOnlyFixture} because ${formatPath(rendererPackagePath)} directly depends on @siteinabox/legal-content`,
-    )
+  const trigger = buildRendererWorkflow.split("jobs:")[0]
+  if (/paths(?:-ignore)?:/.test(trigger) || !trigger.includes("  pull_request:") || !trigger.includes("    branches: [main]") || !buildRendererWorkflow.includes("app: [cms, renderer, site]")) {
+    errors.push(`${formatPath(buildRendererWorkflowPath)} must always verify renderer when shared legal content changes`)
   }
 }
 
