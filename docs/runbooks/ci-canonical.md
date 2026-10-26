@@ -34,7 +34,8 @@ Browser jobs use the official Playwright Noble image pinned by digest in
 Playwright package, and the exact governed Node LTS is installed through the
 pinned setup action. Real Chromium rendering and BIND availability are checked
 before CMS verification. PostgreSQL uses its service hostname inside the job
-container. No Playwright OS-package installation occurs on the hot path; CMS
+container. A job-local Git entry trusts only the exact mounted checkout; no
+wildcard ownership exception is permitted. No Playwright OS-package installation occurs on the hot path; CMS
 still installs the smaller authoritative DNS tools. Root execution follows the
 existing trusted-test Chromium model; this container is not for production or
 untrusted web browsing.

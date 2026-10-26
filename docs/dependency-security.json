@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
   "graphHash": "031fdecbea994a9895ed17921c52fbf5449e7d3cc6958680afd2598623298377",
-  "configurationHash": "74dea82bd296110e28f9d532b5990c509e57d70ab344de87a7bf69b8a4c7ce49",
+  "configurationHash": "ec67974fa133fb40b006f7f078569006e6d91213b69f7a235e7b63b59421fc75",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {

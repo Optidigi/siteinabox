@@ -34,7 +34,7 @@ export function assertRequiredCiWorkflow(source, jobs) {
           !owned.includes("    services:\n      postgres:") ||
           !owned.includes('PAYLOAD_DISABLE_JOBS_AUTORUN: "1"') || !owned.includes("SITE_GENERATION_PROVIDER: mock") ||
           !owned.includes('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"') ||
-          !owned.includes(infrastructure.ciBrowser.reference) || !owned.includes("node scripts/check-browser-runtime.mjs cms --dns")) {
+          !owned.includes(infrastructure.ciBrowser.reference) || !owned.includes('git config --global --add safe.directory "$GITHUB_WORKSPACE"') || !owned.includes("node scripts/check-browser-runtime.mjs cms --dns")) {
         throw new Error("Parallel CMS jobs require independently owned PostgreSQL and verified pinned browser/BIND prerequisites: " + job)
       }
     }

@@ -43,6 +43,7 @@ test("the committed CI workflow covers every canonical job and image variant", a
   assertRequiredCiWorkflow(workflow, expectedCiJobs(matrix))
   for (const changed of [workflow.replace("  cms-browser:\n", "  cms-browser:\n    if: false\n"),
     workflow.replace("node scripts/check-browser-runtime.mjs cms --dns", "echo missing-browser"),
+    workflow.replace('safe.directory "$GITHUB_WORKSPACE"', 'safe.directory "*"'),
     workflow.replace('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"', "echo missing-ownership")]) {
     assert.throws(() => assertRequiredCiWorkflow(changed, expectedCiJobs(matrix)))
   }
