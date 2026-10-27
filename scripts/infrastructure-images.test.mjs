@@ -16,6 +16,10 @@ test("reviewed images have immutable publisher identities and the production arc
     assert.match(image.version, /^\d+(?:\.\d+)+$/)
     assert.ok(image.platforms.some(({ platform }) => platform.os === "linux" && platform.architecture === "amd64"))
   }
+  assert.equal(infrastructure.nativeBuilder.buildOnly, true)
+  assert.equal(infrastructure.nativeBuilder.version, "1.27.3")
+  assert.match(infrastructure.nativeBuilder.reference, /^docker\.io\/library\/golang:1\.27\.3-alpine@sha256:[a-f0-9]{64}$/)
+  assert(Date.now() - Date.parse(infrastructure.nativeBuilder.createdAt) >= 1440 * 60000)
   assert.equal(infrastructure.images.node.version, source(".nvmrc").trim())
   assert.equal(infrastructure.images.postgres.version.split(".")[0], "18", "No implicit database-major upgrade")
   assert.equal(infrastructure.images["postgres-rehearsal-baseline"].verificationOnly, true)
@@ -27,7 +31,7 @@ test("all application builders and runners use the reviewed immutable bases", ()
   }
   for (const app of ["cms", "renderer"]) {
     const refs = [...source("apps/" + app + "/Dockerfile").matchAll(/^FROM (\S+)/gm)].map((match) => match[1])
-    assert.deepEqual(refs, [shortRef("node"), shortRef("node")], app)
+    assert.deepEqual(refs, [infrastructure.nativeBuilder.reference.replace("docker.io/library/", ""), shortRef("node"), shortRef("node")], app)
   }
   const landing = source("apps/landing/Dockerfile")
   assert.equal(landing.match(/^ARG NODE_VERSION=(\S+)/m)?.[1], shortRef("node").slice("node:".length))

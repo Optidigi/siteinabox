@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T15:41:59.126Z",
+  "reviewedAt": "2026-10-27T17:01:52.430Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
   "graphHash": "d01627c39be8e789a4b8e241130f554d4288555bed4fa80a49e338d13099074c",
-  "configurationHash": "5d7cb64efd1d91021240de8333726ddf6bc5f6d548f37d8f03310db28e3c0f03",
+  "configurationHash": "5f2a1a3635a1fa9edc2e25c4896f66115316cbfa37adefd1755f531b59d8252f",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -839,6 +839,41 @@
       "url": "https://api.github.com/advisories/GHSA-4qv8-2p9j-2685",
       "sha256": "e472071324ad3a1249d701af8264f8a75a8a9fbc73a92720b3b59f87f737e5c8",
       "selected": false
+    },
+    {
+      "id": "native-esbuild-0.25.12-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/evanw/esbuild/git/ref/tags/v0.25.12",
+      "selected": true,
+      "sha256": "4485c4a51b40cd70c79e760b67bd52046c1437b9fcd8835814c36f432c6d3cdc"
+    },
+    {
+      "id": "native-esbuild-0.28.2-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/evanw/esbuild/git/ref/tags/v0.28.2",
+      "selected": true,
+      "sha256": "17c37aa07653d168c172efbdc09666a350b4e1e0a1caea85f621b9e17f7be38a"
+    },
+    {
+      "id": "native-gosu-1.20-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/tianon/gosu/git/ref/tags/1.20",
+      "selected": true,
+      "sha256": "b6662ffc2842d3558eaabee63baa24abd942ca8d24f37a737a98db5e3ad09ea5"
+    },
+    {
+      "id": "native-go-releases",
+      "kind": "json",
+      "url": "https://go.dev/dl/?mode=json&include=all",
+      "selected": true,
+      "sha256": "56044568316ba1430c157b32c97bb03cbce4d969589ac62cdbdb0579cccacb15"
+    },
+    {
+      "id": "native-xsys-0.44-publication",
+      "kind": "json",
+      "url": "https://proxy.golang.org/golang.org/x/sys/@v/v0.44.0.info",
+      "selected": true,
+      "sha256": "471802c4f58f51dfa7deb6ddade906ff36c2c0ce2ae8ab2e851bfe2221eccc40"
     }
   ],
   "publisherConstraints": [

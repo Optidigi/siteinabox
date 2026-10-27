@@ -40,7 +40,7 @@ export async function dependencyIdentities(root) {
 
 function assertPublicGitHubMetadata(url) {
   if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash) throw new Error("Publisher evidence must use a supported public primary API")
-  const primaryRepos = new Set(["aquasecurity/trivy", "nodejs/node", "vitest-dev/vitest", "vitejs/vite", "vercel/next.js", "facebook/react", "payloadcms/payload", "withastro/astro", "mastra-ai/mastra", "nodemailer/nodemailer", "better-auth/better-auth", "pnpm/pnpm", "cloudflare/cloudflared", "postgres/postgres", "nginx/nginx"])
+  const primaryRepos = new Set(["aquasecurity/trivy", "nodejs/node", "vitest-dev/vitest", "vitejs/vite", "vercel/next.js", "facebook/react", "payloadcms/payload", "withastro/astro", "mastra-ai/mastra", "nodemailer/nodemailer", "better-auth/better-auth", "pnpm/pnpm", "cloudflare/cloudflared", "postgres/postgres", "nginx/nginx", "evanw/esbuild", "tianon/gosu"])
   const repository = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/(?:releases\/(?:latest|tags\/.+)|git\/ref\/tags\/.+)$/)?.[1]
   if (!/^\/advisories\/GHSA-[a-z0-9-]+$/.test(url.pathname) && !primaryRepos.has(repository)) throw new Error("Publisher evidence must use a supported public primary API, not account/repository operations")
 }
@@ -67,7 +67,7 @@ export async function readPublicPublisherJSON(url) {
 
 export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
   const url = new URL(descriptor.url)
-  if (url.protocol !== "https:" || !["api.github.com", "raw.githubusercontent.com", "registry.npmjs.org", "nodejs.org", "secdb.alpinelinux.org", "vuln.go.dev"].includes(url.hostname) || url.username || url.password || !descriptor.id) {
+  if (url.protocol !== "https:" || !["api.github.com", "raw.githubusercontent.com", "registry.npmjs.org", "nodejs.org", "secdb.alpinelinux.org", "vuln.go.dev", "go.dev", "proxy.golang.org"].includes(url.hostname) || url.username || url.password || !descriptor.id) {
     throw new Error("Publisher fact must use a supported primary HTTPS source")
   }
   if (url.hostname === "api.github.com") assertPublicGitHubMetadata(url)
