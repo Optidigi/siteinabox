@@ -30,6 +30,8 @@ ENV NODE_ENV=production
 RUN POSTHOG_PROJECT_TOKEN=${POSTHOG_PROJECT_TOKEN} POSTHOG_PUBLIC_HOST=${POSTHOG_PUBLIC_HOST} POSTHOG_HOST=${POSTHOG_HOST} PUBLIC_TURNSTILE_SITE_KEY=${PUBLIC_TURNSTILE_SITE_KEY} pnpm --filter siteinabox-landing build
 
 FROM nginx:${NGINX_VERSION}
+# Patch the three affected base-image libraries without changing Nginx itself.
+RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0 curl=8.23.0-r0 libcurl=8.23.0-r0
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY apps/landing/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/landing/dist /usr/share/nginx/html

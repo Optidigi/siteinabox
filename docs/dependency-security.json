@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T14:44:20.822Z",
+  "reviewedAt": "2026-10-27T15:22:30.302Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
   "graphHash": "d01627c39be8e789a4b8e241130f554d4288555bed4fa80a49e338d13099074c",
-  "configurationHash": "60ed591cc764bb14986216f6ea42ea03e45b3157c56400bcb233368d9a6668f5",
+  "configurationHash": "5d7cb64efd1d91021240de8333726ddf6bc5f6d548f37d8f03310db28e3c0f03",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {

@@ -69,18 +69,24 @@ async function member(name, prefixHex) {
   if (!/^(?: [a-f0-9]{2}){0,4}$/.test(prefixHex)) throw new Error("Invalid inspected native prefix")
   let prefix = Buffer.from(prefixHex.replaceAll(" ", ""), "hex")
   hash.update(prefix)
-  let suffix = prefix; let size = prefix.length; let go = false
+  let suffix = prefix; let size = prefix.length; let go = false; let goPcln = false; let goRuntime = false; let goVersion = false
   for await (const chunk of process.stdin) {
     hash.update(chunk); size += chunk.length
     if (size > 512 * 1024 * 1024) throw new Error("Native member exceeds its completeness bound")
     if (prefix.length < 4) prefix = Buffer.concat([prefix, chunk]).subarray(0, 4)
     const boundary = Buffer.concat([suffix, chunk])
     if (boundary.includes(marker)) go = true
-    suffix = boundary.subarray(Math.max(0, boundary.length - marker.length))
+    // Some published Go binaries strip .go.buildinfo but retain runtime PC
+    // tables and version strings. Require all independent signals so missing
+    // scanner coverage cannot become an apparently clean native assessment.
+    goPcln ||= boundary.includes(Buffer.from(".gopclntab"))
+    goRuntime ||= boundary.includes(Buffer.from("runtime.main"))
+    goVersion ||= /\bgo1\.\d+(?:\.\d+)?(?:rc\d+|beta\d+)?\b/.test(boundary.toString("latin1"))
+    suffix = boundary.subarray(Math.max(0, boundary.length - 64))
   }
   const elf = prefix.equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]))
   return { path: name, size, sha256: hash.digest("hex"), format: elf ? "elf" : "other",
-    native: elf || nativeName(name), go: elf && go, bundle: bundleName(name) }
+    native: elf || nativeName(name), go: elf && (go || goPcln && goRuntime && goVersion), bundle: bundleName(name) }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

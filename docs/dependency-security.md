@@ -422,3 +422,13 @@ hashes and advisory database refresh remain enforced by scanner preparation.
 Invalid receipts fail closed. This avoids redundant GitHub public metadata reads
 that hit shared-runner anonymous quotas and authenticated organization IP rules.
 Standalone operations retain the live primary-read path when no receipt exists.
+
+The first patched image reports reduce enumerated findings from 287 to 222 with
+no new finding identities. Their zero-finding renderer result is not native
+clearance: the shipped esbuild 0.28.2 ELF lacks Go build-info metadata but retains
+Go PC-table, runtime-main and Go 1.26.5 signals. Independent native inventory now
+recognizes that combination and requires scanner coverage, retaining an explicit
+analysis blocker when coverage is absent. Native assessments remain blocked.
+The landing image additionally pins the age-eligible Alpine brotli-libs 1.2.1-r0
+and curl/libcurl 8.23.0-r0 fixes; an isolated container verifies those upgrades
+preserve Nginx 1.31.8. Fresh final-source image reports remain mandatory.
