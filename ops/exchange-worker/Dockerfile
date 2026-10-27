@@ -4,7 +4,7 @@ FROM ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f57
 ENV DEBIAN_FRONTEND=noninteractive \
     POWERSHELL_TELEMETRY_OPTOUT=1 \
     HOME=/home/exchange-worker \
-    EXCHANGE_WORKER_LISTEN_URL=http://0.0.0.0:8081/
+    EXCHANGE_WORKER_LISTEN_URL=http://+:8081/
 
 RUN apt-get update \
  && apt-get install --yes --no-install-recommends ca-certificates curl bind9-dnsutils \
@@ -21,8 +21,11 @@ RUN curl --fail --silent --show-error --location \
  && rm -f /tmp/powershell.deb \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pwsh -NoLogo -NoProfile -NonInteractive -Command \
-      'Install-PSResource -Name ExchangeOnlineManagement -Version 3.10.1 -Scope AllUsers -TrustRepository' \
+# The Gallery version-search endpoint can fail independently of package download.
+# Fetch exact, publisher-hash-reviewed archives and include all module dependencies.
+COPY modules.json Install-ExchangeModules.ps1 /tmp/exchange-worker-build/
+RUN pwsh -NoLogo -NoProfile -NonInteractive -File /tmp/exchange-worker-build/Install-ExchangeModules.ps1 \
+ && rm -rf /tmp/exchange-worker-build \
  && useradd --system --create-home --home-dir /home/exchange-worker --uid 10001 exchange-worker \
  && chown -R exchange-worker:exchange-worker /home/exchange-worker
 

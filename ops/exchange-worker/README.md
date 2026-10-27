@@ -7,6 +7,16 @@ partner user's short-lived Exchange token with `-UserPrincipalName` and
 
 ## Build and qualification
 
+Canonical CI now includes the required `exchange-worker` job. It builds the actual
+image, runs the offline command contract and checks authenticated/unauthenticated
+HTTP health with networking disabled and no published ports. Trusted main retains
+the worker archive for separate security/release qualification. The existing
+three-application publisher still does not accept worker images.
+
+The listener prefix is `http://+:8081/`: .NET HttpListener rejects `0.0.0.0` as a
+prefix. The Compose bridge remains private and publishes no ports.
+
+
 Build separately from the three application images:
 
 ```bash
@@ -17,8 +27,16 @@ docker run --rm --entrypoint pwsh \
   -File /tests/contract.ps1 -WorkerPath /app/Invoke-ExchangeWorker.ps1
 ```
 
-The Dockerfile pins Ubuntu, PowerShell package SHA256 and Exchange module
-version. The native PowerShell contract test loads the actual worker job
+The Dockerfile pins Ubuntu and the PowerShell package SHA256. `modules.json`
+pins the Exchange module and its PowerShellGet/PackageManagement dependencies by
+version and SHA256. The installer downloads exact official Gallery archives,
+checks their bytes and manifests, and imports the Exchange module without
+connecting to Microsoft. These archive hashes were checked against the Gallery
+SHA512 package metadata. The installer uses the official CDN URLs returned by the Gallery package API,
+with bounded retries and timeouts; both the version-search and package API
+frontends returned 404 during image qualification despite CDN availability.
+The offline installer test proves that incorrect bytes are rejected before
+extraction or manifest use. Changing module bytes requires a reviewed catalog update. The native PowerShell contract test loads the actual worker job
 function and substitutes Exchange commands; it checks delegated identity,
 read access, licensed-mailbox protection, alias conflicts and DKIM DNS gating.
 It never connects to Microsoft. Run an authenticated `/health` smoke on the

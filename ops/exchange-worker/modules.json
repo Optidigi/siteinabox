@@ -1,0 +1,5 @@
+[
+  { "name": "PackageManagement", "version": "1.4.8.1", "sha256": "7e1f8a75b6bc8a83d8abff79f6690fc1dfbd534fd3e5733d97e19bcb5954c13e" },
+  { "name": "PowerShellGet", "version": "2.2.5", "sha256": "6b8cebf2a464eaeb31b0a6d627355c30d9d1899dba0ce3bdd0d4e7afca148673" },
+  { "name": "ExchangeOnlineManagement", "version": "3.10.1", "sha256": "545fb0fdf65b96abed37f4f5b5d7db661276ddc7de48a742bb6e7199ab9414a3" }
+]
