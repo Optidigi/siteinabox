@@ -358,3 +358,23 @@ No clean-security, live-provider, production/Amicare preservation, recovery,
 publication or rollout gate is closed. Historical M11 diagnostics remain
 historical. Before release, remediate or obtain separately authorized risk
 constraints, refresh primary facts and verify the exact candidate bytes again.
+
+## October 27 deployment preparation
+
+The Alpine community publisher feed added `mongo-c-driver` 1.30.14 security
+fixes. The package and its `libmongoc`/`libbson` names are absent from all five
+retained raw production image package inventories from canonical run
+40487060728. This reconciles that publisher fact after reviewing the primary
+feed delta; it does not establish final-candidate release clearance. All 13
+source findings, 287 image findings, five blocked native assessments, seven
+deferrals and the original October 28 expiry remain unchanged.
+
+The PR128 image inventory refresh retains the same 287 finding identities,
+package versions, paths and all five native fingerprints. Current scanner
+metadata changes 107 finding fact hashes (references, vendor labels and modified
+dates). Three existing Go CVE-2026-111943 findings in CMS, PostgreSQL and
+cloudflared rise from moderate to high in scanner-selected severity. The retained
+primary Go advisory GO-2026-6809 still identifies affected versions below
+1.26.10 and 1.27.3 for the respective branches. All dispositions remain blocked;
+no finding, native assessment, deferral or expiry is waived. Evidence comes from
+canonical run 40506626773, with the detailed comparison retained separately.
