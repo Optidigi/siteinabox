@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T00:33:20.075Z",
+  "reviewedAt": "2026-10-27T10:10:18.686Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
-  "graphHash": "c2504cfc5bab904f0875b6f15e36a91e3e39b0eee86c8aa0f2c6145689b2ab75",
-  "configurationHash": "3e446ea22b221e030be7f2ea56fb3789f31a4e2718a667c0cc1289f4f13a1967",
+  "graphHash": "553a7907a746bd8743907bff8ef107e919e9e3668cc9e5d9ff31d6f8b25d6545",
+  "configurationHash": "92d03afbb0f99f222d6f31a72deb070049cfb83e0618b8cacad1a79a66ea8882",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -82,7 +82,7 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/main.json",
       "selected": false,
-      "sha256": "d27f8a9a438e7fbbc3b4b5640b2bcddb3dc4b502c08109a30d0c1eafee418d2c"
+      "sha256": "dcffd6a5b8051abfa154cb93f4c26715c26b4bbea2a63072b374697c34313db8"
     },
     {
       "id": "alpine-community",
