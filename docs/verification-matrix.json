@@ -77,7 +77,8 @@
       "image-security",
       "browser-runtime-cms",
       "browser-runtime-landing",
-      "browser-runtime-renderer"
+      "browser-runtime-renderer",
+      "exchange-worker-image"
     ],
     "cms-fast": [
       "cms-no-css",
@@ -999,6 +1000,22 @@
         "Digest-pinned governed Playwright container",
         "Frozen dependencies",
         "Exact Node LTS"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "exchange-worker-image",
+      "command": "node scripts/verify-exchange-worker.mjs",
+      "run": [
+        "node",
+        "scripts/verify-exchange-worker.mjs"
+      ],
+      "owner": "ops/exchange-worker",
+      "ciJob": "exchange-worker",
+      "prerequisites": [
+        "Docker engine and Buildx",
+        "Committed clean source",
+        "Official pinned PowerShell/module downloads"
       ],
       "risk": "high"
     }

@@ -7,6 +7,16 @@ partner user's short-lived Exchange token with `-UserPrincipalName` and
 
 ## Build and qualification
 
+Canonical CI now includes the required `exchange-worker` job. It builds the actual
+image, runs the offline command contract and checks authenticated/unauthenticated
+HTTP health with networking disabled and no published ports. Trusted main retains
+the worker archive for separate security/release qualification. The existing
+three-application publisher still does not accept worker images.
+
+The listener prefix is `http://+:8081/`: .NET HttpListener rejects `0.0.0.0` as a
+prefix. The Compose bridge remains private and publishes no ports.
+
+
 Build separately from the three application images:
 
 ```bash

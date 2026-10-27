@@ -4,7 +4,7 @@ FROM ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f57
 ENV DEBIAN_FRONTEND=noninteractive \
     POWERSHELL_TELEMETRY_OPTOUT=1 \
     HOME=/home/exchange-worker \
-    EXCHANGE_WORKER_LISTEN_URL=http://0.0.0.0:8081/
+    EXCHANGE_WORKER_LISTEN_URL=http://+:8081/
 
 RUN apt-get update \
  && apt-get install --yes --no-install-recommends ca-certificates curl bind9-dnsutils \

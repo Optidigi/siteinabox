@@ -55,6 +55,13 @@ untrusted triggers, registry writes and unsafe archive conditions. Static checks
 run in package quality; native receipt aggregation checks their required job
 result and exact-source artifacts without installing the YAML parser.
 
+The independent `exchange-worker` job builds the fourth image and runs the
+actual offline PowerShell command contract plus authenticated HTTP health and
+unauthenticated rejection. No Microsoft token or external connectivity is used
+by its smoke containers. Failure blocks `required-ci`. Trusted main retains its
+archive for separate worker security/release qualification; the existing
+three-application publisher remains unchanged.
+
 ## Browser runtime
 
 Browser jobs use the official Playwright Noble image pinned by digest in

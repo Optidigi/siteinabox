@@ -38,6 +38,13 @@ export function assertRequiredCiWorkflow(source, jobs) {
         !hasRequiredCommand(job, 'node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"') ||
         !hasRequiredCommand(job, "node scripts/check-browser-runtime.mjs cms --dns")) throw new Error("Parallel CMS jobs require independently owned PostgreSQL and verified pinned browser/BIND prerequisites: " + name)
   }
+  if (jobs.includes("exchange-worker")) {
+    const worker = workflow.jobs["exchange-worker"]
+    const archive = worker.steps?.find(step => step.with?.name === "image-exchange-worker")
+    if (Object.hasOwn(worker, "if") || !hasRequiredCommand(worker, "node scripts/verify-exchange-worker.mjs") ||
+        condition(archive?.if) !== "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'" ||
+        archive?.with?.path !== "${{ steps.verify.outputs.artifact-path }}" || archive?.with?.["if-no-files-found"] !== "error") throw new Error("Worker verification must run unconditionally; its archive is trusted-main only")
+  }
   const shards = workflow.jobs["cms-tests"], summaryJob = workflow.jobs["cms-test"]
   if (JSON.stringify(shards.strategy?.matrix) !== JSON.stringify({ part: cmsTestPartitions }) || shards.strategy?.["fail-fast"] !== false ||
       !hasRequiredCommand(shards, "node scripts/run-cms-tests.mjs ${{ matrix.part }}") ||
