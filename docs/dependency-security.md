@@ -451,3 +451,20 @@ missing scanner coverage. CMS's esbuild/unversioned component, PostgreSQL's gosu
 and OS findings, and cloudflared's dependency/provenance findings remain blockers.
 All seven unresolved deferrals and the original October 28 expiry are retained.
 Fresh final-source CI remains necessary after this evidence update.
+
+## Owned compiler exact-image reconciliation
+
+Canonical run 40551470220 passes all source, browser, worker and four consuming
+image build/startup checks. The current raw inventories contain 112 findings:
+62 previous identities disappear after the owned esbuild rebuilds replace every
+runtime native copy and restore complete reported Go target coverage. No new or
+changed finding identities remain. CMS, renderer and landing each enumerate zero
+findings with no unversioned components or reported analysis gaps; PostgreSQL has
+86 and cloudflared 26. This is inventory evidence, not blanket release clearance.
+
+All five native assessments remain blocked. Changed CMS/renderer fingerprints
+bind actual rebuilt binaries, source VCS/dependency metadata and exact images;
+the eight CMS helper hashes and sizes remain identical to the owning generator.
+All seven deferrals and the October 28 expiry remain unchanged. The owned
+PostgreSQL candidate, Cloudflare issues, complete worker security qualification
+and publication integration remain outstanding. Fresh final-source CI is required.

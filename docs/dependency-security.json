@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T15:41:59.126Z",
+  "reviewedAt": "2026-10-27T17:44:05.573Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
-  "graphHash": "d01627c39be8e789a4b8e241130f554d4288555bed4fa80a49e338d13099074c",
-  "configurationHash": "5d7cb64efd1d91021240de8333726ddf6bc5f6d548f37d8f03310db28e3c0f03",
+  "graphHash": "b1034e055ab0912218c872ff47c041265646e581fde888c77946ffac59d0928b",
+  "configurationHash": "57b4abe1aab64391213af8234a2e5b82a4cf11d1dd118a7dab9254ab21c23348",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -839,6 +839,41 @@
       "url": "https://api.github.com/advisories/GHSA-4qv8-2p9j-2685",
       "sha256": "e472071324ad3a1249d701af8264f8a75a8a9fbc73a92720b3b59f87f737e5c8",
       "selected": false
+    },
+    {
+      "id": "native-esbuild-0.25.12-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/evanw/esbuild/git/ref/tags/v0.25.12",
+      "selected": true,
+      "sha256": "4485c4a51b40cd70c79e760b67bd52046c1437b9fcd8835814c36f432c6d3cdc"
+    },
+    {
+      "id": "native-esbuild-0.28.2-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/evanw/esbuild/git/ref/tags/v0.28.2",
+      "selected": true,
+      "sha256": "17c37aa07653d168c172efbdc09666a350b4e1e0a1caea85f621b9e17f7be38a"
+    },
+    {
+      "id": "native-gosu-1.20-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/tianon/gosu/git/ref/tags/1.20",
+      "selected": true,
+      "sha256": "b6662ffc2842d3558eaabee63baa24abd942ca8d24f37a737a98db5e3ad09ea5"
+    },
+    {
+      "id": "native-go-releases",
+      "kind": "json",
+      "url": "https://go.dev/dl/?mode=json&include=all",
+      "selected": true,
+      "sha256": "56044568316ba1430c157b32c97bb03cbce4d969589ac62cdbdb0579cccacb15"
+    },
+    {
+      "id": "native-xsys-0.44-publication",
+      "kind": "json",
+      "url": "https://proxy.golang.org/golang.org/x/sys/@v/v0.44.0.info",
+      "selected": true,
+      "sha256": "471802c4f58f51dfa7deb6ddade906ff36c2c0ce2ae8ab2e851bfe2221eccc40"
     }
   ],
   "publisherConstraints": [
@@ -3211,1269 +3246,33 @@
         "GO-2026-6617",
         "scanner-release"
       ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-47912",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "bfb6553e51cd070797d44f4c86ca7b3efdec8d7e5486788716a092205acdc0d0",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-47912 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4010",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-58183",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "7e38fe3b4fd742f0578289a547afc2dacd6477a9ae7f2c35bc14120f43fa86af",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58183 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4014",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-58185",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "6b77465b6ab5cbc09d7c527bb02ee3776b26bc41af3a58d945145a36d5066bcd",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58185 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4011",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-58186",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "low",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "edd7618ce952d25624d6f55da23e7414459e50c55a9a72722943f487bb451beb",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58186 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4012",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-58187",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "e79557bec51a8ae2f78c0abfe49f017224be54c98d63e23fa6b0fb7cfb3e285d",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58187 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4007",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-58188",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "fda6ea7c0b5da46cf9d45291629d3b81c70f635479dc536db91c96c82f135258",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58188 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4013",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-58189",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "fe655eafb3e447031dd8251cc53c5ab513f55d8ef94a43dab235b5ad24f9f9a2",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-58189 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4008",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61723",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "06ebb2defbd7f6b5ed9122f8941a821b8a7f05642d7bc2223b012430c1cc2530",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61723 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4009",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61724",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "6ea81a65d806bf4d75cdf98a0417f03e7b24f03ae4f6cfa25774cabc65ed0797",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61724 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4015",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61725",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "53cab6d4c6851b5e76c687ee63b5bd7a0aba680339e96f352023dd03239d5beb",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61725 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4006",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61726",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "b5a952e5ceaaec950f7519ab60817fd5b010d9345d940be1db5f5fd49aed7959",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61726 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4341",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61727",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "87e06cd6004ed5bddfbbf1c4fd10b8922a5efa4799ddfd98eeb1b9c2131e5038",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61727 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4175",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61728",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "3d050942592c4da2f8d2ae0c22ad6bf700e529177d568f9cd26c1a82eb78a30a",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61728 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4342",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61729",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "1dec36c0df797b301b5ceaa1bfe72811f666311834488ca272ee23e528857cbf",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61729 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2025-4155",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-61730",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "06d0bb6744aa6588c50b81c2f89dffdcd43020343b1645acda0c514c136d6fed",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-61730 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4340",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2025-68121",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "critical",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "d6b8a90534cdc2e3b06625fba6757f7596393877f22877b892cfb00b688bcc60",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2025-68121 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4337",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-111943",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "a2f4ad44ec5a661749568c804026fd70923d4fa7b163dd83c519d795f948faad",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-111943 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6809",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-25679",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "1cbee94ab4e0f6a2b750d7ab1cfad70042ec5be989f5678db444ced0375c007e",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-25679 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4601",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-27139",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "low",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "83ca61f95b43969856186801cd0120dbf719565b3a51c9c1c9c2d2a02a03e9e7",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-27139 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4602",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-27142",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "b363af0393db456f737458493ee76c5bd678a1d58146fea30d9463bd0e6b3acc",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-27142 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4603",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-27145",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "98cdae801ed2766248014f5cc8c3f7e6004edfe3490e4ae143d626cbda7139fa",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-27145 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5037",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-32280",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "161b169d1d67445e264fcc3c133d1b0ae9be8356be436b72e15598ea68ef3174",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32280 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4947",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-32281",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "254413e358a54d3da4330a3efd3e3f2b2212f12ab1384de75820668a10569dbf",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32281 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4946",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-32282",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "13ec55b6cc7d4954844f0d8b9829f1c9a13f24338ec1e3fcea76e151940cda0f",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32282 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4864",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-32283",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "c2bf55870e1e1c6b68cd0e479d4c0b6ef2a9d02ea9cb722ba93bc7147a4338e8",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32283 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4870",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-32288",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "c1cb0fefbf7df6d44fbf865986ec98bd09d0202b86c01eb47c37bc98fef5667a",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32288 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4869",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-32289",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "7ee7ea04779dded6e750276961e40b1e5e2e8e85a40ab39833e1e0f5fc210c95",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-32289 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4865",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-33811",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "508ac9fac510467952e99a530506eb9bbed8760025586b8671b68e9bc1643dab",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33811 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4981",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-33814",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "89f8f2efcbead54697145faee79bd6ec50c05d21844d7a994feee96c5d12323a",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33814 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4918",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-33818",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "e7eae3aa0134f1362232f70e30418f8bddd1eb2a5f808d719b7fa155fc92213d",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-33818 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5972",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39820",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "eb6bf4403dcd32299e2e993184e54ee9cf04f352cc9f74d76563e99c9570eb70",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39820 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4986",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39821",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "b9024803f91fd360895217667cdd7facac4022520d5f4d9412d155240d070981",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39821 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5026",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39822",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "3ce1772c3543b4ae5ee11cdd151c109091b3a7886600e48ca59baea077080b08",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39822 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4970",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39823",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "6fca55cd97676f0c67453d3882be32bf5688f77d30e73f85cd3ece3f1f34064a",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39823 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4982",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39824",
-      "package": "golang.org/x/sys",
-      "version": "v0.0.0-20220715151400-c0bba94af5f8",
-      "severity": "unknown",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "1c5b0ec20f930caf7656bdcc08862a7e0f2a140f196c78b73d0f18429f4df938",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 with CVE-2026-39824 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5024",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39825",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "3636ece8ed66f0652840b837025dd96c5c79a94074bc2c735e6be5b4f9d60891",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39825 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4976",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39826",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "46b6d4283b0a2a3b9f1e88c4a0d1b5681a7c51b703600d89d0a61b852ad24feb",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39826 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4980",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-39836",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "b9a19f5876a89ab4e5c8acd0ba1a0aff6f1e0c7a17ddf89731f8a48ec9979742",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-39836 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4971",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-42499",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "af6e44e415c1b92731dcecbbd10aa125707a09f97aa1f51e875bdc6e17e79ff2",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42499 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-4977",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-42504",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "81b54796f155529208db458d161ef09641b7cb0181bce3f234ba5698e4a1e717",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42504 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5038",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-42505",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "aeb160d6acbdc8a2831b0b4608159b9f4cd2596fb17e06eb37874dc8ec415d0e",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42505 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5856",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-42507",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "6ff6f3304b23b5036c3934431a602aca7a904cd68672f9febfcfeecd8fbf044c",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-42507 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-5039",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56853",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "5dfdf5204369df47750c62fc9936749d984e429de3f7fa17699c2010cb70f421",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56853 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6089",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56857",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "low",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "294cd752ea155027d3b25f69ee407cdcad48dbd1b7ea3bc4b69c96dcbaf82464",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56857 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6604",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56858",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "fce97b3ec3570bbf180cecf3c0c0dcf8937acc9708dc55f810523694b2cd3ce0",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56858 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6091",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56859",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "7a099aa88af49512528698c6b5580bba835d1ca7570155bf84f239513d5052da",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56859 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6088",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56860",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "2d19f236f2099c1530834023169f98021c34bd4b911a35d0bcfde65265a8438f",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56860 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6218",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56862",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "46aa3ca50c3a5952fa162ab1265a78c0fd248cd1f060cb253b120a254b69b4a6",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56862 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6090",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-56866",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "da7a5f1cfbcf858deac00cc4ef37af5d665475f56b4b969d9fb8a8d69eeb72f5",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-56866 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6605",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-78659",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "7ec70bec2746505def82dce48695f79fe1c91001fc52e64a0c04c03a5238ccbd",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78659 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6603",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-78660",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "8b8507b5067aab0a6fe8f134a84fa741859ca9afac3c26da91b1f83a8281f745",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78660 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6610",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-78663",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "85833a57df1fa978d9586c97da7c64f5fb3db488247acbc9cf837a43dbad5f53",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78663 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6612",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-78667",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "03b400321954db8d499230500ed84d4d83d979f15071aad9c88d862734ba8437",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78667 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6609",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-78669",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "960d40c77381a3ed5bb28b4082030ac8d8db96ff431b7bf37361a73619f90914",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-78669 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6611",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-94439",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "a11f1daf76be4a6cafda870fd5a3e59ed890059d1bbcedc1e610502fb9e1324c",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94439 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6613",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-94440",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "d74adac7c6284144bddc11b35c32196215d489fe5b47ba87143311e0dd20c4bc",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94440 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6608",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-94448",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "9be64f63fd614d9c77a7d00a282eb949c9eaa62bbfabed8b1fe02dcaa1c65791",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-94448 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6599",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-97030",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "ab670cc2ccfa0a5e4f120a0a52a2535aa459d239d0502aad690ed02ea3c67870",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97030 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6600",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-97031",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "high",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "f3d93faee5ed596eae9f1d8eff26b47cc36efcdf4444e0e069915d8256363142",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97031 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6607",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "CVE-2026-97032",
-      "package": "stdlib",
-      "version": "v1.23.12",
-      "severity": "moderate",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "06e0a4c6fe7a061fb08a57a7acdbda10ee7b4b735d2a3b44a816f4b0849775fc",
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reason": "CMS image: privileged migration helpers, image processing and administration service. Scanner records stdlib v1.23.12 with CVE-2026-97032 at the retained exact paths. The affected Go runtime is linked into the shipped esbuild helper; invoking an affected library API during serving or migration is unproven. Current primary package/advisory facts support the affected-package inventory; an exploitable deployment condition is not established. Release remains blocked; no waiver or global suppression.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "GO-2026-6617",
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms",
-      "id": "UNVERSIONED_NATIVE_COMPONENT",
-      "package": "github.com/evanw/esbuild",
-      "version": "(not-recorded)",
-      "severity": "unknown",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "79e65060f0a4a747388cf7eae026b036b7af8492760aadde737b04c6cbec3aa8",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "The scanner does not record the esbuild module version in the exact shipped Go binary. The path, binary hash and available Go dependency findings are retained; independent version/build provenance remains unresolved.",
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed package/path/advisory/native bytes or policy expiry: revalidate primary ranges, configured reachability and a compatible remediation; do not infer clearance from scanner absence.",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:renderer",
-      "id": "NATIVE_ANALYSIS_INCOMPLETE",
-      "package": "gobinary-inspection",
-      "version": "0.76.0",
-      "severity": "unknown",
-      "paths": [
-        "app/node_modules/.pnpm/@esbuild+linux-x64@0.28.2/node_modules/@esbuild/linux-x64/bin/esbuild"
-      ],
-      "factsHash": "42e1cd87c9377b7d5c948d03ae71cd50747eafda5247aa3c4bd14c8734950d10",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "The exact shipped esbuild 0.28.2 ELF strips legacy Go build-info metadata but independently retains Go PC-table/runtime-main/version signals (Go 1.26.5). The pinned scanner does not cover this native target. This is explicit incomplete analysis, not clean output or risk acceptance.",
-      "reviewOwner": "Release-patch exact-image native coverage review; independent engineering evidence; no waiver",
-      "recheck": "Before release or changed bytes/analyzer: establish complete native Go/package/advisory coverage and qualify supported remediation. Do not infer clearance from zero scanner CVE rows.",
-      "sources": [
-        "scanner-release",
-        "GO-2026-6809"
-      ]
     }
   ],
   "nativeAssessments": [
     {
       "application": "cms",
-      "fingerprint": "e29ac01bade88f5d66f8b5bc89caf9cc959a62fe5d5de3d087766aed11039da5",
+      "fingerprint": "64499c3c64cf96d5de10bd6ddaa4a43f3af491b973314ac4c98231c9deb0f704",
       "status": "blocked",
-      "reason": "Candidate Node 24.22.1 and patched source dependencies are present; runtime npm/Yarn removal and actual packaged migration/startup tests pass. All eight runtime helper hashes/sizes match the owning repository generator. The shipped esbuild 0.25.12 Go findings and unversioned native component remain release-blocking; Sharp/libvips/PDF/native support and full coverage are not inferred clean.",
-      "reviewOwner": "Release-patch exact-image inventory reconciliation; independent engineering evidence; no risk waiver",
+      "reason": "The owned exact-version esbuild security rebuild is present with inspectable Go 1.27.3/xsys 0.44.0/source VCS metadata and all shipped native target occurrences covered. Version-specific upstream Go tests, JS API/service tests and actual packaged application startup pass. Current raw reports enumerate zero findings and no analysis gap. This binds the changed native bytes without inferring complete per-component support/managed/native qualification or production authority; assessment remains blocked pending final release review.",
+      "reviewOwner": "Owned native build exact-image inventory review; independent engineering evidence; no risk waiver",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
         "scanner-release",
         "alpine-main",
-        "alpine-community"
+        "alpine-community",
+        "native-go-releases",
+        "native-xsys-0.44-publication",
+        "native-esbuild-0.25.12-source"
       ],
-      "reviewedSourceSHA": "54156f67c5161bb9e508c30f8b99ad21882512f0",
-      "reviewedImageId": "sha256:1e8b6d4506f46164c38343802c87a4c2320c357dc4e668fdda1b6e8b566f1d8b",
-      "reviewedArchiveSha256": "e641de50a4040dfe35c7924f5ca97bbc11cfa83f0e077f0278d676c9c7efc9d1",
-      "reviewedReportSha256": "06ad10201455f4e83445950ce1285a358f2be218a803e977f555551a4c414e21",
-      "reviewedNativeInventorySha256": "a99070d7db7162d9d32e8763e818a7a230cbe7c9883adc3367b20e24efda95c4",
+      "reviewedSourceSHA": "ca2703b2bb3520b8fcfd12a3873f98a4f8e05549",
+      "reviewedImageId": "sha256:17ca131be621805ce57fe32fb3c5b15c442b054466e8981dae02028c8634145f",
+      "reviewedArchiveSha256": "d7c7b3829e592400536b356840cf0f8cf91830cb2b49e7c219e287fd2a4edd94",
+      "reviewedReportSha256": "299e14a2eb5cc50def1d80e93b4d7b0bff7a1d6775985862c8da98b7b8b159c9",
+      "reviewedNativeInventorySha256": "ea683a0f8c4e6f468200fb9ee0489dff3d1b588195c8df3bd8dfc3e8aeec7467",
       "bundleQualification": {
         "kind": "hosted-exact-bytes-with-root-generator-and-canonical-tests",
-        "baselineSourceSHA": "54156f67c5161bb9e508c30f8b99ad21882512f0",
-        "baselineImageId": "sha256:1e8b6d4506f46164c38343802c87a4c2320c357dc4e668fdda1b6e8b566f1d8b",
+        "baselineSourceSHA": "ca2703b2bb3520b8fcfd12a3873f98a4f8e05549",
+        "baselineImageId": "sha256:17ca131be621805ce57fe32fb3c5b15c442b054466e8981dae02028c8634145f",
         "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
         "node": "24.22.1",
         "pnpm": "12.14.0",
@@ -4519,9 +3318,9 @@
             "sha256": "3660c7c6b34aecd5b68cd26adde21970c7177f0446fbed3422b847279802063f"
           }
         ],
-        "behaviorQualification": "All source/compiled-browser/packaged startup and populated migration checks passed in canonical run 40530772192 attempt1; eight actual helper bytes match root generator. Provider E2E and native release clearance remain outstanding."
+        "behaviorQualification": "All source/browser/worker/packaged startup checks pass in canonical run40551470220attempt1; eight actual runtime helper bytes still match owning Node24.22.1 root generator. Owned esbuild runtime binaries are separately bound; production and full native qualification remain pending."
       },
-      "reviewedVerificationRunId": "40530772192",
+      "reviewedVerificationRunId": "40551470220",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -4536,12 +3335,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "54156f67c5161bb9e508c30f8b99ad21882512f0",
+      "reviewedSourceSHA": "ca2703b2bb3520b8fcfd12a3873f98a4f8e05549",
       "reviewedImageId": "sha256:57b23a0326ee442e83b3d3fa027c5a148be0a392d7c91d1ca4e1e70131ee859a",
-      "reviewedArchiveSha256": "fb9f8e806b7784bb9fb069fd4694f9f5d629cfdd8bb8875438ce43cae61727a3",
-      "reviewedReportSha256": "a94e66a8e3e139298fb113830db4e3054ade54d7e531277e3ae3c71de87f1d20",
-      "reviewedNativeInventorySha256": "041dba375b8fb7c36a40367d584488ce2937ad70b253565d082b0e005b3d8dde",
-      "reviewedVerificationRunId": "40530772192",
+      "reviewedArchiveSha256": "f4a26f98de32f01fc2ab70998a7c031930a784a6e7424630655a187a46b59e24",
+      "reviewedReportSha256": "3559367ff22fef455bed4c69af6a6e50fa35b2ab4561570fe98de7cbffcea5e2",
+      "reviewedNativeInventorySha256": "167fb829f11a1d1e0e519e5e6baf3cbb16a55f4cc361fc8c275628579e366bc4",
+      "reviewedVerificationRunId": "40551470220",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -4554,32 +3353,35 @@
       "sources": [
         "scanner-release"
       ],
-      "reviewedSourceSHA": "54156f67c5161bb9e508c30f8b99ad21882512f0",
+      "reviewedSourceSHA": "ca2703b2bb3520b8fcfd12a3873f98a4f8e05549",
       "reviewedImageId": "sha256:472341c39b02490b6a6e5882cfb08e50063890ddb4b24e266eb49556c08bd8e8",
-      "reviewedArchiveSha256": "cb96fd1433bacde2100b1c09f5a7a0f734229ae5a7f1ba506482705afc935fc5",
-      "reviewedReportSha256": "23e476c96d2c7f464629635ee99cfe84a341b34eb76e1d1e4246a68fbe59fc3e",
-      "reviewedNativeInventorySha256": "ab22572f80c823dbdb65fa913f0db5f5fe18754f0f2e95c1ae0a29181e690a40",
-      "reviewedVerificationRunId": "40530772192",
+      "reviewedArchiveSha256": "a25183a9afdeeb732fca17731da76833e25300d7fcb1b0c29638b54f40436489",
+      "reviewedReportSha256": "b6a42525db0d7f48083ebf7dcd4988aa279567b5583ade1532e42c1a37c3e0cb",
+      "reviewedNativeInventorySha256": "62fd6e00521fb514b1c336ba2ac7d03babad75a012765573fdd223781f8ca294",
+      "reviewedVerificationRunId": "40551470220",
       "reviewedVerificationRunAttempt": "1"
     },
     {
       "application": "renderer",
-      "fingerprint": "e4ddfeae484d02f9d04822176d31295183824ceccf488dae8dc4846d2885aff8",
+      "fingerprint": "6a82b607ffdb6b3c4a324721b48dd4d1a92318cb9a2667de0e72930c7a26290b",
       "status": "blocked",
-      "reason": "Candidate Node 24.22.1 and runtime npm/Yarn removal pass actual packaged host-routing/privacy/startup tests. The shipped esbuild 0.28.2 ELF has stripped Go build info but independent Go 1.26.5 signals; the corrected inventory now requires coverage and retains the explicit analysis gap. Zero enumerated CVE rows are not native clearance.",
-      "reviewOwner": "Release-patch exact-image inventory reconciliation; independent engineering evidence; no risk waiver",
+      "reason": "The owned exact-version esbuild security rebuild is present with inspectable Go 1.27.3/xsys 0.44.0/source VCS metadata and all shipped native target occurrences covered. Version-specific upstream Go tests, JS API/service tests and actual packaged application startup pass. Current raw reports enumerate zero findings and no analysis gap. This binds the changed native bytes without inferring complete per-component support/managed/native qualification or production authority; assessment remains blocked pending final release review.",
+      "reviewOwner": "Owned native build exact-image inventory review; independent engineering evidence; no risk waiver",
       "recheck": "Before release or changed inputs/expiry: review every retained blocker, publisher support and bundled-native coverage; rebuild/verify after compatible remediation. This blocked assessment is not risk acceptance.",
       "sources": [
         "scanner-release",
         "alpine-main",
-        "alpine-community"
+        "alpine-community",
+        "native-go-releases",
+        "native-xsys-0.44-publication",
+        "native-esbuild-0.28.2-source"
       ],
-      "reviewedSourceSHA": "54156f67c5161bb9e508c30f8b99ad21882512f0",
-      "reviewedImageId": "sha256:4bedc3b1f79770bc433e32d20016a0c3db6e434466666b640de607f23744a218",
-      "reviewedArchiveSha256": "5686a3e107cafc18aaf62d61e0bcabbc7ecd7bfc3d3def542aeb1bdb84c0ae53",
-      "reviewedReportSha256": "373e5a1e9d0c52866e94707c55fe1aa4d30c374a9cf571f7194d89b208d54476",
-      "reviewedNativeInventorySha256": "5e0ca664b5b8df4c727132c4f0304975ff13b90b782ed0f2e7e4afa3cafe42bc",
-      "reviewedVerificationRunId": "40530772192",
+      "reviewedSourceSHA": "ca2703b2bb3520b8fcfd12a3873f98a4f8e05549",
+      "reviewedImageId": "sha256:cc5cb39a99f56950f26be27948cc45c503919bbb83d0458932659a2048734fc1",
+      "reviewedArchiveSha256": "7f2255c8ea0156749813a3128f16f922a8fe8cb80cc5f4434e10e29999a2a665",
+      "reviewedReportSha256": "90fc68d98fa48a95b3b9436f514ad81abf558ced8078d315924cb372ad0d5229",
+      "reviewedNativeInventorySha256": "2840aa66acb22cd21e3d9e3248fffe107e9ec42cf8fec823279a700ad59f6b31",
+      "reviewedVerificationRunId": "40551470220",
       "reviewedVerificationRunAttempt": "1"
     },
     {
@@ -4594,12 +3396,12 @@
         "alpine-main",
         "alpine-community"
       ],
-      "reviewedSourceSHA": "54156f67c5161bb9e508c30f8b99ad21882512f0",
-      "reviewedImageId": "sha256:24987b0e39fe90c914091b4194698c4660a4a54fce1e64af4ff9b913a5cf754d",
-      "reviewedArchiveSha256": "5d6be0858f51843d57177130d7767ca47470beb73acc7e6c55fdc08732476893",
-      "reviewedReportSha256": "61b6ab137d68a676a4839553bcdd0137629231486a049b2f9bb74baf621c9ac2",
-      "reviewedNativeInventorySha256": "63fd45084757009faae89943a0386a531787717fbe33e32fb1d7511ee7088daf",
-      "reviewedVerificationRunId": "40530772192",
+      "reviewedSourceSHA": "ca2703b2bb3520b8fcfd12a3873f98a4f8e05549",
+      "reviewedImageId": "sha256:a88ef3ad8a52d51259cd97535dfb9fcc8c083b78aca92d8ea8602e319e18cd93",
+      "reviewedArchiveSha256": "9524e49e779ad580e9fa4beb77f1df3d8613b90d7da6f09ea57b6d472d7a654e",
+      "reviewedReportSha256": "42ca2e7104a224b2a6a4b7a88b0263ce824bec387a9cc769fb52f30b284b0428",
+      "reviewedNativeInventorySha256": "83e2d2c79f2a61ee0b49e9dcb0a918a84f38c8fb3de9c72a8c2ae5a26b791f41",
+      "reviewedVerificationRunId": "40551470220",
       "reviewedVerificationRunAttempt": "1"
     }
   ],

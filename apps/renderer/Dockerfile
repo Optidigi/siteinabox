@@ -1,7 +1,14 @@
 # syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
 
+# First-party security rebuild of the exact runtime compiler API.
+FROM golang:1.27.3-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS native-tools
+RUN apk add --no-cache git
+COPY ops/native-components /native-recipes
+RUN sh /native-recipes/build.sh esbuild-0.28.2
+
 FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS builder
 WORKDIR /repo
+COPY ops/native-components/Test-Esbuild.mjs ops/native-components/Install-Esbuild.sh /repo/ops/native-components/
 RUN apk add --no-cache libc6-compat \
   && npm install -g pnpm@12.14.0
 
@@ -25,6 +32,13 @@ ENV NODE_ENV=production
 RUN pnpm --filter @siteinabox/renderer build \
   && pnpm --filter @siteinabox/renderer deploy --prod --legacy /app \
   && cp -R apps/renderer/dist /app/dist
+
+# Replace in the build output so vulnerable vendor bytes never enter runtime layers.
+RUN --mount=from=native-tools,source=/out,target=/native,ro \
+    node ops/native-components/Test-Esbuild.mjs 0.28.2 /native/esbuild \
+ && sh ops/native-components/Install-Esbuild.sh /app 0.28.2 /native/esbuild \
+ && mkdir -p /app/native-notices/esbuild-0.28.2 \
+ && cp -R /native/notices/. /app/native-notices/esbuild-0.28.2/
 
 FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS runner
 WORKDIR /app

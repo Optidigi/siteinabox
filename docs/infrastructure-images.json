@@ -419,5 +419,73 @@
     "verificationOnly": true,
     "releaseUrl": "https://github.com/moby/buildkit/releases/tag/v0.34.1",
     "publishedAt": "2026-10-20T22:04:56Z"
+  },
+  "nativeBuilder": {
+    "version": "1.27.3",
+    "reference": "docker.io/library/golang:1.27.3-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb",
+    "platforms": [
+      {
+        "digest": "sha256:bff16a94c0b4b6d9642581e2a3aa81beb3edb940b2f5a3aac1d22c6a68cb7747",
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        }
+      },
+      {
+        "digest": "sha256:52efed73b4accb3fe90c2d53e297c917c578f80c995da88a4f0770d65cf49de1",
+        "platform": {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v6"
+        }
+      },
+      {
+        "digest": "sha256:9958accf016d93be918d548fe603bafec3d2359870cdf7402940c4e1727cffad",
+        "platform": {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v7"
+        }
+      },
+      {
+        "digest": "sha256:ee0dcdc452cb73890363fbef65fc333aeb0da7c24ba52f2c6428a37b0e7f4f1c",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        }
+      },
+      {
+        "digest": "sha256:7eadb9cbb0aab2649418025b8472a770195e9a94921309519896514de85bba7f",
+        "platform": {
+          "architecture": "386",
+          "os": "linux"
+        }
+      },
+      {
+        "digest": "sha256:18b7e8d84b36bcd5ebb804451004011e3c749b0e22894f3dd2033f9862a861c6",
+        "platform": {
+          "architecture": "ppc64le",
+          "os": "linux"
+        }
+      },
+      {
+        "digest": "sha256:4877448f1426e1d0aaf8e07aa9f178e59820baae5fb3b8cd05b2a49cbf5167d4",
+        "platform": {
+          "architecture": "riscv64",
+          "os": "linux"
+        }
+      },
+      {
+        "digest": "sha256:4b9fd87ec6c3fb9a4175aa000f26c409b794e564fc7e04082a91dab866ab93df",
+        "platform": {
+          "architecture": "s390x",
+          "os": "linux"
+        }
+      }
+    ],
+    "buildOnly": true,
+    "verificationOnly": false,
+    "createdAt": "2026-10-21T22:58:12.197499363Z"
   }
 }
