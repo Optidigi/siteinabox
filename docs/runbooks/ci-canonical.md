@@ -15,11 +15,15 @@ six contexts; `required-ci` requires every internal job and image variant.
   gate unrelated work. All remain required by the final aggregate.
 - `.github/actions/setup-ci` owns the exact Node/pnpm setup, frozen installation
   and exact-checkout Git trust. Native Node-only aggregators disable dependency
-  installation; CMS containers opt into authoritative DNS prerequisites.
+  installation; CMS containers opt into authoritative DNS prerequisites. The
+  cache option supports controlled measurements; the default retains caching.
 - `ciDependencies` in the verification matrix declares the actual intermediate
   dependencies. Policy rejects additional sequencing or missing dependencies.
 - Four `cms-tests` jobs execute unit-1, unit-2, integration-1 and integration-2.
-  Each job owns an independent PostgreSQL service, authorized database and worker
+  Scheduling uses historical per-file execution times plus amortized setup
+  costs, with deterministic longest-first allocation. `unit-1` reserves measured
+  time for its additional checkout fixture. New files use a median estimate and
+  remain included. Each job owns an independent PostgreSQL service, authorized database and worker
   storage. Files remain serial and isolated inside a partition. Real committed
   migrations still initialize integration files; no schema push, shared parallel
   database or globally disabled isolation is introduced.
@@ -39,6 +43,17 @@ query against the actual target database; temporary entrypoint socket readiness
 is insufficient. `image-security` surfaces image advisory failures
   as soon as the source/image inputs are ready. The final aggregate still verifies
   every job, source/run/attempt, raw report, native assessment and image identity.
+
+## Shared workflow policy
+
+`scripts/canonical-ci-workflow.mjs` owns the common trigger, all-image coverage,
+conditional-step and archive rules. Image, path, renderer and aggregate checks
+call it rather than repeating source fragments. A pinned development-only YAML
+parser validates structure, duplicate keys and aliases; human labels, indentation
+and key order are not policy. Negative tests retain skipped verification,
+untrusted triggers, registry writes and unsafe archive conditions. Static checks
+run in package quality; native receipt aggregation checks their required job
+result and exact-source artifacts without installing the YAML parser.
 
 ## Browser runtime
 
@@ -76,6 +91,46 @@ separate build, packaged smoke, archive/hash, application inventory and
 infrastructure inventory. The aggregate retains these and renders a job summary.
 Compare cold/warm end-to-end critical path and runner-seconds; do not infer savings
 from cache presence alone. Existing advisory/native blockers remain blockers.
+
+## Refresh scheduling estimates
+
+Download all `cms-test-*` artifacts and the complete jobs API response from one
+successful canonical run, then run:
+
+```bash
+node scripts/update-cms-test-timings.mjs ARTIFACT_DIRECTORY JOBS_API_JSON
+```
+
+The generator validates successful, clean, same-run receipts, complete current
+file coverage and per-file report timings before updating
+`apps/cms/tests/_helpers/timings.json`. Commit the reviewed estimates. They are
+historical scheduling hints, not qualification evidence. Vitest reports omit
+import/setup time; measured partition wall time supplies an amortized estimate.
+Use fresh hosted results to check whether the estimate actually balances work.
+
+## Controlled performance measurements
+
+On the same unchanging non-main branch, dispatch canonical `ci.yml` sequentially
+with `cache-mode=cold`, then `normal`, then `normal` again. The cold mode disables
+pnpm, Next, V8, BuildKit and scanner cache restore/save while retaining every
+qualification step and advisory refresh. It measures repository-managed cache
+inputs, not a guaranteed uncached GitHub host or container registry. The first
+normal run seeds caches; inspect its logs and the repeat's cache logs before
+calling the repeat warm. Never dispatch these measurements on main: trusted main
+runs retain promotion archives even though publication remains separate.
+
+After completion, collect read-only run/job/receipt evidence:
+
+```bash
+node scripts/benchmark-ci.mjs COLD_RUN_ID NORMAL_RUN_ID REPEAT_RUN_ID
+```
+
+`artifacts/ci-performance/report.json` groups exact tested source, event and cache
+mode; it rejects partial/failed, cross-run and repeated observations. It records
+elapsed, summed job and queue time, plus descriptive nearest-rank p50/p95. Fewer
+than 20 samples are explicitly insufficient for a stable p95. A cache mode alone
+never proves a hit or steady-state savings. This command collects existing runs;
+it neither dispatches workflows nor supplies publication clearance.
 
 ## One promotion producer and a separate release decision
 

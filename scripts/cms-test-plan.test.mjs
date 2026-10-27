@@ -54,3 +54,23 @@ test("Node test success must include executed counts with no skips, todos or can
   assert.equal(assertNodeTestOutput(output),52)
   for (const changed of ["",output.replace("# pass 52","# pass 51"),...['fail','cancelled','skipped','todo'].map(name => output.replace('# '+name+' 0','# '+name+' 1'))]) assert.throws(()=>assertNodeTestOutput(changed))
 })
+
+test("historical duration scheduling balances long files, includes new files and remains deterministic", () => {
+  const root = fixture()
+  try {
+    for (const name of ["c", "d"]) writeFileSync(path.join(root, "tests/unit/" + name + ".test.ts"), "// scheduling fixture\n")
+    const timings = { overheadMs: { unit: 1, integration: 1 }, fixedMs: {}, executionsMs: {
+      "tests/unit/a.test.ts": 9000, "tests/unit/b.test.tsx": 8000,
+      "tests/unit/c.test.ts": 2000, "tests/unit/d.test.ts": 1000,
+    } }
+    const plan = cmsTestPlan(root, timings)
+    const loads = ["unit-1", "unit-2"].map(part => plan.partitions[part].reduce((sum, file) => sum + timings.executionsMs[file] + 1, 0))
+    assert.equal(loads[0], loads[1])
+    assert.deepEqual(cmsTestPlan(root, timings), plan)
+    writeFileSync(path.join(root, "tests/unit/new.test.ts"), "// no historical timing\n")
+    const updated = cmsTestPlan(root, timings)
+    assert.equal(Object.values(updated.partitions).flat().filter(file => file === "tests/unit/new.test.ts").length, 1)
+    assert.notEqual(updated.hash, plan.hash)
+    assert.throws(() => cmsTestPlan(root, { ...timings, overheadMs: { unit: NaN, integration: 1 } }))
+  } finally { rmSync(root, { recursive: true }) }
+})

@@ -5,16 +5,35 @@ import path from "node:path"
 export const cmsTestInclude = ["tests/**/*.test.ts", "tests/**/*.integration.test.ts", "tests/**/*.test.tsx"]
 export const cmsTestExclude = ["tests/e2e/**"]
 export const cmsTestPartitions = JSON.parse(readFileSync(path.resolve(import.meta.dirname, "../../../../docs/verification-matrix.json"), "utf8")).cmsTestPartitions
+const historicalTimings = JSON.parse(readFileSync(new URL("./timings.json", import.meta.url), "utf8"))
 export const digest = value => createHash("sha256").update(value).digest("hex")
 
 /** A single inventory for Vitest, the shard driver and aggregate admission. */
-export function cmsTestPlan(root) {
+export function cmsTestPlan(root, timings = historicalTimings) {
   const files = [...new Set(globSync(cmsTestInclude, { cwd: root, exclude: cmsTestExclude }))].map(file => file.replaceAll("\\", "/")).sort()
   const pure = [...globSync("tests/pure/**/*.test.mts", { cwd: root })].sort()
   const partitions = Object.fromEntries(cmsTestPartitions.map(name => [name, []]))
   for (const kind of ["unit", "integration"]) {
     const matching = files.filter(file => file.startsWith("tests/integration/") === (kind === "integration"))
-    matching.forEach((file, index) => partitions[`${kind}-${index % 2 + 1}`].push(file))
+    const lanes = cmsTestPartitions.filter(part => part.startsWith(kind + "-"))
+    const overhead = timings.overheadMs[kind]
+    if (!Number.isFinite(overhead) || overhead <= 0) throw new Error("Invalid scheduling overhead")
+    const samples = matching.map(file => timings.executionsMs[file]).filter(value => Number.isFinite(value) && value > 0).sort((a, b) => a - b)
+    const fallback = samples[Math.floor(samples.length / 2)] ?? overhead
+    const cost = file => overhead + (timings.executionsMs[file] ?? fallback)
+    if (matching.some(file => !Number.isFinite(cost(file)) || cost(file) <= 0)) throw new Error("Invalid test timing estimate")
+    const load = Object.fromEntries(lanes.map(part => [part, timings.fixedMs[part] ?? 0]))
+    if (Object.values(load).some(value => !Number.isFinite(value) || value < 0)) throw new Error("Invalid fixed scheduling estimate")
+    // Longest estimated file first; deterministic ties and a median fallback
+    // keep new tests included without consulting runtime/network state.
+    matching.sort((a, b) => cost(b) - cost(a) || a.localeCompare(b))
+    for (const file of matching) {
+      const empty = lanes.filter(lane => partitions[lane].length === 0)
+      const lane = [...(empty.length ? empty : lanes)].sort((a, b) => load[a] - load[b] || a.localeCompare(b))[0]
+      partitions[lane].push(file)
+      load[lane] += cost(file)
+    }
+    for (const lane of lanes) partitions[lane].sort()
   }
   if (!files.length || !pure.length || Object.values(partitions).some(group => !group.length)) throw new Error("CMS test inventory is incomplete")
   const inputs = [...files, ...pure].map(file => ({ file, sha256: digest(readFileSync(path.join(root, file))) }))

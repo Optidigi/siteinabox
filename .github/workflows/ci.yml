@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      cache-mode:
+        description: Controlled cache comparison; all qualification still executes.
+        type: choice
+        options: [normal, cold]
+        default: normal
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -24,6 +30,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-ci
+        with:
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - name: Static deployment parity
         run: pnpm deployment:static-parity
       - name: Repository configuration contracts
@@ -69,6 +77,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-ci
+        with:
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - name: Validate complete CMS test inventory
         run: node scripts/check-cms-test-plan.mjs
       - name: Responsive canvas contract
@@ -128,6 +138,7 @@ jobs:
       - uses: ./.github/actions/setup-ci
         with:
           dns-tools: "true"
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - name: Verify pinned browser and DNS runtime
         run: node scripts/check-browser-runtime.mjs cms --dns
       - name: Authorize only this job's fresh PostgreSQL resource
@@ -135,6 +146,7 @@ jobs:
           node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"
           echo "SIAB_TEST_RESOURCE_FILE=$RUNNER_TEMP/siab-test-cms/resource.json" >> "$GITHUB_ENV"
       - name: Restore V8 compile intermediates
+        if: inputs.cache-mode != 'cold'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/siab-ci-v8
@@ -213,6 +225,7 @@ jobs:
       - uses: ./.github/actions/setup-ci
         with:
           dns-tools: "true"
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - name: Authorize only the fresh CI PostgreSQL resource
         run: |
           node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"
@@ -223,6 +236,7 @@ jobs:
         run: |
           pnpm --dir apps/cms payload generate:types
       - name: Restore Next compiler intermediates
+        if: inputs.cache-mode != 'cold'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: apps/cms/.next/cache
@@ -259,6 +273,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-ci
+        with:
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - run: pnpm landing:build
       - run: pnpm landing:test
       - name: Verify pinned browser runtime
@@ -289,6 +305,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-ci
+        with:
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - run: pnpm renderer:deploy-contract
       - run: pnpm renderer:typecheck
       - run: pnpm renderer:test
@@ -301,7 +319,7 @@ jobs:
   image-verification:
     env:
       GH_TOKEN: ${{ github.token }}
-      SIAB_IMAGE_BUILD_CACHE: "1"
+      SIAB_IMAGE_BUILD_CACHE: ${{ inputs.cache-mode != 'cold' && '1' || '0' }}
       POSTHOG_PROJECT_TOKEN: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.POSTHOG_PROJECT_TOKEN || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -314,13 +332,17 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-ci
+        with:
+          cache: ${{ inputs.cache-mode != 'cold' }}
       - name: Restore local BuildKit compiler layers
+        if: inputs.cache-mode != 'cold'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: artifacts/buildkit-cache/${{ matrix.app }}
           key: ${{ runner.os }}-${{ runner.arch }}-buildkit-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml', 'apps/**/Dockerfile', '.dockerignore') }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ runner.arch }}-buildkit-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml', 'apps/**/Dockerfile', '.dockerignore') }}-
       - name: Restore verified scanner inputs and fresh-checkable advisory database
+        if: inputs.cache-mode != 'cold'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: artifacts/dependency-tools

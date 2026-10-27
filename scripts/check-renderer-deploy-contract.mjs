@@ -1,3 +1,4 @@
+import { assertCanonicalImageWorkflow } from "./canonical-ci-workflow.mjs"
 import { readdir, readFile } from "node:fs/promises"
 import { dirname, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -53,10 +54,8 @@ const errors = []
 const rendererPackage = JSON.parse(await readFile(rendererPackagePath, "utf8"))
 const buildRendererWorkflow = await readFile(buildRendererWorkflowPath, "utf8")
 if (rendererPackage.dependencies?.["@siteinabox/legal-content"]?.startsWith("workspace:")) {
-  const trigger = buildRendererWorkflow.split("jobs:")[0]
-  if (/paths(?:-ignore)?:/.test(trigger) || !trigger.includes("  pull_request:") || !trigger.includes("    branches: [main]") || !buildRendererWorkflow.includes("app: [cms, renderer, site]")) {
-    errors.push(`${formatPath(buildRendererWorkflowPath)} must always verify renderer when shared legal content changes`)
-  }
+  try { assertCanonicalImageWorkflow(buildRendererWorkflow) }
+  catch (error) { errors.push(`${formatPath(buildRendererWorkflowPath)} must always verify renderer when shared legal content changes: ${error.message}`) }
 }
 
 const rendererCompose = await readFile(rendererComposePath, "utf8")
