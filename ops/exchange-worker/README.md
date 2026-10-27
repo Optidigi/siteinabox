@@ -17,8 +17,14 @@ docker run --rm --entrypoint pwsh \
   -File /tests/contract.ps1 -WorkerPath /app/Invoke-ExchangeWorker.ps1
 ```
 
-The Dockerfile pins Ubuntu, PowerShell package SHA256 and Exchange module
-version. The native PowerShell contract test loads the actual worker job
+The Dockerfile pins Ubuntu and the PowerShell package SHA256. `modules.json`
+pins the Exchange module and its PowerShellGet/PackageManagement dependencies by
+version and SHA256. The installer downloads exact official Gallery archives,
+checks their bytes and manifests, and imports the Exchange module without
+connecting to Microsoft. These archive hashes were checked against the Gallery
+SHA512 package metadata. This avoids the Gallery version-search endpoint, which
+returned 404 during the first image qualification despite direct package
+availability. Changing module bytes requires a reviewed catalog update. The native PowerShell contract test loads the actual worker job
 function and substitutes Exchange commands; it checks delegated identity,
 read access, licensed-mailbox protection, alias conflicts and DKIM DNS gating.
 It never connects to Microsoft. Run an authenticated `/health` smoke on the

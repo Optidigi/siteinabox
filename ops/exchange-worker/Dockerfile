@@ -21,8 +21,11 @@ RUN curl --fail --silent --show-error --location \
  && rm -f /tmp/powershell.deb \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pwsh -NoLogo -NoProfile -NonInteractive -Command \
-      'Install-PSResource -Name ExchangeOnlineManagement -Version 3.10.1 -Scope AllUsers -TrustRepository' \
+# The Gallery version-search endpoint can fail independently of package download.
+# Fetch exact, publisher-hash-reviewed archives and include all module dependencies.
+COPY modules.json Install-ExchangeModules.ps1 /tmp/exchange-worker-build/
+RUN pwsh -NoLogo -NoProfile -NonInteractive -File /tmp/exchange-worker-build/Install-ExchangeModules.ps1 \
+ && rm -rf /tmp/exchange-worker-build \
  && useradd --system --create-home --home-dir /home/exchange-worker --uid 10001 exchange-worker \
  && chown -R exchange-worker:exchange-worker /home/exchange-worker
 
