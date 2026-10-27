@@ -112,7 +112,9 @@ Use fresh hosted results to check whether the estimate actually balances work.
 
 On the same unchanging non-main branch, dispatch canonical `ci.yml` sequentially
 with `cache-mode=cold`, then `normal`, then `normal` again. The cold mode disables
-pnpm, Next, V8, BuildKit and scanner cache restore/save while retaining every
+pnpm, Next, V8, BuildKit and scanner cache restore/save. Both modes use the same
+fresh owned, digest-pinned BuildKit builder; image receipts record its identity
+and cache setting, and the comparison rejects a builder change. It retains every
 qualification step and advisory refresh. It measures repository-managed cache
 inputs, not a guaranteed uncached GitHub host or container registry. The first
 normal run seeds caches; inspect its logs and the repeat's cache logs before

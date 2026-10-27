@@ -61,11 +61,11 @@ try {
     "--build-arg", "POSTHOG_PROJECT_TOKEN=" + (process.env.POSTHOG_PROJECT_TOKEN || "phc_image_verification"),
     "--build-arg", "POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl", "--build-arg", "POSTHOG_HOST=https://eu.posthog.com")
   const cache = process.env.SIAB_IMAGE_BUILD_CACHE === "1" ? await prepareImageBuildCache(process.cwd(), app) : null
-  if (cache) {
-    docker(["buildx", "create", "--name", builder, "--driver", "docker-container", "--driver-opt", "image=" + infrastructure.ciBuildkit.reference])
-    ownsBuilder = true
-  }
-  docker([...(cache ? ["buildx", "build", "--builder", builder, "--load", ...cache.arguments] : ["build"]), ...buildArgs, "--file", "apps/" + application + "/Dockerfile", "--tag", image, "."])
+  // Cold and normal verification use the same fresh owned builder/version.
+  // Only cache import/export varies; changing the driver would confound timing.
+  docker(["buildx", "create", "--name", builder, "--driver", "docker-container", "--driver-opt", "image=" + infrastructure.ciBuildkit.reference])
+  ownsBuilder = true
+  docker(["buildx", "build", "--builder", builder, "--load", ...(cache?.arguments ?? []), ...buildArgs, "--file", "apps/" + application + "/Dockerfile", "--tag", image, "."])
   if (cache) await cache.commit()
   timings.buildMs = Math.round(performance.now() - phaseStarted)
   phaseStarted = performance.now()
@@ -232,6 +232,7 @@ try {
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
     nodeVersion: expectedNode, buildNodeLts: process.release.lts, nodeLts, runtimePlatform, postgresRehearsal, tunnelVerification,
     dependencyInventory, infrastructureDependencies, timings,
+    buildEnvironment: { builder: infrastructure.ciBuildkit.reference, driver: "docker-container", cacheEnabled: process.env.SIAB_IMAGE_BUILD_CACHE === "1" },
     packagedSmoke: "passed", published: false }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
     "artifact-path=" + artifactDir + "/image-" + app + "*\nevidence-path=" + artifactDir + "/image-" + app + "*.json\n")

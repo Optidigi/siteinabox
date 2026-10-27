@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFile, mkdir, writeFile, mkdtemp, rm } from "node:fs/promises"
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
+import { infrastructure } from "./infrastructure-images.mjs"
 import { expectedHostedJobs } from "./check-required-ci.mjs"
 
 const seconds = (start, end) => {
@@ -17,13 +18,18 @@ export function summarizeCiPerformance(samples, expectedJobs) {
     assert(jobs.length === expectedJobs.length && jobs.every(job => job.conclusion === "success" && String(job.run_id) === receipt.runId && String(job.run_attempt) === receipt.runAttempt))
     assert.deepEqual(jobs.map(job => job.name).sort(), [...expectedJobs].sort())
     assert(["normal", "cold"].includes(receipt.cacheMode), "Cache mode must be recorded by the tested workflow")
+    assert.deepEqual(receipt.images?.map(image => image.application).sort(), ["cms", "renderer", "site"], "All image build environments are required")
+    for (const image of receipt.images) {
+      assert.deepEqual(image.buildEnvironment, { builder: infrastructure.ciBuildkit.reference, driver: "docker-container", cacheEnabled: receipt.cacheMode !== "cold" }, "Cold/normal comparison must use the same pinned builder")
+    }
     const key = receipt.sourceSHA + ":" + run.event + ":" + receipt.cacheMode
     const group = groups.get(key) ?? { sourceSHA: receipt.sourceSHA, event: run.event, cacheMode: receipt.cacheMode, runs: [] }
     assert(!group.runs.some(item => item.runId === receipt.runId && item.attempt === receipt.runAttempt), "A repeated observation is not another sample")
     group.runs.push({ runId: receipt.runId, attempt: receipt.runAttempt,
       elapsedSeconds: seconds(run.run_started_at, jobs.map(job => job.completed_at).sort().at(-1)),
       jobSeconds: jobs.reduce((sum, job) => sum + seconds(job.started_at, job.completed_at), 0),
-      queueSeconds: seconds(run.created_at, run.run_started_at) })
+      queueSeconds: seconds(run.created_at, run.run_started_at),
+      imageBuildSeconds: Object.fromEntries(receipt.images.map(image => [image.application, image.timings.buildMs / 1000])) })
     groups.set(key, group)
   }
   return [...groups.values()].map(group => {

@@ -1,10 +1,10 @@
 import { createRequire } from "node:module"
 
 const require = createRequire(import.meta.url)
-export const mainArchiveCondition = "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'"
-export const cacheCondition = "inputs.cache-mode != 'cold'"
+const mainArchiveCondition = "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'"
+const cacheCondition = "inputs.cache-mode != 'cold'"
 export const condition = value => String(value ?? "").trim().replace(/^\$\{\{\s*|\s*\}\}$/g, "").trim()
-export const commands = job => (job?.steps ?? []).flatMap(step => String(step.run ?? "").split("\n").map(line => line.trim()).filter(Boolean))
+const commands = job => (job?.steps ?? []).flatMap(step => String(step.run ?? "").split("\n").map(line => line.trim()).filter(Boolean))
 export const hasRequiredCommand = (job, command) => (job?.steps ?? []).some(step => !Object.hasOwn(step, "if") && commands({ steps: [step] }).includes(command))
 const equal = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected)
 const fail = message => { throw new Error("Canonical CI: " + message) }
