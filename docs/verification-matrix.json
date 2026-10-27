@@ -329,7 +329,7 @@
         "generate:types"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-preflight",
+      "ciJob": "cms-quality",
       "env": {
         "PAYLOAD_SECRET": "ci-placeholder",
         "DATABASE_URI": "postgres://placeholder@placeholder/placeholder"
@@ -351,7 +351,7 @@
         "generate:importmap"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-preflight",
+      "ciJob": "cms-quality",
       "env": {
         "PAYLOAD_SECRET": "ci-placeholder",
         "DATABASE_URI": "postgres://placeholder@placeholder/placeholder"
@@ -543,13 +543,13 @@
         "test:checkout-browser"
       ],
       "owner": "apps/cms",
-      "ciJob": "cms-browser",
+      "ciJob": "cms-tests",
       "prerequisites": [
         "pnpm install --frozen-lockfile",
-        "PostgreSQL 18 service",
         "Chromium with Playwright dependencies"
       ],
-      "risk": "high"
+      "risk": "high",
+      "ciContext": "cms-tests (unit-1)"
     },
     {
       "id": "site-build",
@@ -926,7 +926,7 @@
         "scripts/check-cms-test-plan.mjs"
       ],
       "owner": "cms",
-      "ciJob": "cms-preflight",
+      "ciJob": "cms-quality",
       "prerequisites": [
         "Frozen dependencies"
       ],
@@ -1016,5 +1016,14 @@
     "renderer",
     "required-ci",
     "site"
-  ]
+  ],
+  "ciDependencies": {
+    "cms-test": [
+      "cms-tests"
+    ],
+    "image-security": [
+      "package-quality",
+      "image-verification"
+    ]
+  }
 }

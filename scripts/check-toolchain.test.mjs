@@ -8,7 +8,7 @@ import { test } from "node:test"
 test("real toolchain gate rejects another same-major runtime and workflow drift", () => {
   const root = mkdtempSync(join(tmpdir(), "siab-toolchain-"))
   try {
-    for (const directory of ["scripts", ".github/workflows", "apps/cms", "docs/runbooks"]) mkdirSync(join(root, directory), { recursive: true })
+    for (const directory of ["scripts", ".github/workflows", ".github/actions/setup-ci", "apps/cms", "docs/runbooks"]) mkdirSync(join(root, directory), { recursive: true })
     copyFileSync(new URL("./check-toolchain.mjs", import.meta.url), join(root, "scripts/check-toolchain.mjs"))
     const major = Number(process.versions.node.split(".")[0])
     const pnpm = execFileSync("pnpm", ["--version"], { encoding: "utf8" }).trim()
@@ -27,6 +27,10 @@ test("real toolchain gate rejects another same-major runtime and workflow drift"
     configure(process.versions.node, String(major))
     assert.match(run().stderr, /declares Node \d+, expected/)
     configure(process.versions.node)
+    writeFileSync(join(root, ".github/actions/setup-ci/action.yml"), "node-version: " + major)
+    assert.match(run().stderr, /declares Node \d+, expected/)
+    writeFileSync(join(root, ".github/actions/setup-ci/action.yml"), "node-version-file: .nvmrc")
+    assert.equal(run().status, 0)
     const preload = join(root, "simulate-current.mjs")
     writeFileSync(preload, 'Object.defineProperty(process.release, "lts", { value: undefined })')
     assert.match(run(["--import", preload]).stderr, /must currently be an LTS release/)

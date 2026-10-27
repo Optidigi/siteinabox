@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { readFile, mkdir, writeFile, appendFile } from "node:fs/promises"
 import { assertCmsTestReceipts, loadCmsTestReceipts } from "./check-cms-test-results.mjs"
 import { cmsTestPlan } from "../apps/cms/tests/_helpers/testPlan.mjs"
@@ -11,6 +12,8 @@ export function expectedCiJobs(matrix) {
   const checks = new Map(matrix.checks.map((check) => [check.id, check]))
   return [...new Set(matrix.profiles.ci.map((id) => checks.get(id)?.ciJob))].sort()
 }
+
+const canonicalMatrix = JSON.parse(readFileSync(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
 
 export function assertRequiredCiWorkflow(source, jobs) {
   const block = source.match(/^  required-ci:\s*\n([\s\S]*?)(?=^  [\w-]+:\s*$|(?![\s\S]))/m)?.[1]
@@ -28,13 +31,20 @@ export function assertRequiredCiWorkflow(source, jobs) {
   }
   if (jobs.includes("cms-browser")) {
     const blockFor = job => source.match(new RegExp("^  " + job + ":\\s*\\n([\\s\\S]*?)(?=^  [\\w-]+:\\s*$|(?![\\s\\S]))", "m"))?.[1]
+    for (const job of jobs) {
+      const owned = blockFor(job)
+      if (!owned || (/^    needs:/m.test(owned) && !/^    needs: \[([^\]]+)\]$/m.test(owned))) throw new Error("CI requires explicit canonical dependencies: " + job)
+      const actual = owned.match(/^    needs: \[([^\]]+)\]$/m)?.[1].split(/,\s*/).sort() ?? []
+      const expected = [...(canonicalMatrix.ciDependencies[job] ?? [])].sort()
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error("CI dependencies must match the canonical graph: " + job)
+    }
     for (const job of ["cms-tests", "cms-browser"]) {
       const owned = blockFor(job)
-      if (!owned || /^    if:/m.test(owned) || !owned.includes("needs: [cms-preflight]") ||
+      if (!owned || /^    if:/m.test(owned) ||
           !owned.includes("    services:\n      postgres:") ||
           !owned.includes('PAYLOAD_DISABLE_JOBS_AUTORUN: "1"') || !owned.includes("SITE_GENERATION_PROVIDER: mock") ||
           !owned.includes('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"') ||
-          !owned.includes(infrastructure.ciBrowser.reference) || !owned.includes('git config --global --add safe.directory "$GITHUB_WORKSPACE"') || !owned.includes("node scripts/check-browser-runtime.mjs cms --dns")) {
+          !owned.includes(infrastructure.ciBrowser.reference) || !owned.includes('uses: ./.github/actions/setup-ci\n        with:\n          dns-tools: "true"') || !owned.includes("node scripts/check-browser-runtime.mjs cms --dns")) {
         throw new Error("Parallel CMS jobs require independently owned PostgreSQL and verified pinned browser/BIND prerequisites: " + job)
       }
     }

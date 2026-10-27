@@ -42,7 +42,7 @@ async function listFiles(directory, predicate) {
   return files
 }
 
-const workflowFiles = await listFiles(".github/workflows", (file) => /\.(yml|yaml)$/.test(file))
+const workflowFiles = await listFiles(".github", (file) => /\.(yml|yaml)$/.test(file))
 for (const file of workflowFiles) {
   const content = await readFile(resolve(repoRoot, file), "utf8")
   for (const match of content.matchAll(/node-version:\s*["']?(\d+(?:\.\d+){0,2})/g)) {

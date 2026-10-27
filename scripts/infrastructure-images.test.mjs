@@ -1,5 +1,6 @@
+import { workflowActionSources, assertImmutableActions } from "./check-workflow-actions.mjs"
 import assert from "node:assert/strict"
-import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -47,9 +48,10 @@ test("database and tunnel pins agree across Compose and CI without renaming pers
   assert.ok(source("apps/cms/docker-compose.local.yml").includes("siteinabox-cms-postgres-dev:/var/lib/postgresql"))
 })
 
-test("every Action invocation uses its reviewed release commit", () => {
-  for (const file of readdirSync(new URL("../.github/workflows/", import.meta.url)).filter((name) => /\.ya?ml$/.test(name))) {
-    for (const match of source(".github/workflows/" + file).matchAll(/\buses:\s*([^@\s]+)@([^\s#]+)/g)) {
+test("every Action invocation uses its reviewed release commit", async () => {
+  for (const { file, source: actionSource } of await workflowActionSources()) {
+    assertImmutableActions(actionSource)
+    for (const match of actionSource.matchAll(/\buses:\s*([^@\s]+)@([^\s#]+)/g)) {
       assert.ok(infrastructure.actions[match[1]], "Unreviewed Action: " + match[1])
       assert.equal(match[2], infrastructure.actions[match[1]].commit, file + " " + match[1])
     }
@@ -67,7 +69,7 @@ test("CI browser and BuildKit are immutable verification-only tools, separate fr
   for(const name of ["cms-tests","cms-browser","site","renderer"]) {
     const block=workflow.match(new RegExp("^  "+name+":\\n([\\s\\S]*?)(?=^  [\\w-]+:|(?![\\s\\S]))","m"))?.[1]
     assert(block?.includes(browser.reference),name)
-    assert(block.includes('git config --global --add safe.directory "$GITHUB_WORKSPACE"'),name)
+    assert(block.includes('uses: ./.github/actions/setup-ci'),name)
     assert(!block.includes("playwright install --with-deps"),"Image must provide browser OS dependencies")
   }
   for(const app of ["cms","landing","renderer"]) assert.equal(JSON.parse(source("apps/"+app+"/package.json")).devDependencies?.playwright?.replace(/^[~^]/,"")??JSON.parse(source("apps/"+app+"/package.json")).dependencies?.playwright?.replace(/^[~^]/,""),browser.version)
@@ -92,4 +94,17 @@ test("container trust fixes only the checked-out workspace under mismatched owne
     assert.match(git(other,["status","--porcelain"],true).stderr,/dubious ownership/)
     assert.equal(git(repo,["config","--global","--get-all","safe.directory"],true).stdout.trim(),repo)
   } finally {rmSync(root,{recursive:true})}
+})
+
+test("shared CI setup preserves exact workspace trust, frozen dependencies and immutable actions", () => {
+  const setup = source(".github/actions/setup-ci/action.yml")
+  assert(setup.includes('git config --global --add safe.directory "$GITHUB_WORKSPACE"'))
+  assert(!setup.includes('safe.directory "*"'))
+  assert(setup.includes("pnpm install --frozen-lockfile"))
+  assert(setup.includes("package-manager-cache: false"))
+  assert(setup.includes("node-version-file: .nvmrc"))
+  for (const ref of ["actions/checkout@main", "./.github/actions/other", "./.github/actions/../outside", "docker://alpine:latest"]) {
+    assert.throws(() => assertImmutableActions("- uses: " + ref))
+  }
+  assertImmutableActions("- uses: ./.github/actions/setup-ci")
 })

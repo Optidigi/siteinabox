@@ -14,29 +14,6 @@ permissions:
   contents: read
 
 jobs:
-  cms-preflight:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - name: Validate the canonical verification and test plans
-        run: |
-          pnpm check:toolchain
-          node scripts/check-cms-test-plan.mjs
-      - name: Validate Payload configuration import before expensive jobs
-        run: |
-          pnpm --dir apps/cms payload generate:types
-          pnpm --dir apps/cms payload generate:importmap
-        env:
-          PAYLOAD_SECRET: ci-placeholder
-          DATABASE_URI: postgres://placeholder@placeholder/placeholder
-
   package-quality:
     runs-on: ubuntu-latest
     env:
@@ -46,14 +23,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-ci
       - name: Static deployment parity
         run: pnpm deployment:static-parity
       - name: Repository configuration contracts
@@ -98,14 +68,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-ci
+      - name: Validate complete CMS test inventory
+        run: node scripts/check-cms-test-plan.mjs
       - name: Responsive canvas contract
         run: pnpm --dir apps/cms check:responsive
       - name: Frontend boundary contract
@@ -128,7 +93,6 @@ jobs:
         run: pnpm --dir apps/cms typecheck
 
   cms-tests:
-    needs: [cms-preflight]
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -161,17 +125,9 @@ jobs:
       SITE_GENERATION_PROVIDER: mock
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Trust only the mounted checkout for container Git commands
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-ci
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - name: Install authoritative DNS validation tooling
-        run: apt-get update && apt-get install --yes --no-install-recommends bind9-utils python3 openssl git
+          dns-tools: "true"
       - name: Verify pinned browser and DNS runtime
         run: node scripts/check-browser-runtime.mjs cms --dns
       - name: Authorize only this job's fresh PostgreSQL resource
@@ -193,6 +149,9 @@ jobs:
         run: node scripts/run-cms-tests.mjs ${{ matrix.part }}
         env:
           NODE_COMPILE_CACHE: /tmp/siab-ci-v8
+      - name: Verify checkout browser contract
+        if: matrix.part == 'unit-1'
+        run: pnpm --dir apps/cms test:checkout-browser
       - name: Retain partition evidence including failures
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -208,9 +167,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-ci
         with:
-          node-version-file: .nvmrc
+          dependencies: "false"
       - name: Require every test partition to succeed
         env:
           PARTITION_RESULT: ${{ needs.cms-tests.result }}
@@ -223,7 +182,6 @@ jobs:
         run: node scripts/check-cms-test-results.mjs
 
   cms-browser:
-    needs: [cms-preflight]
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -252,20 +210,9 @@ jobs:
       SITE_GENERATION_PROVIDER: mock
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Trust only the mounted checkout for container Git commands
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-ci
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Install authoritative DNS validation tooling
-        run: |
-          apt-get update
-          apt-get install --yes --no-install-recommends bind9-utils python3 openssl git
+          dns-tools: "true"
       - name: Authorize only the fresh CI PostgreSQL resource
         run: |
           node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"
@@ -300,11 +247,8 @@ jobs:
           path: apps/cms/test-results/built-browser-*/
           if-no-files-found: error
           retention-days: 7
-      - name: Verify checkout browser contract
-        run: pnpm --dir apps/cms test:checkout-browser
 
   site:
-    needs: [cms-preflight]
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -314,15 +258,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Trust only the mounted checkout for container Git commands
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-ci
       - run: pnpm landing:build
       - run: pnpm landing:test
       - name: Verify pinned browser runtime
@@ -343,7 +279,6 @@ jobs:
           retention-days: 7
 
   renderer:
-    needs: [cms-preflight]
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -353,15 +288,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Trust only the mounted checkout for container Git commands
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-ci
       - run: pnpm renderer:deploy-contract
       - run: pnpm renderer:typecheck
       - run: pnpm renderer:test
@@ -372,7 +299,6 @@ jobs:
         run: pnpm --dir apps/renderer test:analytics-browser
 
   image-verification:
-    needs: [cms-preflight]
     env:
       GH_TOKEN: ${{ github.token }}
       SIAB_IMAGE_BUILD_CACHE: "1"
@@ -387,13 +313,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-ci
       - name: Restore local BuildKit compiler layers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -443,9 +363,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-ci
         with:
-          node-version-file: .nvmrc
+          dependencies: "false"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: ci-image-*
@@ -460,16 +380,16 @@ jobs:
 
   required-ci:
     if: ${{ always() }}
-    needs: [cms-preflight, package-quality, cms-quality, cms-tests, cms-test, cms-browser, site, renderer, image-verification, image-security]
+    needs: [package-quality, cms-quality, cms-tests, cms-test, cms-browser, site, renderer, image-verification, image-security]
     runs-on: ubuntu-latest
     env:
       CI_JOB_RESULTS: ${{ toJSON(needs) }}
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-ci
         with:
-          node-version-file: .nvmrc
+          dependencies: "false"
       - name: Read installed delivery controls without administrative writes
         run: node scripts/inspect-delivery-controls.mjs
         env:

@@ -9,9 +9,15 @@ six contexts; `required-ci` requires every internal job and image variant.
 
 ## Execution graph
 
-- `cms-preflight` validates the matrix, complete test inventory and Payload
-  configuration imports before expensive test/browser/image jobs start.
-- `package-quality` and `cms-quality` retain their existing checks.
+- Quality, four test partitions, CMS browser, landing, renderer and image jobs
+  start independently. `cms-quality` validates the complete test inventory and
+  Payload configuration imports; these produce no shared artifact and do not
+  gate unrelated work. All remain required by the final aggregate.
+- `.github/actions/setup-ci` owns the exact Node/pnpm setup, frozen installation
+  and exact-checkout Git trust. Native Node-only aggregators disable dependency
+  installation; CMS containers opt into authoritative DNS prerequisites.
+- `ciDependencies` in the verification matrix declares the actual intermediate
+  dependencies. Policy rejects additional sequencing or missing dependencies.
 - Four `cms-tests` jobs execute unit-1, unit-2, integration-1 and integration-2.
   Each job owns an independent PostgreSQL service, authorized database and worker
   storage. Files remain serial and isolated inside a partition. Real committed
@@ -22,6 +28,11 @@ six contexts; `required-ci` requires every internal job and image variant.
   stale, dirty or cross-run evidence fails. Vitest must execute every selected
   file and case; Node TAP counts must contain no skipped/todo/cancelled cases.
 - `cms-browser`, landing and renderer retain their real browser journeys.
+  The independent checkout Vite/browser fixture runs on `unit-1`, alongside the
+  CMS journey rather than after it. Its failure fails that required matrix job.
+  Build-to-journey reuse, database initialization and migration rehearsals stay
+  sequential within their owning job; shared database/build output is never
+  concurrently mutated.
 - Every source receives actual CMS/renderer/site image builds and packaged
   startup/native/scanner checks. PostgreSQL rehearsals wait for a successful TCP
 query against the actual target database; temporary entrypoint socket readiness
