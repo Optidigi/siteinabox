@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T13:43:41.276Z",
+  "reviewedAt": "2026-10-27T14:22:19.128Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
-  "graphHash": "553a7907a746bd8743907bff8ef107e919e9e3668cc9e5d9ff31d6f8b25d6545",
-  "configurationHash": "a679d61784af337524130ae0d73fe391d25d8b0ab75749d0c248a99515755dcf",
+  "graphHash": "d01627c39be8e789a4b8e241130f554d4288555bed4fa80a49e338d13099074c",
+  "configurationHash": "e65b56e7b216de9e4badb4e90af0a2b90883fee37e1f3d47ef3e7a8eab0402e6",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -143,9 +143,9 @@
     {
       "id": "selected:better-auth",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/better-auth/1.7.11",
+      "url": "https://registry.npmjs.org/better-auth/1.7.12",
       "selected": true,
-      "sha256": "f6993a74d8f95521857247f74865b0dcfa60d5efed12fcabd42507647a57a115"
+      "sha256": "c26577ee7d9b12a744d4109edf9e781d13b3a400f00ca4c20336c86813b9be06"
     },
     {
       "id": "selected:nodemailer",
@@ -919,11 +919,11 @@
     {
       "package": "better-auth",
       "manifest": "apps/cms/package.json",
-      "specifier": "1.7.11",
-      "version": "1.7.11",
-      "minimumQualifiedVersion": "1.7.11",
+      "specifier": "1.7.12",
+      "version": "1.7.12",
+      "minimumQualifiedVersion": "1.7.12",
       "lockedVersions": [
-        "1.7.11"
+        "1.7.12"
       ],
       "sources": [
         "selected:better-auth"
@@ -1015,420 +1015,7 @@
       ]
     }
   ],
-  "advisories": [
-    {
-      "scope": "full",
-      "id": "GHSA-333x-w4r6-6crp",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "low",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-333x-w4r6-6crp"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-834v-8h66-3h79",
-      "package": "happy-dom",
-      "version": "20.11.2",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@better-auth/infra>better-auth>vitest>happy-dom",
-        "apps__cms>@payloadcms/richtext-lexical>@lexical/headless>happy-dom",
-        "apps__cms>@vitest/ui>vitest>happy-dom",
-        "apps__cms>better-auth>vitest>happy-dom",
-        "apps__cms>vitest>happy-dom",
-        "apps__landing>vitest>happy-dom",
-        "packages__contracts>vitest>happy-dom"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-834v-8h66-3h79"
-      ],
-      "reason": "Current primary advisory identifies code injection for happy-dom 17.0.0 through21.0.3, fixed21.0.4. The frozen graph includes20.11.2, including the production Lexical headless path. Do not classify it as test-only or assume safe input. Compatibility and actual reachability remain unqualified; release stays blocked."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-mrhx-c7xc-m3w5",
-      "package": "zod",
-      "version": "4.4.3",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@better-auth/infra>better-call>zod",
-        "apps__cms>@better-auth/infra>zod",
-        "apps__cms>@hookform/resolvers>zod",
-        "apps__cms>@mastra/core>@ai-sdk/provider-utils>zod",
-        "apps__cms>@mastra/core>@mastra/schema-compat>zod",
-        "apps__cms>@mastra/core>@mastra/schema-compat>zod-from-json-schema>zod",
-        "apps__cms>@mastra/core>chat>zod",
-        "apps__cms>@mastra/core>hono-openapi>@standard-community/standard-json>zod",
-        "apps__cms>@mastra/core>hono-openapi>@standard-community/standard-openapi>@standard-community/standard-json>zod",
-        "apps__cms>@mastra/core>hono-openapi>@standard-community/standard-openapi>zod",
-        "apps__cms>@mastra/core>zod",
-        "apps__cms>zod",
-        "apps__landing>@astrojs/sitemap>zod",
-        "packages__contracts>zod"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Workflow cohesion primary advisory review; no waiver",
-      "recheck": "Before release, qualify publisher-fixed Zod 4.6.6 or later compatible version and exact consuming paths; inspect request admission and configured reachability.",
-      "sources": [
-        "GHSA-mrhx-c7xc-m3w5"
-      ],
-      "reason": "Current npm audit reports high-severity GHSA-mrhx-c7xc-m3w5 in Zod 4.4.3 across the retained exact paths. Primary advisory reports memory exhaustion while parsing oversized collections and affects versions below 4.6.6; the publisher fix is 4.6.6. Configured reachability and mitigations are unproven; do not infer safety from schema limits. Keep release blocked pending dedicated compatible remediation."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-rj75-hqrm-r3gf",
-      "package": "postcss-selector-parser",
-      "version": "6.0.10",
-      "severity": "moderate",
-      "paths": [
-        "apps__landing>@tailwindcss/typography>postcss-selector-parser"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
-      "recheck": "Before release, changed source/graph/publisher facts, or review expiry",
-      "sources": [
-        "GHSA-rj75-hqrm-r3gf"
-      ],
-      "reason": "Confirmed Tailwind typography build dependency postcss-selector-parser6.0.10. Current primary advisory lists the affected6.x range below6.1.5 and the7.x range below7.1.6. Source-owned CSS inputs do not establish absence of an affected deployment condition. Qualify a compatible publisher-fixed6.1.5 or later parent-supported version before release; this remains a release blocker."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-w74x-v6f9-j3xg",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "moderate",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-w74x-v6f9-j3xg"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-wjr9-j795-jxcr",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "moderate",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-wjr9-j795-jxcr"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-xhq7-xmqj-769h",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "low",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__renderer>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-xhq7-xmqj-769h"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-333x-w4r6-6crp",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "low",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-333x-w4r6-6crp"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-834v-8h66-3h79",
-      "package": "happy-dom",
-      "version": "20.11.2",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@payloadcms/richtext-lexical>@lexical/headless>happy-dom"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-834v-8h66-3h79"
-      ],
-      "reason": "Current primary advisory identifies code injection for happy-dom 17.0.0 through21.0.3, fixed21.0.4. The frozen graph includes20.11.2, including the production Lexical headless path. Do not classify it as test-only or assume safe input. Compatibility and actual reachability remain unqualified; release stays blocked."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-mrhx-c7xc-m3w5",
-      "package": "zod",
-      "version": "4.4.3",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@better-auth/infra>zod",
-        "apps__cms>@mastra/core>@ai-sdk/provider-utils>zod",
-        "apps__cms>@mastra/core>@mastra/schema-compat>zod",
-        "apps__cms>@mastra/core>@mastra/schema-compat>zod-from-json-schema>zod",
-        "apps__cms>@mastra/core>zod",
-        "apps__cms>zod",
-        "apps__landing>@astrojs/sitemap>zod",
-        "packages__contracts>zod"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Workflow cohesion primary advisory review; no waiver",
-      "recheck": "Before release, qualify publisher-fixed Zod 4.6.6 or later compatible version and exact consuming paths; inspect request admission and configured reachability.",
-      "sources": [
-        "GHSA-mrhx-c7xc-m3w5"
-      ],
-      "reason": "Current npm audit reports high-severity GHSA-mrhx-c7xc-m3w5 in Zod 4.4.3 across the retained exact paths. Primary advisory reports memory exhaustion while parsing oversized collections and affects versions below 4.6.6; the publisher fix is 4.6.6. Configured reachability and mitigations are unproven; do not infer safety from schema limits. Keep release blocked pending dedicated compatible remediation."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-w74x-v6f9-j3xg",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "moderate",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-w74x-v6f9-j3xg"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-wjr9-j795-jxcr",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "moderate",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-wjr9-j795-jxcr"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-xhq7-xmqj-769h",
-      "package": "fast-uri",
-      "version": "3.1.8",
-      "severity": "low",
-      "paths": [
-        "apps__cms>@hookform/resolvers>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>@payloadcms/drizzle>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/db-postgres>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/plugin-multi-tenant>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/ui>payload>ajv>fast-uri",
-        "apps__cms>@payloadcms/richtext-lexical>payload>ajv>fast-uri",
-        "apps__cms>payload>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-draft-04>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv-i18n>ajv>fast-uri",
-        "apps__landing>astro-seo>@astrojs/check>@astrojs/language-server>volar-service-yaml>yaml-language-server>ajv>fast-uri"
-      ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
-      "reviewOwner": "Microsoft mail dependency evidence reconciliation; independent engineering review; no waiver",
-      "recheck": "Before release, qualify compatible publisher remediation and exact consuming source/image paths; configured reachability remains unproven.",
-      "sources": [
-        "GHSA-xhq7-xmqj-769h"
-      ],
-      "reason": "Current primary advisory includes fast-uri3.1.8 in its affected3.x range, with publisher remediation3.1.9. The package is present through AJV in CMS/renderer/landing dependency paths. URI equivalence, encoding or validation exploitability in this configuration is unproven; compatible remediation remains required and release stays blocked."
-    }
-  ],
+  "advisories": [],
   "imageAdvisories": [
     {
       "scope": "image:cms-cloudflared",
@@ -7216,7 +6803,7 @@
       "classification": "unresolved_blocker",
       "releaseBlocked": true,
       "affectedSurface": "Configured identity SDK",
-      "reason": "Rechecked official npm publication (2026-10-20T11:59:45.143Z) and publisher v1.7.12 release after the 24-hour floor. The patch is now age-eligible and includes token algorithm, proxy callback issuer/nonce and client-ID validation fixes. Current 1.7.11 remains the qualified graph; configured applicability and patch compatibility have not been qualified. This is an unresolved release blocker, not supported-latest clearance or a risk waiver. M13 preserves the dependency graph while proving the real password/session boundary.",
+      "reason": "Candidate updates Better Auth to the age-eligible 1.7.12 security patch. Local real-database SDK, populated-schema upgrade, invitation authority and social/passwordless/session tests pass. Final exact-source hosted browser and consuming-image qualification remain required; this deferral remains release-blocking until that evidence is reviewed.",
       "reviewOwner": "M13 compatibility recheck (Codex engineering; no risk waiver)",
       "recheck": "Before release, qualify 1.7.12 against configured passwordless/social/provider and session boundaries, refresh audits and exact consuming images; changed upstream facts also require review.",
       "expiresAt": "2026-10-28T01:01:28.437Z",
@@ -7231,7 +6818,7 @@
       "classification": "unresolved_blocker",
       "releaseBlocked": true,
       "affectedSurface": "Shipped Go binaries and their certificate verification",
-      "reason": "Current official GO-2026-6809 / CVE-2026-111943 covers Go stdlib before 1.26.10 and 1.27 prereleases through 1.27.2. Current pinned cloudflared inventory confirms stdlib 1.27.2 and the scanner finding. This is an affected package with deployment exploitability unproven; compatible native remediation and configured certificate/TLS reachability remain unqualified. Release stays blocked, without risk waiver or unapproved image replacement.",
+      "reason": "Candidate updates cloudflared to the age-eligible 2026.10.4 publisher image and binary digest. Full Go/native qualification remains outstanding, including other shipped esbuild/gosu runtimes and analyzer coverage. GO-2026-6809 affected ranges and the absence of a proved complete native remediation remain explicit release blockers.",
       "reviewOwner": "M12 dependency review (Codex engineering; no risk waiver)",
       "recheck": "Before release or changed native/advisory facts; qualify patched native consumers and refresh scanner coverage.",
       "expiresAt": "2026-10-28T01:01:28.437Z",
@@ -7245,7 +6832,7 @@
       "classification": "unresolved_blocker",
       "releaseBlocked": true,
       "affectedSurface": "Node runtime and all consuming images",
-      "reason": "Rechecked official Node v24.22.1 security-release evidence after its 24-hour floor: the release body is unchanged and the patch is now eligible. Pinned 24.22.0 remains unchanged in this tooling repair; compatible runtime/consuming-image qualification is still an explicit unresolved release blocker. No security acceptance or risk waiver is granted. October 23 vendor recheck: Alpine nodejs secfixes adds nine CVEs under 24.22.1-r0 and CVE-2026-111497 under the unresolved zero entry. The retained official Node security release already lists the Brotli fix; vendor grouping alone does not establish applicability or remediation of these official-image binaries. Preserve the unresolved vendor entry and qualify exact runtime/consuming bytes before release; no waiver. The canonical CI vendor refresh also records the Brotli 1.2.1-r0 entry for CVE-2026-111497; exact shipped/bundled applicability remains blocked pending runtime qualification.",
+      "reason": "Candidate updates the governed Node runtime and all consuming stages to age-eligible 24.22.1 with a reviewed official image digest. The actual downloaded runtime is LTS, rejects an untrusted local certificate and validates Microsoft public OIDC HTTPS without credentials. Exact candidate image/native/Brotli applicability and all consuming startup checks remain unqualified; release remains blocked.",
       "reviewOwner": "M13 upstream drift review (Codex engineering; no risk waiver)",
       "recheck": "At or after 2026-10-22T10:38:25Z and before release, qualify the eligible security patch and exact consuming images against current primary security facts.",
       "expiresAt": "2026-10-28T01:01:28.437Z",

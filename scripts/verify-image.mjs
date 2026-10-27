@@ -79,6 +79,8 @@ try {
   let tunnelVerification = null
   let nodeLts = null
   if (app !== "site") {
+    docker(["run", "--rm", "--network", "none", "--entrypoint", "/bin/sh", image, "-c",
+      'for tool in npm npx yarn yarnpkg; do if command -v "$tool" >/dev/null 2>&1; then echo "Unexpected runtime package manager: $tool" >&2; exit 1; fi; done'])
     const node = JSON.parse(docker(["run", "--rm", "--entrypoint", "node", image, "--eval",
       'console.log(JSON.stringify({version:process.versions.node,lts:process.release.lts||null,uid:process.getuid(),gid:process.getgid(),versions:process.versions}))'], true))
     if (node.version !== expectedNode || !node.lts) throw new Error("Packaged Node must match .nvmrc and actually be LTS")

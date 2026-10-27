@@ -378,3 +378,38 @@ primary Go advisory GO-2026-6809 still identifies affected versions below
 1.26.10 and 1.27.3 for the respective branches. All dispositions remain blocked;
 no finding, native assessment, deferral or expiry is waived. Evidence comes from
 canonical run 40506626773, with the detailed comparison retained separately.
+
+## Bounded release-patch candidate
+
+The candidate replaces affected source versions with Zod 4.6.7, happy-dom 21.0.4,
+fast-uri 3.1.9 and postcss-selector-parser 6.1.5. Overrides are scoped to their
+actual consumers; the Astro sitemap's older Zod copy is patched as well. Fresh
+full and production npm audits each contain zero findings, so the 13 obsolete
+source dispositions are removed after the package changes and current audit
+agreement. Their primary advisory facts remain retained.
+
+Better Auth moves to the age-eligible 1.7.12 security patch. The governed Node
+runtime and application build/run stages move to the reviewed 24.22.1 LTS image.
+PostgreSQL remains 18.6 using a rebuilt publisher image; Nginx becomes 1.31.8 and
+cloudflared 2026.10.4. Publisher index/config identities and the cloudflared binary
+digest were verified; these candidates exceed the 24-hour age floor. These are
+scan/qualification candidates, not clean-image claims.
+
+Global npm/npx and Yarn are removed only from CMS/renderer runtime stages; their
+builders retain package tooling. Startup and generated operator helpers use
+direct Node. Packaged verification now rejects runtime package-manager binaries.
+Native helpers, esbuild, Sharp/libvips/PDF and gosu are not removed by assumption.
+The exact candidate image/native inventories and helper behavior remain required.
+
+Local qualification passes contracts/schema tests, the real migrated-database
+Better Auth SDK/schema/invitation tests, social/passwordless/session tests and
+rich-text tests. A required headless DOM contract covers Lexical HTML
+import/export and restoration of ambient globals with happy-dom 21. The actual
+Node runtime rejects an untrusted synthetic certificate and validates Microsoft
+public OIDC HTTPS without credentials. This does not prove partner permissions.
+
+All five native assessments and the unresolved release deferrals remain blocked.
+Their reasons now distinguish the candidate patch from outstanding exact-image
+qualification. The 287 historical image dispositions remain until fresh candidate
+images are reviewed; no native clearance or scanner-gap waiver is inferred from
+audit success. The original October 28 expiry remains unchanged.

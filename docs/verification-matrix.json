@@ -78,7 +78,8 @@
       "browser-runtime-cms",
       "browser-runtime-landing",
       "browser-runtime-renderer",
-      "exchange-worker-image"
+      "exchange-worker-image",
+      "cms-richtext-dependencies"
     ],
     "cms-fast": [
       "cms-no-css",
@@ -1016,6 +1017,22 @@
         "Docker engine and Buildx",
         "Committed clean source",
         "Official pinned PowerShell/module downloads"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "cms-richtext-dependencies",
+      "command": "node --test apps/cms/tests/contract/richtext-dom.test.mjs",
+      "run": [
+        "node",
+        "--test",
+        "apps/cms/tests/contract/richtext-dom.test.mjs"
+      ],
+      "owner": "apps/cms",
+      "ciJob": "cms-quality",
+      "prerequisites": [
+        "Frozen dependencies",
+        "Exact Node LTS"
       ],
       "risk": "high"
     }
