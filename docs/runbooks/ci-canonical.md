@@ -10,7 +10,8 @@ six contexts; `required-ci` requires every internal job and image variant.
 ## Execution graph
 
 - Quality, four test partitions, CMS browser, landing, renderer and image jobs
-  start independently. `cms-quality` validates the complete test inventory and
+  start independently, except packaged image verification consumes the fresh
+  package-quality publisher receipt. `cms-quality` validates the complete test inventory and
   Payload configuration imports; these produce no shared artifact and do not
   gate unrelated work. All remain required by the final aggregate.
 - `.github/actions/setup-ci` owns the exact Node/pnpm setup, frozen installation
@@ -89,6 +90,12 @@ Caches accelerate inputs only. Every test and packaged smoke still executes.
   builder and pinned BuildKit image. No registry login/cache export is used.
   Cache directories cannot be symlinks; malformed indexes are cache misses.
   The owned builder and disposable resources are cleaned up after verification.
+- Image jobs consume the same current-run source receipt's reviewed scanner
+  release and selected asset digests. Source/run/attempt, age and current input
+  hashes are checked before use. Missing/malformed/stale evidence never supplies
+  a fallback success; standalone operations still perform the live primary read.
+  This real data dependency replaces repeated API metadata reads that failed on
+  GitHub shared-runner quota and authenticated organization IP restrictions.
 - Trivy tool/database caches do not skip current publisher eligibility, checksum,
   scanner version or advisory freshness checks. The scanner refreshes its database
   under the existing policy on every verification invocation.

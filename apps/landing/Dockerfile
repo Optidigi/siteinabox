@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
-ARG NODE_VERSION=24.22.0-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
-ARG NGINX_VERSION=1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
+ARG NODE_VERSION=24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
+ARG NGINX_VERSION=1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60
 
 FROM node:${NODE_VERSION} AS build
 WORKDIR /repo
@@ -30,6 +30,8 @@ ENV NODE_ENV=production
 RUN POSTHOG_PROJECT_TOKEN=${POSTHOG_PROJECT_TOKEN} POSTHOG_PUBLIC_HOST=${POSTHOG_PUBLIC_HOST} POSTHOG_HOST=${POSTHOG_HOST} PUBLIC_TURNSTILE_SITE_KEY=${PUBLIC_TURNSTILE_SITE_KEY} pnpm --filter siteinabox-landing build
 
 FROM nginx:${NGINX_VERSION}
+# Patch the three affected base-image libraries without changing Nginx itself.
+RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0 curl=8.23.0-r0 libcurl=8.23.0-r0
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY apps/landing/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/landing/dist /usr/share/nginx/html

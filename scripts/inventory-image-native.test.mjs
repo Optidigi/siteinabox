@@ -65,3 +65,17 @@ test("GNU tar escaped Unicode names are decoded without weakening path guards", 
     assert.throws(() => inventoryImageNative(archive), /Unsupported native archive member path/)
   } finally { await rm(root, { recursive: true, force: true }) }
 })
+
+test("stripped Go build-info still requires coverage when PC tables, runtime and version remain", async () => {
+  const root = await mkdtemp(join(tmpdir(), "siab-native-stripped-go-"))
+  try {
+    const content = join(root, "rootfs"); await mkdir(content)
+    const elf = Buffer.from([0x7f, 0x45, 0x4c, 0x46])
+    await writeFile(join(content, "stripped-native.bin"), Buffer.concat([elf, Buffer.from(".gopclntab\0runtime.main\0go1.26.5\0")]), { mode: 0o644 })
+    await writeFile(join(content, "ordinary-native.bin"), Buffer.concat([elf, Buffer.from("documentation mentions go1.26.5 only")]), { mode: 0o644 })
+    const archive = join(root, "rootfs.tar"); execFileSync("tar", ["-cf", archive, "-C", content, "."])
+    const result = inventoryImageNative(archive)
+    assert.deepEqual(result.goTargets, ["stripped-native.bin"])
+    assert.equal(result.files.length, 2)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})

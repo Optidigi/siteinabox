@@ -5,18 +5,18 @@
   "verificationPlatform": "linux/amd64",
   "images": {
     "node": {
-      "version": "24.22.0",
-      "reference": "docker.io/library/node:24.22.0-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f",
+      "version": "24.22.1",
+      "reference": "docker.io/library/node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53",
       "platforms": [
         {
-          "digest": "sha256:429bdfbc204b4eabc6438e6d34e4e9d8dd2ca1df8289bcd78cdd3c5db387b7a5",
+          "digest": "sha256:1200d815de24f8dcca745fbf7651d166034a35adbcad8860a8538ffff44f1420",
           "platform": {
             "architecture": "amd64",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:5b12456322560dcf9342f7339662bccf8c5665cf0732a8ec8363687aa93c5277",
+          "digest": "sha256:398bcf38afb035ae76feb9ad3c7493a93feff4751351c65310811761e37bbfc7",
           "platform": {
             "architecture": "arm64",
             "os": "linux",
@@ -24,28 +24,29 @@
           }
         },
         {
-          "digest": "sha256:26b87499da2851b726b8a3612b874512637034533b298e80307d445836dd4b92",
+          "digest": "sha256:4b6703a274f040eb8f2697fa59137ace42fde04457d2e4253ea851a06f4b68fe",
           "platform": {
             "architecture": "s390x",
             "os": "linux"
           }
         }
       ],
-      "verificationOnly": false
+      "verificationOnly": false,
+      "createdAt": "2026-10-21T22:58:47.943775538Z"
     },
     "postgres": {
       "version": "18.6",
-      "reference": "docker.io/library/postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873",
+      "reference": "docker.io/library/postgres:18.6-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5",
       "platforms": [
         {
-          "digest": "sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66",
+          "digest": "sha256:3b0ef735388b2cb097fc29b8bb421d86d57d0ddbe7aa1fbd6493e06d65028503",
           "platform": {
             "architecture": "amd64",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:548908d20dac4a46d489f436b744901a64c48b93999223dbd804d59bc62bec74",
+          "digest": "sha256:827374cd5bc47aa237d78957c0117c8ba68a2114db3cb8e78a883554959d4cba",
           "platform": {
             "architecture": "arm",
             "os": "linux",
@@ -53,7 +54,7 @@
           }
         },
         {
-          "digest": "sha256:4b876a8e668b72c43573a999eee6a06cde0042dcea0b378caaa71bd999f40a8e",
+          "digest": "sha256:bc2831f167ab9b2b8d3d5cfe2212a873de899494d1d9c5e7b63b2f8927ebc8b3",
           "platform": {
             "architecture": "arm",
             "os": "linux",
@@ -61,7 +62,7 @@
           }
         },
         {
-          "digest": "sha256:89f747171c4b0af0eacf5984550060be79786dbe286eb60cfa691d79d1e8b23f",
+          "digest": "sha256:b1c1673a890fba8fae71d37210b4fd9a0b5cd0df8bb994a6bcc01d9cf8e1670c",
           "platform": {
             "architecture": "arm64",
             "os": "linux",
@@ -69,35 +70,36 @@
           }
         },
         {
-          "digest": "sha256:1d22739c0a64fae400b80b9b7bc66c793915541c6a65977bbe9b8c88d22b3569",
+          "digest": "sha256:7c64281cc5c73e4010ccd5623a6171076c3d7994ee9ba780dc27efaf89aa1ab8",
           "platform": {
             "architecture": "386",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:7193bcd502992934d36436b3bee8019760af1cd81fcda938e2586e264dac5d5e",
+          "digest": "sha256:7c09d1ec772d675ee19fe6e51904fc8b2202715d17eb33128eb76c572f3e8e90",
           "platform": {
             "architecture": "ppc64le",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:c403bc6b4326fdb6771784116e08bd234d8a7918e753ba4268e1e8b66687dfb9",
+          "digest": "sha256:88162f83ab164f6189aeafa097e38e2c2a58d38e9c1e833f31ef160309b7fb99",
           "platform": {
             "architecture": "riscv64",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:b82b13bd4cb10ae4c9a55c8ac6304248d8b82a629b598c934c05ebf4f49d522d",
+          "digest": "sha256:4ab73894992a0b6f3534b7ed3ac7ddcc0abb56868ec73158f152ef9e05075893",
           "platform": {
             "architecture": "s390x",
             "os": "linux"
           }
         }
       ],
-      "verificationOnly": false
+      "verificationOnly": false,
+      "createdAt": "2026-10-21T22:56:40.8228104Z"
     },
     "postgres-rehearsal-baseline": {
       "version": "18.4",
@@ -166,18 +168,18 @@
       "verificationOnly": true
     },
     "nginx": {
-      "version": "1.31.7",
-      "reference": "docker.io/library/nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d",
+      "version": "1.31.8",
+      "reference": "docker.io/library/nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60",
       "platforms": [
         {
-          "digest": "sha256:138af827713b7671ef4ee2deea73bc6f08ae265130ce350307e3e7b52cd4b51b",
+          "digest": "sha256:2db7d28517d1fba17c2da3210395f7be11a11b419246ad0da2edf782af72f367",
           "platform": {
             "architecture": "amd64",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:570b6b765cea8c8ca21f880cbf64e81ceef94b5105192b32a725ddb916ca3ae0",
+          "digest": "sha256:303db0a524d3901d7deb2d8af94161b0a03ef9ac4ac7c4b83cf29befe22e76ce",
           "platform": {
             "architecture": "arm",
             "os": "linux",
@@ -185,7 +187,7 @@
           }
         },
         {
-          "digest": "sha256:2fb752c6135c8ca06b959fbc1e35210a122de5cef509a030e4b7fbd8ef875187",
+          "digest": "sha256:10eaf262ab53a512dda788555cd7d03c61262ee7a68e922ab59cb2ef574b3c12",
           "platform": {
             "architecture": "arm",
             "os": "linux",
@@ -193,7 +195,7 @@
           }
         },
         {
-          "digest": "sha256:2d829ce6bc998fecd1cd72204c358c0c0614bab5edd9471dfcf8b92a49f4d323",
+          "digest": "sha256:41c8801e327f9c60c47aa700390ea5cf1862a6852bd27d103ba2cac41a7d6ec7",
           "platform": {
             "architecture": "arm64",
             "os": "linux",
@@ -201,49 +203,43 @@
           }
         },
         {
-          "digest": "sha256:7ddef4fb1b16816185c5e3ca4c76086e2db0d37f2e9eee57b9a3fb5182cca562",
+          "digest": "sha256:155035959fcc4f1ff1409803cc9e1b61ca0953ca60729229eb05891f17954b46",
           "platform": {
             "architecture": "386",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:e37661278194f12729015b8d9f6a364b9fdc8849d0c11d2d24ec161a75a4d741",
+          "digest": "sha256:70a21d46f8df2d17241a6671cf55f6b6796b45f9297fc92bd630b3b7534a3bcd",
           "platform": {
             "architecture": "ppc64le",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:d9cab13c373e6a467fde4b37ae8b708247a9ab05b2e853b9b0633242ae503f8e",
-          "platform": {
-            "architecture": "riscv64",
-            "os": "linux"
-          }
-        },
-        {
-          "digest": "sha256:691918406154aab2d61e77836c013a57ca92680e502b84ecf9ba8c67b9d06041",
+          "digest": "sha256:82ba4ea9d6c55e335eaa4886f55921aa0b19f303c0edfa48a72915e4d41e6d27",
           "platform": {
             "architecture": "s390x",
             "os": "linux"
           }
         }
       ],
-      "verificationOnly": false
+      "verificationOnly": false,
+      "createdAt": "2026-10-21T23:23:41.2514755Z"
     },
     "cloudflared": {
-      "version": "2026.10.1",
-      "reference": "docker.io/cloudflare/cloudflared:2026.10.1@sha256:a15a3b50b8dabd57ac2090e9484c0247dba9dfa1f0df4d298d4317f9d69eb2d5",
+      "version": "2026.10.4",
+      "reference": "docker.io/cloudflare/cloudflared:2026.10.4@sha256:c6c7ae1d5dfdcb094ad344ed68ccffc26635c9c6be80965664c33baf064b0515",
       "platforms": [
         {
-          "digest": "sha256:3c0502d2da137286136b44f5b1d0d0be7030cc4833db9f53cff86beadad6cefa",
+          "digest": "sha256:4c72c1af2984a66a255efd20fc4ec73fe0f7267384b55315ad953b354b3361b4",
           "platform": {
             "architecture": "amd64",
             "os": "linux"
           }
         },
         {
-          "digest": "sha256:6d9f470f8df4161f90df39cd97719cdb8d02a8ade3885ab9b0ec15a495820b79",
+          "digest": "sha256:8882c4b9cdbbd555533ff77bd16df0c14fbe8898dae311bf76a95177d0cea1ea",
           "platform": {
             "architecture": "arm64",
             "os": "linux"
@@ -251,8 +247,9 @@
         }
       ],
       "verificationOnly": false,
-      "nativeAmd64Sha256": "sha256:3bfc539f45d2620c71debb7a86be0efa737ed5ccbad9eb85c787116900e5c586",
-      "releaseUrl": "https://github.com/cloudflare/cloudflared/releases/tag/2026.10.1"
+      "createdAt": "2026-10-26T11:27:24.915497849Z",
+      "releaseUrl": "https://github.com/cloudflare/cloudflared/releases/tag/2026.10.4",
+      "nativeAmd64Sha256": "sha256:ae5e8add7884b0531d66bbca4570d1de491ff6da51e4ebe7eb160cdf241d9e42"
     },
     "dockerfile": {
       "version": "1.28.0",

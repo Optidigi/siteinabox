@@ -378,3 +378,76 @@ primary Go advisory GO-2026-6809 still identifies affected versions below
 1.26.10 and 1.27.3 for the respective branches. All dispositions remain blocked;
 no finding, native assessment, deferral or expiry is waived. Evidence comes from
 canonical run 40506626773, with the detailed comparison retained separately.
+
+## Bounded release-patch candidate
+
+The candidate replaces affected source versions with Zod 4.6.7, happy-dom 21.0.4,
+fast-uri 3.1.9 and postcss-selector-parser 6.1.5. Overrides are scoped to their
+actual consumers; the Astro sitemap's older Zod copy is patched as well. Fresh
+full and production npm audits each contain zero findings, so the 13 obsolete
+source dispositions are removed after the package changes and current audit
+agreement. Their primary advisory facts remain retained.
+
+Better Auth moves to the age-eligible 1.7.12 security patch. The governed Node
+runtime and application build/run stages move to the reviewed 24.22.1 LTS image.
+PostgreSQL remains 18.6 using a rebuilt publisher image; Nginx becomes 1.31.8 and
+cloudflared 2026.10.4. Publisher index/config identities and the cloudflared binary
+digest were verified; these candidates exceed the 24-hour age floor. These are
+scan/qualification candidates, not clean-image claims.
+
+Global npm/npx and Yarn are removed only from CMS/renderer runtime stages; their
+builders retain package tooling. Startup and generated operator helpers use
+direct Node. Packaged verification now rejects runtime package-manager binaries.
+Native helpers, esbuild, Sharp/libvips/PDF and gosu are not removed by assumption.
+The exact candidate image/native inventories and helper behavior remain required.
+
+Local qualification passes contracts/schema tests, the real migrated-database
+Better Auth SDK/schema/invitation tests, social/passwordless/session tests and
+rich-text tests. A required headless DOM contract covers Lexical HTML
+import/export and restoration of ambient globals with happy-dom 21. The actual
+Node runtime rejects an untrusted synthetic certificate and validates Microsoft
+public OIDC HTTPS without credentials. This does not prove partner permissions.
+
+All five native assessments and the unresolved release deferrals remain blocked.
+Their reasons now distinguish the candidate patch from outstanding exact-image
+qualification. The 287 historical image dispositions remain until fresh candidate
+images are reviewed; no native clearance or scanner-gap waiver is inferred from
+audit success. The original October 28 expiry remains unchanged.
+
+Image verification now consumes the same run's freshly collected scanner release
+and selected archive/checksum asset digests from package quality. The fact digest
+is checked against trusted source policy; source/run/attempt, configuration/graph
+identity and collection age are checked before use. Release age, downloaded-byte
+hashes and advisory database refresh remain enforced by scanner preparation.
+Invalid receipts fail closed. This avoids redundant GitHub public metadata reads
+that hit shared-runner anonymous quotas and authenticated organization IP rules.
+Standalone operations retain the live primary-read path when no receipt exists.
+
+The first patched image reports reduce enumerated findings from 287 to 222 with
+no new finding identities. Their zero-finding renderer result is not native
+clearance: the shipped esbuild 0.28.2 ELF lacks Go build-info metadata but retains
+Go PC-table, runtime-main and Go 1.26.5 signals. Independent native inventory now
+recognizes that combination and requires scanner coverage, retaining an explicit
+analysis blocker when coverage is absent. Native assessments remain blocked.
+The landing image additionally pins the age-eligible Alpine brotli-libs 1.2.1-r0
+and curl/libcurl 8.23.0-r0 fixes; an isolated container verifies those upgrades
+preserve Nginx 1.31.8. Fresh final-source image reports remain mandatory.
+
+## Exact candidate image reconciliation
+
+Canonical run 40530772192 passes every source, browser, worker and packaged-image
+build/startup check. Retained raw image inventories contain 174 findings versus
+287 before remediation: 114 obsolete identities disappear after actual package
+changes/removals; one explicit renderer Go-analysis gap is added. Ninety-four
+retained rows have current scanner metadata changes. No unresolved finding is
+waived. The landing image now has zero enumerated findings after its three
+pinned library fixes; that result alone is not full native qualification.
+
+All five changed native fingerprints remain blocked and are bound to the exact
+source/image/archive/report/native-inventory identities. The eight actual CMS
+runtime helper hashes and sizes match the owning root generator with Node
+24.22.1. Renderer analysis now explicitly includes its stripped Go target and
+missing scanner coverage. CMS's esbuild/unversioned component, PostgreSQL's gosu
+and OS findings, and cloudflared's dependency/provenance findings remain blockers.
+All seven unresolved deferrals and the original October 28 expiry are retained.
+Fresh final-source CI remains necessary after this evidence update.
