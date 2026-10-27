@@ -1,3 +1,4 @@
+import { postgresRehearsalReady } from "./postgres-readiness.mjs"
 import { prepareImageBuildCache } from "./image-build-cache.mjs"
 import { requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { execFileSync, spawnSync } from "node:child_process"
@@ -127,7 +128,7 @@ try {
       docker(["run", "--platform", infrastructure.verificationPlatform, "--detach", "--name", database, "--network", network, "--network-alias", "postgres",
         "--mount", "type=volume,src=" + dataVolume + ",dst=/var/lib/postgresql",
         "--env", "POSTGRES_USER=payload", "--env", "POSTGRES_PASSWORD=verification-only", "--env", "POSTGRES_DB=payload_test", pin.reference])
-      await health(async () => spawnSync("docker", ["exec", database, "pg_isready", "-U", "payload", "-d", "payload_test"], { stdio: "ignore" }).status === 0)
+      await health(async () => postgresRehearsalReady(database))
       const [major, minor] = pin.version.split(".").map(Number)
       if (Number(query("SHOW server_version_num")) !== major * 10000 + minor) throw new Error("PostgreSQL image version differs from its reviewed pin")
     }
@@ -237,7 +238,7 @@ try {
   console.log("Verification artifacts: " + artifactDir)
   console.log("Packaged " + app + " image verification passed; no image published")
 } catch (error) {
-  try { docker(["logs", container]) } catch { /* The container may not have started. */ }
+  for (const owned of [container, database]) { try { docker(["logs", owned]) } catch { /* This owned container may not have started. */ } }
   throw error
 } finally {
   if (ownsBuilder) { try { docker(["buildx", "rm", builder], true) } catch { /* Only this owned builder may be removed. */ } }

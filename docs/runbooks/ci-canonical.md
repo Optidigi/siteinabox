@@ -23,7 +23,9 @@ six contexts; `required-ci` requires every internal job and image variant.
   file and case; Node TAP counts must contain no skipped/todo/cancelled cases.
 - `cms-browser`, landing and renderer retain their real browser journeys.
 - Every source receives actual CMS/renderer/site image builds and packaged
-  startup/native/scanner checks. `image-security` surfaces image advisory failures
+  startup/native/scanner checks. PostgreSQL rehearsals wait for a successful TCP
+query against the actual target database; temporary entrypoint socket readiness
+is insufficient. `image-security` surfaces image advisory failures
   as soon as the source/image inputs are ready. The final aggregate still verifies
   every job, source/run/attempt, raw report, native assessment and image identity.
 

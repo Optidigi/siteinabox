@@ -3,8 +3,8 @@
   "reviewedAt": "2026-10-26T23:33:43.258Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
-  "graphHash": "031fdecbea994a9895ed17921c52fbf5449e7d3cc6958680afd2598623298377",
-  "configurationHash": "ec67974fa133fb40b006f7f078569006e6d91213b69f7a235e7b63b59421fc75",
+  "graphHash": "c2504cfc5bab904f0875b6f15e36a91e3e39b0eee86c8aa0f2c6145689b2ab75",
+  "configurationHash": "033d1f5686b87f34a1a02b7f87c05de38946f55ab247d5ff6a8ff65ead6c573f",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
