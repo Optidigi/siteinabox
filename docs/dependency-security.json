@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T10:13:16.966Z",
+  "reviewedAt": "2026-10-27T12:45:32.060Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
   "graphHash": "553a7907a746bd8743907bff8ef107e919e9e3668cc9e5d9ff31d6f8b25d6545",
@@ -89,7 +89,7 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/community.json",
       "selected": false,
-      "sha256": "4014c72d27143fc12239ba88019463b1f8f97b7c9a80b73cc60eccb27442d19c"
+      "sha256": "4021be066b0058885677d1d5500b062ecf7570be2c94b196fcba7ea4944bebd5"
     },
     {
       "id": "go-advisory-index",

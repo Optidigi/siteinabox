@@ -358,3 +358,13 @@ No clean-security, live-provider, production/Amicare preservation, recovery,
 publication or rollout gate is closed. Historical M11 diagnostics remain
 historical. Before release, remediate or obtain separately authorized risk
 constraints, refresh primary facts and verify the exact candidate bytes again.
+
+## October 27 deployment preparation
+
+The Alpine community publisher feed added `mongo-c-driver` 1.30.14 security
+fixes. The package and its `libmongoc`/`libbson` names are absent from all five
+retained raw production image package inventories from canonical run
+40487060728. This reconciles that publisher fact after reviewing the primary
+feed delta; it does not establish final-candidate release clearance. All 13
+source findings, 287 image findings, five blocked native assessments, seven
+deferrals and the original October 28 expiry remain unchanged.
