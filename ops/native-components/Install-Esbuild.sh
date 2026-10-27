@@ -14,12 +14,22 @@ find "$root" -type f -name esbuild > "$targets"
 [ -s "$targets" ]
 # Inspect every occurrence first, so an unexpected copy fails before mutation.
 while IFS= read -r target; do
-  case "$target" in "$platform"|"$convenience") ;; *) echo "Unexpected runtime esbuild copy: $target" >&2; exit 1 ;; esac
+  case "$target" in
+    "$platform"|"$convenience") ;;
+    "$root"/node_modules/.pnpm/*/.bin/esbuild)
+      # pnpm launchers delegate to a package binary; never overwrite them.
+      [ "$(head -c 2 "$target")" = '#!' ] || { echo "Unexpected native launcher: $target" >&2; exit 1; }
+      continue ;;
+    *) echo "Unexpected runtime esbuild copy: $target" >&2; exit 1 ;;
+  esac
   [ "$("$target" --version)" = "$version" ]
 done < "$targets"
 while IFS= read -r target; do
-  cp "$binary" "$target"
-  chmod 0755 "$target"
-  cmp -s "$binary" "$target"
+  case "$target" in "$platform"|"$convenience")
+    cp "$binary" "$target"
+    chmod 0755 "$target"
+    cmp -s "$binary" "$target" ;;
+    *) continue ;;
+  esac
   [ "$("$target" --version)" = "$version" ]
 done < "$targets"

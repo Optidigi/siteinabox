@@ -14,9 +14,18 @@ test("runtime installation replaces both pnpm copies and refuses unexpected occu
     const original = '#!/bin/sh\necho 0.28.2\n', rebuilt = original + '# reviewed rebuild\n'
     for (const file of paths) { await mkdir(path.dirname(file), { recursive: true }); await writeFile(file, original); await chmod(file, 0o755) }
     await writeFile(binary, rebuilt); await chmod(binary, 0o755)
+    const launcher = path.join(root, "node_modules/.pnpm/vite@fixture/node_modules/vite/node_modules/.bin/esbuild")
+    const launcherText = '#!/bin/sh\nexec "' + paths[0] + '" "$@"\n'
+    await mkdir(path.dirname(launcher), { recursive: true }); await writeFile(launcher, launcherText); await chmod(launcher, 0o755)
     const run = () => spawnSync("sh", [installer, root, "0.28.2", binary], { encoding: "utf8" })
     assert.equal(run().status, 0)
     for (const file of paths) assert.equal(await readFile(file, "utf8"), rebuilt)
+    assert.equal(await readFile(launcher, "utf8"), launcherText, "pnpm shell launchers must remain unchanged")
+    await writeFile(paths[0], original)
+    await writeFile(launcher, Buffer.from([0x7f, 0x45, 0x4c, 0x46]))
+    assert.notEqual(run().status, 0, "A native executable at a launcher path must not be silently ignored")
+    assert.equal(await readFile(paths[0], "utf8"), original)
+    await writeFile(launcher, launcherText)
     await writeFile(path.join(root, "esbuild"), original); await chmod(path.join(root, "esbuild"), 0o755)
     await writeFile(paths[0], original)
     assert.notEqual(run().status, 0)
