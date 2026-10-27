@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-27T14:22:19.128Z",
+  "reviewedAt": "2026-10-27T14:40:50.348Z",
   "expiresAt": "2026-10-28T01:01:28.437Z",
   "reviewOwner": "Canonical CI efficiency engineering evidence reconciliation; independent review; no release waiver",
   "graphHash": "d01627c39be8e789a4b8e241130f554d4288555bed4fa80a49e338d13099074c",
-  "configurationHash": "e65b56e7b216de9e4badb4e90af0a2b90883fee37e1f3d47ef3e7a8eab0402e6",
+  "configurationHash": "f3662e68fe152e149f4f3a3030dbd69288dffaf9cde9b70f3fbe34f2af40f63f",
   "scope": "Exact frozen full/production graph and source configuration; current native images must match separately. No accepted-risk constraints.",
   "publisherFacts": [
     {
@@ -61,7 +61,11 @@
       "kind": "github-release",
       "url": "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0",
       "selected": true,
-      "sha256": "a8665d2ac25a31c0a10f66b2702f189a056b1ef49db31899a6ee4ad877e8ff8e"
+      "sha256": "e217cc85a6f3bad6f44f32e236ca721e50b33f7969470fbc645600305cd315d0",
+      "assets": [
+        "trivy_0.76.0_Linux-64bit.tar.gz",
+        "trivy_0.76.0_checksums.txt"
+      ]
     },
     {
       "id": "scanner-latest",

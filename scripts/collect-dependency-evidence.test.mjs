@@ -104,3 +104,16 @@ test("only confirmed anonymous quota exhaustion permits authenticated public met
     await assert.rejects(readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test"), /HTTP 403/)
   } finally { globalThis.fetch = originalFetch; process.env.PATH = originalPath; await rm(root, { recursive: true, force: true }) }
 })
+
+test("selected release assets are hashed while unrelated counters remain irrelevant", async () => {
+  const descriptor = { id: "fixture-assets", kind: "github-release", url: "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0", assets: ["fixture.tar.gz"] }
+  const readGitHubJSON = async () => ({ tag_name: "v0.76.0", published_at: "2026-01-01T00:00:00Z", draft: false, prerelease: false, body: "fixture", assets: [{ name: "fixture.tar.gz", digest: "sha256:" + "a".repeat(64), download_count: 1 }] })
+  const fact = await fetchPublisherFact(descriptor, { readGitHubJSON })
+  assert.deepEqual(fact.facts.assets, [{ name: "fixture.tar.gz", digest: "sha256:" + "a".repeat(64) }])
+  const countsOnly = async () => ({ ...(await readGitHubJSON()), assets: [{ name: "fixture.tar.gz", digest: "sha256:" + "a".repeat(64), download_count: 999 }] })
+  assert.equal((await fetchPublisherFact(descriptor, { readGitHubJSON: countsOnly })).sha256, fact.sha256)
+  const replaced = async () => ({ ...(await readGitHubJSON()), assets: [{ name: "fixture.tar.gz", digest: "sha256:" + "b".repeat(64) }] })
+  assert.notEqual((await fetchPublisherFact(descriptor, { readGitHubJSON: replaced })).sha256, fact.sha256)
+  await assert.rejects(fetchPublisherFact({ ...descriptor, assets: ["missing"] }, { readGitHubJSON }), /missing or ambiguous/)
+  await assert.rejects(fetchPublisherFact({ ...descriptor, assets: ["fixture.tar.gz", "fixture.tar.gz"] }, { readGitHubJSON }), /malformed/)
+})

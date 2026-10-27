@@ -15,6 +15,8 @@ const canonical = (value) => {
   return value
 }
 
+export const publisherFactHash = facts => hash(JSON.stringify(canonical(facts)))
+
 export async function dependencyIdentities(root) {
   const files = git(root, ["ls-files", "-z"]).split("\0").filter(Boolean).sort()
   const graphFiles = files.filter((file) => file === "pnpm-lock.yaml" || file === "pnpm-workspace.yaml" || /(?:^|\/)package\.json$/.test(file))
@@ -85,6 +87,14 @@ export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
     const eligibleForSelection = Date.now() - Date.parse(body.published_at) >= 1440 * 60000
     if (descriptor.selected && !eligibleForSelection) throw new Error("Selected publisher release has not met the release-age floor")
     facts = { tag: body.tag_name, publishedAt: body.published_at, draft: body.draft, prerelease: body.prerelease, eligibleForSelection, body: body.body }
+    if (descriptor.assets) {
+      if (!Array.isArray(descriptor.assets) || !descriptor.assets.length || new Set(descriptor.assets).size !== descriptor.assets.length) throw new Error("Publisher asset selection is malformed")
+      facts.assets = descriptor.assets.map(name => {
+        const matches = body.assets?.filter(asset => asset.name === name) ?? []
+        if (matches.length !== 1 || !/^sha256:[a-f0-9]{64}$/.test(matches[0].digest ?? "")) throw new Error("Selected publisher asset digest is missing or ambiguous")
+        return { name, digest: matches[0].digest }
+      }).sort((a, b) => a.name.localeCompare(b.name))
+    }
   } else if (descriptor.kind === "npm-version") {
     const requested = decodeURIComponent(url.pathname).match(/^\/((?:@[^/]+\/)?[^/]+)\/([^/]+)$/)
     if (!requested || body.name !== requested[1] || (requested[2] !== "latest" && body.version !== requested[2]) ||
@@ -95,7 +105,7 @@ export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
   } else if (descriptor.kind !== "json" || !body || typeof body !== "object" || !Object.keys(body).length) {
     throw new Error("Unsupported or incomplete publisher evidence")
   }
-  return { id: descriptor.id, url: descriptor.url, sha256: hash(JSON.stringify(canonical(facts))), facts }
+  return { id: descriptor.id, url: descriptor.url, sha256: publisherFactHash(facts), facts }
 }
 
 export async function collectSourceEvidence(root, descriptors, constraints = []) {

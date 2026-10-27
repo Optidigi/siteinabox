@@ -1058,6 +1058,9 @@
     "image-security": [
       "package-quality",
       "image-verification"
+    ],
+    "image-verification": [
+      "package-quality"
     ]
   }
 }

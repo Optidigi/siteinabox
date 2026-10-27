@@ -413,3 +413,12 @@ Their reasons now distinguish the candidate patch from outstanding exact-image
 qualification. The 287 historical image dispositions remain until fresh candidate
 images are reviewed; no native clearance or scanner-gap waiver is inferred from
 audit success. The original October 28 expiry remains unchanged.
+
+Image verification now consumes the same run's freshly collected scanner release
+and selected archive/checksum asset digests from package quality. The fact digest
+is checked against trusted source policy; source/run/attempt, configuration/graph
+identity and collection age are checked before use. Release age, downloaded-byte
+hashes and advisory database refresh remain enforced by scanner preparation.
+Invalid receipts fail closed. This avoids redundant GitHub public metadata reads
+that hit shared-runner anonymous quotas and authenticated organization IP rules.
+Standalone operations retain the live primary-read path when no receipt exists.

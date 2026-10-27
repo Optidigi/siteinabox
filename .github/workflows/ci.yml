@@ -319,6 +319,7 @@ jobs:
         run: pnpm --dir apps/renderer test:analytics-browser
 
   image-verification:
+    needs: [package-quality]
     env:
       GH_TOKEN: ${{ github.token }}
       SIAB_IMAGE_BUILD_CACHE: ${{ inputs.cache-mode != 'cold' && '1' || '0' }}
@@ -336,6 +337,11 @@ jobs:
       - uses: ./.github/actions/setup-ci
         with:
           cache: ${{ inputs.cache-mode != 'cold' }}
+      - name: Download current-run reviewed scanner publisher evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-source-evidence
+          path: artifacts/dependency-source
       - name: Restore local BuildKit compiler layers
         if: inputs.cache-mode != 'cold'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
