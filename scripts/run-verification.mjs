@@ -76,12 +76,16 @@ function workflowRunCommands(source, job) {
     }
   }
 
-  const appMatrix = workflowJobBlock(source, job).match(/^\s+app:\s*\[([^\]]+)\]/m)
-  return commands.flatMap((record) => {
-    const { command } = record
-    if (!command.includes("${{ matrix.app }}")) return [record]
-    if (!appMatrix) fail(`${job}: missing app matrix for ${command}`)
-    return appMatrix[1].split(",").map((app) => ({ ...record, command: command.replaceAll("${{ matrix.app }}", app.trim()) }))
+  const jobBlock = workflowJobBlock(source, job)
+  return commands.flatMap(record => {
+    const axes = [...record.command.matchAll(/\$\{\{ matrix\.(\w+) \}\}/g)].map(match => match[1])
+    let expanded = [record]
+    for (const axis of new Set(axes)) {
+      const values = jobBlock.match(new RegExp("^\\s+" + axis + ":\\s*\\[([^\\]]+)\\]", "m"))?.[1]
+      if (!values) fail(`${job}: missing ${axis} matrix for ${record.command}`)
+      expanded = expanded.flatMap(item => values.split(",").map(value => ({ ...item, command: item.command.replaceAll("${{ matrix." + axis + " }}", value.trim()) })))
+    }
+    return expanded
   })
 }
 
@@ -289,7 +293,7 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
 for (const id of new Set(requestedProfiles.flatMap(profile => matrix.profiles[profile]))) {
   const check = checks.get(id)
   console.log("\n[verification:" + requestedProfile + "] " + check.id + ": " + check.command)
-  const env = { ...process.env, ...(matrix.profileEnv?.[requestedProfile] ?? {}), ...(check.env ?? {}) }
+  const env = { ...process.env, ...Object.assign({}, ...requestedProfiles.map(profile => matrix.profileEnv?.[profile] ?? {})), ...(check.env ?? {}) }
   const [command, ...args] = check.run
   const checkStartedAt = performance.now()
   const result = spawnSync(command === "pnpm" ? pnpm : command, args, {

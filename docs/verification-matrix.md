@@ -51,9 +51,17 @@ Canonical `ci.yml` runs every command owner and all three packaged-image
 variants on every PR, main push and manual run. The image matrix deliberately
 has no path conditions: shared contracts, UI, renderer, governed legal content,
 lockfiles, toolchain and workflow changes all receive consuming-image proof.
-`workflow-path-matrix.json` additionally retains minimum consumer paths for the
-standalone archive workflows. These workflows preserve the approved publication
-path; their archives are separate from the CI matrix's small JSON evidence.
+`workflow-path-matrix.json` declares that same producer and all three applications.
+Canonical trusted main runs additionally retain the exact verified TAR archives;
+PR runs retain JSON/raw-scan evidence only. The separately approved publisher
+consumes archives from that same successful exact-source main CI run.
+
+Four CMS test partitions execute on independent owned PostgreSQL services, with
+serial file isolation inside each partition. The shared inventory selects every
+Vitest file exactly once and assigns pure provider tests once. `cms-test` checks
+all partition receipts; failed, skipped, dirty, stale or cross-run evidence fails.
+The installed branch-protection contexts remain stable; internal jobs are required
+through the aggregate. See [canonical CI](runbooks/ci-canonical.md).
 
 `required-ci` always runs after every canonical job, rejects every dependency
 result except success, and verifies all three image records from this run and

@@ -1,6 +1,11 @@
+import { cmsTestInclude, cmsTestExclude, cmsTestPlan } from "./tests/_helpers/testPlan.mjs"
 import { defineConfig } from "vitest/config"
 import react from "@vitejs/plugin-react"
 import path from "node:path"
+
+const requestedPartition = process.env.SIAB_TEST_CMS_PARTITION
+const selected = requestedPartition ? cmsTestPlan(import.meta.dirname).partitions[requestedPartition] : cmsTestInclude
+if (!selected) throw new Error("Unknown canonical CMS test partition")
 
 export default defineConfig({
   // tsconfig sets `jsx: "preserve"` for Next.js' SWC pipeline. Vitest's
@@ -11,8 +16,8 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
-    include: ["tests/**/*.test.ts", "tests/**/*.integration.test.ts", "tests/**/*.test.tsx"],
-    exclude: ["tests/e2e/**"],
+    include: selected,
+    exclude: cmsTestExclude,
     globals: true,
     pool: "forks",
     // Integration tests share a single Postgres test DB; running them in

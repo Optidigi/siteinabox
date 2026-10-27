@@ -36,6 +36,17 @@ Fresh exact-source CI evidence is still required after this policy commit;
 these records authorize neither publication nor deployment. Source findings,
 deferrals, publisher constraints and the original October 28 expiry remain.
 
+## Canonical CI input qualification
+
+The CI-efficiency follow-up rebinds the reviewed graph/configuration identities
+without changing workspace package versions or production image bases. The
+current Alpine publisher delta adds Ruby3.4.12-r0 fixes; Ruby is absent from all
+five retained production package inventories. All13 source dispositions,287
+image dispositions, five blocked native assessments, seven deferrals and the
+original October28 expiry are preserved. Digest-pinned CI-only Playwright and
+BuildKit images and the cache Action remain infrastructure inputs requiring
+actual hosted verification; they do not clear production release gates.
+
 ## Commands and scope
 
 Use the exact project Node LTS and pinned pnpm from the repository root:

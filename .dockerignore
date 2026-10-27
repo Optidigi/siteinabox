@@ -23,3 +23,6 @@
 **/.vscode
 **/.idea
 **/.DS_Store
+
+# CI caches, scans and image archives are never application build inputs.
+artifacts

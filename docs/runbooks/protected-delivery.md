@@ -11,9 +11,9 @@ requirements with actual identities; agent reports do not satisfy them.
 `required-ci` depends on every canonical job and the complete image matrix.
 Every PR receives actual unpublished builds and startup checks for CMS,
 renderer and landing, including shared contracts, renderer, UI and legal inputs.
-Canonical CI owns PR image builds. Standalone image workflows retain matching
-main/manual archives for promotion and do not duplicate PR builds. CMS unit tests
-and the compiled browser seam run in parallel jobs with separately owned databases;
+Canonical CI is the sole PR/main-push promotion producer and retains trusted main archives
+for later approved promotion. CMS test partitions and the compiled browser seam
+run in parallel jobs with separately owned databases;
 `required-ci` additionally requires `cms-browser`. The existing required context
 names remain intact and skipped/cancelled/failed browser work still blocks merge.
 Invitation-action verification initializes committed migrations when its separately
@@ -26,9 +26,9 @@ seven days; preserve them in the approved release record before expiry.
 
 PR evidence distinguishes the tested merge commit from the PR head. Main
 publication checks require successful canonical jobs at the exact requested
-main source, including all three matrix contexts and the aggregate. Standalone
-image workflows retain archives for approved promotion without rebuilding;
-the CI matrix retains small verification records. Neither run publishes images.
+main source, including all three matrix contexts and the aggregate. Canonical
+main CI retains archives for approved promotion without rebuilding; PR CI retains
+small verification records. Neither execution publishes images.
 
 ## Protection proposal and diagnostic
 

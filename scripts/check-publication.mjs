@@ -42,7 +42,8 @@ export function assertVerifiedSource(request, verification, ci, jobs, expectedJo
   const succeeded = (run, workflow) => run?.head_sha === request.sha && run.head_branch === "main" &&
     ["push", "workflow_dispatch"].includes(run.event) && run.status === "completed" &&
     run.conclusion === "success" && run.path === ".github/workflows/" + workflow
-  if (!succeeded(verification, "build-" + request.image + "-image.yml") || !succeeded(ci, "ci.yml") ||
+  if (!succeeded(verification, "ci.yml") || !succeeded(ci, "ci.yml") ||
+      String(verification.id) !== request.verificationRunId || String(ci.id) !== request.verificationRunId ||
       !expectedJobs.length || jobs.length !== expectedJobs.length ||
       !expectedJobs.every((name) => jobs.some((job) => job.name === name && job.status === "completed" && job.conclusion === "success"))) {
     throw new Error("Publication requires successful exact-source main image verification and complete canonical CI; missing/skipped/cancelled work is not green")
@@ -81,8 +82,7 @@ export async function checkPublication() {
   const branches = pages("/environments/ghcr-publish/deployment-branch-policies?per_page=100").flatMap((page) => page.branch_policies)
   assertPublicationApproval(environment, branches, api("/actions/runs/" + runId + "/approvals"))
   const verification = api("/actions/runs/" + request.verificationRunId)
-  const runs = pages("/actions/workflows/ci.yml/runs?head_sha=" + request.sha + "&branch=main&per_page=100").flatMap((page) => page.workflow_runs)
-  const ci = runs.find((run) => ["push", "workflow_dispatch"].includes(run.event))
+  const ci = verification
   const jobs = ci ? pages("/actions/runs/" + ci.id + "/jobs?per_page=100").flatMap((page) => page.jobs) : []
   const matrix = JSON.parse(await readFile(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
   const expectedJobs = expectedHostedJobs(matrix)
@@ -97,15 +97,10 @@ export async function checkPublication() {
     if (file.startsWith("image-" + request.image) && /\.(?:json|tar)$/.test(file)) await copyFile("artifacts/" + file, dependencyDirectory + "/" + file)
   }
   for (const image of ["cms", "renderer", "site"].filter((image) => image !== request.image)) {
-    const supplemental = pages("/actions/workflows/build-" + image + "-image.yml/runs?head_sha=" + request.sha + "&branch=main&per_page=100")
-      .flatMap((page) => page.workflow_runs).find((run) => run.status === "completed" && run.conclusion === "success" && ["push", "workflow_dispatch"].includes(run.event))
-    if (!supplemental) throw new Error("Current dependency readiness requires verified archives for every application")
-    const run = api("/actions/runs/" + supplemental.id)
-    const supplementalRequest = { ...request, image, verificationRunId: String(run.id) }
-    assertVerifiedSource(supplementalRequest, run, ci, jobs, expectedJobs)
-    execFileSync("gh", ["run", "download", String(run.id), "--repo", repository, "--name", "image-" + image, "--dir", dependencyDirectory], { timeout: 600000, stdio: "inherit" })
+    // Every archive comes from the same trusted exact-source canonical run.
+    execFileSync("gh", ["run", "download", request.verificationRunId, "--repo", repository, "--name", "image-" + image, "--dir", dependencyDirectory], { timeout: 600000, stdio: "inherit" })
     const metadata = JSON.parse(await readFile(dependencyDirectory + "/image-" + image + ".json", "utf8"))
-    assertImageVerificationEvidence({ sha: request.sha, runId: String(run.id), attempt: String(run.run_attempt), image }, metadata)
+    assertImageVerificationEvidence({ sha: request.sha, runId: request.verificationRunId, attempt: String(verification.run_attempt), image }, metadata)
     if (metadata.archiveSha256 !== await sha256File(dependencyDirectory + "/image-" + image + ".tar")) throw new Error("Supplementary dependency archive bytes changed")
   }
   const dependencyReadiness = await checkDependencySecurity(["--release", "--candidate", request.sha, "--images", dependencyDirectory, "--archive-dir", dependencyDirectory])

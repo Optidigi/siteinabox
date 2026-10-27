@@ -42,13 +42,16 @@ test("the committed CI workflow covers every canonical job and image variant", a
   const workflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
   assertRequiredCiWorkflow(workflow, expectedCiJobs(matrix))
   for (const changed of [workflow.replace("  cms-browser:\n", "  cms-browser:\n    if: false\n"),
-    workflow.replace("name: Install CMS verification prerequisite browser\n        run: pnpm --dir apps/cms exec playwright install --with-deps chromium", "name: Missing prerequisite\n        run: echo missing"),
+    workflow.replace("node scripts/check-browser-runtime.mjs cms --dns", "echo missing-browser"),
+    workflow.replace('dns-tools: "true"', 'dns-tools: "false"'),
+    workflow.replace('  site:\n', '  site:\n    needs: [cms-quality]\n'),
+    workflow.replace('needs: [package-quality, image-verification]', 'needs: [image-verification]'),
     workflow.replace('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"', "echo missing-ownership")]) {
     assert.throws(() => assertRequiredCiWorkflow(changed, expectedCiJobs(matrix)))
   }
   assertImageMatrix(workflow)
   for (const changed of [workflow.replace("app: [cms, renderer, site]", "app: [cms, renderer]"),
-    workflow.replace("fail-fast: false", "fail-fast: true"),
+    workflow.replaceAll("fail-fast: false", "fail-fast: true"),
     workflow.replace("  image-verification:\n", "  image-verification:\n    if: false\n")]) {
     assert.throws(() => assertImageMatrix(changed))
   }
@@ -60,4 +63,28 @@ test("always diagnostics cannot make verification conditional", async () => {
   assertImageMatrix(source)
   assert.throws(() => assertImageMatrix(source.replace("id: verify\n        run:", "id: verify\n        if: false\n        run:")))
   assert.throws(() => assertImageMatrix(source.replace("artifacts/siab-verify-*/image-*.json", "path: arbitrary-source")))
+})
+
+test("workflow policy accepts label, key order and indentation changes without accepting unsafe semantics", async () => {
+  const { parse, stringify } = await import("yaml")
+  const { expectedCiJobs, assertImageMatrix } = await import("./check-required-ci.mjs")
+  const matrix = JSON.parse(readFileSync(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
+  const document = parse(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"))
+  for (const job of Object.values(document.jobs)) {
+    job.steps = job.steps.map(({ name, ...step }) => ({ ...step, name: "Human label is not policy" }))
+  }
+  const reformatted = stringify(document, { indent: 4, flowCollectionPadding: false })
+  assertRequiredCiWorkflow(reformatted, expectedCiJobs(matrix))
+  assertImageMatrix(reformatted)
+  const upload = document.jobs["image-verification"].steps.find(step => step.with?.name === "image-${{ matrix.app }}")
+  const cold = structuredClone(document)
+  delete cold.jobs["cms-browser"].steps.find(step => step.uses === "./.github/actions/setup-ci").with.cache
+  assert.throws(() => assertImageMatrix(stringify(cold)))
+  const skipped = structuredClone(document)
+  skipped.jobs["cms-tests"].steps.find(step => step.run === "node scripts/run-cms-tests.mjs ${{ matrix.part }}").if = false
+  assert.throws(() => assertRequiredCiWorkflow(stringify(skipped), expectedCiJobs(matrix)))
+  upload.if = "always()"
+  assert.throws(() => assertImageMatrix(stringify(document)))
+  assert.throws(() => assertImageMatrix("jobs: {}\njobs: {}"))
+  assert.throws(() => assertImageMatrix("jobs: &jobs {}\non: *jobs"))
 })

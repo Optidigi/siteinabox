@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       verification_run_id:
-        description: Successful main build-image workflow run containing the verified archive
+        description: Successful exact-source main canonical CI run containing the verified archives
         required: true
         type: string
 

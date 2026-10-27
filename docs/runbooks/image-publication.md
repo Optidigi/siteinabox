@@ -1,9 +1,9 @@
 # Image verification and approved publication
 
-Ordinary pull requests, matching main pushes and manual verification runs build
-and smoke-test images without publishing to a registry. The three
-`build-*-image.yml` workflows use read-only permissions, no registry login and no
-registry cache exports. `pnpm publication:check` protects this boundary and tests
+Canonical `ci.yml` builds and smoke-tests every application image on pull
+requests, main pushes and manual verification runs. It uses read-only permissions,
+no registry login and no registry cache exports. Trusted main runs additionally
+retain the verified TAR archives; PR runs retain JSON/raw-scan evidence only. `pnpm publication:check` protects this boundary and tests
 the publication admission policy. The canonical CI image matrix and
 `required-ci` remain required evidence; see
 [protected delivery](protected-delivery.md).
@@ -38,7 +38,7 @@ the image. Changing a build input requires a fresh verified archive.
 
 ## Publish one reviewed artifact
 
-Prepare the exact source SHA, image, successful main verification run ID,
+Prepare the exact source SHA, image, successful canonical main CI run ID,
 archive SHA-256 and local image ID for owner approval. Verify canonical CI at
 that source, dependency/security disposition and applicable release gates.
 Publication does not authorize deployment or provider operations.
@@ -57,11 +57,17 @@ rejects an explicitly enabled bypass setting whenever returned by the API.
 The guard rejects automatic events, branches other than main and every retry.
 It reads installed environment rules and the run's single explicit reviewer
 decision; an administrator bypass or historical decision is insufficient. It
-requires a main ancestor source, a successful main image verification run and
-every canonical CI job, all three image variants and `required-ci` at that exact SHA. Missing, failed, cancelled or skipped
+requires a main ancestor source, one successful canonical main run containing the selected archive,
+every test partition, all other canonical jobs, all three image variants and
+`required-ci` at that exact SHA. Supplemental archives must come from that same
+run and attempt; an unrelated later success or PR merge-ref artifact is rejected. Missing, failed, cancelled or skipped
 work blocks publication. Archive bytes, source, image and verification attempt
 must match the evidence. Inputs never select executable checkout code: the
 publication policy is checked out from the trusted main workflow revision.
+
+Historical standalone archive inputs are deliberately ineligible under this
+canonical route. Existing published digests and separately approved rollback
+using those digests remain unaffected.
 
 After approval, the workflow loads the verified archive, checks its image ID and
 pushes only `ghcr.io/optidigi/siteinabox-<image>:sha-<full-source-sha>`. It does

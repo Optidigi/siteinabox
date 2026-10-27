@@ -1,5 +1,9 @@
+import { workflowActionSources, assertImmutableActions } from "./check-workflow-actions.mjs"
 import assert from "node:assert/strict"
-import { readFileSync, readdirSync } from "node:fs"
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { tmpdir } from "node:os"
+import path from "node:path"
 import { test } from "node:test"
 import { infrastructure } from "./infrastructure-images.mjs"
 
@@ -44,11 +48,63 @@ test("database and tunnel pins agree across Compose and CI without renaming pers
   assert.ok(source("apps/cms/docker-compose.local.yml").includes("siteinabox-cms-postgres-dev:/var/lib/postgresql"))
 })
 
-test("every Action invocation uses its reviewed release commit", () => {
-  for (const file of readdirSync(new URL("../.github/workflows/", import.meta.url)).filter((name) => /\.ya?ml$/.test(name))) {
-    for (const match of source(".github/workflows/" + file).matchAll(/\buses:\s*([^@\s]+)@([^\s#]+)/g)) {
+test("every Action invocation uses its reviewed release commit", async () => {
+  for (const { file, source: actionSource } of await workflowActionSources()) {
+    assertImmutableActions(actionSource)
+    for (const match of actionSource.matchAll(/\buses:\s*([^@\s]+)@([^\s#]+)/g)) {
       assert.ok(infrastructure.actions[match[1]], "Unreviewed Action: " + match[1])
       assert.equal(match[2], infrastructure.actions[match[1]].commit, file + " " + match[1])
     }
   }
+})
+
+test("CI browser and BuildKit are immutable verification-only tools, separate from production bases", () => {
+  const browser = infrastructure.ciBrowser, buildkit = infrastructure.ciBuildkit
+  assert.equal(browser.verificationOnly,true); assert.equal(buildkit.verificationOnly,true)
+  assert.match(browser.reference, new RegExp("^mcr\\.microsoft\\.com/playwright:v" + browser.version.replaceAll(".","\\.") + "-noble@sha256:[a-f0-9]{64}$"))
+  assert.match(buildkit.reference,/^docker\.io\/moby\/buildkit:v[\d.]+@sha256:[a-f0-9]{64}$/)
+  assert(Date.now()-Date.parse(browser.createdAt)>=1440*60000)
+  assert(Date.now()-Date.parse(buildkit.publishedAt)>=1440*60000)
+  const workflow=source(".github/workflows/ci.yml")
+  for(const name of ["cms-tests","cms-browser","site","renderer"]) {
+    const block=workflow.match(new RegExp("^  "+name+":\\n([\\s\\S]*?)(?=^  [\\w-]+:|(?![\\s\\S]))","m"))?.[1]
+    assert(block?.includes(browser.reference),name)
+    assert(block.includes('uses: ./.github/actions/setup-ci'),name)
+    assert(!block.includes("playwright install --with-deps"),"Image must provide browser OS dependencies")
+  }
+  for(const app of ["cms","landing","renderer"]) assert.equal(JSON.parse(source("apps/"+app+"/package.json")).devDependencies?.playwright?.replace(/^[~^]/,"")??JSON.parse(source("apps/"+app+"/package.json")).dependencies?.playwright?.replace(/^[~^]/,""),browser.version)
+  assert(source("scripts/verify-image.mjs").includes('"--driver", "docker-container"'))
+  assert(source("scripts/verify-image.mjs").includes('"image=" + infrastructure.ciBuildkit.reference'))
+})
+
+test("container trust fixes only the checked-out workspace under mismatched ownership", () => {
+  const root=mkdtempSync(path.join(tmpdir(),"siab-git-trust-")), home=path.join(root,"home"), repo=path.join(root,"checkout"), other=path.join(root,"other")
+  for(const directory of [home,repo,other]) mkdirSync(directory)
+  const env={...process.env,HOME:home,XDG_CONFIG_HOME:path.join(root,"xdg"),GIT_CONFIG_GLOBAL:path.join(home,".gitconfig"),GIT_CONFIG_NOSYSTEM:"1"}
+  const git=(cwd,args,forced=false)=>spawnSync("git",args,{cwd,env:{...env,...(forced?{GIT_TEST_ASSUME_DIFFERENT_OWNER:"1"}:{})},encoding:"utf8"})
+  try {
+    for(const directory of [repo,other]) assert.equal(git(directory,["init"]).status,0)
+    writeFileSync(path.join(repo,"fixture"),"synthetic")
+    assert.equal(git(repo,["add","fixture"]).status,0)
+    assert.equal(git(repo,["-c","user.name=Synthetic","-c","user.email=fixture@example.test","commit","-m","fixture"]).status,0)
+    const refused=git(repo,["rev-parse","HEAD"],true)
+    assert.equal(refused.status,128);assert.match(refused.stderr,/dubious ownership/)
+    assert.equal(git(repo,["config","--global","--add","safe.directory",repo],true).status,0)
+    assert.equal(git(repo,["rev-parse","HEAD"],true).status,0)
+    assert.match(git(other,["status","--porcelain"],true).stderr,/dubious ownership/)
+    assert.equal(git(repo,["config","--global","--get-all","safe.directory"],true).stdout.trim(),repo)
+  } finally {rmSync(root,{recursive:true})}
+})
+
+test("shared CI setup preserves exact workspace trust, frozen dependencies and immutable actions", () => {
+  const setup = source(".github/actions/setup-ci/action.yml")
+  assert(setup.includes('git config --global --add safe.directory "$GITHUB_WORKSPACE"'))
+  assert(!setup.includes('safe.directory "*"'))
+  assert(setup.includes("pnpm install --frozen-lockfile"))
+  assert(setup.includes("package-manager-cache: false"))
+  assert(setup.includes("node-version-file: .nvmrc"))
+  for (const ref of ["actions/checkout@main", "./.github/actions/other", "./.github/actions/../outside", "docker://alpine:latest"]) {
+    assert.throws(() => assertImmutableActions("- uses: " + ref))
+  }
+  assertImmutableActions("- uses: ./.github/actions/setup-ci")
 })
