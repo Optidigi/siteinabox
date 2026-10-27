@@ -432,3 +432,22 @@ analysis blocker when coverage is absent. Native assessments remain blocked.
 The landing image additionally pins the age-eligible Alpine brotli-libs 1.2.1-r0
 and curl/libcurl 8.23.0-r0 fixes; an isolated container verifies those upgrades
 preserve Nginx 1.31.8. Fresh final-source image reports remain mandatory.
+
+## Exact candidate image reconciliation
+
+Canonical run 40530772192 passes every source, browser, worker and packaged-image
+build/startup check. Retained raw image inventories contain 174 findings versus
+287 before remediation: 114 obsolete identities disappear after actual package
+changes/removals; one explicit renderer Go-analysis gap is added. Ninety-four
+retained rows have current scanner metadata changes. No unresolved finding is
+waived. The landing image now has zero enumerated findings after its three
+pinned library fixes; that result alone is not full native qualification.
+
+All five changed native fingerprints remain blocked and are bound to the exact
+source/image/archive/report/native-inventory identities. The eight actual CMS
+runtime helper hashes and sizes match the owning root generator with Node
+24.22.1. Renderer analysis now explicitly includes its stripped Go target and
+missing scanner coverage. CMS's esbuild/unversioned component, PostgreSQL's gosu
+and OS findings, and cloudflared's dependency/provenance findings remain blockers.
+All seven unresolved deferrals and the original October 28 expiry are retained.
+Fresh final-source CI remains necessary after this evidence update.
