@@ -25,7 +25,11 @@ export function assertScannerPublisherEvidence(evidence, policy, identity, now =
 export async function readScannerPublisherEvidence(root) {
   let evidence
   try { evidence = JSON.parse(await readFile(resolve(root, "artifacts/dependency-source/dependency-source.json"), "utf8")) }
-  catch (error) { if (error.code === "ENOENT") return null; throw error }
+  catch (error) {
+    if (error.code !== "ENOENT") throw error
+    if (process.env.GITHUB_JOB === "image-verification") throw new Error("Canonical image verification requires the current-run publisher receipt")
+    return null
+  }
   const policy = JSON.parse(await readFile(resolve(root, "docs/dependency-security.json"), "utf8"))
   const inputs = await dependencyIdentities(root)
   return assertScannerPublisherEvidence(evidence, policy, {

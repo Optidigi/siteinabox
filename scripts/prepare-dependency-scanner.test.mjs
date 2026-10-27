@@ -42,3 +42,18 @@ test("shared scanner metadata rejects stale, substituted and tampered source/run
   tampered.facts[0].sha256 = publisherFactHash(tampered.facts[0].facts)
   assert.throws(() => assertScannerPublisherEvidence(tampered, policy, identity, now))
 })
+
+test("canonical image jobs cannot silently replace a missing receipt with live metadata", async () => {
+  const { readScannerPublisherEvidence } = await import("./scanner-publisher-evidence.mjs")
+  const root = await mkdtemp(join(tmpdir(), "siab-publisher-required-"))
+  const previous = process.env.GITHUB_JOB
+  try {
+    process.env.GITHUB_JOB = "image-verification"
+    await assert.rejects(readScannerPublisherEvidence(root), /requires the current-run publisher receipt/)
+    process.env.GITHUB_JOB = "standalone-publisher-fixture"
+    assert.equal(await readScannerPublisherEvidence(root), null)
+  } finally {
+    if (previous === undefined) delete process.env.GITHUB_JOB; else process.env.GITHUB_JOB = previous
+    await rm(root, { recursive: true, force: true })
+  }
+})
