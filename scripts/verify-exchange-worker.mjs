@@ -24,8 +24,13 @@ try {
   ownsBuilder = true
   docker(["buildx", "build", "--builder", builder, "--load", "--platform", infrastructure.verificationPlatform, "--label", "org.opencontainers.image.revision=" + source, "--tag", image, "ops/exchange-worker"])
   const imageId = docker(["image", "inspect", "--format", "{{.Id}}", image], true).trim()
-  docker(["run", "--rm", "--network", "none", "--memory", "2g", "--cpus", "1", "--entrypoint", "pwsh", "--mount", "type=bind,src=" + path.join(root, "ops/exchange-worker/Test-ExchangeWorker.ps1") + ",dst=/tests/contract.ps1,readonly", image,
-    "-NoLogo", "-NoProfile", "-NonInteractive", "-File", "/tests/contract.ps1", "-WorkerPath", "/app/Invoke-ExchangeWorker.ps1"])
+  for (const test of [
+    ["Test-ExchangeWorker.ps1", "-WorkerPath", "/app/Invoke-ExchangeWorker.ps1"],
+    ["Test-ExchangeModuleInstaller.ps1", "-InstallerPath", "/tests/source/Install-ExchangeModules.ps1"],
+  ]) {
+    docker(["run", "--rm", "--network", "none", "--memory", "2g", "--cpus", "1", "--entrypoint", "pwsh", "--mount", "type=bind,src=" + path.join(root, "ops/exchange-worker") + ",dst=/tests/source,readonly", image,
+      "-NoLogo", "-NoProfile", "-NonInteractive", "-File", "/tests/source/" + test[0], ...test.slice(1)])
+  }
   docker(["run", "-d", "--name", container, "--network", "none", "--memory", "2g", "--cpus", "1", "--read-only", "--tmpfs", "/tmp", "--tmpfs", "/home/exchange-worker:uid=10001,gid=10001,mode=0700", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true", "-e", "EXCHANGE_WORKER_SHARED_SECRET=" + secret, image])
   ownsContainer = true
   let health
@@ -48,11 +53,12 @@ try {
     limitation: "Actual offline image/HTTP proof only; no Microsoft connection, advisory clearance or publication authority." }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, "artifact-path=" + directory + "\n")
 } catch (error) {
+  await writeFile(path.join(directory, "worker.log"), String(error?.stack ?? error) + "\n")
   if (ownsContainer) {
     try {
       const logs = spawnSync("docker", ["logs", container], { encoding: "utf8", timeout: 10000 })
       const state = docker(["inspect", container, "--format", "{{json .State}}"], true)
-      await writeFile(path.join(directory, "worker.log"), (logs.stdout ?? "") + (logs.stderr ?? "") + state)
+      await appendFile(path.join(directory, "worker.log"), (logs.stdout ?? "") + (logs.stderr ?? "") + state)
     } catch { /* Retain whatever diagnostics exist. */ }
   }
   throw error

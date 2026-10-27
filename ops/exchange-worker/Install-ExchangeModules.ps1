@@ -8,7 +8,10 @@ foreach ($module in $modules) {
   $version = [string]$module.version
   $archive = Join-Path ([System.IO.Path]::GetTempPath()) "$name.$version.zip"
   try {
-    Invoke-WebRequest -Uri "https://www.powershellgallery.com/api/v2/package/$name/$version" -OutFile $archive
+    # This is the official redirect target of the Gallery package API.
+    $packageId = $name.ToLowerInvariant()
+    Write-Host "Downloading pinned $name $version from the PowerShell Gallery CDN"
+    Invoke-WebRequest -Uri "https://cdn.powershellgallery.com/packages/$packageId.$version.nupkg" -OutFile $archive -MaximumRetryCount 2 -RetryIntervalSec 2 -ConnectionTimeoutSeconds 20 -OperationTimeoutSeconds 120
     if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$module.sha256) {
       throw "Module checksum mismatch: $name"
     }

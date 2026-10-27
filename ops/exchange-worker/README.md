@@ -32,9 +32,11 @@ pins the Exchange module and its PowerShellGet/PackageManagement dependencies by
 version and SHA256. The installer downloads exact official Gallery archives,
 checks their bytes and manifests, and imports the Exchange module without
 connecting to Microsoft. These archive hashes were checked against the Gallery
-SHA512 package metadata. This avoids the Gallery version-search endpoint, which
-returned 404 during the first image qualification despite direct package
-availability. Changing module bytes requires a reviewed catalog update. The native PowerShell contract test loads the actual worker job
+SHA512 package metadata. The installer uses the official CDN URLs returned by the Gallery package API,
+with bounded retries and timeouts; both the version-search and package API
+frontends returned 404 during image qualification despite CDN availability.
+The offline installer test proves that incorrect bytes are rejected before
+extraction or manifest use. Changing module bytes requires a reviewed catalog update. The native PowerShell contract test loads the actual worker job
 function and substitutes Exchange commands; it checks delegated identity,
 read access, licensed-mailbox protection, alias conflicts and DKIM DNS gating.
 It never connects to Microsoft. Run an authenticated `/health` smoke on the
