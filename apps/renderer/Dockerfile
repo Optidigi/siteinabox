@@ -8,7 +8,7 @@ RUN sh /native-recipes/build.sh esbuild-0.28.2
 
 FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS builder
 WORKDIR /repo
-COPY ops/native-components/Test-Esbuild.mjs /repo/ops/native-components/Test-Esbuild.mjs
+COPY ops/native-components/Test-Esbuild.mjs ops/native-components/Install-Esbuild.sh /repo/ops/native-components/
 RUN apk add --no-cache libc6-compat \
   && npm install -g pnpm@12.14.0
 
@@ -36,12 +36,7 @@ RUN pnpm --filter @siteinabox/renderer build \
 # Replace in the build output so vulnerable vendor bytes never enter runtime layers.
 RUN --mount=from=native-tools,source=/out,target=/native,ro \
     node ops/native-components/Test-Esbuild.mjs 0.28.2 /native/esbuild \
- && target=/app/node_modules/.pnpm/@esbuild+linux-x64@0.28.2/node_modules/@esbuild/linux-x64/bin/esbuild \
- && test -x "$target" \
- && test "$("$target" --version)" = "0.28.2" \
- && cp /native/esbuild "$target" \
- && chmod 0755 "$target" \
- && test "$("$target" --version)" = "0.28.2" \
+ && sh ops/native-components/Install-Esbuild.sh /app 0.28.2 /native/esbuild \
  && mkdir -p /app/native-notices/esbuild-0.28.2 \
  && cp -R /native/notices/. /app/native-notices/esbuild-0.28.2/
 

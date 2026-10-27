@@ -9,7 +9,7 @@ RUN sh /native-recipes/build.sh esbuild-0.25.12
 # 1. Build
 FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS builder
 WORKDIR /repo
-COPY ops/native-components/Test-Esbuild.mjs /repo/ops/native-components/Test-Esbuild.mjs
+COPY ops/native-components/Test-Esbuild.mjs ops/native-components/Install-Esbuild.sh /repo/ops/native-components/
 RUN apk add --no-cache libc6-compat
 RUN npm install -g pnpm@12.14.0
 
@@ -58,12 +58,7 @@ RUN --network=none pnpm --filter siab-payload payload generate:types \
 # Replace in the build output so vulnerable vendor bytes never enter runtime layers.
 RUN --mount=from=native-tools,source=/out,target=/native,ro \
     node ops/native-components/Test-Esbuild.mjs 0.25.12 /native/esbuild \
- && target=/repo/apps/cms/.next/standalone/node_modules/.pnpm/@esbuild+linux-x64@0.25.12/node_modules/@esbuild/linux-x64/bin/esbuild \
- && test -x "$target" \
- && test "$("$target" --version)" = "0.25.12" \
- && cp /native/esbuild "$target" \
- && chmod 0755 "$target" \
- && test "$("$target" --version)" = "0.25.12" \
+ && sh ops/native-components/Install-Esbuild.sh /repo/apps/cms/.next/standalone 0.25.12 /native/esbuild \
  && mkdir -p /repo/apps/cms/.next/standalone/native-notices/esbuild-0.25.12 \
  && cp -R /native/notices/. /repo/apps/cms/.next/standalone/native-notices/esbuild-0.25.12/
 
