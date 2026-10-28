@@ -49,7 +49,8 @@ uniquely named containers/network and temporary database/media, then cleans them
 up. It never connects to application provider accounts. CMS jobs are disabled
 and AI uses mocks. The renderer bundles its existing deterministic host-routing
 fixture into the disposable container before importing the actual server entry.
-Its mock CMS stays on container loopback and the test port binds only host
+The harness checks the configured production command and retains the governed
+Node entrypoint. Its mock CMS stays on container loopback and the test port binds only host
 loopback; qualification needs no host-gateway access or firewall changes. The landing image runs its actual Nginx health contract.
 
 Each successful run writes an archive and JSON evidence under ignored

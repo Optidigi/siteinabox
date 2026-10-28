@@ -8,6 +8,7 @@ import { promisify } from "node:util"
 
 import {
   assertHostRouting,
+  assertPackagedRendererStartup,
   getOpenPort,
   TEST_RENDERER_API_TOKEN,
   TEST_RENDERER_ORIGIN_SECRET,
@@ -32,6 +33,8 @@ async function docker(args, options = {}) {
 }
 
 try {
+  const { stdout: config } = await docker(["image", "inspect", "--format", "{{json .Config}}", imageTag])
+  assertPackagedRendererStartup(JSON.parse(config))
   await chmod(dataDir, 0o755)
   // Bundle the existing fixture once; its TypeScript workspace imports must not
   // rely on host paths or type stripping under the production node_modules.
@@ -56,8 +59,6 @@ try {
     "-d",
     "--name",
     containerName,
-    "--entrypoint",
-    "node",
     "-e",
     "HOST=0.0.0.0",
     "-e",
@@ -77,6 +78,7 @@ try {
     "--mount",
     `type=bind,src=${fixture},dst=/app/siab-smoke/host-routing-harness.mjs,readonly`,
     imageTag,
+    "node",
     "--input-type=module",
     "--eval",
     'const {startStubCms}=await import("/app/siab-smoke/host-routing-harness.mjs"); const cms=await startStubCms(); process.env.SIAB_CMS_URL=cms.url; await import("/app/dist/server/entry.mjs");',

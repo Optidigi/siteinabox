@@ -1,3 +1,4 @@
+import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises"
@@ -81,4 +82,11 @@ test("routes production hosts through canonical snapshots and keeps 404s analyti
     return output
   })
   await assertHostRouting(baseUrl, () => output, { includeMalformedEncodedPath: false })
+})
+
+test("packaged startup proof rejects changed configured commands and entrypoints", async () => {
+  const { assertPackagedRendererStartup } = await import("./host-routing-harness.mjs")
+  const config = { Entrypoint: ["docker-entrypoint.sh"], Cmd: ["node", "./dist/server/entry.mjs"], WorkingDir: "/app" }
+  assertPackagedRendererStartup(config)
+  for (const change of [{ Entrypoint: null }, { Entrypoint: ["wrong-entrypoint"] }, { Cmd: ["node", "missing.mjs"] }, { WorkingDir: "/wrong" }]) assert.throws(() => assertPackagedRendererStartup({ ...config, ...change }))
 })
