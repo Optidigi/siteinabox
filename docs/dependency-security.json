@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-29T14:20:01.721Z",
   "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
   "graphHash": "106cc363a278a71c32c6ebab4fc92bd8f05e93be38315a027c7c748777b42f9c",
-  "configurationHash": "3911f81c150e09155011761315c0ac3047c6d080bfc5dda43865517ac5c9d02e",
+  "configurationHash": "cff0d3e6565f0e7a5c3bdbffcddd7ad551e0c470a26bbea7f7df49259985fd70",
   "scope": "Exact frozen full/production graph and configuration; five owned images plus pinned cloudflared. Inventory qualification only; unresolved findings and native/deferral blockers prohibit release.",
   "publisherFacts": [
     {
@@ -1334,7 +1334,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "aaf1576ce3dac89626794c85fe60158fb3325370a6cde07cc8220a0643ae172c",
+      "factsHash": "a0123944e872db8dfd01007e31a499767c52a71f02ba7bc3755f96256a300358",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1372,7 +1372,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "0ffc87b12c3de405e24bb93922798d675ea1700600f3c1cc2e2fd67c28b96908",
+      "factsHash": "687e088ff1690e10779c62066ccc37bebe483bc82c9d4963e0c758a9c87205d3",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-19542 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1410,7 +1410,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a642b0880647c37284a13c204a606b130682874dc07feec40d21f0760b6f3bba",
+      "factsHash": "2fe82945853412c66f4cc3f0622eff9e577cf2ee2decc68558278c7f4621629f",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-5435 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1429,7 +1429,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "30588ddf5e564a0caf88665a00cab406df7cf1345fbb186cfee414c95d2cd563",
+      "factsHash": "099aa0e2de5198a8b1eaf7c7b1329849f6772daf7917b3a88afae49d5655ddda",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6238 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1448,7 +1448,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "936f1ae8335b5e78fc1ebcceb36cbdafe10f8044d4541c4053fa2cdd1b9f85ca",
+      "factsHash": "e1ff6d51ca78519a43556b9ba9b7f28b6d304bf9882fc88074238aa748988c56",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6368 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1467,7 +1467,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "c462ff8653d85a7860b0580cef9919e373a8821345e1ad7953e567ec7d021f24",
+      "factsHash": "5c6f650e9990c1f3b46a3f928b9b46a9985decabe807f33254afe7bb5c0cc115",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6791 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1486,7 +1486,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "4b039eb074de5fcbc651708bb84ad9571a29325942338670f2b982c766573350",
+      "factsHash": "e94c991b3f079e143e13f398ff86c3eb6179c6b2ffaba1ef8023ec86fac5589f",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-77117 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1524,7 +1524,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "58a425625170fce9d9c1d4eb449a10e9ff0293a49e1f4e5c205563db68399e94",
+      "factsHash": "21ef882b8c2998fffb50c94753eb362a307362ff24861b4ab1e3badc8506cea0",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-80489 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1810,7 +1810,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "410cf337b0ed710c5a3df3d6e2346a1ef918102d9460e37818d00a701b8d1f8a",
+      "factsHash": "f09b47c26fb44f8850c41e04cbcac40346bf8feb891d14be37f27b895bf8d575",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-103111 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1867,7 +1867,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cd98c7e93fb3745d86aa9117c10c16e871e047ebcfc4360508845cb425f56ccf",
+      "factsHash": "acc7781209c4c03be10b25a6131504ddf556d72bc128918633f543d4a78acc96",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1886,7 +1886,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cd98c7e93fb3745d86aa9117c10c16e871e047ebcfc4360508845cb425f56ccf",
+      "factsHash": "acc7781209c4c03be10b25a6131504ddf556d72bc128918633f543d4a78acc96",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libc6 2.39-0ubuntu8.9 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1905,7 +1905,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "e9ee23d08434852dfc05d3e93e57e8d511d2ef4b75f63458768f5b434312f634",
+      "factsHash": "5f9b249d7d10cab58fa7e42348c6ed0dbdc48c953668443e2255f352ca24b8f1",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18477 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -1924,7 +1924,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "2562c0540951de90df0c7abd2c64b9f0b1c3b96be993579c852971023f9b35f3",
+      "factsHash": "c8008fd4813f4b14910ca463625710c568dac0bea54a4fd922425498953dbb1a",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18508 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2059,7 +2059,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "d4b2407d186b3aa066b6a49a00e8504ca4f0962ae239cce415d323701c5f375a",
+      "factsHash": "9f44c7114859f9f9ba774f35268d8013c7a24377f98f659f48f0661aeeb3a9e2",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-86145 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2154,7 +2154,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5ac22f141f4214248c3709f4d43230dc4789115750f052004affbae4f3dea4ed",
+      "factsHash": "70800223cc3c37464f6840162c8850222f4669637b1c48b7e017fe393d5442bb",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89156 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2173,7 +2173,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "c1471c271efb825d00dcc7eafde179877cc6481211b4f1c73e8f4bca88f8b1b0",
+      "factsHash": "37d553e3ab82898df667c18e366d77ca3b62173769c4d5e11107b9d716a1780f",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89157 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2192,7 +2192,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "6ea954d4adf284584b962774387ea8364141a2d2dfb0afd5f477edba195d9f9d",
+      "factsHash": "dbcf1553160a4d5f4a5a71206265625a8a6393684ad6a58d2556d5b6f478f82a",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89158 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2211,7 +2211,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "bd7ab90ae1acbad64640c5bc8c2881f45598bc8fcc287090a396742973d17ff5",
+      "factsHash": "82e9ab54a3d0483f10b46c2cd25dfe95ca549a97eb1dc28c8961cc0b7eff0839",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89160 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2230,7 +2230,7 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5f4dc44ee32c64f3a1896ad43d1e60d730c57ae5ed4baf65c634f1378d20f051",
+      "factsHash": "0b2e40c1ec971c570263a7ef4f5cadf13a20e523915ae211f9cd1da83d940cdd",
       "classification": "analysis_gap",
       "releaseBlocked": true,
       "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
@@ -2695,6 +2695,7 @@
     "Pkcs Windows-only scope is preserved without claiming Linux exploitability. EXO separately retains a Linux-relevant affected-version copy. Unresolved native/managed/vendor mappings and advisory provenance cannot be cleared by an absence of scanner findings.",
     "Baseline identities are manual exact-source packaged diagnostics, never substitutes for final same-source hosted checks, archive transfer, support qualification, approval, publication or deployment. No hosted run ID is invented.",
     "All seven unresolved deferrals remain release-blocking; the separate supported Vitest deferral remains unchanged in classification. The new 24-hour review window is backed by fresh primary facts and exact byte reconciliation, not an expiry-only extension.",
-    "No live-provider, Tap2case, production recovery, publication, deployment or risk-acceptance gate is cleared."
+    "No live-provider, Tap2case, production recovery, publication, deployment or risk-acceptance gate is cleared.",
+    "Hosted run 40708904946 retains the same 64 review rows and six native fingerprints. Nineteen later reference-set updates in libc, PCRE2 and tar advisory metadata are reconciled from exact raw reports; paths, versions, fixes, selected severities and all release blockers are unchanged. Registry/HTTP/runtime checks passed; aggregate qualification awaits the corrected worker artifact layout. No expiry extension."
   ]
 }
