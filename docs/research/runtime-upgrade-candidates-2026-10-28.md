@@ -56,3 +56,33 @@ Additional checksums: [Node linux-x64 tar.xz](https://nodejs.org/dist/v26.12.1/S
 Verify Node 26 engines/peer ranges across the actual pnpm graph, native ABI **147**, Alpine/musl support, esbuild execution and all app production builds. Run renderer and CMS request smoke tests. Upgrade Playwright package/lockfile and every browser container together; run existing browser smoke and visual comparisons. Check Nginx configuration/reload, static routing and health checks. Preserve PostgreSQL startup, ownership switching, persistence and backup/restore tests. Inspect final cloudflared image binary metadata and package reachability before tunnel/DNS/TLS smoke tests. For EXO, import under 7.6.9 and record actual loaded assembly locations/product versions without tenant operations. Re-inventory final native/managed files with Trivy 0.76.1 and reconcile exact advisory/platform ranges. No tests or rollout were executed by this research task.
 
 Further dependency eligibility evidence: the [Go module proxy's x/net latest record](https://proxy.golang.org/golang.org/x/net/@latest) returns **0.62.0**, timestamp **2026-10-27 19:00:16Z**, source revision `3de643db506517b3e652a13cc0b56034cea6b8e6`. It is only **20h35m45s** old at observation, hence **ineligible under the 24-hour requirement**, even before considering rebuild compatibility. The [go-jose latest record](https://proxy.golang.org/github.com/go-jose/go-jose/v4/@latest) returns **4.1.6**, timestamp **October 14 22:46:21Z**, source revision `a0111f82742fa92bceec9ede40845e73319e6230`, old enough to qualify as a dependency candidate, but absent from the inspected vendor binary. The [x/crypto record](https://proxy.golang.org/golang.org/x/crypto/@latest) returns **0.58.0**, timestamp **October 9 16:24:17Z**: cloudflared already uses that latest module. This strengthens the need for package-level OpenPGP analysis rather than an invented fixed module version. Proxy timestamps identify source versions, not proof that a cloudflared publisher release incorporates them. Independently checking the Node release index confirms **24.22.1, October 20, Krypton** as its newest entry explicitly marked LTS. Candidate recommendations therefore preserve the distinction between release availability, support channel, dependency remediation and artifact qualification.
+
+## Subsequent packaged qualification
+
+The implementing agent subsequently verified CMS, renderer, site and owned
+PostgreSQL at `2e227ae4`; their Trivy 0.76.1 inventories contain no findings or
+analysis gaps. Worker qualification at `d1663041` passes module/installer,
+runtime-inventory, authenticated health and unauthenticated-rejection checks.
+These local receipts precede required final-source hosted CI and publication.
+
+The actual cloudflared OCI executable has SHA256
+`5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db`,
+different from the release-download executable above. Govulncheck **1.9.0**
+binary symbol analysis retains GO-2026-5932/6860/6866 only at module level.
+Its extraction enumerates **34,609** symbols, with no OpenPGP or `x/net/html`
+package. Scoped nonaffected decisions bind to this OCI binary's native
+fingerprint. The go-jose RSA private-key parser remains present; its high finding
+is unresolved. [Debian DSA-6572-1](https://lists.debian.org/debian-security-announce/2026/msg00487.html)
+also confirms the old CA bundle needs `20250419+deb13u1`; unknown scanner severity
+and incomplete advisory aliases remain blocking. No release clearance is claimed.
+
+Worker import and an explicit `Assembly.LoadFrom` request for the module's old
+private Pkcs both resolve to host **10.0.14**, exclusively in the Default context.
+This follows [.NET assembly resolution rules](https://learn.microsoft.com/en-us/dotnet/core/dependency-loading/understanding-assemblyloadcontext).
+The retained inventory binds requested/resolved paths and hashes, all loaded
+Pkcs paths, and the worker entrypoint hash; the verifier rejects a changed
+entrypoint, old host patch or alternate resolution. The old DLL stays inventoried.
+PE-header inspection also classifies 12 unmanaged Windows-native DLLs separately
+from managed assemblies; two absent-target compatibility links retain their
+targets without inventing component bytes. Corrupt/unclassified DLLs still fail
+coverage. These concrete results replace the previous worker mapping gaps.

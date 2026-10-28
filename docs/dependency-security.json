@@ -540,10 +540,10 @@
       ],
       "factsHash": "714a408726c750d22716b34634aae534ecdcddff3ebbc81a7c35ddf3aa2ec7ef",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2010-4756 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2010-4756. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -560,10 +560,10 @@
       ],
       "factsHash": "d2b4353cb48eddb7969582ca8e25338a28b5851d5c1cbe26d6d1087548a78954",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2018-20796 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2018-20796. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -580,10 +580,10 @@
       ],
       "factsHash": "975de518698737afe8c54e95741d1676073061996df095bf99a42cefc458beb8",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010022 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010022. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -600,10 +600,10 @@
       ],
       "factsHash": "52b2781f78ca4014934981a7d4345f31788eb3ab1ad10a23ad05ae1aefbf1c56",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010023 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010023. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -620,10 +620,10 @@
       ],
       "factsHash": "38fb071c2b6faa25812b754d38e8f32fcfc1d50f736ed3467ff8b75d5b575748",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010024 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010024. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -640,10 +640,10 @@
       ],
       "factsHash": "714a408726c750d22716b34634aae534ecdcddff3ebbc81a7c35ddf3aa2ec7ef",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010025 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010025. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -660,30 +660,10 @@
       ],
       "factsHash": "49a417cd97cf0ceda123cdf1dc4934acb17c2f3d90f594a30bd70968780a6577",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-9192 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-9192. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-114437",
-      "package": "github.com/go-chi/chi/v5",
-      "version": "v5.3.1",
-      "severity": "moderate",
-      "paths": [
-        "usr/local/bin/cloudflared"
-      ],
-      "factsHash": "98e58236ec7085239e59e7054d32382fd8009e505b4ef2bb7ff58429735cc1b8",
-      "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates github.com/go-chi/chi/v5 v5.3.1 with CVE-2026-114437 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -700,10 +680,10 @@
       ],
       "factsHash": "69d84e6dab0afd9d1f0f8adf7e37c8f37f94064879ba73e4565658f24b6a71ef",
       "state": "under_investigation",
-      "reason": "Current cloudflared bytes contain go-jose/v4 v4.1.4. Primary GitHub advisory and retained scanner identify the affected package range with v4.1.6 as the fix. Exact binary reachability and supported publisher remediation remain unqualified; this new finding remains release-blocking.",
+      "reason": "Current exact-image inventory reports github.com/go-jose/go-jose/v4 v4.1.4 with CVE-2026-116587. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
@@ -721,10 +701,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -741,10 +721,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-19499 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-19499. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -761,10 +741,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-19542 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-19542. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -781,10 +761,10 @@
       ],
       "factsHash": "da5db8d38dc65af10a15e6e641311c595128138649bb5121b170335edfe8a1c1",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-27171 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-27171. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -801,10 +781,10 @@
       ],
       "factsHash": "1138e0bc7c49d3fdb1c10bcbf81850fd078e9f7a01db1d3cab459666963b98e3",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-5435 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-5435. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -821,10 +801,10 @@
       ],
       "factsHash": "1138e0bc7c49d3fdb1c10bcbf81850fd078e9f7a01db1d3cab459666963b98e3",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6238 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6238. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -841,10 +821,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6368 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6368. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -861,10 +841,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6791 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6791. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -881,10 +861,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-77117 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-77117. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -900,16 +880,28 @@
         "usr/local/bin/cloudflared"
       ],
       "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
-      "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates golang.org/x/net v0.61.0 with CVE-2026-78661 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
         "GO-2026-6860"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-6860"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+        "binding": {
+          "scope": "image:cms-cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
+          "advisoryHash": "19302814046b08e41ebf083a0d52faa18b98332ef2a9c6a7c0a18eb07158d38e"
+        }
+      }
     },
     {
       "scope": "image:cms-cloudflared",
@@ -922,10 +914,10 @@
       ],
       "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-80489 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-80489. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -942,10 +934,10 @@
       ],
       "factsHash": "7146bbbfa0f10b9275905cdc0c5ed6ad542649602a33157ae4f3be1f492bbc02",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-85091 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-85091. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -962,10 +954,10 @@
       ],
       "factsHash": "d3fa3ea5fac9a63faa77a83b98c88287883ee9254a8a4949bc232601d34ec9be",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-8674 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-8674. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -982,10 +974,10 @@
       ],
       "factsHash": "870e2b2ebb56a5b3e0873cf1213fe15ed63f293372ac59e9b0dee7e2d0dc69d4",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-86805 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-86805. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -1002,10 +994,10 @@
       ],
       "factsHash": "8106b481012881d280fd51d683460205a16aaceb7252baa49b5d95d5189107cc",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-89092 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -1022,10 +1014,10 @@
       ],
       "factsHash": "870e2b2ebb56a5b3e0873cf1213fe15ed63f293372ac59e9b0dee7e2d0dc69d4",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-95818 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-95818. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -1041,16 +1033,28 @@
         "usr/local/bin/cloudflared"
       ],
       "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
-      "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates golang.org/x/net v0.61.0 with CVE-2026-97045 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
         "GO-2026-6866"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-6866"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+        "binding": {
+          "scope": "image:cms-cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
+          "advisoryHash": "2288f4f4d6f0b63c2c2bc6854e65a29e25345b43feb412b8d51c20637bf0dbb6"
+        }
+      }
     },
     {
       "scope": "image:cms-cloudflared",
@@ -1063,10 +1067,10 @@
       ],
       "factsHash": "3fc98994e71627e68de81dfd03163a53d59f6801062818dff8b78e780fbc55c7",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-97399 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-97399. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -1083,10 +1087,10 @@
       ],
       "factsHash": "0ff16563df300cd9f2e2c26965fe6634a19445a1bef8e30eb082379dc58c084b",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates ca-certificates 20250419 with DSA-6572-1 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Debian DSA-6572-1 identifies compromised CA certificates and fixes ca-certificates at 20250419+deb13u1; the publisher image retains 20250419. Scanner severity is unknown, so release remains blocked pending remediation; https://lists.debian.org/debian-security-announce/2026/msg00487.html.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
@@ -1102,16 +1106,28 @@
         "usr/local/bin/cloudflared"
       ],
       "factsHash": "5796482b71ed465ce25f589ea10148b835cceec0ffb53b19efcad6afaae8e952",
-      "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates golang.org/x/crypto v0.58.0 with GO-2026-5932 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
         "GO-2026-5932"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-5932"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+        "binding": {
+          "scope": "image:cms-cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
+          "advisoryHash": "9b6de7aedbf0c766aeadc0e3aa4e48d8b758194d08ddca82323a062f148e4d73"
+        }
+      }
     },
     {
       "scope": "image:exchange-worker",
@@ -1124,10 +1140,10 @@
       ],
       "factsHash": "2ef56cb9e40635cc6c0555fbf01e3917c732d147b24c083bd5e880571c13038d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates login 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports login 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1144,10 +1160,10 @@
       ],
       "factsHash": "2ef56cb9e40635cc6c0555fbf01e3917c732d147b24c083bd5e880571c13038d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates passwd 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports passwd 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1164,10 +1180,10 @@
       ],
       "factsHash": "108534fe1d7508d6ba5c60c86fb9d2ede57cc7f87cbde64a2b7f6ed4e6eec9e7",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libicu74 74.2-1ubuntu3.1 with CVE-2025-5222 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libicu74 74.2-1ubuntu3.1 with CVE-2025-5222. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1184,10 +1200,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates dash 0.5.12-6ubuntu5 with CVE-2026-102473 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports dash 0.5.12-6ubuntu5 with CVE-2026-102473. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1204,10 +1220,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates dash 0.5.12-6ubuntu5 with CVE-2026-102474 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports dash 0.5.12-6ubuntu5 with CVE-2026-102474. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1224,10 +1240,10 @@
       ],
       "factsHash": "aaf193d28bffc2ec907af39a6d46e091d5d0f79fd29760c2f1be47a79aafee81",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-103111 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-103111. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1244,10 +1260,10 @@
       ],
       "factsHash": "1cd4c5c7ca3a46bc9d45725143bc8eeb1144b898717483005884ecc661c2017d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libsasl2-2 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libsasl2-2 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1264,10 +1280,10 @@
       ],
       "factsHash": "1cd4c5c7ca3a46bc9d45725143bc8eeb1144b898717483005884ecc661c2017d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libsasl2-modules-db 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libsasl2-modules-db 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1284,10 +1300,10 @@
       ],
       "factsHash": "cadf12c535175b3cc478f1e99f7680d836f41c3335b65ea1c89d868cc464491c",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1304,10 +1320,10 @@
       ],
       "factsHash": "cadf12c535175b3cc478f1e99f7680d836f41c3335b65ea1c89d868cc464491c",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.39-0ubuntu8.9 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1324,10 +1340,10 @@
       ],
       "factsHash": "f45c5d4aa469ad6f13d867e2d72f9be372c0e1f8b0fbef7b4e510a1337461435",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18477 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18477. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1344,10 +1360,10 @@
       ],
       "factsHash": "d574670827185c763526e0b13c27ae81ee74cb3bebc25bede9c73388a17583e9",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18508 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18508. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1364,10 +1380,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates liblmdb0 0.9.31-1build1 with CVE-2026-22185 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports liblmdb0 0.9.31-1build1 with CVE-2026-22185. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1384,10 +1400,10 @@
       ],
       "factsHash": "e6cbc68e531af999099b316eb09ad771647fbd2e6e03fc599c657372e943e943",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libsystemd0 255.4-1ubuntu8.18 with CVE-2026-40228 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libsystemd0 255.4-1ubuntu8.18 with CVE-2026-40228. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1404,10 +1420,10 @@
       ],
       "factsHash": "e6cbc68e531af999099b316eb09ad771647fbd2e6e03fc599c657372e943e943",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libudev1 255.4-1ubuntu8.18 with CVE-2026-40228 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libudev1 255.4-1ubuntu8.18 with CVE-2026-40228. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2027-01-26T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1424,10 +1440,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-67693 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-67693. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1444,26 +1460,26 @@
       ],
       "factsHash": "25f8f68d7ebd9897520c4b9ebb9e1cb81db86b3ed86132b5b870c7f50b93b2ee",
       "state": "not_affected",
-      "reason": "Microsoft explicitly limits CVE-2026-70162 to Windows; this exact component inventory runs under Linux/amd64. This does not clear the separate Linux-relevant Pkcs advisory.",
+      "reason": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
         "GHSA-2fmv-rv2c-59x7"
       ],
       "evidence": {
+        "sources": [
+          "GHSA-2fmv-rv2c-59x7"
+        ],
+        "justification": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "2b5469baab6aeb90802abfda165c0cd4902661bd2c1b724fe470ad91bb5f7ea2",
+          "fingerprint": "2d2649ba42b77ed4399cff3cd0bf4a3cd3e4df4a2ff5c7ba6329f27dc1598683",
           "advisoryHash": "6500b316d2468e37a1cd89762046b9d21f7e20aa278e48d9d463a3cfbf0c91ca"
-        },
-        "justification": "Microsoft explicitly limits CVE-2026-70162 to Windows; this exact component inventory runs under Linux/amd64. This does not clear the separate Linux-relevant Pkcs advisory.",
-        "sources": [
-          "GHSA-2fmv-rv2c-59x7"
-        ]
+        }
       }
     },
     {
@@ -1476,16 +1492,28 @@
         "usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/Microsoft.Exchange.Management.ExoPowershellGalleryModule.deps.json"
       ],
       "factsHash": "451150da705808aafd0871121c85542c97eef5ab5498acc154eda1914783d191",
-      "state": "under_investigation",
-      "reason": "EXO 3.10.1 contains a separate Pkcs 10.0.0 copy inside the affected stable range despite PowerShell carrying 10.0.14. Primary Microsoft advisory includes Linux. Actual loading/reachability and a supported module remediation remain unqualified; release is blocked.",
+      "state": "not_affected",
+      "reason": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
         "GHSA-846f-f764-76mx"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GHSA-846f-f764-76mx"
+        ],
+        "justification": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
+        "binding": {
+          "scope": "image:exchange-worker",
+          "platform": "linux/amd64",
+          "fingerprint": "2d2649ba42b77ed4399cff3cd0bf4a3cd3e4df4a2ff5c7ba6329f27dc1598683",
+          "advisoryHash": "b2cd691e802c1d6154de6a7b2c80e09732aa44e944c330544940033910788859"
+        }
+      }
     },
     {
       "scope": "image:exchange-worker",
@@ -1498,10 +1526,10 @@
       ],
       "factsHash": "8de7f1c5880c5f0845c867c0364b69ebeb565cfe39b8d7991a482a567d1ff104",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-86145 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-86145. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1518,10 +1546,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88647 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88647. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1538,10 +1566,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88648 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88648. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1558,10 +1586,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc-bin 2.39-0ubuntu8.9 with CVE-2026-89092 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1578,10 +1606,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libc6 2.39-0ubuntu8.9 with CVE-2026-89092 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1598,10 +1626,10 @@
       ],
       "factsHash": "8ee5f056be81fec897ddc92b19f47def46acb28c0602b4da68eb7b2fecfde4bd",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89156 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89156. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1618,10 +1646,10 @@
       ],
       "factsHash": "05aa67c7e94a4aec5f6e8e344db26c87caf6797658815eac5799ded5195f5239",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89157 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89157. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1638,10 +1666,10 @@
       ],
       "factsHash": "788903ead309077cee547a22726aa70f45cbd25a4efa72d9016124060f75bead",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89158 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89158. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1658,10 +1686,10 @@
       ],
       "factsHash": "8ee5f056be81fec897ddc92b19f47def46acb28c0602b4da68eb7b2fecfde4bd",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89160 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89160. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1678,10 +1706,10 @@
       ],
       "factsHash": "74621f1d4bb912dcb3a0dacde77583fa3de20e2fd7f75512c550e3207de1bd04",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89161. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1698,10 +1726,10 @@
       ],
       "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1718,10 +1746,10 @@
       ],
       "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates bind9-host 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports bind9-host 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1738,10 +1766,10 @@
       ],
       "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates bind9-libs 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports bind9-libs 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1758,10 +1786,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95184 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95184. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1778,10 +1806,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95209 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95209. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1798,43 +1826,10 @@
       ],
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95210 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95210. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-27T16:40:34.876Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "WORKER_NATIVE_MAPPING_INCOMPLETE",
-      "package": "powershell-module-native-inspection",
-      "version": "0.76.0",
-      "severity": "unknown",
-      "paths": [
-        "/opt/microsoft/powershell/7/libcrypto.so.1.0.0",
-        "/opt/microsoft/powershell/7/libssl.so.1.0.0",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/msvcp140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/runtimes/win-arm64/native/msalruntime_arm64.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/runtimes/win-x64/native/msalruntime.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/runtimes/win-x86/native/msalruntime_x86.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/vcruntime140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/vcruntime140_1.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/msvcp140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/runtimes/win-arm64/native/msalruntime_arm64.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/runtimes/win-x64/native/msalruntime.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/runtimes/win-x86/native/msalruntime_x86.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/vcruntime140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/vcruntime140_1.dll"
-      ],
-      "factsHash": "3b10db82a269eba3d3a7470d528c4aeb6f38af2e4bf7eee8a8b9bbf6dc7ea87b",
-      "state": "under_investigation",
-      "reason": "All 14 retained worker paths remain explicit mapping gaps: two unresolved compatibility-library links and 12 non-managed DLLs, including alternate-platform copies. Retaining hashes is not complete advisory/native coverage; no path is omitted or assigned invented bytes.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T16:40:34.876Z",
-      "deadline": "2026-11-04T16:40:34.876Z",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1845,6 +1840,6 @@
     "Raw scanner/audit findings are retained; current candidate scans and final-source hosted verification remain required.",
     "Generic manual native blockers and duplicated qualification deferrals are replaced by validated finite coverage/support and owning functional-test requirements.",
     "High/critical, known-exploited and missing required coverage remain blocking. Lower-severity tracking is not a safety declaration.",
-    "No wildcard suppression, automatic exception, registry publication, production/provider write or Tap2case provisioning is authorized."
+    "This review record grants no wildcard suppression or automatic exception. Publication, deployment and provider writes require separate task-specific authorization."
   ]
 }
