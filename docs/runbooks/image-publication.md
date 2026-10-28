@@ -28,7 +28,10 @@ Each saved archive binds the selected tag (or immutable vendor reference),
 source, platform, config, layers and rootfs. Docker may expose a config digest,
 platform manifest digest or parent index digest as the loaded image ID. Nested
 OCI indexes are hash-verified through the selected AMD64 manifest; vendor
-collection also checks the observed registry reference. Admission verifies the actual relationship, preserves both identities,
+collection also checks the observed registry reference. If Docker exports only
+the platform image, collection retains hash-verified immutable registry root and
+platform manifests, binds their config and layer/rootfs identities to the archive,
+and preserves that proof for offline rescanning. No parent index is invented. Admission verifies the actual relationship, preserves both identities,
 and records the observed publication image ID separately. The scanner continues
 to report the archive config identity; its output is never rewritten.
 

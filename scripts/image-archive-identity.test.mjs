@@ -89,5 +89,30 @@ test("digest-only vendor archives bind their platform manifest through the pinne
     assert.deepEqual(identity.indexDigests, ["sha256:" + indexHash])
     assertLoadedImageIdentity(identity, { Id: "sha256:" + indexHash, Os: "linux", Architecture: "amd64", RepoDigests: ["vendor/tool@sha256:" + indexHash], Config: {}, RootFS: { Layers: identity.rootfsDiffIds } })
     assert.throws(() => readImageArchiveIdentity({ archive, reference: "docker.io/vendor/tool:v1@sha256:" + "a".repeat(64), sourceSHA: null }))
+    // Docker can export only the selected platform, omitting the pulled index.
+    const registryProof = { root: index, platform: manifest }
+    rmSync(path.join(dir, "blobs/sha256/" + indexHash))
+    writeFileSync(path.join(dir, "index.json"), JSON.stringify({ manifests: [{ digest: "sha256:" + manifestHash }] }))
+    execFileSync("tar", ["-cf", archive, "-C", dir, "manifest.json", "index.json", "blobs"])
+    assert.throws(() => readImageArchiveIdentity({ archive, reference, sourceSHA: null }))
+    const flattened = readImageArchiveIdentity({ archive, reference, sourceSHA: null, registryProof })
+    const fetched = readImageArchiveIdentity({ archive, reference, sourceSHA: null, readRegistryManifest: requested => {
+      if (requested === reference) return index
+      assert.equal(requested, "docker.io/vendor/tool@sha256:" + manifestHash)
+      return manifest
+    } })
+    assert.deepEqual(fetched, flattened)
+    // Legacy exporters can describe raw tar layers instead of registry gzip.
+    const compressedManifest = JSON.stringify({ config: { digest: "sha256:" + configHash }, layers: [{ digest: "sha256:" + "c".repeat(64) }] })
+    const compressedHash = sha256Bytes(compressedManifest)
+    const compressedIndex = JSON.stringify({ manifests: [{ digest: "sha256:" + compressedHash, platform: { os: "linux", architecture: "amd64" } }] })
+    const compressedRef = "docker.io/vendor/tool:v1@sha256:" + sha256Bytes(compressedIndex)
+    assert.equal(readImageArchiveIdentity({ archive, reference: compressedRef, sourceSHA: null, registryProof: { root: compressedIndex, platform: compressedManifest } }).configDigest, flattened.configDigest)
+
+    assertLoadedImageIdentity(flattened, { Id: "sha256:" + indexHash, Os: "linux", Architecture: "amd64", RepoDigests: ["vendor/tool@sha256:" + indexHash], Config: {}, RootFS: { Layers: flattened.rootfsDiffIds } })
+    assert.throws(() => readImageArchiveIdentity({ archive, reference, sourceSHA: null, registryProof: { ...registryProof, root: index + " " } }))
+    assert.throws(() => readImageArchiveIdentity({ archive, reference, sourceSHA: null, registryProof: { ...registryProof, platform: manifest + " " } }))
+    assert.throws(() => assertLoadedImageIdentity(flattened, { Id: "sha256:" + indexHash, Os: "linux", Architecture: "amd64", RepoDigests: ["vendor/tool@sha256:" + "b".repeat(64)], Config: {}, RootFS: { Layers: flattened.rootfsDiffIds } }))
+
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })

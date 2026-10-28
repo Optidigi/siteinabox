@@ -29,7 +29,7 @@ export async function rescanDependencyImages({ root, directory, archiveDirectory
         throw new Error("Rescan metadata differs from the candidate or immutable infrastructure inventory")
       }
       if (record.sourceSHA || record.reference) {
-        const identity = readImageArchiveIdentity({ archive: resolve(archiveDirectory, "image-" + record.application + ".tar"), tag: record.sourceSHA ? original.tag : undefined, reference: record.reference ?? undefined, sourceSHA: record.sourceSHA ?? null })
+        const identity = readImageArchiveIdentity({ archive: resolve(archiveDirectory, "image-" + record.application + ".tar"), tag: record.sourceSHA ? original.tag : undefined, reference: record.reference ?? undefined, sourceSHA: record.sourceSHA ?? null, registryProof: record.archiveIdentity?.registryProof })
         if ((record.sourceSHA && !isDeepStrictEqual(identity, original.archiveIdentity)) || !isDeepStrictEqual(identity, record.archiveIdentity)) throw new Error("Rescan archive identity changed")
       }
       rescanned.push(await scanImageDependencies({ root,
