@@ -17,7 +17,7 @@ $files = foreach ($file in ($paths | Sort-Object FullName -Unique)) {
         productVersion = $null
         metadataGap = $null
     }
-    if ($file.LinkTarget -and -not [IO.File]::Exists($file.FullName)) {
+    if ($file.LinkTarget -and -not $file.ResolveLinkTarget($true).Exists) {
         $record.metadataGap = 'Unresolved symbolic link; target bytes unavailable'
         [pscustomobject]$record
         continue
