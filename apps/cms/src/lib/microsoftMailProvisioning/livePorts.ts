@@ -433,7 +433,7 @@ export function createMicrosoftMailLivePorts(input: {
           },
         })
       }
-      await cloudflare.applyChanges(zoneId, plan.cutover)
+      await cloudflare.applyMxCutover(zoneId, plan.cutover, existing)
       return complete({ dnsCutoverAppliedAt: new Date().toISOString(), dnsCutoverCount: plan.cutover.length })
     },
     dkim_enable: async ({ run, request }) => {

@@ -7,9 +7,10 @@ export type MailDnsRecord = {
   content: string
   priority?: number
   proxied: boolean
+  emailRoutingLocked?: boolean
 }
 
-export type MailDnsWriteRecord = Omit<MailDnsRecord, "id"> & { id?: string }
+export type MailDnsWriteRecord = Omit<MailDnsRecord, "id" | "emailRoutingLocked"> & { id?: string }
 
 export type MailDnsChange =
   | { action: "create"; record: MailDnsWriteRecord }

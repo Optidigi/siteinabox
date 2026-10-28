@@ -49,6 +49,8 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     const graphUserPasswords: string[] = []
     let dkimReady = false
     let userSequence = 0
+    let mxLocked = !sharedRecipient
+    let mailboxesReady = true
     const users = new Map<string, Record<string, unknown>>()
     const env: NodeJS.ProcessEnv = {
       NODE_ENV: "test",
@@ -105,6 +107,10 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
         throw new Error(`Unexpected Graph mock request ${method} ${url.pathname}`)
       }
       if (url.hostname === "api.cloudflare.com") {
+        if (url.pathname.endsWith("/email/routing/dns") && method === "PATCH") {
+          mxLocked = false
+          return response({ success: true })
+        }
         if (url.pathname === "/client/v4/zones") return response({ success: true, result: [{ id: "zone-1", name: "tap2case.nl", status: "active" }] })
         if (url.pathname.endsWith("/email/routing/rules/catch_all")) return response({ success: true, result: { enabled: false } })
         if (url.pathname.endsWith("/email/routing/rules")) return response({ success: true, result: [{
@@ -113,7 +119,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
           actions: [{ type: "forward", value: ["info@amapromotions.nl"] }],
         }] })
         if (url.pathname.endsWith("/dns_records") && method === "GET") return response({ success: true, result: [
-          { id: "cf-mx-1", type: "MX", name: "tap2case.nl", content: "route1.mx.cloudflare.net", priority: 10, proxied: false },
+          { id: "cf-mx-1", type: "MX", name: "tap2case.nl", content: "route1.mx.cloudflare.net", priority: 10, proxied: false, meta: { email_routing: true, read_only: mxLocked } },
           { id: "spf-1", type: "TXT", name: "tap2case.nl", content: "v=spf1 include:_spf.google.com ~all", proxied: false },
         ], result_info: { total_pages: 1 } })
         if (url.pathname.endsWith("/dns_records") && method === "POST") return response({ success: true, result: { id: "created-dns" } })
@@ -125,7 +131,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
         workerOperations.push(job.operation)
         if (job.operation === "enable_dkim" && !dkimReady) { dkimReady = true; return response({ operation: job.operation, completed: true, dkimEnabled: false, dkimDnsReady: false }) }
         if (job.operation === "verify_access") return response({ operation: job.operation, completed: true, accessVerified: true })
-        if (job.operation === "verify_mailboxes") return response({ operation: job.operation, completed: true, mailboxesReady: true })
+        if (job.operation === "verify_mailboxes") return response({ operation: job.operation, completed: true, mailboxesReady })
         if (job.operation === "ensure_info_forward") return response({ operation: job.operation, completed: true, sharedMailbox: "info@tap2case.nl", forwardingAddress: "info@amapromotions.nl" })
         return response({ operation: job.operation, completed: true, dkimEnabled: true, dkimRecords: [
           { selector: "selector1", target: "selector1-tap2case._domainkey.partner.n-v1.dkim.mail.microsoft" },
@@ -191,9 +197,15 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     assert.equal(cutoverReview.state, "dns_pending")
     assert.equal(cutoverReview.issueCode, "DNS_MX_CUTOVER_CONFIRMATION_REQUIRED")
     assert.ok(Array.isArray(cutoverReview.data.dnsCutoverChanges))
+    assert.equal(providerRequests.some(call => call.method === "PATCH"), false, "preparation and unconfirmed cutover never unlock existing mail DNS")
     const cutoverConfirmed = await store.update(run.id, {
       data: { ...cutoverReview.data, dnsCutoverConfirmed: true },
     })
+    mailboxesReady = false
+    const notReady = await ports.dns_cutover({ run: cutoverConfirmed, request: cutoverConfirmed.request })
+    assert.equal(notReady.kind, "waiting")
+    assert.equal(providerRequests.some(call => call.method === "PATCH"), false, "mailbox propagation never unlocks existing mail DNS")
+    mailboxesReady = true
     const propagating = await advanceMicrosoftMailProvisioning({ run: cutoverConfirmed, store, ports })
     assert.equal(propagating.state, "exchange_pending")
     assert.equal(propagating.issueCode, "DKIM_DNS_PROPAGATING")
@@ -212,6 +224,12 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     assert.ok(workerOperations.includes("verify_mailboxes"))
     assert.equal(workerOperations.at(-1), "enable_dkim")
     assert.ok(providerRequests.some((call) => call.url.hostname === "api.cloudflare.com" && call.method === "DELETE"))
+    const unlockIndex = providerRequests.findIndex(call => call.method === "PATCH" && call.url.pathname.endsWith("/email/routing/dns"))
+    if (!sharedRecipient) {
+      assert.ok(unlockIndex > providerRequests.findIndex(call => call.url.hostname === "exchange-worker.internal" && object(call.body).operation === "verify_mailboxes"))
+      assert.ok(unlockIndex > providerRequests.findIndex(call => call.url.hostname === "exchange-worker.internal" && object(call.body).operation === "ensure_info_forward"))
+      assert.ok(unlockIndex < providerRequests.findIndex(call => call.url.hostname === "api.cloudflare.com" && call.method === "DELETE"))
+    } else assert.equal(unlockIndex, -1, "unlocked mail domains require no settings mutation")
     assert.ok(providerRequests.some((call) => call.url.hostname === "api.pax8.com" && call.url.pathname === "/v1/subscriptions/pax8-sub-1"))
   })
 })
