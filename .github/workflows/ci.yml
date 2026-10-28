@@ -407,6 +407,8 @@ jobs:
           path: |
             artifacts/siab-worker-*/image-exchange-worker.json
             artifacts/siab-worker-*/worker.log
+            artifacts/siab-worker-*/worker-runtime-inventory.json
+            artifacts/siab-worker-*/worker-dpkg-inventory.txt
           if-no-files-found: error
           retention-days: 7
       - name: Retain trusted main worker archive for separate qualification

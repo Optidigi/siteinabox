@@ -27,6 +27,15 @@ docker run --rm --entrypoint pwsh \
   -File /tests/contract.ps1 -WorkerPath /app/Invoke-ExchangeWorker.ps1
 ```
 
+The Dockerfile pins Ubuntu and PowerShell 7.6.9 by package SHA256 and services
+inherited Ubuntu packages during build. The verified upstream DEB runs .NET
+10.0.14; this is not a claim about every bundled module DLL. Packaged qualification
+retains recursive runtime/module file hashes and managed assembly/file/product
+metadata, plus the complete dpkg inventory, bound by hashes in the worker receipt.
+Alternate-platform and duplicate copies are retained. Unmapped DLLs remain
+explicit metadata gaps; independent native analysis and package/advisory mapping
+are still required. Inventory collection does not grant release clearance.
+
 The Dockerfile pins Ubuntu and the PowerShell package SHA256. `modules.json`
 pins the Exchange module and its PowerShellGet/PackageManagement dependencies by
 version and SHA256. The installer downloads exact official Gallery archives,
