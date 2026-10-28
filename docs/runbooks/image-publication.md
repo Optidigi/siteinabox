@@ -47,8 +47,10 @@ source and run `pnpm image:verify cms`, `pnpm image:verify renderer` or
 `pnpm image:verify site`. The command rejects dirty source. It creates only its
 uniquely named containers/network and temporary database/media, then cleans them
 up. It never connects to application provider accounts. CMS jobs are disabled
-and AI uses mocks; the renderer uses its existing deterministic host-routing
-harness. The landing image runs its actual Nginx health contract.
+and AI uses mocks. The renderer bundles its existing deterministic host-routing
+fixture into the disposable container before importing the actual server entry.
+Its mock CMS stays on container loopback and the test port binds only host
+loopback; qualification needs no host-gateway access or firewall changes. The landing image runs its actual Nginx health contract.
 
 Each successful run writes an archive and JSON evidence under ignored
 `artifacts/`: full source SHA, local image ID, archive SHA-256, smoke result and
