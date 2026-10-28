@@ -79,7 +79,7 @@ try {
     imageTag,
     "--input-type=module",
     "--eval",
-    'const {startStubCms}=await import("/app/siab-smoke/host-routing-harness.mjs"); const cms=await startStubCms(); process.env.SIAB_CMS_URL=cms.url; await import("/app/dist/server/entry.mjs");', 
+    'const {startStubCms}=await import("/app/siab-smoke/host-routing-harness.mjs"); const cms=await startStubCms(); process.env.SIAB_CMS_URL=cms.url; await import("/app/dist/server/entry.mjs");',
   ])
 
   await waitForRenderer(baseUrl, async () => {
