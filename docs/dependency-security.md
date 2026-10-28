@@ -27,8 +27,8 @@ separate explicit owner decision; the evaluator does not manufacture one.
 
 ## Evidence and scope
 
-Full and production audits remain complete. All five owned images plus pinned
-cloudflared retain exact source/run/attempt, archive/config/manifest/rootfs,
+Full and production audits remain complete. All six owned images retain
+exact source/run/attempt, archive/config/manifest/rootfs,
 scanner/database and native/managed inventory evidence. Required Go targets
 must have populated scanner coverage. Worker duplicate and alternate-platform
 files remain visible; missing mapping is not presumed harmless.

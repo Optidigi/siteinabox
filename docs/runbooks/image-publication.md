@@ -1,6 +1,6 @@
 # Image verification and approved publication
 
-Canonical `ci.yml` builds and smoke-tests all five owned images on pull
+Canonical `ci.yml` builds and smoke-tests all six owned images on pull
 requests, main pushes and manual verification runs. It uses read-only permissions,
 no registry login and no registry cache exports. Trusted main runs additionally
 retain the verified TAR archives; PR runs retain JSON/raw-scan evidence only. `pnpm publication:check` protects this boundary and tests
@@ -17,12 +17,22 @@ main run exports a separate `image-postgres` artifact. The existing parallel
 worker job exports `image-exchange-worker`; it retains runtime/module/dpkg and
 shared scanner evidence rather than inventing Node runtime fields.
 
-The aggregate binds five owned image records. Dependency review covers those
-five plus pinned cloudflared, requiring validated coverage for all six.
+The same CMS producer builds `ops/cloudflared/Dockerfile` and exports
+`image-cloudflared`. It builds the exact upstream source with a frozen module
+graph containing the go-jose security fix. The static runtime ships a pinned
+publisher CA bundle, with positive/negative Go TLS trust tests and explicit
+rejection of the compromised roots. Packaged checks cover nonroot execution,
+both ingress configurations, catch-all rejection, metrics startup and graceful
+SIGTERM with a synthetic token and no network access. This is an owned build,
+not an unchanged Cloudflare publisher image; source, module and license notices
+remain in the archive.
+
+The aggregate and dependency review bind the same six owned image records.
 The vendor PostgreSQL image is a build/rehearsal input, not the production image
 being promoted. Source production Compose requires `SIAB_POSTGRES_IMAGE_DIGEST`
 from an approved owned-image publication; local test Compose retains its vendor
-baseline. Updating source Compose does not change an installed production stack.
+baseline. Both tunnel services require the approved `SIAB_CLOUDFLARED_IMAGE_DIGEST`.
+Updating source Compose does not change an installed production stack.
 
 Each saved archive binds the selected tag (or immutable vendor reference),
 source, platform, config, layers and rootfs. Docker may expose a config digest,
@@ -36,7 +46,7 @@ and records the observed publication image ID separately. The scanner continues
 to report the archive config identity; its output is never rewritten.
 
 The publisher's closed choices are CMS, renderer, site, PostgreSQL and Exchange
-worker. Choosing one authorizes only that image, while supplementary archives
+worker, and cloudflared. Choosing one authorizes only that image, while supplementary archives
 from the same exact-source run are rescanned for the complete release assessment.
 Worker managed/native mapping gaps are concrete blockers, not a clean scan.
 The canonical risk evaluator consumes validated findings and finite coverage
@@ -82,7 +92,7 @@ that source, dependency/security disposition and applicable release gates.
 Publication does not authorize deployment or provider operations.
 
 Dispatch `publish-image.yml` **on main** with `image` (`cms`, `renderer`,
-`site`, `postgres` or `exchange-worker`), `source_sha` (40 hexadecimal characters)
+`site`, `postgres`, `exchange-worker` or `cloudflared`), `source_sha` (40 hexadecimal characters)
 and `verification_run_id`.
 The run name displays the source/image/run being approved. The protected
 `ghcr-publish` environment must have configured user reviewers, main-only custom

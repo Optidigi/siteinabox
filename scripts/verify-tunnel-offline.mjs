@@ -9,14 +9,14 @@ import { infrastructure } from "./infrastructure-images.mjs"
 
 const cmsRoot = fileURLToPath(new URL("../apps/cms/", import.meta.url))
 
-export async function verifyTunnelOffline({ binary } = {}) {
+export async function verifyTunnelOffline({ binary, image = infrastructure.images.cloudflared.reference } = {}) {
   const directory = await mkdtemp(join(tmpdir(), "siab-tunnel-offline-"))
   await chmod(directory, 0o755) // Synthetic public configuration, readable by the Compose UID.
   const pin = infrastructure.images.cloudflared
   const run = (args, allowFailure = false) => {
     const result = spawnSync(binary || "docker", binary ? ["--no-autoupdate", ...args] : [
       "run", "--platform", infrastructure.verificationPlatform, "--rm", "--network", "none", "--user", "1000:1000",
-      "--mount", "type=bind,src=" + directory + ",dst=/fixtures,readonly", pin.reference, ...args,
+      "--mount", "type=bind,src=" + directory + ",dst=/fixtures,readonly", image, ...args,
     ], { encoding: "utf8", timeout: 60000, env: binary ? { PATH: process.env.PATH } : process.env })
     if (result.error) throw result.error
     if (result.status !== 0 && !allowFailure) throw new Error((result.stdout + result.stderr).slice(-3000))
@@ -55,7 +55,7 @@ export async function verifyTunnelOffline({ binary } = {}) {
       assert.equal(run([...args, "validate"], true).status, 1)
       targets.push({ kind, service, knownHostMatched: true, unknownHost404: true, missingCatchallRejected: true })
     }
-    return { cloudflared: pin.version, image: binary ? null : pin.reference, networkNone: !binary, offlineCommandsOnly: true, targets }
+    return { cloudflared: pin.version, image: binary ? null : image, networkNone: !binary, offlineCommandsOnly: true, targets }
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

@@ -41,3 +41,18 @@ test("worker and PostgreSQL use their own runtime contracts without fabricated N
     for (const mutation of [{ runtimeVersion: null }, { archiveIdentity: null }, { sourceSHA: "c".repeat(40) }, image === "postgres" ? { postgresRehearsal: {} } : { runtimeInventorySha256: null }]) assert.throws(() => assertImageVerificationEvidence({ ...request, image }, { ...native, ...mutation }))
   }
 })
+
+test("static tunnel admission requires its exact native, trust, routing and shutdown contracts", () => {
+  const tag = evidence.tag.replace(":cms", ":cloudflared")
+  const native = { ...evidence, application: "cloudflared", tag, archiveIdentity: { ...evidence.archiveIdentity, tag },
+    runtimeVersion: "2026.10.5", runtimePlatform: { architecture: "amd64", uid: 1000, gid: 1000 }, staticRuntime: true,
+    runtimeContract: "passed", gracefulStop: true,
+    trustProof: { bundleSha256: "e".repeat(64), rootCount: 118, compromisedRootsAbsent: true, trustedAccepted: true, untrustedRejected: true },
+    tunnelVerification: { networkNone: true, targets: ["cms", "renderer"].map(kind => ({ kind, knownHostMatched: true, unknownHost404: true, missingCatchallRejected: true })) } }
+  const request_ = { ...request, image: "cloudflared" }
+  assertImageVerificationEvidence(request_, native)
+  for (const change of [{ staticRuntime: false }, { gracefulStop: false }, { trustProof: {} },
+    { runtimePlatform: { ...native.runtimePlatform, uid: 0 } }, { runtimePlatform: { ...native.runtimePlatform, os: "debian" } },
+    { tunnelVerification: { ...native.tunnelVerification, targets: [] } }]) assert.throws(() => assertImageVerificationEvidence(request_, { ...native, ...change }))
+  for (const key of ["compromisedRootsAbsent", "trustedAccepted", "untrustedRejected"]) assert.throws(() => assertImageVerificationEvidence(request_, { ...native, trustProof: { ...native.trustProof, [key]: false } }))
+})

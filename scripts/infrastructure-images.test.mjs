@@ -47,8 +47,13 @@ test("database and tunnel pins agree across Compose and CI without renaming pers
     assert.equal(source(file).match(/^\s+image: (postgres:\S+)/m)?.[1], shortRef("postgres"), file)
   }
   for (const file of ["apps/cms/docker-compose.yml", "apps/renderer/compose.yml"]) {
-    assert.equal(source(file).match(/^\s+image: (docker\.io\/cloudflare\/cloudflared:\S+)/m)?.[1], infrastructure.images.cloudflared.reference, file)
+    assert.ok(source(file).includes("image: ghcr.io/optidigi/siteinabox-cloudflared@${SIAB_CLOUDFLARED_IMAGE_DIGEST:?Set the approved owned cloudflared digest}"), file)
   }
+  assert.equal(source("ops/cloudflared/Dockerfile").match(/^FROM (golang:\S+)/m)?.[1], infrastructure.nativeBuilder.reference.replace("docker.io/library/", ""))
+  assert.equal(source("ops/cloudflared/Dockerfile").match(/^FROM (node:\S+)/m)?.[1], shortRef("node"))
+  assert.ok(source("ops/cloudflared/build.sh").includes("git checkout --quiet --detach " + infrastructure.images.cloudflared.sourceRevision))
+  assert.ok(source("ops/cloudflared/derived.mod").includes("github.com/go-jose/go-jose/v4 v" + infrastructure.images.cloudflared.goJoseVersion))
+  assert.ok(source("ops/cloudflared/Test-Trust.go").includes(infrastructure.images.cloudflared.certificateBundleSha256))
   assert.ok(source("apps/cms/docker-compose.yml").includes("name: siab-payload_postgres-data"))
   assert.ok(source("apps/cms/docker-compose.yml").includes("postgres-data:/var/lib/postgresql"))
   assert.ok(source("apps/cms/docker-compose.local.yml").includes("siteinabox-cms-postgres-dev:/var/lib/postgresql"))

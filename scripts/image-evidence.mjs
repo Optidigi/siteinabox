@@ -1,6 +1,6 @@
 export const nodeImageApplications = ["cms", "renderer", "site"]
-export const imageApplications = [...nodeImageApplications, "postgres", "exchange-worker"]
-export const dependencyImageApplications = [...imageApplications, "cms-cloudflared"]
+export const imageApplications = [...nodeImageApplications, "postgres", "exchange-worker", "cloudflared"]
+export const dependencyImageApplications = [...imageApplications]
 const hash = value => /^[a-f0-9]{64}$/.test(value ?? "")
 const digest = value => /^sha256:[a-f0-9]{64}$/.test(value ?? "")
 
@@ -25,7 +25,11 @@ export function assertImageVerificationEvidence({ sha, runId, attempt, image }, 
       (image === "site" ? evidence.nodeLts === null : evidence.nodeLts === evidence.buildNodeLts)
   } else if (valid) {
     valid = /^\d+\.\d+(?:\.\d+)?$/.test(evidence.runtimeVersion ?? "") && evidence.runtimePlatform?.architecture === "amd64"
-    if (image === "exchange-worker") valid &&= evidence.runtimePlatform.os === "ubuntu" && hash(evidence.runtimeInventorySha256) && hash(evidence.dpkgInventorySha256) &&
+    if (image === "cloudflared") valid &&= evidence.staticRuntime === true && evidence.runtimePlatform.os === undefined && evidence.runtimePlatform.uid === 1000 && evidence.runtimePlatform.gid === 1000 &&
+      evidence.runtimeContract === "passed" && evidence.gracefulStop === true && hash(evidence.trustProof?.bundleSha256) && evidence.trustProof.rootCount >= 100 &&
+      ["compromisedRootsAbsent", "untrustedRejected", "trustedAccepted"].every(key => evidence.trustProof[key] === true) &&
+      evidence.tunnelVerification?.networkNone === true && ["cms", "renderer"].every(kind => evidence.tunnelVerification.targets?.some(target => target.kind === kind && target.knownHostMatched && target.unknownHost404 && target.missingCatchallRejected))
+    else if (image === "exchange-worker") valid &&= evidence.runtimePlatform.os === "ubuntu" && hash(evidence.runtimeInventorySha256) && hash(evidence.dpkgInventorySha256) &&
       evidence.commandContract === "passed" && evidence.unauthenticatedStatus === 401 && evidence.health?.healthy === true &&
       evidence.health.protocolVersion === 1 && evidence.health.dnsToolAvailable === true && /^\d+\.\d+\.\d+$/.test(evidence.health.moduleVersion ?? "")
     else valid &&= evidence.runtimePlatform.os === "alpine" && ["populatedDataPreserved", "schemaPreserved", "migrationHistoryPreserved", "gracefulDatabaseStop", "actualEntrypointRestartPassed", "logicalRestore"].every(key => evidence.postgresRehearsal?.[key] === true) && evidence.postgresRehearsal.lifecycleContract === "passed"
