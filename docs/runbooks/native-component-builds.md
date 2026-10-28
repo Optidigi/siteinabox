@@ -44,5 +44,8 @@ qualified.
 uniquely named disposable containers and a data volume. It checks root privilege
 drop, populated-volume replacement, UID/GID preservation, nonroot restart and
 graceful stop. Current probes pass; production database volumes are never used.
-A complete application migration and restore rehearsal is still required before
-adoption. Scan counts and upstream metadata are not a deployment authorization.
+The [October 28 candidate rehearsal](../research/postgres-owned-image-qualification.md)
+also passes actual main-CMS migrations and restored-schema startup. Integrate
+that compatibility check into the canonical consuming-image path and repeat it
+at the final source before adoption. Scan counts and upstream metadata are not
+a deployment authorization.
