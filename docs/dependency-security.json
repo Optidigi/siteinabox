@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "reviewedAt": "2026-10-28T14:10:02.977Z",
-  "expiresAt": "2026-10-29T14:10:02.977Z",
+  "reviewedAt": "2026-10-28T14:20:01.721Z",
+  "expiresAt": "2026-10-29T14:20:01.721Z",
   "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
   "graphHash": "106cc363a278a71c32c6ebab4fc92bd8f05e93be38315a027c7c748777b42f9c",
   "configurationHash": "9b7a2ea30f0e2884ae528a2c0991a9470b29cae70cfff6dd12e28fa50de2706f",
@@ -2579,7 +2579,7 @@
       "reason": "Selected Vitest 4.1.12 and its publisher maintenance/security facts are unchanged. Latest 5.0.5 remains a separate major migration, not a security exception. Existing compatible 4.x verification remains the supported selection; recheck if publisher support or advisory facts change.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release if 4.x support/advisory facts change; qualify 5.x separately before asserting it is compatible.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "latest:vitest",
         "selected:vitest",
@@ -2594,7 +2594,7 @@
       "reason": "Selected Better Auth 1.7.12 publisher/range facts and peer graph remain unchanged. Existing SDK/schema/invitation and session evidence is retained; actual current CMS startup passes. Final-source hosted authentication/browser and consuming-image review remain required; no release clearance is inferred.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release, qualify 1.7.12 against configured passwordless/social/provider and session boundaries, refresh audits and exact consuming images; changed upstream facts also require review.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "latest:better-auth",
         "selected:better-auth",
@@ -2609,7 +2609,7 @@
       "reason": "Actual owned esbuild/gosu bytes use Go 1.27.3 and retain independently matched Go target coverage. New GO-2026-6860 and GO-2026-6866 affect x/net/html below 0.62.0; cloudflared retains x/net v0.61.0. Exact package/symbol applicability and complete component/vendor remediation remain unqualified, including the unresolved OpenPGP module finding. Compiler upgrades do not clear module findings. Current cloudflared also retains go-jose/v4 v4.1.4 under GHSA-mgcc-cww5-fp2q; its supported fixed-version and binary qualification are outstanding.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release or changed native/advisory facts; qualify patched native consumers and refresh scanner coverage.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "GO-2026-6809",
         "go-advisory-index",
@@ -2626,7 +2626,7 @@
       "reason": "Selected Node 24.22.1 LTS publisher facts are unchanged. Actual current CMS and renderer startup/runtime checks pass; known TLS rejection/public OIDC diagnostics are historical supporting evidence only. Complete exact-image native/Brotli applicability, support and final hosted qualification remain outstanding.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "At or after 2026-10-22T10:38:25Z and before release, qualify the eligible security patch and exact consuming images against current primary security facts.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "node-releases",
         "node-maintenance-release",
@@ -2641,7 +2641,7 @@
       "reason": "Selected Trivy 0.76.0 and latest 0.76.1 publisher facts are unchanged; 0.76.1 is age-eligible but its runtime/TLS changes remain unqualified. Current scans retain warnings/provenance and incomplete mapping honestly; no missing-advisory-detail or analyzer gap is waived by scanner success.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release or changed publisher/transport facts, qualify the age-eligible security patch and exact scanner/database outputs. Retain incomplete advisory metadata and all findings until independently resolved.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "scanner-release",
         "scanner-latest"
@@ -2655,7 +2655,7 @@
       "reason": "Current exact CMS/renderer/site/PostgreSQL package inventories contain musl and musl-utils 1.2.6-r3, matching the vendor-listed fix. Earlier r2 candidate statements are historical. Complete vendor/advisory mapping, bundled/native coverage and final-source hosted qualification remain unproved; this deferral remains blocked rather than claiming the patched package alone clears release.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release or changed source facts: qualify patched musl consumers against current vendor/advisory evidence and exact image/native inventories. Keep findings/coverage gaps blocked until independently resolved.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "alpine-main"
       ]
@@ -2668,7 +2668,7 @@
       "reason": "Current CMS inventory contains BIND 9.20.30-r0, matching the retained Alpine fix floor; earlier 9.20.29 baseline statements are historical. Command/package presence and offline tunnel checks are not complete DNS behavior and vendor/applicability qualification. Final exact-source qualification remains required and blocked.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release or changed vendor facts, qualify the patched authoritative validator and exact consuming image; reconcile fresh image findings.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "alpine-main"
       ]
@@ -2681,7 +2681,7 @@
       "reason": "Current owned PostgreSQL and site inventories contain brotli-libs 1.2.1-r0, matching the vendor-listed fix. Earlier 1.2.0-r1 statements are historical. Node/PowerShell bundled components require independent version/range coverage; the exact PowerShell runtime is 10.0.14 but EXO retains other affected bytes. Complete native/applicability and final-source qualification remain blocked.",
       "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
       "recheck": "Before release, reconcile current primary advisory ranges with exact OS/bundled runtime bytes, qualify remediation and independently review fresh inventories.",
-      "expiresAt": "2026-10-29T14:10:02.977Z",
+      "expiresAt": "2026-10-29T14:20:01.721Z",
       "sources": [
         "alpine-main",
         "node-maintenance-release"
