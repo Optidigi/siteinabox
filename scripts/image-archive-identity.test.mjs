@@ -67,3 +67,27 @@ test("classic Docker archives retain config identity and reject altered config b
     assert.throws(() => readImageArchiveIdentity({ archive, tag, sourceSHA: sha }), /config bytes/)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+test("digest-only vendor archives bind their platform manifest through the pinned index", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "siab-vendor-test-"))
+  try {
+    const layer = Buffer.from("vendor layer"), layerHash = sha256Bytes(layer)
+    const config = JSON.stringify({ os: "linux", architecture: "amd64", config: {}, rootfs: { type: "layers", diff_ids: ["sha256:" + layerHash] } })
+    const configHash = sha256Bytes(config)
+    const manifest = JSON.stringify({ config: { digest: "sha256:" + configHash }, layers: [{ digest: "sha256:" + layerHash }] })
+    const manifestHash = sha256Bytes(manifest)
+    const index = JSON.stringify({ manifests: [{ digest: "sha256:" + manifestHash, platform: { os: "linux", architecture: "amd64" } }, { digest: "sha256:" + "f".repeat(64), platform: { os: "linux", architecture: "arm64" } }] })
+    const indexHash = sha256Bytes(index), reference = "docker.io/vendor/tool:v1@sha256:" + indexHash
+    mkdirSync(path.join(dir, "blobs/sha256"), { recursive: true })
+    for (const [hash, value] of [[layerHash, layer], [configHash, config], [manifestHash, manifest], [indexHash, index]]) writeFileSync(path.join(dir, "blobs/sha256/" + hash), value)
+    writeFileSync(path.join(dir, "index.json"), JSON.stringify({ manifests: [{ digest: "sha256:" + indexHash }] }))
+    writeFileSync(path.join(dir, "manifest.json"), JSON.stringify([{ Config: "blobs/sha256/" + configHash, RepoTags: null, Layers: ["blobs/sha256/" + layerHash] }]))
+    const archive = path.join(dir, "image.tar")
+    execFileSync("tar", ["-cf", archive, "-C", dir, "manifest.json", "index.json", "blobs"])
+    const identity = readImageArchiveIdentity({ archive, reference, sourceSHA: null })
+    assert.equal(identity.manifestDigest, "sha256:" + manifestHash)
+    assert.deepEqual(identity.indexDigests, ["sha256:" + indexHash])
+    assertLoadedImageIdentity(identity, { Id: "sha256:" + indexHash, Os: "linux", Architecture: "amd64", RepoDigests: ["vendor/tool@sha256:" + indexHash], Config: {}, RootFS: { Layers: identity.rootfsDiffIds } })
+    assert.throws(() => readImageArchiveIdentity({ archive, reference: "docker.io/vendor/tool:v1@sha256:" + "a".repeat(64), sourceSHA: null }))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})

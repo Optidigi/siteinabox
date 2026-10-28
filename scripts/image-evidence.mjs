@@ -14,7 +14,8 @@ export function assertImageVerificationEvidence({ sha, runId, attempt, image }, 
   const identity = evidence?.archiveIdentity
   valid &&= identity?.sourceSHA === sha && identity.tag === evidence.tag && identity.os === "linux" && identity.architecture === "amd64" &&
       digest(identity.configDigest) && (identity.manifestDigest === null || digest(identity.manifestDigest)) &&
-      [identity.configDigest, identity.manifestDigest].includes(evidence.imageId) &&
+      (identity.indexDigests === undefined || (Array.isArray(identity.indexDigests) && identity.indexDigests.length <= 4 && identity.indexDigests.every(digest))) &&
+      [identity.configDigest, identity.manifestDigest, ...(identity.indexDigests ?? [])].includes(evidence.imageId) &&
       Array.isArray(identity.rootfsDiffIds) && identity.rootfsDiffIds.length > 0 && identity.rootfsDiffIds.every(digest)
 
   if (valid && nodeImageApplications.includes(image)) {

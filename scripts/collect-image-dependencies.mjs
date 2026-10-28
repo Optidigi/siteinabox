@@ -8,9 +8,9 @@ import { parseOsRelease } from "./image-platform.mjs"
 
 /** A never-started, labelled container exposes only the verified image filesystem. */
 export async function collectImageDependencies({ docker, root, archive, image, artifactDir, prefix, resourceId, requiredTypes, workerRuntime }) {
-  if (image.sourceSHA) {
-    image.archiveIdentity = readImageArchiveIdentity({ archive, tag: image.tag, sourceSHA: image.sourceSHA })
-    assertLoadedImageIdentity(image.archiveIdentity, JSON.parse(docker(["image", "inspect", image.tag], true))[0])
+  if (image.sourceSHA || image.reference) {
+    image.archiveIdentity = readImageArchiveIdentity({ archive, tag: image.tag, reference: image.reference, sourceSHA: image.sourceSHA ?? null })
+    assertLoadedImageIdentity(image.archiveIdentity, JSON.parse(docker(["image", "inspect", image.tag ?? image.reference], true))[0])
   }
   const name = prefix + "-native-" + image.application
   const flattened = resolve(artifactDir, "image-" + image.application + ".rootfs.tar")

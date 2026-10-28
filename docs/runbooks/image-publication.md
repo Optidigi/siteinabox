@@ -24,9 +24,11 @@ being promoted. Source production Compose requires `SIAB_POSTGRES_IMAGE_DIGEST`
 from an approved owned-image publication; local test Compose retains its vendor
 baseline. Updating source Compose does not change an installed production stack.
 
-Each saved archive binds the selected tag, source, platform, config, layers and
-rootfs. Docker may expose its config digest or OCI manifest digest as the loaded
-image ID. Admission verifies the actual relationship, preserves both identities,
+Each saved archive binds the selected tag (or immutable vendor reference),
+source, platform, config, layers and rootfs. Docker may expose a config digest,
+platform manifest digest or parent index digest as the loaded image ID. Nested
+OCI indexes are hash-verified through the selected AMD64 manifest; vendor
+collection also checks the observed registry reference. Admission verifies the actual relationship, preserves both identities,
 and records the observed publication image ID separately. The scanner continues
 to report the archive config identity; its output is never rewritten.
 

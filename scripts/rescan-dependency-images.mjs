@@ -28,9 +28,9 @@ export async function rescanDependencyImages({ root, directory, archiveDirectory
           (record.application.startsWith("cms-") && record.reference !== infrastructure.images[record.application.slice(4)]?.reference)) {
         throw new Error("Rescan metadata differs from the candidate or immutable infrastructure inventory")
       }
-      if (record.sourceSHA) {
-        const identity = readImageArchiveIdentity({ archive: resolve(archiveDirectory, "image-" + record.application + ".tar"), tag: original.tag, sourceSHA })
-        if (!isDeepStrictEqual(identity, original.archiveIdentity) || !isDeepStrictEqual(identity, record.archiveIdentity)) throw new Error("Rescan archive identity changed")
+      if (record.sourceSHA || record.reference) {
+        const identity = readImageArchiveIdentity({ archive: resolve(archiveDirectory, "image-" + record.application + ".tar"), tag: record.sourceSHA ? original.tag : undefined, reference: record.reference ?? undefined, sourceSHA: record.sourceSHA ?? null })
+        if ((record.sourceSHA && !isDeepStrictEqual(identity, original.archiveIdentity)) || !isDeepStrictEqual(identity, record.archiveIdentity)) throw new Error("Rescan archive identity changed")
       }
       rescanned.push(await scanImageDependencies({ root,
         archive: resolve(archiveDirectory, "image-" + record.application + ".tar"),
