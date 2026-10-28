@@ -82,7 +82,7 @@ export function normalizeAudit(audit, scope = "full") {
     for (const finding of advisory.findings) {
       if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(finding?.version ?? "")) throw new Error("Invalid advisory package version")
       const row = { scope, id: advisory.github_advisory_id, package: advisory.module_name,
-        version: finding.version, severity: advisory.severity, paths: paths(finding.paths) }
+        version: finding.version, severity: advisory.severity, ...(Array.isArray(advisory.cves) ? { aliases: [...new Set(advisory.cves)].sort() } : {}), paths: paths(finding.paths) }
       if (seen.has(identity(row))) throw new Error("Duplicate advisory inventory finding")
       seen.add(identity(row)); rows.push(row)
     }

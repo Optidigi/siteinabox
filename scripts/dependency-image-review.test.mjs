@@ -4,7 +4,7 @@ import { dependencyImageApplications, imageReviewFindings, nativeReviewFingerpri
 import { reviewedRiskItems } from "./release-risk.mjs"
 const now = Date.parse("2026-10-21T00:00:00Z")
 function fixture() {
-  const facts = [{ id: "primary", facts: { id: "CVE-fixture", affected: [{ range: "<1.1.0" }] } }, { id: "cisa-kev", facts: { count: 0, dateReleased: "2026-10-20T00:00:00Z", vulnerabilities: [] } }]
+  const facts = [{ id: "primary", facts: { id: "CVE-fixture", aliases: [], affected: [{ range: "<1.1.0" }] } }, { id: "cisa-kev", facts: { count: 0, dateReleased: "2026-10-20T00:00:00Z", vulnerabilities: [] } }]
   const images = dependencyImageApplications.map(application => ({ application, scanner: { version: "0.76.1" }, osEndOfLife: false,
     runtimePlatform: { architecture: "amd64", os: "alpine", version: "3.24.3" }, nativeInventory: { files: [], ...(application === "exchange-worker" ? { workerRuntime: { inventory: { files: [] } } } : {}) },
     analysisGaps: null, inventory: { findings: [], unversionedPackages: [] } }))

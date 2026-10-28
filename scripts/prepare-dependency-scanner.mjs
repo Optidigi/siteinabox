@@ -33,7 +33,7 @@ async function ownedDirectory(path, root, purpose) {
 async function prepare(root) {
   if (process.platform !== "linux" || process.arch !== "x64") throw new Error("Pinned dependency scanner currently requires Linux AMD64")
   const directory = resolve(root, "artifacts/dependency-tools/trivy-" + scannerPin.version)
-  const cache = resolve(root, "artifacts/dependency-tools/trivy-cache")
+  const cache = resolve(root, "artifacts/dependency-tools/trivy-" + scannerPin.version + "-cache")
   await ownedDirectory(directory, root, "verified scanner tools")
   await ownedDirectory(cache, root, "scanner advisory database")
   const release = await readScannerPublisherEvidence(root) ?? await readPublicPublisherJSON("https://api.github.com/repos/aquasecurity/trivy/releases/tags/v" + scannerPin.version)

@@ -20,6 +20,7 @@ export function evaluateReleaseRisk({ items, requirements = [], now = Date.now()
     if (!text(finding?.id) || !severities.includes(finding.severity) || typeof finding.knownExploited !== "boolean" || !states.includes(review?.state) || !text(review.reason) || !text(review.reviewOwner)) { block("Finding or accountable disposition is missing/invalid"); continue }
     const reviewedAt = Date.parse(review.reviewedAt), deadline = Date.parse(review.deadline)
     if (![reviewedAt, deadline].every(Number.isFinite) || reviewedAt > now || deadline <= now || deadline <= reviewedAt) { block("Disposition review is future, missing or overdue"); continue }
+    if (finding.aliasesResolved === false) { block("Required CVE alias coverage is unresolved"); continue }
     if (["not_affected", "fixed"].includes(review.state)) {
       if (["NATIVE_ANALYSIS_INCOMPLETE", "UNVERSIONED_NATIVE_COMPONENT", "WORKER_NATIVE_MAPPING_INCOMPLETE"].includes(finding.id)) { block("Required analysis gaps must be resolved, not waived as nonaffected"); continue }
       const proof = review.evidence
@@ -53,9 +54,11 @@ export function reviewedRiskItems(inventory, reviews, { facts, binding }) {
     const sources = review.sources.map(id => facts.find(fact => fact.id === id))
     if (sources.some(source => !source)) throw new Error("Disposition primary source is unavailable")
     if (["not_affected", "fixed"].includes(review.state) && !review.evidence?.sources?.some(id => sources.some(source => source.id === id && (source.facts?.id === finding.id || source.facts?.aliases?.includes(finding.id))))) throw new Error("Nonaffected/fixed decision lacks advisory-specific primary evidence")
-    const aliases = [finding.id, ...(finding.aliases ?? []), ...sources.filter(source => source.facts?.id === finding.id).flatMap(source => source.facts.aliases ?? [])]
+    const authoritative = facts.filter(source => source.facts?.id === finding.id || source.facts?.aliases?.includes(finding.id))
+    const aliases = [finding.id, ...(finding.aliases ?? []), ...authoritative.flatMap(source => source.facts.aliases ?? [])]
+    const aliasesResolved = /^CVE-\d{4}-\d{4,}$/.test(finding.id) || ["NATIVE_ANALYSIS_INCOMPLETE", "UNVERSIONED_NATIVE_COMPONENT", "WORKER_NATIVE_MAPPING_INCOMPLETE"].includes(finding.id) || Array.isArray(finding.aliases) || authoritative.some(source => Array.isArray(source.facts.aliases))
     const context = typeof binding === "function" ? binding(finding) : binding
-    return { finding: { ...finding, knownExploited: aliases.some(id => exploited.has(id)) }, review,
+    return { finding: { ...finding, aliasesResolved, knownExploited: aliases.some(id => exploited.has(id)) }, review,
       binding: { ...context, advisoryHash: canonicalHash({ finding: securityFacts(finding), sources: sources.map(source => ({ id: source.id, facts: securityFacts(source.facts) })).sort((a, b) => a.id.localeCompare(b.id)) }) } }
   })
 }

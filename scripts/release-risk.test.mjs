@@ -53,3 +53,13 @@ test("known exploitation is derived from the authoritative feed rather than revi
   assert.equal(evaluate(items).releaseBlocked, true)
   assert.throws(() => reviewedRiskItems([finding], reviews, { facts: facts.slice(1), binding }), /known-exploited/)
 })
+
+test("reviewer source selection cannot evade KEV or missing alias coverage", async () => {
+  const { reviewedRiskItems } = await import("./release-risk.mjs")
+  const f = { scope: "production", id: "GHSA-example", package: "fixture", version: "1.0.0", severity: "low", paths: ["fixture"] }
+  const review = { ...item("low").review, sources: ["scanner-release"] }
+  const map = new Map([[JSON.stringify([f.scope, f.id, f.package, f.version]), review]])
+  const facts = [{ id: "cisa-kev", facts: { count: 1, dateReleased: "2026-10-28", vulnerabilities: [{ cveID: "CVE-2026-12345" }] } }, { id: "advisory", facts: { id: f.id, aliases: ["CVE-2026-12345"] } }, { id: "scanner-release", facts: { tag: "1.0.0" } }]
+  assert.equal(evaluate(reviewedRiskItems([f], map, { facts, binding })).releaseBlocked, true)
+  assert.equal(evaluate(reviewedRiskItems([f], map, { facts: facts.filter(x => x.id !== "advisory"), binding })).releaseBlocked, true)
+})
