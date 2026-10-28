@@ -43,7 +43,7 @@
     "cms:test:guard": "node --test scripts/cms-test-environment.test.mjs",
     "image:verify": "node scripts/verify-image.mjs",
     "publication:check": "node --test scripts/check-publication.test.mjs scripts/check-image-workflows.test.mjs && node scripts/check-image-workflows.mjs",
-    "ci:policy:check": "node --test scripts/check-required-ci.test.mjs scripts/benchmark-ci.test.mjs scripts/cms-test-plan.test.mjs scripts/image-build-cache.test.mjs scripts/native-esbuild-install.test.mjs scripts/image-evidence.test.mjs scripts/postgres-readiness.test.mjs scripts/inspect-delivery-controls.test.mjs && node scripts/check-required-ci.mjs --check",
+    "ci:policy:check": "node --test scripts/check-required-ci.test.mjs scripts/benchmark-ci.test.mjs scripts/cms-test-plan.test.mjs scripts/image-build-cache.test.mjs scripts/native-esbuild-install.test.mjs scripts/image-evidence.test.mjs scripts/image-archive-identity.test.mjs scripts/worker-runtime-evidence.test.mjs scripts/postgres-readiness.test.mjs scripts/inspect-delivery-controls.test.mjs && node scripts/check-required-ci.mjs --check",
     "delivery:inspect": "node scripts/inspect-delivery-controls.mjs",
     "infrastructure:check": "node --test scripts/infrastructure-images.test.mjs",
     "infrastructure:tunnel": "node scripts/verify-tunnel-offline.mjs",

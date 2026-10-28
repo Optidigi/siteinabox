@@ -8,7 +8,7 @@ on:
         description: Exact image approved for publication
         required: true
         type: choice
-        options: [cms, renderer, site]
+        options: [cms, renderer, site, postgres, exchange-worker]
       source_sha:
         description: Full reviewed main commit SHA
         required: true

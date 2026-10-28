@@ -46,7 +46,7 @@ test("the committed CI workflow covers every canonical job and image variant", a
     workflow.replace('dns-tools: "true"', 'dns-tools: "false"'),
     workflow.replace('run: node scripts/verify-exchange-worker.mjs', 'if: false\n        run: node scripts/verify-exchange-worker.mjs'),
     workflow.replace('  site:\n', '  site:\n    needs: [cms-quality]\n'),
-    workflow.replace('needs: [package-quality, image-verification]', 'needs: [image-verification]'),
+    workflow.replace('needs: [package-quality, image-verification, exchange-worker]', 'needs: [image-verification]'),
     workflow.replace('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"', "echo missing-ownership")]) {
     assert.throws(() => assertRequiredCiWorkflow(changed, expectedCiJobs(matrix)))
   }

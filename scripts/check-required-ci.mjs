@@ -40,6 +40,10 @@ export function assertRequiredCiWorkflow(source, jobs) {
   }
   if (jobs.includes("exchange-worker")) {
     const worker = workflow.jobs["exchange-worker"]
+    const scanner = worker.steps?.find(step => step.with?.name === "dependency-source-evidence")
+    if (!scanner || Object.hasOwn(scanner, "if") || scanner.with.path !== "artifacts/dependency-source") throw new Error("Worker requires the same current-run scanner publisher receipt")
+    const proof = worker.steps?.find(step => step.with?.name === "ci-image-exchange-worker")
+    if (!proof?.with?.path?.includes("worker-runtime-inventory.json") || !proof?.with?.path?.includes("worker-dpkg-inventory.txt")) throw new Error("Worker evidence must retain runtime and OS inventories")
     const archive = worker.steps?.find(step => step.with?.name === "image-exchange-worker")
     if (Object.hasOwn(worker, "if") || !hasRequiredCommand(worker, "node scripts/verify-exchange-worker.mjs") ||
         condition(archive?.if) !== "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'" ||

@@ -2,7 +2,7 @@
 set -eu
 candidate=${1:?Pass the owned PostgreSQL candidate image}
 baseline=${2:?Pass the reviewed official PostgreSQL baseline}
-case "$candidate" in siteinabox-postgres:*|ghcr.io/optidigi/siteinabox-postgres@sha256:*) ;; *) echo 'Expected an explicit owned candidate' >&2; exit 1 ;; esac
+case "$candidate" in siteinabox-postgres:*|siab-verify-*:postgres|ghcr.io/optidigi/siteinabox-postgres@sha256:*) ;; *) echo 'Expected an explicit owned candidate' >&2; exit 1 ;; esac
 scope="siab-pg-native-$(cat /proc/sys/kernel/random/uuid)"
 container="$scope-db"
 volume="$scope-data"

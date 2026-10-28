@@ -1052,12 +1052,14 @@
     "site"
   ],
   "ciDependencies": {
+    "exchange-worker": ["package-quality"],
     "cms-test": [
       "cms-tests"
     ],
     "image-security": [
       "package-quality",
-      "image-verification"
+      "image-verification",
+      "exchange-worker"
     ],
     "image-verification": [
       "package-quality"

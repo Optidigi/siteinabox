@@ -25,6 +25,8 @@ if (process.versions.node !== expectedNode || !process.release.lts) {
 const resourceId = randomUUID()
 const prefix = "siab-verify-" + resourceId.slice(0, 8)
 const image = prefix + "-" + revision + ":" + app
+const postgresImage = prefix + "-" + revision + ":postgres"
+const artifactDir = "artifacts/" + prefix
 const container = prefix + "-app"
 const database = prefix + "-db"
 const network = prefix + "-network"
@@ -66,6 +68,11 @@ try {
   docker(["buildx", "create", "--name", builder, "--driver", "docker-container", "--driver-opt", "image=" + infrastructure.ciBuildkit.reference])
   ownsBuilder = true
   docker(["buildx", "build", "--builder", builder, "--load", ...(cache?.arguments ?? []), ...buildArgs, "--file", "apps/" + application + "/Dockerfile", "--tag", image, "."])
+  if (app === "cms") {
+    docker(["buildx", "build", "--builder", builder, "--load", "--platform", infrastructure.verificationPlatform,
+      "--label", "org.opencontainers.image.revision=" + revision, "--file", "ops/postgres/Dockerfile", "--tag", postgresImage, "."])
+    execFileSync("sh", ["ops/postgres/Test-PostgresImage.sh", postgresImage, infrastructure.images.postgres.reference], { stdio: "inherit", timeout: 180000 })
+  }
   if (cache) await cache.commit()
   timings.buildMs = Math.round(performance.now() - phaseStarted)
   phaseStarted = performance.now()
@@ -169,7 +176,7 @@ try {
       throw new Error("PostgreSQL must stop cleanly before the minor-version replacement")
     }
     docker(["rm", database])
-    await startDatabase(infrastructure.images.postgres)
+    await startDatabase({ reference: postgresImage, version: infrastructure.images.postgres.version })
     docker(["start", container])
     await health(cmsHealthy)
     const runtimeAfter = databaseRuntime()
@@ -180,7 +187,14 @@ try {
     if (!docker(["logs", container], true).includes("[migrate-on-boot] no pending migrations")) {
       throw new Error("The actual restarted entrypoint must preserve committed migration tracking")
     }
-    postgresRehearsal = { from: infrastructure.images["postgres-rehearsal-baseline"].version,
+    docker(["stop", "--time", "10", container])
+    const backup = execFileSync("docker", ["exec", database, "pg_dump", "-U", "payload", "-d", "payload_test", "--format=custom"], { maxBuffer: 64 * 1024 * 1024 })
+    execFileSync("docker", ["exec", "-i", database, "pg_restore", "-U", "payload", "-d", "payload_test", "--clean", "--if-exists", "--exit-on-error"], { input: backup, stdio: ["pipe", "inherit", "inherit"], timeout: 120000 })
+    if (query(snapshot) !== before) throw new Error("PostgreSQL logical restore changed the fixture, schema or migration history")
+    docker(["start", container])
+    await health(cmsHealthy)
+    if (!docker(["logs", container], true).includes("[migrate-on-boot] no pending migrations")) throw new Error("Restored database did not preserve migration tracking")
+    postgresRehearsal = { lifecycleContract: "passed", logicalRestore: true, from: infrastructure.images["postgres-rehearsal-baseline"].version,
       to: infrastructure.images.postgres.version, populatedDataPreserved: true, schemaPreserved: true,
       migrationHistoryPreserved: true, gracefulDatabaseStop: true, actualEntrypointRestartPassed: true, runtimeBefore, runtimeAfter }
   } else {
@@ -198,7 +212,6 @@ try {
   }
   timings.packagedSmokeMs = Math.round(performance.now() - phaseStarted)
   phaseStarted = performance.now()
-  const artifactDir = "artifacts/" + prefix
   await mkdir(artifactDir, { recursive: true })
   const archive = artifactDir + "/image-" + app + ".tar"
   docker(["save", "--output", archive, image])
@@ -206,13 +219,13 @@ try {
   timings.archiveMs = Math.round(performance.now() - phaseStarted)
   phaseStarted = performance.now()
   const dependencyInventory = await collectImageDependencies({ docker, root: process.cwd(), archive,
-    image: { application: app, sourceSHA: revision, imageId, archiveSha256, runtimePlatform },
+    image: { application: app, sourceSHA: revision, tag: image, imageId, archiveSha256, runtimePlatform },
     artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes(app) })
   timings.applicationInventoryMs = Math.round(performance.now() - phaseStarted)
   phaseStarted = performance.now()
   const infrastructureDependencies = []
   if (app === "cms") {
-    for (const key of ["postgres", "cloudflared"]) {
+    for (const key of ["cloudflared"]) {
       const pin = infrastructure.images[key]
       const vendorId = docker(["image", "inspect", "--format", "{{.Id}}", pin.reference], true).trim()
       const vendorArchitecture = docker(["image", "inspect", "--format", "{{.Architecture}}", pin.reference], true).trim()
@@ -225,10 +238,23 @@ try {
         artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes("cms-" + key) }))
     }
   }
+  if (app === "cms") {
+    const pgArchive = artifactDir + "/image-postgres.tar"
+    docker(["save", "--output", pgArchive, postgresImage])
+    const pg = { application: "postgres", sourceSHA: revision, tag: postgresImage,
+      imageId: docker(["image", "inspect", "--format", "{{.Id}}", postgresImage], true).trim(),
+      archiveSha256: await sha256File(pgArchive), runtimePlatform: { architecture: "amd64", ...parseOsRelease(docker(["run", "--rm", "--network", "none", "--entrypoint", "cat", postgresImage, "/etc/os-release"], true)) } }
+    const dependencyInventory = await collectImageDependencies({ docker, root: process.cwd(), archive: pgArchive,
+      image: pg, artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes("postgres") })
+    await writeFile(artifactDir + "/image-postgres.json", JSON.stringify({ ...pg, archiveIdentity: dependencyInventory.archiveIdentity,
+      verificationRunId: process.env.GITHUB_RUN_ID ?? null, verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
+      runtimeVersion: infrastructure.images.postgres.version, postgresRehearsal, dependencyInventory,
+      packagedSmoke: "passed", published: false, publishable: true }, null, 2) + "\n")
+  }
   timings.infrastructureInventoryMs = Math.round(performance.now() - phaseStarted)
   timings.totalMs = Math.round(performance.now() - verificationStarted)
   await writeFile(artifactDir + "/image-" + app + ".json", JSON.stringify({ application: app, sourceSHA: revision,
-    imageId, tag: image, archiveSha256,
+    imageId, tag: image, archiveSha256, archiveIdentity: dependencyInventory.archiveIdentity,
     verificationRunId: process.env.GITHUB_RUN_ID ?? null,
     verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
@@ -237,7 +263,7 @@ try {
     buildEnvironment: { builder: infrastructure.ciBuildkit.reference, driver: "docker-container", cacheEnabled: process.env.SIAB_IMAGE_BUILD_CACHE === "1" },
     packagedSmoke: "passed", published: false }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
-    "artifact-path=" + artifactDir + "/image-" + app + "*\nevidence-path=" + artifactDir + "/image-" + app + "*.json\n")
+    "artifact-path=" + artifactDir + "/image-" + app + "*\nevidence-path=" + artifactDir + "/image-*.json\npostgres-artifact-path=" + artifactDir + "/image-postgres*\n")
   console.log("Verification artifacts: " + artifactDir)
   console.log("Packaged " + app + " image verification passed; no image published")
 } catch (error) {
@@ -245,7 +271,7 @@ try {
   throw error
 } finally {
   if (ownsBuilder) { try { docker(["buildx", "rm", builder], true) } catch { /* Only this owned builder may be removed. */ } }
-  for (const args of [["rm", "--force", "--volumes", container], ["rm", "--force", "--volumes", database], ["network", "rm", network], ["image", "rm", image]]) {
+  for (const args of [["rm", "--force", "--volumes", container], ["rm", "--force", "--volumes", database], ["network", "rm", network], ["image", "rm", image], ...(app === "cms" ? [["image", "rm", postgresImage]] : [])]) {
     try { docker(args, true) } catch { /* Only these uniquely owned disposable resources are eligible for cleanup. */ }
   }
   if (ownsDataVolume) {

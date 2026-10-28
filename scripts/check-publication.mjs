@@ -2,13 +2,15 @@ import { execFileSync } from "node:child_process"
 import { readFile, mkdtemp, readdir, copyFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { expectedHostedJobs } from "./check-required-ci.mjs"
-import { assertImageVerificationEvidence } from "./image-evidence.mjs"
+import { dependencyImageApplications } from "./dependency-image-review.mjs"
+import { imageApplications, assertImageVerificationEvidence } from "./image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 import { checkDependencySecurity } from "./check-dependency-security.mjs"
 
 export function assertNoDeclaredDependencyBlockers(record) {
   if (!Array.isArray(record?.advisories) || !Array.isArray(record.imageAdvisories) || !Array.isArray(record.nativeAssessments) ||
-      record.nativeAssessments.length !== 5 || record.advisories.length || record.imageAdvisories.length ||
+      record.nativeAssessments.length !== dependencyImageApplications.length ||
+      !dependencyImageApplications.every(app => record.nativeAssessments.some(entry => entry.application === app)) || record.advisories.length || record.imageAdvisories.length ||
       record.nativeAssessments.some((entry) => entry.status !== "qualified") || (record.deferrals ?? []).some((entry) => entry.releaseBlocked)) {
     throw new Error("Publication blocked by declared or unavailable dependency review; refresh non-publishing readiness first")
   }
@@ -16,7 +18,7 @@ export function assertNoDeclaredDependencyBlockers(record) {
 
 export function assertPublicationRequest({ event, ref, attempt, sha, image, verificationRunId }) {
   if (event !== "workflow_dispatch" || ref !== "refs/heads/main" || attempt !== "1" ||
-      !/^[a-f0-9]{40}$/.test(sha ?? "") || !["cms", "renderer", "site"].includes(image) ||
+      !/^[a-f0-9]{40}$/.test(sha ?? "") || !imageApplications.includes(image) ||
       !/^[1-9][0-9]*$/.test(verificationRunId ?? "")) {
     throw new Error("Publication requires a fresh manual main run, full source SHA, known image and verification run ID")
   }
@@ -94,9 +96,9 @@ export async function checkPublication() {
   // authorizes publication of exactly request.image, never the other images.
   const dependencyDirectory = await mkdtemp("artifacts/dependency-candidate-")
   for (const file of await readdir("artifacts")) {
-    if (file.startsWith("image-" + request.image) && /\.(?:json|tar)$/.test(file)) await copyFile("artifacts/" + file, dependencyDirectory + "/" + file)
+    if ((file.startsWith("image-" + request.image) && /\.(?:json|tar)$/.test(file)) || (request.image === "exchange-worker" && ["worker-runtime-inventory.json", "worker-dpkg-inventory.txt"].includes(file))) await copyFile("artifacts/" + file, dependencyDirectory + "/" + file)
   }
-  for (const image of ["cms", "renderer", "site"].filter((image) => image !== request.image)) {
+  for (const image of imageApplications.filter((image) => image !== request.image)) {
     // Every archive comes from the same trusted exact-source canonical run.
     execFileSync("gh", ["run", "download", request.verificationRunId, "--repo", repository, "--name", "image-" + image, "--dir", dependencyDirectory], { timeout: 600000, stdio: "inherit" })
     const metadata = JSON.parse(await readFile(dependencyDirectory + "/image-" + image + ".json", "utf8"))

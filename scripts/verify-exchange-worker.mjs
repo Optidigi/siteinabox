@@ -1,3 +1,7 @@
+import { readWorkerRuntimeEvidence } from "./worker-runtime-evidence.mjs"
+import { requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
+import { collectImageDependencies } from "./collect-image-dependencies.mjs"
+import { parseOsRelease } from "./image-platform.mjs"
 import { execFileSync, spawnSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises"
@@ -13,7 +17,7 @@ if (process.versions.node !== expectedNode || !process.release.lts) throw new Er
 if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) throw new Error("Worker verification requires committed clean source")
 const source = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()
 const prefix = "siab-worker-" + randomUUID().slice(0, 8)
-const builder = prefix + "-builder", container = prefix + "-smoke", image = prefix + ":" + source
+const builder = prefix + "-builder", container = prefix + "-smoke", image = "siab-verify-" + prefix.slice(-8) + "-" + source + ":exchange-worker"
 const directory = path.join(root, "artifacts", prefix)
 await mkdir(directory, { recursive: true })
 const docker = (args, capture = false) => execFileSync("docker", args, { encoding: "utf8", stdio: capture ? "pipe" : "inherit", timeout: 1800000 })
@@ -56,9 +60,14 @@ try {
   await writeFile(osFile, osInventory)
   const archive = path.join(directory, "image-exchange-worker.tar")
   docker(["save", image, "--output", archive])
+  const verifiedImage = { application: "exchange-worker", sourceSHA: source, tag: image, imageId,
+    runtimeVersion: runtime.powerShellVersion, runtimeInventorySha256: await sha256File(runtimeFile), dpkgInventorySha256: await sha256File(osFile),
+    archiveSha256: await sha256File(archive), runtimePlatform: { architecture: docker(["image", "inspect", "--format", "{{.Architecture}}", image], true).trim(), ...parseOsRelease(docker(["exec", container, "cat", "/etc/os-release"], true)) } }
+  const dependencyInventory = await collectImageDependencies({ docker, root, archive, image: verifiedImage,
+    artifactDir: directory, prefix, resourceId: prefix, workerRuntime: await readWorkerRuntimeEvidence(directory, verifiedImage), requiredTypes: requiredImageAnalysisTypes("exchange-worker") })
   await writeFile(path.join(directory, "image-exchange-worker.json"), JSON.stringify({ application: "exchange-worker", sourceSHA: source,
     verificationRunId: process.env.GITHUB_RUN_ID ?? null, verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
-    imageId, tag: image, platform: infrastructure.verificationPlatform, runtimeInventorySha256: await sha256File(runtimeFile),
+    ...verifiedImage, archiveIdentity: dependencyInventory.archiveIdentity, runtimeVersion: runtime.powerShellVersion, dependencyInventory, publishable: true, runtimeInventorySha256: await sha256File(runtimeFile),
     dpkgInventorySha256: await sha256File(osFile), archiveSha256: await sha256File(archive), health, commandContract: "passed", unauthenticatedStatus: 401,
     packagedSmoke: "passed", published: false, releaseCleared: false,
     limitation: "Actual offline image/HTTP proof only; no Microsoft connection, advisory clearance or publication authority." }, null, 2) + "\n")

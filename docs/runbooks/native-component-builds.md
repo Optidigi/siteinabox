@@ -20,8 +20,7 @@ files, source commit, build info and replacement-binary SHA256. Builder package
 integrity and first-party replacement provenance remain distinct.
 
 The recipe also prepares gosu 1.20 using its exact upstream source and the same
-reviewed toolchain. It is not used by PostgreSQL until a separately qualified
-owned image preserves entrypoint privilege dropping, UID/GID, data directories,
+reviewed toolchain. The owned PostgreSQL verifier requires an image that preserves entrypoint privilege dropping, UID/GID, data directories,
 volumes, populated upgrade and recovery behavior. No vendor identity may be used
 for an image with replaced bytes.
 
@@ -36,16 +35,16 @@ blockers remain separate.
 `ops/postgres/Dockerfile` derives an explicitly owned candidate from the pinned
 PostgreSQL 18.6 image, updates the two affected Alpine libraries and replaces
 gosu with the reviewed rebuild. It inherits the vendor entrypoint, command,
-PGDATA, user identities and volume declaration. It is not wired into production
-Compose or the publisher until that owned-image provenance and release path are
-qualified.
+PGDATA, user identities and volume declaration. The canonical CMS verifier builds and consumes it, retaining a separate
+trusted-main PostgreSQL archive for controlled publication. Source production
+Compose requires its approved registry digest through `SIAB_POSTGRES_IMAGE_DIGEST`;
+no unqualified digest or default vendor substitution is supplied.
 
 `Test-PostgresImage.sh OWNED_CANDIDATE REVIEWED_BASELINE` creates only labelled,
 uniquely named disposable containers and a data volume. It checks root privilege
 drop, populated-volume replacement, UID/GID preservation, nonroot restart and
 graceful stop. Current probes pass; production database volumes are never used.
 The [October 28 candidate rehearsal](../research/postgres-owned-image-qualification.md)
-also passes actual main-CMS migrations and restored-schema startup. Integrate
-that compatibility check into the canonical consuming-image path and repeat it
-at the final source before adoption. Scan counts and upstream metadata are not
+also passes actual main-CMS migrations and restored-schema startup. The canonical consuming-image path now includes migration/restart and logical
+restore checks. Repeat it at the final source before adoption. Scan counts and upstream metadata are not
 a deployment authorization.

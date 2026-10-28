@@ -1,8 +1,9 @@
+import { dependencyImageApplications } from "./dependency-image-review.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import { assertNoDeclaredDependencyBlockers } from "./check-publication.mjs"
 
-const clean = () => ({ advisories: [], imageAdvisories: [], nativeAssessments: Array.from({ length: 5 }, () => ({ status: "qualified" })) })
+const clean = () => ({ advisories: [], imageAdvisories: [], nativeAssessments: dependencyImageApplications.map(application => ({ application, status: "qualified" })) })
 test("publication cannot access registry login while dependency blockers or unknown assessments remain", () => {
   assertNoDeclaredDependencyBlockers(clean()) // Preflight only; live candidate validation still follows.
   for (const mutate of [

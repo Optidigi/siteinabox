@@ -1,12 +1,42 @@
 # Image verification and approved publication
 
-Canonical `ci.yml` builds and smoke-tests every application image on pull
+Canonical `ci.yml` builds and smoke-tests all five owned images on pull
 requests, main pushes and manual verification runs. It uses read-only permissions,
 no registry login and no registry cache exports. Trusted main runs additionally
 retain the verified TAR archives; PR runs retain JSON/raw-scan evidence only. `pnpm publication:check` protects this boundary and tests
 the publication admission policy. The canonical CI image matrix and
 `required-ci` remain required evidence; see
 [protected delivery](protected-delivery.md).
+
+## Producers and admission
+
+The application matrix remains CMS, renderer and landing. The CMS verifier also
+builds the owned PostgreSQL recipe, runs its lifecycle/recovery contract and uses
+those bytes for actual CMS migration/restart/logical-restore checks. Its trusted
+main run exports a separate `image-postgres` artifact. The existing parallel
+worker job exports `image-exchange-worker`; it retains runtime/module/dpkg and
+shared scanner evidence rather than inventing Node runtime fields.
+
+The aggregate binds five owned image records. Dependency review covers those
+five plus pinned cloudflared, requiring six corresponding native assessments.
+The vendor PostgreSQL image is a build/rehearsal input, not the production image
+being promoted. Source production Compose requires `SIAB_POSTGRES_IMAGE_DIGEST`
+from an approved owned-image publication; local test Compose retains its vendor
+baseline. Updating source Compose does not change an installed production stack.
+
+Each saved archive binds the selected tag, source, platform, config, layers and
+rootfs. Docker may expose its config digest or OCI manifest digest as the loaded
+image ID. Admission verifies the actual relationship, preserves both identities,
+and records the observed publication image ID separately. The scanner continues
+to report the archive config identity; its output is never rewritten.
+
+The publisher's closed choices are CMS, renderer, site, PostgreSQL and Exchange
+worker. Choosing one authorizes only that image, while supplementary archives
+from the same exact-source run are rescanned for the complete release assessment.
+Worker managed/native mapping gaps are concrete blockers, not a clean scan.
+Existing source/advisory/expiry/approval controls remain mandatory. The old
+five-image native policy must be freshly reviewed for this expanded evidence;
+it is not automatically converted or extended.
 
 ## Verify
 

@@ -1,7 +1,7 @@
 /** One analyzer contract for collection, retained-byte rescanning and admission. */
 export function requiredImageAnalysisTypes(application) {
   const types = { cms: ["alpine", "node-pkg"], renderer: ["alpine", "node-pkg"],
-    site: ["alpine"], "cms-postgres": ["alpine"], "cms-cloudflared": ["gobinary"] }[application]
+    site: ["alpine"], "postgres": ["alpine", "gobinary"], "exchange-worker": ["ubuntu", "dotnet-core"], "cms-cloudflared": ["gobinary"] }[application]
   if (!types) throw new Error("Unknown dependency image application")
   return types
 }
@@ -44,7 +44,7 @@ export function validateImageInventory({ image, report, scanner, requiredTypes, 
     throw new Error("Scanner/database identity or freshness evidence is missing, stale or inconsistent")
   }
   if (report?.SchemaVersion !== 2 || report.Trivy?.Version !== scannerPin.version || report.ArtifactType !== "container_image" ||
-      !/^sha256:[a-f0-9]{64}$/.test(image?.imageId ?? "") || report.Metadata?.ImageID !== image.imageId ||
+      !/^sha256:[a-f0-9]{64}$/.test(image?.imageId ?? "") || report.Metadata?.ImageID !== (image.archiveIdentity?.configDigest ?? image.imageId) ||
       !Number.isFinite(time(report.CreatedAt)) || time(report.CreatedAt) > now + 300000 || now - time(report.CreatedAt) > day ||
       time(report.CreatedAt) < time(database.UpdatedAt) || report.Metadata.ImageConfig?.os !== "linux" || report.Metadata.ImageConfig?.architecture !== image.runtimePlatform?.architecture ||
       report.Metadata.OS?.Family !== image.runtimePlatform?.os || report.Metadata.OS?.Name !== image.runtimePlatform?.version) {

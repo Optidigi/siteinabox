@@ -7,7 +7,7 @@ import { sha256Bytes } from "./image-artifact.mjs"
 import { dependencyIdentities } from "./collect-dependency-evidence.mjs"
 import { validateDependencyReview, validatePublisherConstraints } from "./dependency-security-policy.mjs"
 import { loadDependencyImages, validateImageReview } from "./dependency-image-review.mjs"
-import { assertImageVerificationEvidence } from "./image-evidence.mjs"
+import { imageApplications, nodeImageApplications, assertImageVerificationEvidence } from "./image-evidence.mjs"
 import { assertCmsTestReceipts } from "./check-cms-test-results.mjs"
 import { cmsTestPlan } from "../apps/cms/tests/_helpers/testPlan.mjs"
 import { expectedCiJobs, assertRequiredCiResults } from "./check-required-ci.mjs"
@@ -48,17 +48,19 @@ export async function inspectCiEvidence(directory, expected) {
   const staging = await mkdtemp(join(tmpdir(), "siab-ci-receipts-"))
   try {
     const names = new Set()
-    for (const app of ["cms", "renderer", "site"]) {
+    for (const app of [...nodeImageApplications, "exchange-worker"]) {
       const folder = join(directory, "ci-image-" + app)
-      for (const name of (await readdir(folder)).filter(name => /^image-[a-z-]+(?:\.dependencies|\.trivy)?\.json$/.test(name))) {
+      for (const name of (await readdir(folder)).filter(name => /^(?:image-[a-z-]+(?:\.dependencies|\.trivy)?\.json|worker-runtime-inventory\.json|worker-dpkg-inventory\.txt)$/.test(name))) {
         assert(!names.has(name), "Duplicate image evidence filename: " + name); names.add(name)
         await copyFile(join(folder, name), join(staging, name))
       }
+    }
+    for (const app of imageApplications) {
       const image = await read(join(staging, "image-" + app + ".json"))
       assertImageVerificationEvidence({ sha: receipt.sourceSHA, runId: expected.run, attempt: expected.attempt, image: app }, image)
       assert.deepEqual(receipt.images.find(entry => entry.application === app), image)
     }
-    assert(Array.isArray(receipt.images) && receipt.images.length === 3, "Aggregate must contain exactly three application images")
+    assert(Array.isArray(receipt.images) && receipt.images.length === imageApplications.length, "Aggregate must contain exactly every publishable image")
     const images = await loadDependencyImages(staging, receipt.sourceSHA)
     const imageResult = validateImageReview(policy, images)
     assert.deepEqual(readiness.source, sourceResult); assert.deepEqual(readiness.images, imageResult)

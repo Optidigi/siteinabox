@@ -83,7 +83,7 @@ export async function scanImageDependencies({ root, archive, image, nativeInvent
   }
   const evidence = { schemaVersion: 1, application: image.application, sourceSHA: image.sourceSHA ?? null,
     candidateSourceSHA: image.candidateSourceSHA ?? image.sourceSHA, reference: image.reference ?? null, runtimePlatform: image.runtimePlatform,
-    imageId: image.imageId, archiveSha256: image.archiveSha256,
+    imageId: image.imageId, archiveIdentity: image.archiveIdentity ?? null, archiveSha256: image.archiveSha256,
     collectedAt: new Date().toISOString(), scanner: scanner.evidence, reportSha256: await sha256File(reportFile),
     stdoutSha256: await sha256File(stdoutFile), stderrSha256: await sha256File(stderrFile),
     scannerNotices, inventoryStatus: imageInventoryStatus(inventory, analysisGaps), analysisGaps,

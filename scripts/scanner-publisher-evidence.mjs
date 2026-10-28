@@ -27,7 +27,7 @@ export async function readScannerPublisherEvidence(root) {
   try { evidence = JSON.parse(await readFile(resolve(root, "artifacts/dependency-source/dependency-source.json"), "utf8")) }
   catch (error) {
     if (error.code !== "ENOENT") throw error
-    if (process.env.GITHUB_JOB === "image-verification") throw new Error("Canonical image verification requires the current-run publisher receipt")
+    if (["image-verification", "exchange-worker"].includes(process.env.GITHUB_JOB)) throw new Error("Canonical image verification requires the current-run publisher receipt")
     return null
   }
   const policy = JSON.parse(await readFile(resolve(root, "docs/dependency-security.json"), "utf8"))
