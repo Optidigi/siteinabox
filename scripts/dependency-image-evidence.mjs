@@ -7,9 +7,10 @@ export function requiredImageAnalysisTypes(application) {
 }
 
 export const scannerPin = {
-  version: "0.76.0",
-  archiveSha256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7",
-  binarySha256: "1f889576636db0623539cb339df7d06c40ebf39e7919489eafa1160e29808f19",
+  checksumsSha256: "885debc41b570179e81af560e5f393a66be29b9ff8c52915674f3eb2304c535d",
+  version: "0.76.1",
+  archiveSha256: "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0",
+  binarySha256: "d1dfca6ae10a1ad4540bb94e64f0510077c47008920a9b554986b39dca573d83",
 }
 const text = (value) => typeof value === "string" && value.trim().length > 0
 const hash = (value) => /^[a-f0-9]{64}$/.test(value ?? "")

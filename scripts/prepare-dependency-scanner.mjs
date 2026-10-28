@@ -9,7 +9,6 @@ import { scannerPin } from "./dependency-image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 
 const binarySha256 = scannerPin.binarySha256
-const checksumSha256 = "761d7853500074a0c81b1ef2f05ccb07f05080937aab68f98e7f2902a565e945"
 const exists = async (path) => { try { await access(path); return true } catch { return false } }
 const preparations = new Map()
 
@@ -64,7 +63,7 @@ async function prepare(root) {
   }
   const env = Object.fromEntries(["PATH", "HOME", "LANG", "SSL_CERT_FILE", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"].filter((key) => process.env[key]).map((key) => [key, process.env[key]]))
   const archive = await download(archiveName, scannerPin.archiveSha256)
-  const checksums = await download(checksumsName, checksumSha256)
+  const checksums = await download(checksumsName, scannerPin.checksumsSha256)
   if (!(await readFile(checksums, "utf8")).split("\n").some((line) => line.trim().split(/\s+/).join(" ") === scannerPin.archiveSha256 + " " + archiveName)) throw new Error("Scanner checksum entry differs from its pin")
   const binary = resolve(directory, "trivy")
   if (!(await exists(binary))) execFileSync("tar", ["-xzf", archive, "-C", directory, "trivy"], { env, timeout: 30000 })
