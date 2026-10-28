@@ -5,15 +5,25 @@ facts, graph/configuration identities, review ownership and expiry. It is not a
 blanket acceptance of risk. The October 7 candidate reviewed until October 14 is
 historical; its dates and findings were not copied forward as current evidence.
 
-The October26 Microsoft mail refresh requalifies the changed source graph and
-configuration, including the exact jose6.2.13 publisher identity. Fresh audits
-retain the three prior source findings and add ten full/production fast-uri and
-happy-dom findings, for13 source dispositions. All remain release-blocking.
-The current image record contains 287 dispositions, including all 210 prior
-findings. Five blocked native assessments, seven deferrals and the original
-October 28 expiry are retained. This refresh qualifies source inventory
-only; final candidate image evidence and production-release clearance remain
-separate. Independent review found no waived findings or weakened controls.
+## Release status at the October 28 baseline
+
+Main `0a5f590b` passed all 16 canonical jobs in run 40555910639. The last
+reviewed image inventory contains 112 findings and five blocked native
+assessments; all seven deferrals remain unresolved. The review expired at
+2026-10-28T01:01:28.437Z. These receipts are historical and establish no current
+release clearance. Refresh requires actual source/publisher/image evidence and
+independent review; changing an expiry alone is insufficient.
+
+The structured policy remains authoritative for exact findings and identities.
+The [release-completion spec](https://github.com/Optidigi/siteinabox/issues/132)
+owns remaining acceptance criteria;
+[protected delivery](runbooks/protected-delivery.md) and
+[image publication](runbooks/image-publication.md) own operating procedures.
+
+## Historical qualification receipts
+
+The sections below retain the context of earlier candidates. Counts, dates and
+qualification statements apply to those candidates, not the current release.
 
 ## PR126 exact-image reconciliation
 

@@ -128,3 +128,8 @@ When changing `apps/cms`:
   release effects, canonical documentation, and unrelated changes.
 - Report baseline and final SHA/dirty state, risk, changed files/commits, exact
   checks and results, skipped evidence, rollback notes, and operator follow-ups.
+
+## Agent skills
+
+- Specs and tickets: GitHub Issues; see [tracker conventions](docs/agents/issue-tracker.md).
+- Terminology and decisions: see [domain documentation](docs/agents/domain.md).
