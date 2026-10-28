@@ -59,6 +59,12 @@ Further dependency eligibility evidence: the [Go module proxy's x/net latest rec
 
 ## Subsequent packaged qualification
 
+The vendor-image findings below are historical diagnostics. Deployment now uses
+the owned static recipe in `ops/cloudflared`, which applies go-jose 4.1.6 and the
+reviewed CA bundle. Its packaged runtime, TLS trust and shutdown checks pass;
+its scan retains only the three binary-bound, package-absent Go findings.
+See the current [publication procedure](../runbooks/image-publication.md).
+
 PostHog JS **1.415.2** is held exactly across CMS, renderer and landing.
 Version 1.439.2 failed the existing renderer browser regression: queued consented
 events were retried after revocation. Its distributed bundle mangles the private

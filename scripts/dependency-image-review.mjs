@@ -64,16 +64,12 @@ export async function loadDependencyImages(directory, sourceSHA) {
       if (!isDeepStrictEqual(runtime, image.dependencyInventory.nativeInventory?.workerRuntime)) throw new Error("Worker managed inventory is missing from native review")
     }
     results.push(image.dependencyInventory)
-    if (app === "cms") results.push(...(image.infrastructureDependencies ?? []))
   }
   if (!isDeepStrictEqual(results.map((image) => image?.application).sort(), [...dependencyImageApplications].sort())) {
     throw new Error("Dependency evidence must cover every application plus pinned PostgreSQL and cloudflared")
   }
   for (const image of results) {
     if ("linux/" + image.runtimePlatform?.architecture !== infrastructure.verificationPlatform) throw new Error("Dependency evidence platform differs from the reviewed target")
-    if (image.application.startsWith("cms-") && image.reference !== infrastructure.images[image.application.slice(4)]?.reference) {
-      throw new Error("Infrastructure scan differs from the current immutable publisher reference")
-    }
     if (image.schemaVersion !== 1 || image.candidateSourceSHA !== sourceSHA || image.releaseCleared !== false ||
         digest(image.nativeInventory) !== image.nativeInventorySha256) throw new Error("Native dependency provenance is incomplete")
     const path = resolve(directory, "image-" + image.application + ".trivy.json")

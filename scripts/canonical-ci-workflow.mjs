@@ -56,7 +56,7 @@ export function assertCanonicalImageWorkflow(source) {
     }
   }
   inspect(workflow)
-  let archives = 0, postgresArchives = 0, verifiers = 0
+  let archives = 0, postgresArchives = 0, cloudflaredArchives = 0, verifiers = 0
   for (const step of job.steps ?? []) {
     if (step.run && step.uses) fail("a step cannot combine an action with a command")
     const upload = step.uses?.startsWith("actions/upload-artifact@")
@@ -67,6 +67,9 @@ export function assertCanonicalImageWorkflow(source) {
     } else if (upload && step.with?.name === "image-postgres") {
       postgresArchives++
       if (condition(step.if) !== "matrix.app == 'cms' && " + mainArchiveCondition || step.with.path !== "${{ steps.verify.outputs.postgres-artifact-path }}" || step.with["if-no-files-found"] !== "error" || step.with["compression-level"] !== 0 || step.with["retention-days"] !== 7) fail("owned PostgreSQL archive requires the same trusted CMS producer and retention")
+    } else if (upload && step.with?.name === "image-cloudflared") {
+      cloudflaredArchives++
+      if (condition(step.if) !== "matrix.app == 'cms' && " + mainArchiveCondition || step.with.path !== "${{ steps.verify.outputs.cloudflared-artifact-path }}" || step.with["if-no-files-found"] !== "error" || step.with["compression-level"] !== 0 || step.with["retention-days"] !== 7) fail("owned cloudflared archive requires the same trusted CMS producer and retention")
     } else if (upload && step.with?.name === "ci-dependency-diagnostics-${{ matrix.app }}") {
       if (condition(step.if) !== "always()" || step.with["if-no-files-found"] !== "ignore" ||
           !equal(String(step.with.path).trim().split(/\s+/), ["artifacts/siab-verify-*/image-*.json", "artifacts/siab-verify-*/image-*.log"])) fail("failure diagnostics must retain only scanner reports")
@@ -79,6 +82,6 @@ export function assertCanonicalImageWorkflow(source) {
     }
     if (upload && step.with?.name === "ci-image-${{ matrix.app }}" && step.with["if-no-files-found"] !== "error") fail("image evidence is mandatory")
   }
-  if (archives !== 1 || postgresArchives !== 1 || verifiers !== 1 || !(job.steps ?? []).some(step => step.with?.name === "ci-image-${{ matrix.app }}")) fail("exactly one verifier, archive export and mandatory evidence upload are required")
+  if (archives !== 1 || postgresArchives !== 1 || cloudflaredArchives !== 1 || verifiers !== 1 || !(job.steps ?? []).some(step => step.with?.name === "ci-image-${{ matrix.app }}")) fail("exactly one verifier, archive export and mandatory evidence upload are required")
   return workflow
 }

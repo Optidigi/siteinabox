@@ -17,3 +17,9 @@ test("archive workflows reject untrusted PR-target triggers", () => {
   const source = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
   assert.throws(() => assertVerificationWorkflow(source.replace("  push:", "  pull_request_target:\n  push:"), "cms"))
 })
+
+test("the owned tunnel archive cannot be omitted or exported from a pull request", () => {
+  const source = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
+  assert.throws(() => assertVerificationWorkflow(source.replace("name: image-cloudflared", "name: unrelated")))
+  assert.throws(() => assertVerificationWorkflow(source.replace(/(name: Retain trusted main owned cloudflared archive\n\s+if:) [^\n]+/, "$1 true")))
+})

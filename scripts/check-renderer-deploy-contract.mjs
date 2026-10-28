@@ -2,7 +2,6 @@ import { assertCanonicalImageWorkflow } from "./canonical-ci-workflow.mjs"
 import { readdir, readFile } from "node:fs/promises"
 import { dirname, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { infrastructure } from "./infrastructure-images.mjs"
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const { RENDERER_PRODUCTION_HOSTS } = await import(
@@ -61,7 +60,7 @@ if (rendererPackage.dependencies?.["@siteinabox/legal-content"]?.startsWith("wor
 const rendererCompose = await readFile(rendererComposePath, "utf8")
 for (const requiredFragment of [
   "image: ghcr.io/optidigi/siteinabox-renderer@${SIAB_RENDERER_IMAGE_DIGEST:?required}",
-  `image: ${infrastructure.images.cloudflared.reference}`,
+  "image: ghcr.io/optidigi/siteinabox-cloudflared@${SIAB_CLOUDFLARED_IMAGE_DIGEST:?Set the approved owned cloudflared digest}",
   "SIAB_RENDERER_API_TOKEN_FILE: /run/secrets/renderer_api_token",
   "SIAB_RENDERER_ORIGIN_TRUST_MODE: cloudflare_tunnel",
   "file: ${SIAB_RENDERER_API_TOKEN_FILE:?required}",

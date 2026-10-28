@@ -7,7 +7,7 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { setTimeout } from "node:timers/promises"
 import { sha256File } from "./image-artifact.mjs"
 import { infrastructure } from "./infrastructure-images.mjs"
-import { verifyTunnelOffline } from "./verify-tunnel-offline.mjs"
+import { verifyCloudflaredImage } from "./verify-cloudflared-image.mjs"
 import { parseOsRelease } from "./image-platform.mjs"
 import { collectImageDependencies } from "./collect-image-dependencies.mjs"
 
@@ -26,6 +26,7 @@ const resourceId = randomUUID()
 const prefix = "siab-verify-" + resourceId.slice(0, 8)
 const image = prefix + "-" + revision + ":" + app
 const postgresImage = prefix + "-" + revision + ":postgres"
+const cloudflaredImage = prefix + "-" + revision + ":cloudflared"
 const artifactDir = "artifacts/" + prefix
 const container = prefix + "-app"
 const database = prefix + "-db"
@@ -72,6 +73,8 @@ try {
     docker(["buildx", "build", "--builder", builder, "--load", "--platform", infrastructure.verificationPlatform,
       "--label", "org.opencontainers.image.revision=" + revision, "--file", "ops/postgres/Dockerfile", "--tag", postgresImage, "."])
     execFileSync("sh", ["ops/postgres/Test-PostgresImage.sh", postgresImage, infrastructure.images.postgres.reference], { stdio: "inherit", timeout: 180000 })
+    docker(["buildx", "build", "--builder", builder, "--load", "--platform", infrastructure.verificationPlatform,
+      "--label", "org.opencontainers.image.revision=" + revision, "--file", "ops/cloudflared/Dockerfile", "--tag", cloudflaredImage, "."])
   }
   if (cache) await cache.commit()
   timings.buildMs = Math.round(performance.now() - phaseStarted)
@@ -103,7 +106,7 @@ try {
     })
     if (result.error || result.status !== 0) throw new Error("Packaged renderer smoke failed")
   } else if (app === "cms") {
-    tunnelVerification = await verifyTunnelOffline()
+    tunnelVerification = await verifyCloudflaredImage({ docker, image: cloudflaredImage, sourceSHA: revision, artifactDir, prefix, resourceId })
     // Load sharp through Next's own dependency context in the actual runner,
     // then process pixels so missing/incompatible native libraries fail here.
     const sharpPin = (await readFile("pnpm-workspace.yaml", "utf8")).match(/^  sharp: "([^"]+)"$/m)?.[1]
@@ -223,21 +226,6 @@ try {
     artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes(app) })
   timings.applicationInventoryMs = Math.round(performance.now() - phaseStarted)
   phaseStarted = performance.now()
-  const infrastructureDependencies = []
-  if (app === "cms") {
-    for (const key of ["cloudflared"]) {
-      const pin = infrastructure.images[key]
-      const vendorId = docker(["image", "inspect", "--format", "{{.Id}}", pin.reference], true).trim()
-      const vendorArchitecture = docker(["image", "inspect", "--format", "{{.Architecture}}", pin.reference], true).trim()
-      if ("linux/" + vendorArchitecture !== infrastructure.verificationPlatform) throw new Error("Infrastructure image platform differs from its reviewed pin")
-      const vendorArchive = artifactDir + "/image-cms-" + key + ".tar"
-      docker(["save", "--output", vendorArchive, pin.reference])
-      infrastructureDependencies.push(await collectImageDependencies({ docker, root: process.cwd(), archive: vendorArchive,
-        image: { application: "cms-" + key, candidateSourceSHA: revision, imageId: vendorId,
-          archiveSha256: await sha256File(vendorArchive), reference: pin.reference, runtimePlatform: { architecture: vendorArchitecture } },
-        artifactDir, prefix, resourceId, requiredTypes: requiredImageAnalysisTypes("cms-" + key) }))
-    }
-  }
   if (app === "cms") {
     const pgArchive = artifactDir + "/image-postgres.tar"
     docker(["save", "--output", pgArchive, postgresImage])
@@ -259,11 +247,11 @@ try {
     verificationRunAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
     publishable: app !== "site" || Boolean(process.env.POSTHOG_PROJECT_TOKEN),
     nodeVersion: expectedNode, buildNodeLts: process.release.lts, nodeLts, runtimePlatform, postgresRehearsal, tunnelVerification,
-    dependencyInventory, infrastructureDependencies, timings,
+    dependencyInventory, timings,
     buildEnvironment: { builder: infrastructure.ciBuildkit.reference, driver: "docker-container", cacheEnabled: process.env.SIAB_IMAGE_BUILD_CACHE === "1" },
     packagedSmoke: "passed", published: false }, null, 2) + "\n")
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,
-    "artifact-path=" + artifactDir + "/image-" + app + "*\nevidence-path=" + artifactDir + "/image-*.json\npostgres-artifact-path=" + artifactDir + "/image-postgres*\n")
+    "artifact-path=" + artifactDir + "/image-" + app + ".*\nevidence-path=" + artifactDir + "/image-*.json\npostgres-artifact-path=" + artifactDir + "/image-postgres*\ncloudflared-artifact-path=" + artifactDir + "/image-cloudflared*\n")
   console.log("Verification artifacts: " + artifactDir)
   console.log("Packaged " + app + " image verification passed; no image published")
 } catch (error) {

@@ -246,10 +246,13 @@
           }
         }
       ],
-      "verificationOnly": false,
+      "verificationOnly": true,
       "createdAt": "2026-10-27T13:39:18.05571022Z",
       "releaseUrl": "https://github.com/cloudflare/cloudflared/releases/tag/2026.10.5",
-      "nativeAmd64Sha256": "sha256:e1bc0cf084fd9e590554fe769a86b1db46701c3f847a43d902f7b974a4e16298"
+      "nativeAmd64Sha256": "sha256:e1bc0cf084fd9e590554fe769a86b1db46701c3f847a43d902f7b974a4e16298",
+      "sourceRevision": "99b2eb2c0152862af2b1abf7c7b4e2170a46b9fe",
+      "goJoseVersion": "4.1.6",
+      "certificateBundleSha256": "5961c0a3c65459931c023e0075c09733f09aea4ca439cb85bc4a08bb4f3f568b"
     },
     "dockerfile": {
       "version": "1.28.0",
@@ -381,13 +384,6 @@
       "version": "19rc1",
       "reason": "prerelease; 18.6 is current stable, no data-directory major change authorized",
       "recheck": "official stable release and separately assessed major migration requirement"
-    },
-    {
-      "component": "cloudflared",
-      "version": "2026.10.2",
-      "publishedAt": "2026-10-20T09:17:30Z",
-      "reason": "under the approved 1440-minute release-age window at selection",
-      "recheckAt": "2026-10-21T09:17:30Z"
     }
   ],
   "ciBrowser": {

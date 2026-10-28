@@ -292,6 +292,24 @@
       "url": "https://vuln.go.dev/ID/GO-2026-6866.json",
       "sha256": "58d074a78852283ac4c018a7042983e9be7f1450a131da5de937148e938a6423",
       "securityHash": "a268db5dcfe70d4cc325dda6614bc49a472650962e822280df73fc5004bd16db"
+    },
+    {
+      "id": "native-cloudflared-2026.10.5-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/cloudflare/cloudflared/git/ref/tags/2026.10.5",
+      "selected": true,
+      "role": "pin",
+      "sha256": "a0c914193dc2b86780ae0d3ad7de4c20f63a7d67b51fd275af39c2e0f38f1f36",
+      "securityHash": "a0c914193dc2b86780ae0d3ad7de4c20f63a7d67b51fd275af39c2e0f38f1f36"
+    },
+    {
+      "id": "native-go-jose-4.1.6-publication",
+      "kind": "json",
+      "url": "https://proxy.golang.org/github.com/go-jose/go-jose/v4/@v/v4.1.6.info",
+      "selected": true,
+      "role": "pin",
+      "sha256": "8ba33bc2bcdeeca79e52dca390fadb56a93e5aa932913ca7b68c218da0f2f8a3",
+      "securityHash": "8ba33bc2bcdeeca79e52dca390fadb56a93e5aa932913ca7b68c218da0f2f8a3"
     }
   ],
   "publisherConstraints": [
@@ -528,606 +546,6 @@
       "sources": [
         "GHSA-gcqx-w48m-w2h4"
       ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2010-4756",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "714a408726c750d22716b34634aae534ecdcddff3ebbc81a7c35ddf3aa2ec7ef",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2010-4756. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2018-20796",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "d2b4353cb48eddb7969582ca8e25338a28b5851d5c1cbe26d6d1087548a78954",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2018-20796. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2019-1010022",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "975de518698737afe8c54e95741d1676073061996df095bf99a42cefc458beb8",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010022. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2019-1010023",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "52b2781f78ca4014934981a7d4345f31788eb3ab1ad10a23ad05ae1aefbf1c56",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010023. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2019-1010024",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "38fb071c2b6faa25812b754d38e8f32fcfc1d50f736ed3467ff8b75d5b575748",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010024. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2019-1010025",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "714a408726c750d22716b34634aae534ecdcddff3ebbc81a7c35ddf3aa2ec7ef",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010025. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2019-9192",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "49a417cd97cf0ceda123cdf1dc4934acb17c2f3d90f594a30bd70968780a6577",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-9192. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-116587",
-      "package": "github.com/go-jose/go-jose/v4",
-      "version": "v4.1.4",
-      "severity": "high",
-      "paths": [
-        "usr/local/bin/cloudflared"
-      ],
-      "factsHash": "69d84e6dab0afd9d1f0f8adf7e37c8f37f94064879ba73e4565658f24b6a71ef",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports github.com/go-jose/go-jose/v4 v4.1.4 with CVE-2026-116587. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-04T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release",
-        "GHSA-mgcc-cww5-fp2q"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-18374",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-19499",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-19499. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-19542",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-19542. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-27171",
-      "package": "zlib1g",
-      "version": "1:1.3.dfsg+really1.3.1-1+b1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "da5db8d38dc65af10a15e6e641311c595128138649bb5121b170335edfe8a1c1",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-27171. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-5435",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "1138e0bc7c49d3fdb1c10bcbf81850fd078e9f7a01db1d3cab459666963b98e3",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-5435. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-6238",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "1138e0bc7c49d3fdb1c10bcbf81850fd078e9f7a01db1d3cab459666963b98e3",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6238. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-6368",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6368. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-6791",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6791. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-77117",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-77117. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-78661",
-      "package": "golang.org/x/net",
-      "version": "v0.61.0",
-      "severity": "unknown",
-      "paths": [
-        "usr/local/bin/cloudflared"
-      ],
-      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
-      "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-04T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release",
-        "GO-2026-6860"
-      ],
-      "evidence": {
-        "sources": [
-          "GO-2026-6860"
-        ],
-        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
-        "binding": {
-          "scope": "image:cms-cloudflared",
-          "platform": "linux/amd64",
-          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
-          "advisoryHash": "19302814046b08e41ebf083a0d52faa18b98332ef2a9c6a7c0a18eb07158d38e"
-        }
-      }
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-80489",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-80489. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-85091",
-      "package": "zlib1g",
-      "version": "1:1.3.dfsg+really1.3.1-1+b1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "7146bbbfa0f10b9275905cdc0c5ed6ad542649602a33157ae4f3be1f492bbc02",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-85091. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-8674",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "d3fa3ea5fac9a63faa77a83b98c88287883ee9254a8a4949bc232601d34ec9be",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-8674. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-86805",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "870e2b2ebb56a5b3e0873cf1213fe15ed63f293372ac59e9b0dee7e2d0dc69d4",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-86805. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-89092",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "8106b481012881d280fd51d683460205a16aaceb7252baa49b5d95d5189107cc",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-95818",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "870e2b2ebb56a5b3e0873cf1213fe15ed63f293372ac59e9b0dee7e2d0dc69d4",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-95818. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-97045",
-      "package": "golang.org/x/net",
-      "version": "v0.61.0",
-      "severity": "unknown",
-      "paths": [
-        "usr/local/bin/cloudflared"
-      ],
-      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
-      "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-04T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release",
-        "GO-2026-6866"
-      ],
-      "evidence": {
-        "sources": [
-          "GO-2026-6866"
-        ],
-        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
-        "binding": {
-          "scope": "image:cms-cloudflared",
-          "platform": "linux/amd64",
-          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
-          "advisoryHash": "2288f4f4d6f0b63c2c2bc6854e65a29e25345b43feb412b8d51c20637bf0dbb6"
-        }
-      }
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-97399",
-      "package": "libc6",
-      "version": "2.41-12+deb13u4",
-      "severity": "low",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "3fc98994e71627e68de81dfd03163a53d59f6801062818dff8b78e780fbc55c7",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-97399. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "DSA-6572-1",
-      "package": "ca-certificates",
-      "version": "20250419",
-      "severity": "unknown",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "0ff16563df300cd9f2e2c26965fe6634a19445a1bef8e30eb082379dc58c084b",
-      "state": "under_investigation",
-      "reason": "Debian DSA-6572-1 identifies compromised CA certificates and fixes ca-certificates at 20250419+deb13u1; the publisher image retains 20250419. Scanner severity is unknown, so release remains blocked pending remediation; https://lists.debian.org/debian-security-announce/2026/msg00487.html.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-04T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "GO-2026-5932",
-      "package": "golang.org/x/crypto",
-      "version": "v0.58.0",
-      "severity": "unknown",
-      "paths": [
-        "usr/local/bin/cloudflared"
-      ],
-      "factsHash": "5796482b71ed465ce25f589ea10148b835cceec0ffb53b19efcad6afaae8e952",
-      "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-04T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
-      "sources": [
-        "scanner-release",
-        "GO-2026-5932"
-      ],
-      "evidence": {
-        "sources": [
-          "GO-2026-5932"
-        ],
-        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
-        "binding": {
-          "scope": "image:cms-cloudflared",
-          "platform": "linux/amd64",
-          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
-          "advisoryHash": "9b6de7aedbf0c766aeadc0e3aa4e48d8b758194d08ddca82323a062f148e4d73"
-        }
-      }
     },
     {
       "scope": "image:exchange-worker",
@@ -1834,6 +1252,105 @@
       "sources": [
         "scanner-release"
       ]
+    },
+    {
+      "scope": "image:cloudflared",
+      "id": "CVE-2026-78661",
+      "package": "golang.org/x/net",
+      "version": "v0.61.0",
+      "severity": "unknown",
+      "paths": [
+        "usr/local/bin/cloudflared"
+      ],
+      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T18:13:04.395Z",
+      "deadline": "2026-11-27T18:13:04.395Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
+      "sources": [
+        "scanner-release",
+        "GO-2026-6860"
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-6860"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+        "binding": {
+          "scope": "image:cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
+          "advisoryHash": "f14a663a3e7b4cad00ba64dd006d6ddaebf882f21f47cdb4d85762ea135144ef"
+        }
+      }
+    },
+    {
+      "scope": "image:cloudflared",
+      "id": "CVE-2026-97045",
+      "package": "golang.org/x/net",
+      "version": "v0.61.0",
+      "severity": "unknown",
+      "paths": [
+        "usr/local/bin/cloudflared"
+      ],
+      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T18:13:04.395Z",
+      "deadline": "2026-11-27T18:13:04.395Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
+      "sources": [
+        "scanner-release",
+        "GO-2026-6866"
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-6866"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+        "binding": {
+          "scope": "image:cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
+          "advisoryHash": "aa43ec377f719609f09ea1bdeeae43b9a76a08e8f7276fedc7514f6e049e597c"
+        }
+      }
+    },
+    {
+      "scope": "image:cloudflared",
+      "id": "GO-2026-5932",
+      "package": "golang.org/x/crypto",
+      "version": "v0.58.0",
+      "severity": "unknown",
+      "paths": [
+        "usr/local/bin/cloudflared"
+      ],
+      "factsHash": "5796482b71ed465ce25f589ea10148b835cceec0ffb53b19efcad6afaae8e952",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T18:13:04.395Z",
+      "deadline": "2026-11-27T18:13:04.395Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
+      "sources": [
+        "scanner-release",
+        "GO-2026-5932"
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-5932"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+        "binding": {
+          "scope": "image:cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
+          "advisoryHash": "4074b7ecb563cc697d5802abc26aca9d45493c3e569dd749f54347dde2e546e0"
+        }
+      }
     }
   ],
   "limitations": [

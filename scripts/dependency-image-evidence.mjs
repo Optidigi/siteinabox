@@ -1,7 +1,7 @@
 /** One analyzer contract for collection, retained-byte rescanning and admission. */
 export function requiredImageAnalysisTypes(application) {
   const types = { cms: ["alpine", "node-pkg"], renderer: ["alpine", "node-pkg"],
-    site: ["alpine"], "postgres": ["alpine", "gobinary"], "exchange-worker": ["ubuntu", "dotnet-core"], "cms-cloudflared": ["gobinary"] }[application]
+    site: ["alpine"], "postgres": ["alpine", "gobinary"], "exchange-worker": ["ubuntu", "dotnet-core"], cloudflared: ["gobinary"] }[application]
   if (!types) throw new Error("Unknown dependency image application")
   return types
 }
