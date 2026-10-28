@@ -292,6 +292,24 @@
       "url": "https://vuln.go.dev/ID/GO-2026-6866.json",
       "sha256": "58d074a78852283ac4c018a7042983e9be7f1450a131da5de937148e938a6423",
       "securityHash": "a268db5dcfe70d4cc325dda6614bc49a472650962e822280df73fc5004bd16db"
+    },
+    {
+      "id": "native-cloudflared-2026.10.5-source",
+      "kind": "json",
+      "url": "https://api.github.com/repos/cloudflare/cloudflared/git/ref/tags/2026.10.5",
+      "selected": true,
+      "role": "pin",
+      "sha256": "a0c914193dc2b86780ae0d3ad7de4c20f63a7d67b51fd275af39c2e0f38f1f36",
+      "securityHash": "a0c914193dc2b86780ae0d3ad7de4c20f63a7d67b51fd275af39c2e0f38f1f36"
+    },
+    {
+      "id": "native-go-jose-4.1.6-publication",
+      "kind": "json",
+      "url": "https://proxy.golang.org/github.com/go-jose/go-jose/v4/@v/v4.1.6.info",
+      "selected": true,
+      "role": "pin",
+      "sha256": "8ba33bc2bcdeeca79e52dca390fadb56a93e5aa932913ca7b68c218da0f2f8a3",
+      "securityHash": "8ba33bc2bcdeeca79e52dca390fadb56a93e5aa932913ca7b68c218da0f2f8a3"
     }
   ],
   "publisherConstraints": [
