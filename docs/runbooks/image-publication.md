@@ -81,8 +81,9 @@ archive SHA-256 and local image ID for owner approval. Verify canonical CI at
 that source, dependency/security disposition and applicable release gates.
 Publication does not authorize deployment or provider operations.
 
-Dispatch `publish-image.yml` **on main** with `image` (`cms`, `renderer` or
-`site`), `source_sha` (40 hexadecimal characters) and `verification_run_id`.
+Dispatch `publish-image.yml` **on main** with `image` (`cms`, `renderer`,
+`site`, `postgres` or `exchange-worker`), `source_sha` (40 hexadecimal characters)
+and `verification_run_id`.
 The run name displays the source/image/run being approved. The protected
 `ghcr-publish` environment must have configured user reviewers, main-only custom
 branch policies and administrator bypass disabled. The owner may be the same
