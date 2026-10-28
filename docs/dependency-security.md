@@ -14,6 +14,13 @@ assessments; all seven deferrals remain unresolved. The review expired at
 release clearance. Refresh requires actual source/publisher/image evidence and
 independent review; changing an expiry alone is insufficient.
 
+A fresh clean-source collection at `5d23d995` on October 28 additionally reports
+GHSA-gcqx-w48m-w2h4 for Payload's deepmerge 4.3.1 in both full and production
+audits. This finding is not yet incorporated into the expired review. No
+published recognized fix was found; [ticket #140](https://github.com/Optidigi/siteinabox/issues/140)
+records primary sources, library reproduction limits and the supported fix path.
+Previous zero-source-finding receipts apply only to their collection time.
+
 The structured policy remains authoritative for exact findings and identities.
 The [release-completion spec](https://github.com/Optidigi/siteinabox/issues/132)
 owns remaining acceptance criteria;
