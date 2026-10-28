@@ -51,7 +51,9 @@ try {
   const runtimeFile = path.join(directory, "worker-runtime-inventory.json")
   const osFile = path.join(directory, "worker-dpkg-inventory.txt")
   await writeFile(runtimeFile, runtimeInventory)
-  await writeFile(osFile, docker(["exec", container, "dpkg-query", "-W", "-f=${binary:Package}\\t${Version}\\t${Architecture}\\n"], true))
+  const osInventory = docker(["exec", container, "dpkg-query", "-W", "-f=${binary:Package}\t${Version}\t${Architecture}\n"], true)
+  if (!osInventory.trim() || osInventory.trimEnd().split("\n").some(line => line.split("\t").length !== 3)) throw new Error("Worker OS inventory has malformed package records")
+  await writeFile(osFile, osInventory)
   const archive = path.join(directory, "image-exchange-worker.tar")
   docker(["save", image, "--output", archive])
   await writeFile(path.join(directory, "image-exchange-worker.json"), JSON.stringify({ application: "exchange-worker", sourceSHA: source,
