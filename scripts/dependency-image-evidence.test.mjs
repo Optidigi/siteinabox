@@ -1,3 +1,4 @@
+import { validateScannerDiagnostics } from "./scan-image-dependencies.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import { validateImageInventory, imageInventoryStatus } from "./dependency-image-evidence.mjs"
@@ -116,4 +117,13 @@ test("an advisory with unresolved source metadata remains explicit blocked evide
   assert.equal(inventory.findings[0].source, null)
   assert.equal(inventory.findings[0].sourceStatus, "unresolved")
   assert.equal(inventory.findings[0].severity, "unknown")
+})
+
+test("the exact vendor notice supports ISO timezone offsets without accepting unknown warnings", () => {
+  const message = "Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.76/guide/scanner/vulnerability#severity-selection for details."
+  for (const offset of ["+01:00", "-05:00", "+00:00"]) {
+    const line = "2026-10-28T14:18:46" + offset + "\tWARN\t" + message
+    assert.equal(validateScannerDiagnostics(line, {}).length, 1)
+    assert.throws(() => validateScannerDiagnostics(line.replace(message, "Failed to analyze a binary"), {}))
+  }
 })

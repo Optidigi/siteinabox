@@ -14,7 +14,7 @@ export function validateScannerDiagnostics(diagnostics, report) {
   const notices = []
   for (const line of diagnostics.split("\n")) {
     if (!/(?:^|\t)(?:WARN|ERROR|FATAL)(?:\t|\s)/.test(line)) continue
-    const warning = line.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\tWARN\t(.*)$/)
+    const warning = line.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})\tWARN\t(.*)$/)
     if (warning?.[1] === message) {
       notices.push({ code: "VENDOR_SEVERITY_FALLBACK", diagnostic: line, documentation })
       continue
