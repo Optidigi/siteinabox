@@ -16,7 +16,8 @@ unauthenticated 401 rejection. Tests use disposable resources with networking
 disabled and no published ports; no Microsoft connection or provider write occurs.
 
 The recursive inventory retains 750 runtime/module file records, including
-duplicate DLLs and 14 unresolved compatibility-library links. The complete dpkg
+duplicate DLLs, two unresolved compatibility-library links and 12 non-managed
+DLLs requiring native/package mapping. The complete dpkg
 inventory retains 121 packages. Managed assembly versions alone do not identify
 servicing level; file/product metadata is retained separately. Unresolved links
 have target metadata and no invented content hash. Independent native coverage
