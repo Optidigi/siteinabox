@@ -26,7 +26,17 @@ if grep -F 'vcs.modified=true' /out/notices/build-info.txt; then exit 1; fi
 cp LICENSE /out/notices/upstream-LICENSE
 cp "$(go env GOROOT)/LICENSE" /out/notices/Go-LICENSE
 cp "$(go env GOMODCACHE)/github.com/go-jose/go-jose/v4@v4.1.6/LICENSE" /out/notices/go-jose-LICENSE
-find vendor -type f \( -iname 'LICENSE*' -o -iname 'NOTICE*' \) -exec sh -c 'for f do mkdir -p "/out/notices/$(dirname "$f")"; cp "$f" "/out/notices/$f"; done' sh {} +
+cache=$(go env GOMODCACHE)
+go list -mod=readonly -modfile="$work/modules/derived.mod" -m -f '{{if .Dir}}{{.Dir}}{{end}}' all |
+while IFS= read -r directory; do
+  case "$directory" in
+    "$cache"/*)
+      target="/out/notices/modules/${directory#"$cache"/}"
+      mkdir -p "$target"
+      find "$directory" -maxdepth 1 -type f \( -iname 'LICENSE*' -o -iname 'NOTICE*' \) -exec cp '{}' "$target/" \;
+      ;;
+  esac
+done
 cp "$work/modules/derived.mod" "$work/modules/derived.sum" /out/notices/
 printf 'source=https://github.com/cloudflare/cloudflared\nrevision=99b2eb2c0152862af2b1abf7c7b4e2170a46b9fe\nvariant=siteinabox-security-rebuild\ngo-jose=4.1.6\n' > /out/notices/provenance.txt
 go build -trimpath -o /out/Test-Trust /recipes/Test-Trust.go
