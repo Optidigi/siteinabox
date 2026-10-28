@@ -47,7 +47,7 @@
     "delivery:inspect": "node scripts/inspect-delivery-controls.mjs",
     "infrastructure:check": "node --test scripts/infrastructure-images.test.mjs",
     "infrastructure:tunnel": "node scripts/verify-tunnel-offline.mjs",
-    "dependency:policy:test": "node --test scripts/*dependency*.test.mjs scripts/inventory-image-native.test.mjs scripts/inspect-ci-evidence.test.mjs",
+    "dependency:policy:test": "node --test scripts/release-risk.test.mjs scripts/*dependency*.test.mjs scripts/inventory-image-native.test.mjs scripts/inspect-ci-evidence.test.mjs",
     "dependency:inventory": "node scripts/collect-dependency-evidence.mjs",
     "dependency:check": "node scripts/check-dependency-security.mjs",
     "dependency:release": "node scripts/check-dependency-security.mjs --release",
@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@types/node": "24.19.2",
-    "sass": "1.105.2",
-    "yaml": "2.9.0"
+    "sass": "1.106.1",
+    "yaml": "2.9.1"
   }
 }

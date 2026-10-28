@@ -18,7 +18,7 @@ worker job exports `image-exchange-worker`; it retains runtime/module/dpkg and
 shared scanner evidence rather than inventing Node runtime fields.
 
 The aggregate binds five owned image records. Dependency review covers those
-five plus pinned cloudflared, requiring six corresponding native assessments.
+five plus pinned cloudflared, requiring validated coverage for all six.
 The vendor PostgreSQL image is a build/rehearsal input, not the production image
 being promoted. Source production Compose requires `SIAB_POSTGRES_IMAGE_DIGEST`
 from an approved owned-image publication; local test Compose retains its vendor
@@ -39,9 +39,9 @@ The publisher's closed choices are CMS, renderer, site, PostgreSQL and Exchange
 worker. Choosing one authorizes only that image, while supplementary archives
 from the same exact-source run are rescanned for the complete release assessment.
 Worker managed/native mapping gaps are concrete blockers, not a clean scan.
-Existing source/advisory/expiry/approval controls remain mandatory. The old
-five-image native policy must be freshly reviewed for this expanded evidence;
-it is not automatically converted or extended.
+The canonical risk evaluator consumes validated findings and finite coverage
+requirements. Accountable lower-risk tracking and scoped nonaffected evidence
+never replace source/byte/run verification or the configured owner approval.
 
 ## Verify
 
@@ -81,8 +81,9 @@ archive SHA-256 and local image ID for owner approval. Verify canonical CI at
 that source, dependency/security disposition and applicable release gates.
 Publication does not authorize deployment or provider operations.
 
-Dispatch `publish-image.yml` **on main** with `image` (`cms`, `renderer` or
-`site`), `source_sha` (40 hexadecimal characters) and `verification_run_id`.
+Dispatch `publish-image.yml` **on main** with `image` (`cms`, `renderer`,
+`site`, `postgres` or `exchange-worker`), `source_sha` (40 hexadecimal characters)
+and `verification_run_id`.
 The run name displays the source/image/run being approved. The protected
 `ghcr-publish` environment must have configured user reviewers, main-only custom
 branch policies and administrator bypass disabled. The owner may be the same

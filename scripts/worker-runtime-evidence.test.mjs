@@ -21,6 +21,12 @@ test("worker evidence binds full module copies and dpkg bytes and rejects omitte
     }
     const evidence = await save(inventory)
     assert.deepEqual((await readWorkerRuntimeEvidence(directory, evidence)).inventory, inventory)
+    const withLink = structuredClone(inventory)
+    withLink.files.push({ path: roots[0] + "/libssl.so.1.0.0", size: 0, sha256: null, linkTarget: "/absent/compatibility-library", fileKind: "unresolved-symbolic-link", metadataGap: null })
+    assert.deepEqual((await readWorkerRuntimeEvidence(directory, await save(withLink))).inventory, withLink)
+    withLink.files.at(-1).fileKind = "data"
+    await assert.rejects(readWorkerRuntimeEvidence(directory, await save(withLink)), /incomplete/)
+    await save(inventory)
     await writeFile(path.join(directory, "worker-dpkg-inventory.txt"), "changed")
     await assert.rejects(readWorkerRuntimeEvidence(directory, evidence), /bytes changed/)
     for (const mutate of [x => x.files.pop(), x => x.files.push(x.files[0]), x => { x.files[0].path += "/../other" }, x => { x.files[0].sha256 = null }, x => { x.releaseCleared = true }]) {

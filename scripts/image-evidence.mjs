@@ -1,5 +1,6 @@
 export const nodeImageApplications = ["cms", "renderer", "site"]
 export const imageApplications = [...nodeImageApplications, "postgres", "exchange-worker"]
+export const dependencyImageApplications = [...imageApplications, "cms-cloudflared"]
 const hash = value => /^[a-f0-9]{64}$/.test(value ?? "")
 const digest = value => /^sha256:[a-f0-9]{64}$/.test(value ?? "")
 

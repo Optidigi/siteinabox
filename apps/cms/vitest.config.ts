@@ -20,11 +20,7 @@ export default defineConfig({
     exclude: cmsTestExclude,
     globals: true,
     pool: "forks",
-    // Integration tests share a single Postgres test DB; running them in
-    // parallel forks creates slug collisions and visibility races. `maxWorkers:
-    // 1` (Vitest 4 replacement for the removed `poolOptions.forks.singleFork`)
-    // pins to a single worker; `fileParallelism: false` keeps test files
-    // strictly sequential on top of that.
+    // Each partition owns one database; serialize files within that partition.
     maxWorkers: 1,
     fileParallelism: false,
     testTimeout: 30000

@@ -1,16 +1,16 @@
 import { validateScannerDiagnostics } from "./scan-image-dependencies.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
-import { validateImageInventory, imageInventoryStatus } from "./dependency-image-evidence.mjs"
+import { validateImageInventory, imageInventoryStatus, scannerPin } from "./dependency-image-evidence.mjs"
 
 const now = Date.parse("2026-10-21T00:00:00Z")
 const sha = "a".repeat(40)
 const hash = "b".repeat(64)
 const fixture = () => ({ now,
   image: { imageId: "sha256:" + hash, sourceSHA: sha, runtimePlatform: { os: "alpine", version: "3.24.2", architecture: "amd64" } },
-  scanner: { version: "0.76.0", archiveSha256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7", binarySha256: "1f889576636db0623539cb339df7d06c40ebf39e7919489eafa1160e29808f19", databaseSha256: hash, metadataSha256: hash,
+  scanner: { ...scannerPin, databaseSha256: hash, metadataSha256: hash,
     database: { Version: 2, UpdatedAt: "2026-10-20T19:00:00Z", NextUpdate: "2026-10-21T19:00:00Z", DownloadedAt: "2026-10-20T23:00:00Z" } },
-  report: { SchemaVersion: 2, Trivy: { Version: "0.76.0" }, CreatedAt: "2026-10-20T23:00:00Z", ArtifactType: "container_image", Metadata: { ImageID: "sha256:" + hash, OS: { Family: "alpine", Name: "3.24.2" }, ImageConfig: { os: "linux", architecture: "amd64", config: { Labels: { "org.opencontainers.image.revision": sha } } } },
+  report: { SchemaVersion: 2, Trivy: { Version: scannerPin.version }, CreatedAt: "2026-10-20T23:00:00Z", ArtifactType: "container_image", Metadata: { ImageID: "sha256:" + hash, OS: { Family: "alpine", Name: "3.24.2" }, ImageConfig: { os: "linux", architecture: "amd64", config: { Labels: { "org.opencontainers.image.revision": sha } } } },
     Results: [{ Target: "fixture", Class: "os-pkgs", Type: "alpine", Packages: [{ Name: "zlib", Version: "1.3.2-r0", Identifier: { PURL: "pkg:apk/alpine/zlib@1.3.2-r0" } }], Vulnerabilities: [{ VulnerabilityID: "CVE-fixture", PkgName: "zlib", InstalledVersion: "1.3.2-r0", Severity: "HIGH", PrimaryURL: "https://example.test/advisory" }] }] },
   requiredTypes: ["alpine"],
 })

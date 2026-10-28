@@ -3,19 +3,13 @@ import { execFileSync, spawnSync } from "node:child_process"
 import { readFile, mkdir, writeFile, realpath } from "node:fs/promises"
 import { dirname, resolve, relative, isAbsolute } from "node:path"
 import { fileURLToPath } from "node:url"
-import { sha256File } from "./image-artifact.mjs"
+import { sha256File, canonicalHash } from "./image-artifact.mjs"
 import { normalizeAudit } from "./dependency-security-policy.mjs"
 
 const hash = (value) => createHash("sha256").update(value).digest("hex")
 const maxOutput = 32 * 1024 * 1024
 const git = (root, args) => execFileSync("git", args, { cwd: root, encoding: "utf8", timeout: 30000, maxBuffer: maxOutput }).trim()
-const canonical = (value) => {
-  if (Array.isArray(value)) return value.map(canonical)
-  if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]))
-  return value
-}
-
-export const publisherFactHash = facts => hash(JSON.stringify(canonical(facts)))
+export const publisherFactHash = canonicalHash
 
 export async function dependencyIdentities(root) {
   const files = git(root, ["ls-files", "-z"]).split("\0").filter(Boolean).sort()
@@ -80,7 +74,7 @@ export async function fetchPublisherFact(descriptor, { readGitHubJSON } = {}) {
         !["low", "medium", "high", "critical", "unknown"].includes(body.severity) || !Array.isArray(body.vulnerabilities) || !body.vulnerabilities.length) {
       throw new Error("Primary advisory evidence is incomplete: " + descriptor.id)
     }
-    facts = { id: body.ghsa_id, updatedAt: body.updated_at, withdrawnAt: body.withdrawn_at, severity: body.severity, vulnerabilities: body.vulnerabilities, cwes: body.cwes }
+    facts = { id: body.ghsa_id, aliases: [...new Set([body.cve_id, ...(body.identifiers ?? []).filter(item => item.type === "CVE").map(item => item.value)].filter(Boolean))].sort(), description: body.description, updatedAt: body.updated_at, withdrawnAt: body.withdrawn_at, severity: body.severity, vulnerabilities: body.vulnerabilities, cwes: body.cwes }
   } else if (descriptor.kind === "github-release") {
     const requestedTag = url.pathname.includes("/releases/tags/") ? decodeURIComponent(url.pathname.split("/releases/tags/")[1]) : null
     if ((requestedTag && body.tag_name !== requestedTag) || !body.tag_name || !Number.isFinite(Date.parse(body.published_at)) || body.draft !== false || body.prerelease !== false) throw new Error("Publisher release is missing or unpublished")

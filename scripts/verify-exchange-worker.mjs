@@ -53,6 +53,16 @@ try {
   const runtimeInventory = docker(["exec", container, "pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", "/app/Get-WorkerRuntimeInventory.ps1"], true)
   const runtime = JSON.parse(runtimeInventory)
   if (!runtime.files?.length || runtime.releaseCleared !== false) throw new Error("Worker runtime inventory is missing or claims clearance")
+  if (runtime.workerEntryPointSha256 !== await sha256File(path.join(root, "ops/exchange-worker/Invoke-ExchangeWorker.ps1"))) throw new Error("Worker runtime binding differs from the reviewed entrypoint")
+  const pkcs = runtime.assemblyBindings?.[0]
+  const pkcsPatch = pkcs?.productVersion?.match(/^10\.0\.(\d+)(?:\+|$)/)
+  if (runtime.assemblyBindings?.length !== 1 || pkcs.context !== "Default" ||
+      pkcs.resolvedPath !== "/opt/microsoft/powershell/7/System.Security.Cryptography.Pkcs.dll" ||
+      pkcs.loadedPaths?.length !== 1 || pkcs.loadedPaths[0] !== pkcs.resolvedPath ||
+      !pkcsPatch || Number(pkcsPatch[1]) < 13 ||
+      ![pkcs.requestedPath, pkcs.resolvedPath].every(path => runtime.files.some(file => file.path === path && file.sha256 === (path === pkcs.requestedPath ? pkcs.requestedSha256 : pkcs.resolvedSha256)))) {
+    throw new Error("Exchange module does not resolve Pkcs exclusively to the patched host assembly")
+  }
   const runtimeFile = path.join(directory, "worker-runtime-inventory.json")
   const osFile = path.join(directory, "worker-dpkg-inventory.txt")
   await writeFile(runtimeFile, runtimeInventory)

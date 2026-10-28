@@ -62,7 +62,7 @@ export async function inspectCiEvidence(directory, expected) {
     }
     assert(Array.isArray(receipt.images) && receipt.images.length === imageApplications.length, "Aggregate must contain exactly every publishable image")
     const images = await loadDependencyImages(staging, receipt.sourceSHA)
-    const imageResult = validateImageReview(policy, images)
+    const imageResult = validateImageReview(policy, images, false, source.facts)
     assert.deepEqual(readiness.source, sourceResult); assert.deepEqual(readiness.images, imageResult)
     return { sourceSHA: receipt.sourceSHA, pullRequestHeadSHA: expected.head, runId: expected.run, runAttempt: expected.attempt,
       source: sourceResult, images: imageResult, releaseCleared: false,

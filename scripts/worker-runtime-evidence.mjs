@@ -14,7 +14,7 @@ export async function readWorkerRuntimeEvidence(directory, evidence) {
   if (inventory.schemaVersion !== 1 || inventory.releaseCleared !== false || inventory.powerShellVersion !== evidence.runtimeVersion || !isDeepStrictEqual(inventory.roots, roots) ||
       !Array.isArray(inventory.files) || !inventory.files.length || inventory.files.length > 20000 || new Set(inventory.files.map(file => file.path)).size !== inventory.files.length ||
       inventory.files.some(file => !roots.some(root => file.path?.startsWith(root + "/")) || file.path.split("/").includes("..") || !Number.isSafeInteger(file.size) || file.size < 0 ||
-        (file.sha256 === null ? !file.linkTarget || file.metadataGap !== "Unresolved symbolic link; target bytes unavailable" : !/^[a-f0-9]{64}$/.test(file.sha256 ?? ""))) ||
+        (file.sha256 === null ? !file.linkTarget || !(file.fileKind === "unresolved-symbolic-link" && file.metadataGap === null || file.metadataGap === "Unresolved symbolic link; target bytes unavailable") : !/^[a-f0-9]{64}$/.test(file.sha256 ?? ""))) ||
       modules.some(module => !inventory.files.some(file => file.path === roots[1] + "/" + module.name + "/" + module.version + "/" + module.name + ".psd1")) ||
       !dpkgBytes.toString().trim() || dpkgBytes.toString().trimEnd().split("\n").some(line => line.split("\t").length !== 3)) throw new Error("Worker inventory is incomplete, malformed or differs from the runtime/module contract")
   return { inventory, runtimeInventorySha256: evidence.runtimeInventorySha256, dpkgInventorySha256: evidence.dpkgInventorySha256 }

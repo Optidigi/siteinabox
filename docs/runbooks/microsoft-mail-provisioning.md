@@ -182,9 +182,9 @@ normal domain-commerce configuration; do not weaken it for this feature.
 
 Follow the existing protected delivery/image process for CMS. The Exchange worker
 is a separate artifact; see [its build and smoke procedure](../../ops/exchange-worker/README.md).
-The existing three-application publisher does not publish this fourth image.
-Qualify/build and approve its immutable artifact separately before setting the
-overlay digest. Keep both flags off while migrations and config are applied.
+The shared publisher supports CMS, renderer, site, PostgreSQL and Exchange worker.
+Approve the worker's verified immutable artifact through that publisher before
+setting the overlay digest. Keep both flags off while migrations and config are applied.
 The overlay joins CMS and worker on an unexposed outbound-capable bridge and
 publishes no worker port. Keep background Payload jobs enabled in production.
 

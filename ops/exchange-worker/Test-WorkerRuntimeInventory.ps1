@@ -10,15 +10,19 @@ try {
     Copy-Item $assembly (Join-Path $other 'example.dll')
     Set-Content (Join-Path $runtime 'example.deps.json') '{"runtimeTarget":{"name":"synthetic"}}'
     Set-Content (Join-Path $modules 'unmapped.dll') 'not a managed assembly'
+    $exchangeModule = Get-Module -ListAvailable ExchangeOnlineManagement | Select-Object -First 1
+    Copy-Item (Join-Path $exchangeModule.ModuleBase 'netCore/msvcp140.dll') (Join-Path $other 'native.dll')
     New-Item -ItemType SymbolicLink -Path (Join-Path $runtime 'missing.so') -Target (Join-Path $fixture 'unavailable.so') | Out-Null
     $result = (& $InventoryPath -Roots @($runtime.FullName, $modules.FullName) | ConvertFrom-Json)
-    if ($result.files.Count -ne 5) { throw 'Inventory omitted a runtime or nested module file' }
+    if ($result.files.Count -ne 6) { throw 'Inventory omitted a runtime or nested module file' }
     $copies = @($result.files | Where-Object { $_.path.EndsWith('/example.dll') })
     if ($copies.Count -ne 2 -or $copies[0].sha256 -ne $copies[1].sha256) { throw 'Duplicate assembly copies were omitted' }
     if (@($copies | Where-Object { -not $_.assemblyVersion -or -not $_.productVersion }).Count) { throw 'Assembly metadata missing' }
     if (-not ($result.files | Where-Object { $_.path.EndsWith('/unmapped.dll') }).metadataGap) { throw 'Unknown DLL was treated as covered' }
     $missing = $result.files | Where-Object { $_.path.EndsWith('/missing.so') }
-    if (-not $missing.linkTarget -or -not $missing.metadataGap -or $missing.sha256) { throw 'Unresolved link bytes were invented or omitted' }
+    if (-not $missing.linkTarget -or $missing.fileKind -ne 'unresolved-symbolic-link' -or $missing.metadataGap -or $missing.sha256) { throw 'Unresolved link bytes were invented or omitted' }
+    $native = $result.files | Where-Object { $_.path.EndsWith('/native.dll') }
+    if ($native.fileKind -ne 'windows-native-pe' -or $native.metadataGap -or -not $native.sha256 -or $native.assemblyVersion) { throw 'Native Windows DLL was omitted or confused with a managed assembly' }
     if ($result.releaseCleared -ne $false) { throw 'Inventory must not grant clearance' }
     $rejected = $false
     try { & $InventoryPath -Roots @((Join-Path $fixture 'absent')) | Out-Null } catch { $rejected = $true }

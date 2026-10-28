@@ -1,91 +1,28 @@
 {
-  "schemaVersion": 2,
-  "reviewedAt": "2026-10-28T14:20:01.721Z",
-  "expiresAt": "2026-10-29T14:20:01.721Z",
-  "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-  "graphHash": "106cc363a278a71c32c6ebab4fc92bd8f05e93be38315a027c7c748777b42f9c",
-  "configurationHash": "cff0d3e6565f0e7a5c3bdbffcddd7ad551e0c470a26bbea7f7df49259985fd70",
-  "scope": "Exact frozen full/production graph and configuration; five owned images plus pinned cloudflared. Inventory qualification only; unresolved findings and native/deferral blockers prohibit release.",
+  "schemaVersion": 3,
+  "policy": "production-risk-v1",
+  "reviewOwner": "Optidigi security maintainer",
+  "ownerDecision": "User explicitly approved the proposed risk-based rule on 2026-10-28; no high/critical exception granted.",
   "publisherFacts": [
-    {
-      "id": "GHSA-rj75-hqrm-r3gf",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-rj75-hqrm-r3gf",
-      "selected": false,
-      "sha256": "14f15ba2387b76b1834b9dedea2a18631886b190c790a434cd69f78812712867"
-    },
-    {
-      "id": "GHSA-vfj7-8cjw-p6xm",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-vfj7-8cjw-p6xm",
-      "selected": false,
-      "sha256": "050e047b54e135bf7d7755b12b5623178f8969bfe8e103a8dd6ceb8fe2248079"
-    },
-    {
-      "id": "latest:braces",
-      "kind": "npm-version",
-      "url": "https://registry.npmjs.org/braces/latest",
-      "selected": false,
-      "sha256": "22edba5acaac073d63f91c32e46001a8db59bdb89c72041c021ce379a834cf9e"
-    },
-    {
-      "id": "latest:postcss-selector-parser",
-      "kind": "npm-version",
-      "url": "https://registry.npmjs.org/postcss-selector-parser/latest",
-      "selected": false,
-      "sha256": "f7d77a8e2dc2953eff501c50a5d3d2d3ca136508dac6fe22d56a9e93f824f8d7"
-    },
-    {
-      "id": "latest:@tailwindcss/typography",
-      "kind": "npm-version",
-      "url": "https://registry.npmjs.org/%40tailwindcss%2Ftypography/latest",
-      "selected": false,
-      "sha256": "16747a4c56845cf63f46b136dccc3062e2639f78382b31a8bdad5532555d7bcf"
-    },
-    {
-      "id": "latest:better-auth",
-      "kind": "npm-version",
-      "url": "https://registry.npmjs.org/better-auth/latest",
-      "selected": false,
-      "sha256": "d43ef619827dc6963f7f6fb17a9ffdb13c4a86c46d0bb0c742e248f9515320c8"
-    },
-    {
-      "id": "latest:vitest",
-      "kind": "npm-version",
-      "url": "https://registry.npmjs.org/vitest/latest",
-      "selected": false,
-      "sha256": "2dc66588db16ed819f192e16c56eb29d8b0fa4ad324d8bdb9738010699f8db32"
-    },
     {
       "id": "scanner-release",
       "kind": "github-release",
-      "url": "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.0",
+      "url": "https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.1",
       "selected": true,
-      "sha256": "e217cc85a6f3bad6f44f32e236ca721e50b33f7969470fbc645600305cd315d0",
       "assets": [
-        "trivy_0.76.0_Linux-64bit.tar.gz",
-        "trivy_0.76.0_checksums.txt"
-      ]
-    },
-    {
-      "id": "scanner-latest",
-      "kind": "github-release",
-      "url": "https://api.github.com/repos/aquasecurity/trivy/releases/latest",
-      "selected": false,
-      "sha256": "79c075e2edaa2dcad49109ff53324b916485c83cb7a3d1c1cae5135201e74b28"
-    },
-    {
-      "id": "node-releases",
-      "kind": "json",
-      "url": "https://nodejs.org/dist/index.json",
-      "selected": false,
-      "sha256": "52fe7ff162e0d4f54efe18d445836754163c448553fc0e5bac718d0129e59243"
+        "trivy_0.76.1_Linux-64bit.tar.gz",
+        "trivy_0.76.1_checksums.txt"
+      ],
+      "role": "pin",
+      "sha256": "b93147d62f5c33cd4887f4a44eb6ca2cbeebe1fa9c79ec99adec1ec55b8990b6",
+      "securityHash": "2a7f45821ebaf12c3e9e71d2baf53b6b6e81f57ea0ed3fce7ee8faeab97296bc"
     },
     {
       "id": "alpine-main",
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/main.json",
       "selected": false,
+      "role": "monitor",
       "sha256": "dcffd6a5b8051abfa154cb93f4c26715c26b4bbea2a63072b374697c34313db8"
     },
     {
@@ -93,6 +30,7 @@
       "kind": "json",
       "url": "https://secdb.alpinelinux.org/v3.24/community.json",
       "selected": false,
+      "role": "monitor",
       "sha256": "741ed4aac0dddd616965f93b729fe2c78be072646f0200980cf985d5af0062fc"
     },
     {
@@ -100,772 +38,195 @@
       "kind": "json",
       "url": "https://vuln.go.dev/index/vulns.json",
       "selected": false,
+      "role": "monitor",
       "sha256": "762535513131eb86aca98120b5281aa8ad8b4f50f4b1b502374a2cc9c07a109b"
     },
     {
       "id": "selected:next",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/next/16.4.2",
+      "url": "https://registry.npmjs.org/next/16.4.3",
       "selected": true,
-      "sha256": "01da64432f926adb53f32045daf7e222929b38baf6d272573d69b3eb16afcd70"
+      "role": "pin",
+      "sha256": "11c20966de39eae3229c1905dfa0afa8463bd6e9975d8dd9c1957d364f240fd7",
+      "securityHash": "11c20966de39eae3229c1905dfa0afa8463bd6e9975d8dd9c1957d364f240fd7"
     },
     {
       "id": "selected:react",
       "kind": "npm-version",
       "url": "https://registry.npmjs.org/react/19.3.1",
       "selected": true,
-      "sha256": "1581df31e2618982c734317df0e3a89f9d9747affaefabb57a44938499ed2902"
+      "role": "pin",
+      "sha256": "1581df31e2618982c734317df0e3a89f9d9747affaefabb57a44938499ed2902",
+      "securityHash": "1581df31e2618982c734317df0e3a89f9d9747affaefabb57a44938499ed2902"
     },
     {
       "id": "selected:react-dom",
       "kind": "npm-version",
       "url": "https://registry.npmjs.org/react-dom/19.3.1",
       "selected": true,
-      "sha256": "7cd7e2390e53ff713169a7ebe53b5cac5f3a10007ebf9f8c5431c08b0858da81"
+      "role": "pin",
+      "sha256": "7cd7e2390e53ff713169a7ebe53b5cac5f3a10007ebf9f8c5431c08b0858da81",
+      "securityHash": "7cd7e2390e53ff713169a7ebe53b5cac5f3a10007ebf9f8c5431c08b0858da81"
     },
     {
       "id": "selected:payload",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/payload/3.91.0",
+      "url": "https://registry.npmjs.org/payload/3.92.1",
       "selected": true,
-      "sha256": "31f0c14087e8793a1a4d2c49ff616bff5f65262e1dfcc2ac2914e54f963227de"
+      "role": "pin",
+      "sha256": "ab282b17a67e1f2a007e3d09423dd2c57f1ba4722f4cc12d58dae6f8641c2795",
+      "securityHash": "ab282b17a67e1f2a007e3d09423dd2c57f1ba4722f4cc12d58dae6f8641c2795"
     },
     {
       "id": "selected:@payloadcms/next",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/%40payloadcms%2Fnext/3.91.0",
+      "url": "https://registry.npmjs.org/%40payloadcms%2Fnext/3.92.1",
       "selected": true,
-      "sha256": "c3ae12697e74ff59a9836158672fd7a56646c224e8464a3a55d1ff63293e2089"
+      "role": "pin",
+      "sha256": "e000d62e5b155939b9ddf7bc705bd349f4946b19fff08c7398137aa782c59e77",
+      "securityHash": "e000d62e5b155939b9ddf7bc705bd349f4946b19fff08c7398137aa782c59e77"
     },
     {
       "id": "selected:@payloadcms/db-postgres",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/%40payloadcms%2Fdb-postgres/3.91.0",
+      "url": "https://registry.npmjs.org/%40payloadcms%2Fdb-postgres/3.92.1",
       "selected": true,
-      "sha256": "4a4a9c6ee8763c317c25d8defdbb68fcc8b835f0703d282b7a024a3daf361d56"
+      "role": "pin",
+      "sha256": "4bcf01ada1766ed7f45205939801bf2e11e4ffc77677d5941e8fd6458af67bf9",
+      "securityHash": "4bcf01ada1766ed7f45205939801bf2e11e4ffc77677d5941e8fd6458af67bf9"
     },
     {
       "id": "selected:better-auth",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/better-auth/1.7.12",
+      "url": "https://registry.npmjs.org/better-auth/1.7.14",
       "selected": true,
-      "sha256": "c26577ee7d9b12a744d4109edf9e781d13b3a400f00ca4c20336c86813b9be06"
+      "role": "pin",
+      "sha256": "d43ef619827dc6963f7f6fb17a9ffdb13c4a86c46d0bb0c742e248f9515320c8",
+      "securityHash": "d43ef619827dc6963f7f6fb17a9ffdb13c4a86c46d0bb0c742e248f9515320c8"
     },
     {
       "id": "selected:nodemailer",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/nodemailer/10.1.7",
+      "url": "https://registry.npmjs.org/nodemailer/10.2.1",
       "selected": true,
-      "sha256": "c671c0a6ec08eddce35a8881b8f6697408916253fb70fe3bdc1562c92ba3f668"
+      "role": "pin",
+      "sha256": "bae3ee26b69f5b0e2f12d5704d805f956ae3a9bff13824ca06a25d0def7b9940",
+      "securityHash": "bae3ee26b69f5b0e2f12d5704d805f956ae3a9bff13824ca06a25d0def7b9940"
     },
     {
       "id": "selected:@mastra/core",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/%40mastra%2Fcore/1.78.0",
+      "url": "https://registry.npmjs.org/%40mastra%2Fcore/1.79.0",
       "selected": true,
-      "sha256": "866e04993b9060e7372c955063d19ccaf4b79b826e050ad9cd789f415b7b86e1"
+      "role": "pin",
+      "sha256": "d5287ca0cb064c9c01cb8c9ec31f1c1aea7ce0a5f504f70f0b133843341422a4",
+      "securityHash": "d5287ca0cb064c9c01cb8c9ec31f1c1aea7ce0a5f504f70f0b133843341422a4"
     },
     {
       "id": "selected:vite",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/vite/8.3.4",
+      "url": "https://registry.npmjs.org/vite/8.3.5",
       "selected": true,
-      "sha256": "6027cf69ceaeecdd477633be8ef2fc1a78d636202eb7d7fd2fb19b3ab347a3a9"
+      "role": "pin",
+      "sha256": "0241b31cf3176bc318040f19a0127ee2b7ddd437b86505925f203fb71d583088",
+      "securityHash": "0241b31cf3176bc318040f19a0127ee2b7ddd437b86505925f203fb71d583088"
     },
     {
       "id": "selected:vitest",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/vitest/4.1.12",
+      "url": "https://registry.npmjs.org/vitest/5.0.5",
       "selected": true,
-      "sha256": "39586d5d6fcd7aeacf226d4e1cb979c8d5c0f1ab6f227aad833d3972b51af417"
+      "role": "pin",
+      "sha256": "2dc66588db16ed819f192e16c56eb29d8b0fa4ad324d8bdb9738010699f8db32",
+      "securityHash": "2dc66588db16ed819f192e16c56eb29d8b0fa4ad324d8bdb9738010699f8db32"
     },
     {
       "id": "selected:@vitest/ui",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/%40vitest%2Fui/4.1.12",
+      "url": "https://registry.npmjs.org/%40vitest%2Fui/5.0.5",
       "selected": true,
-      "sha256": "436e936a6df2687f9723a0c417e2c513dd2a7898d6aa979620c4dfc6ba13fd83"
+      "role": "pin",
+      "sha256": "32b7041f87b812a4612d3d21c84364ea5d5f8aaac0ad0a00caa9e7e9aff47982",
+      "securityHash": "32b7041f87b812a4612d3d21c84364ea5d5f8aaac0ad0a00caa9e7e9aff47982"
     },
     {
       "id": "selected:astro",
       "kind": "npm-version",
-      "url": "https://registry.npmjs.org/astro/7.4.1",
+      "url": "https://registry.npmjs.org/astro/7.4.2",
       "selected": true,
-      "sha256": "95c0364f5071ee4474cada9e639282a968015270531ad57f84f041afbc0b93e7"
-    },
-    {
-      "id": "GHSA-82fw-gwwq-j7x9",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-82fw-gwwq-j7x9",
-      "sha256": "c75f567b76f9de5e347b6e6d9e0ee45821f24f9780b70463adf0879414a1a51b"
-    },
-    {
-      "id": "GHSA-698v-4r3x-3vcv",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-698v-4r3x-3vcv",
-      "sha256": "acd580df37921e2cbcfe81c9e328e17b52cf9de3c01da870d62c31c4a49a1455"
-    },
-    {
-      "id": "GHSA-r825-w8mm-5pxw",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-r825-w8mm-5pxw",
-      "sha256": "ba226d3acf6e45c2922c61020731916f67c1b260322ac0189ed62e187fab5fd1"
-    },
-    {
-      "id": "GHSA-587h-7wmj-h5pm",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-587h-7wmj-h5pm",
-      "sha256": "1ca25cc59f2e9c1e573609f4da1ded1eec9c575b100472106b7aac6a21b83fba"
+      "role": "pin",
+      "sha256": "a1d4fbd24c2627824406ec3722c1c6040ded1f9a2913a9fbbaad00dedf893be7",
+      "securityHash": "a1d4fbd24c2627824406ec3722c1c6040ded1f9a2913a9fbbaad00dedf893be7"
     },
     {
       "id": "vitest-maintenance-release",
       "kind": "github-release",
-      "url": "https://api.github.com/repos/vitest-dev/vitest/releases/tags/v4.1.12",
+      "url": "https://api.github.com/repos/vitest-dev/vitest/releases/tags/v5.0.5",
       "selected": true,
-      "sha256": "a54a329f1e044a4bf7b78765e6885ae071139bc31bcf3159a3de0094f2c66a40"
-    },
-    {
-      "id": "GO-2026-6809",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6809.json",
-      "selected": false,
-      "sha256": "de4d9bca56ac815cf747145e4a5774747d07130d1f51f277a7e5f117041f17a1"
-    },
-    {
-      "id": "GHSA-6j4f-fj2g-mc7p",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-6j4f-fj2g-mc7p",
-      "selected": false,
-      "sha256": "26aa3510b674adf8681e7fc35a2c85eaff2aadb07b9da90be8af3be79991b1e4"
-    },
-    {
-      "id": "GHSA-qhr7-859c-m2p7",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-qhr7-859c-m2p7",
-      "selected": false,
-      "sha256": "84115cfeb17f825c2648eb793e9e52d10227f6ee48dbe645e9471d6a916ba236"
-    },
-    {
-      "id": "GHSA-q2hr-2g5m-vwhr",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-q2hr-2g5m-vwhr",
-      "selected": false,
-      "sha256": "b873ce4f49a34557079df209e5e6389705a06896cd653b8cd8fa098b2d41db46"
-    },
-    {
-      "id": "GHSA-2vr4-cq9g-pvrc",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-2vr4-cq9g-pvrc",
-      "selected": false,
-      "sha256": "f4a21e74ab6def6e9a52f21dc973726268d10cfcc489cf7be0d489ee1e99cfa4"
-    },
-    {
-      "id": "GHSA-h3mg-xc3c-68pw",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-h3mg-xc3c-68pw",
-      "selected": false,
-      "sha256": "e421260b916b4c6a5e3558fdbfcb39bd9ab6ea709dfffaec923e33c98e935233"
-    },
-    {
-      "id": "GHSA-j6r3-76f7-8jcv",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-j6r3-76f7-8jcv",
-      "selected": false,
-      "sha256": "859dde5289aedd6809df4e8709ae6750c3a08c2bffae9aa3538da57c96251ee0"
-    },
-    {
-      "id": "GHSA-rpw4-54j3-4h4q",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-rpw4-54j3-4h4q",
-      "selected": false,
-      "sha256": "196db7384b75d9e86655e693d731ad2367d7b3ac2638e0c6e06f2393372527d1"
-    },
-    {
-      "id": "GHSA-rfgv-xxqx-mfg5",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-rfgv-xxqx-mfg5",
-      "selected": false,
-      "sha256": "0127f969800f644aa89f527f5465ae3329ac48143c8872152d0ec89536e2614b"
-    },
-    {
-      "id": "GHSA-3wwx-pv8p-q78v",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-3wwx-pv8p-q78v",
-      "selected": false,
-      "sha256": "302fe611c31b004cda2faa7f0adff0c9e4c7b334b5b2fdaa80834d18e21ac5b5"
-    },
-    {
-      "id": "GHSA-r53p-7pc4-xj5r",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-r53p-7pc4-xj5r",
-      "selected": false,
-      "sha256": "ff3561ec7703a6327a3e4bfbdbb6486304c200dcea04f76af8c159431c46e6f5"
-    },
-    {
-      "id": "GO-2026-5024",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5024.json",
-      "selected": false,
-      "sha256": "32bcf9e7b91c3a51837c097ca3881561fd56a4708bd5d620bdfd833177d7e9c8"
-    },
-    {
-      "id": "GO-2026-4337",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4337.json",
-      "selected": false,
-      "sha256": "62d51fb73f7bfb41f05c2e1e53109e16c4ee06c33e3a97d33b75f75607ec7337"
-    },
-    {
-      "id": "GO-2026-4341",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4341.json",
-      "selected": false,
-      "sha256": "bfb1ff131a087ea46a5de6fc42d371834a2357d19116e3674436285292770f64"
-    },
-    {
-      "id": "GO-2025-4155",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4155.json",
-      "selected": false,
-      "sha256": "461b069dbe153517d6229619ff9564d146d0bdc2ad315acd9ef951ab79afd9bd"
-    },
-    {
-      "id": "GO-2026-4601",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4601.json",
-      "selected": false,
-      "sha256": "07bb5788ebda47c1c3adb11b317dbae024a4f9557756f36a225b2e1b655a820a"
-    },
-    {
-      "id": "GO-2026-5037",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5037.json",
-      "selected": false,
-      "sha256": "e5bdfbcff9b1df848f8f3bb1708ac298117a16dbc09af74b8e1513ce11601613"
-    },
-    {
-      "id": "GO-2026-4947",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4947.json",
-      "selected": false,
-      "sha256": "4eee87e39e951f6a6684fcf80e7f6274947ad023ec9d9acef8f80347c7986a2c"
-    },
-    {
-      "id": "GO-2026-4946",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4946.json",
-      "selected": false,
-      "sha256": "f9589a6c23d107b2616464150a0b448106d0ab342d5d54e0a4f20e189e6b32b8"
-    },
-    {
-      "id": "GO-2026-4870",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4870.json",
-      "selected": false,
-      "sha256": "d22f6e8faf691f0d15a257de899c4cbb4ff60735a4ee2cb258dff31567623075"
-    },
-    {
-      "id": "GO-2026-4981",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4981.json",
-      "selected": false,
-      "sha256": "3d9fb9c9653454d9e01369242b42a0c9e5d2e38e83b9341e1d25329fa7f65090"
-    },
-    {
-      "id": "GO-2026-4918",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4918.json",
-      "selected": false,
-      "sha256": "4bfc417d6a8f3a8fd9ed5ab9a3590648726d3e56c3870c3a67cbd0210dd8cc6b"
-    },
-    {
-      "id": "GO-2026-5972",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5972.json",
-      "selected": false,
-      "sha256": "b73da008e93ef77daacd756f6cc31e28bb20d536619ec62820978df6749dda32"
-    },
-    {
-      "id": "GO-2026-4986",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4986.json",
-      "selected": false,
-      "sha256": "03692f6c131f1f7dbc6911597bbc0ed81680a40da9091da27cac61bac16b2d97"
-    },
-    {
-      "id": "GO-2026-5026",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5026.json",
-      "selected": false,
-      "sha256": "2aae2492f07cf5d4361f55a513da0ecf8ddfbba2c8c1cb569c8f06f44c1c5327"
-    },
-    {
-      "id": "GO-2026-4970",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4970.json",
-      "selected": false,
-      "sha256": "9dae750270f8d25a6ea83a8621f8bf3b8e59a7ef425710a0308d159b05040502"
-    },
-    {
-      "id": "GO-2026-4971",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4971.json",
-      "selected": false,
-      "sha256": "cf0d1ab78c7e0f6cf563e4a2216f02cfc15a2fe1ddca335ce519f11c2a80ee97"
-    },
-    {
-      "id": "GO-2026-4977",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4977.json",
-      "selected": false,
-      "sha256": "bade6517538887368b9a45f2441afb94e37c624a170038dfe73e4b249ab94b06"
-    },
-    {
-      "id": "GO-2026-5038",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5038.json",
-      "selected": false,
-      "sha256": "21e3c25e5270721807d8f1c1ec2e5551a7eab4eaf4d8545c31a13e31b19607d2"
-    },
-    {
-      "id": "GO-2026-6089",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6089.json",
-      "selected": false,
-      "sha256": "93681e70038505e43a7d71c969be59d27a9f582d9074e10d068fab24ad0b782d"
-    },
-    {
-      "id": "GO-2026-6091",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6091.json",
-      "selected": false,
-      "sha256": "fe6c5ff34b58faccad6f0cb02d1d6eee4822170591db1f6ba3e925c34ca77cf9"
-    },
-    {
-      "id": "GO-2026-6088",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6088.json",
-      "selected": false,
-      "sha256": "e453e622ac3bb12b21d29d42f5339b91726a9520fd4f64a6b6e5cfc4cab72bd6"
-    },
-    {
-      "id": "GO-2026-6218",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6218.json",
-      "selected": false,
-      "sha256": "7810a407394b4e19efa43e6b96b0415f257ec6bdc8857e53167cd24a161cf122"
-    },
-    {
-      "id": "GO-2026-6090",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6090.json",
-      "selected": false,
-      "sha256": "ac2e42aec69413394c5d2bc834cefe6710632e3ef8116e46166c3c86aa541131"
-    },
-    {
-      "id": "GO-2026-6609",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6609.json",
-      "selected": false,
-      "sha256": "019f257a447ebb3efd3e598cc352acf098bcfe0e078532063a95bb3de9aca549"
-    },
-    {
-      "id": "GO-2026-6611",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6611.json",
-      "selected": false,
-      "sha256": "5092b86b3fb1a53bcf83502236abae70633e9567ebd12b828b40123668f34a7e"
-    },
-    {
-      "id": "GO-2026-6607",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6607.json",
-      "selected": false,
-      "sha256": "385050baebc0d8b0f2914806df99da18a5b1e35c1aedfe3aa6d8fdc3b7e97431"
-    },
-    {
-      "id": "GO-2025-4010",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4010.json",
-      "selected": false,
-      "sha256": "74a6b3153a5731a92a9f11c06daba9d43225dd0c2b87a7ad8a1012d8934040ef"
-    },
-    {
-      "id": "GO-2025-4014",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4014.json",
-      "selected": false,
-      "sha256": "9ea23c042522c0dc9b50acfb338e2d1f2585808addc327b19147c61cec0b88f3"
-    },
-    {
-      "id": "GO-2025-4011",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4011.json",
-      "selected": false,
-      "sha256": "0de753cefb9a513406c350c3bd29840645f18c23e02646a82416d7f63a6892cd"
-    },
-    {
-      "id": "GO-2025-4007",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4007.json",
-      "selected": false,
-      "sha256": "2be28757f9784acd9d9e9993cd35518a4c44710b25963d7395f9d92b12492ba5"
-    },
-    {
-      "id": "GO-2025-4013",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4013.json",
-      "selected": false,
-      "sha256": "b15d07ed33869a4857185e2cf612e64a07cad2bea4050772e4128c477df47c1e"
-    },
-    {
-      "id": "GO-2025-4008",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4008.json",
-      "selected": false,
-      "sha256": "15bcbf8975397931e00e25772ad1afff43f959d37150b1b76601ee854cedd999"
-    },
-    {
-      "id": "GO-2025-4009",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4009.json",
-      "selected": false,
-      "sha256": "efe9f1efe0975a3c6c82ae4477439768adee7a4c8c5039d3c5ad84bb94426d45"
-    },
-    {
-      "id": "GO-2025-4015",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4015.json",
-      "selected": false,
-      "sha256": "aa5d6e521c45f4d475b7b6dd680de1ed017442551ef0d785ecaee3886e02b62a"
-    },
-    {
-      "id": "GO-2025-4006",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4006.json",
-      "selected": false,
-      "sha256": "90a085b0a8502fbab9eb7824f71bfd6cdc011b3c09e62e550dd2da7621337e9e"
-    },
-    {
-      "id": "GO-2025-4175",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4175.json",
-      "selected": false,
-      "sha256": "7d28df09a4574fbe3e5feb474ace0e5c1d00403fd73a741b568d5da48b0bcdd6"
-    },
-    {
-      "id": "GO-2026-4342",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4342.json",
-      "selected": false,
-      "sha256": "6723c39edf7dcb8387df53c93e3443b60b583d0e655acc45aa30eb6dd0dbd38a"
-    },
-    {
-      "id": "GO-2026-4340",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4340.json",
-      "selected": false,
-      "sha256": "77d8a6fc0e897bbfedcdab5c5c529965f54b34e7b80bf6a495131fabb186610c"
-    },
-    {
-      "id": "GO-2026-4603",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4603.json",
-      "selected": false,
-      "sha256": "26b510158eb1b54f94221b253fa2410fff56ed0358c2e2746f648b5596265b00"
-    },
-    {
-      "id": "GO-2026-4864",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4864.json",
-      "selected": false,
-      "sha256": "56a32d1a15498e67a1fa71922d98e03b740e5fe0e8f4f8bedcd820218c28fc57"
-    },
-    {
-      "id": "GO-2026-4869",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4869.json",
-      "selected": false,
-      "sha256": "18549a80aa10b6d3ad289d599b2577d1a97f569963236f3d44cef513493c1e87"
-    },
-    {
-      "id": "GO-2026-4865",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4865.json",
-      "selected": false,
-      "sha256": "ebcf2ea03b8573291f5eb00d5e83376b398f2de029e0bcfa12461dde2dcb34e5"
-    },
-    {
-      "id": "GO-2026-4982",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4982.json",
-      "selected": false,
-      "sha256": "58bc29a97d9ce4c3db11712bc19020a3cf08d683cdc6c6903f502b6d87a3d0ce"
-    },
-    {
-      "id": "GO-2026-4976",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4976.json",
-      "selected": false,
-      "sha256": "4ae330f51fccd39030caec9add8000ce854e65887b42acd738902e46ec68b7aa"
-    },
-    {
-      "id": "GO-2026-4980",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4980.json",
-      "selected": false,
-      "sha256": "2ec4cc6d082270a35c00caf74088f4edfa594de2bfe3bf2027585e0b2e1d0067"
-    },
-    {
-      "id": "GO-2026-5856",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5856.json",
-      "selected": false,
-      "sha256": "325e9800a7172954850bf3900db6b8640af497539958763ff6f0d9852edba546"
-    },
-    {
-      "id": "GO-2026-5039",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-5039.json",
-      "selected": false,
-      "sha256": "9fe1b9af993be36603d13544dd78a3f7b13495bb1bd3d412ffb414535e7da5ff"
-    },
-    {
-      "id": "GO-2026-6605",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6605.json",
-      "selected": false,
-      "sha256": "ac1447d76718ecd6074f9bf9b97a2c291f9d6b9b36fb6ddf454fd1a3ccdc1541"
-    },
-    {
-      "id": "GO-2026-6603",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6603.json",
-      "selected": false,
-      "sha256": "7d46b0de828ef06a067037853f706fc40d1ce96333cc215bb40df8d31cae60da"
-    },
-    {
-      "id": "GO-2026-6610",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6610.json",
-      "selected": false,
-      "sha256": "57333a984af7b5b1661ee4a560f11e618e9a8fbd1061a88a7a68fba8e7c260c1"
-    },
-    {
-      "id": "GO-2026-6612",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6612.json",
-      "selected": false,
-      "sha256": "cf4cb8d777a6c42c835119106fe0d2581b6355503da7f14f5bc78eeb91508313"
-    },
-    {
-      "id": "GO-2026-6613",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6613.json",
-      "selected": false,
-      "sha256": "4afe222c2dfcab873da9c76c21fc537d2bf6c8e0a6e8129ce9925c9284c0b637"
-    },
-    {
-      "id": "GO-2026-6608",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6608.json",
-      "selected": false,
-      "sha256": "ab7dcc76abfc8e414ad9ba80563803d02af14d7f262b54f6d277ae4d69025fc4"
-    },
-    {
-      "id": "GO-2026-6599",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6599.json",
-      "selected": false,
-      "sha256": "dc5a974931e75b561b9de2da8d21cbed571060182b489393709ec42e6697b8f8"
-    },
-    {
-      "id": "GO-2026-6600",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6600.json",
-      "selected": false,
-      "sha256": "3c06f272efb5690a905507f88691b87627a6d6ec93e616a07cfc905ccdd8b9b8"
-    },
-    {
-      "id": "GO-2026-6617",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6617.json",
-      "selected": false,
-      "sha256": "1abd965ade37948cc77ef48fba4dbc2999eaa01c61025f40288f3c6aa6095e12"
-    },
-    {
-      "id": "GO-2025-4012",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2025-4012.json",
-      "selected": false,
-      "sha256": "7f89ef14fc452737988761ea7df8e8bd97eca88f4af655901b16f64505080c5c"
-    },
-    {
-      "id": "GO-2026-4602",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-4602.json",
-      "selected": false,
-      "sha256": "2129d765750a372e25744fbe463547a3772256d94a28899cc30009b42e2fb52a"
-    },
-    {
-      "id": "GO-2026-6604",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6604.json",
-      "selected": false,
-      "sha256": "b147cc11d79b82c73a4f7352000fbaa49019d81e14faaaebf1e43bfaf18aa3f3"
-    },
-    {
-      "id": "GHSA-xrr7-82jr-v58x",
-      "kind": "json",
-      "url": "https://api.github.com/advisories/GHSA-xrr7-82jr-v58x",
-      "selected": false,
-      "sha256": "046630b87e68fc2442c854c14483bb4bf1d9479dd63048833de3f3cb9a250f19"
-    },
-    {
-      "id": "GO-2026-6686",
-      "kind": "json",
-      "url": "https://vuln.go.dev/ID/GO-2026-6686.json",
-      "selected": false,
-      "sha256": "eb2d42daa2af9eca5d6008e51e5c414f69d038505a4a8e9d62e4341eefe7967b"
-    },
-    {
-      "id": "GHSA-h858-mf2m-8jf4",
-      "kind": "json",
-      "url": "https://api.github.com/advisories/GHSA-h858-mf2m-8jf4",
-      "selected": false,
-      "sha256": "cf7e16064441cce21f18c68383b858b93e14ae6b92adc25b86d1a0851790a58a"
-    },
-    {
-      "id": "GHSA-259r-337f-4rfw",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-259r-337f-4rfw",
-      "selected": false,
-      "sha256": "e08fac9631a6564924d4186c101812d1f23ae395d6e24d35621fc93f88e1f15c"
+      "role": "pin",
+      "sha256": "8f5b6441405c599e4f3959295a10affc1743571ea0eb06a5b2331533b0cf25a6",
+      "securityHash": "55a6f07d8e0954820618db01c575ff945648bd23e867a29e8ceddd18a2eaada5"
     },
     {
       "id": "GO-2026-5932",
       "kind": "json",
       "url": "https://vuln.go.dev/ID/GO-2026-5932.json",
       "selected": false,
-      "sha256": "6a685f52c906f24f2b6f96eebaade65cbba74ed674e8c54ba0c4f7a9da1c25d3"
+      "role": "advisory",
+      "sha256": "6a685f52c906f24f2b6f96eebaade65cbba74ed674e8c54ba0c4f7a9da1c25d3",
+      "securityHash": "3d9f9f25e28de76e1d9bb7ccdd5882731e31604c84024dc15d56f2cb7bce870f"
     },
     {
       "id": "better-auth-maintenance-release",
       "kind": "github-release",
-      "url": "https://api.github.com/repos/better-auth/better-auth/releases/tags/v1.7.12",
+      "url": "https://api.github.com/repos/better-auth/better-auth/releases/tags/v1.7.14",
       "selected": false,
-      "sha256": "6b6ed20109512c76cd2f3b6160f5c3e9b5f31eb0ff3f15b883cb3fb3ca542a6d"
+      "role": "pin",
+      "sha256": "041873807ad955595ac5fd0c3d09bc913f8f0cdc4f73ca29e5579a47469ae98f",
+      "securityHash": "15f5afb029dfc86fb05f911bfdb18fa6ab49e1e266cd052b3dccbe500d8792f9"
     },
     {
       "id": "node-maintenance-release",
       "kind": "github-release",
       "url": "https://api.github.com/repos/nodejs/node/releases/tags/v24.22.1",
       "selected": false,
-      "sha256": "e1a16b63b30e90e6ce6d74dc2949c019b7a0e1771f8b1d35b8e819c0dd5d8f22"
-    },
-    {
-      "id": "GHSA-rxp7-6hxx-x8q5",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-rxp7-6hxx-x8q5",
-      "selected": false,
-      "sha256": "5f2ee26cb3554465be125c4cf0ea6d26a6df7689676a959d619785d37c288902"
-    },
-    {
-      "id": "GHSA-mrhx-c7xc-m3w5",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-mrhx-c7xc-m3w5",
-      "selected": false,
-      "sha256": "0e96f5b6803293a587933a3b383b70f272f8b450642d16892161a740f20b7ae2"
-    },
-    {
-      "id": "GHSA-333x-w4r6-6crp",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-333x-w4r6-6crp",
-      "selected": false,
-      "sha256": "8144ed03c415de643e56e0268544c486f10fe8371679ea824276f5a809c96d12"
-    },
-    {
-      "id": "GHSA-834v-8h66-3h79",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-834v-8h66-3h79",
-      "selected": false,
-      "sha256": "231fcfad897b8822db176abfd7221a9bd2ff135bee544cadb4e184d681c5cc06"
-    },
-    {
-      "id": "GHSA-w74x-v6f9-j3xg",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-w74x-v6f9-j3xg",
-      "selected": false,
-      "sha256": "c905026b7349391bfceb03f91805024ff0e1e206cca376cdcc49517418ff1b2c"
-    },
-    {
-      "id": "GHSA-wjr9-j795-jxcr",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-wjr9-j795-jxcr",
-      "selected": false,
-      "sha256": "5ab2b21d9689904642d669ca80f7b6812be46de42838d5be20fd093240739c3d"
-    },
-    {
-      "id": "GHSA-xhq7-xmqj-769h",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-xhq7-xmqj-769h",
-      "selected": false,
-      "sha256": "5791735c30ab844da88cc57892d2d591f6b6acaedf538c6277566ec068744855"
-    },
-    {
-      "id": "jose:6.2.13",
-      "kind": "npm-version",
-      "url": "https://registry.npmjs.org/jose/6.2.13",
-      "selected": false,
-      "sha256": "f4f4bb22996e8179fe73d25fcc5859b7a55085ed12cb55fcf07ecc7b6848f03b"
-    },
-    {
-      "id": "GHSA-j6qf-3m9c-vwj3",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-j6qf-3m9c-vwj3",
-      "sha256": "515c0c7f592095616ca1b05653c562ee918bb3db77e2b0273a6ddddb191e2e4b",
-      "selected": false
-    },
-    {
-      "id": "GHSA-xjj6-f33q-929c",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-xjj6-f33q-929c",
-      "sha256": "57dd0b7b5bebfe59d58b79ea0765a070a0d70374520387284e44dd06faee8271",
-      "selected": false
-    },
-    {
-      "id": "GHSA-4qv8-2p9j-2685",
-      "kind": "github-advisory",
-      "url": "https://api.github.com/advisories/GHSA-4qv8-2p9j-2685",
-      "sha256": "e472071324ad3a1249d701af8264f8a75a8a9fbc73a92720b3b59f87f737e5c8",
-      "selected": false
+      "role": "pin",
+      "sha256": "e1a16b63b30e90e6ce6d74dc2949c019b7a0e1771f8b1d35b8e819c0dd5d8f22",
+      "securityHash": "0eecf6768a76fa8fb9fc5817b2644de0ce0a6d8021e0c3ab7d29e99b70f25c32"
     },
     {
       "id": "native-esbuild-0.25.12-source",
       "kind": "json",
       "url": "https://api.github.com/repos/evanw/esbuild/git/ref/tags/v0.25.12",
       "selected": true,
-      "sha256": "4485c4a51b40cd70c79e760b67bd52046c1437b9fcd8835814c36f432c6d3cdc"
+      "role": "pin",
+      "sha256": "4485c4a51b40cd70c79e760b67bd52046c1437b9fcd8835814c36f432c6d3cdc",
+      "securityHash": "4485c4a51b40cd70c79e760b67bd52046c1437b9fcd8835814c36f432c6d3cdc"
     },
     {
       "id": "native-esbuild-0.28.2-source",
       "kind": "json",
       "url": "https://api.github.com/repos/evanw/esbuild/git/ref/tags/v0.28.2",
       "selected": true,
-      "sha256": "17c37aa07653d168c172efbdc09666a350b4e1e0a1caea85f621b9e17f7be38a"
+      "role": "pin",
+      "sha256": "17c37aa07653d168c172efbdc09666a350b4e1e0a1caea85f621b9e17f7be38a",
+      "securityHash": "17c37aa07653d168c172efbdc09666a350b4e1e0a1caea85f621b9e17f7be38a"
     },
     {
       "id": "native-gosu-1.20-source",
       "kind": "json",
       "url": "https://api.github.com/repos/tianon/gosu/git/ref/tags/1.20",
       "selected": true,
-      "sha256": "b6662ffc2842d3558eaabee63baa24abd942ca8d24f37a737a98db5e3ad09ea5"
+      "role": "pin",
+      "sha256": "b6662ffc2842d3558eaabee63baa24abd942ca8d24f37a737a98db5e3ad09ea5",
+      "securityHash": "b6662ffc2842d3558eaabee63baa24abd942ca8d24f37a737a98db5e3ad09ea5"
     },
     {
       "id": "native-go-releases",
       "kind": "json",
       "url": "https://go.dev/dl/?mode=json&include=all",
       "selected": true,
+      "role": "monitor",
       "sha256": "56044568316ba1430c157b32c97bb03cbce4d969589ac62cdbdb0579cccacb15"
     },
     {
@@ -873,54 +234,75 @@
       "kind": "json",
       "url": "https://proxy.golang.org/golang.org/x/sys/@v/v0.44.0.info",
       "selected": true,
-      "sha256": "471802c4f58f51dfa7deb6ddade906ff36c2c0ce2ae8ab2e851bfe2221eccc40"
+      "role": "pin",
+      "sha256": "471802c4f58f51dfa7deb6ddade906ff36c2c0ce2ae8ab2e851bfe2221eccc40",
+      "securityHash": "471802c4f58f51dfa7deb6ddade906ff36c2c0ce2ae8ab2e851bfe2221eccc40"
     },
     {
       "id": "GHSA-gcqx-w48m-w2h4",
       "url": "https://api.github.com/advisories/GHSA-gcqx-w48m-w2h4",
       "kind": "github-advisory",
-      "sha256": "3acd0353a2803a3d6d889f6c38ce6403e1045e18830e8e7a8cd6c36f511ae778"
+      "role": "advisory",
+      "sha256": "05e6925c542869eb8ca2b81720d8dcc3983e26adcc489be24671cf18a428317b",
+      "securityHash": "cf91a8a78e701554e3574e3d961a63d7d040df764326ccc0e00ace5c67d5e919"
     },
     {
       "id": "GHSA-846f-f764-76mx",
       "url": "https://api.github.com/advisories/GHSA-846f-f764-76mx",
       "kind": "github-advisory",
-      "sha256": "24deb3fb29e701f614fc90f207024abbe59ec681ba4790cefb8f27d3c88582a8"
+      "role": "advisory",
+      "sha256": "9e007e0c05517b9ec952b4ed502885da863f11d8cef789bbdcd1779196660731",
+      "securityHash": "c5edf7ead72f3419f23ddc1cf0943cca6b4a984eb60ef6b193dc6949c0caa010"
     },
     {
       "id": "GHSA-2fmv-rv2c-59x7",
       "url": "https://api.github.com/advisories/GHSA-2fmv-rv2c-59x7",
       "kind": "github-advisory",
-      "sha256": "b873fd903cbace75dc8487eba2fe49b083277b684a3e80c33c80f30d81f633d7"
-    },
-    {
-      "id": "GO-2026-6860",
-      "url": "https://vuln.go.dev/ID/GO-2026-6860.json",
-      "kind": "json",
-      "sha256": "49eb07e3d8b760a44442810bfed3d0a794f383b025669449e14f42a339ea8310"
-    },
-    {
-      "id": "GO-2026-6866",
-      "url": "https://vuln.go.dev/ID/GO-2026-6866.json",
-      "kind": "json",
-      "sha256": "58d074a78852283ac4c018a7042983e9be7f1450a131da5de937148e938a6423"
+      "role": "advisory",
+      "sha256": "08c317eadbf38a1dfb320734e3a3e42677ae4b09516a9f56dd1830dbc1cb08d0",
+      "securityHash": "425242b30a36479f858101dff879ba006d99c2320a33ee39d0d5a1da8c148379"
     },
     {
       "id": "GHSA-mgcc-cww5-fp2q",
       "url": "https://api.github.com/advisories/GHSA-mgcc-cww5-fp2q",
       "kind": "github-advisory",
-      "sha256": "347e327b4846891a3eb241c71dfa97fc5dead17ffc366c2c5a445af909045336"
+      "role": "advisory",
+      "sha256": "64f9c0d39964545f2dccaba6a66002c9306e2669e1d8918676e7d41150ffb99c",
+      "securityHash": "3e3f17256ff1c75782fb62e40d73bc761e76569614584eb40dcbebef1a0c598d"
+    },
+    {
+      "id": "cisa-kev",
+      "kind": "json",
+      "role": "monitor",
+      "url": "https://raw.githubusercontent.com/cisagov/kev-data/main/known_exploited_vulnerabilities.json",
+      "sha256": "62c37bd75b7fda8ec5240d9c01b2af56e262a14d0c2d7595e5605b4478a631e1"
+    },
+    {
+      "id": "GO-2026-6860",
+      "kind": "json",
+      "role": "advisory",
+      "url": "https://vuln.go.dev/ID/GO-2026-6860.json",
+      "sha256": "49eb07e3d8b760a44442810bfed3d0a794f383b025669449e14f42a339ea8310",
+      "securityHash": "015a7cbe97f8d47b6e70627dd21d2066227c34734d132861ab7831334ebf0920"
+    },
+    {
+      "id": "GO-2026-6866",
+      "kind": "json",
+      "role": "advisory",
+      "url": "https://vuln.go.dev/ID/GO-2026-6866.json",
+      "sha256": "58d074a78852283ac4c018a7042983e9be7f1450a131da5de937148e938a6423",
+      "securityHash": "a268db5dcfe70d4cc325dda6614bc49a472650962e822280df73fc5004bd16db"
     }
   ],
   "publisherConstraints": [
     {
       "package": "next",
       "manifest": "apps/cms/package.json",
-      "specifier": "16.4.2",
-      "version": "16.4.2",
+      "specifier": "16.4.3",
+      "version": "16.4.3",
       "minimumQualifiedVersion": "16.4.2",
       "lockedVersions": [
-        "16.4.2"
+        "16.4.3"
       ],
       "sources": [
         "selected:next"
@@ -955,11 +337,11 @@
     {
       "package": "payload",
       "manifest": "apps/cms/package.json",
-      "specifier": "3.91.0",
-      "version": "3.91.0",
+      "specifier": "3.92.1",
+      "version": "3.92.1",
       "minimumQualifiedVersion": "3.91.0",
       "lockedVersions": [
-        "3.91.0"
+        "3.92.1"
       ],
       "sources": [
         "selected:payload"
@@ -968,11 +350,11 @@
     {
       "package": "@payloadcms/next",
       "manifest": "apps/cms/package.json",
-      "specifier": "3.91.0",
-      "version": "3.91.0",
+      "specifier": "3.92.1",
+      "version": "3.92.1",
       "minimumQualifiedVersion": "3.91.0",
       "lockedVersions": [
-        "3.91.0"
+        "3.92.1"
       ],
       "sources": [
         "selected:@payloadcms/next"
@@ -981,11 +363,11 @@
     {
       "package": "@payloadcms/db-postgres",
       "manifest": "apps/cms/package.json",
-      "specifier": "3.91.0",
-      "version": "3.91.0",
+      "specifier": "3.92.1",
+      "version": "3.92.1",
       "minimumQualifiedVersion": "3.91.0",
       "lockedVersions": [
-        "3.91.0"
+        "3.92.1"
       ],
       "sources": [
         "selected:@payloadcms/db-postgres"
@@ -994,11 +376,11 @@
     {
       "package": "better-auth",
       "manifest": "apps/cms/package.json",
-      "specifier": "1.7.12",
-      "version": "1.7.12",
+      "specifier": "1.7.14",
+      "version": "1.7.14",
       "minimumQualifiedVersion": "1.7.12",
       "lockedVersions": [
-        "1.7.12"
+        "1.7.14"
       ],
       "sources": [
         "selected:better-auth"
@@ -1007,11 +389,11 @@
     {
       "package": "nodemailer",
       "manifest": "apps/cms/package.json",
-      "specifier": "10.1.7",
-      "version": "10.1.7",
+      "specifier": "10.2.1",
+      "version": "10.2.1",
       "minimumQualifiedVersion": "10.1.7",
       "lockedVersions": [
-        "10.1.7"
+        "10.2.1"
       ],
       "sources": [
         "selected:nodemailer"
@@ -1020,11 +402,11 @@
     {
       "package": "@mastra/core",
       "manifest": "apps/cms/package.json",
-      "specifier": "1.78.0",
-      "version": "1.78.0",
+      "specifier": "1.79.0",
+      "version": "1.79.0",
       "minimumQualifiedVersion": "1.78.0",
       "lockedVersions": [
-        "1.78.0"
+        "1.79.0"
       ],
       "sources": [
         "selected:@mastra/core"
@@ -1033,64 +415,58 @@
     {
       "package": "vite",
       "manifest": "apps/cms/package.json",
-      "specifier": "8.3.4",
-      "version": "8.3.4",
+      "specifier": "8.3.5",
+      "version": "8.3.5",
       "minimumQualifiedVersion": "8.3.3",
       "lockedVersions": [
-        "8.3.4"
+        "8.3.4",
+        "8.3.5"
       ],
       "sources": [
-        "selected:vite",
-        "GHSA-698v-4r3x-3vcv",
-        "GHSA-r825-w8mm-5pxw",
-        "GHSA-587h-7wmj-h5pm"
+        "selected:vite"
       ]
     },
     {
       "package": "vitest",
       "manifest": "apps/cms/package.json",
-      "specifier": "4.1.12",
-      "version": "4.1.12",
+      "specifier": "5.0.5",
+      "version": "5.0.5",
       "minimumQualifiedVersion": "4.1.11",
       "lockedVersions": [
-        "4.1.12"
+        "5.0.5"
       ],
       "sources": [
-        "selected:vitest",
-        "GHSA-82fw-gwwq-j7x9",
-        "vitest-maintenance-release"
+        "selected:vitest"
       ]
     },
     {
       "package": "@vitest/ui",
       "manifest": "apps/cms/package.json",
-      "specifier": "4.1.12",
-      "version": "4.1.12",
+      "specifier": "5.0.5",
+      "version": "5.0.5",
       "minimumQualifiedVersion": "4.1.11",
       "lockedVersions": [
-        "4.1.12"
+        "5.0.5"
       ],
       "sources": [
-        "selected:@vitest/ui",
-        "GHSA-82fw-gwwq-j7x9",
-        "vitest-maintenance-release"
+        "selected:@vitest/ui"
       ]
     },
     {
       "package": "astro",
       "manifest": "apps/landing/package.json",
-      "specifier": "7.4.1",
-      "version": "7.4.1",
+      "specifier": "7.4.2",
+      "version": "7.4.2",
       "minimumQualifiedVersion": "7.4.1",
       "lockedVersions": [
-        "7.4.1"
+        "7.4.2"
       ],
       "sources": [
         "selected:astro"
       ]
     }
   ],
-  "advisories": [
+  "findings": [
     {
       "scope": "full",
       "id": "GHSA-gcqx-w48m-w2h4",
@@ -1112,11 +488,12 @@
         "apps__cms>@payloadcms/richtext-lexical>payload>deepmerge",
         "apps__cms>payload>deepmerge"
       ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
+      "state": "under_investigation",
       "reason": "Fresh complete audit enumerates Payload deepmerge 4.3.1 at every retained consumer path. Primary GHSA marks the version affected with no published fix. Library behavior is reproduced, but configured Siteinabox authorization/tenant exposure is not proved. Low severity and absent remediation grant no waiver.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed version/path/advisory: obtain supported recognized remediation, test affected Payload semantics and collect fresh complete audits.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T16:40:34.876Z",
+      "deadline": "2027-01-26T16:40:34.876Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/140",
       "sources": [
         "GHSA-gcqx-w48m-w2h4"
       ]
@@ -1142,17 +519,16 @@
         "apps__cms>@payloadcms/richtext-lexical>payload>deepmerge",
         "apps__cms>payload>deepmerge"
       ],
-      "classification": "affected_package_condition_unproven",
-      "releaseBlocked": true,
+      "state": "under_investigation",
       "reason": "Fresh complete audit enumerates Payload deepmerge 4.3.1 at every retained consumer path. Primary GHSA marks the version affected with no published fix. Library behavior is reproduced, but configured Siteinabox authorization/tenant exposure is not proved. Low severity and absent remediation grant no waiver.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed version/path/advisory: obtain supported recognized remediation, test affected Payload semantics and collect fresh complete audits.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T16:40:34.876Z",
+      "deadline": "2027-01-26T16:40:34.876Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/140",
       "sources": [
         "GHSA-gcqx-w48m-w2h4"
       ]
-    }
-  ],
-  "imageAdvisories": [
+    },
     {
       "scope": "image:cms-cloudflared",
       "id": "CVE-2010-4756",
@@ -1162,12 +538,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "3e1c93b8051b58c6b61c6c6773ce6b9d36ee0729a1221e28da8170f10871073d",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2010-4756 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "714a408726c750d22716b34634aae534ecdcddff3ebbc81a7c35ddf3aa2ec7ef",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2010-4756. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1181,12 +558,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "4d143573d236bb6229bf43275f76fce0af75ba560f9810b7325d79e46214d540",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2018-20796 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "d2b4353cb48eddb7969582ca8e25338a28b5851d5c1cbe26d6d1087548a78954",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2018-20796. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1200,12 +578,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "0501e77284374ac30350ba36c4d2e5c2f71a45de2695f07d47eb2026451d06b2",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010022 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "975de518698737afe8c54e95741d1676073061996df095bf99a42cefc458beb8",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010022. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1219,12 +598,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "9273379b9829e94cb8a5871127bd90999005acee5ddad16d0f1e37144e2335ab",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010023 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "52b2781f78ca4014934981a7d4345f31788eb3ab1ad10a23ad05ae1aefbf1c56",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010023. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1238,12 +618,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "86d43b9fe3e55c2fb3364752bfb54d0a04ce388cf80da84a48ba08c6aa5a0833",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010024 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "38fb071c2b6faa25812b754d38e8f32fcfc1d50f736ed3467ff8b75d5b575748",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010024. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1257,12 +638,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5e15f7c639bfef97b10c4c4b94708417413b6e4f9ad1b5c6ad872b84a43aedca",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-1010025 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "714a408726c750d22716b34634aae534ecdcddff3ebbc81a7c35ddf3aa2ec7ef",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-1010025. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1276,31 +658,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "32e7ab22e8e53cf3280fb0e9bdb8ec3298c00cf0496e54033e43136753b3d77c",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2019-9192 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:cms-cloudflared",
-      "id": "CVE-2026-114437",
-      "package": "github.com/go-chi/chi/v5",
-      "version": "v5.3.1",
-      "severity": "moderate",
-      "paths": [
-        "usr/local/bin/cloudflared"
-      ],
-      "factsHash": "b2d1aeea8ec4a37bbd958a2e6ba3f100cbd86f715a502ae5e9c42df07f37473a",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates github.com/go-chi/chi/v5 v5.3.1 with CVE-2026-114437 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "49a417cd97cf0ceda123cdf1dc4934acb17c2f3d90f594a30bd70968780a6577",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2019-9192. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1314,12 +678,13 @@
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "a9c1dc2221486339446217784a255f16516b091cab333209fdc41d915e3fa9c4",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Current cloudflared bytes contain go-jose/v4 v4.1.4. Primary GitHub advisory and retained scanner identify the affected package range with v4.1.6 as the fix. Exact binary reachability and supported publisher remediation remain unqualified; this new finding remains release-blocking.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "69d84e6dab0afd9d1f0f8adf7e37c8f37f94064879ba73e4565658f24b6a71ef",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports github.com/go-jose/go-jose/v4 v4.1.4 with CVE-2026-116587. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
         "GHSA-mgcc-cww5-fp2q"
@@ -1334,12 +699,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "a0123944e872db8dfd01007e31a499767c52a71f02ba7bc3755f96256a300358",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1353,12 +719,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "f0aded279d0a33b141243b164738b3e800068fa4a9e2a990d468223fd6a81100",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-19499 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-19499. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1372,12 +739,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "687e088ff1690e10779c62066ccc37bebe483bc82c9d4963e0c758a9c87205d3",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-19542 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-19542. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1391,12 +759,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "f04d9eaf9d1d2b580445e553f2a5c7d1526c670ae5a178a16b8e0e64e94db316",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-27171 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "da5db8d38dc65af10a15e6e641311c595128138649bb5121b170335edfe8a1c1",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-27171. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1410,12 +779,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "2fe82945853412c66f4cc3f0622eff9e577cf2ee2decc68558278c7f4621629f",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-5435 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "1138e0bc7c49d3fdb1c10bcbf81850fd078e9f7a01db1d3cab459666963b98e3",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-5435. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1429,12 +799,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "099aa0e2de5198a8b1eaf7c7b1329849f6772daf7917b3a88afae49d5655ddda",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6238 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "1138e0bc7c49d3fdb1c10bcbf81850fd078e9f7a01db1d3cab459666963b98e3",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6238. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1448,12 +819,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "e1ff6d51ca78519a43556b9ba9b7f28b6d304bf9882fc88074238aa748988c56",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6368 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6368. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1467,12 +839,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5c6f650e9990c1f3b46a3f928b9b46a9985decabe807f33254afe7bb5c0cc115",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-6791 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-6791. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1486,12 +859,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "e94c991b3f079e143e13f398ff86c3eb6179c6b2ffaba1ef8023ec86fac5589f",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-77117 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-77117. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1505,15 +879,29 @@
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "0dd0588de92c948cc1e090076ee29bc016f4072ee0298bfd9038b7e09c4b3445",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates golang.org/x/net v0.61.0 with CVE-2026-78661 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
-        "scanner-release"
-      ]
+        "scanner-release",
+        "GO-2026-6860"
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-6860"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+        "binding": {
+          "scope": "image:cms-cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
+          "advisoryHash": "19302814046b08e41ebf083a0d52faa18b98332ef2a9c6a7c0a18eb07158d38e"
+        }
+      }
     },
     {
       "scope": "image:cms-cloudflared",
@@ -1524,12 +912,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "21ef882b8c2998fffb50c94753eb362a307362ff24861b4ab1e3badc8506cea0",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-80489 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f0aee2d0e4501f372882d6eddfcf95a5f92c885e073d10ed9d919dc5974b6520",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-80489. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1543,12 +932,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "ca86df8ead8eb6e4fda9fcf9a6d4cea4de9ef1dc4864feb7f9abb502b291d70a",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-85091 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "7146bbbfa0f10b9275905cdc0c5ed6ad542649602a33157ae4f3be1f492bbc02",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports zlib1g 1:1.3.dfsg+really1.3.1-1+b1 with CVE-2026-85091. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1562,12 +952,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "13551d6f72e6b6decbce4c25f1d5471642abdd194eed1640a62595a0ee969364",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-8674 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "d3fa3ea5fac9a63faa77a83b98c88287883ee9254a8a4949bc232601d34ec9be",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-8674. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1581,12 +972,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "c6904bd14fe52c295a1a2f15a76623e52d875b94fc1eca83579cd59ebad9de52",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-86805 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "870e2b2ebb56a5b3e0873cf1213fe15ed63f293372ac59e9b0dee7e2d0dc69d4",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-86805. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1600,12 +992,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "b553e4dfadf1da257e14b7ede8932ab17fb7005365beb6823964fe6b01f67674",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-89092 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "8106b481012881d280fd51d683460205a16aaceb7252baa49b5d95d5189107cc",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1619,12 +1012,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "118fceb4cf1c14adc724a718d38d66a8e341ffa4337b78e79e243fa54bce4b0f",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-95818 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "870e2b2ebb56a5b3e0873cf1213fe15ed63f293372ac59e9b0dee7e2d0dc69d4",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-95818. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1638,15 +1032,29 @@
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "bc1190fd5a6df30df82113f7f07f21ac2ec13349167d643c370dafc800f72ea1",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates golang.org/x/net v0.61.0 with CVE-2026-97045 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
-        "scanner-release"
-      ]
+        "scanner-release",
+        "GO-2026-6866"
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-6866"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+        "binding": {
+          "scope": "image:cms-cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
+          "advisoryHash": "2288f4f4d6f0b63c2c2bc6854e65a29e25345b43feb412b8d51c20637bf0dbb6"
+        }
+      }
     },
     {
       "scope": "image:cms-cloudflared",
@@ -1657,12 +1065,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cbbe5d9fde133a51cef22f747114eda28a7315a4f7828ccb5ae477838386c446",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.41-12+deb13u4 with CVE-2026-97399 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "3fc98994e71627e68de81dfd03163a53d59f6801062818dff8b78e780fbc55c7",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.41-12+deb13u4 with CVE-2026-97399. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1676,12 +1085,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "658a05c23d7860691a96d276100ca346773aedd643aaa2e1804ad118c8b971c8",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates ca-certificates 20250419 with DSA-6572-1 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0ff16563df300cd9f2e2c26965fe6634a19445a1bef8e30eb082379dc58c084b",
+      "state": "under_investigation",
+      "reason": "Debian DSA-6572-1 identifies compromised CA certificates and fixes ca-certificates at 20250419+deb13u1; the publisher image retains 20250419. Scanner severity is unknown, so release remains blocked pending remediation; https://lists.debian.org/debian-security-announce/2026/msg00487.html.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release"
       ]
@@ -1695,16 +1105,29 @@
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "88dd0e6f0f494cc74a945e872398cb18294c2bc73d88a0b3c357b3498384cbe9",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates golang.org/x/crypto v0.58.0 with GO-2026-5932 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "5796482b71ed465ce25f589ea10148b835cceec0ffb53b19efcad6afaae8e952",
+      "state": "not_affected",
+      "reason": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
         "GO-2026-5932"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GO-2026-5932"
+        ],
+        "justification": "Govulncheck 1.9.0 symbol analysis of the exact OCI executable 5bec754ab74f88a35ba4b0edc2e0c4555da1f526a8ca866c9a8383ea84d286db retains the module finding but finds no affected package or symbol. Complete extraction enumerates 34,609 symbols and contains neither OpenPGP nor x/net/html; this is binary evidence, not inference from go.mod.",
+        "binding": {
+          "scope": "image:cms-cloudflared",
+          "platform": "linux/amd64",
+          "fingerprint": "858a7c60ac431d517c71966a5839d5aa0e935a5fe88d55ddc5c3d49dcca92751",
+          "advisoryHash": "9b6de7aedbf0c766aeadc0e3aa4e48d8b758194d08ddca82323a062f148e4d73"
+        }
+      }
     },
     {
       "scope": "image:exchange-worker",
@@ -1715,12 +1138,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "3f1c555c2eddf8518231b92c28cb29d212ba629bc57222217761ebec0a33dd1e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates login 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "2ef56cb9e40635cc6c0555fbf01e3917c732d147b24c083bd5e880571c13038d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports login 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1734,12 +1158,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "3f1c555c2eddf8518231b92c28cb29d212ba629bc57222217761ebec0a33dd1e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates passwd 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "2ef56cb9e40635cc6c0555fbf01e3917c732d147b24c083bd5e880571c13038d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports passwd 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1753,12 +1178,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "9c21050554579899fc1e39f1ded885ddcfaa23d6a69a101d21b04c95b1f1f59e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libicu74 74.2-1ubuntu3.1 with CVE-2025-5222 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "108534fe1d7508d6ba5c60c86fb9d2ede57cc7f87cbde64a2b7f6ed4e6eec9e7",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libicu74 74.2-1ubuntu3.1 with CVE-2025-5222. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1772,12 +1198,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "4e516f44bcde66d1fd883c217c44f098e5329c655eebd8e631eae2a13d3be15c",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates dash 0.5.12-6ubuntu5 with CVE-2026-102473 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports dash 0.5.12-6ubuntu5 with CVE-2026-102473. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1791,12 +1218,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "9e1f53d27014096e52f32016840dcce30272f80645046a9c6a126378fda391bc",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates dash 0.5.12-6ubuntu5 with CVE-2026-102474 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports dash 0.5.12-6ubuntu5 with CVE-2026-102474. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1810,12 +1238,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "f09b47c26fb44f8850c41e04cbcac40346bf8feb891d14be37f27b895bf8d575",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-103111 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "aaf193d28bffc2ec907af39a6d46e091d5d0f79fd29760c2f1be47a79aafee81",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-103111. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1829,12 +1258,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5e37d2a7fc1d863640c82d0dde1fa8359f19a140ae795b5d4c1b6b268a1d471f",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libsasl2-2 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "1cd4c5c7ca3a46bc9d45725143bc8eeb1144b898717483005884ecc661c2017d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libsasl2-2 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1848,12 +1278,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5e37d2a7fc1d863640c82d0dde1fa8359f19a140ae795b5d4c1b6b268a1d471f",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libsasl2-modules-db 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "1cd4c5c7ca3a46bc9d45725143bc8eeb1144b898717483005884ecc661c2017d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libsasl2-modules-db 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1867,12 +1298,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "acc7781209c4c03be10b25a6131504ddf556d72bc128918633f543d4a78acc96",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "cadf12c535175b3cc478f1e99f7680d836f41c3335b65ea1c89d868cc464491c",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1886,12 +1318,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "acc7781209c4c03be10b25a6131504ddf556d72bc128918633f543d4a78acc96",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.39-0ubuntu8.9 with CVE-2026-18374 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "cadf12c535175b3cc478f1e99f7680d836f41c3335b65ea1c89d868cc464491c",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1905,12 +1338,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "5f9b249d7d10cab58fa7e42348c6ed0dbdc48c953668443e2255f352ca24b8f1",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18477 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "f45c5d4aa469ad6f13d867e2d72f9be372c0e1f8b0fbef7b4e510a1337461435",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18477. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1924,12 +1358,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "c8008fd4813f4b14910ca463625710c568dac0bea54a4fd922425498953dbb1a",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18508 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "d574670827185c763526e0b13c27ae81ee74cb3bebc25bede9c73388a17583e9",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18508. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1943,12 +1378,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "e8317c6a844cecbab14d3cc53a94899c6a0a6f07a78a9110ff78b9f736b530e0",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates liblmdb0 0.9.31-1build1 with CVE-2026-22185 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports liblmdb0 0.9.31-1build1 with CVE-2026-22185. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1962,12 +1398,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "d43e6168dd4da1c1c5e52a16e7a016e59137a4c02568b39e3a4b03968c768b80",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libsystemd0 255.4-1ubuntu8.18 with CVE-2026-40228 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "e6cbc68e531af999099b316eb09ad771647fbd2e6e03fc599c657372e943e943",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libsystemd0 255.4-1ubuntu8.18 with CVE-2026-40228. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -1981,12 +1418,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "d43e6168dd4da1c1c5e52a16e7a016e59137a4c02568b39e3a4b03968c768b80",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libudev1 255.4-1ubuntu8.18 with CVE-2026-40228 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "e6cbc68e531af999099b316eb09ad771647fbd2e6e03fc599c657372e943e943",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libudev1 255.4-1ubuntu8.18 with CVE-2026-40228. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2027-01-26T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2000,12 +1438,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "41ea3f7225b0241f2eaf532e8c93139c1f68e5e1906fde6a86850e9b04b767c1",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-67693 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-67693. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2019,16 +1458,29 @@
       "paths": [
         "usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/Microsoft.Exchange.Management.ExoPowershellGalleryModule.deps.json"
       ],
-      "factsHash": "ce2cb00fb50fdc7210cee52f2c10e7cd52da909e0c802fc734eca5e55346374d",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Primary Microsoft advisory is Windows-only; this row is not a confirmed Linux vulnerability. Retain the scanner affected-version finding under the existing enumeration gate without suppression. The separate Linux-applicable CVE-2026-84008 and unresolved module/native mapping still block the worker.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "25f8f68d7ebd9897520c4b9ebb9e1cb81db86b3ed86132b5b870c7f50b93b2ee",
+      "state": "not_affected",
+      "reason": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
         "GHSA-2fmv-rv2c-59x7"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GHSA-2fmv-rv2c-59x7"
+        ],
+        "justification": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
+        "binding": {
+          "scope": "image:exchange-worker",
+          "platform": "linux/amd64",
+          "fingerprint": "2d2649ba42b77ed4399cff3cd0bf4a3cd3e4df4a2ff5c7ba6329f27dc1598683",
+          "advisoryHash": "6500b316d2468e37a1cd89762046b9d21f7e20aa278e48d9d463a3cfbf0c91ca"
+        }
+      }
     },
     {
       "scope": "image:exchange-worker",
@@ -2039,16 +1491,29 @@
       "paths": [
         "usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/Microsoft.Exchange.Management.ExoPowershellGalleryModule.deps.json"
       ],
-      "factsHash": "6f13bb73452c7db4e56aeb1cbc0e4f2032fce86b73360259ab97ebf0c987a86b",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "EXO 3.10.1 contains a separate Pkcs 10.0.0 copy inside the affected stable range despite PowerShell carrying 10.0.14. Primary Microsoft advisory includes Linux. Actual loading/reachability and a supported module remediation remain unqualified; release is blocked.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "451150da705808aafd0871121c85542c97eef5ab5498acc154eda1914783d191",
+      "state": "not_affected",
+      "reason": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-04T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
         "GHSA-846f-f764-76mx"
-      ]
+      ],
+      "evidence": {
+        "sources": [
+          "GHSA-846f-f764-76mx"
+        ],
+        "justification": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
+        "binding": {
+          "scope": "image:exchange-worker",
+          "platform": "linux/amd64",
+          "fingerprint": "2d2649ba42b77ed4399cff3cd0bf4a3cd3e4df4a2ff5c7ba6329f27dc1598683",
+          "advisoryHash": "b2cd691e802c1d6154de6a7b2c80e09732aa44e944c330544940033910788859"
+        }
+      }
     },
     {
       "scope": "image:exchange-worker",
@@ -2059,12 +1524,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "9f44c7114859f9f9ba774f35268d8013c7a24377f98f659f48f0661aeeb3a9e2",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-86145 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "8de7f1c5880c5f0845c867c0364b69ebeb565cfe39b8d7991a482a567d1ff104",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-86145. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2078,12 +1544,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "4731202a697eb6efd098f3f06d15054d8633d212608a405763eee4ea5d79832c",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88647 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88647. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2097,12 +1564,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "525f4dc0904fdb35d64007b763310598086246ea5f766e6ab69cbdf51184a901",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88648 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88648. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2116,12 +1584,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "4095d7c1eee46a6e4624954c61ed57c3e717162724af103fcdb9ec997d2b5591",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc-bin 2.39-0ubuntu8.9 with CVE-2026-89092 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2135,12 +1604,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "4095d7c1eee46a6e4624954c61ed57c3e717162724af103fcdb9ec997d2b5591",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libc6 2.39-0ubuntu8.9 with CVE-2026-89092 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2154,12 +1624,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "70800223cc3c37464f6840162c8850222f4669637b1c48b7e017fe393d5442bb",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89156 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "8ee5f056be81fec897ddc92b19f47def46acb28c0602b4da68eb7b2fecfde4bd",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89156. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2173,12 +1644,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "37d553e3ab82898df667c18e366d77ca3b62173769c4d5e11107b9d716a1780f",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89157 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "05aa67c7e94a4aec5f6e8e344db26c87caf6797658815eac5799ded5195f5239",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89157. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2192,12 +1664,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "dbcf1553160a4d5f4a5a71206265625a8a6393684ad6a58d2556d5b6f478f82a",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89158 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "788903ead309077cee547a22726aa70f45cbd25a4efa72d9016124060f75bead",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89158. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2211,12 +1684,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "82e9ab54a3d0483f10b46c2cd25dfe95ca549a97eb1dc28c8961cc0b7eff0839",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89160 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "8ee5f056be81fec897ddc92b19f47def46acb28c0602b4da68eb7b2fecfde4bd",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89160. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2230,12 +1704,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "0b2e40c1ec971c570263a7ef4f5cadf13a20e523915ae211f9cd1da83d940cdd",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89161 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "74621f1d4bb912dcb3a0dacde77583fa3de20e2fd7f75512c550e3207de1bd04",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89161. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2249,12 +1724,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "2168cb8991012d6adb1270228bd4314f40885891003c69584c1ca93adf99e08e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2268,12 +1744,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "2168cb8991012d6adb1270228bd4314f40885891003c69584c1ca93adf99e08e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates bind9-host 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports bind9-host 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2287,12 +1764,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "2168cb8991012d6adb1270228bd4314f40885891003c69584c1ca93adf99e08e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates bind9-libs 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports bind9-libs 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2306,12 +1784,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "929ff8814ffb39b4430642e50ea785dcb345aa5d847854ba7b9ba98d6af4ef29",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95184 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95184. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2325,12 +1804,13 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "47c6c1b5af0e23c535b1a3594bba010f2600f0d954359b922e7edd05e388305e",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95209 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95209. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
       ]
@@ -2344,358 +1824,22 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "bfcda22faa8da9d9b80eace8fd1dbaba678d91eb18f14e211defeba3b1e64402",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "Exact candidate inventory enumerates libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95210 at the retained paths. Complete package-specific vendor/range, native/managed mapping or execution applicability is not established; this blocked inventory disposition is not a clean-result or exploitability claim.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
+      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
+      "state": "under_investigation",
+      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95210. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "deadline": "2026-11-27T17:25:26.846Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "WORKER_NATIVE_MAPPING_INCOMPLETE",
-      "package": "powershell-module-native-inspection",
-      "version": "0.76.0",
-      "severity": "unknown",
-      "paths": [
-        "/opt/microsoft/powershell/7/libcrypto.so.1.0.0",
-        "/opt/microsoft/powershell/7/libssl.so.1.0.0",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/msvcp140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/runtimes/win-arm64/native/msalruntime_arm64.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/runtimes/win-x64/native/msalruntime.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/runtimes/win-x86/native/msalruntime_x86.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/vcruntime140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/vcruntime140_1.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/msvcp140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/runtimes/win-arm64/native/msalruntime_arm64.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/runtimes/win-x64/native/msalruntime.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/runtimes/win-x86/native/msalruntime_x86.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/vcruntime140.dll",
-        "/usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netFramework/vcruntime140_1.dll"
-      ],
-      "factsHash": "3666eae67354a60dd355c778761ead13462c074c7cc4add9e97c12df75b4dee4",
-      "classification": "analysis_gap",
-      "releaseBlocked": true,
-      "reason": "All 14 retained worker paths remain explicit mapping gaps: two unresolved compatibility-library links and 12 non-managed DLLs, including alternate-platform copies. Retaining hashes is not complete advisory/native coverage; no path is omitted or assigned invented bytes.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed bytes/paths/advisory: reconcile primary ranges, platform scope, source provenance and complete native/managed coverage; qualify supported remediation and final-source checks.",
-      "sources": [
-        "scanner-release"
-      ]
-    }
-  ],
-  "nativeAssessments": [
-    {
-      "application": "cms",
-      "fingerprint": "64499c3c64cf96d5de10bd6ddaa4a43f3af491b973314ac4c98231c9deb0f704",
-      "status": "blocked",
-      "reason": "Exact source fc398e37f64849df32537542e3b1103c24566278 manual candidate binds archive/report/native bytes and enumerates 0 scanner findings. Complete independent vendor/native/managed qualification and final-source hosted evidence remain incomplete; zero findings alone grants no clearance.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source/packages/native bytes/expiry: requalify primary applicability/support, every reported gap and the actual final-source hosted pipeline.",
-      "sources": [
-        "scanner-release",
-        "alpine-main",
-        "alpine-community",
-        "native-go-releases",
-        "native-esbuild-0.25.12-source",
-        "native-xsys-0.44-publication",
-        "go-advisory-index"
-      ],
-      "reviewedSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-      "reviewedImageId": "sha256:72fe6aaedf6b726362d04ab984902435a445f603cfd6d0a21fe557e1ba07d290",
-      "reviewedArchiveSha256": "3af3fdb35367d5d277106727ac57495988dd9633a2dddebfec131a2ff72a3166",
-      "reviewedReportSha256": "ecbd9af0b620d0bcb70b4d036748165154cca6df8f6631e464e8e1271b140b8b",
-      "reviewedNativeInventorySha256": "cd793e54ecfaf6b599c766b1403e794182bdec93984706b4a80559a355be5ab2",
-      "verificationKind": "manual-exact-source-packaged-diagnostic; no hosted run fabricated",
-      "bundleQualification": {
-        "kind": "manual-exact-bytes-with-owning-root-generator",
-        "baselineSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-        "baselineImageId": "sha256:72fe6aaedf6b726362d04ab984902435a445f603cfd6d0a21fe557e1ba07d290",
-        "generator": "node apps/cms/scripts/build-runtime-bundle.mjs",
-        "node": "24.22.1",
-        "pnpm": "12.14.0",
-        "bundledScripts": [
-          {
-            "path": "app/dist-runtime/check-commerce-edge-inventory.bundled.mjs",
-            "size": 14908036,
-            "sha256": "2c37c7426f84e7992815171c0a3e40d6d303f7c87ef95e876d9aabda08161b0f"
-          },
-          {
-            "path": "app/dist-runtime/check-commerce-production-readiness.bundled.mjs",
-            "size": 14924253,
-            "sha256": "61708b36f58535d5cc43c27e9848c7a7351f4bd1c4be187672eb7123dd663ff7"
-          },
-          {
-            "path": "app/dist-runtime/ensure-renderer-domain-alias.bundled.mjs",
-            "size": 14936096,
-            "sha256": "af61385fc96b56b66ca841c220fddcda62ce9b58613946ac881860a3ef72acd1"
-          },
-          {
-            "path": "app/dist-runtime/legal-sync-on-boot.bundled.mjs",
-            "size": 14906917,
-            "sha256": "daa689d1895c25f5471e8aab94a38831e24ee5a9d2852407d2c5f8a7dd6304c6"
-          },
-          {
-            "path": "app/dist-runtime/migrate-on-boot.bundled.mjs",
-            "size": 15794904,
-            "sha256": "68e78e2da4501e553a70db43d6a2e2d27544a5b15c50ac2b8420d4ae8eac742c"
-          },
-          {
-            "path": "app/dist-runtime/reconcile-commerce-edge-routing.bundled.mjs",
-            "size": 14908851,
-            "sha256": "d484e1deeb63efd9ccbce93c7e5258c66cc003f1b2582cfb89c7854fdc308981"
-          },
-          {
-            "path": "app/dist-runtime/retry-legal-notification.bundled.mjs",
-            "size": 14913922,
-            "sha256": "d753ce2ec5937e9d04f11c3ba4b14aa960cd37a9f0311c6acbc995a45851023e"
-          },
-          {
-            "path": "app/dist-runtime/seed-renderer-staging-tenants.bundled.mjs",
-            "size": 15004440,
-            "sha256": "3660c7c6b34aecd5b68cd26adde21970c7177f0446fbed3422b847279802063f"
-          }
-        ],
-        "behaviorQualification": "Actual packaged CMS startup/migrations/restart/logical restore pass; all eight helper hashes/sizes match the owning generator. Final-source hosted verification and complete native qualification remain pending."
-      }
-    },
-    {
-      "application": "cms-cloudflared",
-      "fingerprint": "eff04060fa1b17ede20a27768405245406342c0ace23d2029dc3dd85f7d74362",
-      "status": "blocked",
-      "reason": "Exact source fc398e37f64849df32537542e3b1103c24566278 manual candidate binds archive/report/native bytes and enumerates 29 scanner findings. Complete independent vendor/native/managed qualification and final-source hosted evidence remain incomplete; zero findings alone grants no clearance.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source/packages/native bytes/expiry: requalify primary applicability/support, every reported gap and the actual final-source hosted pipeline.",
-      "sources": [
-        "scanner-release",
-        "native-go-releases",
-        "GO-2026-5932",
-        "GO-2026-6860",
-        "GO-2026-6866",
-        "go-advisory-index",
-        "GHSA-mgcc-cww5-fp2q"
-      ],
-      "reviewedSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-      "reviewedImageId": "sha256:c6c7ae1d5dfdcb094ad344ed68ccffc26635c9c6be80965664c33baf064b0515",
-      "reviewedArchiveSha256": "6a501cf5a380043d283bd0a963bc7758d44386cc9c6554c0c004000b1540550f",
-      "reviewedReportSha256": "1ec54712abbb988a515be26d4b5b068dc7a52b90492030825c9f50a39a95c607",
-      "reviewedNativeInventorySha256": "4f1bd4104ad3837d12ebd930e1bba95e25adec0c2615b3cfe8c582c9fdf1cfea",
-      "verificationKind": "manual-exact-source-packaged-diagnostic; no hosted run fabricated"
-    },
-    {
-      "application": "renderer",
-      "fingerprint": "6a82b607ffdb6b3c4a324721b48dd4d1a92318cb9a2667de0e72930c7a26290b",
-      "status": "blocked",
-      "reason": "Exact source fc398e37f64849df32537542e3b1103c24566278 manual candidate binds archive/report/native bytes and enumerates 0 scanner findings. Complete independent vendor/native/managed qualification and final-source hosted evidence remain incomplete; zero findings alone grants no clearance.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source/packages/native bytes/expiry: requalify primary applicability/support, every reported gap and the actual final-source hosted pipeline.",
-      "sources": [
-        "scanner-release",
-        "alpine-main",
-        "alpine-community",
-        "native-go-releases",
-        "native-esbuild-0.28.2-source",
-        "native-xsys-0.44-publication",
-        "go-advisory-index"
-      ],
-      "reviewedSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-      "reviewedImageId": "sha256:cd04cb3a2870e6b3852c612a92901ab317c79ac5db5350ad481ff7c392dec451",
-      "reviewedArchiveSha256": "94147191103e26ac08bfee5853019ab1babc879f0eb34f7de20f8fc1f784864e",
-      "reviewedReportSha256": "eecc0e7d54d974cf44efd4cf6634e9f028af634dc28e238d9f3285d2c2756ef4",
-      "reviewedNativeInventorySha256": "607d2769b6e9e6ec7b5db817d16a9408262fcac395202dc770ca4bc2b4b7eda2",
-      "verificationKind": "manual-exact-source-packaged-diagnostic; no hosted run fabricated"
-    },
-    {
-      "application": "site",
-      "fingerprint": "db238d32de2c49bdd0b6c6b7773075bb347e20726f05b5fd1022c39ba01ad1c9",
-      "status": "blocked",
-      "reason": "Exact source fc398e37f64849df32537542e3b1103c24566278 manual candidate binds archive/report/native bytes and enumerates 0 scanner findings. Complete independent vendor/native/managed qualification and final-source hosted evidence remain incomplete; zero findings alone grants no clearance.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source/packages/native bytes/expiry: requalify primary applicability/support, every reported gap and the actual final-source hosted pipeline.",
-      "sources": [
-        "scanner-release",
-        "alpine-main",
-        "alpine-community"
-      ],
-      "reviewedSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-      "reviewedImageId": "sha256:7a65735413c72a364700c537ed9b210952ddff68f15a9f97b8d70f908796bd7d",
-      "reviewedArchiveSha256": "7721e65a9774284c8e8ff82545b3bbd6e483e0f89c1d496df515d357bc309c4e",
-      "reviewedReportSha256": "abf3bd81fc64fc561aea38e700443b6e405ecfee1d45bf7c499db3fbfdca29eb",
-      "reviewedNativeInventorySha256": "3d6db1ac981bfdac82dc8c31ad9855f8578c3898a869838611784db25d2e8b29",
-      "verificationKind": "manual-exact-source-packaged-diagnostic; no hosted run fabricated"
-    },
-    {
-      "application": "postgres",
-      "fingerprint": "c6c14502709c630fe48a434dbe975439f2aab3927a4462c1cb9b0f84be3b4a3f",
-      "status": "blocked",
-      "reason": "Exact source fc398e37f64849df32537542e3b1103c24566278 manual candidate binds archive/report/native bytes and enumerates 0 scanner findings. Complete independent vendor/native/managed qualification and final-source hosted evidence remain incomplete; zero findings alone grants no clearance. Actual CMS migrations, populated-volume replacement, logical restore, nonroot restart, rollback and graceful shutdown pass on disposable resources; registry publication remains separately gated.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source/packages/native bytes/expiry: requalify primary applicability/support, every reported gap and the actual final-source hosted pipeline.",
-      "sources": [
-        "scanner-release",
-        "alpine-main",
-        "alpine-community",
-        "native-go-releases",
-        "native-gosu-1.20-source",
-        "native-xsys-0.44-publication",
-        "go-advisory-index"
-      ],
-      "reviewedSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-      "reviewedImageId": "sha256:94560d34dd426be63e039a333242fc3e3293587d805250fc237244b5628c6712",
-      "reviewedArchiveSha256": "68eadb8e4c290a122894eacb904469390ef1f55e27ede2bcd7b028b0e39bffd6",
-      "reviewedReportSha256": "e4aa02bc604e422ef879d373329469dec8494305b00bc8ca71bbbac5a9c5a711",
-      "reviewedNativeInventorySha256": "8886f5e0d50e2a3082ebee68bf6e662118f05cb58fe9ce258126e6de92a44139",
-      "verificationKind": "manual-exact-source-packaged-diagnostic; no hosted run fabricated"
-    },
-    {
-      "application": "exchange-worker",
-      "fingerprint": "2b5469baab6aeb90802abfda165c0cd4902661bd2c1b724fe470ad91bb5f7ea2",
-      "status": "blocked",
-      "reason": "Exact source fc398e37f64849df32537542e3b1103c24566278 manual candidate binds archive/report/native bytes and enumerates 34 scanner findings. Complete independent vendor/native/managed qualification and final-source hosted evidence remain incomplete; zero findings alone grants no clearance. The runtime/module/dpkg hash binding includes all duplicate/alternate-platform bytes and all 14 mapping-gap paths; neither Windows-only nor Linux-relevant Pkcs records are silently discarded.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source/packages/native bytes/expiry: requalify primary applicability/support, every reported gap and the actual final-source hosted pipeline.",
-      "sources": [
-        "scanner-release",
-        "GHSA-846f-f764-76mx",
-        "GHSA-2fmv-rv2c-59x7"
-      ],
-      "reviewedSourceSHA": "fc398e37f64849df32537542e3b1103c24566278",
-      "reviewedImageId": "sha256:e469b7c0544e9a1a98128d01b8558e40f75572cec9ed42564f761802e4ee5c56",
-      "reviewedArchiveSha256": "9ac3f9b441642841fc93aa570548b3edebeb9240b47cb9f31c6ce7a10ba7dcc9",
-      "reviewedReportSha256": "caccd95711825419d04f8c4ff96c10ce19413808a7631dbe7703f23013227010",
-      "reviewedNativeInventorySha256": "828c467cd5f056c7048ab363bceb00a0247eaf7428243d30bb0601c51c922abc",
-      "verificationKind": "manual-exact-source-packaged-diagnostic; no hosted run fabricated"
-    }
-  ],
-  "deferrals": [
-    {
-      "id": "vitest-major-qualification",
-      "classification": "supported_release",
-      "releaseBlocked": false,
-      "affectedSurface": "CMS/landing/contracts test runners",
-      "reason": "Selected Vitest 4.1.12 and its publisher maintenance/security facts are unchanged. Latest 5.0.5 remains a separate major migration, not a security exception. Existing compatible 4.x verification remains the supported selection; recheck if publisher support or advisory facts change.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release if 4.x support/advisory facts change; qualify 5.x separately before asserting it is compatible.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "latest:vitest",
-        "selected:vitest",
-        "vitest-maintenance-release"
-      ]
-    },
-    {
-      "id": "better-auth-age-recheck",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "Configured identity SDK",
-      "reason": "Selected Better Auth 1.7.12 publisher/range facts and peer graph remain unchanged. Existing SDK/schema/invitation and session evidence is retained; actual current CMS startup passes. Final-source hosted authentication/browser and consuming-image review remain required; no release clearance is inferred.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release, qualify 1.7.12 against configured passwordless/social/provider and session boundaries, refresh audits and exact consuming images; changed upstream facts also require review.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "latest:better-auth",
-        "selected:better-auth",
-        "better-auth-maintenance-release"
-      ]
-    },
-    {
-      "id": "go-stdlib-advisory-recheck",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "Shipped Go standard library, modules and exact compiled package coverage",
-      "reason": "Actual owned esbuild/gosu bytes use Go 1.27.3 and retain independently matched Go target coverage. New GO-2026-6860 and GO-2026-6866 affect x/net/html below 0.62.0; cloudflared retains x/net v0.61.0. Exact package/symbol applicability and complete component/vendor remediation remain unqualified, including the unresolved OpenPGP module finding. Compiler upgrades do not clear module findings. Current cloudflared also retains go-jose/v4 v4.1.4 under GHSA-mgcc-cww5-fp2q; its supported fixed-version and binary qualification are outstanding.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed native/advisory facts; qualify patched native consumers and refresh scanner coverage.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "GO-2026-6809",
-        "go-advisory-index",
-        "GO-2026-6860",
-        "GO-2026-6866",
-        "GHSA-mgcc-cww5-fp2q"
-      ]
-    },
-    {
-      "id": "node-security-patch-qualification",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "Node runtime and all consuming images",
-      "reason": "Selected Node 24.22.1 LTS publisher facts are unchanged. Actual current CMS and renderer startup/runtime checks pass; known TLS rejection/public OIDC diagnostics are historical supporting evidence only. Complete exact-image native/Brotli applicability, support and final hosted qualification remain outstanding.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "At or after 2026-10-22T10:38:25Z and before release, qualify the eligible security patch and exact consuming images against current primary security facts.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "node-releases",
-        "node-maintenance-release",
-        "alpine-main"
-      ]
-    },
-    {
-      "id": "scanner-patch-age-recheck",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "Isolated advisory scanner",
-      "reason": "Selected Trivy 0.76.0 and latest 0.76.1 publisher facts are unchanged; 0.76.1 is age-eligible but its runtime/TLS changes remain unqualified. Current scans retain warnings/provenance and incomplete mapping honestly; no missing-advisory-detail or analyzer gap is waived by scanner success.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed publisher/transport facts, qualify the age-eligible security patch and exact scanner/database outputs. Retain incomplete advisory metadata and all findings until independently resolved.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "scanner-release",
-        "scanner-latest"
-      ]
-    },
-    {
-      "id": "musl-vendor-fix-recheck",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "CMS, renderer, site and PostgreSQL Alpine libc artifacts",
-      "reason": "Current exact CMS/renderer/site/PostgreSQL package inventories contain musl and musl-utils 1.2.6-r3, matching the vendor-listed fix. Earlier r2 candidate statements are historical. Complete vendor/advisory mapping, bundled/native coverage and final-source hosted qualification remain unproved; this deferral remains blocked rather than claiming the patched package alone clears release.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed source facts: qualify patched musl consumers against current vendor/advisory evidence and exact image/native inventories. Keep findings/coverage gaps blocked until independently resolved.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "alpine-main"
-      ]
-    },
-    {
-      "id": "bind-vendor-fix-recheck",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "CMS packaged bind-libs/bind-tools authoritative DNS validator",
-      "reason": "Current CMS inventory contains BIND 9.20.30-r0, matching the retained Alpine fix floor; earlier 9.20.29 baseline statements are historical. Command/package presence and offline tunnel checks are not complete DNS behavior and vendor/applicability qualification. Final exact-source qualification remains required and blocked.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release or changed vendor facts, qualify the patched authoritative validator and exact consuming image; reconcile fresh image findings.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "alpine-main"
-      ]
-    },
-    {
-      "id": "brotli-vendor-advisory-reconciliation",
-      "classification": "unresolved_blocker",
-      "releaseBlocked": true,
-      "affectedSurface": "Brotli in PostgreSQL/landing native inventories and bundled Node runtime",
-      "reason": "Current owned PostgreSQL and site inventories contain brotli-libs 1.2.1-r0, matching the vendor-listed fix. Earlier 1.2.0-r1 statements are historical. Node/PowerShell bundled components require independent version/range coverage; the exact PowerShell runtime is 10.0.14 but EXO retains other affected bytes. Complete native/applicability and final-source qualification remain blocked.",
-      "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
-      "recheck": "Before release, reconcile current primary advisory ranges with exact OS/bundled runtime bytes, qualify remediation and independently review fresh inventories.",
-      "expiresAt": "2026-10-29T14:20:01.721Z",
-      "sources": [
-        "alpine-main",
-        "node-maintenance-release"
       ]
     }
   ],
   "limitations": [
-    "Current exact-source manual diagnostic baselines enumerate 64 image review rows (63 scanner findings plus one worker mapping-gap row) and two source audit scope dispositions. Every row remains release-blocking; all six native assessments remain blocked.",
-    "The vendor PostgreSQL baseline is now only a build/rehearsal input. Its old cms-postgres dispositions are replaced by the scanned owned PostgreSQL scope; production source Compose requires an approved owned-image digest. The installed production stack has not changed.",
-    "Primary reconciliation retains 122 unchanged prior facts, two changed feeds and six added advisory facts. The community git-annex addition is absent from these six raw package inventories, not a universal deployment-absence claim. New x/net HTML and go-jose advisories remain explicit Go rechecks.",
-    "Pkcs Windows-only scope is preserved without claiming Linux exploitability. EXO separately retains a Linux-relevant affected-version copy. Unresolved native/managed/vendor mappings and advisory provenance cannot be cleared by an absence of scanner findings.",
-    "Baseline identities are manual exact-source packaged diagnostics, never substitutes for final same-source hosted checks, archive transfer, support qualification, approval, publication or deployment. No hosted run ID is invented.",
-    "All seven unresolved deferrals remain release-blocking; the separate supported Vitest deferral remains unchanged in classification. The new 24-hour review window is backed by fresh primary facts and exact byte reconciliation, not an expiry-only extension.",
-    "No live-provider, Tap2case, production recovery, publication, deployment or risk-acceptance gate is cleared.",
-    "Hosted run 40708904946 retains the same 64 review rows and six native fingerprints. Nineteen later reference-set updates in libc, PCRE2 and tar advisory metadata are reconciled from exact raw reports; paths, versions, fixes, selected severities and all release blockers are unchanged. Archive-registry provenance, HTTP and runtime checks passed; aggregate qualification awaits the corrected worker artifact layout. No expiry extension."
+    "Raw scanner/audit findings are retained; current candidate scans and final-source hosted verification remain required.",
+    "Generic manual native blockers and duplicated qualification deferrals are replaced by validated finite coverage/support and owning functional-test requirements.",
+    "High/critical, known-exploited and missing required coverage remain blocking. Lower-severity tracking is not a safety declaration.",
+    "This review record grants no wildcard suppression or automatic exception. Publication, deployment and provider writes require separate task-specific authorization."
   ]
 }

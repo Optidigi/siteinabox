@@ -1,4 +1,6 @@
-import { imageApplications } from "./image-evidence.mjs"
+import { canonicalHash } from "./image-artifact.mjs"
+import { evaluateReleaseRisk, reviewedRiskItems, securityFacts } from "./release-risk.mjs"
+import { imageApplications, dependencyImageApplications } from "./image-evidence.mjs"
 import { readWorkerRuntimeEvidence } from "./worker-runtime-evidence.mjs"
 import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
@@ -7,9 +9,9 @@ import { isDeepStrictEqual } from "node:util"
 import { sha256File } from "./image-artifact.mjs"
 import { validateImageInventory, imageInventoryStatus, NativeAnalysisIncompleteError, requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { infrastructure } from "./infrastructure-images.mjs"
-import { reviewedBlockers, assertReviewedFindings } from "./dependency-security-policy.mjs"
+import { reviewedDispositions, assertReviewedFindings } from "./dependency-security-policy.mjs"
 
-export const dependencyImageApplications = [...imageApplications, "cms-cloudflared"]
+export { dependencyImageApplications } from "./image-evidence.mjs"
 const digest = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex")
 const identity = (row) => JSON.stringify([row.scope, row.id, row.package, row.version])
 
@@ -46,7 +48,7 @@ export function imageReviewFindings(images) {
     }
   }
   return [...grouped.values()].map(({ facts, ...row }) => ({ ...row,
-    factsHash: digest(facts.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))) })).sort((a, b) => identity(a).localeCompare(identity(b)))
+    factsHash: canonicalHash(facts.map(securityFacts).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))) })).sort((a, b) => identity(a).localeCompare(identity(b)))
 }
 
 export async function loadDependencyImages(directory, sourceSHA) {
@@ -77,6 +79,7 @@ export async function loadDependencyImages(directory, sourceSHA) {
     const path = resolve(directory, "image-" + image.application + ".trivy.json")
     if (await sha256File(path) !== image.reportSha256) throw new Error("Image vulnerability report bytes changed")
     const report = JSON.parse(await readFile(path, "utf8"))
+    image.osEndOfLife = report.Metadata.OS?.EOSL === true
     let actual
     let gaps = null
     try {
@@ -98,23 +101,22 @@ export function nativeReviewFingerprint(image) {
     goTargets: image.nativeInventory.goTargets ?? [], bundledScripts: image.nativeInventory.bundledScripts ?? [], ...(image.nativeInventory.workerRuntime ? { workerRuntime: image.nativeInventory.workerRuntime } : {}) })
 }
 
-export function validateImageReview(record, images, release = false) {
-  if (!isDeepStrictEqual(images.map((image) => image.application).sort(), [...dependencyImageApplications].sort())) throw new Error("Native review is missing a candidate image")
-  const scopes = dependencyImageApplications.map((app) => "image:" + app)
-  const facts = new Set(record.publisherFacts.map((fact) => fact.id))
-  const rows = reviewedBlockers(record.imageAdvisories, scopes, facts, true)
+export function validateImageReview(record, images, release = false, facts = [], now = Date.now()) {
+  if (!isDeepStrictEqual(images.map(image => image.application).sort(), [...dependencyImageApplications].sort())) throw new Error("Required image coverage is missing")
+  const scopes = dependencyImageApplications.map(app => "image:" + app)
+  const rows = reviewedDispositions(record, scopes, new Set(facts.map(fact => fact.id)))
   const inventory = imageReviewFindings(images)
   assertReviewedFindings(inventory, rows)
-  if (!Array.isArray(record.nativeAssessments) || record.nativeAssessments.length !== images.length ||
-      new Set(record.nativeAssessments.map((entry) => entry.application)).size !== images.length) throw new Error("Native bundle assessment is unavailable")
-  let blockedBundles = 0
-  for (const image of images) {
-    const assessment = record.nativeAssessments.find((entry) => entry.application === image.application)
-    if (!assessment || assessment.fingerprint !== nativeReviewFingerprint(image) || !["blocked", "qualified"].includes(assessment.status) ||
-        !assessment.reason?.trim() || !assessment.reviewOwner?.trim() || !assessment.recheck?.trim() ||
-        !assessment.sources?.length || assessment.sources.some((id) => !facts.has(id))) throw new Error("Native bundle evidence changed or is unreviewed")
-    if (assessment.status === "blocked") blockedBundles += 1
-  }
-  if (release && (inventory.length || blockedBundles)) throw new Error("Release blocked by shipped findings, incomplete analysis or native assessment: " + inventory.length + "/" + blockedBundles)
-  return { reviewedFindings: inventory.length, blockedBundles, releaseBlocked: inventory.length > 0 || blockedBundles > 0 }
+  const items = reviewedRiskItems(inventory, rows, { facts, binding: finding => {
+    const image = images.find(image => "image:" + image.application === finding.scope)
+    return { scope: finding.scope, platform: "linux/" + image.runtimePlatform.architecture, fingerprint: nativeReviewFingerprint(image) }
+  } })
+  const requirements = images.flatMap(image => [
+    { id: image.application + ":analysis-coverage", status: image.analysisGaps ? "unknown" : "passed" },
+    { id: image.application + ":package-version-coverage", status: image.inventory.unversionedPackages.length ? "unknown" : "passed" },
+    { id: image.application + ":supported-os", status: image.osEndOfLife === false ? "passed" : "unknown" },
+  ])
+  const decision = evaluateReleaseRisk({ items, requirements, now })
+  if (release && decision.releaseBlocked) throw new Error("Release blocked by image risk/coverage: " + decision.blockers.map(item => item.id).join(", "))
+  return { reviewedFindings: inventory.length, ...decision }
 }

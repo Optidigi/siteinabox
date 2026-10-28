@@ -1,85 +1,53 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { dependencyImageApplications, imageReviewFindings, nativeReviewFingerprint, validateImageReview } from "./dependency-image-review.mjs"
-
+import { reviewedRiskItems } from "./release-risk.mjs"
+const now = Date.parse("2026-10-21T00:00:00Z")
 function fixture() {
-  const images = dependencyImageApplications.map((application) => ({ application, scanner: { version: "0.76.0" },
-    runtimePlatform: { architecture: "amd64", os: "alpine", version: "3.24.2" }, nativeInventory: { files: [], ...(application === "exchange-worker" ? { workerRuntime: { inventory: { files: [] } } } : {}) },
+  const facts = [{ id: "primary", facts: { id: "CVE-fixture", aliases: [], affected: [{ range: "<1.1.0" }] } }, { id: "cisa-kev", facts: { count: 0, dateReleased: "2026-10-20T00:00:00Z", vulnerabilities: [] } }]
+  const images = dependencyImageApplications.map(application => ({ application, scanner: { version: "0.76.1" }, osEndOfLife: false,
+    runtimePlatform: { architecture: "amd64", os: "alpine", version: "3.24.3" }, nativeInventory: { files: [], ...(application === "exchange-worker" ? { workerRuntime: { inventory: { files: [] } } } : {}) },
     analysisGaps: null, inventory: { findings: [], unversionedPackages: [] } }))
-  images[0].inventory.findings.push({ id: "CVE-fixture", package: "fixture", version: "1.0.0", severity: "high", paths: ["app/fixture"], fixedVersion: null, source: "https://example.test/primary", modifiedAt: null })
-  const record = { publisherFacts: [{ id: "primary" }], imageAdvisories: imageReviewFindings(images).map((row) => ({ ...row,
-    classification: "affected_package_condition_unproven", releaseBlocked: true, reason: "Confirmed package; deployment condition unproven", reviewOwner: "dependency maintainer", recheck: "Before release or changed inputs", sources: ["primary"] })),
-  nativeAssessments: images.map((image) => ({ application: image.application, fingerprint: nativeReviewFingerprint(image), status: "blocked", reason: "Remaining native proof is a release blocker", reviewOwner: "dependency maintainer", recheck: "Before release", sources: ["primary"] })) }
-  return { record, images }
+  images[0].inventory.findings.push({ id: "CVE-fixture", package: "fixture", version: "1.0.0", severity: "high", paths: ["app/fixture"], fixedVersion: "1.1.0", source: "https://example.test/advisory", modifiedAt: "yesterday", references: ["https://old.test"] })
+  const record = { schemaVersion: 3, policy: "production-risk-v1", findings: imageReviewFindings(images).map(row => ({ ...row, state: "under_investigation", reason: "Package present; applicability under review", reviewOwner: "security owner", reviewedAt: "2026-10-20T00:00:00Z", deadline: "2026-10-27T00:00:00Z", issue: "https://example.test/issues/1", sources: ["primary"] })) }
+  const evaluate = (release = false) => validateImageReview(record, images, release, facts, now)
+  return { images, record, facts, evaluate }
 }
-test("reviewed image blockers can qualify inventory but never release", () => {
-  const { record, images } = fixture()
-  assert.equal(validateImageReview(record, images).releaseBlocked, true)
-  assert.throws(() => validateImageReview(record, images, true), /Release blocked/)
+test("reviewed high-risk inventory never implies release clearance", () => {
+  const x = fixture(); assert.equal(x.evaluate().releaseBlocked, true); assert.throws(() => x.evaluate(true), /Release blocked/)
 })
-test("new native findings, fixes, paths, missing images and unknown assessments fail", () => {
-  for (const mutate of [
-    (x) => { x.images.pop() },
-    (x) => { x.images[0].inventory.findings[0].paths.push("app/new-consumer") },
-    (x) => { x.images[0].inventory.findings[0].fixedVersion = "1.0.1" },
-    (x) => { x.images[0].runtimePlatform.version = "3.25.0" },
-    (x) => { x.record.nativeAssessments[0].status = "unknown" },
-    (x) => { x.record.nativeAssessments = [] },
-    (x) => { x.record.imageAdvisories[0].releaseBlocked = false },
-  ]) { const x = fixture(); mutate(x); assert.throws(() => validateImageReview(x.record, x.images)) }
+test("new findings, fixes, paths, selected severities and missing scope require triage", () => {
+  for (const change of [x => x.images.pop(), x => x.images[0].inventory.findings[0].paths.push("new/path"), x => { x.images[0].inventory.findings[0].fixedVersion = "1.2.0" }, x => { x.record.findings[0].severity = "low" }, x => { x.record.findings = [] }]) { const x = fixture(); change(x); assert.throws(() => x.evaluate()) }
 })
-test("an analyzer gap is a concrete retained blocker, not silently clean", () => {
-  const { images } = fixture()
-  images[1].analysisGaps = { missingTargets: ["app/esbuild"], missingTypes: [] }
-  images[1].nativeInventory.files.push({ path: "app/esbuild", sha256: "a".repeat(64) })
-  const rows = imageReviewFindings(images)
-  assert(rows.some((row) => row.id === "NATIVE_ANALYSIS_INCOMPLETE" && row.severity === "unknown"))
+test("informational reference changes retain raw audit data without invalidating identical risk semantics", () => {
+  const x = fixture(); const before = imageReviewFindings(x.images)
+  Object.assign(x.images[0].inventory.findings[0], { references: ["https://new.test"], modifiedAt: "today" })
+  assert.deepEqual(imageReviewFindings(x.images), before); assert.equal(x.evaluate().releaseBlocked, true)
 })
-
-test("complete evidence-supported clean bundles can qualify without a permanent blanket failure", () => {
-  const { record, images } = fixture()
-  images[0].inventory.findings = []; record.imageAdvisories = []
-  for (const assessment of record.nativeAssessments) assessment.status = "qualified"
-  assert.equal(validateImageReview(record, images, true).releaseBlocked, false)
+test("complete zero-finding bundles qualify without a permanent manual block", () => {
+  const x = fixture(); x.images[0].inventory.findings = []; x.record.findings = []
+  assert.equal(x.evaluate(true).releaseBlocked, false)
 })
-
- test("changed, added and removed bundled scripts invalidate qualified assessments", () => {
-  for (const mutate of [
-    (bundles) => { bundles[0].sha256 = "b".repeat(64) },
-    (bundles) => { bundles.push({ path: "app/dist-runtime/new.mjs", sha256: "c".repeat(64) }) },
-    (bundles) => { bundles.pop() },
-  ]) {
-    const { record, images } = fixture()
-    images[0].inventory.findings = []; record.imageAdvisories = []
-    images[0].nativeInventory.bundledScripts = [{ path: "app/dist-runtime/migrate.mjs", sha256: "a".repeat(64) }]
-    for (const image of images) {
-      const assessment = record.nativeAssessments.find((entry) => entry.application === image.application)
-      assessment.fingerprint = nativeReviewFingerprint(image); assessment.status = "qualified"
-    }
-    assert.equal(validateImageReview(record, images, true).releaseBlocked, false)
-    mutate(images[0].nativeInventory.bundledScripts)
-    assert.throws(() => validateImageReview(record, images, true), /evidence changed or is unreviewed/)
+test("missing required coverage blocks even when findings have nonaffected evidence", () => {
+  const x = fixture(); x.images[0].inventory.findings = []; x.record.findings = []
+  x.images[1].analysisGaps = { missingTargets: ["app/esbuild"], missingTypes: [] }
+  x.images[1].nativeInventory.files.push({ path: "app/esbuild", sha256: "a".repeat(64) })
+  x.record.findings = imageReviewFindings(x.images).map(row => ({ ...row, state: "under_investigation", reason: "Unknown target coverage", reviewOwner: "security owner", sources: ["primary"], reviewedAt: "2026-10-20T00:00:00Z", deadline: "2026-10-27T00:00:00Z" }))
+  assert.equal(x.evaluate().releaseBlocked, true); assert.throws(() => x.evaluate(true))
+})
+test("nonaffected evidence invalidates on changed platform, advisory or exact component bytes", () => {
+  for (const change of [x => { x.images[0].runtimePlatform.architecture = "arm64" }, x => { x.facts[0].facts.affected = [{ range: "<2.0.0" }] }, x => { x.images[0].nativeInventory.bundledScripts = [{ path: "app/dist-runtime/helper.mjs", sha256: "c".repeat(64) }] }]) {
+    const x = fixture(); const row = x.record.findings[0]
+    const reviews = new Map([[JSON.stringify([row.scope, row.id, row.package, row.version]), row]])
+    const binding = reviewedRiskItems(imageReviewFindings(x.images), reviews, { facts: x.facts, binding: finding => ({ scope: finding.scope, platform: "linux/amd64", fingerprint: nativeReviewFingerprint(x.images[0]) }) })[0].binding
+    row.state = "not_affected"
+    row.evidence = { binding, justification: "Primary vendor confirms target is unaffected", sources: ["primary"] }
+    assert.equal(x.evaluate(true).releaseBlocked, false)
+    change(x); assert.equal(x.evaluate().releaseBlocked, true)
   }
 })
-
-test("reviewed findings with unresolved advisory provenance can never clear release", () => {
-  const { record, images } = fixture()
-  const finding = images[0].inventory.findings[0]
-  finding.source = null; finding.sourceStatus = "unresolved"; finding.severity = "unknown"
-  Object.assign(record.imageAdvisories[0], imageReviewFindings(images)[0], { classification: "analysis_gap" })
-  for (const assessment of record.nativeAssessments) assessment.status = "qualified"
-  assert.equal(validateImageReview(record, images).releaseBlocked, true)
-  assert.throws(() => validateImageReview(record, images, true), /Release blocked/)
-  finding.source = "https://example.test/newly-recorded-advisory"; finding.sourceStatus = "recorded"
-  assert.throws(() => validateImageReview(record, images), /New or changed advisory/)
-})
-
-test("worker managed and alternate-platform bytes remain part of native assessment", () => {
-  const { images, record } = fixture()
-  images[0].inventory.findings = []; record.imageAdvisories = []
-  for (const assessment of record.nativeAssessments) assessment.status = "qualified"
-  const worker = images.find(image => image.application === "exchange-worker")
-  worker.nativeInventory.workerRuntime.inventory.files.push({ path: "/alternate/example.dll", sha256: "a".repeat(64), metadataGap: "Native mapping required" })
-  assert.throws(() => validateImageReview(record, images, true))
-  assert(imageReviewFindings(images).some(row => row.id === "WORKER_NATIVE_MAPPING_INCOMPLETE"))
+test("worker duplicate/alternate files and mapping gaps remain explicit", () => {
+  const x = fixture(); const worker = x.images.find(i => i.application === "exchange-worker")
+  worker.nativeInventory.workerRuntime.inventory.files.push({ path: "/alternate/example.dll", sha256: "a".repeat(64), metadataGap: "Mapping required" })
+  assert(imageReviewFindings(x.images).some(row => row.id === "WORKER_NATIVE_MAPPING_INCOMPLETE"))
 })
