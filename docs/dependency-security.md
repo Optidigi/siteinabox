@@ -5,27 +5,42 @@ facts, graph/configuration identities, review ownership and expiry. It is not a
 blanket acceptance of risk. The October 7 candidate reviewed until October 14 is
 historical; its dates and findings were not copied forward as current evidence.
 
-## Release status at the October 28 baseline
+## Six-image blocked inventory review
 
-Main `0a5f590b` passed all 16 canonical jobs in run 40555910639. The last
-reviewed image inventory contains 112 findings and five blocked native
-assessments; all seven deferrals remain unresolved. The review expired at
-2026-10-28T01:01:28.437Z. These receipts are historical and establish no current
-release clearance. Refresh requires actual source/publisher/image evidence and
-independent review; changing an expiry alone is insufficient.
+The release-completion candidate `fc398e37` has exact-source manual packaged
+receipts for CMS, renderer, site, owned PostgreSQL and Exchange worker, plus
+pinned cloudflared. The proposed structured review records 64 image review rows:
+63 scanner findings and the worker's explicit mapping-gap row. Both full and
+production source audits retain Payload/deepmerge 4.3.1. All six native
+assessments and seven unresolved deferrals remain release-blocking; the separate
+supported-release Vitest deferral retains its classification.
 
-A fresh clean-source collection at `5d23d995` on October 28 additionally reports
-GHSA-gcqx-w48m-w2h4 for Payload's deepmerge 4.3.1 in both full and production
-audits. This finding is not yet incorporated into the expired review. No
-published recognized fix was found; [ticket #140](https://github.com/Optidigi/siteinabox/issues/140)
-records primary sources, library reproduction limits and the supported fix path.
-Previous zero-source-finding receipts apply only to their collection time.
+This is a substantive inventory review after the prior October 28 expiry:
+130 primary facts include 122 unchanged facts, two reconciled feed updates and
+six added advisory facts. Old vendor PostgreSQL rows are replaced by the scanned
+owned image because source production Compose now requires its approved digest;
+the vendor baseline remains only a build/rehearsal input. No deployed database
+or service has changed. Eight retained finding identities change references
+only; all retained paths, versions, selected severities and fixes remain bound.
 
-The structured policy remains authoritative for exact findings and identities.
+Actual musl 1.2.6-r3, BIND 9.20.30-r0 and Brotli 1.2.1-r0 candidate versions are
+recorded without claiming complete native qualification. The worker retains
+EXO's Pkcs 10.0.0 alongside PowerShell's 10.0.14, all duplicate/alternate-platform
+files and all 14 mapping-gap paths. Windows-only advisory scope is distinguished
+from Linux-relevant affected-version evidence. Cloudflared retains OpenPGP,
+x/net HTML, go-jose and Debian/provenance blockers.
+
+`dependency-security.json` owns the review window and exact identities. The
+fresh window is backed by source/publisher/image evidence and independent review,
+not a timestamp-only extension. Manual baseline receipts never substitute for
+final-source hosted CI, approval, publication or deployment. Inventory validation
+can pass while release validation must reject these findings and assessments.
+
 The [release-completion spec](https://github.com/Optidigi/siteinabox/issues/132)
-owns remaining acceptance criteria;
-[protected delivery](runbooks/protected-delivery.md) and
-[image publication](runbooks/image-publication.md) own operating procedures.
+owns acceptance criteria; [protected delivery](runbooks/protected-delivery.md)
+and [image publication](runbooks/image-publication.md) own operating procedures.
+The [deepmerge ticket](https://github.com/Optidigi/siteinabox/issues/140) retains
+its primary-source investigation and unsupported-fix blocker.
 
 ## Historical qualification receipts
 
