@@ -54,9 +54,24 @@ export function reviewedRiskItems(inventory, reviews, { facts, binding }) {
     const sources = review.sources.map(id => facts.find(fact => fact.id === id))
     if (sources.some(source => !source)) throw new Error("Disposition primary source is unavailable")
     if (["not_affected", "fixed"].includes(review.state) && !review.evidence?.sources?.some(id => sources.some(source => source.id === id && (source.facts?.id === finding.id || source.facts?.aliases?.includes(finding.id))))) throw new Error("Nonaffected/fixed decision lacks advisory-specific primary evidence")
-    const authoritative = facts.filter(source => source.facts?.id === finding.id || source.facts?.aliases?.includes(finding.id))
-    const aliases = [finding.id, ...(finding.aliases ?? []), ...authoritative.flatMap(source => source.facts.aliases ?? [])]
-    const aliasesResolved = /^CVE-\d{4}-\d{4,}$/.test(finding.id) || ["NATIVE_ANALYSIS_INCOMPLETE", "UNVERSIONED_NATIVE_COMPONENT", "WORKER_NATIVE_MAPPING_INCOMPLETE"].includes(finding.id) || Array.isArray(finding.aliases) || authoritative.some(source => Array.isArray(source.facts.aliases))
+    const validAlias = id => typeof id === "string" && /^(?:CVE-\d{4}-\d{4,}|GHSA-[a-z0-9-]+|GO-\d{4}-\d{4,})$/.test(id)
+    if (finding.aliases !== undefined && (!Array.isArray(finding.aliases) || finding.aliases.some(id => !validAlias(id)))) throw new Error("Finding aliases are malformed")
+    const catalogFacts = facts.filter(source => typeof source.facts?.id === "string")
+    for (const source of catalogFacts) if (source.facts.aliases !== undefined && (!Array.isArray(source.facts.aliases) || source.facts.aliases.some(id => !validAlias(id)))) throw new Error("Authoritative advisory aliases are malformed")
+    const identifiers = new Set([finding.id, ...(finding.aliases ?? [])])
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const source of catalogFacts) {
+        const data = source.facts
+        if (!Array.isArray(data.aliases) || (!identifiers.has(data.id) && !data.aliases.some(id => identifiers.has(id)))) continue
+        for (const id of [data.id, ...data.aliases]) if (!identifiers.has(id)) { identifiers.add(id); changed = true }
+      }
+    }
+    const isCve = id => /^CVE-\d{4}-\d{4,}$/.test(id)
+    const coverage = ["NATIVE_ANALYSIS_INCOMPLETE", "UNVERSIONED_NATIVE_COMPONENT", "WORKER_NATIVE_MAPPING_INCOMPLETE"].includes(finding.id)
+    const aliasesResolved = isCve(finding.id) || coverage || [...identifiers].filter(id => !isCve(id)).every(id => (id === finding.id && Array.isArray(finding.aliases)) || catalogFacts.some(source => source.facts.id === id && Array.isArray(source.facts.aliases)))
+    const aliases = [...identifiers]
     const context = typeof binding === "function" ? binding(finding) : binding
     return { finding: { ...finding, aliasesResolved, knownExploited: aliases.some(id => exploited.has(id)) }, review,
       binding: { ...context, advisoryHash: canonicalHash({ finding: securityFacts(finding), sources: sources.map(source => ({ id: source.id, facts: securityFacts(source.facts) })).sort((a, b) => a.id.localeCompare(b.id)) }) } }

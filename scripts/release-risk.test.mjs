@@ -63,3 +63,28 @@ test("reviewer source selection cannot evade KEV or missing alias coverage", asy
   assert.equal(evaluate(reviewedRiskItems([f], map, { facts, binding })).releaseBlocked, true)
   assert.equal(evaluate(reviewedRiskItems([f], map, { facts: facts.filter(x => x.id !== "advisory"), binding })).releaseBlocked, true)
 })
+
+test("malformed aliases cannot establish KEV non-membership", async () => {
+  const { reviewedRiskItems } = await import("./release-risk.mjs")
+  const f = { scope: "production", id: "GHSA-example", package: "fixture", version: "1.0.0", severity: "low", aliases: [null], paths: ["fixture"] }
+  const reviews = new Map([[JSON.stringify([f.scope, f.id, f.package, f.version]), { ...item("low").review, sources: ["primary"] }]])
+  const facts = [{ id: "cisa-kev", facts: { count: 0, dateReleased: "2026-10-28", vulnerabilities: [] } }, { id: "primary", facts: { id: f.id, aliases: [] } }]
+  assert.throws(() => reviewedRiskItems([f], reviews, { facts, binding }), /alias/i)
+  f.aliases = []; facts[1].facts.aliases = [null]
+  assert.throws(() => reviewedRiskItems([f], reviews, { facts, binding }), /alias/i)
+})
+
+test("known exploitation follows transitive advisory aliases", async () => {
+  const { reviewedRiskItems } = await import("./release-risk.mjs")
+  const f = { scope: "production", id: "GO-2026-12345", package: "fixture", version: "1.0.0", severity: "low", paths: ["fixture"] }
+  const reviews = new Map([[JSON.stringify([f.scope, f.id, f.package, f.version]), { ...item("low").review, sources: ["go"] }]])
+  const facts = [
+    { id: "cisa-kev", facts: { count: 1, dateReleased: "2026-10-28", vulnerabilities: [{ cveID: "CVE-2026-12345" }] } },
+    { id: "github", facts: { id: "GHSA-example", aliases: [f.id, "CVE-2026-12345"] } },
+    { id: "go", facts: { id: f.id, aliases: ["GHSA-example"] } },
+  ]
+  const items = reviewedRiskItems([f], reviews, { facts, binding })
+  assert.equal(items[0].finding.aliasesResolved, true)
+  assert.equal(items[0].finding.knownExploited, true)
+  assert.equal(evaluate(items).releaseBlocked, true)
+})

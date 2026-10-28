@@ -78,6 +78,7 @@ export function normalizeAudit(audit, scope = "full") {
         !severities.includes(advisory.severity) || !Array.isArray(advisory.findings) || !advisory.findings.length) {
       throw new Error("Advisory inventory is incomplete or malformed")
     }
+    if (advisory.cves !== undefined && (!Array.isArray(advisory.cves) || advisory.cves.some(id => !/^CVE-\d{4}-\d{4,}$/.test(id ?? "")))) throw new Error("Audit CVE aliases are malformed")
     counts[advisory.severity] += 1
     for (const finding of advisory.findings) {
       if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(finding?.version ?? "")) throw new Error("Invalid advisory package version")
