@@ -4,7 +4,7 @@
   "expiresAt": "2026-10-29T14:20:01.721Z",
   "reviewOwner": "Release completion blocked-inventory engineering review; no risk waiver",
   "graphHash": "106cc363a278a71c32c6ebab4fc92bd8f05e93be38315a027c7c748777b42f9c",
-  "configurationHash": "9b7a2ea30f0e2884ae528a2c0991a9470b29cae70cfff6dd12e28fa50de2706f",
+  "configurationHash": "3911f81c150e09155011761315c0ac3047c6d080bfc5dda43865517ac5c9d02e",
   "scope": "Exact frozen full/production graph and configuration; five owned images plus pinned cloudflared. Inventory qualification only; unresolved findings and native/deferral blockers prohibit release.",
   "publisherFacts": [
     {
