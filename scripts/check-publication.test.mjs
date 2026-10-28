@@ -6,7 +6,7 @@ const sha = "a".repeat(40)
 const request = { event: "workflow_dispatch", ref: "refs/heads/main", attempt: "1", sha, image: "cms", verificationRunId: "42" }
 
 test("publication accepts only a fresh, exact-source manual request", () => {
-  assert.doesNotThrow(() => assertPublicationRequest(request))
+  for (const image of ["cms", "renderer", "site", "postgres", "exchange-worker"]) assert.doesNotThrow(() => assertPublicationRequest({ ...request, image }))
   for (const change of [
     { event: "push" }, { event: "pull_request" }, { ref: "refs/heads/feature" },
     { attempt: "2" }, { sha: "main" }, { image: "arbitrary" }, { verificationRunId: "42; echo unsafe" },
@@ -16,7 +16,7 @@ test("publication accepts only a fresh, exact-source manual request", () => {
 test("publication binds the smoke evidence and image archive to the selected source and run attempt", () => {
   const evidence = { application: "cms", sourceSHA: sha, tag: "siab-verify-deadbeef-" + sha + ":cms",
     verificationRunId: "42", verificationRunAttempt: "1", imageId: "sha256:" + "b".repeat(64),
-    archiveSha256: "c".repeat(64), nodeVersion: "24.22.0", buildNodeLts: "Krypton", nodeLts: "Krypton", packagedSmoke: "passed", publishable: true, published: false }
+    archiveSha256: "c".repeat(64), archiveIdentity: { configDigest: "sha256:" + "b".repeat(64), manifestDigest: null, tag: "siab-verify-deadbeef-" + sha + ":cms", sourceSHA: sha, os: "linux", architecture: "amd64", rootfsDiffIds: ["sha256:" + "d".repeat(64)] }, nodeVersion: "24.22.0", buildNodeLts: "Krypton", nodeLts: "Krypton", packagedSmoke: "passed", publishable: true, published: false }
   const run = { ...verification, run_attempt: 1 }
   assertImageArtifact(request, run, evidence, "c".repeat(64))
   for (const change of [{ sourceSHA: "b".repeat(40) }, { verificationRunId: "43" }, { verificationRunAttempt: "2" },

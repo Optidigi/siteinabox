@@ -1,12 +1,47 @@
 # Image verification and approved publication
 
-Canonical `ci.yml` builds and smoke-tests every application image on pull
+Canonical `ci.yml` builds and smoke-tests all five owned images on pull
 requests, main pushes and manual verification runs. It uses read-only permissions,
 no registry login and no registry cache exports. Trusted main runs additionally
 retain the verified TAR archives; PR runs retain JSON/raw-scan evidence only. `pnpm publication:check` protects this boundary and tests
 the publication admission policy. The canonical CI image matrix and
 `required-ci` remain required evidence; see
 [protected delivery](protected-delivery.md).
+
+## Producers and admission
+
+The application matrix remains CMS, renderer and landing. The CMS verifier also
+builds the owned PostgreSQL recipe, runs its lifecycle/recovery contract and uses
+those bytes for actual CMS migration/restart/logical-restore checks. Its trusted
+main run exports a separate `image-postgres` artifact. The existing parallel
+worker job exports `image-exchange-worker`; it retains runtime/module/dpkg and
+shared scanner evidence rather than inventing Node runtime fields.
+
+The aggregate binds five owned image records. Dependency review covers those
+five plus pinned cloudflared, requiring six corresponding native assessments.
+The vendor PostgreSQL image is a build/rehearsal input, not the production image
+being promoted. Source production Compose requires `SIAB_POSTGRES_IMAGE_DIGEST`
+from an approved owned-image publication; local test Compose retains its vendor
+baseline. Updating source Compose does not change an installed production stack.
+
+Each saved archive binds the selected tag (or immutable vendor reference),
+source, platform, config, layers and rootfs. Docker may expose a config digest,
+platform manifest digest or parent index digest as the loaded image ID. Nested
+OCI indexes are hash-verified through the selected AMD64 manifest; vendor
+collection also checks the observed registry reference. If Docker exports only
+the platform image, collection retains hash-verified immutable registry root and
+platform manifests, binds their config and layer/rootfs identities to the archive,
+and preserves that proof for offline rescanning. No parent index is invented. Admission verifies the actual relationship, preserves both identities,
+and records the observed publication image ID separately. The scanner continues
+to report the archive config identity; its output is never rewritten.
+
+The publisher's closed choices are CMS, renderer, site, PostgreSQL and Exchange
+worker. Choosing one authorizes only that image, while supplementary archives
+from the same exact-source run are rescanned for the complete release assessment.
+Worker managed/native mapping gaps are concrete blockers, not a clean scan.
+Existing source/advisory/expiry/approval controls remain mandatory. The old
+five-image native policy must be freshly reviewed for this expanded evidence;
+it is not automatically converted or extended.
 
 ## Verify
 
@@ -15,8 +50,11 @@ source and run `pnpm image:verify cms`, `pnpm image:verify renderer` or
 `pnpm image:verify site`. The command rejects dirty source. It creates only its
 uniquely named containers/network and temporary database/media, then cleans them
 up. It never connects to application provider accounts. CMS jobs are disabled
-and AI uses mocks; the renderer uses its existing deterministic host-routing
-harness. The landing image runs its actual Nginx health contract.
+and AI uses mocks. The renderer bundles its existing deterministic host-routing
+fixture into the disposable container before importing the actual server entry.
+The harness checks the configured production command and retains the governed
+Node entrypoint. Its mock CMS stays on container loopback and the test port binds only host
+loopback; qualification needs no host-gateway access or firewall changes. The landing image runs its actual Nginx health contract.
 
 Each successful run writes an archive and JSON evidence under ignored
 `artifacts/`: full source SHA, local image ID, archive SHA-256, smoke result and

@@ -41,7 +41,9 @@ test("all application builders and runners use the reviewed immutable bases", ()
 })
 
 test("database and tunnel pins agree across Compose and CI without renaming persisted storage", () => {
-  for (const file of ["apps/cms/docker-compose.yml", "apps/cms/docker-compose.local.yml", ".github/workflows/ci.yml"]) {
+  assert.ok(source("apps/cms/docker-compose.yml").includes("image: ghcr.io/optidigi/siteinabox-postgres@${SIAB_POSTGRES_IMAGE_DIGEST:?Set the approved owned PostgreSQL digest}"))
+  assert.equal(source("ops/postgres/Dockerfile").match(/^FROM (postgres:\S+)/m)?.[1], shortRef("postgres"))
+  for (const file of ["apps/cms/docker-compose.local.yml", ".github/workflows/ci.yml"]) {
     assert.equal(source(file).match(/^\s+image: (postgres:\S+)/m)?.[1], shortRef("postgres"), file)
   }
   for (const file of ["apps/cms/docker-compose.yml", "apps/renderer/compose.yml"]) {

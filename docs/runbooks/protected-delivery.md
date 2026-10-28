@@ -10,7 +10,7 @@ requirements with actual identities; agent reports do not satisfy them.
 `docs/verification-matrix.json` owns command coverage; `ci.yml` executes it.
 `required-ci` depends on every canonical job and the complete image matrix.
 Every PR receives actual unpublished builds and startup checks for CMS,
-renderer and landing, including shared contracts, renderer, UI and legal inputs.
+renderer, landing, owned PostgreSQL and Exchange worker, including shared contracts, renderer, UI and legal inputs.
 Canonical CI is the sole PR/main-push promotion producer and retains trusted main archives
 for later approved promotion. CMS test partitions and the compiled browser seam
 run in parallel jobs with separately owned databases;
@@ -20,7 +20,7 @@ Invitation-action verification initializes committed migrations when its separat
 authorized browser database is empty; it admits emptiness before initialization
 and preserves existing populated test schemas.
 Failures, cancellation, missing results and skipped requirements fail the
-aggregate. All three image records must match the tested source and current
+aggregate. All five owned-image records must match the tested source and current
 run/attempt. `required-ci-evidence` retains results and image identities for
 seven days; preserve them in the approved release record before expiry.
 

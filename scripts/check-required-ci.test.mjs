@@ -46,7 +46,7 @@ test("the committed CI workflow covers every canonical job and image variant", a
     workflow.replace('dns-tools: "true"', 'dns-tools: "false"'),
     workflow.replace('run: node scripts/verify-exchange-worker.mjs', 'if: false\n        run: node scripts/verify-exchange-worker.mjs'),
     workflow.replace('  site:\n', '  site:\n    needs: [cms-quality]\n'),
-    workflow.replace('needs: [package-quality, image-verification]', 'needs: [image-verification]'),
+    workflow.replace('needs: [package-quality, image-verification, exchange-worker]', 'needs: [image-verification]'),
     workflow.replace('node scripts/authorize-cms-test-resource.mjs --create-database "$RUNNER_TEMP/siab-test-cms"', "echo missing-ownership")]) {
     assert.throws(() => assertRequiredCiWorkflow(changed, expectedCiJobs(matrix)))
   }
@@ -88,4 +88,15 @@ test("workflow policy accepts label, key order and indentation changes without a
   assert.throws(() => assertImageMatrix(stringify(document)))
   assert.throws(() => assertImageMatrix("jobs: {}\njobs: {}"))
   assert.throws(() => assertImageMatrix("jobs: &jobs {}\non: *jobs"))
+})
+
+test("worker proof cannot nest its receipt under a wildcard directory", async () => {
+  const { parse, stringify } = await import("yaml")
+  const { expectedCiJobs } = await import("./check-required-ci.mjs")
+  const matrix = JSON.parse(readFileSync(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
+  const source = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
+  const workflow = parse(source)
+  const upload = workflow.jobs["exchange-worker"].steps.find(step => step.with?.name === "ci-image-exchange-worker")
+  upload.with.path = ["artifacts/siab-worker-*/image-*.json", "artifacts/siab-worker-*/*.log", "artifacts/siab-worker-*/worker-runtime-inventory.json", "artifacts/siab-worker-*/worker-dpkg-inventory.txt"].join("\n")
+  assert.throws(() => assertRequiredCiWorkflow(stringify(workflow), expectedCiJobs(matrix)), /flat|layout/)
 })

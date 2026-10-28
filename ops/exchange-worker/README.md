@@ -10,8 +10,8 @@ partner user's short-lived Exchange token with `-UserPrincipalName` and
 Canonical CI now includes the required `exchange-worker` job. It builds the actual
 image, runs the offline command contract and checks authenticated/unauthenticated
 HTTP health with networking disabled and no published ports. Trusted main retains
-the worker archive for separate security/release qualification. The existing
-three-application publisher still does not accept worker images.
+the worker archive for separate security/release qualification. The shared publisher includes the worker as a closed choice, but its complete
+security review and configured owner approval remain mandatory.
 
 The listener prefix is `http://+:8081/`: .NET HttpListener rejects `0.0.0.0` as a
 prefix. The Compose bridge remains private and publishes no ports.
@@ -26,6 +26,15 @@ docker run --rm --entrypoint pwsh \
   siteinabox-exchange-worker:candidate -NoLogo -NoProfile -NonInteractive \
   -File /tests/contract.ps1 -WorkerPath /app/Invoke-ExchangeWorker.ps1
 ```
+
+The Dockerfile pins Ubuntu and PowerShell 7.6.9 by package SHA256 and services
+inherited Ubuntu packages during build. The verified upstream DEB runs .NET
+10.0.14; this is not a claim about every bundled module DLL. Packaged qualification
+retains recursive runtime/module file hashes and managed assembly/file/product
+metadata, plus the complete dpkg inventory, bound by hashes in the worker receipt.
+Alternate-platform and duplicate copies are retained. Unmapped DLLs remain
+explicit metadata gaps; independent native analysis and package/advisory mapping
+are still required. Inventory collection does not grant release clearance.
 
 The Dockerfile pins Ubuntu and the PowerShell package SHA256. `modules.json`
 pins the Exchange module and its PowerShellGet/PackageManagement dependencies by
@@ -45,7 +54,8 @@ Exchange module and `dig`. Scan/review OS and PowerShell/module dependencies
 through the deployment security process, then retain the image archive, hashes,
 source revision and smoke evidence. Publish only those approved bytes under
 `ghcr.io/optidigi/siteinabox-exchange-worker` and record its immutable digest.
-The existing CMS/renderer/site publisher does not accept a worker image.
+The shared publisher consumes this worker archive with runtime/module/dpkg
+provenance and the same exact-source/rescan/approval gates as the other images.
 No worker image is published or deployed by this implementation task.
 
 ## Runtime

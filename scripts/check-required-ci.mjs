@@ -40,6 +40,13 @@ export function assertRequiredCiWorkflow(source, jobs) {
   }
   if (jobs.includes("exchange-worker")) {
     const worker = workflow.jobs["exchange-worker"]
+    const scanner = worker.steps?.find(step => step.with?.name === "dependency-source-evidence")
+    if (!scanner || Object.hasOwn(scanner, "if") || scanner.with.path !== "artifacts/dependency-source") throw new Error("Worker requires the same current-run scanner publisher receipt")
+    const proof = worker.steps?.find(step => step.with?.name === "ci-image-exchange-worker")
+    const directory = "${{ steps.verify.outputs.artifact-path || 'artifacts/no-worker-evidence' }}"
+    const paths = String(proof?.with?.path ?? "").trim().split("\n").map(line => line.trim())
+    const expectedPaths = ["image-*.json", "*.log", "worker-runtime-inventory.json", "worker-dpkg-inventory.txt"].map(file => directory + "/" + file)
+    if (JSON.stringify(paths) !== JSON.stringify(expectedPaths) || proof.with["if-no-files-found"] !== "error") throw new Error("Worker proof requires a flat receipt layout with runtime and OS inventories")
     const archive = worker.steps?.find(step => step.with?.name === "image-exchange-worker")
     if (Object.hasOwn(worker, "if") || !hasRequiredCommand(worker, "node scripts/verify-exchange-worker.mjs") ||
         condition(archive?.if) !== "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'" ||

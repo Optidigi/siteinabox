@@ -17,6 +17,12 @@ export const astroCli = fileURLToPath(new URL(JSON.parse(readFileSync(new URL(as
 export const TEST_RENDERER_ORIGIN_SECRET = "renderer-origin-smoke-secret-00000001"
 export const TEST_RENDERER_API_TOKEN = "renderer-api-smoke-token-000000001"
 
+export function assertPackagedRendererStartup(config) {
+  assert.deepEqual(config.Entrypoint, ["docker-entrypoint.sh"], "Packaged renderer must retain its governed Node entrypoint")
+  assert.deepEqual(config.Cmd, ["node", "./dist/server/entry.mjs"], "Packaged renderer must start its actual compiled server")
+  assert.equal(config.WorkingDir, "/app", "Packaged renderer startup directory")
+}
+
 export async function getOpenPort() {
   const server = createNetServer()
   server.listen(0, "127.0.0.1")

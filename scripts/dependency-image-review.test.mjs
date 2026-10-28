@@ -4,7 +4,7 @@ import { dependencyImageApplications, imageReviewFindings, nativeReviewFingerpri
 
 function fixture() {
   const images = dependencyImageApplications.map((application) => ({ application, scanner: { version: "0.76.0" },
-    runtimePlatform: { architecture: "amd64", os: "alpine", version: "3.24.2" }, nativeInventory: { files: [] },
+    runtimePlatform: { architecture: "amd64", os: "alpine", version: "3.24.2" }, nativeInventory: { files: [], ...(application === "exchange-worker" ? { workerRuntime: { inventory: { files: [] } } } : {}) },
     analysisGaps: null, inventory: { findings: [], unversionedPackages: [] } }))
   images[0].inventory.findings.push({ id: "CVE-fixture", package: "fixture", version: "1.0.0", severity: "high", paths: ["app/fixture"], fixedVersion: null, source: "https://example.test/primary", modifiedAt: null })
   const record = { publisherFacts: [{ id: "primary" }], imageAdvisories: imageReviewFindings(images).map((row) => ({ ...row,
@@ -72,4 +72,14 @@ test("reviewed findings with unresolved advisory provenance can never clear rele
   assert.throws(() => validateImageReview(record, images, true), /Release blocked/)
   finding.source = "https://example.test/newly-recorded-advisory"; finding.sourceStatus = "recorded"
   assert.throws(() => validateImageReview(record, images), /New or changed advisory/)
+})
+
+test("worker managed and alternate-platform bytes remain part of native assessment", () => {
+  const { images, record } = fixture()
+  images[0].inventory.findings = []; record.imageAdvisories = []
+  for (const assessment of record.nativeAssessments) assessment.status = "qualified"
+  const worker = images.find(image => image.application === "exchange-worker")
+  worker.nativeInventory.workerRuntime.inventory.files.push({ path: "/alternate/example.dll", sha256: "a".repeat(64), metadataGap: "Native mapping required" })
+  assert.throws(() => validateImageReview(record, images, true))
+  assert(imageReviewFindings(images).some(row => row.id === "WORKER_NATIVE_MAPPING_INCOMPLETE"))
 })

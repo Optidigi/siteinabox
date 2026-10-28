@@ -7,11 +7,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     EXCHANGE_WORKER_LISTEN_URL=http://+:8081/
 
 RUN apt-get update \
+ && apt-get upgrade --yes --no-install-recommends \
  && apt-get install --yes --no-install-recommends ca-certificates curl bind9-dnsutils \
  && rm -rf /var/lib/apt/lists/*
 
-ARG POWERSHELL_VERSION=7.6.8
-ARG POWERSHELL_DEB_SHA256=f687eb1a3ba7b22a1ff35d85893b64aec1045ff718f13ceb8e56c300d60494dc
+ARG POWERSHELL_VERSION=7.6.9
+ARG POWERSHELL_DEB_SHA256=491b1a51e257e2ac86af33e3a4dc9aa91adb1b3926a57967af39d9a1ca38dc79
 RUN curl --fail --silent --show-error --location \
       "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell_${POWERSHELL_VERSION}-1.deb_amd64.deb" \
       --output /tmp/powershell.deb \
@@ -29,7 +30,7 @@ RUN pwsh -NoLogo -NoProfile -NonInteractive -File /tmp/exchange-worker-build/Ins
  && useradd --system --create-home --home-dir /home/exchange-worker --uid 10001 exchange-worker \
  && chown -R exchange-worker:exchange-worker /home/exchange-worker
 
-COPY --chown=exchange-worker:exchange-worker Invoke-ExchangeWorker.ps1 /app/Invoke-ExchangeWorker.ps1
+COPY --chown=exchange-worker:exchange-worker Invoke-ExchangeWorker.ps1 Get-WorkerRuntimeInventory.ps1 /app/
 USER exchange-worker
 WORKDIR /app
 EXPOSE 8081

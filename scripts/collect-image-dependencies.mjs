@@ -1,3 +1,4 @@
+import { readImageArchiveIdentity, assertLoadedImageIdentity } from "./image-archive-identity.mjs"
 import { mkdir, unlink, access } from "node:fs/promises"
 import { resolve } from "node:path"
 import { inventoryImageNative } from "./inventory-image-native.mjs"
@@ -6,7 +7,12 @@ import { sha256File } from "./image-artifact.mjs"
 import { parseOsRelease } from "./image-platform.mjs"
 
 /** A never-started, labelled container exposes only the verified image filesystem. */
-export async function collectImageDependencies({ docker, root, archive, image, artifactDir, prefix, resourceId, requiredTypes }) {
+export async function collectImageDependencies({ docker, root, archive, image, artifactDir, prefix, resourceId, requiredTypes, workerRuntime }) {
+  if (image.sourceSHA || image.reference) {
+    image.archiveIdentity = readImageArchiveIdentity({ archive, tag: image.tag, reference: image.reference, sourceSHA: image.sourceSHA ?? null,
+      readRegistryManifest: reference => docker(["buildx", "imagetools", "inspect", "--raw", reference], true) })
+    assertLoadedImageIdentity(image.archiveIdentity, JSON.parse(docker(["image", "inspect", image.tag ?? image.reference], true))[0])
+  }
   const name = prefix + "-native-" + image.application
   const flattened = resolve(artifactDir, "image-" + image.application + ".rootfs.tar")
   let ownsContainer = false
@@ -21,7 +27,7 @@ export async function collectImageDependencies({ docker, root, archive, image, a
     if (docker(["inspect", "--format", "{{.Image}}", name], true).trim() !== image.imageId) throw new Error("Native inventory container differs from the verified image")
     docker(["export", "--output", flattened, name])
     ownsArchive = true
-    const nativeInventory = { ...inventoryImageNative(flattened), flattenedArchiveSha256: await sha256File(flattened) }
+    const nativeInventory = { ...inventoryImageNative(flattened), ...(workerRuntime ? { workerRuntime } : {}), flattenedArchiveSha256: await sha256File(flattened) }
     if (!image.runtimePlatform.os) {
       for (const file of ["etc/os-release", "usr/lib/os-release"]) {
         try {
