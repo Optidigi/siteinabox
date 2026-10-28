@@ -10,12 +10,19 @@ $files = foreach ($file in ($paths | Sort-Object FullName -Unique)) {
     $record = [ordered]@{
         path = $file.FullName
         size = $file.Length
-        sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        sha256 = $null
+        linkTarget = $file.LinkTarget
         assemblyVersion = $null
         fileVersion = $null
         productVersion = $null
         metadataGap = $null
     }
+    if ($file.LinkTarget -and -not [IO.File]::Exists($file.FullName)) {
+        $record.metadataGap = 'Unresolved symbolic link; target bytes unavailable'
+        [pscustomobject]$record
+        continue
+    }
+    $record.sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($file.Extension -in @('.dll', '.exe')) {
         $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($file.FullName)
         $record.fileVersion = $version.FileVersion
