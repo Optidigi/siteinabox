@@ -88,6 +88,11 @@ A Mollie test payment cannot unlock live provisioning.
    verification, SPF, autodiscover, DMARC and DKIM records. Exchange mailbox
    readiness and the alias/forward are verified before MX moves to Microsoft.
    A final routing hash check stops if legacy routes changed since acceptance.
+   For Cloudflare-managed locked MX records, the adapter then unlocks DNS with
+   `PATCH /zones/{zone_id}/email/routing/dns` and verifies the mail DNS snapshot
+   is unchanged before applying cutover. It preserves Email Routing rules and
+   forwarding; it never disables the routing service to unlock records. Denied,
+   uncertain, still-locked or changed-snapshot results stop before MX edits.
 8. Exchange verifies DKIM CNAME resolution before enabling signing. Siteinabox
    sends one branded setup message per distinct setup recipient in the batch;
    each mailbox has a 48-hour, one-use credential link. Temporary passwords
@@ -144,7 +149,7 @@ presence; acceptance also checks partner refresh and private-worker health.
 | `MICROSOFT_PARTNER_APP_REDIRECT_URI` | Registered HTTPS CMS callback: `/operations/microsoft-mail/consent/callback`. |
 | `MICROSOFT_PARTNER_TOKEN_ENCRYPTION_KEY` | Dedicated random 32-byte base64 or 64-hex key for the stored partner refresh token and OAuth handshake. Retain securely through restarts. |
 | `MICROSOFT_GDAP_ROLE_DEFINITION_IDS`, `MICROSOFT_PARTNER_SECURITY_GROUP_ID` | Reviewed GDAP roles and partner security group containing the integration user. |
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Zone lookup/DNS read-write and Email Routing rules/catch-all read for authorized domains. |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Zone lookup/DNS read-write and **Email Routing Rules Read** for authorized domains. **Zone Settings Write** is also required to unlock legacy Email Routing MX records at cutover. |
 | `EXCHANGE_WORKER_URL`, `EXCHANGE_WORKER_SHARED_SECRET` | Private worker endpoint and random secret of at least 32 characters. Remote endpoints require HTTPS; the exact unexposed Compose service address is also supported. |
 | `SIAB_EXCHANGE_WORKER_IMAGE_DIGEST` | Qualified immutable worker image for the Compose overlay. |
 | `MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY` | Separate random 32-byte base64 or 64-hex key for temporary credentials/setup tokens. Retain for outstanding links. |

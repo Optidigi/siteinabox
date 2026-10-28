@@ -105,6 +105,8 @@ export class CloudflareMailDnsClient {
           content: record.content,
           ...(Number.isSafeInteger(record.priority) ? { priority: Number(record.priority) } : {}),
           proxied: record.proxied === true,
+          ...(type === "MX" && object(record.meta).email_routing === true && object(record.meta).read_only === true
+            ? { emailRoutingLocked: true } : {}),
         })
       }
       const info = object(result.result_info)
@@ -170,6 +172,26 @@ export class CloudflareMailDnsClient {
     }
   }
 
+  async applyMxCutover(zoneId: string, changes: readonly MailDnsChange[], expected: readonly MailDnsRecord[]): Promise<void> {
+    const deleted = new Set(changes.filter(change => change.action === "delete").map(change => change.id))
+    const locked = expected.filter(record => record.type === "MX" && record.emailRoutingLocked && deleted.has(record.id))
+    if (locked.length) {
+      if (locked.some(record => !record.content.toLowerCase().trim().replace(/\.$/, "").endsWith(".mx.cloudflare.net"))) {
+        throw new CloudflareMailDnsError("Unexpected managed MX provider", 409)
+      }
+      // PATCH unlocks the records without disabling routing or deleting its rules.
+      await this.#write("Email Routing MX unlock", "PATCH", `/zones/${encodeURIComponent(zoneId)}/email/routing/dns`)
+      const current = await this.listDnsRecords(zoneId)
+      const snapshot = (records: readonly MailDnsRecord[]) => JSON.stringify(records
+        .map(record => [record.id, record.type, record.name, record.content, record.priority ?? null, record.proxied])
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0]))))
+      if (current.some(record => record.emailRoutingLocked && deleted.has(record.id)) || snapshot(current) !== snapshot(expected)) {
+        throw new CloudflareMailDnsError("Email Routing unlock verification", 409)
+      }
+    }
+    await this.applyChanges(zoneId, changes)
+  }
+
   #body(record: MailDnsWriteRecord) {
     return {
       type: record.type,
@@ -193,7 +215,7 @@ export class CloudflareMailDnsClient {
     return body
   }
 
-  async #write(operation: string, method: "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<void> {
+  async #write(operation: string, method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<void> {
     let response: Response
     try {
       response = await this.#fetch(`${this.#apiBase}${path}`, {
