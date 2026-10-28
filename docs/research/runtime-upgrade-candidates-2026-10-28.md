@@ -59,6 +59,13 @@ Further dependency eligibility evidence: the [Go module proxy's x/net latest rec
 
 ## Subsequent packaged qualification
 
+PostHog JS **1.415.2** is held exactly across CMS, renderer and landing.
+Version 1.439.2 failed the existing renderer browser regression: queued consented
+events were retried after revocation. Its distributed bundle mangles the private
+queue properties used by the existing consent guard and bypasses the old send
+hook for retries. A future upgrade must preserve the real
+`test:analytics-browser` lifecycle contract; other compatible upgrades remain.
+
 The implementing agent subsequently verified CMS, renderer, site and owned
 PostgreSQL at `2e227ae4`; their Trivy 0.76.1 inventories contain no findings or
 analysis gaps. Worker qualification at `d1663041` passes module/installer,

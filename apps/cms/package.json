@@ -72,7 +72,7 @@
     "parse5": "^8.0.1",
     "payload": "3.92.1",
     "pg": "^8.23.1",
-    "posthog-js": "^1.439.2",
+    "posthog-js": "1.415.2",
     "radix-ui": "1.8.1",
     "rate-limiter-flexible": "^11.2.3",
     "react": "19.3.1",
