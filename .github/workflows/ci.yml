@@ -421,10 +421,10 @@ jobs:
         with:
           name: ci-image-exchange-worker
           path: |
-            artifacts/siab-worker-*/image-*.json
-            artifacts/siab-worker-*/*.log
-            artifacts/siab-worker-*/worker-runtime-inventory.json
-            artifacts/siab-worker-*/worker-dpkg-inventory.txt
+            ${{ steps.verify.outputs.artifact-path || 'artifacts/no-worker-evidence' }}/image-*.json
+            ${{ steps.verify.outputs.artifact-path || 'artifacts/no-worker-evidence' }}/*.log
+            ${{ steps.verify.outputs.artifact-path || 'artifacts/no-worker-evidence' }}/worker-runtime-inventory.json
+            ${{ steps.verify.outputs.artifact-path || 'artifacts/no-worker-evidence' }}/worker-dpkg-inventory.txt
           if-no-files-found: error
           retention-days: 7
       - name: Retain trusted main worker archive for separate qualification

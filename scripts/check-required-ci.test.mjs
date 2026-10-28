@@ -89,3 +89,14 @@ test("workflow policy accepts label, key order and indentation changes without a
   assert.throws(() => assertImageMatrix("jobs: {}\njobs: {}"))
   assert.throws(() => assertImageMatrix("jobs: &jobs {}\non: *jobs"))
 })
+
+test("worker proof cannot nest its receipt under a wildcard directory", async () => {
+  const { parse, stringify } = await import("yaml")
+  const { expectedCiJobs } = await import("./check-required-ci.mjs")
+  const matrix = JSON.parse(readFileSync(new URL("../docs/verification-matrix.json", import.meta.url), "utf8"))
+  const source = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")
+  const workflow = parse(source)
+  const upload = workflow.jobs["exchange-worker"].steps.find(step => step.with?.name === "ci-image-exchange-worker")
+  upload.with.path = ["artifacts/siab-worker-*/image-*.json", "artifacts/siab-worker-*/*.log", "artifacts/siab-worker-*/worker-runtime-inventory.json", "artifacts/siab-worker-*/worker-dpkg-inventory.txt"].join("\n")
+  assert.throws(() => assertRequiredCiWorkflow(stringify(workflow), expectedCiJobs(matrix)), /flat|layout/)
+})

@@ -20,6 +20,7 @@ const prefix = "siab-worker-" + randomUUID().slice(0, 8)
 const builder = prefix + "-builder", container = prefix + "-smoke", image = "siab-verify-" + prefix.slice(-8) + "-" + source + ":exchange-worker"
 const directory = path.join(root, "artifacts", prefix)
 await mkdir(directory, { recursive: true })
+if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, "artifact-path=" + directory + "\n")
 const docker = (args, capture = false) => execFileSync("docker", args, { encoding: "utf8", stdio: capture ? "pipe" : "inherit", timeout: 1800000 })
 const secret = "synthetic-offline-worker-qualification-" + randomUUID()
 let ownsBuilder = false, ownsContainer = false
@@ -71,7 +72,6 @@ try {
     dpkgInventorySha256: await sha256File(osFile), archiveSha256: await sha256File(archive), health, commandContract: "passed", unauthenticatedStatus: 401,
     packagedSmoke: "passed", published: false, releaseCleared: false,
     limitation: "Actual offline image/HTTP proof only; no Microsoft connection, advisory clearance or publication authority." }, null, 2) + "\n")
-  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, "artifact-path=" + directory + "\n")
 } catch (error) {
   await writeFile(path.join(directory, "worker.log"), String(error?.stack ?? error) + "\n")
   if (ownsContainer) {
