@@ -53,6 +53,7 @@ try {
   const runtimeInventory = docker(["exec", container, "pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", "/app/Get-WorkerRuntimeInventory.ps1"], true)
   const runtime = JSON.parse(runtimeInventory)
   if (!runtime.files?.length || runtime.releaseCleared !== false) throw new Error("Worker runtime inventory is missing or claims clearance")
+  if (runtime.workerEntryPointSha256 !== await sha256File(path.join(root, "ops/exchange-worker/Invoke-ExchangeWorker.ps1"))) throw new Error("Worker runtime binding differs from the reviewed entrypoint")
   const pkcs = runtime.assemblyBindings?.[0]
   const pkcsPatch = pkcs?.productVersion?.match(/^10\.0\.(\d+)(?:\+|$)/)
   if (runtime.assemblyBindings?.length !== 1 || pkcs.context !== "Default" ||

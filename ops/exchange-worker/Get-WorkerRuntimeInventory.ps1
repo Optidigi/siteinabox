@@ -56,7 +56,9 @@ $files = foreach ($file in ($paths | Sort-Object FullName -Unique)) {
     [pscustomobject]$record
 }
 $assemblyBindings = @()
+$workerEntryPointSha256 = $null
 if ($Roots -contains '/opt/microsoft/powershell/7' -and $Roots -contains '/usr/local/share/powershell/Modules') {
+    $workerEntryPointSha256 = (Get-FileHash /app/Invoke-ExchangeWorker.ps1 -Algorithm SHA256).Hash.ToLowerInvariant()
     # Exercise the same module import as the worker, without a Microsoft connection.
     Import-Module ExchangeOnlineManagement -ErrorAction Stop
     $module = Get-Module ExchangeOnlineManagement
@@ -81,6 +83,7 @@ if ($Roots -contains '/opt/microsoft/powershell/7' -and $Roots -contains '/usr/l
     roots = $Roots
     files = @($files)
     assemblyBindings = $assemblyBindings
+    workerEntryPointSha256 = $workerEntryPointSha256
     releaseCleared = $false
     limitation = 'Hashes and assembly metadata only; package/advisory mapping and independent native coverage remain required.'
 } | ConvertTo-Json -Depth 8

@@ -69,8 +69,13 @@ export function reviewedRiskItems(inventory, reviews, { facts, binding }) {
       }
     }
     const isCve = id => /^CVE-\d{4}-\d{4,}$/.test(id)
+    // OSV aliases are optional: an exact primary Go record without that field
+    // explicitly has no published aliases, unlike missing advisory coverage.
+    const hasAliasInventory = source => Array.isArray(source.facts.aliases) ||
+      (/^GO-\d{4}-\d{4,}$/.test(source.facts.id) && source.url === "https://vuln.go.dev/ID/" + source.facts.id + ".json" &&
+       /^\d+\.\d+\.\d+$/.test(source.facts.schema_version ?? "") && source.facts.aliases === undefined)
     const coverage = ["NATIVE_ANALYSIS_INCOMPLETE", "UNVERSIONED_NATIVE_COMPONENT", "WORKER_NATIVE_MAPPING_INCOMPLETE"].includes(finding.id)
-    const aliasesResolved = isCve(finding.id) || coverage || [...identifiers].filter(id => !isCve(id)).every(id => (id === finding.id && Array.isArray(finding.aliases)) || catalogFacts.some(source => source.facts.id === id && Array.isArray(source.facts.aliases)))
+    const aliasesResolved = isCve(finding.id) || coverage || [...identifiers].filter(id => !isCve(id)).every(id => (id === finding.id && Array.isArray(finding.aliases)) || catalogFacts.some(source => source.facts.id === id && hasAliasInventory(source)))
     const aliases = [...identifiers]
     const context = typeof binding === "function" ? binding(finding) : binding
     return { finding: { ...finding, aliasesResolved, knownExploited: aliases.some(id => exploited.has(id)) }, review,

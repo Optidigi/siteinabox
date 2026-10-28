@@ -88,3 +88,14 @@ test("known exploitation follows transitive advisory aliases", async () => {
   assert.equal(items[0].finding.knownExploited, true)
   assert.equal(evaluate(items).releaseBlocked, true)
 })
+
+test("complete primary Go records distinguish optional aliases from missing advisory coverage", async () => {
+  const { reviewedRiskItems } = await import("./release-risk.mjs")
+  const f = { scope: "production", id: "GO-2026-5932", package: "fixture", version: "1.0.0", severity: "low", paths: ["fixture"] }
+  const reviews = new Map([[JSON.stringify([f.scope, f.id, f.package, f.version]), { ...item("low").review, sources: ["go"] }]])
+  const facts = [{ id: "cisa-kev", facts: { count: 0, dateReleased: "2026-10-28", vulnerabilities: [] } },
+    { id: "go", url: "https://vuln.go.dev/ID/GO-2026-5932.json", facts: { id: f.id, schema_version: "1.3.1" } }]
+  assert.equal(evaluate(reviewedRiskItems([f], reviews, { facts, binding })).releaseBlocked, false)
+  delete facts[1].facts.schema_version
+  assert.equal(evaluate(reviewedRiskItems([f], reviews, { facts, binding })).releaseBlocked, true)
+})
