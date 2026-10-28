@@ -2,19 +2,9 @@ import { execFileSync } from "node:child_process"
 import { readFile, mkdtemp, readdir, copyFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { expectedHostedJobs } from "./check-required-ci.mjs"
-import { dependencyImageApplications } from "./dependency-image-review.mjs"
 import { imageApplications, assertImageVerificationEvidence } from "./image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 import { checkDependencySecurity } from "./check-dependency-security.mjs"
-
-export function assertNoDeclaredDependencyBlockers(record) {
-  if (!Array.isArray(record?.advisories) || !Array.isArray(record.imageAdvisories) || !Array.isArray(record.nativeAssessments) ||
-      record.nativeAssessments.length !== dependencyImageApplications.length ||
-      !dependencyImageApplications.every(app => record.nativeAssessments.some(entry => entry.application === app)) || record.advisories.length || record.imageAdvisories.length ||
-      record.nativeAssessments.some((entry) => entry.status !== "qualified") || (record.deferrals ?? []).some((entry) => entry.releaseBlocked)) {
-    throw new Error("Publication blocked by declared or unavailable dependency review; refresh non-publishing readiness first")
-  }
-}
 
 export function assertPublicationRequest({ event, ref, attempt, sha, image, verificationRunId }) {
   if (event !== "workflow_dispatch" || ref !== "refs/heads/main" || attempt !== "1" ||
@@ -69,8 +59,6 @@ export function publicationRequest(env = process.env) {
 export async function checkPublication() {
   const request = publicationRequest()
   assertPublicationRequest(request)
-  const dependencyPolicy = JSON.parse(await readFile(new URL("../docs/dependency-security.json", import.meta.url), "utf8"))
-  assertNoDeclaredDependencyBlockers(dependencyPolicy)
   const repository = process.env.GITHUB_REPOSITORY
   const runId = process.env.GITHUB_RUN_ID
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? "") || !/^[1-9][0-9]*$/.test(runId ?? "")) {

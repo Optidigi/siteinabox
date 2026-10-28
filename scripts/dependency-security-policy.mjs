@@ -1,6 +1,8 @@
+import { canonicalHash } from "./image-artifact.mjs"
+import { dependencyImageApplications } from "./image-evidence.mjs"
+import { evaluateReleaseRisk, reviewedRiskItems, securityFacts } from "./release-risk.mjs"
 const severities = ["info", "low", "moderate", "high", "critical"]
 const hashPattern = /^[a-f0-9]{64}$/
-const reviewWindowMs = 7 * 24 * 60 * 60 * 1000
 const text = (value) => typeof value === "string" && value.trim().length > 0
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 const identity = (row) => JSON.stringify([row.scope, row.id, row.package, row.version])
@@ -12,21 +14,17 @@ function paths(value) {
   return [...new Set(value)].sort()
 }
 
-export function reviewedBlockers(rows, scopes, facts, native = false) {
-  if (!Array.isArray(rows)) throw new Error("Advisory review missing")
-  const reviews = new Map()
-  for (const row of rows) {
-    if (!row || !scopes.includes(row.scope) || !text(row.id) || !text(row.package) || !text(row.version) ||
-        !(native ? [...severities, "unknown"] : severities).includes(row.severity) || reviews.has(identity(row)) ||
-        !(native ? ["confirmed_affected_deployment", "affected_package_condition_unproven", "analysis_gap"] :
-          ["confirmed_affected_deployment", "affected_package_condition_unproven"]).includes(row.classification) ||
-        row.releaseBlocked !== true || !text(row.reason) || !text(row.reviewOwner) || !text(row.recheck) ||
-        !Array.isArray(row.sources) || !row.sources.length || row.sources.some((id) => !facts.has(id))) {
-      throw new Error("Invalid or unknown advisory disposition; unresolved risk cannot be accepted automatically")
-    }
-    paths(row.paths); reviews.set(identity(row), row)
+export function reviewedDispositions(record, scopes, facts) {
+  const allowed = ["full", "production", ...dependencyImageApplications.map(app => "image:" + app)]
+  if (record?.schemaVersion !== 3 || record.policy !== "production-risk-v1" || !Array.isArray(record.findings)) throw new Error("Approved canonical risk policy is missing")
+  const all = new Map()
+  for (const row of record.findings) {
+    if (!row || !allowed.includes(row.scope) || !text(row.id) || !text(row.package) || !text(row.version) || ![...severities, "unknown"].includes(row.severity) || all.has(identity(row)) ||
+        !["affected", "under_investigation", "not_affected", "fixed"].includes(row.state) || !text(row.reason) || !text(row.reviewOwner) ||
+        !row.sources?.length || row.sources.some(id => !facts.has(id))) throw new Error("Invalid or unknown finding disposition")
+    paths(row.paths); all.set(identity(row), row)
   }
-  return reviews
+  return new Map([...all].filter(([, row]) => scopes.includes(row.scope)))
 }
 
 export function assertReviewedFindings(inventory, reviews) {
@@ -95,53 +93,24 @@ export function normalizeAudit(audit, scope = "full") {
   return rows.sort((a, b) => identity(a).localeCompare(identity(b)))
 }
 
-/** Inventory qualification is deliberately separate from release clearance. */
+/** Validate fresh source evidence, then delegate the risk decision. */
 export function validateDependencyReview({ record, graphHash, configurationHash, audits, facts, now = Date.now(), release = false }) {
-  const reviewedAt = Date.parse(record?.reviewedAt)
-  const expiresAt = Date.parse(record?.expiresAt)
-  if (!record || record.schemaVersion !== 2 || !Number.isFinite(now) || !Number.isFinite(reviewedAt) ||
-      !Number.isFinite(expiresAt) || reviewedAt > now || expiresAt <= now || expiresAt <= reviewedAt ||
-      expiresAt - reviewedAt > reviewWindowMs || !text(record.reviewOwner)) {
-    throw new Error("Dependency review is missing, invalid, future or expired; collect and review current evidence")
-  }
-  if (![graphHash, configurationHash, record.graphHash, record.configurationHash].every((value) => hashPattern.test(value ?? "")) ||
-      graphHash !== record.graphHash || configurationHash !== record.configurationHash) {
-    throw new Error("Dependency graph or configuration changed; dispositions require fresh review")
-  }
-  if (!Array.isArray(facts) || !facts.length || !Array.isArray(record.publisherFacts) || !record.publisherFacts.length) {
-    throw new Error("Publisher evidence unavailable")
-  }
-  const currentFacts = new Map()
+  if (!Number.isFinite(now) || ![graphHash, configurationHash].every(value => hashPattern.test(value ?? "")) || !text(record?.reviewOwner) || !Array.isArray(facts) || !facts.length || !Array.isArray(record.publisherFacts)) throw new Error("Complete source evidence and reviewed policy are required")
+  const current = new Map()
   for (const fact of facts) {
-    if (!text(fact?.id) || currentFacts.has(fact.id) || !/^https:\/\//.test(fact.url ?? "") || !hashPattern.test(fact.sha256 ?? "")) {
-      throw new Error("Publisher evidence unavailable or malformed")
-    }
-    currentFacts.set(fact.id, fact)
+    if (!text(fact?.id) || current.has(fact.id) || !/^https:\/\//.test(fact.url ?? "") || canonicalHash(fact.facts) !== fact.sha256) throw new Error("Publisher evidence is malformed or altered")
+    current.set(fact.id, fact)
   }
-  const reviewedFacts = new Set()
-  for (const fact of record.publisherFacts) {
-    const current = currentFacts.get(fact?.id)
-    if (!current || reviewedFacts.has(fact.id) || current.url !== fact.url || current.sha256 !== fact.sha256) {
-      throw new Error("Publisher evidence changed or unavailable; review current primary facts")
-    }
-    reviewedFacts.add(fact.id)
+  for (const descriptor of record.publisherFacts) {
+    const fact = current.get(descriptor.id)
+    if (!fact || fact.url !== descriptor.url || !["pin", "advisory", "monitor"].includes(descriptor.role) || (descriptor.role !== "monitor" && canonicalHash(securityFacts(fact.facts)) !== descriptor.securityHash)) throw new Error("Selected publisher or advisory semantics changed; review required")
   }
-  if (currentFacts.size !== reviewedFacts.size) throw new Error("Publisher evidence changed; unreviewed facts present")
-  let blockedDeferrals = 0
-  const deferrals = new Set()
-  for (const entry of record.deferrals ?? []) {
-    if (!text(entry?.id) || deferrals.has(entry.id) || !text(entry.reason) || !text(entry.affectedSurface) || !text(entry.reviewOwner) ||
-        !text(entry.recheck) || !Number.isFinite(Date.parse(entry.expiresAt)) || Date.parse(entry.expiresAt) > expiresAt || Date.parse(entry.expiresAt) <= now ||
-        !["supported_release", "unresolved_blocker"].includes(entry.classification) || typeof entry.releaseBlocked !== "boolean" ||
-        (entry.classification === "unresolved_blocker" && !entry.releaseBlocked) || !entry.sources?.length || entry.sources.some((id) => !reviewedFacts.has(id))) {
-      throw new Error("Dependency deferral is missing, unknown or expired; review the owning compatibility surface")
-    }
-    deferrals.add(entry.id)
-    if (entry.releaseBlocked) blockedDeferrals += 1
-  }
-  const reviews = reviewedBlockers(record.advisories, ["full", "production"], reviewedFacts)
+  if (current.size !== record.publisherFacts.length) throw new Error("Unreviewed publisher evidence present")
+  const reviewed = reviewedDispositions(record, ["full", "production"], new Set(current.keys()))
   const inventory = [normalizeAudit(audits?.full, "full"), normalizeAudit(audits?.production, "production")].flat()
-  assertReviewedFindings(inventory, reviews)
-  if (release && (inventory.length || blockedDeferrals)) throw new Error("Release blocked by unresolved dependency findings/deferrals: " + inventory.length + "/" + blockedDeferrals)
-  return { reviewedFindings: inventory.length, blockedDeferrals, releaseBlocked: inventory.length > 0 || blockedDeferrals > 0, expiresAt: record.expiresAt }
+  assertReviewedFindings(inventory, reviewed)
+  const items = reviewedRiskItems(inventory, reviewed, { facts, binding: finding => ({ scope: finding.scope, platform: "source", fingerprint: canonicalHash({ graphHash, configurationHash }) }) })
+  const decision = evaluateReleaseRisk({ items, now })
+  if (release && decision.releaseBlocked) throw new Error("Release blocked by source risk: " + decision.blockers.map(item => item.id).join(", "))
+  return { reviewedFindings: inventory.length, ...decision }
 }

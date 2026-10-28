@@ -64,7 +64,7 @@ export async function checkDependencySecurity(args = process.argv.slice(2)) {
     }
     if (options.images) {
       imageEvidence = await loadDependencyImages(options.images, sourceSHA)
-      images = validateImageReview(record, imageEvidence, options.release)
+      images = validateImageReview(record, imageEvidence, options.release, evidence.facts)
     }
     else if (options.release) throw new Error("Release readiness requires exact-source application and infrastructure image evidence")
     if (await sha256File(reviewPath) !== reviewHash) throw new Error("Dependency review changed during candidate validation")
