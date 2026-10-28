@@ -2696,6 +2696,6 @@
     "Baseline identities are manual exact-source packaged diagnostics, never substitutes for final same-source hosted checks, archive transfer, support qualification, approval, publication or deployment. No hosted run ID is invented.",
     "All seven unresolved deferrals remain release-blocking; the separate supported Vitest deferral remains unchanged in classification. The new 24-hour review window is backed by fresh primary facts and exact byte reconciliation, not an expiry-only extension.",
     "No live-provider, Tap2case, production recovery, publication, deployment or risk-acceptance gate is cleared.",
-    "Hosted run 40708904946 retains the same 64 review rows and six native fingerprints. Nineteen later reference-set updates in libc, PCRE2 and tar advisory metadata are reconciled from exact raw reports; paths, versions, fixes, selected severities and all release blockers are unchanged. Registry/HTTP/runtime checks passed; aggregate qualification awaits the corrected worker artifact layout. No expiry extension."
+    "Hosted run 40708904946 retains the same 64 review rows and six native fingerprints. Nineteen later reference-set updates in libc, PCRE2 and tar advisory metadata are reconciled from exact raw reports; paths, versions, fixes, selected severities and all release blockers are unchanged. Archive-registry provenance, HTTP and runtime checks passed; aggregate qualification awaits the corrected worker artifact layout. No expiry extension."
   ]
 }
