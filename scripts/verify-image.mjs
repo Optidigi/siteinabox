@@ -65,7 +65,7 @@ try {
   const cache = process.env.SIAB_IMAGE_BUILD_CACHE === "1" ? await prepareImageBuildCache(process.cwd(), app) : null
   // Cold and normal verification use the same fresh owned builder/version.
   // Only cache import/export varies; changing the driver would confound timing.
-  docker(["buildx", "create", "--name", builder, "--driver", "docker-container", "--driver-opt", "image=" + infrastructure.ciBuildkit.reference])
+  docker(["buildx", "create", "--name", builder, "--driver", "docker-container", "--driver-opt", "image=" + infrastructure.ciBuildkit.reference, "--driver-opt", "memory=6g,cpu-period=100000,cpu-quota=200000"])
   ownsBuilder = true
   docker(["buildx", "build", "--builder", builder, "--load", ...(cache?.arguments ?? []), ...buildArgs, "--file", "apps/" + application + "/Dockerfile", "--tag", image, "."])
   if (app === "cms") {
