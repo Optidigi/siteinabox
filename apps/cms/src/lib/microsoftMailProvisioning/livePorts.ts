@@ -254,6 +254,12 @@ export function createMicrosoftMailLivePorts(input: {
       const mailboxReadiness = await exchange.execute({ operation: "verify_mailboxes", customerTenantId: readinessTenant, customerOrganizationDomain: readinessDomain,
         accessToken: readinessToken, partnerUserPrincipalName: await partnerUpn(), domain: request.domain, mailboxAddresses: request.mailboxUsers.map(user => user.userPrincipalName) })
       if (mailboxReadiness.mailboxesReady !== true) return pause({ code: "EXCHANGE_MAILBOX_PROVISIONING", state: "mailboxes_pending", message: "Waiting for the licensed mailboxes to appear in Exchange." })
+      if (request.infoSharedMailbox) {
+        const result = await exchange.execute({ operation: "ensure_info_shared", customerTenantId: readinessTenant, customerOrganizationDomain: readinessDomain,
+          accessToken: readinessToken, partnerUserPrincipalName: await partnerUpn(), domain: request.domain, infoAddress: `info@${request.domain}`,
+          mailboxAddresses: request.mailboxUsers.map(user => user.userPrincipalName) })
+        return complete({ infoSharedMailbox: result.sharedMailbox, infoSharedMailboxMembers: result.sharedMailboxMembers })
+      }
       if (request.infoAliasTarget) {
         const tenantId = customerTenantId(run)
         if (!tenantId) return { kind: "manual_review", code: "MICROSOFT_TENANT_ID_REQUIRED" }

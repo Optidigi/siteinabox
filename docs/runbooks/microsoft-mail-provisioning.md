@@ -215,3 +215,38 @@ confirmations, recipients and Exchange inbound/outbound delivery, including
 its own setup notice; normal payment, login, legal and renewal messages remain
 in the existing communication policy. Resolve the supplier-mail behavior before
 broad customer rollout.
+
+## Scoped rollout and sponsored UI orders
+
+`MICROSOFT_MAIL_ALLOWED_DOMAINS` is a comma-separated list of authorized mail
+service domains. Empty means closed. Quote, acceptance and fulfillment check it;
+the global checkout/live flags remain emergency stops. It does not authorize a
+purchase without the owner's exact order acceptance.
+
+`MICROSOFT_MAIL_SPONSORED_DOMAINS` separately permits Siteinabox-funded orders.
+The domain must also be in the rollout list, the workspace must use manual email
+billing, and its platform exemption must have a reason and be current. Quotes
+retain retail, cost and VAT evidence and show customer amount due as zero.
+Confirmation records an immutable manual funding attempt with
+`funding: siteinabox_sponsorship` and an order-specific sponsorship reference;
+it does not claim a customer bank receipt or issue a paid customer invoice.
+The same settled-order checks and fulfillment queue apply. Policy changes require
+a fresh quote; replay reuses the existing funding attempt and order.
+
+For the Tap2case UI rehearsal, authorize `tap2case.nl` in both lists, create an
+active email-only workspace with manual billing and an audited exemption, and
+leave it with no accepted order. The owner enters `ardi` and `aslan`, real setup
+delivery addresses and company/signatory details at `/email`, then selects the
+shared `info@` option and confirms the annual order. This is a real Pax8 purchase
+funded by Siteinabox; operators must not submit it in advance of the UI test.
+
+The shared inbox option replaces legacy info forwarding. It creates an unlicensed
+shared `info@` recipient, clears forwarding, grants Full Access and Send As to all
+requested users, and reads those grants back before DNS cutover. Conflicting
+licensed recipients stop for review. No extra licensed seat is added. Microsoft
+permission replication and external delivery remain first-live-test evidence.
+See [Microsoft's mailbox delegation guidance](https://learn.microsoft.com/en-us/exchange/recipients-in-exchange-online/manage-permissions-for-recipients).
+
+Rollback: clear the two domain lists or disable checkout/live provisioning and
+recreate CMS with the previous image digest. Keep the order/funding ledger.
+Do not retry uncertain Pax8 writes or remove existing subscriptions as rollback.

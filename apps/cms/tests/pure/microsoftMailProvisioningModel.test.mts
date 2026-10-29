@@ -99,3 +99,17 @@ describe("Microsoft mail provisioning request model", () => {
     ]))
   })
 })
+
+it("keeps shared info separate from paid seats and rejects mixed info modes", () => {
+ const input = { tenantId: 42, domain: 'tap2case.nl', customer, retainInfoForward: false, infoSharedMailbox: true,
+   mailboxUsers: [{ localPart: 'ardi', displayName: 'Ardi', setupEmail: 'setup@example.net' }, { localPart: 'aslan', displayName: 'Aslan', setupEmail: 'setup@example.net' }] }
+ const parsed = parseMicrosoftMailProvisioningRequest(input)
+ assert.equal(parsed.ok, true)
+ if (!parsed.ok) return
+ assert.equal(parsed.value.infoSharedMailbox, true)
+ assert.equal(parsed.value.quantity, 2)
+ assert.equal(parseMicrosoftMailProvisioningRequest({ ...input, mailboxUsers: [{ localPart: ' INFO ', displayName: 'Info', setupEmail: 'setup@example.net' }] }).ok, false)
+ assert.equal(parsed.value.infoForwardTo, null)
+ assert.equal(parseMicrosoftMailProvisioningRequest({ ...input, infoAliasTarget: 'ardi@tap2case.nl' }).ok, false)
+ assert.equal(parseMicrosoftMailProvisioningRequest({ ...input, retainInfoForward: true, infoForwardTo: 'old@example.net' }).ok, false)
+})

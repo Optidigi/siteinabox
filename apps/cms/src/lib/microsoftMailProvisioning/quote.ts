@@ -12,6 +12,7 @@ export const mailQuoteSchema = z.object({
   platformNetMinor: z.number().int().min(0), platformDiscountNetMinor: z.number().int().min(0),
   subtotalNetMinor: z.number().int().positive(), vatAmountMinor: z.number().int().min(0), totalGrossMinor: z.number().int().positive(),
   issuedAt: z.string().datetime(), expiresAt: z.string().datetime(), pricingHash: z.string().min(1),
+  sponsored: z.boolean().default(false),
   paymentProvider: z.enum(["mollie", "manual"]),
   legacyInfoForwardTo: z.string().email().nullable(), routingHash: z.string().length(64),
 })

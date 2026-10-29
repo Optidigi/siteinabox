@@ -10,6 +10,7 @@ import { createMicrosoftMailProvisioningKey } from "@/lib/microsoftMailProvision
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { prepareMailQuote, acceptMailOrder, createMailPayment } from "@/lib/microsoftMailProvisioning/commerce"
 import { redirect } from "next/navigation"
+import { fundSponsoredMailOrder } from "@/lib/microsoftMailProvisioning/commerce"
 import { loadMailService } from "@/lib/microsoftMailProvisioning/commerce"
 import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { mailRenewalRequest } from "@/lib/microsoftMailProvisioning/renewalRequest"
@@ -83,6 +84,7 @@ export async function submitCustomerMicrosoftMailRequest(
       },
     },
     mailboxUsers,
+    infoSharedMailbox: formData.get("infoSharedMailbox") === "on",
     retainInfoForward: false,
     infoForwardTo: "",
     infoAliasTarget: String(formData.get("infoAliasTarget") ?? "").trim().toLowerCase(),
@@ -171,6 +173,7 @@ export async function confirmCustomerMailOrder(_previous: { message: string } | 
     const runId = Number(formData.get("runId"))
     if (!Number.isSafeInteger(runId) || runId < 1) throw new Error("Invalid email request.")
     const order = await acceptMailOrder(payload, { runId, tenantId: ctx.tenant.id, actor: user, legalAccepted: formData.get("acceptOrderTerms") === "on", legalVersion: String(formData.get("legalVersion") ?? "") })
+    await fundSponsoredMailOrder(payload, order, user)
     destination = order.paymentProvider === "mollie" && order.state === "accepted" ? await createMailPayment(payload, order.id) : `/email?request=${runId}`
   } catch {
     return { message: user.language === "nl" ? "Je bestelling kon niet worden bevestigd. Vernieuw de prijs of neem contact op met Siteinabox." : "Your order could not be confirmed. Refresh the price or contact Siteinabox." }

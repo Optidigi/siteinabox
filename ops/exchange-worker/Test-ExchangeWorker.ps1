@@ -43,3 +43,16 @@ if ($script:dkimWrites) { throw 'DKIM was enabled before DNS resolved' }
 $job = $base.Clone(); $job.operation = 'verify_mailboxes'; $job.mailboxAddresses = @('user@other.test')
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'invalid_mailbox_verification'
 Write-Host 'PASS: delegated identity, access read, existing mailbox protection, alias conflict, DKIM DNS gate, mailbox scope'
+$job = $base.Clone(); $job.operation = 'ensure_info_shared'; $job.infoAddress = 'info@customer.test'; $job.mailboxAddresses = @('user@customer.test')
+Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'existing_info_mailbox_requires_review'
+$script:mailboxKind = 'SharedMailbox'
+$script:fullAccess = $false; $script:sendAs = $false
+function Get-MailboxPermission { param($Identity,$User,$ErrorAction) if ($script:fullAccess) { return @{ AccessRights = @('FullAccess'); Deny = $false } } }
+function Add-MailboxPermission { param($Identity,$User,$AccessRights,$InheritanceType,$AutoMapping,$Confirm) $script:fullAccess = $true }
+function Get-RecipientPermission { param($Identity,$Trustee,$ErrorAction) if ($script:sendAs) { return @{ AccessRights = @('SendAs'); AccessControlType = 'Allow' } } }
+function Add-RecipientPermission { param($Identity,$Trustee,$AccessRights,$Confirm) $script:sendAs = $true }
+$result = Invoke-ExchangeJob ([pscustomobject]$job)
+if ($result.sharedMailbox -ne 'info@customer.test' -or $result.sharedMailboxMembers[0] -ne 'user@customer.test' -or -not $script:fullAccess -or -not $script:sendAs) { throw 'Shared mailbox permissions missing' }
+$job.mailboxAddresses = @('user@other.test')
+Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'invalid_shared_mailbox_members'
+Write-Host 'PASS: shared inbox requires same-domain users and verifies FullAccess + SendAs'

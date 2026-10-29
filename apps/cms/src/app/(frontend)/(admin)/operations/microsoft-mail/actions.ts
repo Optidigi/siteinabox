@@ -1,4 +1,5 @@
 "use server"
+import { requireMailDomainEnabled } from "@/lib/microsoftMailProvisioning/rollout"
 import { requireLiveMailWritesAllowed } from "@/lib/microsoftMailProvisioning/writeGate"
 import { randomUUID } from "node:crypto"
 import { createMicrosoftMailLiveClients } from "@/lib/microsoftMailProvisioning/livePorts"
@@ -160,7 +161,7 @@ export async function reconcilePax8EmailOrder(formData: FormData) {
     throw new Error("Supply the existing provider order ID before resuming an uncertain purchase.")
   }
   await store.update(run.id, { data, state: providerOrderId ? "subscription_pending" : "tenant_pending", issueCode: null,
-    request: !run.request.infoAliasTarget && quote.legacyInfoForwardTo ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo } : run.request,
+    request: !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo } : run.request,
     completedSteps: [...new Set([...run.completedSteps, "tenant_bootstrap" as const, ...(providerOrderId ? ["subscription" as const] : [])])], updatedAt: new Date().toISOString() })
   await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { pax8CompanyId: company.id, status: "provisioning" }, overrideAccess: true, context: mailServiceContext })
   revalidatePath(`/operations/microsoft-mail/${run.id}`)
@@ -174,6 +175,7 @@ export async function repairCustomerApplicationAccess(formData: FormData) {
     if (formData.get("confirmGrantRepair") !== "on" || !["CUSTOMER_RECONSENT_REQUIRED", "EXCHANGE_ACCESS_REQUIRES_REVIEW"].includes(run.issueCode ?? "") || !run.data.commerceOrderId || !run.data.customerTenantId || run.data.grantRepairState === "started") throw new Error("Application access repair requires an eligible paid request and explicit confirmation.")
     const order = await payload.findByID({ collection: "orders", id: Number(run.data.commerceOrderId), depth: 0, overrideAccess: true })
     if (order.paymentStatus !== "paid" || order.state !== "fulfillment_pending" || relationshipId(order.tenant) !== String(run.tenantId)) throw new Error("A matching paid order is required.")
+    requireMailDomainEnabled(run.domain)
     requireLiveMailWritesAllowed()
     const { microsoft } = createMicrosoftMailLiveClients({ payload })
     const now = new Date().toISOString(), requestId = randomUUID()

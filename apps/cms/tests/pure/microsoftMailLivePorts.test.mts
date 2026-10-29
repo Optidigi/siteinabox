@@ -42,7 +42,7 @@ const request = {
 }
 
 describe("live provider orchestration with mocked HTTP boundaries", () => {
-  for (const sharedRecipient of [false,true]) it(`provisions safely and groups setup messages: shared recipient=${sharedRecipient}`, async () => {
+  for (const sharedInbox of [false,true]) for (const sharedRecipient of [false,true]) it(`provisions safely and groups setup messages: shared inbox=${sharedInbox}, shared recipient=${sharedRecipient}`, async () => {
     const providerRequests: Array<{ method: string; url: URL; body: unknown }> = []
     const workerOperations: string[] = []
     const sent: Array<{ to: string | string[]; html: string }> = []
@@ -132,6 +132,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
         if (job.operation === "enable_dkim" && !dkimReady) { dkimReady = true; return response({ operation: job.operation, completed: true, dkimEnabled: false, dkimDnsReady: false }) }
         if (job.operation === "verify_access") return response({ operation: job.operation, completed: true, accessVerified: true })
         if (job.operation === "verify_mailboxes") return response({ operation: job.operation, completed: true, mailboxesReady })
+        if (job.operation === "ensure_info_shared") return response({ operation: job.operation, completed: true, sharedMailbox: "info@tap2case.nl", sharedMailboxMembers: ["ardi@tap2case.nl", "aslan@tap2case.nl"] })
         if (job.operation === "ensure_info_forward") return response({ operation: job.operation, completed: true, sharedMailbox: "info@tap2case.nl", forwardingAddress: "info@amapromotions.nl" })
         return response({ operation: job.operation, completed: true, dkimEnabled: true, dkimRecords: [
           { selector: "selector1", target: "selector1-tap2case._domainkey.partner.n-v1.dkim.mail.microsoft" },
@@ -162,7 +163,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
       tenantId: 7,
       domain: request.domain,
       tenantPrefix: request.tenantPrefix,
-      request: sharedRecipient ? { ...request, mailboxUsers: request.mailboxUsers.map(user => ({ ...user, setupEmail: "owner.setup@example.org" })) } : request,
+      request: { ...request, ...(sharedInbox ? { infoSharedMailbox: true, retainInfoForward: false, infoForwardTo: null } : {}), mailboxUsers: request.mailboxUsers.map(user => ({ ...user, setupEmail: sharedRecipient ? "owner.setup@example.org" : user.setupEmail })) },
       state: "subscription_pending",
       currentStep: "mca_acceptance",
       completedSteps: ["tenant_bootstrap", "subscription"],
@@ -212,7 +213,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     assert.equal(sent.length, 0)
     const finished = await advanceMicrosoftMailProvisioning({ run: propagating, store, ports })
     assert.equal(finished.state, "ready", `Issue: ${finished.issueCode}`)
-    assert.equal(finished.data.infoForwardTo, "info@amapromotions.nl")
+    assert.equal(sharedInbox ? finished.data.infoSharedMailbox : finished.data.infoForwardTo, sharedInbox ? "info@tap2case.nl" : "info@amapromotions.nl")
     assert.equal(finished.data.dkimEnabled, true)
     assert.deepEqual(finished.data.setupEmailStates, { "ardi@tap2case.nl": "sent", "aslan@tap2case.nl": "sent" })
     assert.deepEqual(sent.map((mail) => mail.to), sharedRecipient ? ["owner.setup@example.org"] : ["ardi.setup@example.org", "aslan.setup@example.org"])
@@ -220,14 +221,14 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     assert.ok(sent.every((mail) => mail.html.includes("#mock-one-time-token-")))
     assert.ok(sent.every((mail) => !graphUserPasswords.some((password) => password && mail.html.includes(password))))
     assert.equal(graphUserPasswords.length, 2)
-    assert.ok(workerOperations.indexOf("get_dkim_targets") < workerOperations.indexOf("ensure_info_forward"))
+    assert.ok(workerOperations.indexOf("get_dkim_targets") < workerOperations.indexOf(sharedInbox ? "ensure_info_shared" : "ensure_info_forward"))
     assert.ok(workerOperations.includes("verify_mailboxes"))
     assert.equal(workerOperations.at(-1), "enable_dkim")
     assert.ok(providerRequests.some((call) => call.url.hostname === "api.cloudflare.com" && call.method === "DELETE"))
     const unlockIndex = providerRequests.findIndex(call => call.method === "PATCH" && call.url.pathname.endsWith("/email/routing/dns"))
     if (!sharedRecipient) {
       assert.ok(unlockIndex > providerRequests.findIndex(call => call.url.hostname === "exchange-worker.internal" && object(call.body).operation === "verify_mailboxes"))
-      assert.ok(unlockIndex > providerRequests.findIndex(call => call.url.hostname === "exchange-worker.internal" && object(call.body).operation === "ensure_info_forward"))
+      assert.ok(unlockIndex > providerRequests.findIndex(call => call.url.hostname === "exchange-worker.internal" && object(call.body).operation === (sharedInbox ? "ensure_info_shared" : "ensure_info_forward")))
       assert.ok(unlockIndex < providerRequests.findIndex(call => call.url.hostname === "api.cloudflare.com" && call.method === "DELETE"))
     } else assert.equal(unlockIndex, -1, "unlocked mail domains require no settings mutation")
     assert.ok(providerRequests.some((call) => call.url.hostname === "api.pax8.com" && call.url.pathname === "/v1/subscriptions/pax8-sub-1"))

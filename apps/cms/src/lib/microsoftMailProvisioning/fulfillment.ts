@@ -1,3 +1,4 @@
+import { requireMailDomainEnabled } from "./rollout"
 import { requireLiveMailWritesAllowed } from "./writeGate"
 import "server-only"
 import type { Payload } from "payload"
@@ -49,7 +50,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
   if (process.env.MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED !== "true" || !inspectMicrosoftMailReadiness().readyForLiveProvisioning) {
     return { status: "waiting", orderId: order.id, message: "Email provider configuration is incomplete." }
   }
-  try { requireLiveMailWritesAllowed() } catch { return { status: "waiting", orderId: order.id, message: "Live email writes are disabled by the commerce release gate." } }
+  try { requireMailDomainEnabled(service.domain); requireLiveMailWritesAllowed() } catch { return { status: "waiting", orderId: order.id, message: "Live email writes are disabled by the commerce release gate." } }
   const connections = await payload.find({ collection: "microsoft-partner-connections", where: { and: [
     { partnerTenantId: { equals: process.env.MICROSOFT_PARTNER_TENANT_ID } }, { clientId: { equals: process.env.MICROSOFT_PARTNER_APP_CLIENT_ID } }, { status: { equals: "connected" } },
   ] }, limit: 1, overrideAccess: true })
@@ -167,7 +168,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         await save({ data: { ...run.data, pax8OrderSubmissionState: "started" } })
         const providerOrder = await client.createOrder(input, { mock: false })
         if (!providerOrder.id) throw new Pax8IndeterminateWriteError("missing order identifier")
-        const request = !run.request.infoAliasTarget && quote.legacyInfoForwardTo
+        const request = !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo
           ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo }
           : run.request
         await save({ state: "subscription_pending", completedSteps: ["tenant_bootstrap", "subscription"], request,
@@ -193,6 +194,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const subscriptionId = lines.find(line => typeof line.subscriptionId === "string")?.subscriptionId
         const subscription = typeof subscriptionId === "string" ? await client.getSubscription(subscriptionId) : null
         await payload.update({ collection: "microsoft-mail-services", id: service.id, data: {
+          renewalData: { ...record(service.renewalData), ...(run.request.infoSharedMailbox ? { infoSharedMailbox: `info@${run.domain}` } : {}) },
           status: "active", quantity: quote.targetQuantity, latestRun: Number(run.id), mailboxes: [...new Map([
             ...(Array.isArray(service.mailboxes) ? service.mailboxes.map(value => { const mailbox = record(value); return [String(mailbox.address), mailbox] as const }) : []),
             ...run.request.mailboxUsers.map(user => [user.userPrincipalName, { displayName: user.displayName, address: user.userPrincipalName }] as const),
