@@ -17,6 +17,7 @@ import { refreshCustomerMailQuote } from "./actions"
 import { MailOrderConfirmation } from "./MailOrderConfirmation"
 import { MailProgressRefresh } from "./MailProgressRefresh"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
+import { externalMailPaymentSchema } from "@/lib/microsoftMailProvisioning/externalPayment"
 import { relationshipId } from "@/lib/relationshipId"
 
 
@@ -59,6 +60,8 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
   ] }, limit: 1, depth: 0, overrideAccess: true })
   const pendingMailOrder = pendingOrders.docs[0]
   if (!hasWorkspaceService(ctx.tenant, "email") || !mailService) return <div className="grid gap-4"><PageHeader title={t("title")} /><p>{nl ? "E-mail is nog niet beschikbaar voor deze klantomgeving. Neem contact op met Siteinabox." : "Email is not enabled for this workspace. Contact Siteinabox."}</p></div>
+  const externalFunding = externalMailPaymentSchema.safeParse(mailService.externalPaymentAuthorization)
+  const prepaidMailboxCount = mailService.status === "draft" && externalFunding.success && !externalFunding.data.consumedOrderId ? externalFunding.data.quantity : undefined
   // Collection access remains super-admin-only. This server query is scoped to
   // the tenant derived from the authenticated owner, then the page exposes only
   // a customer-safe projection of matching runs.
@@ -130,16 +133,17 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
     {selected && quote && (!order || order.state === "accepted") ? <Card><CardHeader><CardTitle>{quote.operation === "renewal" ? (nl ? "Jaarabonnement verlengen" : "Renew your annual plan") : (nl ? "Bestelling controleren" : "Review your order")}</CardTitle></CardHeader><CardContent className="grid gap-4">
       <dl className="grid grid-cols-2 gap-2 text-sm"><dt>{quote.quantity} {nl ? "mailboxen" : "mailboxes"}{quote.operation === "seats" && quote.servicePeriodEndsAt ? ` · ${nl ? "tot" : "until"} ${new Date(quote.servicePeriodEndsAt).toLocaleDateString(nl ? "nl-NL" : "en-GB")}` : ` · ${nl ? "jaarcontract" : "annual commitment"}`}</dt><dd className="text-right">{money(quote.unitNetMinor * quote.quantity)}</dd>
         {quote.platformNetMinor > 0 ? <><dt>Siteinabox</dt><dd className="text-right">{money(quote.platformNetMinor)}</dd></> : null}
-        <dt>{nl ? "Btw" : "VAT"}</dt><dd className="text-right">{money(quote.vatAmountMinor)}</dd><dt className="font-medium">{nl ? "Te betalen" : "Amount due"}</dt><dd className="text-right font-medium">{quote.sponsored ? money(0) : money(quote.totalGrossMinor)}</dd></dl>
-      {quote.sponsored ? <p>{nl ? "Siteinabox betaalt dit abonnement. Je hoeft niet te betalen." : "Siteinabox covers this subscription. No customer payment is required."}</p> : null}
+        <dt>{nl ? "Btw" : "VAT"}</dt><dd className="text-right">{money(quote.vatAmountMinor)}</dd><dt className="font-medium">{nl ? "Te betalen" : "Amount due"}</dt><dd className="text-right font-medium">{quote.prepaidAuthorizationId ? money(0) : money(quote.totalGrossMinor)}</dd></dl>
+      {quote.prepaidAuthorizationId ? <p>{nl ? "Al apart betaald: de beheerder heeft deze mailboxen goedgekeurd." : "Already paid separately: a manager approved these mailboxes."}</p> : null}
       {selectedRequest?.infoSharedMailbox === true ? <p>Shared info@{selected.domain} inbox · Full Access + Send As for all requested mailboxes. Existing info@ forwarding will be replaced.</p> : null}
       {!selectedRequest?.infoSharedMailbox && quote.legacyInfoForwardTo ? <p className="text-sm">{typeof selectedRequest?.infoAliasTarget === "string" ? (nl ? `info@${selected.domain} gaat voortaan naar ${selectedRequest.infoAliasTarget}.` : `info@${selected.domain} will now arrive in ${selectedRequest.infoAliasTarget}.`) : (nl ? `info@${selected.domain} blijft doorgestuurd naar ${quote.legacyInfoForwardTo}.` : `info@${selected.domain} keeps forwarding to ${quote.legacyInfoForwardTo}.`)}</p> : null}
-      {order?.paymentProvider === "manual" && !quote.sponsored ? <p>{nl ? "Je bestelling is bevestigd en wacht op de afgesproken betaling." : "Your order is confirmed and awaiting the agreed payment."}</p> : !order && Date.parse(quote.expiresAt) <= Date.now() ? <form action={refreshCustomerMailQuote}><input type="hidden" name="tenantId" value={ctx.tenant.id} /><input type="hidden" name="runId" value={selected.id} /><Button type="submit">{nl ? "Prijs vernieuwen" : "Refresh price"}</Button></form> : legal && legalVersion ? <MailOrderConfirmation legalLocale={legalLocale} acceptanceStatement={legal.statement.text} tenantId={ctx.tenant.id} runId={selected.id} legalVersion={legalVersion} termsHref={legal.termsHref} privacyHref={legal.privacyHref} manual={quote.paymentProvider === "manual"} nl={nl} additionalSeats={quote.operation === "seats"} /> : <div role="status" className="grid gap-2 text-sm">{legalLocale === "en" ? <><p>English legal documents are not available yet. You can review and accept the Dutch documents instead.</p><Link className="underline" href={`${basePath}?request=${selected.id}&legalLocale=nl`}>Continue with Dutch legal documents</Link></> : <p>De huidige juridische documenten zijn niet beschikbaar. Neem contact op met Siteinabox.</p>}</div>}
-      {order?.paymentProvider === "manual" && !quote.sponsored ? <p className="text-sm text-muted-foreground">{nl ? "Siteinabox registreert de afgesproken betaling. Daarna gaat de inrichting verder." : "Siteinabox will record the agreed payment, then setup continues."}</p> : null}
+      {order?.paymentProvider === "manual" && !quote.prepaidAuthorizationId ? <p>{nl ? "Je bestelling is bevestigd en wacht op de afgesproken betaling." : "Your order is confirmed and awaiting the agreed payment."}</p> : !order && (quote.sponsored || Date.parse(quote.expiresAt) <= Date.now()) ? <form action={refreshCustomerMailQuote}><input type="hidden" name="tenantId" value={ctx.tenant.id} /><input type="hidden" name="runId" value={selected.id} /><Button type="submit">{nl ? "Prijs vernieuwen" : "Refresh price"}</Button></form> : legal && legalVersion ? <MailOrderConfirmation legalLocale={legalLocale} acceptanceStatement={legal.statement.text} tenantId={ctx.tenant.id} runId={selected.id} legalVersion={legalVersion} termsHref={legal.termsHref} privacyHref={legal.privacyHref} manual={quote.paymentProvider === "manual"} nl={nl} additionalSeats={quote.operation === "seats"} /> : <div role="status" className="grid gap-2 text-sm">{legalLocale === "en" ? <><p>English legal documents are not available yet. You can review and accept the Dutch documents instead.</p><Link className="underline" href={`${basePath}?request=${selected.id}&legalLocale=nl`}>Continue with Dutch legal documents</Link></> : <p>De huidige juridische documenten zijn niet beschikbaar. Neem contact op met Siteinabox.</p>}</div>}
+      {order?.paymentProvider === "manual" && !quote.prepaidAuthorizationId ? <p className="text-sm text-muted-foreground">{nl ? "Siteinabox registreert de afgesproken betaling. Daarna gaat de inrichting verder." : "Siteinabox will record the agreed payment, then setup continues."}</p> : null}
     </CardContent></Card> : null}
 
     {!selected && pendingMailOrder ? <p>{nl ? "Rond eerst je lopende e-mailbestelling af." : "Complete your pending email order first."}</p> : null}
     {!selected && !pendingMailOrder ? <CustomerMailOrderForm
+      approvedMailboxCount={prepaidMailboxCount}
       tenantId={ctx.tenant.id}
       basePath={basePath}
       tenantName={ctx.tenant.name}

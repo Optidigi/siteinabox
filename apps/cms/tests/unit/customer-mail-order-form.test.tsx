@@ -43,3 +43,10 @@ it("keeps an explicitly selected alias following its mailbox and clears it when 
  fireEvent.click(screen.getByRole("checkbox",{name:/Shared info@customer.test/}))
  expect(read().get("infoAliasTarget")).toBe("")
 })
+
+it("keeps an initial manager-approved mailbox count bounded",()=>{
+ render(<CustomerMailOrderForm tenantId={56} tenantName="Fixture" tenantDomain="customer.test" userName="Owner" userEmail="operator@example.test" approvedMailboxCount={2} />)
+ expect(screen.getAllByLabelText("mailboxName")).toHaveLength(2)
+ expect(screen.getByRole("button",{name:"addMailbox"}).hasAttribute("disabled")).toBe(true)
+ expect(screen.getAllByRole("button",{name:"removeMailbox"}).every(button=>button.hasAttribute("disabled"))).toBe(true)
+})

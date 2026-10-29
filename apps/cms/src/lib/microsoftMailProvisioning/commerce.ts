@@ -1,5 +1,6 @@
 import { mailActorCanOrder } from "./customerAuthority"
-import { mailOrderSponsored, requireMailDomainEnabled } from "./rollout"
+import { externalMailPaymentForQuote, externalMailPaymentSchema } from "./externalPayment"
+import { requireMailDomainEnabled } from "./rollout"
 import { mailProviderAnnualCostMinor } from "./quote"
 import { requireCommerceProviderWritesAllowed } from "../commerce/releaseGate"
 import "server-only"
@@ -101,6 +102,7 @@ export async function prepareMailQuote(payload: Payload, tenant: Tenant, request
     if (!zone || zone.status !== "active") throw new Error("The email domain is not ready for setup.")
     routing = inspectExistingMailRouting(request.domain, request.mailboxUsers.map(user => user.userPrincipalName), await dns.listEmailRoutingRules(zone.id))
   }
+  const prepaid = externalMailPaymentForQuote(service.externalPaymentAuthorization, { domain: service.domain, productId, quantity: request.quantity, operation, totalGrossMinor: price.totalGrossMinor })
   return mailQuoteSchema.parse({ version: 2, operation, baseQuantity, targetQuantity, annualUnitNetMinor, providerAnnualUnitCostMinor,
     servicePeriodStartsAt: periodStart, servicePeriodEndsAt: periodEnd, providerCommitmentStartsAt: providerTermStart ? new Date(providerTermStart).toISOString() : null, providerCommitmentEndsAt: providerTermEnd ? new Date(providerTermEnd).toISOString() : null,
     serviceId: service.id, productId, commitmentTermId: term.id, quantity: request.quantity,
@@ -108,8 +110,8 @@ export async function prepareMailQuote(payload: Payload, tenant: Tenant, request
     subtotalNetMinor: price.subtotalNetMinor, vatAmountMinor: price.vatAmountMinor, totalGrossMinor: price.totalGrossMinor,
     issuedAt: now.toISOString(), expiresAt: new Date(now.getTime() + 900_000).toISOString(),
     pricingHash: createHash("sha256").update(JSON.stringify({ row, termId: term.id })).digest("hex"),
-    sponsored: mailOrderSponsored(tenant, service.domain, env),
-    paymentProvider: tenant.emailPaymentMethod === "manual" ? "manual" : "mollie", ...routing })
+    prepaidAuthorizationId: prepaid?.id ?? null,
+    paymentProvider: prepaid ? "manual" : "mollie", ...routing })
 }
 
 export async function acceptMailOrder(payload: Payload, input: { runId: number; tenantId: number; actor: User; legalAccepted: boolean; legalVersion: string; legalLocale?: "nl" | "en" }) {
@@ -133,7 +135,8 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
       { orderKind: { in: ["microsoft_mail_initial", "microsoft_mail_seats", "microsoft_mail_renewal"] } }, { state: { in: ["accepted", "fulfillment_pending"] } }] }, limit: 1, overrideAccess: true })
     if (pending.docs[0]) throw new Error("Finish or cancel the existing email order before placing another.")
     const quote = mailQuoteSchema.parse(run.data.quote)
-    if (quote.sponsored !== mailOrderSponsored(tenant, service.domain)) throw new Error("The sponsorship policy changed. Refresh the quote.")
+    const prepaid = externalMailPaymentForQuote(service.externalPaymentAuthorization, { domain: service.domain, productId: quote.productId, quantity: quote.quantity, operation: quote.operation, totalGrossMinor: quote.totalGrossMinor })
+    if (quote.sponsored || quote.prepaidAuthorizationId !== (prepaid?.id ?? null) || quote.paymentProvider !== (prepaid ? "manual" : "mollie")) throw new Error("The payment authority changed. Refresh the quote.")
     if (quote.quantity !== run.request.quantity || quote.quantity !== run.request.mailboxUsers.length) throw new Error("The mailbox request changed. Prepare a new quote.")
     if (quote.serviceId !== service.id || run.domain !== service.domain || Date.parse(quote.expiresAt) <= Date.now()) throw new Error("This quote has expired. Submit the mailbox details again.")
     if (quote.operation === "initial" && service.status !== "draft" || quote.operation !== "initial" && service.status !== "active") throw new Error("This email service changed. Request an updated quote.")
@@ -168,8 +171,9 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
       domain: run.domain, domainRegistrant: run.request.customer, legalDocuments: [legal.terms.id, legal.privacy.id],
       termsVersion: legal.terms.documentVersion, privacyVersion: legal.privacy.documentVersion, acceptedAt: now,
       paymentProvider: quote.paymentProvider, paymentStatus: "pending", createdAt: now,
-      quoteEvidence: { kind: "microsoft_mail", quote, runId: run.id, serviceId: service.id, requestIntent: mailProvisioningIntent(run.request), requestIntentHash: mailProvisioningIntentHash(run.request), customerConsent: run.data.customerConsent, legal: checkoutLegalIdentity(legal), confirmedBy: String(input.actor.id), confirmedAt: now },
+      quoteEvidence: { kind: "microsoft_mail", quote, externalPaymentAuthorization: prepaid, runId: run.id, serviceId: service.id, requestIntent: mailProvisioningIntent(run.request), requestIntentHash: mailProvisioningIntentHash(run.request), customerConsent: run.data.customerConsent, legal: checkoutLegalIdentity(legal), confirmedBy: String(input.actor.id), confirmedAt: now },
     } })
+    if (prepaid) await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { externalPaymentAuthorization: { ...prepaid, consumedOrderId: order.id } }, req: { ...req, user: input.actor }, user: input.actor, overrideAccess: true, context: { ...mailServiceContext, microsoftMailExternalPaymentConsumption: true } })
     for (const document of [legal.terms, legal.privacy]) {
       await payload.create({ collection: "agreement-acceptances", req, overrideAccess: true, data: {
         evidenceKey: `mail-order:${order.id}:${document.id}`, tenant: tenant.id, order: order.id, document: document.id,
@@ -234,17 +238,19 @@ export async function createMailPayment(payload: Payload, orderId: string | numb
   })
 }
 
-async function settleMailOrder(payload: Payload, input: { orderId: number; actor: User; amountMinor: number; currency: string; reference: string; receivedAt: string }, sponsored = false) {
-  if ((!sponsored && input.actor.role !== "super-admin") || !input.reference.trim() || !Number.isFinite(Date.parse(input.receivedAt)) || Date.parse(input.receivedAt) > Date.now()) throw new Error("A recorded external payment requires super-admin authority, reference and valid received date.")
+async function settleMailOrder(payload: Payload, input: { orderId: number; actor: User; amountMinor: number; currency: string; reference: string; receivedAt: string }, prepaid = false) {
+  if ((!prepaid && input.actor.role !== "super-admin") || !input.reference.trim() || !Number.isFinite(Date.parse(input.receivedAt)) || Date.parse(input.receivedAt) > Date.now()) throw new Error("A recorded external payment requires super-admin authority, reference and valid received date.")
   const selected = await payload.findByID({ collection: "orders", id: input.orderId, depth: 0, overrideAccess: true })
   const tenantId = relationshipId(selected.tenant)
   if (!tenantId) throw new Error("The email order has no customer workspace.")
   return withCommerceOrderLock(payload, `mail-service:${tenantId}`, () => withCommerceOrderLock(payload, input.orderId, async () => {
     const order = await payload.findByID({ collection: "orders", id: input.orderId, depth: 0, overrideAccess: true })
     if (!(["microsoft_mail_initial", "microsoft_mail_seats", "microsoft_mail_renewal"].includes(order.orderKind ?? "")) || order.paymentProvider !== "manual" || order.totalGrossMinor !== input.amountMinor || order.currency !== input.currency) throw new Error("The payment must match the exact externally billed email order.")
-    if (sponsored) {
-      const tenant = await payload.findByID({ collection: "tenants", id: Number(tenantId), depth: 0, overrideAccess: true })
-      if (!mailOrderSponsored(tenant, order.domain ?? "") || asRecord(asRecord(order.quoteEvidence).quote).sponsored !== true || !mailActorCanOrder(input.actor, Number(tenantId))) throw new Error("This order has no current sponsorship authority.")
+    if (prepaid) {
+      const service = await loadMailService(payload, Number(tenantId))
+      const approval = externalMailPaymentSchema.parse(service.externalPaymentAuthorization)
+      const frozenApproval = externalMailPaymentSchema.parse(asRecord(order.quoteEvidence).externalPaymentAuthorization)
+      if (JSON.stringify({ ...approval, consumedOrderId: null }) !== JSON.stringify(frozenApproval) || approval.consumedOrderId !== order.id || asRecord(asRecord(order.quoteEvidence).quote).prepaidAuthorizationId !== approval.id || !mailActorCanOrder(input.actor, Number(tenantId))) throw new Error("This order has no matching external payment authorization.")
     }
     const prior = await payload.find({ collection: "payment-attempts", where: { order: { equals: order.id } }, depth: 0, limit: 2, overrideAccess: true })
     if (prior.totalDocs > 1) throw new Error("Multiple payments require reconciliation.")
@@ -264,13 +270,13 @@ async function settleMailOrder(payload: Payload, input: { orderId: number; actor
       idempotencyKey: `manual:mail:order:${order.id}`, order: order.id, tenant: Number(relationshipId(order.tenant)), attemptNumber: 1,
       provider: "manual", providerMode: "manual", state: "paid", purpose: "first_payment", sequenceType: "oneoff", currency: order.currency, reconciliationRequired: false,
       netAmountMinor: order.subtotalNetMinor!, vatAmountMinor: order.vatAmountMinor!, grossAmountMinor: order.totalGrossMinor!, paidAt: input.receivedAt, createdAt: now,
-      stateHistory: [{ state: "paid", recordedAt: now, receivedAt: input.receivedAt, funding: sponsored ? "siteinabox_sponsorship" : "external_payment", actorId: String(input.actor.id), reference: input.reference.trim(), coveredPeriod: "annual" }],
+      stateHistory: [{ state: "paid", recordedAt: now, ...(prepaid ? { fundingAuthorizedAt: input.receivedAt } : { receivedAt: input.receivedAt }), funding: prepaid ? "external_payment_authorization" : "external_payment", actorId: String(input.actor.id), reference: input.reference.trim(), coveredPeriod: "annual" }],
     } })
     if (order.state === "accepted") await payload.update({ collection: "orders", id: order.id, data: { state: "fulfillment_pending", paymentStatus: "paid", paidAt: input.receivedAt }, overrideAccess: true, context: mailOrderContext, req })
     await payload.db.commitTransaction(transactionID)
     } catch (error) { await payload.db.rollbackTransaction(transactionID); throw error }
     if (!attempt) throw new Error("The settlement could not be recorded.")
-    if (!sponsored) await ensureInvoiceEvidence({ payload, order: { ...order, paymentStatus: "paid" }, paymentAttempt: attempt, issuedAt: now })
+    if (!prepaid) await ensureInvoiceEvidence({ payload, order: { ...order, paymentStatus: "paid" }, paymentAttempt: attempt, issuedAt: now })
     await queueOrderFulfillment(payload, { orderId: order.id, paymentAttemptId: attempt.id })
     return order.id
   }))
@@ -280,8 +286,28 @@ export async function settleMailOrderExternally(payload: Payload, input: { order
   return settleMailOrder(payload, input)
 }
 
-export async function fundSponsoredMailOrder(payload: Payload, order: Order, actor: User) {
-  if (asRecord(asRecord(order.quoteEvidence).quote).sponsored !== true) return
+export async function fundPrepaidMailOrder(payload: Payload, order: Order, actor: User) {
+  const approvalId = asRecord(asRecord(order.quoteEvidence).quote).prepaidAuthorizationId
+  if (typeof approvalId !== "string") return
   return settleMailOrder(payload, { orderId: order.id, actor, amountMinor: order.totalGrossMinor!, currency: order.currency,
-    reference: `siteinabox-sponsorship:mail-order:${order.id}`, receivedAt: order.acceptedAt! }, true)
+    reference: `external-mail-payment:${approvalId}:order:${order.id}`, receivedAt: order.acceptedAt! }, true)
+}
+
+export async function approveInitialExternalMailPayment(payload: Payload, input: { tenantId: number; actor: User; quantity: number; maxGrossMinor: number; reference: string }) {
+  if (input.actor.role !== "super-admin") throw new Error("Only a manager can approve external payment.")
+  const operator = await payload.findByID({ collection: "users", id: input.actor.id, depth: 0, overrideAccess: true })
+  if (operator.role !== "super-admin" || operator.email !== input.actor.email) throw new Error("Manager authority changed.")
+  return withCommerceOrderLock(payload, `mail-service:${input.tenantId}`, async () => {
+    const service = await loadMailService(payload, input.tenantId)
+    if (service.status !== "draft" || service.pax8SubscriptionId) throw new Error("Only an initial mailbox order can use this approval.")
+    const prior = service.externalPaymentAuthorization ? externalMailPaymentSchema.parse(service.externalPaymentAuthorization) : null
+    if (prior?.consumedOrderId) throw new Error("This approval has already been used.")
+    const orders = await payload.find({ collection: "orders", where: { and: [{ tenant: { equals: input.tenantId } }, { orderKind: { equals: "microsoft_mail_initial" } }, { state: { in: ["accepted", "fulfillment_pending", "fulfilled"] } }] }, limit: 1, overrideAccess: true })
+    if (orders.docs.length) throw new Error("Complete the existing order before changing its funding authority.")
+    const approval = externalMailPaymentSchema.parse({ id: randomUUID(), domain: service.domain, productId: PAX8_MICROSOFT_BUSINESS_BASIC_EEA_NO_TEAMS_ID,
+      quantity: input.quantity, maxGrossMinor: input.maxGrossMinor, term: "annual", reference: input.reference, approvedBy: input.actor.id, approvedByEmail: operator.email, approvedAt: new Date().toISOString(), consumedOrderId: null })
+    await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { externalPaymentAuthorization: approval }, user: operator, overrideAccess: true,
+      context: { ...mailServiceContext, microsoftMailExternalPaymentApproval: true } })
+    return approval
+  })
 }

@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/authGate"
 import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { decimalMoneyToMinor } from "@/lib/checkout/checkoutQuote"
+import { approveInitialExternalMailPayment } from "@/lib/microsoftMailProvisioning/commerce"
 import { domainToASCII } from "node:url"
 
 export async function saveCustomerPolicy(form: FormData) {
@@ -69,4 +71,16 @@ export async function createCustomerWorkspace(form: FormData) {
   if (name.length < 2 || !/^[a-z0-9-]+$/.test(slug)) throw new Error("Enter a customer name and URL-safe identifier.")
   const tenant = await payload.create({ collection: "tenants", data: { name, slug, domain: null, status: "active", enabledServices: ["email"] }, user, overrideAccess: false })
   redirect(`/accounts/${tenant.id}`)
+}
+
+
+export async function approveExternalMailFunding(form: FormData) {
+  const { user } = await requireRole(["super-admin"])
+  const tenantId = Number(form.get("tenantId")), quantity = Number(form.get("quantity"))
+  if (!Number.isSafeInteger(tenantId) || tenantId < 1) throw new Error("Invalid workspace.")
+  const amount = String(form.get("amountGross") ?? "").trim()
+  if (!/^\d+(?:\.\d{1,2})?$/.test(amount)) throw new Error("Enter a valid EUR amount with at most two decimal places.")
+  const payload = await getPayload({ config })
+  await approveInitialExternalMailPayment(payload, { tenantId, actor: user, quantity, maxGrossMinor: decimalMoneyToMinor(Number(amount).toFixed(2)), reference: String(form.get("reference") ?? "").trim() })
+  revalidatePath(`/accounts/${tenantId}`)
 }

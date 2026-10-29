@@ -3,7 +3,7 @@ import type { User, Tenant, MicrosoftMailService } from "@/payload-types"
 import type { Payload as PayloadInstance } from "payload"
 import { sql } from "@payloadcms/db-postgres"
 import { getTestPayload } from "./_helpers"
-import { prepareMailQuote, acceptMailOrder, createMailPayment, settleMailOrderExternally, fundSponsoredMailOrder } from "@/lib/microsoftMailProvisioning/commerce"
+import { prepareMailQuote, acceptMailOrder, createMailPayment, settleMailOrderExternally, fundPrepaidMailOrder, approveInitialExternalMailPayment } from "@/lib/microsoftMailProvisioning/commerce"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { parseMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
 import { encryptPartnerSecret } from "@/lib/microsoftMailProvisioning/partnerConnection"
@@ -51,6 +51,13 @@ async function draft(input: { tenant: Tenant; owner: User; service: MicrosoftMai
       primaryContact: { firstName: "Operations", lastName: "Fixture", email: "operations@fixture.test", phone: "+31201234567" } },
     mailboxUsers: [{ localPart: suffix, displayName: "Mailbox fixture", setupEmail: input.owner.email }], retainInfoForward: false })
   if (!parsed.ok) throw new Error("Invalid fixture request")
+  let prepaidAuthorizationId: string | null = null
+  if (provider === "manual") {
+    const current = await payload.findByID({ collection: "microsoft-mail-services", id: input.service.id, depth: 0, overrideAccess: true })
+    const approval = current.externalPaymentAuthorization ?? await approveInitialExternalMailPayment(payload, { tenantId: input.tenant.id, actor: admin, quantity: 1, maxGrossMinor: 6781, reference: "Confirmed fixture external payment" })
+    if (!approval || typeof approval !== "object" || !("id" in approval) || typeof approval.id !== "string") throw new Error("Funding fixture invalid")
+    prepaidAuthorizationId = approval.id
+  }
   const now = new Date().toISOString()
   return new PayloadMicrosoftMailProvisioningStore(payload).create({ idempotencyKey: `mail-commerce-fixture:${input.tenant.id}:${suffix}`, mode: "live", tenantId: input.tenant.id, domain: input.service.domain,
     tenantPrefix: parsed.value.tenantPrefix, request: parsed.value, state: "prepared", currentStep: null, completedSteps: [], actionUrl: null, issueCode: null, createdAt: now, updatedAt: now,
@@ -58,7 +65,7 @@ async function draft(input: { tenant: Tenant; owner: User; service: MicrosoftMai
       quote: { version: 2, operation: "initial", baseQuantity: 0, targetQuantity: 1, annualUnitNetMinor: 5604, providerAnnualUnitCostMinor: 4932,
         servicePeriodStartsAt: null, servicePeriodEndsAt: null, providerCommitmentStartsAt: null, providerCommitmentEndsAt: null, serviceId: input.service.id, productId: "1bdd7ebb-f994-421f-ae98-b6a57bd9f947", commitmentTermId: "annual-fixture", quantity: 1, currency: "EUR",
         unitNetMinor: 5604, providerUnitCostMinor: 4932, platformNetMinor: 0, platformDiscountNetMinor: 0, subtotalNetMinor: 5604, vatAmountMinor: 1177, totalGrossMinor: 6781,
-        issuedAt: now, expiresAt: new Date(Date.now() + 900_000).toISOString(), pricingHash: "fixture", paymentProvider: provider, legacyInfoForwardTo: null, routingHash: "0".repeat(64) } } })
+        issuedAt: now, expiresAt: new Date(Date.now() + 900_000).toISOString(), pricingHash: "fixture", prepaidAuthorizationId, paymentProvider: provider, legacyInfoForwardTo: null, routingHash: "0".repeat(64) } } })
 }
 
 async function configured() {
@@ -182,47 +189,43 @@ describe("payment-gated email and customer pricing", () => {
   })
 })
 
-it("sponsors an exact owner-confirmed order without Mollie or customer invoice, replaying once", async () => {
+it("funds an exact prepaid owner-confirmed order without Mollie or customer invoice, replaying once", async () => {
   const c = await customer()
   await configured(); const fetchSpy = tokenFetch()
-  vi.stubEnv("MICROSOFT_MAIL_SPONSORED_DOMAINS", c.service.domain)
   await payload.update({ collection: "tenants", id: c.tenant.id, user: admin, overrideAccess: true, context: { tenantCommercialPolicyMutation: true }, data: { emailPaymentMethod: "manual", platformPricing: { mode: "exempt", reason: "Approved synthetic sponsorship" } } })
   const run = await draft(c)
-  const store = new PayloadMicrosoftMailProvisioningStore(payload)
-  await store.update(run.id, { data: { ...run.data, quote: { ...run.data.quote as object, sponsored: true } } })
   const order = await acceptMailOrder(payload, { runId: Number(run.id), tenantId: c.tenant.id, actor: c.owner, legalAccepted: true, legalVersion: await legalVersion() })
   const other = await customer()
-  await expect(fundSponsoredMailOrder(payload, order, other.owner)).rejects.toThrow(/sponsorship authority/)
+  await expect(fundPrepaidMailOrder(payload, order, other.owner)).rejects.toThrow(/external payment authorization/)
   fetchSpy.mockClear()
-  await fundSponsoredMailOrder(payload, order, c.owner)
-  await fundSponsoredMailOrder(payload, order, c.owner)
+  await fundPrepaidMailOrder(payload, order, c.owner)
+  await fundPrepaidMailOrder(payload, order, c.owner)
   const attempts = await payload.find({ collection: "payment-attempts", where: { order: { equals: order.id } }, overrideAccess: true })
   expect(attempts.totalDocs).toBe(1)
-  expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "siteinabox_sponsorship" })]))
+  expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "external_payment_authorization" })]))
   const saved = await payload.findByID({ collection: "orders", id: order.id, overrideAccess: true })
   expect((await payload.find({ collection: "accounting-documents", where: { order: { equals: order.id } }, overrideAccess: true })).totalDocs).toBe(0)
   expect(fetchSpy).not.toHaveBeenCalled()
   expect(saved.state).toBe("fulfillment_pending")
   expect(saved.paymentStatus).toBe("paid")
-  vi.stubEnv("MICROSOFT_MAIL_SPONSORED_DOMAINS", "")
-  await expect(fundSponsoredMailOrder(payload, order, c.owner)).rejects.toThrow(/sponsorship authority/)
+  await payload.update({ collection: "tenants", id: c.tenant.id, user: admin, overrideAccess: true, context: { tenantCommercialPolicyMutation: true }, data: { platformPricing: { mode: "standard", reason: "" } } })
+  await expect(fundPrepaidMailOrder(payload, order, c.owner)).resolves.toBe(order.id)
+  await expect(approveInitialExternalMailPayment(payload, { tenantId: c.tenant.id, actor: admin, quantity: 2, maxGrossMinor: 13562, reference: "Cannot reuse" })).rejects.toThrow(/already been used/)
 })
 
-it("keeps customer and operator identities separate when support confirms and sponsors", async () => {
+it("keeps customer and operator identities separate when support confirms externally paid coverage", async () => {
  const c = await customer(); await configured(); const fetchSpy = tokenFetch()
- vi.stubEnv("MICROSOFT_MAIL_SPONSORED_DOMAINS", c.service.domain)
  await payload.update({ collection: "tenants", id: c.tenant.id, user: admin, overrideAccess: true, context: { tenantCommercialPolicyMutation: true }, data: { emailPaymentMethod: "manual", platformPricing: { mode: "exempt", reason: "Approved support test" } } })
  const run = await draft(c)
- await new PayloadMicrosoftMailProvisioningStore(payload).update(run.id, { data: { ...run.data, quote: { ...run.data.quote as object, sponsored: true } } })
  const order = await acceptMailOrder(payload, { runId: Number(run.id), tenantId: c.tenant.id, actor: admin, legalAccepted: true, legalVersion: await legalVersion() })
  expect(order.customerEmail).toBe(c.owner.email)
  expect(order.quoteEvidence).toMatchObject({ confirmedBy: String(admin.id) })
  const acceptances = await payload.find({ collection: "agreement-acceptances", where: { order: { equals: order.id } }, depth: 0, overrideAccess: true })
  expect(acceptances.docs.every(value => value.actorEmail === admin.email)).toBe(true)
  fetchSpy.mockClear()
- await fundSponsoredMailOrder(payload, order, admin)
+ await fundPrepaidMailOrder(payload, order, admin)
  const attempts = await payload.find({ collection: "payment-attempts", where: { order: { equals: order.id } }, overrideAccess: true })
- expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "siteinabox_sponsorship", actorId: String(admin.id) })]))
+ expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "external_payment_authorization", actorId: String(admin.id) })]))
  expect(fetchSpy).not.toHaveBeenCalled()
 })
 
@@ -238,4 +241,32 @@ it("requires an explicit Dutch legal choice when English documents are unavailab
  const evidence = await payload.find({ collection: "agreement-acceptances", where: { order: { equals: order.id } }, depth: 1, overrideAccess: true })
  expect(evidence.totalDocs).toBe(2)
  expect(evidence.docs.every(value => typeof value.document === "object" && value.document?.locale === "nl")).toBe(true)
+})
+
+it("does not turn platform exemption or legacy manual billing into free licences", async()=>{
+ const c=await customer();await configured();tokenFetch()
+ await payload.update({collection:"tenants",id:c.tenant.id,user:admin,overrideAccess:true,context:{tenantCommercialPolicyMutation:true},data:{emailPaymentMethod:"manual",platformPricing:{mode:"exempt",reason:"Platform fees only"}}})
+ const run=await draft(c,"mollie")
+ const order=await acceptMailOrder(payload,{runId:Number(run.id),tenantId:c.tenant.id,actor:c.owner,legalAccepted:true,legalVersion:await legalVersion()})
+ expect(order.paymentProvider).toBe("mollie");expect(order.paymentStatus).toBe("pending")
+ await fundPrepaidMailOrder(payload,order,c.owner)
+ expect((await payload.find({collection:"payment-attempts",where:{order:{equals:order.id}},overrideAccess:true})).totalDocs).toBe(0)
+})
+it("requires a manager and the exact approved initial seat count",async()=>{
+ const c=await customer();await configured();tokenFetch()
+ await expect(approveInitialExternalMailPayment(payload,{tenantId:c.tenant.id,actor:c.owner,quantity:2,maxGrossMinor:13562,reference:"Not authorized"})).rejects.toThrow(/Only a manager/)
+ await approveInitialExternalMailPayment(payload,{tenantId:c.tenant.id,actor:admin,quantity:2,maxGrossMinor:13562,reference:"Two seats paid separately"})
+ const run=await draft(c)
+ await expect(acceptMailOrder(payload,{runId:Number(run.id),tenantId:c.tenant.id,actor:c.owner,legalAccepted:true,legalVersion:await legalVersion()})).rejects.toThrow(/approved prepaid mailbox count/)
+ expect((await payload.find({collection:"orders",where:{tenant:{equals:c.tenant.id}},overrideAccess:true})).totalDocs).toBe(0)
+})
+it("consumes one approval atomically when competing initial orders are confirmed",async()=>{
+ const c=await customer();await configured();tokenFetch()
+ const one=await draft(c,"manual","one"),two=await draft(c,"manual","two"),version=await legalVersion()
+ const result=await Promise.allSettled([one,two].map(run=>acceptMailOrder(payload,{runId:Number(run.id),tenantId:c.tenant.id,actor:c.owner,legalAccepted:true,legalVersion:version})))
+ expect(result.filter(value=>value.status==="fulfilled")).toHaveLength(1)
+ expect(result.filter(value=>value.status==="rejected")).toHaveLength(1)
+ const orders=await payload.find({collection:"orders",where:{tenant:{equals:c.tenant.id}},overrideAccess:true});expect(orders.totalDocs).toBe(1)
+ const saved=await payload.findByID({collection:"microsoft-mail-services",id:c.service.id,overrideAccess:true})
+ expect(saved.externalPaymentAuthorization).toMatchObject({consumedOrderId:orders.docs[0]?.id})
 })
