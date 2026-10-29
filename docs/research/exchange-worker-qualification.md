@@ -1,5 +1,39 @@
 # Exchange worker candidate qualification
 
+> Historical candidate report. The publication exclusion and incomplete-coverage
+> conclusions below describe the earlier candidate, not the current release.
+> The canonical pipeline now verifies and publishes the worker under
+> [image publication](../runbooks/image-publication.md) and the approved
+> [risk policy](../dependency-security.md).
+
+## Current release evidence refresh (2026-10-29)
+
+The worker archive from source `7bbc58e31d747a4ff2ab3544f29d1df19bbe294b`,
+canonical verification run `40931934049`, retains complete runtime/managed
+inventory and the unchanged two Pkcs findings. Its explicit module-import and
+private-DLL LoadFrom measurement still resolve only to the default host Pkcs
+10.0.14. The Windows-only applicability evidence remains unchanged. No DLL has
+been removed, substituted or excluded from scanning.
+
+Adding the shared-inbox worker operation changed the worker-entrypoint hash and
+therefore its native evidence fingerprint. The final publisher correctly blocked
+stale nonaffected bindings even though CI passed. The two exact worker records
+in `docs/dependency-security.json` are rebound to fingerprint
+`df6936277291e5ee14f469caa77687a96892eb7d592da8552060b50bb1dc2237`
+after reviewing the new source, inventory and actual assembly-binding receipt.
+Severity, advisory facts, justification, deadlines and release controls remain
+unchanged. This documentation refresh does not itself publish or deploy an image.
+
+The retained archive SHA256 is
+`9e897078e40b30bc67edb1c2572c19c06985af8f2f430b44b06287db996f6fdc`;
+its config/image ID is
+`sha256:a4bef7ae20532851d4120e0e425437f490ae9d5d340d92c5975aede98b18f49f`.
+The worker entrypoint SHA256 is
+`5734cfe711b57064ff115dccdf5137b0fc78b94ca42f7eeb8e20eaf249dd3cce`.
+Canonical publication must still rescan and validate these exact bytes with the
+current policy, successful exact-source CI and configured owner approval.
+
+
 Tracking: [worker ticket #136](https://github.com/Optidigi/siteinabox/issues/136),
 under [release spec #132](https://github.com/Optidigi/siteinabox/issues/132).
 This is diagnostic evidence, not security admission or publication approval.

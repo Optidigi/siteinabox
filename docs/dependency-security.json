@@ -888,7 +888,7 @@
       "state": "not_affected",
       "reason": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "reviewedAt": "2026-10-29T18:55:14.543Z",
       "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
@@ -903,7 +903,7 @@
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "2d2649ba42b77ed4399cff3cd0bf4a3cd3e4df4a2ff5c7ba6329f27dc1598683",
+          "fingerprint": "df6936277291e5ee14f469caa77687a96892eb7d592da8552060b50bb1dc2237",
           "advisoryHash": "6500b316d2468e37a1cd89762046b9d21f7e20aa278e48d9d463a3cfbf0c91ca"
         }
       }
@@ -921,7 +921,7 @@
       "state": "not_affected",
       "reason": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "reviewedAt": "2026-10-29T18:55:14.543Z",
       "deadline": "2026-11-04T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
@@ -936,7 +936,7 @@
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "2d2649ba42b77ed4399cff3cd0bf4a3cd3e4df4a2ff5c7ba6329f27dc1598683",
+          "fingerprint": "df6936277291e5ee14f469caa77687a96892eb7d592da8552060b50bb1dc2237",
           "advisoryHash": "b2cd691e802c1d6154de6a7b2c80e09732aa44e944c330544940033910788859"
         }
       }
