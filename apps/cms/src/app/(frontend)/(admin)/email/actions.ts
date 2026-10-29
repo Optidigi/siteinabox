@@ -173,7 +173,9 @@ export async function confirmCustomerMailOrder(_previous: { message: string } | 
   try {
     const runId = Number(formData.get("runId"))
     if (!Number.isSafeInteger(runId) || runId < 1) throw new Error("Invalid email request.")
-    const order = await acceptMailOrder(payload, { runId, tenantId: ctx.tenant.id, actor: user, legalAccepted: formData.get("acceptOrderTerms") === "on", legalVersion: String(formData.get("legalVersion") ?? "") })
+    const legalLocale = formData.get("legalLocale")
+    if (legalLocale !== null && legalLocale !== "nl" && legalLocale !== "en") throw new Error("Unsupported legal language.")
+    const order = await acceptMailOrder(payload, { legalLocale: legalLocale ?? undefined, runId, tenantId: ctx.tenant.id, actor: user, legalAccepted: formData.get("acceptOrderTerms") === "on", legalVersion: String(formData.get("legalVersion") ?? "") })
     await fundSponsoredMailOrder(payload, order, user)
     destination = order.paymentProvider === "mollie" && order.state === "accepted" ? await createMailPayment(payload, order.id) : `${basePath}?request=${runId}`
   } catch {

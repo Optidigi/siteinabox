@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { notFound } from "next/navigation"
 import { getPayload } from "payload"
 import { getTranslations } from "next-intl/server"
 import { Badge } from "@siteinabox/ui/components/badge"
@@ -38,7 +39,7 @@ const mailboxRows = (request: unknown): MailboxRequest[] => {
 }
 
 export async function CustomerEmailWorkspace({ searchParams, workspace }: {
-  searchParams: Promise<{ request?: string | string[]; new?: string }>
+  searchParams: Promise<{ request?: string | string[]; new?: string; legalLocale?: string | string[] }>
   workspace: Awaited<ReturnType<typeof requireMailWorkspace>>
 }) {
   const { user, ctx, basePath } = workspace
@@ -81,7 +82,9 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
   const orderId = selectedData?.commerceOrderId
   const orders = orderId ? await payload.find({ collection: "orders", where: { and: [{ id: { equals: orderId } }, { tenant: { equals: ctx.tenant.id } }] }, depth: 0, limit: 1, overrideAccess: true }) : null
   const order = orders?.docs[0]
-  const legal = quote && (!order || order.state === "accepted") ? await checkoutLegalDocuments(payload, nl ? "nl" : "en") : null
+  if (params.legalLocale != null && params.legalLocale !== "nl" && params.legalLocale !== "en") notFound()
+  const legalLocale = params.legalLocale === "nl" || params.legalLocale === "en" ? params.legalLocale : nl ? "nl" : "en"
+  const legal = quote && (!order || order.state === "accepted") ? await checkoutLegalDocuments(payload, legalLocale) : null
   const legalVersion = legal && "id" in legal.terms && "id" in legal.privacy ? `${legal.terms.id}:${legal.terms.contentHash}:${legal.privacy.id}:${legal.privacy.contentHash}` : null
   const money = (minor: number) => new Intl.NumberFormat(nl ? "nl-NL" : "en-GB", { style: "currency", currency: "EUR" }).format(minor / 100)
   let status: { title: string; description: string; label: string } | null = null
@@ -131,7 +134,7 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
       {quote.sponsored ? <p>{nl ? "Siteinabox betaalt dit abonnement. Je hoeft niet te betalen." : "Siteinabox covers this subscription. No customer payment is required."}</p> : null}
       {selectedRequest?.infoSharedMailbox === true ? <p>Shared info@{selected.domain} inbox · Full Access + Send As for all requested mailboxes. Existing info@ forwarding will be replaced.</p> : null}
       {!selectedRequest?.infoSharedMailbox && quote.legacyInfoForwardTo ? <p className="text-sm">{typeof selectedRequest?.infoAliasTarget === "string" ? (nl ? `info@${selected.domain} gaat voortaan naar ${selectedRequest.infoAliasTarget}.` : `info@${selected.domain} will now arrive in ${selectedRequest.infoAliasTarget}.`) : (nl ? `info@${selected.domain} blijft doorgestuurd naar ${quote.legacyInfoForwardTo}.` : `info@${selected.domain} keeps forwarding to ${quote.legacyInfoForwardTo}.`)}</p> : null}
-      {order?.paymentProvider === "manual" && !quote.sponsored ? <p>{nl ? "Je bestelling is bevestigd en wacht op de afgesproken betaling." : "Your order is confirmed and awaiting the agreed payment."}</p> : !order && Date.parse(quote.expiresAt) <= Date.now() ? <form action={refreshCustomerMailQuote}><input type="hidden" name="tenantId" value={ctx.tenant.id} /><input type="hidden" name="runId" value={selected.id} /><Button type="submit">{nl ? "Prijs vernieuwen" : "Refresh price"}</Button></form> : legal && legalVersion ? <MailOrderConfirmation tenantId={ctx.tenant.id} runId={selected.id} legalVersion={legalVersion} termsHref={legal.termsHref} privacyHref={legal.privacyHref} manual={quote.paymentProvider === "manual"} nl={nl} additionalSeats={quote.operation === "seats"} /> : <p>{nl ? "Bestellen is tijdelijk niet beschikbaar." : "Ordering is temporarily unavailable."}</p>}
+      {order?.paymentProvider === "manual" && !quote.sponsored ? <p>{nl ? "Je bestelling is bevestigd en wacht op de afgesproken betaling." : "Your order is confirmed and awaiting the agreed payment."}</p> : !order && Date.parse(quote.expiresAt) <= Date.now() ? <form action={refreshCustomerMailQuote}><input type="hidden" name="tenantId" value={ctx.tenant.id} /><input type="hidden" name="runId" value={selected.id} /><Button type="submit">{nl ? "Prijs vernieuwen" : "Refresh price"}</Button></form> : legal && legalVersion ? <MailOrderConfirmation legalLocale={legalLocale} acceptanceStatement={legal.statement.text} tenantId={ctx.tenant.id} runId={selected.id} legalVersion={legalVersion} termsHref={legal.termsHref} privacyHref={legal.privacyHref} manual={quote.paymentProvider === "manual"} nl={nl} additionalSeats={quote.operation === "seats"} /> : <div role="status" className="grid gap-2 text-sm">{legalLocale === "en" ? <><p>English legal documents are not available yet. You can review and accept the Dutch documents instead.</p><Link className="underline" href={`${basePath}?request=${selected.id}&legalLocale=nl`}>Continue with Dutch legal documents</Link></> : <p>De huidige juridische documenten zijn niet beschikbaar. Neem contact op met Siteinabox.</p>}</div>}
       {order?.paymentProvider === "manual" && !quote.sponsored ? <p className="text-sm text-muted-foreground">{nl ? "Siteinabox registreert de afgesproken betaling. Daarna gaat de inrichting verder." : "Siteinabox will record the agreed payment, then setup continues."}</p> : null}
     </CardContent></Card> : null}
 

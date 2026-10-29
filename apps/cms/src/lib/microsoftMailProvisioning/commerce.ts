@@ -112,7 +112,7 @@ export async function prepareMailQuote(payload: Payload, tenant: Tenant, request
     paymentProvider: tenant.emailPaymentMethod === "manual" ? "manual" : "mollie", ...routing })
 }
 
-export async function acceptMailOrder(payload: Payload, input: { runId: number; tenantId: number; actor: User; legalAccepted: boolean; legalVersion: string }) {
+export async function acceptMailOrder(payload: Payload, input: { runId: number; tenantId: number; actor: User; legalAccepted: boolean; legalVersion: string; legalLocale?: "nl" | "en" }) {
   if (!mailActorCanOrder(input.actor, input.tenantId)) throw new Error("Only this workspace's owner or a platform support operator can confirm the email order.")
   if (!input.legalAccepted) throw new Error("Accept the agreement and annual commitment to continue.")
   return withCommerceOrderLock(payload, `mail-service:${input.tenantId}`, async () => {
@@ -140,7 +140,8 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
     if (process.env.MICROSOFT_MAIL_CHECKOUT_ENABLED !== "true" || process.env.MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED !== "true" || !inspectMicrosoftMailReadiness().readyForLiveProvisioning) throw new Error("Email ordering is not available until provider setup is complete.")
     await createPartnerTokenProvider(payload)({ tenantId: process.env.MICROSOFT_PARTNER_TENANT_ID ?? "", resource: "partner_center" })
     await new ExchangeWorkerClient({ endpoint: process.env.EXCHANGE_WORKER_URL ?? "", sharedSecret: process.env.EXCHANGE_WORKER_SHARED_SECRET ?? "" }).health()
-    const legal = await checkoutLegalDocuments(payload, input.actor.language === "nl" ? "nl" : "en")
+    if (input.legalLocale !== undefined && input.legalLocale !== "nl" && input.legalLocale !== "en") throw new Error("Unsupported legal language.")
+    const legal = await checkoutLegalDocuments(payload, input.legalLocale ?? (input.actor.language === "nl" ? "nl" : "en"))
     if (!legal || !("id" in legal.terms) || !("id" in legal.privacy)) throw new Error("The current agreements are unavailable. Contact Siteinabox.")
     if (input.legalVersion !== `${legal.terms.id}:${legal.terms.contentHash}:${legal.privacy.id}:${legal.privacy.contentHash}`) throw new Error("The agreements changed. Reload and review them before confirming.")
     let customer = input.actor
