@@ -46,7 +46,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   const updateUser = (index: number, field: keyof MailboxRow, value: string) => {
     if (field === "localPart") value = value.trim().toLowerCase()
     const currentUser = users[index]
-    if (field === "localPart" && currentUser?.localPart === infoAliasTarget) setInfoAliasTarget(value)
+    if (showInfoAlias && field === "localPart" && currentUser?.localPart === infoAliasTarget) setInfoAliasTarget(value)
     setUsers((current) => current.map((user, row) => row === index ? { ...user, [field]: value } : user))
   }
 
@@ -130,7 +130,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
       </div>
 
       {allowInfoAlias && !showInfoAlias ? <label className="flex items-start gap-2 text-sm"><Checkbox name="infoSharedMailbox" checked={infoSharedMailbox} onCheckedChange={value => setInfoSharedMailbox(value === true)} /><span>Shared info@{domain} inbox · Full Access + Send As for all requested mailboxes. Replaces existing info@ forwarding.</span></label> : null}
-      <input type="hidden" name="infoAliasTarget" value={infoAliasTarget ? `${infoAliasTarget}@${domain}` : ""} />
+      <input type="hidden" name="infoAliasTarget" value={showInfoAlias && !infoSharedMailbox && infoAliasTarget ? `${infoAliasTarget}@${domain}` : ""} />
       {showInfoAlias ? <div className="flex flex-wrap items-center gap-3 rounded-base border p-3">
         <span className="text-sm font-medium">info@{domain || "…"}</span>
         <span className="text-sm text-muted-foreground">{t("deliveredTo")}</span>
