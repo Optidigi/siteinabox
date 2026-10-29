@@ -262,3 +262,15 @@ order acceptance and funding evidence. Ordinary owners cannot select another
 workspace through a form field. Domain rollout and sponsorship checks still
 apply. The workspace owner may therefore be `info@tap2case.nl` before Microsoft
 provisions it; the owner uses normal password recovery after the inbox works.
+
+
+## Checkout legal language
+
+Mail checkout uses the actor's preferred legal language by default. If English
+terms/privacy records are unavailable, the review explains that and links to the
+saved request with an explicit Dutch-document choice (`legalLocale=nl`). This
+choice changes neither the account language nor the quote/customer details.
+Confirmation displays the selected language and exact registered acceptance
+statement, submits the chosen locale, and the backend validates the current
+registered document identities before recording the order. Missing or unapproved
+documents still block acceptance; there is no implicit Dutch fallback.

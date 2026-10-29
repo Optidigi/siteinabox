@@ -225,3 +225,17 @@ it("keeps customer and operator identities separate when support confirms and sp
  expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "siteinabox_sponsorship", actorId: String(admin.id) })]))
  expect(fetchSpy).not.toHaveBeenCalled()
 })
+
+it("requires an explicit Dutch legal choice when English documents are unavailable", async () => {
+ const c = await customer(); await configured(); tokenFetch()
+ const owner = await payload.update({ collection: "users", id: c.owner.id, overrideAccess: true, data: { language: "en" } })
+ const run = await draft(c)
+ const input = { runId: Number(run.id), tenantId: c.tenant.id, actor: owner, legalAccepted: true, legalVersion: await legalVersion() }
+ await expect(acceptMailOrder(payload, input)).rejects.toThrow(/agreements are unavailable/)
+ const order = await acceptMailOrder(payload, { ...input, legalLocale: "nl" })
+ expect(order.quoteEvidence).toMatchObject({ legal: { locale: "nl" }, confirmedBy: String(owner.id) })
+ expect((await payload.findByID({ collection: "users", id: owner.id, overrideAccess: true })).language).toBe("en")
+ const evidence = await payload.find({ collection: "agreement-acceptances", where: { order: { equals: order.id } }, depth: 1, overrideAccess: true })
+ expect(evidence.totalDocs).toBe(2)
+ expect(evidence.docs.every(value => typeof value.document === "object" && value.document?.locale === "nl")).toBe(true)
+})
