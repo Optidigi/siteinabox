@@ -65,7 +65,8 @@ A Mollie test payment cannot unlock live provisioning.
 2. Read-only catalog and DNS/routing calls prepare a 15-minute quote. The owner
    reviews the total and accepts the current Siteinabox legal documents and
    annual commitment. Acceptance freezes the mailbox intent, price and routing
-   snapshot in an Order. Only one accepted/pending order per mail service is
+   snapshot in an Order. A scoped super-admin support action records the actual operator separately from
+   the workspace owner used for customer/billing identity. Only one accepted/pending order per mail service is
    permitted, so renewal and seat changes cannot race each other.
 3. Mollie checkout or an exact super-admin external receipt moves the order to
    paid/fulfillment pending. The existing job queue resumes it. No provider
@@ -215,3 +216,49 @@ confirmations, recipients and Exchange inbound/outbound delivery, including
 its own setup notice; normal payment, login, legal and renewal messages remain
 in the existing communication policy. Resolve the supplier-mail behavior before
 broad customer rollout.
+
+## Scoped rollout and sponsored UI orders
+
+`MICROSOFT_MAIL_ALLOWED_DOMAINS` is a comma-separated list of authorized mail
+service domains. Empty means closed. Quote, acceptance and fulfillment check it;
+the global checkout/live flags remain emergency stops. It does not authorize a
+purchase without the owner's exact order acceptance.
+
+`MICROSOFT_MAIL_SPONSORED_DOMAINS` separately permits Siteinabox-funded orders.
+The domain must also be in the rollout list, the workspace must use manual email
+billing, and its platform exemption must have a reason and be current. Quotes
+retain retail, cost and VAT evidence and show customer amount due as zero.
+Confirmation records an immutable manual funding attempt with
+`funding: siteinabox_sponsorship` and an order-specific sponsorship reference;
+it does not claim a customer bank receipt or issue a paid customer invoice.
+The same settled-order checks and fulfillment queue apply. Policy changes require
+a fresh quote; replay reuses the existing funding attempt and order.
+
+For the Tap2case UI rehearsal, authorize `tap2case.nl` in both lists, create an
+active email-only workspace with manual billing and an audited exemption, and
+leave it with no accepted order. The owner enters `ardi` and `aslan`, real setup
+delivery addresses and company/signatory details at `/email`, then selects the
+shared `info@` option and confirms the annual order. This is a real Pax8 purchase
+funded by Siteinabox; operators must not submit it in advance of the UI test.
+
+The shared inbox option replaces legacy info forwarding. It creates an unlicensed
+shared `info@` recipient, clears forwarding, grants Full Access and Send As to all
+requested users, and reads those grants back before DNS cutover. Conflicting
+licensed recipients stop for review. No extra licensed seat is added. Microsoft
+permission replication and external delivery remain first-live-test evidence.
+See [Microsoft's mailbox delegation guidance](https://learn.microsoft.com/en-us/exchange/recipients-in-exchange-online/manage-permissions-for-recipients).
+
+Rollback: clear the two domain lists or disable checkout/live provisioning and
+recreate CMS with the previous image digest. Keep the order/funding ledger.
+Do not retry uncertain Pax8 writes or remove existing subscriptions as rollback.
+
+Super-admins can open **Customer accounts → Open customer email flow** at
+`/accounts/<tenantId>/email`. This renders the same customer form, quote,
+confirmation and progress as `/email`, with a visible operator identity.
+It does not mint an owner session, change a password or relax global tenancy.
+Each server action re-authenticates the operator, resolves the selected active
+email workspace server-side and records the actual administrator in consent,
+order acceptance and funding evidence. Ordinary owners cannot select another
+workspace through a form field. Domain rollout and sponsorship checks still
+apply. The workspace owner may therefore be `info@tap2case.nl` before Microsoft
+provisions it; the owner uses normal password recovery after the inbox works.

@@ -18,6 +18,7 @@ export default async function CustomerAccountPage({ params }: { params: Promise<
   const services = await payload.find({ collection: "microsoft-mail-services", where: { tenant: { equals: tenant.id } }, limit: 1, overrideAccess: true })
   return <div className="grid max-w-4xl gap-5"><PageHeader title={tenant.name} />
     <div className="flex gap-3 text-sm"><Link className="underline" href={`/sites/${tenant.slug}/users`}>{nl ? "Team beheren" : "Manage team"}</Link><Link className="underline" href="/operations/microsoft-mail">{nl ? "E-mailbestellingen" : "Email orders"}</Link></div>
+    {services.docs[0] ? <Link className="underline text-sm" href={`/accounts/${tenant.id}/email`}>{nl ? "Klantweergave e-mail openen" : "Open customer email flow"}</Link> : null}
     <PolicyForm nl={nl}><input type="hidden" name="tenantId" value={tenant.id} />
       <Card><CardHeader><CardTitle>{nl ? "Diensten" : "Services"}</CardTitle></CardHeader><CardContent className="grid gap-3">
         <label className="flex items-center gap-2"><input type="checkbox" name="website" defaultChecked={hasWorkspaceService(tenant, "website")} />Website</label>

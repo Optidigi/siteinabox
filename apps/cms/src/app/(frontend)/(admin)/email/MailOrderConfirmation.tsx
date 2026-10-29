@@ -3,11 +3,12 @@ import { useActionState } from "react"
 import { Button } from "@siteinabox/ui/components/button"
 import { confirmCustomerMailOrder } from "./actions"
 
-export function MailOrderConfirmation({ runId, legalVersion, termsHref, privacyHref, manual, nl, additionalSeats }: {
-  runId: number; legalVersion: string; termsHref: string; privacyHref: string; manual: boolean; nl: boolean; additionalSeats: boolean
+export function MailOrderConfirmation({ tenantId, runId, legalVersion, termsHref, privacyHref, manual, nl, additionalSeats }: {
+  tenantId: number; runId: number; legalVersion: string; termsHref: string; privacyHref: string; manual: boolean; nl: boolean; additionalSeats: boolean
 }) {
   const [state, action, pending] = useActionState(confirmCustomerMailOrder, null)
   return <form action={action} className="grid gap-3">
+    <input type="hidden" name="tenantId" value={tenantId} />
     <input type="hidden" name="runId" value={runId} /><input type="hidden" name="legalVersion" value={legalVersion} />
     <p className="text-sm"><a className="underline" href={termsHref} target="_blank" rel="noopener noreferrer">{nl ? "Voorwaarden" : "Terms"}</a> · <a className="underline" href={privacyHref} target="_blank" rel="noopener noreferrer">Privacy</a></p>
     <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="acceptOrderTerms" required /><span>{additionalSeats

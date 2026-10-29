@@ -1,3 +1,4 @@
+import { requireMailDomainEnabled } from "./rollout"
 import { requireLiveMailWritesAllowed } from "./writeGate"
 import "server-only"
 import type { Payload } from "payload"
@@ -26,6 +27,7 @@ export async function reconcileMicrosoftMailRenewals(payload: Payload, now = new
   const services = await payload.find({ collection: "microsoft-mail-services", where: { and: [{ id: { greater_than: cursor } }, { status: { in: ["active", "provisioning", "attention"] } }, { pax8SubscriptionId: { exists: true } }] }, limit: 100, sort: "id", depth: 0, overrideAccess: true })
   if (!services.docs.length) break
   for (const selected of services.docs) {
+    try { requireMailDomainEnabled(selected.domain) } catch { continue }
     const tenantId = Number(relationshipId(selected.tenant))
     await withCommerceOrderLock(payload, `mail-service:${tenantId}`, async () => {
       const service = await loadMailService(payload, tenantId)

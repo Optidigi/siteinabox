@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getPayload } from "payload"
 import config from "@/payload.config"
-import { requireRole } from "@/lib/authGate"
+import { requireMailWorkspace } from "./workspaceAccess"
 import { parseMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
 import { createMicrosoftMailProvisioningKey } from "@/lib/microsoftMailProvisioning/state"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { prepareMailQuote, acceptMailOrder, createMailPayment } from "@/lib/microsoftMailProvisioning/commerce"
 import { redirect } from "next/navigation"
+import { fundSponsoredMailOrder } from "@/lib/microsoftMailProvisioning/commerce"
 import { loadMailService } from "@/lib/microsoftMailProvisioning/commerce"
 import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { mailRenewalRequest } from "@/lib/microsoftMailProvisioning/renewalRequest"
@@ -33,7 +34,7 @@ export async function submitCustomerMicrosoftMailRequest(
   _previousState: CustomerMailRequestActionState,
   formData: FormData,
 ): Promise<CustomerMailRequestActionState> {
-  const { user, ctx } = await requireRole(["owner"])
+  const { user, ctx, basePath } = await requireMailWorkspace(formData.get("tenantId"))
   if (ctx.mode !== "tenant" || ctx.tenant.status !== "active") {
     return { ok: false, message: "Email ordering isn't available for this workspace." }
   }
@@ -83,6 +84,7 @@ export async function submitCustomerMicrosoftMailRequest(
       },
     },
     mailboxUsers,
+    infoSharedMailbox: formData.get("infoSharedMailbox") === "on",
     retainInfoForward: false,
     infoForwardTo: "",
     infoAliasTarget: String(formData.get("infoAliasTarget") ?? "").trim().toLowerCase(),
@@ -103,7 +105,8 @@ export async function submitCustomerMicrosoftMailRequest(
   const existing = await store.findByIdempotencyKey(idempotencyKey)
   const consentAt = new Date().toISOString()
   const consentRecord = {
-    source: "customer_dashboard",
+    source: user.role === "super-admin" ? "operator_customer_ui" : "customer_dashboard",
+    actorRole: user.role,
     consentCopyVersion,
     mcaDocumentUrl,
     mcaCountry: parsed.value.customer.address.country,
@@ -127,14 +130,14 @@ export async function submitCustomerMicrosoftMailRequest(
       return { ok: false, message: "A request for these mailboxes already exists with different details. Contact Siteinabox support to change it." }
     }
     if (existing.data.commerceOrderId) {
-      revalidatePath("/email")
+      revalidatePath(basePath)
       return { ok: true, message: "Your request is already saved. You can follow its progress below.", requestId: String(existing.id) }
     }
     const updated = await store.update(existing.id, {
       data: { ...existing.data, customerConsent: consentRecord, quote, mailServiceId: quote.serviceId },
       updatedAt: consentAt,
     })
-    revalidatePath("/email")
+    revalidatePath(basePath)
     revalidatePath("/operations/microsoft-mail")
       return { ok: true, message: "Your request has been received.", requestId: String(updated.id) }
   }
@@ -149,38 +152,39 @@ export async function submitCustomerMicrosoftMailRequest(
     state: "prepared",
     currentStep: null,
     completedSteps: [],
-    data: { customerConsent: consentRecord, requestSource: "customer_dashboard", quote, mailServiceId: quote.serviceId },
+    data: { customerConsent: consentRecord, requestSource: user.role === "super-admin" ? "operator_customer_ui" : "customer_dashboard", quote, mailServiceId: quote.serviceId },
     actionUrl: null,
     issueCode: null,
     createdAt: consentAt,
     updatedAt: consentAt,
   })
 
-  revalidatePath("/email")
+  revalidatePath(basePath)
   revalidatePath("/operations/microsoft-mail")
   return { ok: true, message: "Your request has been received.", requestId: String(run.id) }
   })
 }
 
 export async function confirmCustomerMailOrder(_previous: { message: string } | null, formData: FormData): Promise<{ message: string } | null> {
-  const { user, ctx } = await requireRole(["owner"])
+  const { user, ctx, basePath } = await requireMailWorkspace(formData.get("tenantId"))
   if (ctx.mode !== "tenant" || ctx.tenant.status !== "active") return { message: user.language === "nl" ? "Bestellen is nu niet beschikbaar." : "Ordering is unavailable." }
   const payload = await getPayload({ config })
-  let destination = "/email"
+  let destination = basePath
   try {
     const runId = Number(formData.get("runId"))
     if (!Number.isSafeInteger(runId) || runId < 1) throw new Error("Invalid email request.")
     const order = await acceptMailOrder(payload, { runId, tenantId: ctx.tenant.id, actor: user, legalAccepted: formData.get("acceptOrderTerms") === "on", legalVersion: String(formData.get("legalVersion") ?? "") })
-    destination = order.paymentProvider === "mollie" && order.state === "accepted" ? await createMailPayment(payload, order.id) : `/email?request=${runId}`
+    await fundSponsoredMailOrder(payload, order, user)
+    destination = order.paymentProvider === "mollie" && order.state === "accepted" ? await createMailPayment(payload, order.id) : `${basePath}?request=${runId}`
   } catch {
     return { message: user.language === "nl" ? "Je bestelling kon niet worden bevestigd. Vernieuw de prijs of neem contact op met Siteinabox." : "Your order could not be confirmed. Refresh the price or contact Siteinabox." }
   }
-  revalidatePath("/email")
+  revalidatePath(basePath)
   redirect(destination)
 }
 
 export async function refreshCustomerMailQuote(formData: FormData) {
-  const { ctx } = await requireRole(["owner"])
+  const { ctx, basePath } = await requireMailWorkspace(formData.get("tenantId"))
   if (ctx.mode !== "tenant") throw new Error("Customer workspace required.")
   const payload = await getPayload({ config })
   return withCommerceOrderLock(payload, `mail-service:${ctx.tenant.id}`, async () => {
@@ -191,6 +195,6 @@ export async function refreshCustomerMailQuote(formData: FormData) {
   const request = run.data.isRenewal === true ? mailRenewalRequest(run.request, service.mailboxes, service.quantity ?? 0) : run.request
   const quote = await prepareMailQuote(payload, ctx.tenant, request, process.env, run.data.isRenewal === true)
   await store.update(run.id, { request, data: { ...run.data, quote }, updatedAt: new Date().toISOString() })
-  revalidatePath("/email")
+  revalidatePath(basePath)
   })
 }

@@ -43,6 +43,7 @@ const inputSchema = z.object({
   tenantPrefix: z.unknown().optional(),
   customer: customerProfileSchema,
   mailboxUsers: z.unknown(),
+  infoSharedMailbox: z.unknown().optional(),
   retainInfoForward: z.unknown().optional(),
   infoForwardTo: z.unknown().optional(),
   infoAliasTarget: z.unknown().optional(),
@@ -65,6 +66,7 @@ export type MicrosoftMailProvisioningRequest = {
   billing: "annual"
   mailboxUsers: MicrosoftMailProvisioningUser[]
   quantity: number
+  infoSharedMailbox?: boolean
   retainInfoForward: boolean
   infoForwardTo: string | null
   infoAliasTarget: string | null
@@ -76,7 +78,7 @@ export function mailProvisioningIntent(request: MicrosoftMailProvisioningRequest
   return { tenantId: request.tenantId, domain: request.domain, tenantPrefix: request.tenantPrefix, product: request.product,
     commitment: request.commitment, billing: request.billing, customer,
     mailboxes: request.mailboxUsers.map(user => ({ address: user.userPrincipalName, displayName: user.displayName })).sort((a,b) => a.address.localeCompare(b.address)),
-    infoAliasTarget: request.infoAliasTarget }
+    ...(request.infoSharedMailbox ? { infoSharedMailbox: true } : {}), infoAliasTarget: request.infoAliasTarget }
 }
 export function mailProvisioningIntentHash(request: MicrosoftMailProvisioningRequest) {
   return createHash("sha256").update(JSON.stringify(mailProvisioningIntent(request))).digest("hex")
@@ -154,6 +156,7 @@ export function parseMicrosoftMailProvisioningRequest(
   const infoAliasTarget = typeof parsed.data.infoAliasTarget === "string"
     ? parsed.data.infoAliasTarget.trim().toLowerCase()
     : ""
+  if (parsed.data.infoSharedMailbox === true && (retainInfoForward || infoAliasTarget)) issues.push({ code: "invalid_mailbox_user", message: "A shared info inbox cannot also be an alias, forwarding address or licensed user." })
   if (retainInfoForward && !z.string().email().safeParse(infoForwardTo).success) {
     issues.push({ code: "missing_info_forward_target", message: "Enter the destination that should keep receiving info@ mail." })
   }
@@ -202,6 +205,7 @@ export function parseMicrosoftMailProvisioningRequest(
   for (const [index, user] of mailboxUsers.entries()) {
     if (seen.has(user.setupEmail.trim().toLowerCase())) issues.push({ code: "invalid_mailbox_user", index, message: "Use an existing email address for the first sign-in link." })
   }
+  if (parsed.data.infoSharedMailbox === true && mailboxUsers.some(user => user.localPart === "info")) issues.push({ code: "invalid_mailbox_user", message: "The shared info inbox cannot also be a licensed user." })
   if (infoAliasTarget && (!mailboxUsers.some((user) => user.userPrincipalName === infoAliasTarget) || infoAliasTarget === `info@${domain}`)) {
     issues.push({ code: "invalid_info_alias_target", message: "Choose one of the requested mailboxes for the info@ address." })
   }
@@ -219,6 +223,7 @@ export function parseMicrosoftMailProvisioningRequest(
       billing: "annual",
       mailboxUsers,
       quantity: mailboxUsers.length,
+      ...(parsed.data.infoSharedMailbox === true ? { infoSharedMailbox: true } : {}),
       retainInfoForward,
       infoForwardTo: retainInfoForward ? infoForwardTo : null,
       infoAliasTarget: infoAliasTarget || null,

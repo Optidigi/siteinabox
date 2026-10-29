@@ -3,7 +3,7 @@ import type { User, Tenant, MicrosoftMailService } from "@/payload-types"
 import type { Payload as PayloadInstance } from "payload"
 import { sql } from "@payloadcms/db-postgres"
 import { getTestPayload } from "./_helpers"
-import { prepareMailQuote, acceptMailOrder, createMailPayment, settleMailOrderExternally } from "@/lib/microsoftMailProvisioning/commerce"
+import { prepareMailQuote, acceptMailOrder, createMailPayment, settleMailOrderExternally, fundSponsoredMailOrder } from "@/lib/microsoftMailProvisioning/commerce"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { parseMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
 import { encryptPartnerSecret } from "@/lib/microsoftMailProvisioning/partnerConnection"
@@ -62,7 +62,7 @@ async function draft(input: { tenant: Tenant; owner: User; service: MicrosoftMai
 }
 
 async function configured() {
-  const env = { MICROSOFT_MAIL_CHECKOUT_ENABLED: "true", MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED: "true", PAX8_CLIENT_ID: "synthetic", PAX8_CLIENT_SECRET: "synthetic", PAX8_ORDER_EMAIL: "operations@fixture.test", PAX8_MPN_ID: "synthetic",
+  const env = { MICROSOFT_MAIL_ALLOWED_DOMAINS: Array.from({ length: 100 }, (_, i) => `email-fixture-${i + 1}.test`).join(","), MICROSOFT_MAIL_CHECKOUT_ENABLED: "true", MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED: "true", PAX8_CLIENT_ID: "synthetic", PAX8_CLIENT_SECRET: "synthetic", PAX8_ORDER_EMAIL: "operations@fixture.test", PAX8_MPN_ID: "synthetic",
     MICROSOFT_PARTNER_TENANT_ID: "00000000-0000-0000-0000-000000000001", MICROSOFT_PARTNER_APP_CLIENT_ID: "00000000-0000-0000-0000-000000000002", MICROSOFT_PARTNER_APP_CLIENT_SECRET: "synthetic",
     MICROSOFT_PARTNER_TOKEN_ENCRYPTION_KEY: setupKey, MICROSOFT_PARTNER_APP_REDIRECT_URI: "https://admin.fixture.test/operations/microsoft-mail/consent/callback", MICROSOFT_GDAP_ROLE_DEFINITION_IDS: "role", MICROSOFT_PARTNER_SECURITY_GROUP_ID: "group",
     MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY: setupKey, MICROSOFT_MAIL_CURRENCY: "EUR", MICROSOFT_MAIL_ANNUAL_SEAT_NET_MINOR: "5604", CLOUDFLARE_API_TOKEN: "synthetic", CLOUDFLARE_ACCOUNT_ID: "0".repeat(32),
@@ -180,4 +180,48 @@ describe("payment-gated email and customer pricing", () => {
     await expect(fulfillMicrosoftMailOrder(payload,paidOrder,attempt)).rejects.toThrow(/matching settled/)
     expect(spy).not.toHaveBeenCalled()
   })
+})
+
+it("sponsors an exact owner-confirmed order without Mollie or customer invoice, replaying once", async () => {
+  const c = await customer()
+  await configured(); const fetchSpy = tokenFetch()
+  vi.stubEnv("MICROSOFT_MAIL_SPONSORED_DOMAINS", c.service.domain)
+  await payload.update({ collection: "tenants", id: c.tenant.id, user: admin, overrideAccess: true, context: { tenantCommercialPolicyMutation: true }, data: { emailPaymentMethod: "manual", platformPricing: { mode: "exempt", reason: "Approved synthetic sponsorship" } } })
+  const run = await draft(c)
+  const store = new PayloadMicrosoftMailProvisioningStore(payload)
+  await store.update(run.id, { data: { ...run.data, quote: { ...run.data.quote as object, sponsored: true } } })
+  const order = await acceptMailOrder(payload, { runId: Number(run.id), tenantId: c.tenant.id, actor: c.owner, legalAccepted: true, legalVersion: await legalVersion() })
+  const other = await customer()
+  await expect(fundSponsoredMailOrder(payload, order, other.owner)).rejects.toThrow(/sponsorship authority/)
+  fetchSpy.mockClear()
+  await fundSponsoredMailOrder(payload, order, c.owner)
+  await fundSponsoredMailOrder(payload, order, c.owner)
+  const attempts = await payload.find({ collection: "payment-attempts", where: { order: { equals: order.id } }, overrideAccess: true })
+  expect(attempts.totalDocs).toBe(1)
+  expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "siteinabox_sponsorship" })]))
+  const saved = await payload.findByID({ collection: "orders", id: order.id, overrideAccess: true })
+  expect((await payload.find({ collection: "accounting-documents", where: { order: { equals: order.id } }, overrideAccess: true })).totalDocs).toBe(0)
+  expect(fetchSpy).not.toHaveBeenCalled()
+  expect(saved.state).toBe("fulfillment_pending")
+  expect(saved.paymentStatus).toBe("paid")
+  vi.stubEnv("MICROSOFT_MAIL_SPONSORED_DOMAINS", "")
+  await expect(fundSponsoredMailOrder(payload, order, c.owner)).rejects.toThrow(/sponsorship authority/)
+})
+
+it("keeps customer and operator identities separate when support confirms and sponsors", async () => {
+ const c = await customer(); await configured(); const fetchSpy = tokenFetch()
+ vi.stubEnv("MICROSOFT_MAIL_SPONSORED_DOMAINS", c.service.domain)
+ await payload.update({ collection: "tenants", id: c.tenant.id, user: admin, overrideAccess: true, context: { tenantCommercialPolicyMutation: true }, data: { emailPaymentMethod: "manual", platformPricing: { mode: "exempt", reason: "Approved support test" } } })
+ const run = await draft(c)
+ await new PayloadMicrosoftMailProvisioningStore(payload).update(run.id, { data: { ...run.data, quote: { ...run.data.quote as object, sponsored: true } } })
+ const order = await acceptMailOrder(payload, { runId: Number(run.id), tenantId: c.tenant.id, actor: admin, legalAccepted: true, legalVersion: await legalVersion() })
+ expect(order.customerEmail).toBe(c.owner.email)
+ expect(order.quoteEvidence).toMatchObject({ confirmedBy: String(admin.id) })
+ const acceptances = await payload.find({ collection: "agreement-acceptances", where: { order: { equals: order.id } }, depth: 0, overrideAccess: true })
+ expect(acceptances.docs.every(value => value.actorEmail === admin.email)).toBe(true)
+ fetchSpy.mockClear()
+ await fundSponsoredMailOrder(payload, order, admin)
+ const attempts = await payload.find({ collection: "payment-attempts", where: { order: { equals: order.id } }, overrideAccess: true })
+ expect(attempts.docs[0]?.stateHistory).toEqual(expect.arrayContaining([expect.objectContaining({ funding: "siteinabox_sponsorship", actorId: String(admin.id) })]))
+ expect(fetchSpy).not.toHaveBeenCalled()
 })

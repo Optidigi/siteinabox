@@ -1,6 +1,6 @@
 import "server-only"
 
-export type ExchangeWorkerOperation = "ensure_info_forward" | "ensure_info_alias" | "get_dkim_targets" | "enable_dkim" | "verify_mailboxes" | "verify_access"
+export type ExchangeWorkerOperation = "ensure_info_shared" | "ensure_info_forward" | "ensure_info_alias" | "get_dkim_targets" | "enable_dkim" | "verify_mailboxes" | "verify_access"
 
 export type ExchangeWorkerRequest = {
   operation: ExchangeWorkerOperation
@@ -19,6 +19,7 @@ export type ExchangeWorkerResult = {
   operation: ExchangeWorkerOperation
   completed: boolean
   sharedMailbox?: string
+  sharedMailboxMembers?: string[]
   forwardingAddress?: string
   alias?: string
   aliasTarget?: string
@@ -89,6 +90,7 @@ export class ExchangeWorkerClient {
     if (request.operation === "ensure_info_forward" && (!request.infoAddress || !request.forwardTo)) {
       throw new Error("The info forwarding job requires both mailbox addresses.")
     }
+    if (request.operation === "ensure_info_shared" && (!request.infoAddress || !request.mailboxAddresses?.length || request.mailboxAddresses.length > 300)) throw new Error("Shared inbox requires members.")
     if (request.operation === "ensure_info_alias" && (!request.infoAddress || !request.targetAddress)) {
       throw new Error("The info alias job requires the alias and destination mailbox.")
     }
@@ -121,7 +123,8 @@ export class ExchangeWorkerClient {
     }
     if (!body || typeof body !== "object" || !("completed" in body) || body.completed !== true || !("operation" in body) || body.operation !== request.operation) throw new ExchangeWorkerIndeterminateWriteError(request.operation)
     const result = body as Record<string, unknown>
-    if (request.operation === "ensure_info_alias" && (result.alias !== request.infoAddress || result.aliasTarget !== request.targetAddress) ||
+    if (request.operation === "ensure_info_shared" && (result.sharedMailbox !== request.infoAddress || !Array.isArray(result.sharedMailboxMembers) || JSON.stringify([...result.sharedMailboxMembers].sort()) !== JSON.stringify([...(request.mailboxAddresses ?? [])].sort())) ||
+      request.operation === "ensure_info_alias" && (result.alias !== request.infoAddress || result.aliasTarget !== request.targetAddress) ||
       request.operation === "ensure_info_forward" && (result.sharedMailbox !== request.infoAddress || result.forwardingAddress !== request.forwardTo) ||
       request.operation === "verify_mailboxes" && typeof result.mailboxesReady !== "boolean" ||
       request.operation === "verify_access" && result.accessVerified !== true ||

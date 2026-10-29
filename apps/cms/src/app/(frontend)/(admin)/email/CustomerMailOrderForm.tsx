@@ -15,7 +15,9 @@ import { submitCustomerMicrosoftMailRequest } from "./actions"
 type MailboxRow = { localPart: string; displayName: string; setupEmail: string }
 type Organization = { companyName: string; website: string; phone: string; registrationNumber: string; address: { street: string; city: string; postalCode: string; country: string } }
 
-export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true }: {
+export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, basePath = "/email" }: {
+  tenantId: number
+  basePath?: string
   tenantName: string
   tenantDomain: string
   userName: string
@@ -31,14 +33,15 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   const [domain, setDomain] = useState(tenantDomain)
   const [tenantPrefix, setTenantPrefix] = useState(tenantDomain.split(".")[0] ?? "")
   const [users, setUsers] = useState<MailboxRow[]>([{ localPart: "", displayName: "", setupEmail: "" }])
+  const [infoSharedMailbox, setInfoSharedMailbox] = useState(false)
   const [showInfoAlias, setShowInfoAlias] = useState(false)
   const [infoAliasTarget, setInfoAliasTarget] = useState("")
   const [aliasError, setAliasError] = useState(false)
   const defaultName = userName.trim().split(/\s+/)
 
   useEffect(() => {
-    if (actionState?.ok) router.replace(`/email?request=${actionState.requestId}`)
-  }, [actionState, router])
+    if (actionState?.ok) router.replace(`${basePath}?request=${actionState.requestId}`)
+  }, [actionState, router, basePath])
 
   const updateUser = (index: number, field: keyof MailboxRow, value: string) => {
     if (field === "localPart") value = value.trim().toLowerCase()
@@ -85,6 +88,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   }
 
   return <form ref={formRef} action={formAction} noValidate onSubmit={handleSubmit} className="grid gap-4">
+    <input type="hidden" name="tenantId" value={tenantId} />
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
         <span className="font-medium">{t("planValue")}</span>
@@ -119,12 +123,13 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
       </div>)}
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" className="w-fit" disabled={users.length >= 300} onClick={() => setUsers((current) => [...current, { localPart: "", displayName: "", setupEmail: "" }])}><Plus aria-hidden /> {t("addMailbox")}</Button>
-        {allowInfoAlias && !showInfoAlias ? <Button type="button" variant="outline" className="w-fit" onClick={() => {
+        {allowInfoAlias && !infoSharedMailbox && !showInfoAlias ? <Button type="button" variant="outline" className="w-fit" onClick={() => {
           setShowInfoAlias(true)
           setInfoAliasTarget(users.find((user) => user.localPart)?.localPart ?? "")
         }}><Plus aria-hidden /> {t("addInfoAlias")}</Button> : null}
       </div>
 
+      {allowInfoAlias && !showInfoAlias ? <label className="flex items-start gap-2 text-sm"><Checkbox name="infoSharedMailbox" checked={infoSharedMailbox} onCheckedChange={value => setInfoSharedMailbox(value === true)} /><span>Shared info@{domain} inbox · Full Access + Send As for all requested mailboxes. Replaces existing info@ forwarding.</span></label> : null}
       <input type="hidden" name="infoAliasTarget" value={infoAliasTarget ? `${infoAliasTarget}@${domain}` : ""} />
       {showInfoAlias ? <div className="flex flex-wrap items-center gap-3 rounded-base border p-3">
         <span className="text-sm font-medium">info@{domain || "…"}</span>
