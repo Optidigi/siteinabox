@@ -15,7 +15,9 @@ import { submitCustomerMicrosoftMailRequest } from "./actions"
 type MailboxRow = { localPart: string; displayName: string; setupEmail: string }
 type Organization = { companyName: string; website: string; phone: string; registrationNumber: string; address: { street: string; city: string; postalCode: string; country: string } }
 
-export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true }: {
+export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, basePath = "/email" }: {
+  tenantId: number
+  basePath?: string
   tenantName: string
   tenantDomain: string
   userName: string
@@ -38,8 +40,8 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   const defaultName = userName.trim().split(/\s+/)
 
   useEffect(() => {
-    if (actionState?.ok) router.replace(`/email?request=${actionState.requestId}`)
-  }, [actionState, router])
+    if (actionState?.ok) router.replace(`${basePath}?request=${actionState.requestId}`)
+  }, [actionState, router, basePath])
 
   const updateUser = (index: number, field: keyof MailboxRow, value: string) => {
     if (field === "localPart") value = value.trim().toLowerCase()
@@ -86,6 +88,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   }
 
   return <form ref={formRef} action={formAction} noValidate onSubmit={handleSubmit} className="grid gap-4">
+    <input type="hidden" name="tenantId" value={tenantId} />
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
         <span className="font-medium">{t("planValue")}</span>

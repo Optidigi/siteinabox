@@ -65,7 +65,8 @@ A Mollie test payment cannot unlock live provisioning.
 2. Read-only catalog and DNS/routing calls prepare a 15-minute quote. The owner
    reviews the total and accepts the current Siteinabox legal documents and
    annual commitment. Acceptance freezes the mailbox intent, price and routing
-   snapshot in an Order. Only one accepted/pending order per mail service is
+   snapshot in an Order. A scoped super-admin support action records the actual operator separately from
+   the workspace owner used for customer/billing identity. Only one accepted/pending order per mail service is
    permitted, so renewal and seat changes cannot race each other.
 3. Mollie checkout or an exact super-admin external receipt moves the order to
    paid/fulfillment pending. The existing job queue resumes it. No provider
@@ -250,3 +251,14 @@ See [Microsoft's mailbox delegation guidance](https://learn.microsoft.com/en-us/
 Rollback: clear the two domain lists or disable checkout/live provisioning and
 recreate CMS with the previous image digest. Keep the order/funding ledger.
 Do not retry uncertain Pax8 writes or remove existing subscriptions as rollback.
+
+Super-admins can open **Customer accounts → Open customer email flow** at
+`/accounts/<tenantId>/email`. This renders the same customer form, quote,
+confirmation and progress as `/email`, with a visible operator identity.
+It does not mint an owner session, change a password or relax global tenancy.
+Each server action re-authenticates the operator, resolves the selected active
+email workspace server-side and records the actual administrator in consent,
+order acceptance and funding evidence. Ordinary owners cannot select another
+workspace through a form field. Domain rollout and sponsorship checks still
+apply. The workspace owner may therefore be `info@tap2case.nl` before Microsoft
+provisions it; the owner uses normal password recovery after the inbox works.

@@ -1,3 +1,4 @@
+import { mailActorCanOrder } from "./customerAuthority"
 import { mailOrderSponsored, requireMailDomainEnabled } from "./rollout"
 import { mailProviderAnnualCostMinor } from "./quote"
 import { requireCommerceProviderWritesAllowed } from "../commerce/releaseGate"
@@ -112,7 +113,7 @@ export async function prepareMailQuote(payload: Payload, tenant: Tenant, request
 }
 
 export async function acceptMailOrder(payload: Payload, input: { runId: number; tenantId: number; actor: User; legalAccepted: boolean; legalVersion: string }) {
-  if (input.actor.role !== "owner" || input.actor.tenants?.length !== 1 || relationshipId(input.actor.tenants[0]?.tenant) !== String(input.tenantId)) throw new Error("Only this workspace's owner can confirm the email order.")
+  if (!mailActorCanOrder(input.actor, input.tenantId)) throw new Error("Only this workspace's owner or a platform support operator can confirm the email order.")
   if (!input.legalAccepted) throw new Error("Accept the agreement and annual commitment to continue.")
   return withCommerceOrderLock(payload, `mail-service:${input.tenantId}`, async () => {
     const store = new PayloadMicrosoftMailProvisioningStore(payload)
@@ -142,6 +143,12 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
     const legal = await checkoutLegalDocuments(payload, input.actor.language === "nl" ? "nl" : "en")
     if (!legal || !("id" in legal.terms) || !("id" in legal.privacy)) throw new Error("The current agreements are unavailable. Contact Siteinabox.")
     if (input.legalVersion !== `${legal.terms.id}:${legal.terms.contentHash}:${legal.privacy.id}:${legal.privacy.contentHash}`) throw new Error("The agreements changed. Reload and review them before confirming.")
+    let customer = input.actor
+    if (input.actor.role === "super-admin") {
+      const owners = await payload.find({ collection: "users", where: { and: [{ role: { equals: "owner" } }, { "tenants.tenant": { equals: tenant.id } }] }, depth: 0, limit: 2, overrideAccess: true })
+      if (owners.totalDocs !== 1 || !owners.docs[0]) throw new Error("Email support requires one customer owner for billing identity.")
+      customer = owners.docs[0]
+    }
     const now = new Date().toISOString()
     const lines = [{ code: "microsoft-365-business-basic-eea-no-teams", description: "Microsoft 365 Business Basic EEA (no Teams)", quantity: quote.quantity, netAmountMinor: quote.unitNetMinor * quote.quantity },
       ...(quote.platformNetMinor ? [{ code: "siteinabox-email-service", description: "Siteinabox email service", quantity: 1, netAmountMinor: quote.platformNetMinor }] : [])]
@@ -152,7 +159,7 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
     const order = await payload.create({ collection: "orders", req, overrideAccess: true, data: {
       orderNumber: number, tenant: tenant.id, state: "accepted", orderKind: quote.operation === "seats" ? "microsoft_mail_seats" : quote.operation === "renewal" ? "microsoft_mail_renewal" : "microsoft_mail_initial", servicePeriodStartsAt: quote.servicePeriodStartsAt, servicePeriodEndsAt: quote.servicePeriodEndsAt, catalogVersion: "microsoft-mail-v1",
       billingCycleKey: quote.operation === "renewal" ? `mail-service:${service.id}:renewal:${quote.servicePeriodStartsAt}` : null,
-      customerName: input.actor.name ?? input.actor.email, customerEmail: input.actor.email, companyName: run.request.customer.companyName,
+      customerName: customer.name ?? customer.email, customerEmail: customer.email, companyName: run.request.customer.companyName,
       billingAddress: run.request.customer.address, packageCode: run.request.product, billingPeriod: "annual",
       renewalTerms: "One-year commitment billed annually. Renewal is invoiced separately unless a recurring payment mandate has been established.",
       lineItems: lines, netLineItems: lines, currency: quote.currency, subtotalNet: quote.subtotalNetMinor / 100, vatAmount: quote.vatAmountMinor / 100, totalGross: quote.totalGrossMinor / 100,
@@ -236,7 +243,7 @@ async function settleMailOrder(payload: Payload, input: { orderId: number; actor
     if (!(["microsoft_mail_initial", "microsoft_mail_seats", "microsoft_mail_renewal"].includes(order.orderKind ?? "")) || order.paymentProvider !== "manual" || order.totalGrossMinor !== input.amountMinor || order.currency !== input.currency) throw new Error("The payment must match the exact externally billed email order.")
     if (sponsored) {
       const tenant = await payload.findByID({ collection: "tenants", id: Number(tenantId), depth: 0, overrideAccess: true })
-      if (!mailOrderSponsored(tenant, order.domain ?? "") || asRecord(asRecord(order.quoteEvidence).quote).sponsored !== true || input.actor.role !== "owner" || input.actor.tenants?.length !== 1 || relationshipId(input.actor.tenants[0]?.tenant) !== tenantId) throw new Error("This order has no current sponsorship authority.")
+      if (!mailOrderSponsored(tenant, order.domain ?? "") || asRecord(asRecord(order.quoteEvidence).quote).sponsored !== true || !mailActorCanOrder(input.actor, Number(tenantId))) throw new Error("This order has no current sponsorship authority.")
     }
     const prior = await payload.find({ collection: "payment-attempts", where: { order: { equals: order.id } }, depth: 0, limit: 2, overrideAccess: true })
     if (prior.totalDocs > 1) throw new Error("Multiple payments require reconciliation.")
