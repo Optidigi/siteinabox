@@ -46,6 +46,7 @@ const ports = (overrides: Partial<MicrosoftMailProvisioningPorts> = {}): Microso
   const complete = async () => ({ kind: "complete" as const })
   return {
     tenant_bootstrap: complete,
+    tenant_identity: complete,
     mca_acceptance: complete,
     gdap: complete,
     application_consent: complete,
@@ -155,4 +156,28 @@ test("setup delivery sends each mailbox once and keeps an uncertain send out of 
   assert.equal(run.request.mailboxUsers[1]?.setupEmail, "admin@example.org")
   await advanceMicrosoftMailProvisioning({ run, store, ports: allPorts })
   assert.equal(sends, 2)
+})
+
+test("adds identity verification to an existing in-flight run without rewinding its workload state",async()=>{
+ const store=new MemoryStore()
+ const started=await startMicrosoftMailProvisioning({request,store,ports:ports({domain_verification:async()=>({kind:"waiting",state:"domain_pending",code:"domain_wait",message:"Waiting"})}),mode:"mock"})
+ const legacy=await store.update(started.id,{state:"domain_pending",completedSteps:started.completedSteps.filter(step=>step!=="tenant_identity"),data:{...started.data,customerTenantId:"12345678-1234-4234-8234-123456789abc"}})
+ const ready=await advanceMicrosoftMailProvisioning({run:legacy,store,ports:ports()})
+ assert.equal(ready.state,"ready")
+ assert.ok(ready.completedSteps.includes("tenant_identity"))
+})
+
+test("retries a temporary provider read failure without repeating completed writes",async()=>{
+ const store=new MemoryStore();let reads=0,writes=0
+ const adapters=ports({tenant_bootstrap:async()=>{writes++;return {kind:"complete"}},tenant_identity:async()=>{
+  reads++;if(reads===1)throw Object.assign(new Error("Temporary provider read"),{name:"MicrosoftApiError",status:503})
+  return {kind:"complete"}
+ }})
+ const waiting=await startMicrosoftMailProvisioning({request,store,ports:adapters,mode:"mock"})
+ assert.equal(waiting.state,"consent_pending")
+ assert.equal(waiting.issueCode,"PROVIDER_READ_TEMPORARILY_UNAVAILABLE")
+ const ready=await advanceMicrosoftMailProvisioning({run:waiting,store,ports:adapters})
+ assert.equal(ready.state,"ready")
+ assert.equal(writes,1)
+ assert.equal(reads,2)
 })

@@ -24,3 +24,20 @@ test("rejects untrusted authorities and inconsistent metadata identities", async
   {issuer:`https://login.microsoftonline.com/${id}/v2.0`,token_endpoint:`https://login.microsoftonline.com/other/oauth2/v2.0/token`},
  ]) await assert.rejects(discoverMicrosoftTenant("customer.onmicrosoft.com",async()=>Response.json(metadata)),/metadata/)
 })
+
+test("allocates a stable service-specific namespace and skips existing names",async()=>{
+ const {allocateMicrosoftInitialDomain,microsoftInitialDomainCandidate}=await import("../../src/lib/microsoftMailProvisioning/tenantDiscovery.ts")
+ const scope={tenantId:56,serviceId:1,domain:"customer.test"}
+ const first=microsoftInitialDomainCandidate(scope,0),second=microsoftInitialDomainCandidate(scope,1)
+ assert.equal(first,microsoftInitialDomainCandidate(scope,0))
+ assert.notEqual(first,second)
+ assert.notEqual(first,microsoftInitialDomainCandidate({...scope,tenantId:57},0))
+ const urls:string[]=[]
+ const allocated=await allocateMicrosoftInitialDomain(scope,async input=>{
+  urls.push(String(input))
+  return urls.length===1?Response.json({issuer:`https://login.microsoftonline.com/${id}/v2.0`,token_endpoint:`https://login.microsoftonline.com/${id}/oauth2/v2.0/token`}):Response.json({error:"invalid_tenant",error_codes:[90002]},{status:400})
+ })
+ assert.equal(allocated.initialDomain,second)
+ assert.equal(allocated.attempt,1)
+ assert.equal(urls.length,2)
+})

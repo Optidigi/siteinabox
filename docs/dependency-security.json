@@ -1373,7 +1373,7 @@
       "state": "not_affected",
       "reason": "Exact graphql-scalars 1.22.2 uses bounded /^\\+[1-9]\\d{6,14}$/ in PhoneNumber.parseValue and parseLiteral, not the nested quantifier introduced in 1.24.1. Maintainer advisory description explicitly limits vulnerable code to >=1.24.1 despite broad machine-readable range. Versioned primary source https://raw.githubusercontent.com/graphql-hive/graphql-scalars/v1.22.2/src/scalars/PhoneNumber.ts matches installed implementation (cjs source SHA256 0bea8aed56e3011f66ddb259293072b91e2d1040dc7a6c2ff77b271906a10e19). Independent inspection and real scalar calls reject 40-digit and million-digit failing inputs in under 1ms; no high-severity exception is used.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-29T23:15:28.055Z",
+      "reviewedAt": "2026-10-30T04:41:16.146Z",
       "deadline": "2026-11-28T18:15:14.458Z",
       "sources": [
         "GHSA-x8rm-f576-gq67"
@@ -1386,7 +1386,7 @@
         "binding": {
           "scope": "full",
           "platform": "source",
-          "fingerprint": "26c540aaf41a22571ee411ab6a38cb806c451618e0116c42afe3ce70515899c3",
+          "fingerprint": "660820896995c757f307dad1c3a0dc98341ceeb121cd2ee08ea492de2b145900",
           "advisoryHash": "55e642ede263f66d57acb418a4e0109776687e6d26f4accc0a6c0d6ae206e4d5"
         }
       }
@@ -1404,7 +1404,7 @@
       "state": "not_affected",
       "reason": "Exact graphql-scalars 1.22.2 uses bounded /^\\+[1-9]\\d{6,14}$/ in PhoneNumber.parseValue and parseLiteral, not the nested quantifier introduced in 1.24.1. Maintainer advisory description explicitly limits vulnerable code to >=1.24.1 despite broad machine-readable range. Versioned primary source https://raw.githubusercontent.com/graphql-hive/graphql-scalars/v1.22.2/src/scalars/PhoneNumber.ts matches installed implementation (cjs source SHA256 0bea8aed56e3011f66ddb259293072b91e2d1040dc7a6c2ff77b271906a10e19). Independent inspection and real scalar calls reject 40-digit and million-digit failing inputs in under 1ms; no high-severity exception is used.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-29T23:15:28.056Z",
+      "reviewedAt": "2026-10-30T04:41:16.146Z",
       "deadline": "2026-11-28T18:15:14.458Z",
       "sources": [
         "GHSA-x8rm-f576-gq67"
@@ -1417,7 +1417,7 @@
         "binding": {
           "scope": "production",
           "platform": "source",
-          "fingerprint": "26c540aaf41a22571ee411ab6a38cb806c451618e0116c42afe3ce70515899c3",
+          "fingerprint": "660820896995c757f307dad1c3a0dc98341ceeb121cd2ee08ea492de2b145900",
           "advisoryHash": "b76f95eac50ea4bd4c0fe031aa563aef5d0ae705a9a01dd043cdd5901e734d05"
         }
       }

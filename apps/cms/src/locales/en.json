@@ -155,7 +155,7 @@
     "requestHistory": "{domain} · {state}",
     "statePrepared": "Ready for confirmation",
     "stateTenantPending": "Workspace setup",
-    "stateConsentPending": "Approval",
+    "stateConsentPending": "Setup access",
     "stateSubscriptionPending": "Plan setup",
     "stateDomainPending": "Domain setup",
     "stateDnsPending": "Email setup",

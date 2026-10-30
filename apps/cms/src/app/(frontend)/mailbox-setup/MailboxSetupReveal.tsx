@@ -52,7 +52,7 @@ export function MailboxSetupReveal() {
         <label htmlFor="mailbox-setup-password" className="text-sm font-medium">Temporary password</label>
         <div className="flex gap-2"><Input id="mailbox-setup-password" readOnly type={showPassword ? "text" : "password"} value={revealed.password} /><Button type="button" variant="outline" onClick={() => setShowPassword((shown) => !shown)}>{showPassword ? "Hide" : "Show"}</Button><Button type="button" variant="outline" onClick={() => copy(revealed.password)}>Copy</Button></div>
       </div>
-      <Button asChild className="w-fit"><a href="https://outlook.office.com/mail/" rel="noopener noreferrer">Open Outlook on the web</a></Button>
+      <Button asChild className="w-fit"><a href={`https://outlook.office.com/mail/?login_hint=${encodeURIComponent(revealed.userPrincipalName)}`} rel="noopener noreferrer">Open Outlook on the web</a></Button>
     </>}
     {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
   </div>

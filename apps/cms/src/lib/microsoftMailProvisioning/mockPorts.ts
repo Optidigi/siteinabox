@@ -20,6 +20,7 @@ export function createMicrosoftMailProvisioningMockPorts(): MicrosoftMailProvisi
     })
   return {
     tenant_bootstrap: done,
+    tenant_identity: async () => ({ kind: "complete" }),
     mca_acceptance: call("Microsoft Admin Center", "MCA acceptance recorded"),
     gdap: call("Microsoft Graph", "GDAP accepted and access assigned"),
     application_consent: call("Microsoft Entra", "partner app consent recorded"),

@@ -122,7 +122,7 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
   if (selected) {
     switch (selected.state) {
       case "ready": status = { title: t("readyTitle"), description: t("readyDescription"), label: t("stateReady") }; break
-      case "prepared": status = { title: t("preparedTitle"), description: t("preparedDescription"), label: t("statePrepared") }; break
+      case "prepared": status = order ? { title: t("progressTitle"), description: t("progressDescription"), label: t("stateTenantPending") } : { title: t("preparedTitle"), description: t("preparedDescription"), label: t("statePrepared") }; break
       case "manual_review": status = { title: t("manualReviewTitle"), description: t("manualReviewDescription"), label: t("stateManualReview") }; break
       case "failed": status = { title: t("failedTitle"), description: t("failedDescription"), label: t("stateFailed") }; break
       case "cancelled": status = { title: t("cancelledTitle"), description: t("cancelledDescription"), label: t("stateCancelled") }; break

@@ -11,6 +11,7 @@ import {
 
 export type MicrosoftMailProvisioningStep =
   | "tenant_bootstrap"
+  | "tenant_identity"
   | "mca_acceptance"
   | "gdap"
   | "application_consent"
@@ -90,12 +91,15 @@ export class MicrosoftMailProvisioningRunNotFoundError extends Error {
   }
 }
 
+const readOnlySteps = new Set<MicrosoftMailProvisioningStep>(["tenant_identity", "mca_acceptance"])
+
 const steps: readonly MicrosoftMailProvisioningStep[] = [
   "tenant_bootstrap",
   "subscription",
-  "mca_acceptance",
+  "tenant_identity",
   "gdap",
   "application_consent",
+  "mca_acceptance",
   "domain_verification",
   "dkim_prepare",
   "dns_prepare",
@@ -108,6 +112,7 @@ const steps: readonly MicrosoftMailProvisioningStep[] = [
 
 const pendingStateFor: Record<MicrosoftMailProvisioningStep, MicrosoftMailProvisioningState> = {
   tenant_bootstrap: "tenant_pending",
+  tenant_identity: "consent_pending",
   mca_acceptance: "consent_pending",
   gdap: "consent_pending",
   application_consent: "consent_pending",
@@ -238,7 +243,7 @@ export async function advanceMicrosoftMailProvisioning(input: {
   for (const step of steps) {
     if (run.completedSteps.includes(step)) continue
     const priorStepState = providerStepStates(run.data)[step]
-    if (priorStepState === "started" || priorStepState === "uncertain") {
+    if (priorStepState === "started" && !readOnlySteps.has(step) || priorStepState === "uncertain") {
       return input.store.update(run.id, {
         state: transition(run.state, "manual_review"),
         issueCode: "provider_step_outcome_unknown",
@@ -259,7 +264,7 @@ export async function advanceMicrosoftMailProvisioning(input: {
     }
 
     run = await input.store.update(run.id, {
-      state: transition(run.state, pendingStateFor[step]),
+      state: transition(run.state, step === "tenant_identity" && typeof run.data.customerTenantId === "string" ? run.state : pendingStateFor[step]),
       currentStep: step,
       actionUrl: null,
       issueCode: null,
@@ -278,6 +283,13 @@ export async function advanceMicrosoftMailProvisioning(input: {
     try {
       outcome = await input.ports[step]({ run, request: run.request })
     } catch (error) {
+      if (readOnlySteps.has(step) && error instanceof Error && ["MicrosoftApiError", "Pax8ApiError", "MicrosoftTenantDiscoveryError"].includes(error.name) && "status" in error && typeof error.status === "number" &&
+        (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500)) {
+        return input.store.update(run.id, { state: run.state,
+          data: { ...run.data, providerStepStates: { ...providerStepStates(run.data), [step]: "waiting" } },
+          issueCode: "PROVIDER_READ_TEMPORARILY_UNAVAILABLE", updatedAt: now().toISOString(),
+        })
+      }
       if (error instanceof Error && (error.name === "MicrosoftTokenRequestError" || /MICROSOFT_PARTNER_RECONNECT_REQUIRED/.test(error.message))) {
         return input.store.update(run.id, {
           state: run.state,

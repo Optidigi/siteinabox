@@ -13,10 +13,16 @@ Cloudflare DNS and the private Exchange PowerShell worker. Customer screens
 show mailbox details, price, agreement authorization, payment and progress;
 Microsoft/Pax8 administration remains internal. **The customer's checkbox
 records authorization; it does not impersonate Microsoft's GDAP approval.**
-The initial tenant bootstrap, verified tenant mapping, agreement completion
-reference and authorized Global Admin approval are operator checkpoints.
-Neither a public Pax8 credential-retrieval API nor a silent GDAP customer-
-approval API is assumed. Pax8 may require its own GDAP handoff as well.
+For funded automatic runs, Siteinabox allocates an unused service-specific initial
+Microsoft domain, discovers the ordered tenant through Microsoft metadata and
+binds it to the reseller's customer delegation. It reuses the provider-created
+relationship and assigns only roles already granted to the partner group. A
+provider-created invitation relationship can use Microsoft's documented partner
+approval action; this does not authorize silently approving other relationships.
+Legacy operator-run onboarding retains its explicit approval checkpoints.
+The automatic path requires live qualification of the actual provider-created
+relationship, application consent and effective domain/Exchange permissions;
+synthetic tests do not establish those permissions.
 
 Local verification uses synthetic HTTP responses and an explicitly owned
 PostgreSQL test resource. It does not prove live supplier permissions, tenant
@@ -62,9 +68,11 @@ A Mollie test payment cannot unlock live provisioning.
    list. Addresses are derived from the domain. Setup delivery addresses are
    required for this flow only; they are not Microsoft recovery addresses.
    An optional **+ Alias toevoegen** adds `info@` to one requested mailbox.
-2. Read-only catalog and DNS/routing calls prepare a 15-minute quote. The owner
-   reviews the total and accepts the current Siteinabox legal documents and
-   annual commitment. Acceptance freezes the mailbox intent, price and routing
+2. The original form shows the retail total, VAT and amount due alongside all
+   Microsoft, setup-authorization and Siteinabox agreement checkboxes. Explicit
+   legal-language selection is required when the user's language is unavailable.
+   Read-only catalog and DNS/routing calls prepare a 15-minute quote. Submission
+   accepts the current legal documents and annual commitment. Acceptance freezes the mailbox intent, price and routing
    snapshot in an Order. A scoped super-admin support action records the actual operator separately from
    the workspace owner used for customer/billing identity. Only one accepted/pending order per mail service is
    permitted, so renewal and seat changes cannot race each other.
@@ -76,15 +84,20 @@ A Mollie test payment cannot unlock live provisioning.
    provisioning fields include the signatory details; unsupported required
    fields stop for review. An existing unbound provider company is never
    silently adopted by website match. Mock validation precedes the real order.
-5. Internally verify the Microsoft tenant GUID and initial `.onmicrosoft.com`
-   domain, record agreement completion evidence and approve the requested GDAP
-   relationship with the authorized initial customer Global Admin account.
-   Credentials are not collected in the customer form or persisted in run JSON.
-   The app verifies the active relationship's tenant, roles and assigned group.
+5. Automatic runs discover the allocated initial `.onmicrosoft.com` domain's
+   tenant GUID, verify its matching partner relationship and reuse the provider's
+   delegation. Missing prerequisites remain internal exceptions. The app checks
+   the active relationship's tenant, granted roles and assigned group. The
+   agreement step verifies recorded customer acceptance, the signatory handoff
+   in the exact supplier order, the active bound subscription and actual Graph
+   entitlement. This operational evidence is recorded as
+   `mcaUpstreamStatus=provider_managed_unverified`; it is not a Microsoft
+   attestation receipt and never sets `mcaAccepted` or attestation-confirmed flags.
 6. Partner Center submits the customer application grants; Graph organization
    identity and a read-only Exchange organization call verify access. Incomplete
-   grants have a bounded propagation wait and internal repair control, rather
-   than an endless retry. The consent version is recorded for later seat runs.
+   grants and Exchange read access have bounded propagation waits. Each resource
+   grant is journaled independently so an accepted Graph grant is preserved while
+   Exchange becomes available. The consent version is recorded for later runs.
 7. Graph verifies the domain and creates/licenses users. Cloudflare prepares
    verification, SPF, autodiscover, DMARC and DKIM records. Exchange mailbox
    readiness and the alias/forward are verified before MX moves to Microsoft.
@@ -250,16 +263,19 @@ For Tap2case, managers approved the initial two Business Basic EEA without Teams
 annual seats and agreed shared info inbox. Register that bounded authority after
 the schema is deployed, then refresh its existing saved quote; legacy sponsored
 quotes cannot be accepted as funding authority. No supplier order is created by
-approval, quote refresh or deployment. The customer owns the live UI test.
+approval, quote refresh or deployment. Live qualification must use only that
+bounded purchase authority and preserve existing forwarding until readiness.
 
 The shared info option replaces legacy forwarding, grants/verifies Full Access
 and Send As for the requested users, and creates no extra licensed seat. No mail
-history migration or automatic Microsoft consent is implied.
+history migration is included. Microsoft application consent uses the internal
+Partner Center path and remains subject to actual delegated access.
 
 The customer flow uses order/configuration/progress language, never an ordinary
 staff-handled request queue. Supplier authorization prerequisites and exceptional
 uncertain writes remain explicit; fully unattended fresh-tenant delivery requires
-its separate supported authorization proof (#149/#150).
+successful live proof with the provider-created tenant and its effective access.
+Do not report hands-off delivery complete from local tests alone.
 
 Rollback: disable checkout/live or remove the rollout domain, preserve the
 accepted order/approval/funding ledger and restore the prior compatible image.
@@ -288,3 +304,14 @@ Confirmation displays the selected language and exact registered acceptance
 statement, submits the chosen locale, and the backend validates the current
 registered document identities before recording the order. Missing or unapproved
 documents still block acceptance; there is no implicit Dutch fallback.
+
+## Mailbox access and credential lifetime
+
+A fulfilled, paid order and ready live run expose mailbox usernames and Outlook
+sign-in links in the scoped customer workspace. Owner and super-admin access are
+checked server-side against the tenant, service, order and requested address.
+Password reveal and emailed setup links share one atomic claim per run/address.
+The temporary password is encrypted at rest, absent from initial HTML, and can
+be revealed once; retries cannot recreate an already consumed credential. Setup
+email groups mailboxes by the supplied existing delivery address. Never send
+temporary passwords directly in email or log them.
