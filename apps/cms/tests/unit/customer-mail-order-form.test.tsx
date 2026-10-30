@@ -50,3 +50,36 @@ it("keeps an initial manager-approved mailbox count bounded",()=>{
  expect(screen.getByRole("button",{name:"addMailbox"}).hasAttribute("disabled")).toBe(true)
  expect(screen.getAllByRole("button",{name:"removeMailbox"}).every(button=>button.hasAttribute("disabled"))).toBe(true)
 })
+
+
+it("keeps legal acceptance and the final price together in the original form",()=>{
+ const view=render(<CustomerMailOrderForm tenantId={56} tenantName="Fixture" tenantDomain="customer.test" userName="Owner" userEmail="operator@example.test" approvedMailboxCount={2}
+  orderPricing={{unitNetMinor:5604,platformNetMinor:0,prepaidMaxGrossMinor:13562}}
+  legalDocuments={[{locale:"nl",version:"registered-terms-and-privacy",termsHref:"/legal/terms?locale=nl",privacyHref:"/legal/privacy?locale=nl",statement:"Ik ga akkoord met de voorwaarden."}]} />)
+ const form=view.container.querySelector("form");if(!form)throw new Error("Mail form missing")
+ expect(form.querySelector('[name="acceptOrderTerms"]')).not.toBeNull()
+ expect(form.querySelector('[name="expectedGrossMinor"]')?.getAttribute("value")).toBe("13562")
+ expect(form.textContent).toContain("€0.00")
+ expect(view.container.querySelectorAll("form")).toHaveLength(1)
+ expect(form.querySelector('[name="legalLocale"]')?.getAttribute("value")).toBe("")
+})
+
+
+it("requires renewed acceptance when the selected legal document identity changes",()=>{
+ const props={tenantId:56,tenantName:"Fixture",tenantDomain:"customer.test",userName:"Owner",userEmail:"owner@example.test",userLocale:"nl" as const,orderPricing:{unitNetMinor:5604,platformNetMinor:0}}
+ const document={locale:"nl" as const,version:"version-one",termsHref:"/terms",privacyHref:"/privacy",statement:"Fixture legal statement"}
+ const view=render(<CustomerMailOrderForm {...props} legalDocuments={[document]} />)
+ const label=[...view.container.querySelectorAll("label")].find(element=>element.textContent?.includes(document.statement))
+ const checkbox=label?.querySelector('[role="checkbox"]');if(!checkbox)throw new Error("Legal checkbox missing")
+ fireEvent.click(checkbox)
+ expect(checkbox.getAttribute("aria-checked")).toBe("true")
+ view.rerender(<CustomerMailOrderForm {...props} legalDocuments={[{...document,version:"version-two",statement:"Changed legal statement"}]} />)
+ const changed=[...view.container.querySelectorAll("label")].find(element=>element.textContent?.includes("Changed legal statement"))?.querySelector('[role="checkbox"]')
+ expect(changed?.getAttribute("aria-checked")).toBe("false")
+})
+it("shows a prorated addition's actual commitment end before acceptance",()=>{
+ const view=render(<CustomerMailOrderForm tenantId={56} tenantName="Fixture" tenantDomain="customer.test" userName="Owner" userEmail="owner@example.test" orderPricing={{unitNetMinor:1000,platformNetMinor:0,operation:"seats",periodEndsAt:"2027-03-10T00:00:00.000Z"}} />)
+ expect(view.container.textContent).toContain("Until 10 Mar 2027")
+ expect(view.container.textContent).toContain("Remaining commitment excluding VAT")
+ expect(view.container.textContent).not.toContain("Annual total excluding VAT")
+})

@@ -164,3 +164,48 @@ describe("Microsoft mail client mock adapter", () => {
   })
 
 })
+
+it("discovers only matching customer delegations across Microsoft-owned pages", async () => {
+ const calls: string[]=[]
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async(input)=>{
+  calls.push(String(input))
+  return calls.length===1 ? Response.json({value:[{id:"other",customer:{tenantId:"other"}}],"@odata.nextLink":"https://graph.microsoft.com/v1.0/tenantRelationships/delegatedAdminRelationships?$skiptoken=next"}) : Response.json({value:[{id:"matching",customer:{tenantId:"customer"}}]})
+ }})
+ assert.deepEqual((await client.listCustomerGdapRelationships("customer")).map(x=>x.id),["matching"])
+ assert.equal(calls.length,2)
+ const unsafe=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async()=>Response.json({value:[],"@odata.nextLink":"https://attacker.test/steal"})})
+ await assert.rejects(unsafe.listCustomerGdapRelationships("customer"),/pagination/)
+})
+
+it("submits each consent resource separately with stable resource-specific request IDs", async () => {
+ const calls:Array<{body:Record<string,unknown>;requestId:string}>=[]
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async(_input,init)=>{
+  calls.push({body:JSON.parse(String(init?.body)),requestId:new Headers(init?.headers).get("MS-RequestId")??""})
+  return Response.json({})
+ }})
+ await client.consentCustomerApplication("customer","12345678-1234-4234-8234-123456789abc")
+ assert.equal(calls.length,2)
+ assert.deepEqual(calls.map(call=>(call.body.applicationGrants as Array<Record<string,unknown>>).length),[1,1])
+ assert.notEqual(calls[0]?.requestId,calls[1]?.requestId)
+ assert.equal(calls[0]?.body.applicationId,"app")
+ assert.equal(calls[0]?.body.displayName,"Siteinabox mail")
+ const ids=calls.map(call=>call.requestId)
+ await client.consentCustomerApplication("customer","12345678-1234-4234-8234-123456789abc")
+ assert.deepEqual(calls.slice(2).map(call=>call.requestId),ids)
+})
+
+it("approves only a matching provider-offered delegation and reuses existing assignments",async()=>{
+ const requests:Array<{path:string;method:string;body:unknown}>=[]
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async(input,init)=>{
+  const path=new URL(String(input)).pathname,method=init?.method??"GET";requests.push({path,method,body:init?.body?JSON.parse(String(init.body)):null})
+  if(path.endsWith("/accessAssignments"))return Response.json({value:[{id:"assignment",status:"active",accessContainer:{accessContainerId:"group",accessContainerType:"securityGroup"}}]})
+  if(method==="GET")return Response.json({id:"offered",status:"approvalPending",customer:{tenantId:"customer"}})
+  return Response.json({id:"approval-request"}, {status:201})
+ }})
+ assert.equal((await client.approveProviderGdap({relationshipId:"offered",customerTenantId:"customer"})).requestId,"approval-request")
+ assert.deepEqual(requests.find(row=>row.method==="POST")?.body,{action:"approve"})
+ assert.equal((await client.listGdapAccessAssignments("offered"))[0]?.id,"assignment")
+ const before=requests.filter(row=>row.method==="POST").length
+ await assert.rejects(client.approveProviderGdap({relationshipId:"offered",customerTenantId:"other"}),/customer/)
+ assert.equal(requests.filter(row=>row.method==="POST").length,before)
+})

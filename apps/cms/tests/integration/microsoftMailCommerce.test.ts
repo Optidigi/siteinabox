@@ -270,3 +270,16 @@ it("consumes one approval atomically when competing initial orders are confirmed
  const saved=await payload.findByID({collection:"microsoft-mail-services",id:c.service.id,overrideAccess:true})
  expect(saved.externalPaymentAuthorization).toMatchObject({consumedOrderId:orders.docs[0]?.id})
 })
+
+it("rejects a replaced form preparation before accepting its order", async () => {
+ const c=await customer();await configured();tokenFetch()
+ const run=await draft(c)
+ const store=new PayloadMicrosoftMailProvisioningStore(payload)
+ await store.update(run.id,{data:{...run.data,preparationId:"current-form-preparation"}})
+ const input={runId:Number(run.id),tenantId:c.tenant.id,actor:c.owner,legalAccepted:true,legalVersion:await legalVersion()}
+ await expect(acceptMailOrder(payload,{...input,preparationId:"superseded-form-preparation"})).rejects.toThrow(/another session/)
+ expect((await payload.find({collection:"orders",where:{tenant:{equals:c.tenant.id}},overrideAccess:true})).totalDocs).toBe(0)
+ const order=await acceptMailOrder(payload,{...input,preparationId:"current-form-preparation"})
+ expect(typeof order.tenant === "object" ? order.tenant?.id : order.tenant).toBe(c.tenant.id)
+ expect(order.state).toBe("accepted")
+})

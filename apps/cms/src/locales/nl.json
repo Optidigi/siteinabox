@@ -155,7 +155,7 @@
     "requestHistory": "{domain} · {state}",
     "statePrepared": "Klaar voor bevestiging",
     "stateTenantPending": "Omgeving instellen",
-    "stateConsentPending": "Goedkeuring",
+    "stateConsentPending": "Toegang inrichten",
     "stateSubscriptionPending": "Abonnement instellen",
     "stateDomainPending": "Domein instellen",
     "stateDnsPending": "E-mail instellen",

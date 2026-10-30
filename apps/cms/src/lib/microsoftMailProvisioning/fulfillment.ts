@@ -1,4 +1,5 @@
 import { requireMailDomainEnabled } from "./rollout"
+import { allocateMicrosoftInitialDomain, MicrosoftTenantDiscoveryError } from "./tenantDiscovery"
 import { requireLiveMailWritesAllowed } from "./writeGate"
 import "server-only"
 import type { Payload } from "payload"
@@ -61,11 +62,19 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
     let run = await store.get(Number(evidence.runId))
     if (!run || run.tenantId !== tenantId || run.domain !== service.domain || run.mode !== "live") throw new Error("The provisioning request is not bound to this paid order.")
     if (evidence.requestIntentHash !== mailProvisioningIntentHash(run.request)) throw new Error("The provisioning request does not match the accepted order.")
+    const frozenConsent = record(evidence.customerConsent), currentConsent = record(run.data.customerConsent)
+    const consentFields = ["mcaAccepted", "serviceAuthorized", "confirmSignatoryAuthority", "actorUserId", "signatoryFirstName", "signatoryLastName", "signatoryEmail", "acceptedAt", "mcaDocumentUrl", "mcaCountry", "mcaChannel", "mcaAudience", "consentCopyVersion"]
+    if (consentFields.some(field => frozenConsent[field] !== currentConsent[field])) throw new Error("The customer agreement evidence changed after order acceptance.")
+
     if (String(run.data.commerceOrderId) !== String(order.id)) throw new Error("The provisioning request references a different order.")
     if (["manual_review", "failed", "cancelled"].includes(run.state)) return { status: "failed", orderId: order.id, message: "Email provisioning requires operator review." }
     const save = async (patch: Partial<MicrosoftMailProvisioningRun>) => { run = await store.update(run!.id, { ...patch, updatedAt: new Date().toISOString() }); return run }
     const client = createPax8MailClient()
     try {
+      if (quote.operation === "initial" && !service.microsoftTenantId && !run.data.pax8OrderId && !run.data.bootstrapInitialDomainAbsentAt) {
+        const allocation = await allocateMicrosoftInitialDomain({ tenantId, serviceId: service.id, domain: service.domain })
+        await save({ data: { ...run.data, bootstrapInitialDomain: allocation.initialDomain, bootstrapInitialDomainAllocatorAttempt: allocation.attempt, mailServiceId: service.id, bootstrapInitialDomainAbsentAt: new Date().toISOString() } })
+      }
       if (quote.operation === "renewal") {
         if (!service.pax8SubscriptionId || !quote.servicePeriodStartsAt || !quote.servicePeriodEndsAt || record(service.renewalData).cancellationState) throw new Error("RENEWAL_RECOVERY_REQUIRES_OPERATOR")
         if (Date.now() < Date.parse(quote.servicePeriodStartsAt)) {
@@ -148,7 +157,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const consent = record(run.data.customerConsent)
         const details: Record<string, string> = {
           msCustExists: service.microsoftTenantId ? "Yes, the customer has and can log into their Microsoft account" : "No, the customer does not have a Microsoft account",
-          msDomain: run.request.tenantPrefix, msMPNidval: process.env.PAX8_MPN_ID ?? "", msTenantId: service.microsoftTenantId ?? "",
+          msDomain: typeof run.data.bootstrapInitialDomain === "string" ? run.data.bootstrapInitialDomain.replace(/\.onmicrosoft\.com$/, "") : run.request.tenantPrefix, msMPNidval: process.env.PAX8_MPN_ID ?? "", msTenantId: service.microsoftTenantId ?? "",
           mca2020FirstName: String(consent.signatoryFirstName ?? ""), mca2020LastName: String(consent.signatoryLastName ?? ""), mca2020Email: String(consent.signatoryEmail ?? ""),
           msftContactFirstName: run.request.customer.primaryContact.firstName, msftContactLastName: run.request.customer.primaryContact.lastName,
           msftContactEmail: run.request.customer.primaryContact.email, companyRegistrationNumber: run.request.customer.registrationNumber,
@@ -205,10 +214,14 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         if (order.state !== "fulfilled") await payload.update({ collection: "orders", id: order.id, data: { state: "fulfilled" }, overrideAccess: true, context: mailOrderContext })
         return { status: "fulfilled", orderId: order.id }
       }
-      await save({ data: { ...run.data, nextCheckAt: new Date(Date.now() + (run.state === "consent_pending" ? 900_000 : 60_000)).toISOString() } })
+      await save({ data: { ...run.data, nextCheckAt: new Date(Date.now() + (run.state === "consent_pending" && run.data.autoProvisionAuthorized !== true ? 900_000 : 60_000)).toISOString() } })
       if (["failed", "manual_review"].includes(run.state)) await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { status: "attention", issueCode: run.issueCode }, overrideAccess: true, context: mailServiceContext })
       return { status: "waiting", orderId: order.id, message: "Email provisioning is in progress." }
     } catch (error) {
+      if (error instanceof MicrosoftTenantDiscoveryError && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500) && !run.data.pax8OrderId) {
+        await save({ issueCode: "MICROSOFT_TENANT_DISCOVERY_RETRY", data: { ...run.data, nextCheckAt: new Date(Date.now() + 60_000).toISOString() } })
+        return { status: "waiting", orderId: order.id, message: "Microsoft tenant availability is temporarily unavailable. Setup will retry automatically." }
+      }
       const uncertain = error instanceof Pax8IndeterminateWriteError || !(error instanceof Pax8ApiError && error.status >= 400 && error.status < 500) && (run.data.pax8CompanyCreationState === "started" || run.data.pax8OrderSubmissionState === "started")
       await save({ state: "manual_review", issueCode: uncertain ? "PROVIDER_WRITE_RECONCILIATION_REQUIRED" : "EMAIL_PROVISIONING_REQUIRES_REVIEW" })
       await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { status: "attention", issueCode: "EMAIL_PROVISIONING_REQUIRES_REVIEW" }, overrideAccess: true, context: mailServiceContext })

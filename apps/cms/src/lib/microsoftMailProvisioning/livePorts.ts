@@ -10,6 +10,8 @@ import { ExchangeWorkerClient } from "./exchangeWorker.ts"
 import { planMicrosoftMailDns, type MailDnsRecord } from "./dns.ts"
 import { inspectExistingMailRouting } from "./infoRouting.ts"
 import { Pax8Client } from "./pax8.ts"
+import { discoverMicrosoftTenant, microsoftInitialDomainCandidate } from "./tenantDiscovery.ts"
+import { selectMailGdapRoles } from "./gdapCapabilities.ts"
 import { encryptMicrosoftMailSetupCredential } from "./setupCredentialCrypto.ts"
 import { createMicrosoftMailSetupToken } from "./setupTokenStore.ts"
 import type { MicrosoftMailProvisioningPorts, MicrosoftMailProvisioningRun } from "./workflow.ts"
@@ -126,9 +128,58 @@ export function createMicrosoftMailLivePorts(input: {
         ? complete({ pax8OrderId: stateData(run).pax8OrderId })
         : { kind: "manual_review", code: "PAX8_ORDER_ACTION_REQUIRED" }
     },
+    tenant_identity: async ({ run }) => {
+      const tenantId = customerTenantId(run)
+      if (!tenantId) {
+        const initialDomain = typeof run.data.bootstrapInitialDomainAllocatorAttempt === "number"
+          ? microsoftInitialDomainCandidate({ tenantId: run.tenantId, serviceId: Number(run.data.mailServiceId), domain: run.domain }, run.data.bootstrapInitialDomainAllocatorAttempt)
+          : `${run.request.tenantPrefix}.onmicrosoft.com`
+        if (!run.data.pax8CompanyId || !run.data.pax8OrderId || !run.data.bootstrapInitialDomainAbsentAt || run.data.bootstrapInitialDomain !== initialDomain) return { kind: "manual_review", code: "MICROSOFT_TENANT_BOOTSTRAP_EVIDENCE_REQUIRED" }
+        const discovered = await discoverMicrosoftTenant(initialDomain, input.fetchImpl)
+        if (!discovered) return pause({ code: "MICROSOFT_TENANT_PROVISIONING", state: "consent_pending", message: "Waiting for Microsoft to publish the new tenant identity." })
+        const relationships = await microsoft.listCustomerGdapRelationships(discovered.tenantId)
+        const matching = relationships.filter(relationship => ["active", "approvalPending"].includes(relationship.status))
+        if (!matching.length) return pause({ code: "MICROSOFT_RESELLER_ASSOCIATION_PENDING", state: "consent_pending", message: "Waiting for the provider-created customer delegation." })
+        return pause({ code: "MICROSOFT_TENANT_DISCOVERED", state: "consent_pending", message: "The new Microsoft tenant and partner delegation were identified.", data: {
+          customerTenantId: discovered.tenantId, bootstrapInitialDomain: discovered.initialDomain,
+          tenantDiscoveryVerifiedAt: new Date().toISOString(), discoveredGdapRelationshipIds: matching.map(relationship => relationship.id),
+        } })
+      }
+      return complete()
+    },
     mca_acceptance: async ({ run }) => {
       const tenantId = customerTenantId(run)
-      if (!tenantId) return pause({ code: "MICROSOFT_TENANT_ID_REQUIRED", state: "consent_pending", message: "Enter the customer Microsoft tenant ID after Pax8 finishes provisioning the tenant." })
+      if (!tenantId) return { kind: "manual_review", code: "MICROSOFT_TENANT_ID_REQUIRED" }
+      if (run.data.autoProvisionAuthorized === true) {
+        const consent = object(run.data.customerConsent)
+        const handoff = object(run.data.pax8McaAttestation)
+        const acceptedAt = typeof consent.acceptedAt === "string" ? Date.parse(consent.acceptedAt) : NaN
+        const submittedAt = typeof handoff.submittedAt === "string" ? Date.parse(handoff.submittedAt) : NaN
+        const signatoryValid = [consent.signatoryFirstName, consent.signatoryLastName].every(value => typeof value === "string" && value.trim().length > 0 && value.length <= 128) &&
+          typeof consent.signatoryEmail === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(consent.signatoryEmail)
+        if (consent.mcaAccepted !== true || consent.serviceAuthorized !== true || consent.confirmSignatoryAuthority !== true || !signatoryValid || !Number.isFinite(acceptedAt) || acceptedAt > Date.now() ||
+          consent.mcaDocumentUrl !== "https://aka.ms/customeragreement" || consent.mcaCountry !== run.request.customer.address.country.toUpperCase() || consent.mcaChannel !== "CSP Partner" || consent.mcaAudience !== "Commercial" ||
+          typeof consent.consentCopyVersion !== "string" || !consent.consentCopyVersion || handoff.status !== "submitted_with_order" || handoff.customerAcceptedAt !== consent.acceptedAt || !Number.isFinite(submittedAt) || submittedAt < acceptedAt ||
+          typeof run.data.pax8OrderId !== "string" || typeof run.data.pax8CompanyId !== "string") return { kind: "manual_review", code: "CUSTOMER_AGREEMENT_HANDOFF_EVIDENCE_REQUIRED" }
+        const order = await pax8.getOrder(run.data.pax8OrderId)
+        const line = order.lineItems[0]
+        if (order.companyId !== run.data.pax8CompanyId || order.lineItems.length !== 1 || line?.productId !== "1bdd7ebb-f994-421f-ae98-b6a57bd9f947" || line.quantity !== run.request.quantity || line.billingTerm !== "Annual") return { kind: "manual_review", code: "CUSTOMER_AGREEMENT_PROVIDER_BINDING_MISMATCH" }
+        if (!line.subscriptionId) return pause({ code: "PROVIDER_AGREEMENT_HANDOFF_PENDING", state: "subscription_pending", message: "Waiting for the provider to complete the order submitted with the customer's agreement details." })
+        const subscription = await pax8.getSubscription(line.subscriptionId)
+        if (subscription.companyId !== order.companyId || subscription.productId !== line.productId || subscription.quantity !== line.quantity || subscription.billingTerm !== "Annual") return { kind: "manual_review", code: "CUSTOMER_AGREEMENT_PROVIDER_BINDING_MISMATCH" }
+        if (subscription.status.toLowerCase() !== "active" || !subscription.vendorSkuId) return pause({ code: "PROVIDER_AGREEMENT_HANDOFF_PENDING", state: "subscription_pending", message: "Waiting for the provider to complete the submitted annual subscription." })
+        const skus = await microsoft.listSubscribedSkus(tenantId)
+        const entitlement = skus.find(sku => sku.skuId.toLowerCase() === subscription.vendorSkuId!.toLowerCase() && sku.enabled >= run.request.quantity)
+        if (!entitlement) return pause({ code: "MICROSOFT_ENTITLEMENT_PROPAGATING", state: "subscription_pending", message: "Waiting for Microsoft to expose the provider-provisioned licences." })
+        // This verifies operational handoff, not an upstream attestation receipt.
+        // Pax8 remains the attesting provider; never synthesize an attestation ID/status.
+        return complete({ customerAgreementAccepted: true, mcaUpstreamStatus: "provider_managed_unverified", customerAgreementEvidence: {
+          customerAcceptedAt: consent.acceptedAt, signatoryEmail: consent.signatoryEmail, country: consent.mcaCountry,
+          documentUrl: consent.mcaDocumentUrl, consentCopyVersion: consent.consentCopyVersion,
+          providerCompanyId: order.companyId, providerOrderId: run.data.pax8OrderId, providerSubscriptionId: subscription.id,
+          microsoftTenantId: tenantId, microsoftSkuId: entitlement.skuId, providerFulfillmentVerifiedAt: new Date().toISOString(),
+        } })
+      }
       if (stateData(run).mcaAccepted !== true) {
         return pause({
           code: "MCA_ACCEPTANCE_REQUIRED",
@@ -144,22 +195,54 @@ export function createMicrosoftMailLivePorts(input: {
       const tenantId = customerTenantId(run)
       if (!tenantId) return pause({ code: "MICROSOFT_TENANT_ID_REQUIRED", state: "consent_pending", message: "Record the verified customer Microsoft tenant ID internally before requesting access." })
       const data = stateData(run)
+      const automatic = data.autoProvisionAuthorized === true
+      let effectiveRoleIds = roleIds
       const requestAccess = async () => {
+        if (automatic) return pause({ code: "PROVIDER_ADMIN_DELEGATION_PENDING", state: "consent_pending", message: "Waiting for the provider to make the customer delegation available.", data: { gdapRelationshipId: null, gdapAccessAssignmentId: null } })
         const created = await microsoft.createGdapApprovalRequest({ customerTenantId: tenantId, displayName: `Siteinabox ${request.domain}`.slice(0,50), durationDays: 730, roleDefinitionIds: roleIds })
         return pause({ code: "GDAP_APPROVAL_REQUIRED", state: "consent_pending", actionUrl: created.approvalUrl,
           message: "Optidigi must approve this request internally using the authorized customer Global Administrator account.",
           data: { gdapRelationshipId: created.relationshipId, gdapRequestId: created.requestId, gdapApprovalUrl: created.approvalUrl, gdapAccessAssignmentId: null } })
       }
       const relationshipId = typeof data.gdapRelationshipId === "string" ? data.gdapRelationshipId : ""
-      if (!relationshipId) return requestAccess()
+      if (!relationshipId) {
+        if (!automatic) return requestAccess()
+        const relationships = await microsoft.listCustomerGdapRelationships(tenantId)
+        const candidates = relationships.flatMap(relationship => {
+          const selection = selectMailGdapRoles(relationship.accessDetails?.unifiedRoles?.map(role => role.roleDefinitionId) ?? [])
+          return selection && ["active", "approvalPending"].includes(relationship.status) ? [{ relationship, selection }] : []
+        }).sort((a,b) => {
+          const score = (candidate: typeof a) => (candidate.relationship.status === "active" ? 1000 : 0) + (candidate.selection.exchangeAdministration ? 100 : 0) + (candidate.selection.domainAdministration ? 10 : 0) + (candidate.selection.exchangeReadAccess ? 2 : 0) + (candidate.selection.consentRole !== "privilegedRoleAdministrator" ? 1 : 0)
+          return score(b) - score(a) || a.relationship.id.localeCompare(b.relationship.id)
+        })
+        const candidate = candidates[0]
+        if (!candidate) return requestAccess()
+        return pause({ code: "PROVIDER_ADMIN_DELEGATION_DISCOVERED", state: "consent_pending", message: "The provider-created delegation was identified. Verifying its effective access.", data: {
+          gdapRelationshipId: candidate.relationship.id, mailGdapRoleDefinitionIds: candidate.selection.roleDefinitionIds,
+          mailGdapCapabilities: candidate.selection, gdapAccessAssignmentId: null,
+        } })
+      }
       const relationship = await microsoft.getGdapRelationship(relationshipId)
       if (relationship.customer?.tenantId?.toLowerCase() !== tenantId.toLowerCase()) return { kind: "manual_review", code: "GDAP_CUSTOMER_MISMATCH" }
       if (["expired", "terminated"].includes(relationship.status.toLowerCase())) return requestAccess()
+      if (automatic && relationship.status === "approvalPending" && !data.providerGdapApprovalRequestId) {
+        const approval = await microsoft.approveProviderGdap({ relationshipId, customerTenantId: tenantId })
+        return pause({ code: "PROVIDER_ADMIN_DELEGATION_ACTIVATING", state: "consent_pending", message: "Waiting for Microsoft to activate the provider-created delegation.", data: { providerGdapApprovalRequestId: approval.requestId, providerGdapApprovalRequestedAt: new Date().toISOString() } })
+      }
       if (relationship.status.toLowerCase() !== "active") return pause({ code: "GDAP_APPROVAL_PENDING", state: "consent_pending", actionUrl: typeof data.gdapApprovalUrl === "string" ? data.gdapApprovalUrl : undefined, message: "Waiting for Microsoft to activate the approved admin relationship." })
       const approved = relationship.accessDetails?.unifiedRoles?.map(role => role.roleDefinitionId.toLowerCase()) ?? []
-      if (!roleIds.every(role => approved.includes(role.toLowerCase()))) return requestAccess()
+      if (automatic) {
+        const selection = selectMailGdapRoles(approved)
+        if (!selection) return requestAccess()
+        effectiveRoleIds = selection.roleDefinitionIds
+      } else if (!roleIds.every(role => approved.includes(role.toLowerCase()))) return requestAccess()
       if (typeof data.gdapAccessAssignmentId !== "string") {
-        const assignment = await microsoft.createGdapAccessAssignment({ relationshipId, partnerSecurityGroupId: securityGroupId, roleDefinitionIds: roleIds })
+        if (automatic) {
+          const existing = (await microsoft.listGdapAccessAssignments(relationshipId)).filter(assignment => assignment.accessContainer?.accessContainerId?.toLowerCase() === securityGroupId.toLowerCase() && assignment.accessContainer.accessContainerType === "securityGroup")
+            .sort((a,b) => Number(b.status === "active") - Number(a.status === "active") || a.id.localeCompare(b.id))[0]
+          if (existing) return pause({ code: "GDAP_ACCESS_ASSIGNMENT_DISCOVERED", state: "consent_pending", message: "The existing partner-group assignment was identified.", data: { gdapAccessAssignmentId: existing.id, mailGdapRoleDefinitionIds: effectiveRoleIds } })
+        }
+        const assignment = await microsoft.createGdapAccessAssignment({ relationshipId, partnerSecurityGroupId: securityGroupId, roleDefinitionIds: effectiveRoleIds })
         return pause({ code: "GDAP_ACCESS_ASSIGNMENT_PENDING", state: "consent_pending", message: "Waiting for Microsoft to activate the partner group assignment.", data: { gdapAccessAssignmentId: assignment.id } })
       }
       const assignment = await microsoft.getGdapAccessAssignment(relationshipId,data.gdapAccessAssignmentId)
@@ -167,27 +250,49 @@ export function createMicrosoftMailLivePorts(input: {
       if (assignment.status.toLowerCase() !== "active") return pause({ code: "GDAP_ACCESS_ASSIGNMENT_PENDING", state: "consent_pending", message: "Waiting for Microsoft to activate the partner group assignment." })
       if (assignment.accessContainer?.accessContainerId?.toLowerCase() !== securityGroupId.toLowerCase() || assignment.accessContainer.accessContainerType !== "securityGroup") return { kind: "manual_review", code: "GDAP_ASSIGNMENT_BINDING_MISMATCH" }
       const assigned = assignment.accessDetails?.unifiedRoles?.map(role => role.roleDefinitionId.toLowerCase()) ?? []
-      if (assigned.length !== roleIds.length || !roleIds.every(role => assigned.includes(role.toLowerCase()))) {
-        await microsoft.updateGdapAccessAssignment(relationshipId,assignment.id,roleIds)
+      if ((!automatic && assigned.length !== effectiveRoleIds.length) || !effectiveRoleIds.every(role => assigned.includes(role.toLowerCase()))) {
+        const updatedRoles = automatic ? [...new Set([...assigned.filter(role => approved.includes(role)), ...effectiveRoleIds])] : effectiveRoleIds
+        await microsoft.updateGdapAccessAssignment(relationshipId,assignment.id,updatedRoles)
         return pause({ code: "GDAP_ACCESS_ASSIGNMENT_PENDING", state: "consent_pending", message: "The configured group roles were updated; waiting for activation." })
       }
-      return complete({ gdapStatus: relationship.status })
+      return complete({ gdapStatus: relationship.status, mailGdapRoleDefinitionIds: effectiveRoleIds })
     },
     application_consent: async ({ run }) => {
       const tenantId = customerTenantId(run)
       if (!tenantId) return pause({ code: "MICROSOFT_TENANT_ID_REQUIRED", state: "consent_pending", message: "Record the verified customer tenant ID internally." })
       const data = stateData(run)
-      const submitted = data.appConsentSubmittedVersion === MICROSOFT_MAIL_APPLICATION_GRANT_VERSION && typeof data.appConsentSubmittedAt === "string"
+      const resources = data.appConsentResourceVersion === MICROSOFT_MAIL_APPLICATION_GRANT_VERSION && Array.isArray(data.appConsentSubmittedResources)
+        ? data.appConsentSubmittedResources.filter((value): value is "graph" | "exchange" => value === "graph" || value === "exchange") : []
+      const submitted = resources.includes("graph") && resources.includes("exchange")
       if (data.appConsentVersion !== MICROSOFT_MAIL_APPLICATION_GRANT_VERSION && !submitted) {
+        const resource = resources.includes("graph") ? "exchange" as const : "graph" as const
         const hash = createHash("sha256").update(`customer-consent:${run.id}:${MICROSOFT_MAIL_APPLICATION_GRANT_VERSION}`).digest("hex")
         const id = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`
-        try { await microsoft.consentCustomerApplication(tenantId,id) }
+        let accepted = false
+        try { await microsoft.consentCustomerApplication(tenantId, id, resource); accepted = true }
         catch (error) {
-          if (error instanceof MicrosoftApiError && [400,403,409].includes(error.status)) return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
-          throw error
+          if (!(error instanceof MicrosoftApiError) || ![400,403,409].includes(error.status)) throw error
+          if (error.status === 409) {
+            // An existing resource grant is reconciled through actual Microsoft access.
+            try {
+              if (resource === "graph") {
+                const organization = await microsoft.getOrganization(tenantId)
+                const expected = String(data.bootstrapInitialDomain ?? data.customerOrganizationDomain ?? "").toLowerCase()
+                accepted = organization.id.toLowerCase() === tenantId.toLowerCase() && !!expected && organization.initialDomain?.toLowerCase() === expected
+              } else accepted = !!await tokenProvider({ tenantId, resource: "exchange" })
+            } catch { accepted = false }
+          }
+          if (!accepted) {
+            const failures = data.appConsentResourceFirstFailureVersion === MICROSOFT_MAIL_APPLICATION_GRANT_VERSION ? object(data.appConsentResourceFirstFailures) : {}
+            const firstFailure = typeof failures[resource] === "string" ? failures[resource] : new Date().toISOString()
+            if (data.autoProvisionAuthorized === true && Date.now() - Date.parse(firstFailure) < 1_800_000) return pause({ code: "PARTNER_APP_AUTHORIZATION_PROPAGATING", state: "consent_pending", message: "Waiting for Microsoft to finish propagating the delegated access and application resource.", data: { appConsentResourceFirstFailureVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentResourceFirstFailures: { ...failures, [resource]: firstFailure } } })
+            return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
+          }
         }
-        return pause({ code: "PARTNER_APP_CONSENT_PROPAGATING", state: "consent_pending", message: "The required application grants were submitted. Waiting for Microsoft propagation.",
-          data: { appConsentSubmittedAt: new Date().toISOString(), appConsentSubmittedVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION } })
+        const nextResources = [...new Set([...resources, resource])]
+        return pause({ code: "PARTNER_APP_CONSENT_PROPAGATING", state: "consent_pending", message: "The application resource was consented. Continuing with the remaining Microsoft authorization checks.",
+          data: { appConsentResourceVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentSubmittedResources: nextResources,
+            ...(nextResources.length === 2 ? { appConsentSubmittedAt: new Date().toISOString(), appConsentSubmittedVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION } : {}) } })
       }
       try {
         const organization = await microsoft.getOrganization(tenantId)
@@ -195,7 +300,10 @@ export function createMicrosoftMailLivePorts(input: {
         if (!organization.initialDomain || organization.id.toLowerCase() !== tenantId.toLowerCase() || !expected || organization.initialDomain.toLowerCase() !== expected) return { kind: "manual_review", code: "MICROSOFT_ORGANIZATION_BINDING_MISMATCH" }
         const token = await tokenProvider({ tenantId, resource: "exchange" })
         try { await exchange.execute({ operation: "verify_access", customerTenantId: tenantId, customerOrganizationDomain: organization.initialDomain, domain: run.domain, accessToken: token, partnerUserPrincipalName: await partnerUpn() }) }
-        catch { return { kind: "manual_review", code: "EXCHANGE_ACCESS_REQUIRES_REVIEW" } }
+        catch {
+          if (data.autoProvisionAuthorized === true && submitted && Date.now() - Date.parse(String(data.appConsentSubmittedAt)) < 1_800_000) return pause({ code: "EXCHANGE_ACCESS_PROPAGATING", state: "consent_pending", message: "Waiting for Microsoft to activate the newly delegated Exchange access." })
+          return { kind: "manual_review", code: "EXCHANGE_ACCESS_REQUIRES_REVIEW" }
+        }
         return complete({ customerOrganizationId: organization.id, customerOrganizationName: organization.displayName ?? null, customerOrganizationDomain: organization.initialDomain,
           appConsentVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentVerified: true, appConsentConfirmedAt: new Date().toISOString() })
       } catch (error) {
@@ -463,11 +571,17 @@ export function createMicrosoftMailLivePorts(input: {
         if (typeof encryptedPassword !== "string") return { kind: "manual_review", code: "SETUP_CREDENTIAL_MISSING" }
         const token = await createSetupTokenImpl({ payload: input.payload, runId: Number(run.id), userPrincipalName: member.userPrincipalName, encryptedPassword,
           expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) })
+        if (!token) continue // An already-claimed initial credential must never be issued again.
         mailboxes.push({ displayName: member.displayName, userPrincipalName: member.userPrincipalName, setupUrl: `${baseUrl}/mailbox-setup#${token}` })
       }
       const locale = request.customer.address.country.toUpperCase() === "NL" ? "nl" as const : "en" as const
       const single = mailboxes[0]
-      if (!single) return complete()
+      if (!single) {
+        const nextBundles = { ...object(run.data.setupCredentialBundles) }
+        const nextStates = { ...states }
+        for (const member of group) { delete nextBundles[member.userPrincipalName]; nextStates[member.userPrincipalName] = "sent" }
+        return complete({ setupCredentialBundles: nextBundles, setupEmailStates: nextStates })
+      }
       const message = mailboxes.length === 1
         ? (input.buildSetupEmailMessage ?? (await import("../email/templates/microsoftMailboxReady.ts")).microsoftMailboxReadyTemplate)({ ...single, locale })
         : (input.buildSetupBatchEmailMessage ?? (await import("../email/templates/microsoftMailboxesReady.ts")).microsoftMailboxesReadyTemplate)({ mailboxes, locale })

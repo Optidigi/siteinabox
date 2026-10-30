@@ -114,7 +114,7 @@ export async function prepareMailQuote(payload: Payload, tenant: Tenant, request
     paymentProvider: prepaid ? "manual" : "mollie", ...routing })
 }
 
-export async function acceptMailOrder(payload: Payload, input: { runId: number; tenantId: number; actor: User; legalAccepted: boolean; legalVersion: string; legalLocale?: "nl" | "en" }) {
+export async function acceptMailOrder(payload: Payload, input: { runId: number; tenantId: number; actor: User; legalAccepted: boolean; legalVersion: string; legalLocale?: "nl" | "en"; preparationId?: string }) {
   if (!mailActorCanOrder(input.actor, input.tenantId)) throw new Error("Only this workspace's owner or a platform support operator can confirm the email order.")
   if (!input.legalAccepted) throw new Error("Accept the agreement and annual commitment to continue.")
   return withCommerceOrderLock(payload, `mail-service:${input.tenantId}`, async () => {
@@ -131,6 +131,7 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
       if (existing.docs[0].orderKind === "microsoft_mail_renewal" && asRecord(service.renewalData).cancellationState) throw new Error("This renewal requires internal recovery before taking payment.")
       return existing.docs[0]
     }
+    if (input.preparationId !== undefined && input.preparationId !== run.data.preparationId) throw new Error("The mailbox form changed in another session. Review the details again.")
     const pending = await payload.find({ collection: "orders", where: { and: [{ tenant: { equals: tenant.id } },
       { orderKind: { in: ["microsoft_mail_initial", "microsoft_mail_seats", "microsoft_mail_renewal"] } }, { state: { in: ["accepted", "fulfillment_pending"] } }] }, limit: 1, overrideAccess: true })
     if (pending.docs[0]) throw new Error("Finish or cancel the existing email order before placing another.")
