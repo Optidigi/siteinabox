@@ -230,3 +230,27 @@ export function parseMicrosoftMailProvisioningRequest(
     },
   }
 }
+
+/** Read the persisted normalized shape without accepting derived fields in raw forms. */
+export function parseStoredMicrosoftMailProvisioningRequest(input: unknown): ParseMicrosoftMailProvisioningRequestResult {
+  const stored = inputSchema.extend({
+    tenantId: z.number().int().positive(), domain: z.string(), tenantPrefix: z.string(),
+    infoSharedMailbox: z.boolean().optional(), retainInfoForward: z.boolean(),
+    product: z.literal(MICROSOFT_MAIL_PRODUCT), commitment: z.literal("annual"), billing: z.literal("annual"),
+    quantity: z.number().int().min(1).max(300),
+    mailboxUsers: z.array(mailboxUserSchema.extend({ userPrincipalName: z.string().email() }).strict()),
+    infoForwardTo: z.string().nullable(), infoAliasTarget: z.string().nullable(),
+  }).safeParse(input)
+  const invalid: ParseMicrosoftMailProvisioningRequestResult = { ok: false, issues: [{ code: "invalid_mailbox_user", message: "The saved provisioning request is inconsistent." }] }
+  if (!stored.success) return invalid
+  const request = stored.data
+  const parsed = parseMicrosoftMailProvisioningRequest({
+    tenantId: request.tenantId, domain: request.domain, tenantPrefix: request.tenantPrefix, customer: request.customer,
+    mailboxUsers: request.mailboxUsers.map(user => ({ localPart: user.localPart, displayName: user.displayName, setupEmail: user.setupEmail })),
+    infoSharedMailbox: request.infoSharedMailbox, retainInfoForward: request.retainInfoForward,
+    infoForwardTo: request.infoForwardTo ?? "", infoAliasTarget: request.infoAliasTarget ?? "",
+  })
+  if (!parsed.ok) return parsed
+  if (request.quantity !== parsed.value.quantity || request.mailboxUsers.some((user, index) => user.userPrincipalName !== parsed.value.mailboxUsers[index]?.userPrincipalName)) return invalid
+  return parsed
+}

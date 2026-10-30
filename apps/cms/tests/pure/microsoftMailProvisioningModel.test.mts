@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { parseMicrosoftMailProvisioningRequest } from "../../src/lib/microsoftMailProvisioning/model.ts"
+import { parseMicrosoftMailProvisioningRequest, parseStoredMicrosoftMailProvisioningRequest } from "../../src/lib/microsoftMailProvisioning/model.ts"
 
 const customer = {
   companyName: "Tap2Case B.V.",
@@ -112,4 +112,22 @@ it("keeps shared info separate from paid seats and rejects mixed info modes", ()
  assert.equal(parsed.value.infoForwardTo, null)
  assert.equal(parseMicrosoftMailProvisioningRequest({ ...input, infoAliasTarget: 'ardi@tap2case.nl' }).ok, false)
  assert.equal(parseMicrosoftMailProvisioningRequest({ ...input, retainInfoForward: true, infoForwardTo: 'old@example.net' }).ok, false)
+})
+
+
+it("round-trips persisted requests while keeping raw form input strict", () => {
+  const raw = { tenantId: 56, domain: "tap2case.nl", tenantPrefix: "tap2case", customer, mailboxUsers: [{ localPart: "ardi", displayName: "Ardi", setupEmail: "setup@example.test" }], retainInfoForward: false, infoSharedMailbox: true }
+  const normalized = parseMicrosoftMailProvisioningRequest(raw)
+  assert.equal(normalized.ok, true)
+  if (!normalized.ok) throw Error("Invalid fixture")
+  assert.equal(parseMicrosoftMailProvisioningRequest(normalized.value).ok, false)
+  assert.deepEqual(parseStoredMicrosoftMailProvisioningRequest(normalized.value), normalized)
+  for (const altered of [
+    { ...normalized.value, product: "another-product" },
+    { ...normalized.value, quantity: 2 },
+    { ...normalized.value, mailboxUsers: [{ ...normalized.value.mailboxUsers[0], userPrincipalName: "ardi@other.test" }] },
+    { ...normalized.value, unexpected: true },
+    { ...normalized.value, infoSharedMailbox: "true" },
+    { ...normalized.value, retainInfoForward: "false" },
+  ]) assert.equal(parseStoredMicrosoftMailProvisioningRequest(altered).ok, false)
 })

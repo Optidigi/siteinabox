@@ -20,7 +20,7 @@ import { MailboxAccess } from "./MailboxAccess"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { externalMailPaymentSchema } from "@/lib/microsoftMailProvisioning/externalPayment"
 import { relationshipId } from "@/lib/relationshipId"
-import { parseMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
+import { parseStoredMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
 import { platformFeesExempt } from "@/lib/tenants/services"
 import { proratedMailUnit } from "@/lib/microsoftMailProvisioning/quote"
 import { createPax8MailClient } from "@/lib/microsoftMailProvisioning/pax8Preflight"
@@ -81,7 +81,7 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
   const requests = result.docs.filter((run) => Boolean(asRecord(run.data)?.customerConsent))
   const selected = params.new === "1" ? null : (requestedId ? requests.find((run) => Number(run.id) === requestedId) : null) ?? requests[0]
   const lastCompleted = mailService.latestRun ? await new PayloadMicrosoftMailProvisioningStore(payload).get(Number(relationshipId(mailService.latestRun))) : null
-  const draftParse = selected?.state === "prepared" && asRecord(selected.data)?.isRenewal !== true && asRecord(asRecord(selected.data)?.quote)?.operation !== "renewal" && !asRecord(selected.data)?.commerceOrderId ? parseMicrosoftMailProvisioningRequest(selected.request) : null
+  const draftParse = selected?.state === "prepared" && asRecord(selected.data)?.isRenewal !== true && asRecord(asRecord(selected.data)?.quote)?.operation !== "renewal" && !asRecord(selected.data)?.commerceOrderId ? parseStoredMicrosoftMailProvisioningRequest(selected.request) : null
   const draftRequest = draftParse?.ok ? draftParse.value : undefined
   const unsubmittedDraft = Boolean(draftRequest)
   const profile = draftRequest?.customer ?? (lastCompleted?.tenantId === ctx.tenant.id ? lastCompleted.request.customer : undefined)
