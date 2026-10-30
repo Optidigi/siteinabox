@@ -15,7 +15,8 @@ import { submitCustomerMicrosoftMailRequest } from "./actions"
 type MailboxRow = { localPart: string; displayName: string; setupEmail: string }
 type Organization = { companyName: string; website: string; phone: string; registrationNumber: string; address: { street: string; city: string; postalCode: string; country: string } }
 
-export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, basePath = "/email" }: {
+export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, approvedMailboxCount, basePath = "/email" }: {
+  approvedMailboxCount?: number
   tenantId: number
   basePath?: string
   tenantName: string
@@ -32,7 +33,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   const [step, setStep] = useState(1)
   const [domain, setDomain] = useState(tenantDomain)
   const [tenantPrefix, setTenantPrefix] = useState(tenantDomain.split(".")[0] ?? "")
-  const [users, setUsers] = useState<MailboxRow[]>([{ localPart: "", displayName: "", setupEmail: "" }])
+  const [users, setUsers] = useState<MailboxRow[]>(Array.from({ length: approvedMailboxCount ?? 1 }, () => ({ localPart: "", displayName: "", setupEmail: "" })))
   const [infoSharedMailbox, setInfoSharedMailbox] = useState(false)
   const [showInfoAlias, setShowInfoAlias] = useState(false)
   const [infoAliasTarget, setInfoAliasTarget] = useState("")
@@ -96,6 +97,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
       </CardContent>
     </Card>
 
+    {approvedMailboxCount ? <p className="text-sm">{t("prepaidCoverage", { count: approvedMailboxCount })}</p> : null}
     <ol aria-label={t("stepsLabel")} className="grid grid-cols-2 gap-2">
       {[t("stepMailboxes"), t("stepReview")].map((label, index) => <li key={label}>
         <div aria-current={step === index + 1 ? "step" : undefined} className={`rounded-base border px-3 py-2 text-sm ${step === index + 1 ? "border-primary bg-primary/5" : "bg-card text-muted-foreground"}`}>
@@ -119,10 +121,10 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
         <Field id={`mailbox-local-${index}`} label={t("mailboxName")} placeholder="ardi" value={user.localPart} onChange={(value) => updateUser(index, "localPart", value)} required />
         <Field id={`mailbox-display-${index}`} label={t("displayName")} placeholder="Ardi Example" value={user.displayName} onChange={(value) => updateUser(index, "displayName", value)} required />
         <Field id={`mailbox-setup-${index}`} label={t("setupEmail")} type="email" placeholder="you@example.nl" value={user.setupEmail} onChange={(value) => updateUser(index, "setupEmail", value)} required />
-        <Button type="button" variant="outline" aria-label={t("removeMailbox", { number: index + 1 })} disabled={users.length <= 1} onClick={() => removeUser(index)}><Trash2 aria-hidden /></Button>
+        <Button type="button" variant="outline" aria-label={t("removeMailbox", { number: index + 1 })} disabled={users.length <= (approvedMailboxCount ?? 1)} onClick={() => removeUser(index)}><Trash2 aria-hidden /></Button>
       </div>)}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="w-fit" disabled={users.length >= 300} onClick={() => setUsers((current) => [...current, { localPart: "", displayName: "", setupEmail: "" }])}><Plus aria-hidden /> {t("addMailbox")}</Button>
+        <Button type="button" variant="outline" className="w-fit" disabled={users.length >= (approvedMailboxCount ?? 300)} onClick={() => setUsers((current) => [...current, { localPart: "", displayName: "", setupEmail: "" }])}><Plus aria-hidden /> {t("addMailbox")}</Button>
         {allowInfoAlias && !infoSharedMailbox && !showInfoAlias ? <Button type="button" variant="outline" className="w-fit" onClick={() => {
           setShowInfoAlias(true)
           setInfoAliasTarget(users.find((user) => user.localPart)?.localPart ?? "")

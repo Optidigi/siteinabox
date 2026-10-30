@@ -10,7 +10,7 @@ import { createMicrosoftMailProvisioningKey } from "@/lib/microsoftMailProvision
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { prepareMailQuote, acceptMailOrder, createMailPayment } from "@/lib/microsoftMailProvisioning/commerce"
 import { redirect } from "next/navigation"
-import { fundSponsoredMailOrder } from "@/lib/microsoftMailProvisioning/commerce"
+import { fundPrepaidMailOrder } from "@/lib/microsoftMailProvisioning/commerce"
 import { loadMailService } from "@/lib/microsoftMailProvisioning/commerce"
 import { withCommerceOrderLock } from "@/lib/commerce/orderLock"
 import { mailRenewalRequest } from "@/lib/microsoftMailProvisioning/renewalRequest"
@@ -131,7 +131,7 @@ export async function submitCustomerMicrosoftMailRequest(
     }
     if (existing.data.commerceOrderId) {
       revalidatePath(basePath)
-      return { ok: true, message: "Your request is already saved. You can follow its progress below.", requestId: String(existing.id) }
+      return { ok: true, message: "Your mailbox details are already saved. Continue your order below.", requestId: String(existing.id) }
     }
     const updated = await store.update(existing.id, {
       data: { ...existing.data, customerConsent: consentRecord, quote, mailServiceId: quote.serviceId },
@@ -139,7 +139,7 @@ export async function submitCustomerMicrosoftMailRequest(
     })
     revalidatePath(basePath)
     revalidatePath("/operations/microsoft-mail")
-      return { ok: true, message: "Your request has been received.", requestId: String(updated.id) }
+      return { ok: true, message: "Your mailbox details are saved. Review and confirm your order.", requestId: String(updated.id) }
   }
 
   const run = await store.create({
@@ -161,7 +161,7 @@ export async function submitCustomerMicrosoftMailRequest(
 
   revalidatePath(basePath)
   revalidatePath("/operations/microsoft-mail")
-  return { ok: true, message: "Your request has been received.", requestId: String(run.id) }
+  return { ok: true, message: "Your mailbox details are saved. Review and confirm your order.", requestId: String(run.id) }
   })
 }
 
@@ -176,7 +176,7 @@ export async function confirmCustomerMailOrder(_previous: { message: string } | 
     const legalLocale = formData.get("legalLocale")
     if (legalLocale !== null && legalLocale !== "nl" && legalLocale !== "en") throw new Error("Unsupported legal language.")
     const order = await acceptMailOrder(payload, { legalLocale: legalLocale ?? undefined, runId, tenantId: ctx.tenant.id, actor: user, legalAccepted: formData.get("acceptOrderTerms") === "on", legalVersion: String(formData.get("legalVersion") ?? "") })
-    await fundSponsoredMailOrder(payload, order, user)
+    await fundPrepaidMailOrder(payload, order, user)
     destination = order.paymentProvider === "mollie" && order.state === "accepted" ? await createMailPayment(payload, order.id) : `${basePath}?request=${runId}`
   } catch {
     return { message: user.language === "nl" ? "Je bestelling kon niet worden bevestigd. Vernieuw de prijs of neem contact op met Siteinabox." : "Your order could not be confirmed. Refresh the price or contact Siteinabox." }

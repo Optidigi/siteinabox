@@ -43,7 +43,7 @@ separate deployment phase. Feature flags default to disabled.
    exempt, including after its expiry, until the policy and agreements are
    deliberately reviewed. Expiry never silently restarts collection. Existing
    paid/exempt website access and email account access are separate controls.
-5. Select **Invoice email outside Siteinabox** when payment happens separately.
+5. For legacy **Invoice email outside Siteinabox** orders, payment happens separately.
    The owner still accepts the exact order. A super-admin then records its exact
    amount, currency, reference and received date on the internal order. This
    creates an immutable manual payment attempt and invoice evidence. A general
@@ -217,40 +217,54 @@ its own setup notice; normal payment, login, legal and renewal messages remain
 in the existing communication policy. Resolve the supplier-mail behavior before
 broad customer rollout.
 
-## Scoped rollout and sponsored UI orders
+## Scoped rollout and externally paid initial orders
 
-`MICROSOFT_MAIL_ALLOWED_DOMAINS` is a comma-separated list of authorized mail
-service domains. Empty means closed. Quote, acceptance and fulfillment check it;
-the global checkout/live flags remain emergency stops. It does not authorize a
-purchase without the owner's exact order acceptance.
+`MICROSOFT_MAIL_ALLOWED_DOMAINS` is the rollout allowlist. Empty closes ordering;
+quote, acceptance and fulfilment enforce it. Global checkout/live flags remain
+emergency stops. Enabling commerce does not itself prove new-tenant workload
+authorization or delivery readiness.
 
-`MICROSOFT_MAIL_SPONSORED_DOMAINS` separately permits Siteinabox-funded orders.
-The domain must also be in the rollout list, the workspace must use manual email
-billing, and its platform exemption must have a reason and be current. Quotes
-retain retail, cost and VAT evidence and show customer amount due as zero.
-Confirmation records an immutable manual funding attempt with
-`funding: siteinabox_sponsorship` and an order-specific sponsorship reference;
-it does not claim a customer bank receipt or issue a paid customer invoice.
-The same settled-order checks and fulfillment queue apply. Policy changes require
-a fresh quote; replay reuses the existing funding attempt and order.
+The former domain sponsorship switch is retired. Platform-fee exemption never
+funds Microsoft licences. New mail quotes use Mollie unless a manager has approved
+explicit external-payment coverage on the mail service through Customer accounts.
+Approval records a unique ID, customer domain, product, exact initial seat count,
+annual term, maximum covered gross amount, manager identity/time and reference.
+It is not a fabricated bank receipt or Mollie payment.
 
-For the Tap2case UI rehearsal, authorize `tap2case.nl` in both lists, create an
-active email-only workspace with manual billing and an audited exemption, and
-leave it with no accepted order. The owner enters `ardi` and `aslan`, real setup
-delivery addresses and company/signatory details at `/email`, then selects the
-shared `info@` option and confirms the annual order. This is a real Pax8 purchase
-funded by Siteinabox; operators must not submit it in advance of the UI test.
+Only one exact initial order can consume an approval, in the same transaction as
+order acceptance. The order freezes the full approval evidence and the service
+records its consumed order ID. Consumed approvals are immutable; replay reuses
+the same order and funding attempt. Extra initial seats, changed product/domain
+or a price above the approved cap require a new manager approval; customers set
+up the approved seats first, then purchase additions normally. Seat additions and
+renewals do not inherit initial coverage. Existing manual receipts remain
+reconcilable as historical/exception operations.
 
-The shared inbox option replaces legacy info forwarding. It creates an unlicensed
-shared `info@` recipient, clears forwarding, grants Full Access and Send As to all
-requested users, and reads those grants back before DNS cutover. Conflicting
-licensed recipients stop for review. No extra licensed seat is added. Microsoft
-permission replication and external delivery remain first-live-test evidence.
-See [Microsoft's mailbox delegation guidance](https://learn.microsoft.com/en-us/exchange/recipients-in-exchange-online/manage-permissions-for-recipients).
+The customer sees **Already paid separately**, the covered mailbox count and zero
+amount due for the approved order. Confirmation records allocated external
+funding and automatically queues the same fulfilment workflow as settled Mollie
+payment. It sends no invented paid customer invoice for money handled outside
+Siteinabox. Normal customers pay through Mollie before fulfilment.
 
-Rollback: clear the two domain lists or disable checkout/live provisioning and
-recreate CMS with the previous image digest. Keep the order/funding ledger.
-Do not retry uncertain Pax8 writes or remove existing subscriptions as rollback.
+For Tap2case, managers approved the initial two Business Basic EEA without Teams
+annual seats and agreed shared info inbox. Register that bounded authority after
+the schema is deployed, then refresh its existing saved quote; legacy sponsored
+quotes cannot be accepted as funding authority. No supplier order is created by
+approval, quote refresh or deployment. The customer owns the live UI test.
+
+The shared info option replaces legacy forwarding, grants/verifies Full Access
+and Send As for the requested users, and creates no extra licensed seat. No mail
+history migration or automatic Microsoft consent is implied.
+
+The customer flow uses order/configuration/progress language, never an ordinary
+staff-handled request queue. Supplier authorization prerequisites and exceptional
+uncertain writes remain explicit; fully unattended fresh-tenant delivery requires
+its separate supported authorization proof (#149/#150).
+
+Rollback: disable checkout/live or remove the rollout domain, preserve the
+accepted order/approval/funding ledger and restore the prior compatible image.
+The nullable JSON column can remain when rolling back code; do not drop consumed
+funding evidence as routine rollback. Never retry an uncertain Pax8 purchase.
 
 Super-admins can open **Customer accounts → Open customer email flow** at
 `/accounts/<tenantId>/email`. This renders the same customer form, quote,
