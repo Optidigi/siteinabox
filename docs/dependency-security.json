@@ -316,8 +316,8 @@
       "url": "https://api.github.com/advisories/GHSA-x8rm-f576-gq67",
       "kind": "github-advisory",
       "role": "advisory",
-      "sha256": "406a9e9f8eda21c600a6531ed6d01a77eec59a85ec7cd69710a7a7460485d4b0",
-      "securityHash": "fc82fbb51f931683ce5cb778ffc61b3be9291181881f6df74131fbd0051a2346"
+      "sha256": "bc467b458a30390791b300f5f3c8a8394c891b0b15331a1fded06a1112cc1212",
+      "securityHash": "9e37efbd5eed70461918201a254823223845a88989c19059f1d9f1b535178898"
     }
   ],
   "publisherConstraints": [
@@ -1357,68 +1357,6 @@
           "platform": "linux/amd64",
           "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
           "advisoryHash": "4074b7ecb563cc697d5802abc26aca9d45493c3e569dd749f54347dde2e546e0"
-        }
-      }
-    },
-    {
-      "scope": "full",
-      "id": "GHSA-x8rm-f576-gq67",
-      "package": "graphql-scalars",
-      "version": "1.22.2",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>graphql-scalars",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>graphql-scalars"
-      ],
-      "state": "not_affected",
-      "reason": "Exact graphql-scalars 1.22.2 uses bounded /^\\+[1-9]\\d{6,14}$/ in PhoneNumber.parseValue and parseLiteral, not the nested quantifier introduced in 1.24.1. Maintainer advisory description explicitly limits vulnerable code to >=1.24.1 despite broad machine-readable range. Versioned primary source https://raw.githubusercontent.com/graphql-hive/graphql-scalars/v1.22.2/src/scalars/PhoneNumber.ts matches installed implementation (cjs source SHA256 0bea8aed56e3011f66ddb259293072b91e2d1040dc7a6c2ff77b271906a10e19). Independent inspection and real scalar calls reject 40-digit and million-digit failing inputs in under 1ms; no high-severity exception is used.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-30T14:23:36.445Z",
-      "deadline": "2026-11-28T18:15:14.458Z",
-      "sources": [
-        "GHSA-x8rm-f576-gq67"
-      ],
-      "evidence": {
-        "sources": [
-          "GHSA-x8rm-f576-gq67"
-        ],
-        "justification": "Exact graphql-scalars 1.22.2 uses bounded /^\\+[1-9]\\d{6,14}$/ in PhoneNumber.parseValue and parseLiteral, not the nested quantifier introduced in 1.24.1. Maintainer advisory description explicitly limits vulnerable code to >=1.24.1 despite broad machine-readable range. Versioned primary source https://raw.githubusercontent.com/graphql-hive/graphql-scalars/v1.22.2/src/scalars/PhoneNumber.ts matches installed implementation (cjs source SHA256 0bea8aed56e3011f66ddb259293072b91e2d1040dc7a6c2ff77b271906a10e19). Independent inspection and real scalar calls reject 40-digit and million-digit failing inputs in under 1ms; no high-severity exception is used.",
-        "binding": {
-          "scope": "full",
-          "platform": "source",
-          "fingerprint": "6108210c3f24323da6241d261e9801a8a2ffa958e3ea4510934c5876df0d74f6",
-          "advisoryHash": "55e642ede263f66d57acb418a4e0109776687e6d26f4accc0a6c0d6ae206e4d5"
-        }
-      }
-    },
-    {
-      "scope": "production",
-      "id": "GHSA-x8rm-f576-gq67",
-      "package": "graphql-scalars",
-      "version": "1.22.2",
-      "severity": "high",
-      "paths": [
-        "apps__cms>@payloadcms/next>@payloadcms/graphql>graphql-scalars",
-        "apps__cms>@payloadcms/richtext-lexical>@payloadcms/next>@payloadcms/graphql>graphql-scalars"
-      ],
-      "state": "not_affected",
-      "reason": "Exact graphql-scalars 1.22.2 uses bounded /^\\+[1-9]\\d{6,14}$/ in PhoneNumber.parseValue and parseLiteral, not the nested quantifier introduced in 1.24.1. Maintainer advisory description explicitly limits vulnerable code to >=1.24.1 despite broad machine-readable range. Versioned primary source https://raw.githubusercontent.com/graphql-hive/graphql-scalars/v1.22.2/src/scalars/PhoneNumber.ts matches installed implementation (cjs source SHA256 0bea8aed56e3011f66ddb259293072b91e2d1040dc7a6c2ff77b271906a10e19). Independent inspection and real scalar calls reject 40-digit and million-digit failing inputs in under 1ms; no high-severity exception is used.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-30T14:23:36.445Z",
-      "deadline": "2026-11-28T18:15:14.458Z",
-      "sources": [
-        "GHSA-x8rm-f576-gq67"
-      ],
-      "evidence": {
-        "sources": [
-          "GHSA-x8rm-f576-gq67"
-        ],
-        "justification": "Exact graphql-scalars 1.22.2 uses bounded /^\\+[1-9]\\d{6,14}$/ in PhoneNumber.parseValue and parseLiteral, not the nested quantifier introduced in 1.24.1. Maintainer advisory description explicitly limits vulnerable code to >=1.24.1 despite broad machine-readable range. Versioned primary source https://raw.githubusercontent.com/graphql-hive/graphql-scalars/v1.22.2/src/scalars/PhoneNumber.ts matches installed implementation (cjs source SHA256 0bea8aed56e3011f66ddb259293072b91e2d1040dc7a6c2ff77b271906a10e19). Independent inspection and real scalar calls reject 40-digit and million-digit failing inputs in under 1ms; no high-severity exception is used.",
-        "binding": {
-          "scope": "production",
-          "platform": "source",
-          "fingerprint": "6108210c3f24323da6241d261e9801a8a2ffa958e3ea4510934c5876df0d74f6",
-          "advisoryHash": "b76f95eac50ea4bd4c0fe031aa563aef5d0ae705a9a01dd043cdd5901e734d05"
         }
       }
     }
