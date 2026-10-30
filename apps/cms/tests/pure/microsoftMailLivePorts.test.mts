@@ -338,6 +338,10 @@ it("advances provider-handled agreement setup from recorded acceptance and verif
  assert.equal(fulfilled.data?.mcaUpstreamStatus,"provider_managed_unverified")
  assert.equal(fulfilled.data?.mcaAccepted,undefined)
  assert.equal(fulfilled.data?.mcaAttestationConfirmed,undefined)
+ run.data={...run.data,commerceOrderId:2,customerConsent:{...run.data.customerConsent as Record<string,unknown>,actorUserId:"1",actorEmail:"operator@example.test",signatoryFirstName:"admin",signatoryLastName:"fixture"},mcaSignatoryCorrection:{id:"12345678-1234-4234-8234-123456789abc",source:"operator-confirmed",orderId:2,actorUserId:"1",actorEmail:"operator@example.test",originalAcceptedAt:now,previousFirstName:"admin",previousLastName:"fixture",firstName:"Avery",lastName:"Example",recordedAt:new Date().toISOString(),reason:"Recorded actor confirmed their legal name."}}
+ assert.deepEqual(await ports.mca_acceptance({run,request}),{kind:"manual_review",code:"CUSTOMER_AGREEMENT_HANDOFF_EVIDENCE_REQUIRED"})
+ run.data={...run.data,pax8McaAttestation:{...run.data.pax8McaAttestation as Record<string,unknown>,signatoryCorrectionId:"12345678-1234-4234-8234-123456789abc"}}
+ assert.equal((await ports.mca_acceptance({run,request})).kind,"complete")
 })
 
 it("preserves accepted resource grants while Exchange consent and read access propagate", async () => {

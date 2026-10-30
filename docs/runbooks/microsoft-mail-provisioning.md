@@ -315,3 +315,35 @@ The temporary password is encrypted at rest, absent from initial HTML, and can
 be revealed once; retries cannot recreate an already consumed credential. Setup
 email groups mailboxes by the supplied existing delivery address. Never send
 temporary passwords directly in email or log them.
+
+## Automatic job startup
+
+The [Next.js Node server startup hook](https://nextjs.org/docs/app/guides/instrumentation)
+initializes Payload with `cron: true`.
+Configuring `jobs.autoRun` alone does not start the scheduler in the installed
+Payload version. Paid-order fulfillment starts at boot and resumes after server
+restarts without requiring a customer or administrator page visit. The configured
+default queue runs every minute; an accepted paid order can therefore remain
+queued briefly before its first attempt. `PAYLOAD_DISABLE_JOBS_AUTORUN=1` still
+disables task execution for tests and rehearsals. Preserve the existing queued
+order when diagnosing startup; never resubmit it to trigger provisioning.
+
+The Pax8 company adapter sends phone numbers as digits, including the country
+code for Dutch national inputs. It normalizes company and contact numbers only
+in the provider request; saved customer details and accepted order evidence stay
+unchanged. Live qualification observed Pax8 rejecting formatted `+31` numbers
+with HTTP 422 and accepting the same number as international digits.
+
+Namespace allocator version 2 uses an alphanumeric label of at most 27
+characters for Pax8's new-tenant validation. Stored version 1 reservations remain
+readable. A pending incompatible reservation may be replaced only before any
+supplier order exists; an uncertain order submission must retain its original
+namespace for reconciliation.
+
+Accepted agreement evidence remains immutable. A trusted operator-confirmed
+legal-name correction can be appended to the run for the same order, recorded
+actor, actor email and original acceptance. It preserves the previous name and
+acceptance, changes no agreement flags or commercial terms, and its ID is bound
+to the supplier handoff. The known `admin` placeholder is rejected before quote
+acceptance and funding. These records still do not claim an upstream Microsoft
+attestation receipt.

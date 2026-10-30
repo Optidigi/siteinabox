@@ -1,3 +1,4 @@
+import { microsoftMailProviderConsent } from "./consentIdentity.ts"
 import "server-only"
 import { createHash, randomBytes } from "node:crypto"
 import type { Payload } from "payload"
@@ -132,7 +133,7 @@ export function createMicrosoftMailLivePorts(input: {
       const tenantId = customerTenantId(run)
       if (!tenantId) {
         const initialDomain = typeof run.data.bootstrapInitialDomainAllocatorAttempt === "number"
-          ? microsoftInitialDomainCandidate({ tenantId: run.tenantId, serviceId: Number(run.data.mailServiceId), domain: run.domain }, run.data.bootstrapInitialDomainAllocatorAttempt)
+          ? microsoftInitialDomainCandidate({ tenantId: run.tenantId, serviceId: Number(run.data.mailServiceId), domain: run.domain }, run.data.bootstrapInitialDomainAllocatorAttempt, run.data.bootstrapInitialDomainAllocatorVersion === 2 ? 2 : 1)
           : `${run.request.tenantPrefix}.onmicrosoft.com`
         if (!run.data.pax8CompanyId || !run.data.pax8OrderId || !run.data.bootstrapInitialDomainAbsentAt || run.data.bootstrapInitialDomain !== initialDomain) return { kind: "manual_review", code: "MICROSOFT_TENANT_BOOTSTRAP_EVIDENCE_REQUIRED" }
         const discovered = await discoverMicrosoftTenant(initialDomain, input.fetchImpl)
@@ -151,15 +152,16 @@ export function createMicrosoftMailLivePorts(input: {
       const tenantId = customerTenantId(run)
       if (!tenantId) return { kind: "manual_review", code: "MICROSOFT_TENANT_ID_REQUIRED" }
       if (run.data.autoProvisionAuthorized === true) {
-        const consent = object(run.data.customerConsent)
+        const consent = microsoftMailProviderConsent(run.data)
         const handoff = object(run.data.pax8McaAttestation)
+        const correctionMatches = run.data.mcaSignatoryCorrection == null || handoff.signatoryCorrectionId === object(run.data.mcaSignatoryCorrection).id
         const acceptedAt = typeof consent.acceptedAt === "string" ? Date.parse(consent.acceptedAt) : NaN
         const submittedAt = typeof handoff.submittedAt === "string" ? Date.parse(handoff.submittedAt) : NaN
         const signatoryValid = [consent.signatoryFirstName, consent.signatoryLastName].every(value => typeof value === "string" && value.trim().length > 0 && value.length <= 128) &&
           typeof consent.signatoryEmail === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(consent.signatoryEmail)
         if (consent.mcaAccepted !== true || consent.serviceAuthorized !== true || consent.confirmSignatoryAuthority !== true || !signatoryValid || !Number.isFinite(acceptedAt) || acceptedAt > Date.now() ||
           consent.mcaDocumentUrl !== "https://aka.ms/customeragreement" || consent.mcaCountry !== run.request.customer.address.country.toUpperCase() || consent.mcaChannel !== "CSP Partner" || consent.mcaAudience !== "Commercial" ||
-          typeof consent.consentCopyVersion !== "string" || !consent.consentCopyVersion || handoff.status !== "submitted_with_order" || handoff.customerAcceptedAt !== consent.acceptedAt || !Number.isFinite(submittedAt) || submittedAt < acceptedAt ||
+          typeof consent.consentCopyVersion !== "string" || !consent.consentCopyVersion || handoff.status !== "submitted_with_order" || handoff.customerAcceptedAt !== consent.acceptedAt || !correctionMatches || !Number.isFinite(submittedAt) || submittedAt < acceptedAt ||
           typeof run.data.pax8OrderId !== "string" || typeof run.data.pax8CompanyId !== "string") return { kind: "manual_review", code: "CUSTOMER_AGREEMENT_HANDOFF_EVIDENCE_REQUIRED" }
         const order = await pax8.getOrder(run.data.pax8OrderId)
         const line = order.lineItems[0]
