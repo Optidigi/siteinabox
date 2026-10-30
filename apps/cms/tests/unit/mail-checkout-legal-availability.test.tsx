@@ -13,6 +13,7 @@ vi.mock("@/app/(frontend)/(admin)/email/actions",()=>({refreshCustomerMailQuote:
 vi.mock("@/app/(frontend)/(admin)/email/MailProgressRefresh",()=>({MailProgressRefresh:()=>null}))
 vi.mock("@/app/(frontend)/(admin)/email/MailOrderConfirmation",()=>({MailOrderConfirmation:mocks.confirmation}))
 vi.mock("@/app/(frontend)/(admin)/email/CustomerMailOrderForm",()=>({CustomerMailOrderForm:mocks.form}))
+import { parseMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
 import { CustomerEmailWorkspace } from "@/app/(frontend)/(admin)/email/CustomerEmailWorkspace"
 const workspace={user:cast<User>({id:1,email:"operator@example.test",name:"Operator",role:"super-admin",language:"en",tenants:[]}),ctx:{mode:"tenant" as const,tenant:asTenant({id:56,name:"Fixture",status:"active",enabledServices:["email"]})},basePath:"/accounts/56/email"}
 const legal={locale:"nl",terms:{id:4,contentHash:"terms-hash"},privacy:{id:5,contentHash:"privacy-hash"},termsHref:"/terms-nl",privacyHref:"/privacy-nl",statement:{version:"fixture",text:"Ik ga akkoord met de algemene voorwaarden."}}
@@ -42,9 +43,10 @@ it("rejects unsupported legal languages instead of silently switching documents"
 })
 
 
-it("reopens a valid unsubmitted draft as the original form with explicit legal choices",async()=>{
+it("reopens a persisted normalized draft as the original form with explicit legal choices",async()=>{
  const request={tenantId:56,domain:"customer.test",tenantPrefix:"customer",customer:{companyName:"Fixture",website:"https://customer.test",phone:"+31201234567",address:{street:"Fixture 1",city:"Amsterdam",postalCode:"1000AA",country:"NL"},primaryContact:{firstName:"Operations",lastName:"Fixture",email:"operator@example.test",phone:"+31201234567"}},mailboxUsers:[{localPart:"ardi",displayName:"Ardi",setupEmail:"setup@example.test"}],retainInfoForward:false}
- mocks.find.mockImplementation(async({collection}:{collection:string})=>({docs:collection==="microsoft-mail-services"?[{id:1,domain:"customer.test",status:"draft"}]:collection==="microsoft-mail-provisioning-runs"?[{id:11,tenantId:56,state:"prepared",domain:"customer.test",createdAt:new Date().toISOString(),request,data:{customerConsent:{}}}]:[]}))
+ const stored=parseMicrosoftMailProvisioningRequest(request);if(!stored.ok)throw Error("Invalid fixture")
+ mocks.find.mockImplementation(async({collection}:{collection:string})=>({docs:collection==="microsoft-mail-services"?[{id:1,domain:"customer.test",status:"draft"}]:collection==="microsoft-mail-provisioning-runs"?[{id:11,tenantId:56,state:"prepared",domain:"customer.test",createdAt:new Date().toISOString(),request:stored.value,data:{customerConsent:{}}}]:[]}))
  const html=renderToStaticMarkup(await CustomerEmailWorkspace({workspace,searchParams:Promise.resolve({request:"11"})}))
  expect(mocks.form).toHaveBeenCalledWith(expect.objectContaining({userLocale:"en",initialRequest:expect.objectContaining({domain:"customer.test"}),legalDocuments:[expect.objectContaining({locale:"nl",statement:legal.statement.text})]}),undefined)
  expect(mocks.confirmation).not.toHaveBeenCalled()
