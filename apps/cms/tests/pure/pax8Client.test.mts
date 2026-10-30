@@ -185,3 +185,20 @@ it("end-of-term cancellation always supplies an explicit verified future date an
   assert.equal(cancellation.url.searchParams.get("cancelDate"),"2027-01-01T00:00:00.000Z")
   assert.equal(cancellation.init?.body,undefined)
 })
+
+it("sends international Dutch company and contact digits without changing saved customer details", async () => {
+  for (const phone of ["+31 6 1234 5678", "0031 (6) 12345678", "06-12345678"]) {
+    let submitted: Record<string, unknown> = {}
+    const client = new Pax8Client({ clientId: "client", clientSecret: "secret", fetchImpl: async (url, init) => {
+      if (new URL(String(url)).pathname === "/v1/token") return json({ access_token: "token", expires_in: 3600 })
+      submitted = JSON.parse(String(init?.body))
+      return json({ id: "company-1", status: "Active" })
+    } })
+    const input = { name: "Fixture", website: "https://customer.test", phone, address: { street: "Fixture 1", city: "Amsterdam", postalCode: "1000AA", country: "NL" }, contacts: [{ firstName: "Operations", lastName: "Fixture", email: "operations@example.test", phone, types: [{ type: "Admin" as const, primary: true }] }] }
+    await client.createCompany(input)
+    assert.equal(submitted.phone, "31612345678")
+    assert.equal((submitted.contacts as Array<{ phone: string }>)[0]?.phone, "31612345678")
+    assert.equal(input.phone, phone)
+    assert.equal(input.contacts[0]?.phone, phone)
+  }
+})

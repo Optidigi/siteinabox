@@ -79,3 +79,7 @@ executable). These are tooling inputs, not application runtime configuration.
 longer grant test overrides; tests require the exact authorized target and reject
 ambient provider credentials before initialization. See the
 [local verification procedure](runbooks/local-development.md#step-7-authorize-disposable-verification-then-run-tests).
+
+`NEXT_RUNTIME` and `NEXT_PHASE` are framework-managed internal values used by
+the CMS startup hook to select the Node server and avoid build-time execution.
+Operators do not configure them in production `.env` files.

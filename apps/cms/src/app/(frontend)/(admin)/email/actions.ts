@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { validMicrosoftMailSignatoryName } from "@/lib/microsoftMailProvisioning/consentIdentity"
 import { randomUUID } from "node:crypto"
 import { getPayload } from "payload"
 import config from "@/payload.config"
@@ -56,8 +57,8 @@ export async function submitCustomerMicrosoftMailRequest(
   const signatoryFirstName = String(formData.get("signatoryFirstName") ?? "").trim()
   const signatoryLastName = String(formData.get("signatoryLastName") ?? "").trim()
   const signatoryEmail = String(formData.get("signatoryEmail") ?? "").trim().toLowerCase()
-  if (!signatoryFirstName || !signatoryLastName || signatoryFirstName.length > 128 || signatoryLastName.length > 128 || !z.string().email().safeParse(signatoryEmail).success) {
-    return { ok: false, message: "Complete the agreement contact details." }
+  if (!validMicrosoftMailSignatoryName(signatoryFirstName) || !validMicrosoftMailSignatoryName(signatoryLastName) || !z.string().email().safeParse(signatoryEmail).success) {
+    return { ok: false, message: "Enter the agreement signatory’s real first and last name and valid email." }
   }
 
   const payload = await getPayload({ config })

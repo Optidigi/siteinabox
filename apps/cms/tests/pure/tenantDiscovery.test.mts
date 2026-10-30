@@ -29,6 +29,9 @@ test("allocates a stable service-specific namespace and skips existing names",as
  const {allocateMicrosoftInitialDomain,microsoftInitialDomainCandidate}=await import("../../src/lib/microsoftMailProvisioning/tenantDiscovery.ts")
  const scope={tenantId:56,serviceId:1,domain:"customer.test"}
  const first=microsoftInitialDomainCandidate(scope,0),second=microsoftInitialDomainCandidate(scope,1)
+ assert.match(first,/^[a-z0-9]{1,27}\.onmicrosoft\.com$/)
+ assert.match(microsoftInitialDomainCandidate({...scope,domain:"long-customer-domain-with-hyphens.test"},0),/^[a-z0-9]{1,27}\.onmicrosoft\.com$/)
+ assert.match(microsoftInitialDomainCandidate(scope,0,1),/-siab-/)
  assert.equal(first,microsoftInitialDomainCandidate(scope,0))
  assert.notEqual(first,second)
  assert.notEqual(first,microsoftInitialDomainCandidate({...scope,tenantId:57},0))

@@ -152,6 +152,12 @@ const hostOf = (value: string): string => {
   }
 }
 
+function companyPhoneNumber(phone: string, country: string): string {
+  const compact = phone.trim().replace(/[\s()-]/g, "").replace(/^(?:\+|00)/, "")
+  if (country.toUpperCase() === "NL" && /^0[1-9]\d{8}$/.test(compact)) return `31${compact.slice(1)}`
+  return compact
+}
+
 export class Pax8Client {
   readonly #clientId: string
   readonly #clientSecret: string
@@ -258,6 +264,8 @@ export class Pax8Client {
   async createCompany(input: Pax8CompanyInput): Promise<Pax8Company> {
     return this.#request<Pax8Company>("POST", "/companies", {
       ...input,
+      phone: companyPhoneNumber(input.phone, input.address.country),
+      contacts: input.contacts.map(contact => ({ ...contact, phone: companyPhoneNumber(contact.phone, input.address.country) })),
       billOnBehalfOfEnabled: false,
       selfServiceAllowed: false,
       orderApprovalRequired: false,

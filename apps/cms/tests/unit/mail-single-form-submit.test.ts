@@ -99,3 +99,12 @@ it("resumes an already accepted prepaid order after funding failure without repr
  expect(mocks.fund).toHaveBeenCalledTimes(2)
  expect(mocks.createRun).toHaveBeenCalledOnce()
 })
+
+
+it("rejects the provider-known placeholder signatory before quote, funding or payment", async()=>{
+ const data=form();data.set("signatoryFirstName","admin")
+ expect(await submitCustomerMicrosoftMailRequest(null,data)).toMatchObject({ok:false})
+ expect(mocks.quote).not.toHaveBeenCalled()
+ expect(mocks.accept).not.toHaveBeenCalled()
+ expect(mocks.fund).not.toHaveBeenCalled()
+})

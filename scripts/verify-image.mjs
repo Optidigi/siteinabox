@@ -197,6 +197,22 @@ try {
     docker(["start", container])
     await health(cmsHealthy)
     if (!docker(["logs", container], true).includes("[migrate-on-boot] no pending migrations")) throw new Error("Restored database did not preserve migration tracking")
+    // Prove the actual cold Node startup hook before any request can initialize Payload.
+    const jobsStartupStarted = performance.now()
+    docker(["stop", "--time", "10", container])
+    docker(["rm", container])
+    docker(["run", "--detach", "--name", container, "--network", network,
+      "--tmpfs", "/tmp/siab-data:mode=1777", "--env", "DATABASE_URI=postgres://payload:verification-only@postgres:5432/payload_test",
+      "--env", "PAYLOAD_SECRET=verification-only-synthetic-secret", "--env", "DATA_DIR=/tmp/siab-data",
+      "--env", "PAYLOAD_DISABLE_JOBS_AUTORUN=0", "--env", "SITE_GENERATION_PROVIDER=mock",
+      "--env", "COMMERCE_RELEASE_STAGE=blocked", "--env", "COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=0",
+      "--env", "MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED=false", image])
+    await health(async () => {
+      const logs = docker(["logs", container], true).replace(/\u001b\[[0-9;]*m/g, "")
+      return logs.includes("cms_jobs_scheduler_initialized") && /registeredSchedules["\s:]+1(?:\D|$)/.test(logs)
+    })
+    await health(cmsHealthy)
+    timings.cmsJobsColdStartMs = Math.round(performance.now() - jobsStartupStarted)
     postgresRehearsal = { lifecycleContract: "passed", logicalRestore: true, from: infrastructure.images["postgres-rehearsal-baseline"].version,
       to: infrastructure.images.postgres.version, populatedDataPreserved: true, schemaPreserved: true,
       migrationHistoryPreserved: true, gracefulDatabaseStop: true, actualEntrypointRestartPassed: true, runtimeBefore, runtimeAfter }

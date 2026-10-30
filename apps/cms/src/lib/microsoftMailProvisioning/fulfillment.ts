@@ -1,3 +1,4 @@
+import { microsoftMailProviderConsent } from "./consentIdentity"
 import { requireMailDomainEnabled } from "./rollout"
 import { allocateMicrosoftInitialDomain, MicrosoftTenantDiscoveryError } from "./tenantDiscovery"
 import { requireLiveMailWritesAllowed } from "./writeGate"
@@ -71,9 +72,10 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
     const save = async (patch: Partial<MicrosoftMailProvisioningRun>) => { run = await store.update(run!.id, { ...patch, updatedAt: new Date().toISOString() }); return run }
     const client = createPax8MailClient()
     try {
-      if (quote.operation === "initial" && !service.microsoftTenantId && !run.data.pax8OrderId && !run.data.bootstrapInitialDomainAbsentAt) {
+      if (quote.operation === "initial" && !service.microsoftTenantId && !run.data.pax8OrderId && (!run.data.bootstrapInitialDomainAbsentAt || !/^[a-z0-9]{1,27}\.onmicrosoft\.com$/.test(String(run.data.bootstrapInitialDomain ?? "")))) {
+        if (["started", "uncertain"].includes(String(run.data.pax8OrderSubmissionState))) throw new Pax8IndeterminateWriteError("order submission")
         const allocation = await allocateMicrosoftInitialDomain({ tenantId, serviceId: service.id, domain: service.domain })
-        await save({ data: { ...run.data, bootstrapInitialDomain: allocation.initialDomain, bootstrapInitialDomainAllocatorAttempt: allocation.attempt, mailServiceId: service.id, bootstrapInitialDomainAbsentAt: new Date().toISOString() } })
+        await save({ data: { ...run.data, bootstrapInitialDomain: allocation.initialDomain, bootstrapInitialDomainAllocatorAttempt: allocation.attempt, bootstrapInitialDomainAllocatorVersion: allocation.version, mailServiceId: service.id, bootstrapInitialDomainAbsentAt: new Date().toISOString() } })
       }
       if (quote.operation === "renewal") {
         if (!service.pax8SubscriptionId || !quote.servicePeriodStartsAt || !quote.servicePeriodEndsAt || record(service.renewalData).cancellationState) throw new Error("RENEWAL_RECOVERY_REQUIRES_OPERATOR")
@@ -154,7 +156,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const rates = Array.isArray(annual?.rates) ? annual.rates.map(record) : []
         const rate = rates.filter(value => Number(value.startQuantityRange ?? 0) <= quote.quantity && (value.endQuantityRange == null || Number(value.endQuantityRange) >= quote.quantity)).sort((a,b) => Number(b.startQuantityRange ?? 0) - Number(a.startQuantityRange ?? 0))[0]
         if (!rate || mailProviderAnnualCostMinor(rate.partnerBuyRate) > quote.providerAnnualUnitCostMinor) throw new Error("PAX8_COST_CHANGED_AFTER_PAYMENT")
-        const consent = record(run.data.customerConsent)
+        const consent = microsoftMailProviderConsent(run.data)
         const details: Record<string, string> = {
           msCustExists: service.microsoftTenantId ? "Yes, the customer has and can log into their Microsoft account" : "No, the customer does not have a Microsoft account",
           msDomain: typeof run.data.bootstrapInitialDomain === "string" ? run.data.bootstrapInitialDomain.replace(/\.onmicrosoft\.com$/, "") : run.request.tenantPrefix, msMPNidval: process.env.PAX8_MPN_ID ?? "", msTenantId: service.microsoftTenantId ?? "",
@@ -184,7 +186,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
           data: { ...run.data, pax8OrderSubmissionState: "complete", pax8OrderId: providerOrder.id, pax8OrderLineItems: providerOrder.lineItems,
             autoProvisionAuthorized: true, customerOrderAuthorized: true, routingHash: quote.routingHash,
             ...(service.microsoftTenantId ? { customerTenantId: service.microsoftTenantId } : {}),
-            pax8McaAttestation: { status: "submitted_with_order", customerAcceptedAt: consent.acceptedAt, submittedAt: new Date().toISOString() } } })
+            pax8McaAttestation: { status: "submitted_with_order", customerAcceptedAt: consent.acceptedAt, submittedAt: new Date().toISOString(), signatoryCorrectionId: record(run.data.mcaSignatoryCorrection).id ?? null } } })
       }
       if (quote.operation === "initial" && typeof run.data.pax8OrderId === "string") {
         const providerOrder = await client.getOrder(run.data.pax8OrderId)
