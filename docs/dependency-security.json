@@ -1150,11 +1150,11 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
+      "factsHash": "f179692f32faa15f1907e937a50ba543bf53ebbe748b08abba01e137596d6e7d",
       "state": "under_investigation",
-      "reason": "Current exact-image inventory reports bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reason": "Fresh exact-archive Trivy review retains Ubuntu moderate severity and affected status for bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8. The vendor severity inventory now also includes Oracle high; the selected Ubuntu severity, affected package, missing fix and existing remediation deadline are unchanged. Upstream CVSS is high; no absence-of-exploitability claim or exception is made. Remediation remains tracked in #136.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "reviewedAt": "2026-10-30T10:05:43.748Z",
       "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
@@ -1170,11 +1170,11 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
+      "factsHash": "f179692f32faa15f1907e937a50ba543bf53ebbe748b08abba01e137596d6e7d",
       "state": "under_investigation",
-      "reason": "Current exact-image inventory reports bind9-host 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reason": "Fresh exact-archive Trivy review retains Ubuntu moderate severity and affected status for bind9-host 1:9.18.39-0ubuntu0.24.04.8. The vendor severity inventory now also includes Oracle high; the selected Ubuntu severity, affected package, missing fix and existing remediation deadline are unchanged. Upstream CVSS is high; no absence-of-exploitability claim or exception is made. Remediation remains tracked in #136.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "reviewedAt": "2026-10-30T10:05:43.749Z",
       "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
@@ -1190,11 +1190,11 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cbb7f3740287dbce40e205fc2bd49ad89106ac064e4db7f26bb0dbbb9fa4926d",
+      "factsHash": "f179692f32faa15f1907e937a50ba543bf53ebbe748b08abba01e137596d6e7d",
       "state": "under_investigation",
-      "reason": "Current exact-image inventory reports bind9-libs 1:9.18.39-0ubuntu0.24.04.8 with CVE-2026-94300. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reason": "Fresh exact-archive Trivy review retains Ubuntu moderate severity and affected status for bind9-libs 1:9.18.39-0ubuntu0.24.04.8. The vendor severity inventory now also includes Oracle high; the selected Ubuntu severity, affected package, missing fix and existing remediation deadline are unchanged. Upstream CVSS is high; no absence-of-exploitability claim or exception is made. Remediation remains tracked in #136.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
+      "reviewedAt": "2026-10-30T10:05:43.749Z",
       "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
