@@ -11,12 +11,17 @@ import { Label } from "@siteinabox/ui/components/label"
 import { Card, CardContent } from "@siteinabox/ui/components/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { submitCustomerMicrosoftMailRequest } from "./actions"
+import type { MicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
 
 type MailboxRow = { localPart: string; displayName: string; setupEmail: string }
 type Organization = { companyName: string; website: string; phone: string; registrationNumber: string; address: { street: string; city: string; postalCode: string; country: string } }
 
-export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, approvedMailboxCount, basePath = "/email" }: {
+export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, approvedMailboxCount, orderPricing, legalDocuments = [], userLocale = "en", initialRequest, basePath = "/email" }: {
   approvedMailboxCount?: number
+  orderPricing?: { unitNetMinor: number; platformNetMinor: number; prepaidMaxGrossMinor?: number; operation?: "initial" | "seats"; periodEndsAt?: string }
+  legalDocuments?: Array<{ locale: "nl" | "en"; version: string; termsHref: string; privacyHref: string; statement: string }>
+  userLocale?: "nl" | "en"
+  initialRequest?: MicrosoftMailProvisioningRequest
   tenantId: number
   basePath?: string
   tenantName: string
@@ -33,12 +38,22 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   const [step, setStep] = useState(1)
   const [domain, setDomain] = useState(tenantDomain)
   const [tenantPrefix, setTenantPrefix] = useState(tenantDomain.split(".")[0] ?? "")
-  const [users, setUsers] = useState<MailboxRow[]>(Array.from({ length: approvedMailboxCount ?? 1 }, () => ({ localPart: "", displayName: "", setupEmail: "" })))
-  const [infoSharedMailbox, setInfoSharedMailbox] = useState(false)
-  const [showInfoAlias, setShowInfoAlias] = useState(false)
-  const [infoAliasTarget, setInfoAliasTarget] = useState("")
+  const [users, setUsers] = useState<MailboxRow[]>(initialRequest?.mailboxUsers.map(user => ({ localPart: user.localPart, displayName: user.displayName, setupEmail: user.setupEmail })) ?? Array.from({ length: approvedMailboxCount ?? 1 }, () => ({ localPart: "", displayName: "", setupEmail: "" })))
+  const [infoSharedMailbox, setInfoSharedMailbox] = useState(initialRequest?.infoSharedMailbox === true)
+  const [showInfoAlias, setShowInfoAlias] = useState(Boolean(initialRequest?.infoAliasTarget))
+  const [infoAliasTarget, setInfoAliasTarget] = useState(initialRequest?.infoAliasTarget?.split("@")[0] ?? "")
   const [aliasError, setAliasError] = useState(false)
   const defaultName = userName.trim().split(/\s+/)
+  const [legalLocale, setLegalLocale] = useState(legalDocuments.some(document => document.locale === userLocale) ? userLocale : "")
+  const legal = legalDocuments.find(document => document.locale === legalLocale)
+  const subtotal = orderPricing ? orderPricing.unitNetMinor * users.length + orderPricing.platformNetMinor : 0
+  const vat = Math.round(subtotal * 0.21)
+  const gross = subtotal + vat
+  const covered = approvedMailboxCount === users.length && orderPricing?.prepaidMaxGrossMinor !== undefined && gross <= orderPricing.prepaidMaxGrossMinor
+  const additionalSeats = orderPricing?.operation === "seats"
+  const commitment = additionalSeats && orderPricing.periodEndsAt ? `${userLocale === "nl" ? "Tot" : "Until"} ${new Intl.DateTimeFormat(userLocale === "nl" ? "nl-NL" : "en-GB", { dateStyle: "medium" }).format(new Date(orderPricing.periodEndsAt))}` : t("commitmentValue")
+  const money = (minor: number) => new Intl.NumberFormat(userLocale === "nl" ? "nl-NL" : "en-GB", { style: "currency", currency: "EUR" }).format(minor / 100)
+
 
   useEffect(() => {
     if (actionState?.ok) router.replace(`${basePath}?request=${actionState.requestId}`)
@@ -93,7 +108,7 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
         <span className="font-medium">{t("planValue")}</span>
-        <span className="text-muted-foreground">{t("commitmentValue")}</span>
+        <span className="text-muted-foreground">{commitment}</span>
       </CardContent>
     </Card>
 
@@ -183,9 +198,20 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
         <Checkbox name="authorizeService" required />
         <span>{t("serviceAuthorization")}</span>
       </label>
+      <div className="grid gap-3 rounded-base border p-3">
+        {orderPricing ? <dl className="grid grid-cols-2 gap-2 text-sm"><dt>{additionalSeats ? (userLocale === "nl" ? "Resterende looptijd exclusief btw" : "Remaining commitment excluding VAT") : (userLocale === "nl" ? "Jaarbedrag exclusief btw" : "Annual total excluding VAT")}</dt><dd className="text-right">{money(subtotal)}</dd><dt>{userLocale === "nl" ? "Btw" : "VAT"}</dt><dd className="text-right">{money(vat)}</dd><dt>{userLocale === "nl" ? "Te betalen" : "Amount due"}</dt><dd className="text-right font-medium">{money(covered ? 0 : gross)}</dd></dl> : null}
+        <input type="hidden" name="expectedGrossMinor" value={gross} />
+        <input type="hidden" name="expectedAmountDueMinor" value={covered ? 0 : gross} />
+        <input type="hidden" name="legalLocale" value={legalLocale} />
+        <input type="hidden" name="legalVersion" value={legal?.version ?? ""} />
+        <Label htmlFor="mail-legal-language">{userLocale === "nl" ? "Documenttaal" : "Legal document language"}</Label>
+        <Select value={legalLocale || undefined} onValueChange={setLegalLocale}><SelectTrigger id="mail-legal-language"><SelectValue placeholder="Choose legal document language" /></SelectTrigger><SelectContent>{legalDocuments.map(document => <SelectItem key={document.locale} value={document.locale}>{document.locale === "nl" ? "Nederlands" : "English"}</SelectItem>)}</SelectContent></Select>
+        {legal ? <p className="text-sm"><a href={legal.termsHref} className="underline" target="_blank" rel="noopener noreferrer">{legal.locale === "nl" ? "Voorwaarden" : "Terms"}</a>{" · "}<a href={legal.privacyHref} className="underline" target="_blank" rel="noopener noreferrer">Privacy</a></p> : null}
+        <label className="flex items-start gap-3 text-sm"><Checkbox key={`${legal?.locale}:${legal?.version}:${gross}:${covered}:${orderPricing?.periodEndsAt}`} name="acceptOrderTerms" required disabled={!legal} /><span lang={legal?.locale}>{legal?.statement ?? (userLocale === "nl" ? "Kies de taal van de juridische documenten." : "Choose the language of the legal documents.")}{" "}{userLocale === "nl" ? "Ik bevestig deze zakelijke bestelling en de getoonde looptijd en prijs." : "I confirm this business order and the displayed commitment and price."}</span></label>
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => setStep(1)}>{t("back")}</Button>
-        <Button type="submit" disabled={pending}>{pending ? t("saving") : t("submit")}</Button>
+        <Button type="submit" disabled={pending || !legal || !orderPricing || !Number.isSafeInteger(gross) || gross <= 0}>{pending ? t("saving") : t("submit")}</Button>
       </div>
       {actionState ? <p role="status" className={actionState.ok ? "rounded-base border border-primary/30 bg-primary/5 p-3 text-sm" : "rounded-base border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"}>{actionState.message}</p> : null}
     </section>

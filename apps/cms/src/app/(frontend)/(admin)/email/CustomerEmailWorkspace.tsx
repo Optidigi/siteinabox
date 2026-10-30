@@ -16,9 +16,14 @@ import { mailQuoteSchema } from "@/lib/microsoftMailProvisioning/quote"
 import { refreshCustomerMailQuote } from "./actions"
 import { MailOrderConfirmation } from "./MailOrderConfirmation"
 import { MailProgressRefresh } from "./MailProgressRefresh"
+import { MailboxAccess } from "./MailboxAccess"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { externalMailPaymentSchema } from "@/lib/microsoftMailProvisioning/externalPayment"
 import { relationshipId } from "@/lib/relationshipId"
+import { parseMicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvisioning/model"
+import { platformFeesExempt } from "@/lib/tenants/services"
+import { proratedMailUnit } from "@/lib/microsoftMailProvisioning/quote"
+import { createPax8MailClient } from "@/lib/microsoftMailProvisioning/pax8Preflight"
 
 
 type MailboxRequest = { userPrincipalName: string; displayName: string }
@@ -76,7 +81,10 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
   const requests = result.docs.filter((run) => Boolean(asRecord(run.data)?.customerConsent))
   const selected = params.new === "1" ? null : (requestedId ? requests.find((run) => Number(run.id) === requestedId) : null) ?? requests[0]
   const lastCompleted = mailService.latestRun ? await new PayloadMicrosoftMailProvisioningStore(payload).get(Number(relationshipId(mailService.latestRun))) : null
-  const profile = lastCompleted?.tenantId === ctx.tenant.id ? lastCompleted.request.customer : undefined
+  const draftParse = selected?.state === "prepared" && asRecord(selected.data)?.isRenewal !== true && asRecord(asRecord(selected.data)?.quote)?.operation !== "renewal" && !asRecord(selected.data)?.commerceOrderId ? parseMicrosoftMailProvisioningRequest(selected.request) : null
+  const draftRequest = draftParse?.ok ? draftParse.value : undefined
+  const unsubmittedDraft = Boolean(draftRequest)
+  const profile = draftRequest?.customer ?? (lastCompleted?.tenantId === ctx.tenant.id ? lastCompleted.request.customer : undefined)
   const organization = profile ? { companyName: profile.companyName, website: profile.website, phone: profile.phone, registrationNumber: profile.registrationNumber, address: profile.address } : undefined
   const selectedRequest = selected ? asRecord(selected.request) : null
   const selectedData = selected ? asRecord(selected.data) : null
@@ -89,6 +97,26 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
   const legalLocale = params.legalLocale === "nl" || params.legalLocale === "en" ? params.legalLocale : nl ? "nl" : "en"
   const legal = quote && (!order || order.state === "accepted") ? await checkoutLegalDocuments(payload, legalLocale) : null
   const legalVersion = legal && "id" in legal.terms && "id" in legal.privacy ? `${legal.terms.id}:${legal.terms.contentHash}:${legal.privacy.id}:${legal.privacy.contentHash}` : null
+  const legalChoices = await Promise.all((["nl", "en"] as const).map(async locale => {
+    const document = await checkoutLegalDocuments(payload, locale)
+    return document && "id" in document.terms && "id" in document.privacy ? {
+      locale, version: `${document.terms.id}:${document.terms.contentHash}:${document.privacy.id}:${document.privacy.contentHash}`,
+      termsHref: document.termsHref, privacyHref: document.privacyHref, statement: document.statement.text,
+    } : null
+  }))
+  let unitNetMinor = Number(process.env.MICROSOFT_MAIL_ANNUAL_SEAT_NET_MINOR)
+  if (mailService.status === "active" && !pendingMailOrder && (!selected || unsubmittedDraft)) {
+    try {
+      if (!mailService.pax8SubscriptionId) throw new Error("Subscription missing")
+      const subscription = await createPax8MailClient().getSubscription(mailService.pax8SubscriptionId)
+      if (subscription.companyId !== mailService.pax8CompanyId) throw new Error("Subscription owner mismatch")
+      unitNetMinor = proratedMailUnit(unitNetMinor, subscription.commitmentTermStartDate ?? subscription.startDate ?? "", subscription.commitmentTermEndDate ?? mailService.currentPeriodEndsAt ?? "")
+    } catch { unitNetMinor = 0 }
+  }
+  const platformNetMinor = platformFeesExempt(ctx.tenant.platformPricing) ? 0 : Number(process.env.MICROSOFT_MAIL_PLATFORM_FEE_NET_MINOR ?? "0")
+  const orderPricing = Number.isSafeInteger(unitNetMinor) && unitNetMinor > 0 && Number.isSafeInteger(platformNetMinor) && platformNetMinor >= 0 ? {
+    unitNetMinor, platformNetMinor, operation: mailService.status === "active" ? "seats" as const : "initial" as const, periodEndsAt: mailService.currentPeriodEndsAt ?? undefined, ...(externalFunding.success && !externalFunding.data.consumedOrderId ? { prepaidMaxGrossMinor: externalFunding.data.maxGrossMinor } : {}),
+  } : undefined
   const money = (minor: number) => new Intl.NumberFormat(nl ? "nl-NL" : "en-GB", { style: "currency", currency: "EUR" }).format(minor / 100)
   let status: { title: string; description: string; label: string } | null = null
   if (selected) {
@@ -115,7 +143,7 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
     {mailService.status === "active" && !pendingMailOrder && params.new !== "1" ? <Button asChild variant="outline" className="w-fit"><Link href={`${basePath}?new=1`}>+ {t("addMailbox")}</Link></Button> : null}
     {user.role === "super-admin" ? <p className="rounded-base border p-3 text-sm">Operator: {user.email} · {ctx.tenant.name}. Actions are recorded under your administrator identity.</p> : null}
     <MailProgressRefresh active={Boolean(order && ["open", "pending"].includes(order.paymentStatus) || order?.state === "fulfillment_pending")} />
-    {selected && status ? <Card>
+    {selected && !unsubmittedDraft && status ? <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2"><CardTitle>{status.title}</CardTitle><Badge variant={selected.state === "ready" ? "default" : "outline"}>{status.label}</Badge></div>
         <p className="text-sm text-muted-foreground">{status.description}</p>
@@ -130,7 +158,9 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
       </CardContent>
     </Card> : null}
 
-    {selected && quote && (!order || order.state === "accepted") ? <Card><CardHeader><CardTitle>{quote.operation === "renewal" ? (nl ? "Jaarabonnement verlengen" : "Renew your annual plan") : (nl ? "Bestelling controleren" : "Review your order")}</CardTitle></CardHeader><CardContent className="grid gap-4">
+    {selected?.state === "ready" && order?.state === "fulfilled" ? <div className="grid gap-3">{mailboxRows(selected.request).map(mailbox => <MailboxAccess key={mailbox.userPrincipalName} tenantId={ctx.tenant.id} runId={Number(selected.id)} address={mailbox.userPrincipalName} nl={nl} />)}{selectedRequest?.infoSharedMailbox ? <p className="text-sm">{nl ? `Open info@${selected.domain} vanuit Outlook als gedeeld postvak. De aangevraagde gebruikers hebben Volledige toegang en Verzenden als.` : `Open info@${selected.domain} from Outlook as a shared mailbox. The requested users have Full Access and Send As.`}</p> : null}</div> : null}
+
+    {selected && !unsubmittedDraft && quote && (!order || order.state === "accepted") ? <Card><CardHeader><CardTitle>{quote.operation === "renewal" ? (nl ? "Jaarabonnement verlengen" : "Renew your annual plan") : (nl ? "Bestelling controleren" : "Review your order")}</CardTitle></CardHeader><CardContent className="grid gap-4">
       <dl className="grid grid-cols-2 gap-2 text-sm"><dt>{quote.quantity} {nl ? "mailboxen" : "mailboxes"}{quote.operation === "seats" && quote.servicePeriodEndsAt ? ` · ${nl ? "tot" : "until"} ${new Date(quote.servicePeriodEndsAt).toLocaleDateString(nl ? "nl-NL" : "en-GB")}` : ` · ${nl ? "jaarcontract" : "annual commitment"}`}</dt><dd className="text-right">{money(quote.unitNetMinor * quote.quantity)}</dd>
         {quote.platformNetMinor > 0 ? <><dt>Siteinabox</dt><dd className="text-right">{money(quote.platformNetMinor)}</dd></> : null}
         <dt>{nl ? "Btw" : "VAT"}</dt><dd className="text-right">{money(quote.vatAmountMinor)}</dd><dt className="font-medium">{nl ? "Te betalen" : "Amount due"}</dt><dd className="text-right font-medium">{quote.prepaidAuthorizationId ? money(0) : money(quote.totalGrossMinor)}</dd></dl>
@@ -141,9 +171,13 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
       {order?.paymentProvider === "manual" && !quote.prepaidAuthorizationId ? <p className="text-sm text-muted-foreground">{nl ? "Siteinabox registreert de afgesproken betaling. Daarna gaat de inrichting verder." : "Siteinabox will record the agreed payment, then setup continues."}</p> : null}
     </CardContent></Card> : null}
 
-    {!selected && pendingMailOrder ? <p>{nl ? "Rond eerst je lopende e-mailbestelling af." : "Complete your pending email order first."}</p> : null}
-    {!selected && !pendingMailOrder ? <CustomerMailOrderForm
+    {(!selected || unsubmittedDraft) && pendingMailOrder ? <p>{nl ? "Rond eerst je lopende e-mailbestelling af." : "Complete your pending email order first."}</p> : null}
+    {(!selected || unsubmittedDraft) && !pendingMailOrder ? <CustomerMailOrderForm
       approvedMailboxCount={prepaidMailboxCount}
+      initialRequest={draftRequest}
+      orderPricing={orderPricing}
+      legalDocuments={legalChoices.filter(choice => choice !== null)}
+      userLocale={nl ? "nl" : "en"}
       tenantId={ctx.tenant.id}
       basePath={basePath}
       tenantName={ctx.tenant.name}

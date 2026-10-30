@@ -264,3 +264,17 @@ it("discovers a freshly ordered tenant only after absence evidence and matching 
  assert.deepEqual(found.data?.discoveredGdapRelationshipIds,["relationship"])
  assert.equal(found.data?.mcaAccepted,undefined)
 })
+
+
+it("does not resend a setup credential after it was already claimed",async()=>{
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret",MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY:"synthetic-key",SITE_URL:"https://admin.test"}
+ const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"token",createSetupTokenImpl:async()=>null,sendEmailImpl:async()=>{throw new Error("Consumed credentials must not be resent")}})
+ const now=new Date().toISOString()
+ const user=request.mailboxUsers[0]!
+ const run:MicrosoftMailProvisioningRun={id:100,idempotencyKey:"already-viewed",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"setup_mail_pending",currentStep:"setup_email",completedSteps:[],data:{setupCredentialBundles:{[user.userPrincipalName]:"encrypted-fixture"}},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ const result=await ports.sendSetupEmail({run,request,user})
+ assert.equal(result.kind,"complete")
+ if(result.kind!=="complete")throw new Error("Already accessed credential should complete delivery")
+ assert.deepEqual(result.data?.setupCredentialBundles,{})
+ assert.deepEqual(result.data?.setupEmailStates,{[user.userPrincipalName]:"sent"})
+})

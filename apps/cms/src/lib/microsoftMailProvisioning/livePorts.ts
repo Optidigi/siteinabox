@@ -476,11 +476,17 @@ export function createMicrosoftMailLivePorts(input: {
         if (typeof encryptedPassword !== "string") return { kind: "manual_review", code: "SETUP_CREDENTIAL_MISSING" }
         const token = await createSetupTokenImpl({ payload: input.payload, runId: Number(run.id), userPrincipalName: member.userPrincipalName, encryptedPassword,
           expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) })
+        if (!token) continue // An already-claimed initial credential must never be issued again.
         mailboxes.push({ displayName: member.displayName, userPrincipalName: member.userPrincipalName, setupUrl: `${baseUrl}/mailbox-setup#${token}` })
       }
       const locale = request.customer.address.country.toUpperCase() === "NL" ? "nl" as const : "en" as const
       const single = mailboxes[0]
-      if (!single) return complete()
+      if (!single) {
+        const nextBundles = { ...object(run.data.setupCredentialBundles) }
+        const nextStates = { ...states }
+        for (const member of group) { delete nextBundles[member.userPrincipalName]; nextStates[member.userPrincipalName] = "sent" }
+        return complete({ setupCredentialBundles: nextBundles, setupEmailStates: nextStates })
+      }
       const message = mailboxes.length === 1
         ? (input.buildSetupEmailMessage ?? (await import("../email/templates/microsoftMailboxReady.ts")).microsoftMailboxReadyTemplate)({ ...single, locale })
         : (input.buildSetupBatchEmailMessage ?? (await import("../email/templates/microsoftMailboxesReady.ts")).microsoftMailboxesReadyTemplate)({ mailboxes, locale })

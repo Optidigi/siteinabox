@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { User } from "@/payload-types"
 import { asTenant, cast } from "../_helpers/cast"
-const mocks=vi.hoisted(()=>({find:vi.fn(),legal:vi.fn(),confirmation:vi.fn(()=>null)}))
+const mocks=vi.hoisted(()=>({find:vi.fn(),legal:vi.fn(),confirmation:vi.fn(()=>null),form:vi.fn(()=>null)}))
 vi.mock("payload",()=>({getPayload:async()=>({find:mocks.find})}))
 vi.mock("@/payload.config",()=>({default:{}}))
 vi.mock("next-intl/server",()=>({getTranslations:async()=>((key:string)=>key)}))
@@ -12,6 +12,7 @@ vi.mock("@/lib/legal/checkoutLegal",()=>({checkoutLegalDocuments:mocks.legal}))
 vi.mock("@/app/(frontend)/(admin)/email/actions",()=>({refreshCustomerMailQuote:vi.fn(),submitCustomerMicrosoftMailRequest:vi.fn()}))
 vi.mock("@/app/(frontend)/(admin)/email/MailProgressRefresh",()=>({MailProgressRefresh:()=>null}))
 vi.mock("@/app/(frontend)/(admin)/email/MailOrderConfirmation",()=>({MailOrderConfirmation:mocks.confirmation}))
+vi.mock("@/app/(frontend)/(admin)/email/CustomerMailOrderForm",()=>({CustomerMailOrderForm:mocks.form}))
 import { CustomerEmailWorkspace } from "@/app/(frontend)/(admin)/email/CustomerEmailWorkspace"
 const workspace={user:cast<User>({id:1,email:"operator@example.test",name:"Operator",role:"super-admin",language:"en",tenants:[]}),ctx:{mode:"tenant" as const,tenant:asTenant({id:56,name:"Fixture",status:"active",enabledServices:["email"]})},basePath:"/accounts/56/email"}
 const legal={locale:"nl",terms:{id:4,contentHash:"terms-hash"},privacy:{id:5,contentHash:"privacy-hash"},termsHref:"/terms-nl",privacyHref:"/privacy-nl",statement:{version:"fixture",text:"Ik ga akkoord met de algemene voorwaarden."}}
@@ -26,7 +27,7 @@ it("explains missing English legal records and offers an explicit Dutch choice f
  const html=renderToStaticMarkup(await CustomerEmailWorkspace({workspace,searchParams:Promise.resolve({request:"11"})}))
  expect(html).toContain("English legal documents are not available")
  expect(html).toContain('/accounts/56/email?request=11&amp;legalLocale=nl')
- expect(mocks.legal).toHaveBeenCalledTimes(1)
+ expect(html).not.toContain("Confirm order")
  expect(mocks.legal.mock.calls[0]?.[1]).toBe("en")
  expect(mocks.confirmation).not.toHaveBeenCalled()
 })
@@ -38,4 +39,26 @@ it("shows Dutch confirmation only after explicitly selecting it without changing
 })
 it("rejects unsupported legal languages instead of silently switching documents",async()=>{
  await expect(CustomerEmailWorkspace({workspace,searchParams:Promise.resolve({request:"11",legalLocale:"fr"})})).rejects.toThrow("not found")
+})
+
+
+it("reopens a valid unsubmitted draft as the original form with explicit legal choices",async()=>{
+ const request={tenantId:56,domain:"customer.test",tenantPrefix:"customer",customer:{companyName:"Fixture",website:"https://customer.test",phone:"+31201234567",address:{street:"Fixture 1",city:"Amsterdam",postalCode:"1000AA",country:"NL"},primaryContact:{firstName:"Operations",lastName:"Fixture",email:"operator@example.test",phone:"+31201234567"}},mailboxUsers:[{localPart:"ardi",displayName:"Ardi",setupEmail:"setup@example.test"}],retainInfoForward:false}
+ mocks.find.mockImplementation(async({collection}:{collection:string})=>({docs:collection==="microsoft-mail-services"?[{id:1,domain:"customer.test",status:"draft"}]:collection==="microsoft-mail-provisioning-runs"?[{id:11,tenantId:56,state:"prepared",domain:"customer.test",createdAt:new Date().toISOString(),request,data:{customerConsent:{}}}]:[]}))
+ const html=renderToStaticMarkup(await CustomerEmailWorkspace({workspace,searchParams:Promise.resolve({request:"11"})}))
+ expect(mocks.form).toHaveBeenCalledWith(expect.objectContaining({userLocale:"en",initialRequest:expect.objectContaining({domain:"customer.test"}),legalDocuments:[expect.objectContaining({locale:"nl",statement:legal.statement.text})]}),undefined)
+ expect(mocks.confirmation).not.toHaveBeenCalled()
+ expect(html).not.toContain("Review your order")
+ expect(workspace.user.language).toBe("en")
+})
+
+
+it("retains the renewal operation instead of reopening its mailboxes as additions",async()=>{
+ const runs=await mocks.find({collection:"microsoft-mail-provisioning-runs"})
+ const renewal={...runs.docs[0],request:{tenantId:56,domain:"customer.test",tenantPrefix:"customer",customer:{companyName:"Fixture",website:"https://customer.test",phone:"+31201234567",address:{street:"Fixture 1",city:"Amsterdam",postalCode:"1000AA",country:"NL"},primaryContact:{firstName:"Operations",lastName:"Fixture",email:"operator@example.test",phone:"+31201234567"}},mailboxUsers:[{localPart:"ardi",displayName:"Ardi",setupEmail:"setup@example.test"}],retainInfoForward:false},data:{...runs.docs[0].data,isRenewal:true,quote:{...runs.docs[0].data.quote,operation:"renewal"}}}
+ mocks.find.mockImplementation(async({collection}:{collection:string})=>({docs:collection==="microsoft-mail-services"?[{id:1,domain:"customer.test",status:"active"}]:collection==="microsoft-mail-provisioning-runs"?[renewal]:[]}))
+ const html=renderToStaticMarkup(await CustomerEmailWorkspace({workspace,searchParams:Promise.resolve({request:"11",legalLocale:"nl"})}))
+ expect(mocks.form).not.toHaveBeenCalled()
+ expect(mocks.confirmation).toHaveBeenCalled()
+ expect(html).toContain("Renew your annual plan")
 })
