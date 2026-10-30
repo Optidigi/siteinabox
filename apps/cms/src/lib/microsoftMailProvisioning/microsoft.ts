@@ -327,7 +327,7 @@ export class MicrosoftMailClient {
       method: "POST",
       path: "/domains",
       operation: "domain creation",
-      body: { id: domain, supportedServices: ["Email"] },
+      body: { id: domain },
     })
   }
 

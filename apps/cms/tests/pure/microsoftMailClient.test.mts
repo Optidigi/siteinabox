@@ -43,6 +43,7 @@ describe("Microsoft mail client mock adapter", () => {
           return json({ error: { code: "Request_ResourceNotFound" } }, 404)
         }
         if (url.pathname === "/v1.0/domains" && method === "POST") {
+          assert.deepEqual(body, { id: "tap2case.nl" }, "Graph domain creation accepts only the domain id")
           return json({ id: "tap2case.nl", isVerified: false, isDefault: false }, 201)
         }
         if (url.pathname === "/v1.0/domains/tap2case.nl/verificationDnsRecords") {
