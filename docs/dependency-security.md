@@ -67,3 +67,18 @@ requires fresh collection and complete exact-source image evidence; cached
 supplied audits cannot grant clearance. Promotion still requires successful
 trusted-main CI and configured owner approval for the selected immutable bytes.
 See [image publication](runbooks/image-publication.md).
+
+## GraphQL scalar advisory range correction (2026-10-30)
+
+The publisher corrected GHSA-x8rm-f576-gq67's machine-readable affected range
+from `<= 2.0.0` to `>= 1.24.1, <= 2.0.0`. This now agrees with the advisory's
+existing description of the vulnerable PhoneNumber regular expression. The
+installed `graphql-scalars` 1.22.2 is outside that range, and fresh full and
+production audits no longer enumerate it. The two source `not_affected`
+dispositions are therefore stale and removed; the enrolled primary advisory
+fingerprint records the corrected range. Severity remains high for affected
+versions and the patched version remains 2.0.1. No risk threshold, remaining
+finding, deadline or publication control changes. Exact-source image rescanning
+and the normal release decision are still required before publication.
+
+Primary source: [GHSA-x8rm-f576-gq67](https://github.com/advisories/GHSA-x8rm-f576-gq67).
