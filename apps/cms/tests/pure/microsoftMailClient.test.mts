@@ -164,3 +164,31 @@ describe("Microsoft mail client mock adapter", () => {
   })
 
 })
+
+it("discovers only matching customer delegations across Microsoft-owned pages", async () => {
+ const calls: string[]=[]
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async(input)=>{
+  calls.push(String(input))
+  return calls.length===1 ? Response.json({value:[{id:"other",customer:{tenantId:"other"}}],"@odata.nextLink":"https://graph.microsoft.com/v1.0/tenantRelationships/delegatedAdminRelationships?$skiptoken=next"}) : Response.json({value:[{id:"matching",customer:{tenantId:"customer"}}]})
+ }})
+ assert.deepEqual((await client.listCustomerGdapRelationships("customer")).map(x=>x.id),["matching"])
+ assert.equal(calls.length,2)
+ const unsafe=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async()=>Response.json({value:[],"@odata.nextLink":"https://attacker.test/steal"})})
+ await assert.rejects(unsafe.listCustomerGdapRelationships("customer"),/pagination/)
+})
+
+it("submits each consent resource separately with stable resource-specific request IDs", async () => {
+ const calls:Array<{body:Record<string,unknown>;requestId:string}>=[]
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"token",fetchImpl:async(_input,init)=>{
+  calls.push({body:JSON.parse(String(init?.body)),requestId:new Headers(init?.headers).get("MS-RequestId")??""})
+  return Response.json({})
+ }})
+ await client.consentCustomerApplication("customer","12345678-1234-4234-8234-123456789abc")
+ assert.equal(calls.length,2)
+ assert.deepEqual(calls.map(call=>(call.body.applicationGrants as Array<Record<string,unknown>>).length),[1,1])
+ assert.notEqual(calls[0]?.requestId,calls[1]?.requestId)
+ assert.equal(calls[0]?.body.applicationId,"app")
+ const ids=calls.map(call=>call.requestId)
+ await client.consentCustomerApplication("customer","12345678-1234-4234-8234-123456789abc")
+ assert.deepEqual(calls.slice(2).map(call=>call.requestId),ids)
+})

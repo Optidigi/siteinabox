@@ -10,6 +10,7 @@ import { ExchangeWorkerClient } from "./exchangeWorker.ts"
 import { planMicrosoftMailDns, type MailDnsRecord } from "./dns.ts"
 import { inspectExistingMailRouting } from "./infoRouting.ts"
 import { Pax8Client } from "./pax8.ts"
+import { discoverMicrosoftTenant } from "./tenantDiscovery.ts"
 import { encryptMicrosoftMailSetupCredential } from "./setupCredentialCrypto.ts"
 import { createMicrosoftMailSetupToken } from "./setupTokenStore.ts"
 import type { MicrosoftMailProvisioningPorts, MicrosoftMailProvisioningRun } from "./workflow.ts"
@@ -128,7 +129,19 @@ export function createMicrosoftMailLivePorts(input: {
     },
     mca_acceptance: async ({ run }) => {
       const tenantId = customerTenantId(run)
-      if (!tenantId) return pause({ code: "MICROSOFT_TENANT_ID_REQUIRED", state: "consent_pending", message: "Enter the customer Microsoft tenant ID after Pax8 finishes provisioning the tenant." })
+      if (!tenantId) {
+        const initialDomain = `${run.request.tenantPrefix}.onmicrosoft.com`
+        if (!run.data.pax8CompanyId || !run.data.pax8OrderId || !run.data.bootstrapInitialDomainAbsentAt || run.data.bootstrapInitialDomain !== initialDomain) return { kind: "manual_review", code: "MICROSOFT_TENANT_BOOTSTRAP_EVIDENCE_REQUIRED" }
+        const discovered = await discoverMicrosoftTenant(initialDomain, input.fetchImpl)
+        if (!discovered) return pause({ code: "MICROSOFT_TENANT_PROVISIONING", state: "consent_pending", message: "Waiting for Microsoft to publish the new tenant identity." })
+        const relationships = await microsoft.listCustomerGdapRelationships(discovered.tenantId)
+        const matching = relationships.filter(relationship => ["active", "approvalPending"].includes(relationship.status))
+        if (!matching.length) return pause({ code: "MICROSOFT_RESELLER_ASSOCIATION_PENDING", state: "consent_pending", message: "Waiting for the provider-created customer delegation." })
+        return pause({ code: "MICROSOFT_TENANT_DISCOVERED", state: "consent_pending", message: "The new Microsoft tenant and partner delegation were identified.", data: {
+          customerTenantId: discovered.tenantId, bootstrapInitialDomain: discovered.initialDomain,
+          tenantDiscoveryVerifiedAt: new Date().toISOString(), discoveredGdapRelationshipIds: matching.map(relationship => relationship.id),
+        } })
+      }
       if (stateData(run).mcaAccepted !== true) {
         return pause({
           code: "MCA_ACCEPTANCE_REQUIRED",

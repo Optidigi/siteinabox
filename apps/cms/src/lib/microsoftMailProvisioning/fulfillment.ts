@@ -1,4 +1,5 @@
 import { requireMailDomainEnabled } from "./rollout"
+import { discoverMicrosoftTenant } from "./tenantDiscovery"
 import { requireLiveMailWritesAllowed } from "./writeGate"
 import "server-only"
 import type { Payload } from "payload"
@@ -66,6 +67,11 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
     const save = async (patch: Partial<MicrosoftMailProvisioningRun>) => { run = await store.update(run!.id, { ...patch, updatedAt: new Date().toISOString() }); return run }
     const client = createPax8MailClient()
     try {
+      if (quote.operation === "initial" && !service.microsoftTenantId && !run.data.pax8OrderId && !run.data.bootstrapInitialDomainAbsentAt) {
+        const initialDomain = `${run.request.tenantPrefix}.onmicrosoft.com`
+        if (await discoverMicrosoftTenant(initialDomain)) throw new Error("MICROSOFT_INITIAL_DOMAIN_ALREADY_EXISTS")
+        await save({ data: { ...run.data, bootstrapInitialDomain: initialDomain, bootstrapInitialDomainAbsentAt: new Date().toISOString() } })
+      }
       if (quote.operation === "renewal") {
         if (!service.pax8SubscriptionId || !quote.servicePeriodStartsAt || !quote.servicePeriodEndsAt || record(service.renewalData).cancellationState) throw new Error("RENEWAL_RECOVERY_REQUIRES_OPERATOR")
         if (Date.now() < Date.parse(quote.servicePeriodStartsAt)) {

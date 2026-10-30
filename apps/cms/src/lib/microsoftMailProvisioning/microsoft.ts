@@ -1,5 +1,5 @@
 import "server-only"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 
 export type MicrosoftResource = "graph" | "partner_center" | "exchange"
 export const MICROSOFT_MAIL_APPLICATION_GRANT_VERSION = "microsoft-mail-app-grants-v1"
@@ -188,6 +188,30 @@ export class MicrosoftMailClient {
     }
   }
 
+  async listCustomerGdapRelationships(customerTenantId: string): Promise<MicrosoftGdapRelationship[]> {
+    const matches: MicrosoftGdapRelationship[] = []
+    const route = "/tenantRelationships/delegatedAdminRelationships"
+    let path = `${route}?$top=100`
+    const visited = new Set<string>()
+    while (path) {
+      if (visited.has(path) || visited.size >= 50) throw new Error("Invalid GDAP pagination cycle or limit.")
+      visited.add(path)
+      const page = await this.#request<{ value?: MicrosoftGdapRelationship[]; "@odata.nextLink"?: string }>({
+        resource: "graph", tenantId: this.#partnerTenantId, method: "GET", path, operation: "GDAP relationship discovery",
+      })
+      if (!Array.isArray(page.value)) throw new Error("Invalid GDAP relationship discovery response.")
+      matches.push(...page.value.filter(row => row.customer?.tenantId?.toLowerCase() === customerTenantId.toLowerCase()))
+      path = ""
+      if (page["@odata.nextLink"]) {
+        const next = new URL(page["@odata.nextLink"])
+        const expected = new URL(`${this.#graphBase}${route}`)
+        if (next.origin !== expected.origin || next.pathname !== expected.pathname || next.username || next.password || next.hash) throw new Error("Untrusted GDAP pagination URL.")
+        path = route + next.search
+      }
+    }
+    return matches
+  }
+
   async getGdapRelationship(relationshipId: string): Promise<MicrosoftGdapRelationship> {
     return this.#request<MicrosoftGdapRelationship>({
       resource: "graph",
@@ -242,14 +266,20 @@ export class MicrosoftMailClient {
   }
 
   async consentCustomerApplication(customerTenantId: string, requestId: string): Promise<void> {
-    await this.#request({ resource: "partner_center", tenantId: this.#partnerTenantId, method: "POST",
-      path: `/customers/${encodePath(customerTenantId)}/applicationconsents`, operation: "customer application consent",
-      headers: { "MS-RequestId": requestId, "MS-CorrelationId": randomUUID(), ValidateMfa: "true" },
-      body: { applicationId: this.#clientId, displayName: "Siteinabox Microsoft email", applicationGrants: [
-        { enterpriseApplicationId: "00000003-0000-0000-c000-000000000000", scope: "Organization.Read.All, Domain.ReadWrite.All, User.ReadWrite.All, LicenseAssignment.ReadWrite.All" },
-        { enterpriseApplicationId: "00000002-0000-0ff1-ce00-000000000000", scope: "Exchange.Manage" },
-      ] },
-    })
+    const grants = [
+      { enterpriseApplicationId: "00000003-0000-0000-c000-000000000000", scope: "Organization.Read.All, Domain.ReadWrite.All, User.ReadWrite.All, LicenseAssignment.ReadWrite.All" },
+      { enterpriseApplicationId: "00000002-0000-0ff1-ce00-000000000000", scope: "Exchange.Manage" },
+    ]
+    // Partner Center requires a separate consent request for each resource.
+    for (const grant of grants) {
+      const hash = createHash("sha256").update(`${requestId}:${grant.enterpriseApplicationId}`).digest("hex")
+      const resourceRequestId = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`
+      await this.#request({ resource: "partner_center", tenantId: this.#partnerTenantId, method: "POST",
+        path: `/customers/${encodePath(customerTenantId)}/applicationconsents`, operation: "customer application consent",
+        headers: { "MS-RequestId": resourceRequestId, "MS-CorrelationId": randomUUID(), ValidateMfa: "true" },
+        body: { applicationId: this.#clientId, displayName: "Siteinabox Microsoft email", applicationGrants: [grant] },
+      })
+    }
   }
 
   async getDomain(customerTenantId: string, domain: string): Promise<MicrosoftDomain | null> {

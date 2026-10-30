@@ -234,3 +234,33 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     assert.ok(providerRequests.some((call) => call.url.hostname === "api.pax8.com" && call.url.pathname === "/v1/subscriptions/pax8-sub-1"))
   })
 })
+
+it("discovers a freshly ordered tenant only after absence evidence and matching partner delegation", async () => {
+ const customerId="12345678-1234-4234-8234-123456789abc"
+ const env: NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
+ let associated=false
+ const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"token",fetchImpl:async input=>{
+  const url=new URL(String(input))
+  if(url.hostname==="login.microsoftonline.com")return response({issuer:`https://login.microsoftonline.com/${customerId}/v2.0`,token_endpoint:`https://login.microsoftonline.com/${customerId}/oauth2/v2.0/token`})
+  if(url.hostname==="graph.microsoft.com")return response({value:associated?[{id:"relationship",status:"active",customer:{tenantId:customerId}}]:[]})
+  throw new Error("Unexpected bootstrap call")
+ }})
+ const now=new Date().toISOString()
+ const run:MicrosoftMailProvisioningRun={id:99,idempotencyKey:"new-tenant",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"subscription_pending",currentStep:"mca_acceptance",completedSteps:["tenant_bootstrap","subscription"],data:{pax8CompanyId:"company",pax8OrderId:"order"},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ assert.deepEqual(await ports.mca_acceptance({run,request}),{kind:"manual_review",code:"MICROSOFT_TENANT_BOOTSTRAP_EVIDENCE_REQUIRED"})
+ run.data={...run.data,bootstrapInitialDomain:"tap2case.onmicrosoft.com",bootstrapInitialDomainAbsentAt:now}
+ const pending=await ports.mca_acceptance({run,request})
+ assert.equal(pending.kind,"waiting")
+ if(pending.kind!=="waiting")throw new Error("Expected pending association")
+ assert.equal(pending.code,"MICROSOFT_RESELLER_ASSOCIATION_PENDING")
+ const waiting=await advanceMicrosoftMailProvisioning({run,store:new MemoryStore(run),ports})
+ assert.equal(waiting.state,"consent_pending")
+ assert.equal(waiting.issueCode,"MICROSOFT_RESELLER_ASSOCIATION_PENDING")
+ associated=true
+ const found=await ports.mca_acceptance({run,request})
+ assert.equal(found.kind,"waiting")
+ if(found.kind!=="waiting")throw new Error("Expected persisted tenant discovery")
+ assert.equal(found.data?.customerTenantId,customerId)
+ assert.deepEqual(found.data?.discoveredGdapRelationshipIds,["relationship"])
+ assert.equal(found.data?.mcaAccepted,undefined)
+})
